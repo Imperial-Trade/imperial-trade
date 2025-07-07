@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { Crown, Menu, X, Mic, MicOff, Bell } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import Header from '@/components/layout/Header';
+import Sidebar from '@/components/layout/Sidebar';
+import LoadingSpinner from '@/components/layout/LoadingSpinner';
+import { useVoiceRecognition } from '@/components/layout/VoiceRecognition';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,8 +16,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const { isListening, toggleVoiceRecognition } = useVoiceRecognition();
 
   useEffect(() => {
     const initializeUser = async () => {
@@ -32,47 +32,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
     };
     initializeUser();
   }, []);
-
-  useEffect(() => {
-    // Initialize speech recognition
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognitionInstance = new SpeechRecognition();
-        recognitionInstance.continuous = false;
-        recognitionInstance.interimResults = false;
-        recognitionInstance.lang = 'en-US';
-        
-        recognitionInstance.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          console.log('Voice command:', transcript);
-          // Handle voice commands here
-        };
-        
-        recognitionInstance.onerror = () => {
-          setIsListening(false);
-        };
-        
-        recognitionInstance.onend = () => {
-          setIsListening(false);
-        };
-        
-        setRecognition(recognitionInstance);
-      }
-    }
-  }, []);
-
-  const toggleVoiceRecognition = () => {
-    if (!recognition) return;
-    
-    if (isListening) {
-      recognition.stop();
-      setIsListening(false);
-    } else {
-      recognition.start();
-      setIsListening(true);
-    }
-  };
 
   const getUserAccessLevel = () => {
     if (!user) return 'free';
@@ -114,115 +73,32 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
   });
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-background/95">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-primary hover:text-primary/80 transition-colors lg:hidden"
-          >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
-          
-          <div className="flex items-center gap-2">
-            <Crown className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
-              IMPERIAL
-            </span>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          {user && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleVoiceRecognition}
-                className={`hidden md:flex ${isListening ? 'text-red-500' : 'text-muted-foreground'}`}
-              >
-                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              </Button>
-              
-              <Button variant="ghost" size="sm" className="text-muted-foreground">
-                <Bell className="h-4 w-4" />
-              </Button>
-              
-              <div className="flex items-center gap-2">
-                <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-white`}>
-                  {getAccessLevelDisplay(getUserAccessLevel()).label}
-                </Badge>
-              </div>
-            </>
-          )}
-          
-          <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            Market Open
-          </div>
-        </div>
-      </header>
+      <Header
+        user={user}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        isListening={isListening}
+        toggleVoiceRecognition={toggleVoiceRecognition}
+        getUserAccessLevel={getUserAccessLevel}
+        getAccessLevelDisplay={getAccessLevelDisplay}
+      />
 
       <div className="flex pt-16">
-        {/* Sidebar */}
-        <aside className={`fixed lg:relative lg:translate-x-0 inset-y-0 left-0 z-40 w-64 bg-surface/95 backdrop-blur-xl border-r border-border/50 transform transition-transform duration-300 ease-in-out pt-16 lg:pt-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="p-6">
-            {user && (
-              <div className="mb-6 p-4 rounded-lg bg-gradient-to-r from-primary/10 to-amber-300/10 border border-primary/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-amber-300 flex items-center justify-center text-white font-bold">
-                    {user.email?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-primary">
-                      {user.email || 'User'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {getAccessLevelDisplay(getUserAccessLevel()).label} Access
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+        <Sidebar
+          user={user}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          currentPageName={currentPageName}
+          filteredMenuItems={filteredMenuItems}
+          getUserAccessLevel={getUserAccessLevel}
+          getAccessLevelDisplay={getAccessLevelDisplay}
+        />
 
-            <nav className="space-y-2">
-              {filteredMenuItems.map((item) => (
-                <a
-                  key={item.title}
-                  href={item.url}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                    currentPageName.toLowerCase() === item.title.toLowerCase().replace(/\s+/g, '')
-                      ? "bg-primary/20 text-primary border border-primary/30 shadow-lg shadow-primary/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                  }`}
-                >
-                  <span className="font-medium">{item.title}</span>
-                </a>
-              ))}
-            </nav>
-          </div>
-        </aside>
-
-        {/* Overlay */}
-        {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/20 z-30 lg:hidden" 
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Main Content */}
         <main className="flex-1 overflow-auto">
           {children}
         </main>

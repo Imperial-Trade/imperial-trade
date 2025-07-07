@@ -234,3 +234,145 @@ export class TradeHistory {
     return data;
   }
 }
+
+// Learning entities - create the missing classes
+export class Quiz {
+  static async list() {
+    const { data, error } = await supabase
+      .from('quizzes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getById(id: string) {
+    const { data, error } = await supabase
+      .from('quizzes')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class QuizAttempt {
+  static async list(userId: string) {
+    const { data, error } = await supabase
+      .from('quiz_attempts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(attemptData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('quiz_attempts')
+      .insert([{ ...attemptData, user_id: userId }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class UserProgress {
+  static async list(userId: string) {
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(progressData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('user_progress')
+      .insert([{ ...progressData, user_id: userId }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class LearningPathway {
+  static async list() {
+    const { data, error } = await supabase
+      .from('learning_pathways')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getById(id: string) {
+    const { data, error } = await supabase
+      .from('learning_pathways')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class UserPathwayProgress {
+  static async list(userId: string) {
+    const { data, error } = await supabase
+      .from('user_pathway_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(progressData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('user_pathway_progress')
+      .insert([{ ...progressData, user_id: userId }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class Course {
+  static async list() {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getById(id: string) {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}

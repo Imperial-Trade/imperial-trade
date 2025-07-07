@@ -1,4 +1,4 @@
-import { Container } from '@/infrastructure/di/Container';
+
 import { supabase } from '@/integrations/supabase/client';
 
 // Video entity for educational content
@@ -83,5 +83,5 @@ export class Video {
   }
 }
 
-// Keep other classes as simple wrappers for now
+// Import other classes from BaseEntity
 export { Quiz, QuizAttempt, UserProgress, LearningPathway, UserPathwayProgress, Course } from '../base/BaseEntity';

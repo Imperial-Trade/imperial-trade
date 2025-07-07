@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,13 @@ import {
   Rocket,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+// Extend the Window interface to include webkitAudioContext
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
 
 const NotificationSystem = () => {
   const [notifications, setNotifications] = useState<any[]>([]);

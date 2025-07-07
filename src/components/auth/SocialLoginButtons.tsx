@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle } from 'lucide-react';
-import { User as UserEntity } from '@/api/entities';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function SocialLoginButtons() {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,7 +17,13 @@ export default function SocialLoginButtons() {
     setIsGoogleLoading(true);
     setError('');
     try {
-        await UserEntity.login();
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/`
+          }
+        });
+        if (error) throw error;
         // On success, the page will redirect, so no need to set loading to false.
     } catch (err) {
         console.error("Google login failed", err);
@@ -54,10 +60,11 @@ export default function SocialLoginButtons() {
 
     try {
       // Try email/password login
-      await UserEntity.login({
+      const { error } = await supabase.auth.signInWithPassword({
         email: loginForm.email,
         password: loginForm.password
       });
+      if (error) throw error;
     } catch (error) {
       console.error('Email login failed:', error);
       setError('Invalid email or password. Please try again.');
@@ -98,11 +105,17 @@ export default function SocialLoginButtons() {
 
     try {
       // Try to register new user
-      await UserEntity.register({
+      const { error } = await supabase.auth.signUp({
         email: registerForm.email,
         password: registerForm.password,
-        full_name: registerForm.fullName
+        options: {
+          data: {
+            full_name: registerForm.fullName
+          },
+          emailRedirectTo: `${window.location.origin}/`
+        }
       });
+      if (error) throw error;
     } catch (error) {
       console.error('Registration failed:', error);
       setError('Registration failed. Email may already be in use.');

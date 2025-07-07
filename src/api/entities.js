@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export class ForumPost {
@@ -898,6 +899,7 @@ export class TradingStrategy {
       .from('trading_strategies')
       .insert([{
         ...strategyData,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
         created_by: (await supabase.auth.getUser()).data.user?.id
       }])
       .select()

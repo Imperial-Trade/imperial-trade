@@ -9,6 +9,166 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      account_requests: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          approved_by: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          reason: string | null
+          rejection_reason: string | null
+          social_id: string | null
+          social_provider: Database["public"]["Enums"]["social_provider"] | null
+          status: Database["public"]["Enums"]["request_status"]
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          approved_by?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          social_id?: string | null
+          social_provider?:
+            | Database["public"]["Enums"]["social_provider"]
+            | null
+          status?: Database["public"]["Enums"]["request_status"]
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          approved_by?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          social_id?: string | null
+          social_provider?:
+            | Database["public"]["Enums"]["social_provider"]
+            | null
+          status?: Database["public"]["Enums"]["request_status"]
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      athena_interactions: {
+        Row: {
+          context: string | null
+          created_at: string
+          feedback_score: number | null
+          id: string
+          interaction_time: string
+          prompt: string
+          response: string
+          updated_at: string
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          feedback_score?: number | null
+          id?: string
+          interaction_time?: string
+          prompt: string
+          response: string
+          updated_at?: string
+          user_email: string
+          user_id: string
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          feedback_score?: number | null
+          id?: string
+          interaction_time?: string
+          prompt?: string
+          response?: string
+          updated_at?: string
+          user_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          admin_email: string
+          created_at: string
+          details: Json | null
+          id: string
+          target_entity: string
+          target_id: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          admin_email: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_entity: string
+          target_id: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          admin_email?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_entity?: string
+          target_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      courses: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string
+          difficulty: Database["public"]["Enums"]["course_difficulty"] | null
+          id: string
+          lessons: Json | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description: string
+          difficulty?: Database["public"]["Enums"]["course_difficulty"] | null
+          id?: string
+          lessons?: Json | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string
+          difficulty?: Database["public"]["Enums"]["course_difficulty"] | null
+          id?: string
+          lessons?: Json | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       economic_events: {
         Row: {
           country: string
@@ -511,6 +671,69 @@ export type Database = {
         }
         Relationships: []
       }
+      trade_alerts: {
+        Row: {
+          asset_name: string
+          close_reason: Database["public"]["Enums"]["close_reason"] | null
+          created_at: string
+          entry_price: number
+          finnhub_symbol: string
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["trade_alert_status"]
+          stop_loss: number
+          tp_hits: number[] | null
+          tp1: number | null
+          tp2: number | null
+          tp3: number | null
+          tp4: number | null
+          tp5: number | null
+          trade_type: Database["public"]["Enums"]["trade_alert_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_name: string
+          close_reason?: Database["public"]["Enums"]["close_reason"] | null
+          created_at?: string
+          entry_price: number
+          finnhub_symbol: string
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["trade_alert_status"]
+          stop_loss: number
+          tp_hits?: number[] | null
+          tp1?: number | null
+          tp2?: number | null
+          tp3?: number | null
+          tp4?: number | null
+          tp5?: number | null
+          trade_type: Database["public"]["Enums"]["trade_alert_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_name?: string
+          close_reason?: Database["public"]["Enums"]["close_reason"] | null
+          created_at?: string
+          entry_price?: number
+          finnhub_symbol?: string
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["trade_alert_status"]
+          stop_loss?: number
+          tp_hits?: number[] | null
+          tp1?: number | null
+          tp2?: number | null
+          tp3?: number | null
+          tp4?: number | null
+          tp5?: number | null
+          trade_type?: Database["public"]["Enums"]["trade_alert_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       trade_history: {
         Row: {
           analysis_result: string | null
@@ -634,6 +857,101 @@ export type Database = {
         }
         Relationships: []
       }
+      trading_strategies: {
+        Row: {
+          backtest_results: Json | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          indicators: string[] | null
+          is_public: boolean
+          likes: number
+          rules: Json
+          strategy_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          backtest_results?: Json | null
+          created_at?: string
+          created_by: string
+          description: string
+          id?: string
+          indicators?: string[] | null
+          is_public?: boolean
+          likes?: number
+          rules: Json
+          strategy_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          backtest_results?: Json | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          indicators?: string[] | null
+          is_public?: boolean
+          likes?: number
+          rules?: Json
+          strategy_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_pathway_progress: {
+        Row: {
+          certificate_earned: boolean
+          completed_date: string | null
+          completion_percentage: number
+          created_at: string
+          current_module: number
+          id: string
+          pathway_id: string
+          started_date: string
+          updated_at: string
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          certificate_earned?: boolean
+          completed_date?: string | null
+          completion_percentage?: number
+          created_at?: string
+          current_module?: number
+          id?: string
+          pathway_id: string
+          started_date?: string
+          updated_at?: string
+          user_email: string
+          user_id: string
+        }
+        Update: {
+          certificate_earned?: boolean
+          completed_date?: string | null
+          completion_percentage?: number
+          created_at?: string
+          current_module?: number
+          id?: string
+          pathway_id?: string
+          started_date?: string
+          updated_at?: string
+          user_email?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_pathway_progress_pathway_id_fkey"
+            columns: ["pathway_id"]
+            isOneToOne: false
+            referencedRelation: "learning_pathways"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_progress: {
         Row: {
           created_at: string
@@ -720,9 +1038,20 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      account_type: "user" | "admin"
       alert_condition: "above" | "below"
       alert_status: "active" | "triggered"
       asset_type: "Stock" | "Crypto" | "Forex" | "Commodity"
+      close_reason:
+        | "manual"
+        | "stop_loss"
+        | "tp1"
+        | "tp2"
+        | "tp3"
+        | "tp4"
+        | "tp5"
+        | "reversal_after_tp"
+      course_difficulty: "Beginner" | "Intermediate" | "Advanced"
       difficulty_level: "beginner" | "intermediate" | "advanced"
       impact_level: "High" | "Medium" | "Low"
       mood_type: "Confident" | "Anxious" | "Greedy" | "Fearful" | "Neutral"
@@ -733,9 +1062,13 @@ export type Database = {
         | "news"
         | "strategy"
       progress_status: "completed" | "in_progress"
+      request_status: "pending" | "approved" | "rejected"
       session_status: "scheduled" | "live" | "completed"
       signal_status: "active" | "expired" | "triggered"
       signal_type: "breakout" | "reversal" | "news_event" | "pattern"
+      social_provider: "gmail" | "facebook" | "manual"
+      trade_alert_status: "pending" | "active" | "closed"
+      trade_alert_type: "buy" | "sell" | "buy_limit" | "sell_limit"
       trade_type: "Long" | "Short"
       upload_status: "pending" | "analyzed" | "error"
       verification_status: "pending" | "verified" | "rejected"
@@ -854,17 +1187,33 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_type: ["user", "admin"],
       alert_condition: ["above", "below"],
       alert_status: ["active", "triggered"],
       asset_type: ["Stock", "Crypto", "Forex", "Commodity"],
+      close_reason: [
+        "manual",
+        "stop_loss",
+        "tp1",
+        "tp2",
+        "tp3",
+        "tp4",
+        "tp5",
+        "reversal_after_tp",
+      ],
+      course_difficulty: ["Beginner", "Intermediate", "Advanced"],
       difficulty_level: ["beginner", "intermediate", "advanced"],
       impact_level: ["High", "Medium", "Low"],
       mood_type: ["Confident", "Anxious", "Greedy", "Fearful", "Neutral"],
       post_category: ["discussion", "question", "analysis", "news", "strategy"],
       progress_status: ["completed", "in_progress"],
+      request_status: ["pending", "approved", "rejected"],
       session_status: ["scheduled", "live", "completed"],
       signal_status: ["active", "expired", "triggered"],
       signal_type: ["breakout", "reversal", "news_event", "pattern"],
+      social_provider: ["gmail", "facebook", "manual"],
+      trade_alert_status: ["pending", "active", "closed"],
+      trade_alert_type: ["buy", "sell", "buy_limit", "sell_limit"],
       trade_type: ["Long", "Short"],
       upload_status: ["pending", "analyzed", "error"],
       verification_status: ["pending", "verified", "rejected"],

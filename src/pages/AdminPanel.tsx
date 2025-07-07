@@ -152,9 +152,9 @@ export default function AdminPanel() {
 
   const fetchCurrentPrice = async (symbol) => {
     try {
-      const response = await getMarketData({ symbols: [symbol] });
-      if (response?.data?.prices && response.data.prices[symbol]) {
-        setCurrentPrice(response.data.prices[symbol]);
+      const response = await getMarketData(symbol);
+      if (response?.data?.price !== undefined) {
+        setCurrentPrice(response.data.price);
       } else {
         setCurrentPrice("N/A (No price data)");
       }

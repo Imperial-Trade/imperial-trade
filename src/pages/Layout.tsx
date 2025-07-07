@@ -27,72 +27,86 @@ import {
   Bell, // Add Bell icon for notifications
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import Athena from "@/components/ai/Athena";
-import { User } from '@/api/entities';
+import { User } from "@/api/entities";
 import NotificationSystem from "@/components/notifications/NotificationSystem";
+
+// Define the NavigationItem type for navigation arrays
+type NavigationItem = {
+  title: string;
+  url: string;
+  icon: React.ElementType;
+  accessLevel: "free" | "user" | "admin";
+  adminOnly?: boolean;
+};
 
 const navigationItems: NavigationItem[] = [
   {
     title: "Home",
     url: createPageUrl("Home"),
     icon: Home,
-    accessLevel: "free"
+    accessLevel: "free",
   },
   {
     title: "Education",
     url: createPageUrl("Education"),
     icon: BookOpen,
-    accessLevel: "user"
+    accessLevel: "user",
   },
   {
     title: "Signal Stream",
     url: createPageUrl("SignalStream"),
     icon: Rss,
-    accessLevel: "user"
+    accessLevel: "user",
   },
   {
     title: "Live Sessions",
     url: createPageUrl("Live"),
     icon: Radio,
-    accessLevel: "user"
+    accessLevel: "user",
   },
   {
     title: "Community Forum",
     url: createPageUrl("Forum"),
     icon: MessageSquare,
-    accessLevel: "user"
+    accessLevel: "user",
   },
   {
     title: "IB Partnership",
     url: createPageUrl("IBPartnership"),
     icon: Briefcase,
-    accessLevel: "user"
+    accessLevel: "user",
   },
   {
     title: "Advanced Tools",
     url: createPageUrl("AdvancedTools"),
     icon: Wrench,
-    accessLevel: "user"
+    accessLevel: "user",
   },
   {
     title: "My Progress",
     url: createPageUrl("MyProgress"),
     icon: Award,
-    accessLevel: "user"
+    accessLevel: "user",
   },
   {
     title: "Settings",
     url: createPageUrl("Settings"),
     icon: Settings,
-    accessLevel: "user"
+    accessLevel: "user",
   },
   {
     title: "About",
     url: createPageUrl("About"),
     icon: Info,
-    accessLevel: "free"
+    accessLevel: "free",
   },
 ];
 
@@ -102,14 +116,14 @@ const adminNavigationItems: NavigationItem[] = [
     url: createPageUrl("AdminPanel"),
     icon: Shield,
     adminOnly: true,
-    accessLevel: "admin"
-  }
+    accessLevel: "admin",
+  },
 ];
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState("dark");
   const [isAthenaOpen, setIsAthenaOpen] = useState(false);
   const [athenaListening, setAthenaListening] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -118,7 +132,7 @@ export default function Layout({ children, currentPageName }) {
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
+    root.classList.remove("light", "dark");
     root.classList.add(theme);
   }, [theme]);
 
@@ -136,17 +150,20 @@ export default function Layout({ children, currentPageName }) {
             const refreshedUser = await User.me();
             setUser(refreshedUser);
           } catch (error) {
-            console.error("Layout failed to refetch user data after update:", error);
+            console.error(
+              "Layout failed to refetch user data after update:",
+              error
+            );
           }
         })();
       }
     };
 
-    window.addEventListener('user-updated', handleUserUpdate);
+    window.addEventListener("user-updated", handleUserUpdate);
 
     // Cleanup the event listener when the component unmounts
     return () => {
-      window.removeEventListener('user-updated', handleUserUpdate);
+      window.removeEventListener("user-updated", handleUserUpdate);
     };
   }, []); // Empty dependency array ensures this sets up only once
 
@@ -157,33 +174,37 @@ export default function Layout({ children, currentPageName }) {
         const currentUser = await User.me();
         if (currentUser) {
           // Auto-upgrade any authenticated user from 'free' to 'user' access level
-          if (!currentUser.access_level || currentUser.access_level === 'free') {
+          if (
+            !currentUser.access_level ||
+            currentUser.access_level === "free"
+          ) {
             try {
-              await User.updateMyUserData({ access_level: 'user' });
-              
+              await User.updateMyUserData({ access_level: "user" });
+
               // Determine login method - if no password field exists, it's likely Google login
               const isGoogleLogin = !currentUser.password_hash; // Assuming password_hash exists for email/password users
-              
+
               if (isGoogleLogin) {
                 // Set flag for Google users to redirect to name verification
-                sessionStorage.setItem('isFirstLoginRedirect', 'true');
-                sessionStorage.setItem('loginMethod', 'google');
+                sessionStorage.setItem("isFirstLoginRedirect", "true");
+                sessionStorage.setItem("loginMethod", "google");
               } else {
                 // Set flag for email/password users to show welcome message only
-                sessionStorage.setItem('isFirstLoginWelcome', 'true');
-                sessionStorage.setItem('loginMethod', 'email');
+                sessionStorage.setItem("isFirstLoginWelcome", "true");
+                sessionStorage.setItem("loginMethod", "email");
               }
-              
+
               // Reload user data to get updated access level
               const updatedUser = await User.me();
               setUser(updatedUser);
-              
+
               // Send welcome email for first-time login
-              const { sendWelcomeEmail } = await import('@/components/auth/AuthNotifications');
+              const { sendWelcomeEmail } = await import(
+                "@/components/auth/AuthNotifications"
+              );
               await sendWelcomeEmail(updatedUser.email, updatedUser.full_name);
-              
             } catch (error) {
-              console.error('Error updating user access level:', error);
+              console.error("Error updating user access level:", error);
               // If update fails, still set the original user data
               setUser(currentUser);
             }
@@ -192,16 +213,29 @@ export default function Layout({ children, currentPageName }) {
           }
 
           // Redirect authenticated users away from AccessPortal or AccountRequest to Home
-          if (currentPageName === 'AccessPortal' || currentPageName === 'AccountRequest') {
-            window.location.href = createPageUrl('Home');
+          if (
+            currentPageName === "AccessPortal" ||
+            currentPageName === "AccountRequest"
+          ) {
+            window.location.href = createPageUrl("Home");
             return;
           }
         } else {
           setUser(null);
           // Redirect unauthenticated users to AccessPortal if they try to access protected pages
-          const protectedPages = ['Education', 'Live', 'Forum', 'IBPartnership', 'AdvancedTools', 'MyProgress', 'SignalStream', 'AdminPanel', 'Settings'];
+          const protectedPages = [
+            "Education",
+            "Live",
+            "Forum",
+            "IBPartnership",
+            "AdvancedTools",
+            "MyProgress",
+            "SignalStream",
+            "AdminPanel",
+            "Settings",
+          ];
           if (protectedPages.includes(currentPageName)) {
-            window.location.href = createPageUrl('AccessPortal');
+            window.location.href = createPageUrl("AccessPortal");
             return;
           }
         }
@@ -209,11 +243,21 @@ export default function Layout({ children, currentPageName }) {
         console.log("User not authenticated", error);
         setUser(null);
         // Redirect unauthenticated users to AccessPortal if they try to access protected pages
-        const protectedPages = ['Education', 'Live', 'Forum', 'IBPartnership', 'AdvancedTools', 'MyProgress', 'SignalStream', 'AdminPanel', 'Settings'];
+        const protectedPages = [
+          "Education",
+          "Live",
+          "Forum",
+          "IBPartnership",
+          "AdvancedTools",
+          "MyProgress",
+          "SignalStream",
+          "AdminPanel",
+          "Settings",
+        ];
         if (protectedPages.includes(currentPageName)) {
-            window.location.href = createPageUrl('AccessPortal');
-            return;
-          }
+          window.location.href = createPageUrl("AccessPortal");
+          return;
+        }
       } finally {
         setIsLoading(false);
       }
@@ -223,63 +267,73 @@ export default function Layout({ children, currentPageName }) {
 
   // First-login handling, post-verification welcome
   useEffect(() => {
-    if (currentPageName === 'Home' && user) {
-      const loginMethod = sessionStorage.getItem('loginMethod');
+    if (currentPageName === "Home" && user) {
+      const loginMethod = sessionStorage.getItem("loginMethod");
 
       // The browser-level notification permission request has been removed
       // as it is unreliable in the preview environment and the in-app
       // notification system provides a better experience.
 
       // Handle Google login - redirect to name verification
-      if (sessionStorage.getItem('isFirstLoginRedirect') === 'true' && loginMethod === 'google') {
+      if (
+        sessionStorage.getItem("isFirstLoginRedirect") === "true" &&
+        loginMethod === "google"
+      ) {
         if (window.addNotification) {
           window.addNotification({
-            type: 'info',
-            title: 'Welcome to Imperial!',
-            message: 'Please verify your name. Redirecting to settings in 5 seconds...',
+            type: "info",
+            title: "Welcome to Imperial!",
+            message:
+              "Please verify your name. Redirecting to settings in 5 seconds...",
           });
         }
 
         const timer = setTimeout(() => {
-          window.location.href = createPageUrl('Settings?action=verify_name');
+          window.location.href = createPageUrl("Settings?action=verify_name");
         }, 5000);
 
         // Clean up sessionStorage and the timer
-        sessionStorage.removeItem('isFirstLoginRedirect');
-        sessionStorage.removeItem('loginMethod');
+        sessionStorage.removeItem("isFirstLoginRedirect");
+        sessionStorage.removeItem("loginMethod");
         return () => clearTimeout(timer);
       }
-      
+
       // Handle email/password login - show welcome message only
-      if (sessionStorage.getItem('isFirstLoginWelcome') === 'true' && loginMethod === 'email') {
+      if (
+        sessionStorage.getItem("isFirstLoginWelcome") === "true" &&
+        loginMethod === "email"
+      ) {
         if (window.addNotification) {
           window.addNotification({
-            type: 'info',
-            title: `Welcome ${user.full_name || 'there'}! 🎉`,
-            message: 'Your Imperial Trading account is ready. Explore our premium features and start your trading journey!',
+            type: "info",
+            title: `Welcome ${user.full_name || "there"}! 🎉`,
+            message:
+              "Your Imperial Trading account is ready. Explore our premium features and start your trading journey!",
           });
         }
 
         // Clean up sessionStorage after showing welcome
         setTimeout(() => {
-          sessionStorage.removeItem('isFirstLoginWelcome');
-          sessionStorage.removeItem('loginMethod');
+          sessionStorage.removeItem("isFirstLoginWelcome");
+          sessionStorage.removeItem("loginMethod");
         }, 3000);
       }
 
       // Handle welcome message after Google name verification
-      if (sessionStorage.getItem('nameVerifiedWelcome') === 'true') {
-        const verifiedName = sessionStorage.getItem('verifiedName') || user.full_name;
+      if (sessionStorage.getItem("nameVerifiedWelcome") === "true") {
+        const verifiedName =
+          sessionStorage.getItem("verifiedName") || user.full_name;
         if (window.addNotification) {
           window.addNotification({
-            type: 'info',
+            type: "info",
             title: `Welcome ${verifiedName}! 🎉`,
-            message: 'Your Imperial Trading account is ready. Explore our premium features and start your trading journey!',
+            message:
+              "Your Imperial Trading account is ready. Explore our premium features and start your trading journey!",
           });
         }
         // Clean up session storage after displaying
-        sessionStorage.removeItem('nameVerifiedWelcome');
-        sessionStorage.removeItem('verifiedName');
+        sessionStorage.removeItem("nameVerifiedWelcome");
+        sessionStorage.removeItem("verifiedName");
       }
     }
   }, [user, currentPageName]);
@@ -288,22 +342,26 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     // Only set up wake word detection if Athena is not already open and not currently loading.
     // Also, only run on client-side (browser).
-    if (typeof window !== 'undefined' && !isAthenaOpen && !isLoading) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (typeof window !== "undefined" && !isAthenaOpen && !isLoading) {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
-        const wakeWordRecognition = new SpeechRecognition();
+        const wakeWordRecognition = new (SpeechRecognition as any)();
         wakeWordRecognition.continuous = true;
         wakeWordRecognition.interimResults = true;
-        wakeWordRecognition.lang = 'en-US';
+        wakeWordRecognition.lang = "en-US";
 
         wakeWordRecognition.onresult = (event) => {
           const transcript = Array.from(event.results)
-            .map(result => result[0])
-            .map(result => result.transcript)
-            .join('')
+            .map((result) => result[0])
+            .map((result) => result.transcript)
+            .join("")
             .toLowerCase();
 
-          if (transcript.includes('hey athena') || transcript.includes('hi athena')) {
+          if (
+            transcript.includes("hey athena") ||
+            transcript.includes("hi athena")
+          ) {
             setIsAthenaOpen(true);
             setAthenaListening(true);
             wakeWordRecognition.stop();
@@ -311,7 +369,7 @@ export default function Layout({ children, currentPageName }) {
         };
 
         wakeWordRecognition.onerror = (event) => {
-          console.log('Wake word detection error:', event.error);
+          console.log("Wake word detection error:", event.error);
         };
 
         try {
@@ -319,7 +377,6 @@ export default function Layout({ children, currentPageName }) {
         } catch (e) {
           console.log("Speech recognition already started or error:", e);
         }
-        
 
         return () => {
           wakeWordRecognition.stop();
@@ -329,32 +386,39 @@ export default function Layout({ children, currentPageName }) {
   }, [isAthenaOpen, isLoading]);
 
   const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
-  }
+  };
 
   const handleLogout = async () => {
     try {
       await User.logout();
-      window.location.href = createPageUrl('AccessPortal');
+      window.location.href = createPageUrl("AccessPortal");
     } catch (error) {
       console.error("Logout failed:", error);
-      window.location.href = createPageUrl('AccessPortal');
+      window.location.href = createPageUrl("AccessPortal");
     }
   };
 
   // Filter navigation items based on user access level
   const getFilteredNavigationItems = () => {
-    if (!user) return navigationItems.filter(item => item.accessLevel === "free");
-    
-    const userAccessLevel = user.access_level || "user"; 
-    
-    let filteredItems = navigationItems.filter(item => {
+    if (!user)
+      return navigationItems.filter((item) => item.accessLevel === "free");
+
+    const userAccessLevel = user.access_level || "user";
+
+    let filteredItems = navigationItems.filter((item) => {
       if (item.accessLevel === "free") return true;
-      if (item.accessLevel === "user" && (userAccessLevel === "user" || userAccessLevel === "verified" || userAccessLevel === "admin")) return true;
+      if (
+        item.accessLevel === "user" &&
+        (userAccessLevel === "user" ||
+          userAccessLevel === "verified" ||
+          userAccessLevel === "admin")
+      )
+        return true;
       return false;
     });
 
@@ -376,7 +440,10 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
-  if (currentPageName === 'AccessPortal' || currentPageName === 'AccountRequest') {
+  if (
+    currentPageName === "AccessPortal" ||
+    currentPageName === "AccountRequest"
+  ) {
     return <div>{children}</div>;
   }
 
@@ -702,9 +769,13 @@ export default function Layout({ children, currentPageName }) {
         )}
 
         {/* Desktop Sidebar */}
-        <aside className={`fixed left-0 top-0 z-40 h-screen bg-surface/90 backdrop-blur-md border-r border-default transition-all duration-300 hidden lg:block ${
-          isCollapsed ? '-translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100 w-64'
-        }`}>
+        <aside
+          className={`fixed left-0 top-0 z-40 h-screen bg-surface/90 backdrop-blur-md border-r border-default transition-all duration-300 hidden lg:block ${
+            isCollapsed
+              ? "-translate-x-full opacity-0 pointer-events-none"
+              : "translate-x-0 opacity-100 w-64"
+          }`}
+        >
           {/* Sidebar Header */}
           <div className="p-4 border-b border-default">
             <div className="flex items-center justify-between">
@@ -713,7 +784,9 @@ export default function Layout({ children, currentPageName }) {
                   <Crown className="w-6 h-6 text-accent-gold" />
                 </div>
                 <div className="text-left">
-                  <h2 className="font-bold text-xl imperial-tech-font drop-shadow-lg">IMPERIAL</h2>
+                  <h2 className="font-bold text-xl imperial-tech-font drop-shadow-lg">
+                    IMPERIAL
+                  </h2>
                   <p className="text-xs text-secondary">Trading Community</p>
                 </div>
               </div>
@@ -731,8 +804,9 @@ export default function Layout({ children, currentPageName }) {
           {/* Navigation Items */}
           <nav className="flex-1 px-3 py-4 space-y-2">
             {allNavigationItems.map((item, index) => {
-              const isActive = location.pathname === item.url ||
-                              (item.url.includes(currentPageName) && currentPageName);
+              const isActive =
+                location.pathname === item.url ||
+                (item.url.includes(currentPageName) && currentPageName);
 
               return (
                 <Link
@@ -740,11 +814,17 @@ export default function Layout({ children, currentPageName }) {
                   to={item.url}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
                     isActive
-                      ? 'bg-accent-green text-white shadow-lg'
-                      : 'text-secondary hover:text-primary hover:bg-surface/60'
+                      ? "bg-accent-green text-white shadow-lg"
+                      : "text-secondary hover:text-primary hover:bg-surface/60"
                   }`}
                 >
-                  <item.icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-secondary group-hover:text-primary'}`} />
+                  <item.icon
+                    className={`h-5 w-5 ${
+                      isActive
+                        ? "text-white"
+                        : "text-secondary group-hover:text-primary"
+                    }`}
+                  />
                   <span className="font-medium truncate">{item.title}</span>
                   {item.adminOnly && (
                     <Crown className="w-4 h-4 text-accent-gold ml-auto" />
@@ -760,68 +840,71 @@ export default function Layout({ children, currentPageName }) {
               <div className="flex items-center gap-2 p-2 rounded-lg bg-surface/60">
                 <div className="w-8 h-8 bg-accent-green rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-bold">
-                    {user.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    {user.full_name?.charAt(0) || user.email?.charAt(0) || "U"}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-primary truncate">
-                      {user.full_name || 'User'}
+                      {user.full_name || "User"}
                     </p>
-                    {user.access_level === 'verified' && user.verification_status === 'approved' && (
-                      <CheckCircle2 className="w-4 h-4 text-accent-blue flex-shrink-0" />
-                    )}
+                    {user.access_level === "verified" &&
+                      user.verification_status === "approved" && (
+                        <CheckCircle2 className="w-4 h-4 text-accent-blue flex-shrink-0" />
+                      )}
                   </div>
-                  <p className="text-xs text-secondary truncate">{user.email}</p>
+                  <p className="text-xs text-secondary truncate">
+                    {user.email}
+                  </p>
                   <div className="flex gap-1 mt-1">
-                    {user.access_level === 'admin' && (
+                    {user.access_level === "admin" && (
                       <Badge className="bg-accent-gold/20 text-accent-gold text-xs">
                         Educator
                       </Badge>
                     )}
-                    {user.access_level === 'verified' && (
+                    {user.access_level === "verified" && (
                       <Badge className="bg-accent-blue/20 text-accent-blue text-xs">
                         Verified
                       </Badge>
                     )}
-                    {user.access_level === 'user' && (
+                    {user.access_level === "user" && (
                       <Badge className="bg-accent-green/20 text-accent-green text-xs">
                         Member
                       </Badge>
                     )}
-                    {user.access_level === 'free' && (
+                    {user.access_level === "free" && (
                       <Badge className="bg-accent-blue/20 text-accent-blue text-xs">
                         Free Tier
                       </Badge>
                     )}
                   </div>
                 </div>
-                 <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleLogout}
-                            className="text-secondary hover:text-accent-red"
-                        >
-                            <LogOut className="w-4 h-4" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Sign Out</p>
-                    </TooltipContent>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleLogout}
+                      className="text-secondary hover:text-accent-red"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Sign Out</p>
+                  </TooltipContent>
                 </Tooltip>
               </div>
             ) : (
               <div className="space-y-2">
-                 <Link to={createPageUrl('AccessPortal')}>
-                    <Button
-                      className="w-full bg-accent-green hover:bg-green-500 text-white"
-                      size="sm"
-                    >
-                      Sign In / Join
-                    </Button>
-                 </Link>
+                <Link to={createPageUrl("AccessPortal")}>
+                  <Button
+                    className="w-full bg-accent-green hover:bg-green-500 text-white"
+                    size="sm"
+                  >
+                    Sign In / Join
+                  </Button>
+                </Link>
               </div>
             )}
 
@@ -832,7 +915,11 @@ export default function Layout({ children, currentPageName }) {
               onClick={toggleTheme}
               className="mt-2 w-full text-secondary hover:text-primary hover:bg-surface/60"
             >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
               <span className="ml-2">Toggle Theme</span>
             </Button>
           </div>
@@ -840,29 +927,38 @@ export default function Layout({ children, currentPageName }) {
 
         {/* Mobile Navigation */}
         <div className="lg:hidden fixed top-0 left-0 right-0 z-50 glass-effect">
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-surface rounded-lg flex items-center justify-center glow-effect-gold">
-                  <Crown className="w-5 h-5 text-accent-gold" />
-                </div>
-                <h2 className="font-bold text-lg imperial-tech-font drop-shadow-lg">IMPERIAL</h2>
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-surface rounded-lg flex items-center justify-center glow-effect-gold">
+                <Crown className="w-5 h-5 text-accent-gold" />
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-surface">
-                  {theme === 'dark' ? <Sun className="w-5 h-5 text-secondary" /> : <Moon className="w-5 h-5 text-secondary" />}
-                </button>
-                <button
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="p-2 rounded-lg hover:bg-surface transition-colors"
-                >
-                  {isMobileMenuOpen ? (
-                    <X className="w-6 h-6 text-primary" />
-                  ) : (
-                    <Menu className="w-6 h-6 text-primary" />
-                  )}
-                </button>
-              </div>
+              <h2 className="font-bold text-lg imperial-tech-font drop-shadow-lg">
+                IMPERIAL
+              </h2>
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full hover:bg-surface"
+              >
+                {theme === "dark" ? (
+                  <Sun className="w-5 h-5 text-secondary" />
+                ) : (
+                  <Moon className="w-5 h-5 text-secondary" />
+                )}
+              </button>
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 rounded-lg hover:bg-surface transition-colors"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-6 h-6 text-primary" />
+                ) : (
+                  <Menu className="w-6 h-6 text-primary" />
+                )}
+              </button>
+            </div>
+          </div>
 
           {/* Mobile Menu Overlay */}
           {isMobileMenuOpen && (
@@ -875,9 +971,9 @@ export default function Layout({ children, currentPageName }) {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ${
                       location.pathname === item.url
-                        ? 'bg-green-500/10 text-accent-green'
-                        : 'text-secondary hover:bg-surface hover:text-primary'
-                    } ${item.adminOnly ? 'border border-accent-gold/20' : ''}`}
+                        ? "bg-green-500/10 text-accent-green"
+                        : "text-secondary hover:bg-surface hover:text-primary"
+                    } ${item.adminOnly ? "border border-accent-gold/20" : ""}`}
                   >
                     <item.icon className="w-5 h-5" />
                     <span>{item.title}</span>
@@ -894,50 +990,61 @@ export default function Layout({ children, currentPageName }) {
                   onClick={toggleTheme}
                   className="w-full text-secondary hover:text-primary hover:bg-surface/60"
                 >
-                  {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  {theme === "dark" ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
                   <span className="ml-2">Toggle Theme</span>
                 </Button>
-                
+
                 {/* Mobile User Section */}
                 <div className="border-t border-default pt-4 mt-2">
-                {user ? (
+                  {user ? (
                     <div className="space-y-2">
-                        <div className="flex items-center gap-3 px-4 py-2">
-                            <div className="w-8 h-8 bg-accent-green rounded-full flex items-center justify-center">
-                                <span className="text-white text-sm font-bold">
-                                {user.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
-                                </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-sm font-medium text-primary truncate">{user.full_name || 'User'}</p>
-                                  {user.access_level === 'verified' && user.verification_status === 'approved' && (
-                                    <CheckCircle2 className="w-4 h-4 text-accent-blue flex-shrink-0" />
-                                  )}
-                                </div>
-                                <p className="text-xs text-secondary truncate">{user.email}</p>
-                            </div>
+                      <div className="flex items-center gap-3 px-4 py-2">
+                        <div className="w-8 h-8 bg-accent-green rounded-full flex items-center justify-center">
+                          <span className="text-white text-sm font-bold">
+                            {user.full_name?.charAt(0) ||
+                              user.email?.charAt(0) ||
+                              "U"}
+                          </span>
                         </div>
-                        <Button
-                            variant="ghost"
-                            onClick={handleLogout}
-                            className="w-full justify-start text-secondary hover:text-accent-red hover:bg-surface/60 gap-3 px-4 py-3"
-                        >
-                            <LogOut className="w-5 h-5" />
-                            <span>Sign Out</span>
-                        </Button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-primary truncate">
+                              {user.full_name || "User"}
+                            </p>
+                            {user.access_level === "verified" &&
+                              user.verification_status === "approved" && (
+                                <CheckCircle2 className="w-4 h-4 text-accent-blue flex-shrink-0" />
+                              )}
+                          </div>
+                          <p className="text-xs text-secondary truncate">
+                            {user.email}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        onClick={handleLogout}
+                        className="w-full justify-start text-secondary hover:text-accent-red hover:bg-surface/60 gap-3 px-4 py-3"
+                      >
+                        <LogOut className="w-5 h-5" />
+                        <span>Sign Out</span>
+                      </Button>
                     </div>
-                ) : (
-                  <Link to={createPageUrl('AccessPortal')}>
-                    <Button
-                      className="w-full bg-accent-green hover:bg-green-500 text-white"
-                      size="sm"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Sign In / Join
-                    </Button>
-                  </Link>
-                )}
+                  ) : (
+                    <Link to={createPageUrl("AccessPortal")}>
+                      <Button
+                        className="w-full bg-accent-green hover:bg-green-500 text-white"
+                        size="sm"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Sign In / Join
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -945,27 +1052,35 @@ export default function Layout({ children, currentPageName }) {
         </div>
 
         {/* Main Content with adjusted margins for floating arrow */}
-        <main className={`flex-1 overflow-auto bg-background transition-all duration-300 ${
-          isCollapsed ? (currentPageName === 'Home' ? 'lg:ml-0' : 'lg:ml-0 lg:px-14') : 'lg:ml-64 lg:pl-0'
-        }`}>
+        <main
+          className={`flex-1 overflow-auto bg-background transition-all duration-300 ${
+            isCollapsed
+              ? currentPageName === "Home"
+                ? "lg:ml-0"
+                : "lg:ml-0 lg:px-14"
+              : "lg:ml-64 lg:pl-0"
+          }`}
+        >
           {/* Mobile spacing remains the same */}
           <div className="lg:hidden h-20"></div>
-          
+
           {/* Desktop spacing adjusted for floating arrow when collapsed */}
-          <div className={`lg:block hidden transition-all duration-300 ${
-            isCollapsed ? 'h-16' : 'h-0'
-          }`}></div>
-          
+          <div
+            className={`lg:block hidden transition-all duration-300 ${
+              isCollapsed ? "h-16" : "h-0"
+            }`}
+          ></div>
+
           {/* Content wrapper */}
-          <div className={`transition-all duration-300`}>
-            {children}
-          </div>
+          <div className={`transition-all duration-300`}>{children}</div>
         </main>
 
         {/* Enhanced Athena AI Integration - adjusted position when sidebar is collapsed */}
-        <div className={`fixed bottom-8 z-[100] transition-all duration-300 ${
-          isCollapsed ? 'right-8' : 'right-8'
-        }`}>
+        <div
+          className={`fixed bottom-8 z-[100] transition-all duration-300 ${
+            isCollapsed ? "right-8" : "right-8"
+          }`}
+        >
           <button
             onClick={() => setIsAthenaOpen(true)}
             className="w-16 h-16 bg-accent-gold rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-all duration-300 glow-effect-gold athena-pulse"

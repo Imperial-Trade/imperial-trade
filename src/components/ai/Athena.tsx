@@ -24,6 +24,14 @@ import { AthenaInteraction } from "@/api/entities";
 import { User as UserEntity } from "@/api/entities";
 import { InvokeLLM } from "@/api/integrations";
 
+// Extend the Window interface to include SpeechRecognition types
+declare global {
+  interface Window {
+    SpeechRecognition?: unknown;
+    webkitSpeechRecognition?: unknown;
+  }
+}
+
 export default function Athena({ isOpen, onClose, autoListen }) {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState([]);
@@ -225,9 +233,14 @@ export default function Athena({ isOpen, onClose, autoListen }) {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+        (window.SpeechRecognition as
+          | typeof window.SpeechRecognition
+          | undefined) ||
+        (window.webkitSpeechRecognition as
+          | typeof window.SpeechRecognition
+          | undefined);
       if (SpeechRecognition) {
-        const rec = new SpeechRecognition();
+        const rec = new (SpeechRecognition as any)();
         rec.continuous = false;
         rec.interimResults = false;
         rec.lang = "en-US";

@@ -8,10 +8,10 @@ import NotificationSystem from '@/components/notifications/NotificationSystem';
 import usePriceFeed from '@/components/hooks/usePriceFeed';
 
 export default function SignalStream() {
-  const [alerts, setAlerts] = useState([]);
+  const [alerts, setAlerts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [error, setError] = useState(null);
+  const [user, setUser] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
   const loadAlerts = useCallback(async (isInitialLoad = false, retryAttempt = 0) => {
@@ -84,7 +84,7 @@ export default function SignalStream() {
 
   const sortedClosedAlerts = useMemo(() => {
       return Array.isArray(closedAlerts) ? [...closedAlerts]
-        .sort((a, b) => new Date(b.updated_date) - new Date(a.updated_date))
+        .sort((a, b) => new Date(b.updated_date || 0).getTime() - new Date(a.updated_date || 0).getTime())
         .slice(0, 12) : [];
   }, [closedAlerts]);
   
@@ -101,7 +101,7 @@ export default function SignalStream() {
     
     const symbolList = Array.from(symbolSet);
     console.log('SignalStream - Final symbols for price feed:', symbolList);
-    return symbolList;
+    return symbolList as string[];
   }, [activeAlerts]);
 
   const { prices: livePrices, connectionStatus, priceSource } = usePriceFeed(symbols);
@@ -113,9 +113,9 @@ export default function SignalStream() {
     console.log('SignalStream - Price source:', priceSource);
   }, [livePrices, connectionStatus, priceSource]);
 
-  const [updateInProgress, setUpdateInProgress] = useState(new Set());
+  const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
 
-  const handleStatusUpdate = useCallback(async (alert, newStatus) => {
+  const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
       if (updateInProgress.has(alert.id)) return;
       setUpdateInProgress(prev => new Set(prev).add(alert.id));
       try {
@@ -123,8 +123,8 @@ export default function SignalStream() {
           const updatePayload = { ...alert, status: newStatus, close_reason: newStatus === 'closed' ? 'manual' : null };
           await TradeAlert.update(alert.id, updatePayload);
           setTimeout(() => loadAlerts(), 1000);
-          if (newStatus === 'closed' && window.addNotification) {
-            window.addNotification({
+          if (newStatus === 'closed' && (window as any).addNotification) {
+            (window as any).addNotification({
               type: 'trade_closed',
               title: `🔒 Trade Closed`,
               message: `${alert.asset_name} trade has been manually closed`
@@ -132,8 +132,8 @@ export default function SignalStream() {
           }
       } catch (err) {
           console.error("Failed to update status:", err);
-          if (window.addNotification) {
-              window.addNotification({ 
+          if ((window as any).addNotification) {
+              (window as any).addNotification({ 
                   type: 'error', 
                   title: 'Update Failed', 
                   message: 'Could not update trade status. Please try again.' 
@@ -148,7 +148,7 @@ export default function SignalStream() {
       }
   }, [updateInProgress, loadAlerts]);
 
-  const handleTakeProfitHit = useCallback(async (alert, newTPHits, shouldAutoClose = false, closeReason = null) => {
+  const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     if (updateInProgress.has(alert.id)) return;
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
@@ -160,10 +160,10 @@ export default function SignalStream() {
         }
         await TradeAlert.update(alert.id, updatePayload);
         setTimeout(() => loadAlerts(), 1000);
-        if (window.addNotification) {
+        if ((window as any).addNotification) {
             const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
             if (highestTP !== null) {
-                window.addNotification({
+                (window as any).addNotification({
                     type: 'tp_hit',
                     title: `🎯 TP${highestTP} Hit!`,
                     message: `${alert.asset_name} reached Take Profit ${highestTP}`
@@ -181,7 +181,7 @@ export default function SignalStream() {
     }
   }, [updateInProgress, loadAlerts]);
 
-  const handleStopLossHit = useCallback(async (alert, closeReason) => {
+  const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
     if (updateInProgress.has(alert.id)) return;
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
@@ -189,8 +189,8 @@ export default function SignalStream() {
         const updatePayload = { ...alert, status: 'closed', close_reason: closeReason };
         await TradeAlert.update(alert.id, updatePayload);
         setTimeout(() => loadAlerts(), 1000);
-        if (window.addNotification) {
-            window.addNotification({
+        if ((window as any).addNotification) {
+            (window as any).addNotification({
                 type: 'stop_loss',
                 title: `🚨 Stop Loss Hit!`,
                 message: `${alert.asset_name} trade closed at stop loss`
@@ -207,15 +207,15 @@ export default function SignalStream() {
     }
   }, [updateInProgress, loadAlerts]);
 
-  const handleOrderActivation = useCallback(async (alert) => {
+  const handleOrderActivation = useCallback(async (alert: any) => {
     if (updateInProgress.has(alert.id)) return;
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
         console.log(`Activating order for alert ${alert.id}`);
         await TradeAlert.update(alert.id, { ...alert, status: 'active' });
         setTimeout(() => loadAlerts(), 1000);
-        if (window.addNotification) {
-            window.addNotification({
+        if ((window as any).addNotification) {
+            (window as any).addNotification({
                 type: 'trade_activated',
                 title: `🚀 Order Activated!`,
                 message: `${alert.asset_name} ${alert.trade_type} is now active`
@@ -286,6 +286,7 @@ export default function SignalStream() {
                                 livePrice={livePrices[alert.finnhub_symbol]} 
                                 connectionStatus={connectionStatus}
                                 priceSource={priceSource}
+                                isRecentClosure={false}
                               />
                           ))}
                       </div>
@@ -310,8 +311,14 @@ export default function SignalStream() {
                               <TradeAlertCard
                                 key={alert.id} 
                                 alert={alert}
-                                onStatusUpdate={handleStatusUpdate} 
+                                onStatusUpdate={handleStatusUpdate}
+                                onTakeProfitHit={handleTakeProfitHit} 
+                                onStopLossHit={handleStopLossHit}
+                                onOrderActivation={handleOrderActivation}
                                 isAdmin={user?.access_level === 'admin' || user?.role === 'admin'}
+                                livePrice={undefined}
+                                connectionStatus={connectionStatus}
+                                priceSource={priceSource}
                                 isRecentClosure={true}
                               />
                           ))}

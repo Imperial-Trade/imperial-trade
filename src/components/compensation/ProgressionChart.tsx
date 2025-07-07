@@ -1,15 +1,16 @@
+
 import React, { useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 declare global {
   interface Window {
-    Chart?: unknown;
+    Chart?: any;
   }
 }
 
 const ProgressionChart = () => {
-  const chartRef = useRef(null);
-  const chartInstanceRef = useRef(null);
+  const chartRef = useRef<HTMLCanvasElement>(null);
+  const chartInstanceRef = useRef<any>(null);
 
   const rankData = [
     { name: "Hero", volume: 0, rebate: 6 },
@@ -30,7 +31,7 @@ const ProgressionChart = () => {
 
         const ctx = chartRef.current.getContext("2d");
 
-        chartInstanceRef.current = new window.Chart(ctx, {
+        chartInstanceRef.current = new (window.Chart as any)(ctx, {
           type: "bar",
           data: {
             labels: rankData.map((r) => r.name),
@@ -99,7 +100,7 @@ const ProgressionChart = () => {
                 ticks: {
                   color: "#10b981",
                   font: { weight: "bold" },
-                  callback: (value) => "$" + value,
+                  callback: (value: any) => "$" + value,
                 },
                 title: {
                   display: true,
@@ -116,7 +117,7 @@ const ProgressionChart = () => {
                 ticks: {
                   color: "#c09a58",
                   font: { weight: "bold" },
-                  callback: (value) =>
+                  callback: (value: any) =>
                     value > 0 ? "$" + value / 1000 + "K" : "$0",
                 },
                 title: {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,17 +6,20 @@ import { Bell, X, Target, CheckCircle, XCircle, AlertCircle, Rocket } from 'luci
 import { motion, AnimatePresence } from 'framer-motion';
 
 const NotificationSystem = () => {
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
 
-  const playNotificationSound = useCallback((type) => {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const playNotificationSound = useCallback((type: string) => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    
+    const audioContext = new AudioContextClass();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
     
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
     
-    const frequencies = {
+    const frequencies: Record<string, number> = {
       new_signal: 800, tp_hit: 1000, trade_activated: 900, trade_closed: 600, stop_loss: 400, error: 200, default: 700
     };
     oscillator.frequency.value = frequencies[type] || frequencies.default;
@@ -27,23 +31,23 @@ const NotificationSystem = () => {
     oscillator.stop(audioContext.currentTime + 0.5);
   }, []);
 
-  const removeNotification = useCallback((id) => {
+  const removeNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
-  const addNotification = useCallback((notification) => {
+  const addNotification = useCallback((notification: any) => {
     const id = Date.now() + Math.random();
     setNotifications(prev => [{ ...notification, id, timestamp: new Date() }, ...prev]);
-    setTimeout(() => removeNotification(id), 8000);
+    setTimeout(() => removeNotification(id.toString()), 8000);
     playNotificationSound(notification.type);
   }, [playNotificationSound, removeNotification]);
 
   useEffect(() => {
-    window.addNotification = addNotification;
-    return () => { delete window.addNotification; };
+    (window as any).addNotification = addNotification;
+    return () => { delete (window as any).addNotification; };
   }, [addNotification]);
 
-  const icons = {
+  const icons: Record<string, React.ReactNode> = {
     new_signal: <Bell className="w-5 h-5 text-blue-400" />,
     tp_hit: <Target className="w-5 h-5 text-emerald-400" />,
     trade_activated: <Rocket className="w-5 h-5 text-purple-400" />,
@@ -51,7 +55,8 @@ const NotificationSystem = () => {
     stop_loss: <XCircle className="w-5 h-5 text-red-400" />,
     error: <AlertCircle className="w-5 h-5 text-red-400" />,
   };
-  const colors = {
+  
+  const colors: Record<string, string> = {
     new_signal: 'border-blue-500 bg-blue-500/10',
     tp_hit: 'border-emerald-500 bg-emerald-500/10',
     trade_activated: 'border-purple-500 bg-purple-500/10',

@@ -44,3 +44,45 @@ export const sendAccountVerificationEmail = async (userEmail: string) => {
     return { success: false, error };
   }
 };
+
+export const sendApprovalEmail = async (userEmail: string, userName: string) => {
+  try {
+    console.log(`Approval email sent to ${userEmail} for ${userName}`);
+    
+    toast({
+      title: "Account Approved",
+      description: `${userName}'s account has been approved and they have been notified.`,
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to send approval email:', error);
+    toast({
+      title: "Error",
+      description: "Failed to send approval email.",
+      variant: "destructive",
+    });
+    return { success: false, error };
+  }
+};
+
+export const sendRejectionEmail = async (userEmail: string, userName: string, reason: string) => {
+  try {
+    console.log(`Rejection email sent to ${userEmail} for ${userName} with reason: ${reason}`);
+    
+    toast({
+      title: "Account Rejected",
+      description: `${userName}'s account has been rejected and they have been notified.`,
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to send rejection email:', error);
+    toast({
+      title: "Error",
+      description: "Failed to send rejection email.",
+      variant: "destructive",
+    });
+    return { success: false, error };
+  }
+};

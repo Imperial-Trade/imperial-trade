@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from "react";
-import { ForumPost, Reply, User } from "@/api/entities";
+import { ForumPost, Reply } from "@/api/entities";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,11 +58,14 @@ export default function Forum() {
 
   const loadData = async () => {
     try {
-      const [fetchedPosts, fetchedReplies, currentUser] = await Promise.all([
+      const [fetchedPosts, fetchedReplies] = await Promise.all([
         ForumPost.list("-created_date"),
-        Reply.list("-created_date"),
-        User.me().catch(() => null)
+        Reply.list("-created_date")
       ]);
+      
+      // Get current user from Supabase auth
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
       setPosts(fetchedPosts);
       setReplies(fetchedReplies);
       setUser(currentUser);

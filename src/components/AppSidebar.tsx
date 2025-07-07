@@ -6,7 +6,7 @@ import {
   Book,
   Video,
   Users,
-  Tool,
+  Wrench,
   User,
   Info,
   Settings,
@@ -43,7 +43,7 @@ const mainItems = [
 ]
 
 const toolsItems = [
-  { title: "Advanced Tools", url: "/tools", icon: Tool },
+  { title: "Advanced Tools", url: "/tools", icon: Wrench },
   { title: "Market Analysis", url: "/analysis", icon: BarChart3 },
   { title: "Trading Calendar", url: "/calendar", icon: Calendar },
   { title: "Performance", url: "/performance", icon: Target },

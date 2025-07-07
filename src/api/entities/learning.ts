@@ -88,7 +88,7 @@ export class UserProgress extends BaseEntity {
 export class LearningPathway extends BaseEntity {
   static tableName = 'learning_pathways';
 
-  static async getByDifficulty(level: string) {
+  static async getByDifficulty(level: 'beginner' | 'intermediate' | 'advanced') {
     const { data, error } = await supabase
       .from('learning_pathways')
       .select('*')
@@ -153,7 +153,7 @@ export class Course extends BaseEntity {
     return data;
   }
 
-  static async getByDifficulty(difficulty: string) {
+  static async getByDifficulty(difficulty: 'Beginner' | 'Intermediate' | 'Advanced') {
     const { data, error } = await supabase
       .from('courses')
       .select('*')

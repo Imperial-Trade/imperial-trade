@@ -16,7 +16,7 @@ export class AccountRequest extends BaseEntity {
     return data;
   }
 
-  static async getByStatus(status: string) {
+  static async getByStatus(status: 'pending' | 'approved' | 'rejected') {
     const { data, error } = await supabase
       .from('account_requests')
       .select('*')

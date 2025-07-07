@@ -6,7 +6,7 @@ export abstract class BaseEntity {
 
   static async list(orderBy = '-created_at') {
     const { data, error } = await supabase
-      .from(this.tableName)
+      .from(this.tableName as any)
       .select('*')
       .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
     
@@ -16,7 +16,7 @@ export abstract class BaseEntity {
 
   static async getById(id: string) {
     const { data, error } = await supabase
-      .from(this.tableName)
+      .from(this.tableName as any)
       .select('*')
       .eq('id', id)
       .single();
@@ -27,7 +27,7 @@ export abstract class BaseEntity {
 
   static async create(entityData: any) {
     const { data, error } = await supabase
-      .from(this.tableName)
+      .from(this.tableName as any)
       .insert([{
         ...entityData,
         user_id: (await supabase.auth.getUser()).data.user?.id
@@ -41,7 +41,7 @@ export abstract class BaseEntity {
 
   static async update(id: string, entityData: any) {
     const { data, error } = await supabase
-      .from(this.tableName)
+      .from(this.tableName as any)
       .update(entityData)
       .eq('id', id)
       .select()
@@ -53,7 +53,7 @@ export abstract class BaseEntity {
 
   static async delete(id: string) {
     const { error } = await supabase
-      .from(this.tableName)
+      .from(this.tableName as any)
       .delete()
       .eq('id', id);
     

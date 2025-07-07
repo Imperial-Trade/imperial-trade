@@ -9,7 +9,7 @@ export class TradeJournalEntry extends BaseEntity {
 export class TradeAlert extends BaseEntity {
   static tableName = 'trade_alerts';
 
-  static async getByStatus(status: string) {
+  static async getByStatus(status: 'pending' | 'active' | 'closed') {
     const { data, error } = await supabase
       .from('trade_alerts')
       .select('*')

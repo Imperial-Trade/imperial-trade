@@ -9,7 +9,170 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      forum_posts: {
+        Row: {
+          category: Database["public"]["Enums"]["post_category"]
+          content: string
+          created_at: string
+          id: string
+          likes: number
+          replies_count: number
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["post_category"]
+          content: string
+          created_at?: string
+          id?: string
+          likes?: number
+          replies_count?: number
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["post_category"]
+          content?: string
+          created_at?: string
+          id?: string
+          likes?: number
+          replies_count?: number
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      portfolio_items: {
+        Row: {
+          asset_name: string
+          asset_type: Database["public"]["Enums"]["asset_type"]
+          avg_buy_price: number
+          created_at: string
+          id: string
+          quantity: number
+          ticker: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_name: string
+          asset_type: Database["public"]["Enums"]["asset_type"]
+          avg_buy_price: number
+          created_at?: string
+          id?: string
+          quantity: number
+          ticker: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_name?: string
+          asset_type?: Database["public"]["Enums"]["asset_type"]
+          avg_buy_price?: number
+          created_at?: string
+          id?: string
+          quantity?: number
+          ticker?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      replies: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          likes: number
+          post_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          likes?: number
+          post_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          likes?: number
+          post_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "replies_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trade_journal_entries: {
+        Row: {
+          ai_positive_feedback: string | null
+          asset_ticker: string
+          created_at: string
+          entry_price: number | null
+          exit_price: number | null
+          id: string
+          notes: string | null
+          pnl: number
+          position_size: number | null
+          screenshot_url: string | null
+          trade_date: string
+          trade_type: Database["public"]["Enums"]["trade_type"] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_positive_feedback?: string | null
+          asset_ticker: string
+          created_at?: string
+          entry_price?: number | null
+          exit_price?: number | null
+          id?: string
+          notes?: string | null
+          pnl: number
+          position_size?: number | null
+          screenshot_url?: string | null
+          trade_date: string
+          trade_type?: Database["public"]["Enums"]["trade_type"] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_positive_feedback?: string | null
+          asset_ticker?: string
+          created_at?: string
+          entry_price?: number | null
+          exit_price?: number | null
+          id?: string
+          notes?: string | null
+          pnl?: number
+          position_size?: number | null
+          screenshot_url?: string | null
+          trade_date?: string
+          trade_type?: Database["public"]["Enums"]["trade_type"] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +181,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      asset_type: "Stock" | "Crypto" | "Forex" | "Commodity"
+      post_category:
+        | "discussion"
+        | "question"
+        | "analysis"
+        | "news"
+        | "strategy"
+      trade_type: "Long" | "Short"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +303,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      asset_type: ["Stock", "Crypto", "Forex", "Commodity"],
+      post_category: ["discussion", "question", "analysis", "news", "strategy"],
+      trade_type: ["Long", "Short"],
+    },
   },
 } as const

@@ -18,10 +18,10 @@ const categoryMap = {
 
 // --- TRAILER VIDEO CLIPS ---
 const trailerClips = [
-  "https://videos.pexels.com/video-files/853883/853883-hd_1920_1080_30fps.mp4", // Stock market graphs
-  "https://videos.pexels.com/video-files/5915334/5915334-hd_1920_1080_25fps.mp4", // Digital data screen
-  "https://videos.pexels.com/video-files/7578540/7578540-hd_1920_1080_25fps.mp4", // Person analyzing charts
-  "https://videos.pexels.com/video-files/7679951/7679951-hd_1920_1080_25fps.mp4", // Abstract financial data
+  "https://videos.pexels.com/video-files/853883/853883-hd_1920_1080_30fps.mp4",
+  "https://videos.pexels.com/video-files/5915334/5915334-hd_1920_1080_25fps.mp4",
+  "https://videos.pexels.com/video-files/7578540/7578540-hd_1920_1080_25fps.mp4",
+  "https://videos.pexels.com/video-files/7679951/7679951-hd_1920_1080_25fps.mp4",
 ];
 
 // --- UI COMPONENTS ---
@@ -254,7 +254,7 @@ export default function Education() {
         setVideos(fetchedVideos);
 
         if (fetchedVideos.length > 0) {
-          setFeaturedVideo(fetchedVideos[0]); // Feature the newest video
+          setFeaturedVideo(fetchedVideos[0]);
 
           const groups = fetchedVideos.reduce((acc, video) => {
             const category = video.category || "uncategorized";
@@ -278,7 +278,7 @@ export default function Education() {
         }
       } catch (error) {
         console.error("Error initializing page:", error);
-        setUser(null); // Ensure user is null on error
+        setUser(null);
       } finally {
         setIsLoading(false);
       }

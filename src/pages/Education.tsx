@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 // --- DATA MAPPING & CATEGORY DEFINITIONS ---
 const categoryMap = {
-  basics: { name: "Level 1: Enter the Trader’s Arena", order: 1 },
+  basics: { name: "Level 1: Enter the Trader's Arena", order: 1 },
   technical_analysis: { name: "Level 2: Master the Charts", order: 2 },
   fundamental_analysis: { name: "Level 3: Read the Market's Mind", order: 3 },
   risk_management: { name: "Level 4: Protect Your Capital", order: 4 },
@@ -88,7 +88,7 @@ const VideoCard = ({ video, onPlay, trailerUrl }) => {
         .catch((error) => console.log("Autoplay prevented:", error));
     } else if (!isHovered && videoRef.current) {
       videoRef.current.pause();
-      videoRef.current.currentTime = 0; // Reset video to start
+      videoRef.current.currentTime = 0;
     }
   }, [isHovered]);
 
@@ -102,8 +102,6 @@ const VideoCard = ({ video, onPlay, trailerUrl }) => {
       transition={{ duration: 0.3 }}
     >
       <div className="relative w-full h-full pt-[56.25%]">
-        {" "}
-        {/* 16:9 Aspect Ratio */}
         <AnimatePresence>
           {!isHovered && (
             <motion.img
@@ -179,8 +177,7 @@ const VideoRow = ({ title, videos, onPlay }) => {
       <div className="relative">
         <div
           ref={scrollRef}
-          className="flex space-x-2 overflow-x-auto py-4 px-6 lg:px-12"
-          style={{ scrollbarWidth: "none" }}
+          className="flex space-x-2 overflow-x-auto py-4 px-6 lg:px-12 scrollbar-hide"
         >
           {videos.map((video, index) => (
             <VideoCard

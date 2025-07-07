@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,7 @@ const NotificationSystem = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
 
   const playNotificationSound = useCallback((type: string) => {
-    const AudioContextClass =
-      window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
 
     const audioContext = new AudioContextClass();
@@ -144,4 +144,5 @@ const NotificationSystem = () => {
     </div>
   );
 };
+
 export default NotificationSystem;

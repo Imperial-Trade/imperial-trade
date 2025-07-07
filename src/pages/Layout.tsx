@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { User } from '@/api/entities';
 import { Crown, Menu, X, Mic, MicOff, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,17 +12,17 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<any>(null);
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
 
   useEffect(() => {
     const initializeUser = async () => {
       try {
-        const currentUser = await User.me();
-        setUser(currentUser);
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
       } catch (error) {
         console.error('Error fetching user:', error);
         setUser(null);
@@ -75,7 +76,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
 
   const getUserAccessLevel = () => {
     if (!user) return 'free';
-    return user.access_level || 'free';
+    return (user.user_metadata?.access_level as string) || 'free';
   };
 
   const getAccessLevelDisplay = (level: string) => {

@@ -1,11 +1,20 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { BaseEntity } from '../base/BaseEntity';
+import { Database } from '@/integrations/supabase/types';
 
-export class Quiz extends BaseEntity {
-  static tableName = 'quizzes';
+type QuizRow = Database['public']['Tables']['quizzes']['Row'];
+type QuizAttemptRow = Database['public']['Tables']['quiz_attempts']['Row'];
+type QuizAttemptInsert = Database['public']['Tables']['quiz_attempts']['Insert'];
+type UserProgressRow = Database['public']['Tables']['user_progress']['Row'];
+type UserProgressInsert = Database['public']['Tables']['user_progress']['Insert'];
+type LearningPathwayRow = Database['public']['Tables']['learning_pathways']['Row'];
+type UserPathwayProgressRow = Database['public']['Tables']['user_pathway_progress']['Row'];
+type UserPathwayProgressInsert = Database['public']['Tables']['user_pathway_progress']['Insert'];
+type CourseRow = Database['public']['Tables']['courses']['Row'];
 
-  static async getByVideoId(videoId: string) {
+export class Quiz {
+  static tableName = 'quizzes' as const;
+
+  static async getByVideoId(videoId: string): Promise<QuizRow> {
     const { data, error } = await supabase
       .from('quizzes')
       .select('*')
@@ -15,16 +24,33 @@ export class Quiz extends BaseEntity {
     if (error) throw error;
     return data;
   }
-}
 
-export class QuizAttempt extends BaseEntity {
-  static tableName = 'quiz_attempts';
-
-  static async create(attemptData: any) {
+  static async list(orderBy = '-created_at'): Promise<QuizRow[]> {
     const { data, error } = await supabase
-      .from('quiz_attempts')
+      .from('quizzes')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getById(id: string): Promise<QuizRow> {
+    const { data, error } = await supabase
+      .from('quizzes')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(entityData: any): Promise<QuizRow> {
+    const { data, error } = await supabase
+      .from('quizzes')
       .insert([{
-        ...attemptData,
+        ...entityData,
         user_id: (await supabase.auth.getUser()).data.user?.id
       }])
       .select()
@@ -34,7 +60,46 @@ export class QuizAttempt extends BaseEntity {
     return data;
   }
 
-  static async getByQuizId(quizId: string) {
+  static async update(id: string, entityData: any): Promise<QuizRow> {
+    const { data, error } = await supabase
+      .from('quizzes')
+      .update(entityData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('quizzes')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+}
+
+export class QuizAttempt {
+  static tableName = 'quiz_attempts' as const;
+
+  static async create(attemptData: Partial<QuizAttemptInsert>): Promise<QuizAttemptRow> {
+    const { data, error } = await supabase
+      .from('quiz_attempts')
+      .insert([{
+        ...attemptData,
+        user_id: (await supabase.auth.getUser()).data.user?.id
+      } as QuizAttemptInsert])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getByQuizId(quizId: string): Promise<QuizAttemptRow[]> {
     const { data, error } = await supabase
       .from('quiz_attempts')
       .select('*')
@@ -44,12 +109,54 @@ export class QuizAttempt extends BaseEntity {
     if (error) throw error;
     return data;
   }
+
+  static async list(orderBy = '-created_at'): Promise<QuizAttemptRow[]> {
+    const { data, error } = await supabase
+      .from('quiz_attempts')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getById(id: string): Promise<QuizAttemptRow> {
+    const { data, error } = await supabase
+      .from('quiz_attempts')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async update(id: string, entityData: any): Promise<QuizAttemptRow> {
+    const { data, error } = await supabase
+      .from('quiz_attempts')
+      .update(entityData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('quiz_attempts')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
 }
 
-export class UserProgress extends BaseEntity {
-  static tableName = 'user_progress';
+export class UserProgress {
+  static tableName = 'user_progress' as const;
 
-  static async list(orderBy = '-updated_at') {
+  static async list(orderBy = '-updated_at'): Promise<UserProgressRow[]> {
     const { data, error } = await supabase
       .from('user_progress')
       .select('*')
@@ -59,13 +166,13 @@ export class UserProgress extends BaseEntity {
     return data;
   }
 
-  static async create(progressData: any) {
+  static async create(progressData: Partial<UserProgressInsert>): Promise<UserProgressRow> {
     const { data, error } = await supabase
       .from('user_progress')
       .insert([{
         ...progressData,
         user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
+      } as UserProgressInsert])
       .select()
       .single();
     
@@ -73,7 +180,7 @@ export class UserProgress extends BaseEntity {
     return data;
   }
 
-  static async getByVideoId(videoId: string) {
+  static async getByVideoId(videoId: string): Promise<UserProgressRow> {
     const { data, error } = await supabase
       .from('user_progress')
       .select('*')
@@ -83,12 +190,44 @@ export class UserProgress extends BaseEntity {
     if (error) throw error;
     return data;
   }
+
+  static async getById(id: string): Promise<UserProgressRow> {
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async update(id: string, entityData: any): Promise<UserProgressRow> {
+    const { data, error } = await supabase
+      .from('user_progress')
+      .update(entityData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('user_progress')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
 }
 
-export class LearningPathway extends BaseEntity {
-  static tableName = 'learning_pathways';
+export class LearningPathway {
+  static tableName = 'learning_pathways' as const;
 
-  static async getByDifficulty(level: 'beginner' | 'intermediate' | 'advanced') {
+  static async getByDifficulty(level: 'beginner' | 'intermediate' | 'advanced'): Promise<LearningPathwayRow[]> {
     const { data, error } = await supabase
       .from('learning_pathways')
       .select('*')
@@ -98,14 +237,10 @@ export class LearningPathway extends BaseEntity {
     if (error) throw error;
     return data;
   }
-}
 
-export class UserPathwayProgress extends BaseEntity {
-  static tableName = 'user_pathway_progress';
-
-  static async list(orderBy = '-started_date') {
+  static async list(orderBy = '-created_at'): Promise<LearningPathwayRow[]> {
     const { data, error } = await supabase
-      .from('user_pathway_progress')
+      .from('learning_pathways')
       .select('*')
       .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
     
@@ -113,11 +248,22 @@ export class UserPathwayProgress extends BaseEntity {
     return data;
   }
 
-  static async create(progressData: any) {
+  static async getById(id: string): Promise<LearningPathwayRow> {
     const { data, error } = await supabase
-      .from('user_pathway_progress')
+      .from('learning_pathways')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(entityData: any): Promise<LearningPathwayRow> {
+    const { data, error } = await supabase
+      .from('learning_pathways')
       .insert([{
-        ...progressData,
+        ...entityData,
         user_id: (await supabase.auth.getUser()).data.user?.id
       }])
       .select()
@@ -127,7 +273,56 @@ export class UserPathwayProgress extends BaseEntity {
     return data;
   }
 
-  static async getByPathwayId(pathwayId: string) {
+  static async update(id: string, entityData: any): Promise<LearningPathwayRow> {
+    const { data, error } = await supabase
+      .from('learning_pathways')
+      .update(entityData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('learning_pathways')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+}
+
+export class UserPathwayProgress {
+  static tableName = 'user_pathway_progress' as const;
+
+  static async list(orderBy = '-started_date'): Promise<UserPathwayProgressRow[]> {
+    const { data, error } = await supabase
+      .from('user_pathway_progress')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(progressData: Partial<UserPathwayProgressInsert>): Promise<UserPathwayProgressRow> {
+    const { data, error } = await supabase
+      .from('user_pathway_progress')
+      .insert([{
+        ...progressData,
+        user_id: (await supabase.auth.getUser()).data.user?.id
+      } as UserPathwayProgressInsert])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getByPathwayId(pathwayId: string): Promise<UserPathwayProgressRow> {
     const { data, error } = await supabase
       .from('user_pathway_progress')
       .select('*')
@@ -137,12 +332,44 @@ export class UserPathwayProgress extends BaseEntity {
     if (error) throw error;
     return data;
   }
+
+  static async getById(id: string): Promise<UserPathwayProgressRow> {
+    const { data, error } = await supabase
+      .from('user_pathway_progress')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async update(id: string, entityData: any): Promise<UserPathwayProgressRow> {
+    const { data, error } = await supabase
+      .from('user_pathway_progress')
+      .update(entityData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('user_pathway_progress')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
 }
 
-export class Course extends BaseEntity {
-  static tableName = 'courses';
+export class Course {
+  static tableName = 'courses' as const;
 
-  static async getByCategory(category: string) {
+  static async getByCategory(category: string): Promise<CourseRow[]> {
     const { data, error } = await supabase
       .from('courses')
       .select('*')
@@ -153,7 +380,7 @@ export class Course extends BaseEntity {
     return data;
   }
 
-  static async getByDifficulty(difficulty: 'Beginner' | 'Intermediate' | 'Advanced') {
+  static async getByDifficulty(difficulty: 'Beginner' | 'Intermediate' | 'Advanced'): Promise<CourseRow[]> {
     const { data, error } = await supabase
       .from('courses')
       .select('*')
@@ -162,5 +389,61 @@ export class Course extends BaseEntity {
     
     if (error) throw error;
     return data;
+  }
+
+  static async list(orderBy = '-created_at'): Promise<CourseRow[]> {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getById(id: string): Promise<CourseRow> {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(entityData: any): Promise<CourseRow> {
+    const { data, error } = await supabase
+      .from('courses')
+      .insert([{
+        ...entityData,
+        user_id: (await supabase.auth.getUser()).data.user?.id
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async update(id: string, entityData: any): Promise<CourseRow> {
+    const { data, error } = await supabase
+      .from('courses')
+      .update(entityData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('courses')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
   }
 }

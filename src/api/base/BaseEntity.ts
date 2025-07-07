@@ -1,12 +1,21 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { Database } from '@/integrations/supabase/types';
 
-export abstract class BaseEntity {
-  static tableName: string;
+type TableName = keyof Database['public']['Tables'];
+type TableRow<T extends TableName> = Database['public']['Tables'][T]['Row'];
+type TableInsert<T extends TableName> = Database['public']['Tables'][T]['Insert'];
+type TableUpdate<T extends TableName> = Database['public']['Tables'][T]['Update'];
 
-  static async list(orderBy = '-created_at') {
+export abstract class BaseEntity<T extends TableName> {
+  static tableName: TableName;
+
+  static async list<T extends TableName>(
+    this: { tableName: T },
+    orderBy = '-created_at'
+  ): Promise<TableRow<T>[]> {
     const { data, error } = await supabase
-      .from(this.tableName as any)
+      .from(this.tableName)
       .select('*')
       .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
     
@@ -14,9 +23,12 @@ export abstract class BaseEntity {
     return data;
   }
 
-  static async getById(id: string) {
+  static async getById<T extends TableName>(
+    this: { tableName: T },
+    id: string
+  ): Promise<TableRow<T>> {
     const { data, error } = await supabase
-      .from(this.tableName as any)
+      .from(this.tableName)
       .select('*')
       .eq('id', id)
       .single();
@@ -25,13 +37,16 @@ export abstract class BaseEntity {
     return data;
   }
 
-  static async create(entityData: any) {
+  static async create<T extends TableName>(
+    this: { tableName: T },
+    entityData: Partial<TableInsert<T>>
+  ): Promise<TableRow<T>> {
     const { data, error } = await supabase
-      .from(this.tableName as any)
+      .from(this.tableName)
       .insert([{
         ...entityData,
         user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
+      } as TableInsert<T>])
       .select()
       .single();
     
@@ -39,10 +54,14 @@ export abstract class BaseEntity {
     return data;
   }
 
-  static async update(id: string, entityData: any) {
+  static async update<T extends TableName>(
+    this: { tableName: T },
+    id: string,
+    entityData: Partial<TableUpdate<T>>
+  ): Promise<TableRow<T>> {
     const { data, error } = await supabase
-      .from(this.tableName as any)
-      .update(entityData)
+      .from(this.tableName)
+      .update(entityData as TableUpdate<T>)
       .eq('id', id)
       .select()
       .single();
@@ -51,9 +70,12 @@ export abstract class BaseEntity {
     return data;
   }
 
-  static async delete(id: string) {
+  static async delete<T extends TableName>(
+    this: { tableName: T },
+    id: string
+  ): Promise<void> {
     const { error } = await supabase
-      .from(this.tableName as any)
+      .from(this.tableName)
       .delete()
       .eq('id', id);
     

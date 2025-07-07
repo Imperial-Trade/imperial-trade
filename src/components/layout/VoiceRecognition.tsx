@@ -3,25 +3,25 @@ import { useState, useEffect } from 'react';
 
 interface VoiceRecognitionReturn {
   isListening: boolean;
-  recognition: SpeechRecognition | null;
+  recognition: any | null;
   toggleVoiceRecognition: () => void;
 }
 
 export const useVoiceRecognition = (): VoiceRecognitionReturn => {
   const [isListening, setIsListening] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [recognition, setRecognition] = useState<any | null>(null);
 
   useEffect(() => {
     // Initialize speech recognition
     if (typeof window !== 'undefined') {
-      const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognitionAPI) {
         const recognitionInstance = new SpeechRecognitionAPI();
         recognitionInstance.continuous = false;
         recognitionInstance.interimResults = false;
         recognitionInstance.lang = 'en-US';
         
-        recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+        recognitionInstance.onresult = (event: any) => {
           const transcript = event.results[0][0].transcript;
           console.log('Voice command:', transcript);
           // Handle voice commands here

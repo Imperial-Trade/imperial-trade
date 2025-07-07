@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,19 +17,30 @@ export default function SocialLoginButtons() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     setError('');
+    
     try {
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: `${window.location.origin}/`
+      console.log('Starting Google OAuth flow...');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
           }
-        });
-        if (error) throw error;
-        // On success, the page will redirect, so no need to set loading to false.
-    } catch (err) {
-        console.error("Google login failed", err);
-        setError('Google login failed. Please try again or use another method.');
-        setIsGoogleLoading(false);
+        }
+      });
+      
+      if (error) {
+        console.error('Google OAuth error:', error);
+        throw error;
+      }
+      
+      // The redirect will happen automatically, so we don't set loading to false here
+    } catch (err: any) {
+      console.error("Google login failed:", err);
+      setError(err.message || 'Google login failed. Please try again or use another method.');
+      setIsGoogleLoading(false);
     }
   };
 
@@ -46,7 +58,7 @@ export default function SocialLoginButtons() {
     confirmPassword: ''
   });
 
-  const handleEmailLogin = async (e) => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
@@ -59,21 +71,27 @@ export default function SocialLoginButtons() {
     }
 
     try {
-      // Try email/password login
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('Attempting email login...');
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: loginForm.email,
         password: loginForm.password
       });
+      
       if (error) throw error;
-    } catch (error) {
+      
+      if (data.user) {
+        console.log('Login successful, redirecting...');
+        window.location.href = '/';
+      }
+    } catch (error: any) {
       console.error('Email login failed:', error);
-      setError('Invalid email or password. Please try again.');
+      setError(error.message || 'Invalid email or password. Please try again.');
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleEmailRegister = async (e) => {
+  const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
@@ -104,8 +122,8 @@ export default function SocialLoginButtons() {
     }
 
     try {
-      // Try to register new user
-      const { error } = await supabase.auth.signUp({
+      console.log('Attempting email registration...');
+      const { data, error } = await supabase.auth.signUp({
         email: registerForm.email,
         password: registerForm.password,
         options: {
@@ -115,12 +133,22 @@ export default function SocialLoginButtons() {
           emailRedirectTo: `${window.location.origin}/`
         }
       });
+      
       if (error) throw error;
-    } catch (error) {
+      
+      if (data.user) {
+        if (!data.user.email_confirmed_at) {
+          setError('Please check your email and click the confirmation link to complete registration.');
+        } else {
+          console.log('Registration successful, redirecting...');
+          window.location.href = '/';
+        }
+      }
+    } catch (error: any) {
       console.error('Registration failed:', error);
-      setError('Registration failed. Email may already be in use.');
+      setError(error.message || 'Registration failed. Please try again.');
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -137,7 +165,7 @@ export default function SocialLoginButtons() {
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-900 border-t-transparent" />
             ) : (
                 <>
-                    <svg className="w-5 h-5" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Google</title><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.37 1.62-3.82 1.62-4.51 0-8.15-3.64-8.15-8.15s3.64-8.15 8.15-8.15c2.47 0 4.01.98 4.9 1.9l2.73-2.73C18.74 1.05 15.98 0 12.48 0 5.88 0 0 5.88 0 12.48s5.88 12.48 12.48 12.48c6.92 0 12.02-4.82 12.02-12.02 0-.8-.08-1.58-.2-2.34z"/></svg>
+                    <svg className="w-5 h-5" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Google</title><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.37 1.62-3.82 1.62-4.51 0-8.15-3.64-8.15-8.15s3.64-8.15 8.15-8.15c2.47 0 4.01.98 4.9 1.9l2.73-2.73C18.74 1.05 15.98 0 12.48 0 5.88 0 0 5.88 0 12.48s5.88 12.48 12.48 12.48c6.92 0 12.02-4.82 12.02-12.02 0-.8-.08-1.58-.2-2.34z" fill="currentColor"/></svg>
                     <span className="text-gray-700 font-medium">Continue with Google</span>
                 </>
             )}

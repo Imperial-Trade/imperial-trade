@@ -14,14 +14,14 @@ export const useVoiceRecognition = (): VoiceRecognitionReturn => {
   useEffect(() => {
     // Initialize speech recognition
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognitionInstance = new SpeechRecognition();
+      const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognitionAPI) {
+        const recognitionInstance = new SpeechRecognitionAPI();
         recognitionInstance.continuous = false;
         recognitionInstance.interimResults = false;
         recognitionInstance.lang = 'en-US';
         
-        recognitionInstance.onresult = (event: any) => {
+        recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
           const transcript = event.results[0][0].transcript;
           console.log('Voice command:', transcript);
           // Handle voice commands here

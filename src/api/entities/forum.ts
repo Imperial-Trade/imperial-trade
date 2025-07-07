@@ -1,64 +1,45 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { BaseEntity } from '../base/BaseEntity';
-import { Database } from '@/integrations/supabase/types';
+import { Container } from '@/infrastructure/di/Container';
+import { ForumService } from '@/application/services/ForumService';
+import { CreateForumPostDto, UpdateForumPostDto } from '@/domain/dtos/forum/CreateForumPostDto';
 
-type ForumPostRow = Database['public']['Tables']['forum_posts']['Row'];
-type ForumPostInsert = Database['public']['Tables']['forum_posts']['Insert'];
-type ReplyRow = Database['public']['Tables']['replies']['Row'];
-type ReplyInsert = Database['public']['Tables']['replies']['Insert'];
-
+// Legacy wrapper for backward compatibility
 export class ForumPost {
-  static tableName = 'forum_posts' as const;
-
-  static async list(orderBy = '-created_at'): Promise<ForumPostRow[]> {
-    return BaseEntity.genericList(this.tableName, orderBy);
+  private static get service(): ForumService {
+    return Container.getInstance().get<ForumService>('ForumService');
   }
 
-  static async create(postData: Partial<ForumPostInsert>): Promise<ForumPostRow> {
-    return BaseEntity.genericCreate(this.tableName, postData);
+  static async list() {
+    return this.service.getAllPosts();
   }
 
-  static async getById(id: string): Promise<ForumPostRow> {
-    return BaseEntity.genericGetById(this.tableName, id);
+  static async create(postData: CreateForumPostDto, userId: string) {
+    return this.service.createPost(postData, userId);
   }
 
-  static async update(id: string, postData: Partial<ForumPostInsert>): Promise<ForumPostRow> {
-    return BaseEntity.genericUpdate(this.tableName, id, postData);
+  static async getById(id: string) {
+    return this.service.getPostById(id);
   }
 
-  static async delete(id: string): Promise<void> {
-    return BaseEntity.genericDelete(this.tableName, id);
+  static async update(id: string, postData: UpdateForumPostDto, userId: string) {
+    return this.service.updatePost(id, postData, userId);
+  }
+
+  static async delete(id: string, userId: string) {
+    return this.service.deletePost(id, userId);
   }
 }
 
 export class Reply {
-  static tableName = 'replies' as const;
-
-  static async list(postId: string): Promise<ReplyRow[]> {
-    const { data, error } = await supabase
-      .from(this.tableName)
-      .select('*')
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true });
-    
-    if (error) throw error;
-    return data;
+  private static get service(): ForumService {
+    return Container.getInstance().get<ForumService>('ForumService');
   }
 
-  static async create(replyData: Partial<ReplyInsert>): Promise<ReplyRow> {
-    return BaseEntity.genericCreate(this.tableName, replyData);
+  static async list(postId: string) {
+    return this.service.getRepliesByPostId(postId);
   }
 
-  static async getById(id: string): Promise<ReplyRow> {
-    return BaseEntity.genericGetById(this.tableName, id);
-  }
-
-  static async update(id: string, replyData: Partial<ReplyInsert>): Promise<ReplyRow> {
-    return BaseEntity.genericUpdate(this.tableName, id, replyData);
-  }
-
-  static async delete(id: string): Promise<void> {
-    return BaseEntity.genericDelete(this.tableName, id);
+  static async create(postId: string, content: string, userId: string) {
+    return this.service.createReply(postId, content, userId);
   }
 }

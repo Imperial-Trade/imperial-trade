@@ -28,7 +28,8 @@ export {
   UserProgress, 
   LearningPathway, 
   UserPathwayProgress, 
-  Course 
+  Course,
+  Video 
 } from './learning';
 
 // System entities

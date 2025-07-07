@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -35,7 +33,7 @@ import Athena from "@/components/ai/Athena";
 import { User } from '@/api/entities';
 import NotificationSystem from "@/components/notifications/NotificationSystem";
 
-const navigationItems = [
+const navigationItems: NavigationItem[] = [
   {
     title: "Home",
     url: createPageUrl("Home"),
@@ -98,7 +96,7 @@ const navigationItems = [
   },
 ];
 
-const adminNavigationItems = [
+const adminNavigationItems: NavigationItem[] = [
   {
     title: "Admin Panel",
     url: createPageUrl("AdminPanel"),
@@ -182,7 +180,7 @@ export default function Layout({ children, currentPageName }) {
               
               // Send welcome email for first-time login
               const { sendWelcomeEmail } = await import('@/components/auth/AuthNotifications');
-              await sendWelcomeEmail(updatedUser, true);
+              await sendWelcomeEmail(updatedUser.email, updatedUser.full_name);
               
             } catch (error) {
               console.error('Error updating user access level:', error);
@@ -1001,4 +999,3 @@ export default function Layout({ children, currentPageName }) {
     </TooltipProvider>
   );
 }
-

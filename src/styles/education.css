@@ -1,0 +1,38 @@
+
+/* Education page specific styles */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.progress-bar {
+  transition: width 0.3s ease-in-out;
+}
+
+.lesson-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.lesson-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.certificate-badge {
+  background: linear-gradient(135deg, #c09a58, #e6d3b3);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}

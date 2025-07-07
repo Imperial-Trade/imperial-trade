@@ -1,14 +1,15 @@
 
 import { toast } from '@/hooks/use-toast';
 
-export const sendWelcomeEmail = async (userEmail: string, userName: string) => {
+export const sendWelcomeEmail = async (userEmail: string, userName?: string | boolean) => {
   try {
+    const name = typeof userName === 'string' ? userName : 'Trader';
     // Simulate sending welcome email
-    console.log(`Welcome email sent to ${userEmail} for ${userName}`);
+    console.log(`Welcome email sent to ${userEmail} for ${name}`);
     
     toast({
       title: "Welcome!",
-      description: `Welcome to Imperial Trading, ${userName}! Check your email for important information.`,
+      description: `Welcome to Imperial Trading, ${name}! Check your email for important information.`,
     });
     
     return { success: true };
@@ -45,13 +46,14 @@ export const sendAccountVerificationEmail = async (userEmail: string) => {
   }
 };
 
-export const sendApprovalEmail = async (userEmail: string, userName: string) => {
+export const sendApprovalEmail = async (userEmail: string, userName?: string) => {
   try {
-    console.log(`Approval email sent to ${userEmail} for ${userName}`);
+    const name = userName || 'User';
+    console.log(`Approval email sent to ${userEmail} for ${name}`);
     
     toast({
       title: "Account Approved",
-      description: `${userName}'s account has been approved and they have been notified.`,
+      description: `${name}'s account has been approved and they have been notified.`,
     });
     
     return { success: true };
@@ -66,13 +68,15 @@ export const sendApprovalEmail = async (userEmail: string, userName: string) => 
   }
 };
 
-export const sendRejectionEmail = async (userEmail: string, userName: string, reason: string) => {
+export const sendRejectionEmail = async (userEmail: string, userName?: string, reason?: string) => {
   try {
-    console.log(`Rejection email sent to ${userEmail} for ${userName} with reason: ${reason}`);
+    const name = userName || 'User';
+    const rejectionReason = reason || 'Application did not meet requirements';
+    console.log(`Rejection email sent to ${userEmail} for ${name} with reason: ${rejectionReason}`);
     
     toast({
       title: "Account Rejected",
-      description: `${userName}'s account has been rejected and they have been notified.`,
+      description: `${name}'s account has been rejected and they have been notified.`,
     });
     
     return { success: true };

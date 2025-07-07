@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { BaseEntity } from '../base/BaseEntity';
 import { Database } from '@/integrations/supabase/types';
@@ -49,9 +50,21 @@ export class Quiz {
 export class QuizAttempt {
   static async create(attemptData: Partial<QuizAttemptInsert>): Promise<QuizAttemptRow> {
     const userId = await BaseEntity.getCurrentUserId();
+    const userEmail = await BaseEntity.getCurrentUserEmail();
+    
+    // Ensure all required properties are present
+    const insertData: QuizAttemptInsert = {
+      user_id: userId,
+      user_email: userEmail,
+      quiz_id: attemptData.quiz_id || '',
+      answers: attemptData.answers || {},
+      score: attemptData.score || 0,
+      ...attemptData
+    };
+
     const { data, error } = await supabase
       .from('quiz_attempts')
-      .insert([{ ...attemptData, user_id: userId }])
+      .insert(insertData)
       .select()
       .single();
     
@@ -105,9 +118,20 @@ export class UserProgress {
 
   static async create(progressData: Partial<UserProgressInsert>): Promise<UserProgressRow> {
     const userId = await BaseEntity.getCurrentUserId();
+    const userEmail = await BaseEntity.getCurrentUserEmail();
+    
+    // Ensure all required properties are present
+    const insertData: UserProgressInsert = {
+      user_id: userId,
+      user_email: userEmail,
+      video_id: progressData.video_id || '',
+      status: progressData.status || 'in_progress',
+      ...progressData
+    };
+
     const { data, error } = await supabase
       .from('user_progress')
-      .insert([{ ...progressData, user_id: userId }])
+      .insert(insertData)
       .select()
       .single();
     
@@ -185,9 +209,19 @@ export class UserPathwayProgress {
 
   static async create(progressData: Partial<UserPathwayProgressInsert>): Promise<UserPathwayProgressRow> {
     const userId = await BaseEntity.getCurrentUserId();
+    const userEmail = await BaseEntity.getCurrentUserEmail();
+    
+    // Ensure all required properties are present
+    const insertData: UserPathwayProgressInsert = {
+      user_id: userId,
+      user_email: userEmail,
+      pathway_id: progressData.pathway_id || '',
+      ...progressData
+    };
+
     const { data, error } = await supabase
       .from('user_pathway_progress')
-      .insert([{ ...progressData, user_id: userId }])
+      .insert(insertData)
       .select()
       .single();
     

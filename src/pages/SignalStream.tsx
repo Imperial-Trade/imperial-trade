@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { TradeAlert } from '@/api/entities';
-import { User } from '@/api/entities';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import usePriceFeed from '@/components/hooks/usePriceFeed';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function SignalStream() {
   const [alerts, setAlerts] = useState<any[]>([]);
@@ -47,7 +46,8 @@ export default function SignalStream() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const currentUser = await User.me();
+        const { data: { user: currentUser }, error } = await supabase.auth.getUser();
+        if (error) throw error;
         setUser(currentUser);
       } catch (e) {
         console.log('User not logged in:', e);
@@ -282,7 +282,7 @@ export default function SignalStream() {
                                 onTakeProfitHit={handleTakeProfitHit} 
                                 onStopLossHit={handleStopLossHit}
                                 onOrderActivation={handleOrderActivation} 
-                                isAdmin={user?.access_level === 'admin' || user?.role === 'admin'}
+                                isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
                                 livePrice={livePrices[alert.finnhub_symbol]} 
                                 connectionStatus={connectionStatus}
                                 priceSource={priceSource}
@@ -315,7 +315,7 @@ export default function SignalStream() {
                                 onTakeProfitHit={handleTakeProfitHit} 
                                 onStopLossHit={handleStopLossHit}
                                 onOrderActivation={handleOrderActivation}
-                                isAdmin={user?.access_level === 'admin' || user?.role === 'admin'}
+                                isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
                                 livePrice={undefined}
                                 connectionStatus={connectionStatus}
                                 priceSource={priceSource}

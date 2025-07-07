@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export class ForumPost {
@@ -819,6 +818,448 @@ export class LearningPathway {
       .select('*')
       .eq('difficulty_level', level)
       .order('completion_count', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class UserPathwayProgress {
+  static async list(orderBy = '-started_date') {
+    const { data, error } = await supabase
+      .from('user_pathway_progress')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(progressData) {
+    const { data, error } = await supabase
+      .from('user_pathway_progress')
+      .insert([{
+        ...progressData,
+        user_id: (await supabase.auth.getUser()).data.user?.id
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async update(id, progressData) {
+    const { data, error } = await supabase
+      .from('user_pathway_progress')
+      .update(progressData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id) {
+    const { error } = await supabase
+      .from('user_pathway_progress')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+
+  static async getByPathwayId(pathwayId) {
+    const { data, error } = await supabase
+      .from('user_pathway_progress')
+      .select('*')
+      .eq('pathway_id', pathwayId)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class TradingStrategy {
+  static async list(orderBy = '-created_at') {
+    const { data, error } = await supabase
+      .from('trading_strategies')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(strategyData) {
+    const { data, error } = await supabase
+      .from('trading_strategies')
+      .insert([{
+        ...strategyData,
+        created_by: (await supabase.auth.getUser()).data.user?.id
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async update(id, strategyData) {
+    const { data, error } = await supabase
+      .from('trading_strategies')
+      .update(strategyData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id) {
+    const { error } = await supabase
+      .from('trading_strategies')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+
+  static async getById(id) {
+    const { data, error } = await supabase
+      .from('trading_strategies')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getPublic() {
+    const { data, error } = await supabase
+      .from('trading_strategies')
+      .select('*')
+      .eq('is_public', true)
+      .order('likes', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class AthenaInteraction {
+  static async list(orderBy = '-interaction_time') {
+    const { data, error } = await supabase
+      .from('athena_interactions')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(interactionData) {
+    const { data, error } = await supabase
+      .from('athena_interactions')
+      .insert([{
+        ...interactionData,
+        user_id: (await supabase.auth.getUser()).data.user?.id
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async update(id, interactionData) {
+    const { data, error } = await supabase
+      .from('athena_interactions')
+      .update(interactionData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id) {
+    const { error } = await supabase
+      .from('athena_interactions')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+
+  static async getByUserEmail(userEmail) {
+    const { data, error } = await supabase
+      .from('athena_interactions')
+      .select('*')
+      .eq('user_email', userEmail)
+      .order('interaction_time', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class TradeAlert {
+  static async list(orderBy = '-created_at') {
+    const { data, error } = await supabase
+      .from('trade_alerts')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(alertData) {
+    const { data, error } = await supabase
+      .from('trade_alerts')
+      .insert([{
+        ...alertData,
+        user_id: (await supabase.auth.getUser()).data.user?.id
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async update(id, alertData) {
+    const { data, error } = await supabase
+      .from('trade_alerts')
+      .update(alertData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id) {
+    const { error } = await supabase
+      .from('trade_alerts')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+
+  static async getById(id) {
+    const { data, error } = await supabase
+      .from('trade_alerts')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getByStatus(status) {
+    const { data, error } = await supabase
+      .from('trade_alerts')
+      .select('*')
+      .eq('status', status)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class AccountRequest {
+  static async list(orderBy = '-created_at') {
+    const { data, error } = await supabase
+      .from('account_requests')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(requestData) {
+    const { data, error } = await supabase
+      .from('account_requests')
+      .insert([requestData])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async update(id, requestData) {
+    const { data, error } = await supabase
+      .from('account_requests')
+      .update(requestData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id) {
+    const { error } = await supabase
+      .from('account_requests')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+
+  static async getById(id) {
+    const { data, error } = await supabase
+      .from('account_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getByStatus(status) {
+    const { data, error } = await supabase
+      .from('account_requests')
+      .select('*')
+      .eq('status', status)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class AuditLog {
+  static async list(orderBy = '-created_at') {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(logData) {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .insert([logData])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getByAdminEmail(adminEmail) {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('admin_email', adminEmail)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getByTargetEntity(targetEntity) {
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('target_entity', targetEntity)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class Course {
+  static async list(orderBy = '-created_at') {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(courseData) {
+    const { data, error } = await supabase
+      .from('courses')
+      .insert([courseData])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async update(id, courseData) {
+    const { data, error } = await supabase
+      .from('courses')
+      .update(courseData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async delete(id) {
+    const { error } = await supabase
+      .from('courses')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+
+  static async getById(id) {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getByCategory(category) {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('category', category)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async getByDifficulty(difficulty) {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*')
+      .eq('difficulty', difficulty)
+      .order('created_at', { ascending: false });
     
     if (error) throw error;
     return data;

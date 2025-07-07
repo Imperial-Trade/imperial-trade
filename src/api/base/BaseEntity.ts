@@ -7,75 +7,99 @@ type TableRow<T extends TableName> = Database['public']['Tables'][T]['Row'];
 type TableInsert<T extends TableName> = Database['public']['Tables'][T]['Insert'];
 type TableUpdate<T extends TableName> = Database['public']['Tables'][T]['Update'];
 
-export abstract class BaseEntity<T extends TableName> {
-  static tableName: TableName;
+// Simple utility class without complex inheritance
+export class BaseEntity {
+  // Generic utility methods that can be used by any entity
+  static async executeQuery<T>(queryBuilder: any): Promise<T[]> {
+    const { data, error } = await queryBuilder;
+    if (error) throw error;
+    return data || [];
+  }
 
-  static async list<T extends TableName>(
-    this: { tableName: T },
-    orderBy = '-created_at'
-  ): Promise<TableRow<T>[]> {
-    const { data, error } = await supabase
-      .from(this.tableName)
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
+  static async executeSingleQuery<T>(queryBuilder: any): Promise<T> {
+    const { data, error } = await queryBuilder;
     if (error) throw error;
     return data;
   }
 
-  static async getById<T extends TableName>(
-    this: { tableName: T },
+  // Helper method to get current user ID
+  static async getCurrentUserId(): Promise<string | undefined> {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id;
+  }
+
+  // Generic list method
+  static async genericList<T extends TableName>(
+    tableName: T,
+    orderBy = '-created_at'
+  ): Promise<TableRow<T>[]> {
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('*')
+      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
+    
+    if (error) throw error;
+    return data as TableRow<T>[];
+  }
+
+  // Generic getById method
+  static async genericGetById<T extends TableName>(
+    tableName: T,
     id: string
   ): Promise<TableRow<T>> {
     const { data, error } = await supabase
-      .from(this.tableName)
+      .from(tableName)
       .select('*')
       .eq('id', id)
       .single();
     
     if (error) throw error;
-    return data;
+    return data as TableRow<T>;
   }
 
-  static async create<T extends TableName>(
-    this: { tableName: T },
+  // Generic create method
+  static async genericCreate<T extends TableName>(
+    tableName: T,
     entityData: Partial<TableInsert<T>>
   ): Promise<TableRow<T>> {
+    const userId = await this.getCurrentUserId();
     const { data, error } = await supabase
-      .from(this.tableName)
+      .from(tableName)
       .insert([{
         ...entityData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
+        ...(userId && { user_id: userId })
       } as TableInsert<T>])
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return data as TableRow<T>;
   }
 
-  static async update<T extends TableName>(
-    this: { tableName: T },
+  // Generic update method
+  static async genericUpdate<T extends TableName>(
+    tableName: T,
     id: string,
     entityData: Partial<TableUpdate<T>>
   ): Promise<TableRow<T>> {
     const { data, error } = await supabase
-      .from(this.tableName)
+      .from(tableName)
       .update(entityData as TableUpdate<T>)
       .eq('id', id)
       .select()
       .single();
     
     if (error) throw error;
-    return data;
+    return data as TableRow<T>;
   }
 
-  static async delete<T extends TableName>(
-    this: { tableName: T },
+  // Generic delete method
+  static async genericDelete<T extends TableName>(
+    tableName: T,
     id: string
   ): Promise<void> {
     const { error } = await supabase
-      .from(this.tableName)
+      .from(tableName)
       .delete()
       .eq('id', id);
     

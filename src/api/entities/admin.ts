@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { BaseEntity } from '../base/BaseEntity';
 import { Database } from '@/integrations/supabase/types';
 
 type AccountRequestRow = Database['public']['Tables']['account_requests']['Row'];
@@ -12,7 +13,7 @@ export class AccountRequest {
 
   static async create(requestData: Partial<AccountRequestInsert>): Promise<AccountRequestRow> {
     const { data, error } = await supabase
-      .from('account_requests')
+      .from(this.tableName)
       .insert([requestData as AccountRequestInsert])
       .select()
       .single();
@@ -23,7 +24,7 @@ export class AccountRequest {
 
   static async getByStatus(status: 'pending' | 'approved' | 'rejected'): Promise<AccountRequestRow[]> {
     const { data, error } = await supabase
-      .from('account_requests')
+      .from(this.tableName)
       .select('*')
       .eq('status', status)
       .order('created_at', { ascending: false });
@@ -33,45 +34,19 @@ export class AccountRequest {
   }
 
   static async list(orderBy = '-created_at'): Promise<AccountRequestRow[]> {
-    const { data, error } = await supabase
-      .from('account_requests')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<AccountRequestRow> {
-    const { data, error } = await supabase
-      .from('account_requests')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async update(id: string, requestData: Partial<AccountRequestInsert>): Promise<AccountRequestRow> {
-    const { data, error } = await supabase
-      .from('account_requests')
-      .update(requestData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, requestData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('account_requests')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -80,7 +55,7 @@ export class AuditLog {
 
   static async create(logData: Partial<AuditLogInsert>): Promise<AuditLogRow> {
     const { data, error } = await supabase
-      .from('audit_logs')
+      .from(this.tableName)
       .insert([logData as AuditLogInsert])
       .select()
       .single();
@@ -91,7 +66,7 @@ export class AuditLog {
 
   static async getByAdminEmail(adminEmail: string): Promise<AuditLogRow[]> {
     const { data, error } = await supabase
-      .from('audit_logs')
+      .from(this.tableName)
       .select('*')
       .eq('admin_email', adminEmail)
       .order('created_at', { ascending: false });
@@ -102,7 +77,7 @@ export class AuditLog {
 
   static async getByTargetEntity(targetEntity: string): Promise<AuditLogRow[]> {
     const { data, error } = await supabase
-      .from('audit_logs')
+      .from(this.tableName)
       .select('*')
       .eq('target_entity', targetEntity)
       .order('created_at', { ascending: false });
@@ -112,44 +87,18 @@ export class AuditLog {
   }
 
   static async list(orderBy = '-created_at'): Promise<AuditLogRow[]> {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<AuditLogRow> {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async update(id: string, logData: Partial<AuditLogInsert>): Promise<AuditLogRow> {
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .update(logData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, logData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('audit_logs')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }

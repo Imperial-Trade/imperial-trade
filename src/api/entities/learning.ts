@@ -1,4 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
+import { BaseEntity } from '../base/BaseEntity';
 import { Database } from '@/integrations/supabase/types';
 
 type QuizRow = Database['public']['Tables']['quizzes']['Row'];
@@ -16,7 +18,7 @@ export class Quiz {
 
   static async getByVideoId(videoId: string): Promise<QuizRow> {
     const { data, error } = await supabase
-      .from('quizzes')
+      .from(this.tableName)
       .select('*')
       .eq('video_id', videoId)
       .single();
@@ -26,59 +28,23 @@ export class Quiz {
   }
 
   static async list(orderBy = '-created_at'): Promise<QuizRow[]> {
-    const { data, error } = await supabase
-      .from('quizzes')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<QuizRow> {
-    const { data, error } = await supabase
-      .from('quizzes')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async create(entityData: any): Promise<QuizRow> {
-    const { data, error } = await supabase
-      .from('quizzes')
-      .insert([{
-        ...entityData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, entityData);
   }
 
   static async update(id: string, entityData: any): Promise<QuizRow> {
-    const { data, error } = await supabase
-      .from('quizzes')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('quizzes')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -86,22 +52,12 @@ export class QuizAttempt {
   static tableName = 'quiz_attempts' as const;
 
   static async create(attemptData: Partial<QuizAttemptInsert>): Promise<QuizAttemptRow> {
-    const { data, error } = await supabase
-      .from('quiz_attempts')
-      .insert([{
-        ...attemptData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      } as QuizAttemptInsert])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, attemptData);
   }
 
   static async getByQuizId(quizId: string): Promise<QuizAttemptRow[]> {
     const { data, error } = await supabase
-      .from('quiz_attempts')
+      .from(this.tableName)
       .select('*')
       .eq('quiz_id', quizId)
       .order('created_at', { ascending: false });
@@ -111,45 +67,19 @@ export class QuizAttempt {
   }
 
   static async list(orderBy = '-created_at'): Promise<QuizAttemptRow[]> {
-    const { data, error } = await supabase
-      .from('quiz_attempts')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<QuizAttemptRow> {
-    const { data, error } = await supabase
-      .from('quiz_attempts')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async update(id: string, entityData: any): Promise<QuizAttemptRow> {
-    const { data, error } = await supabase
-      .from('quiz_attempts')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('quiz_attempts')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -157,32 +87,16 @@ export class UserProgress {
   static tableName = 'user_progress' as const;
 
   static async list(orderBy = '-updated_at'): Promise<UserProgressRow[]> {
-    const { data, error } = await supabase
-      .from('user_progress')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async create(progressData: Partial<UserProgressInsert>): Promise<UserProgressRow> {
-    const { data, error } = await supabase
-      .from('user_progress')
-      .insert([{
-        ...progressData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      } as UserProgressInsert])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, progressData);
   }
 
   static async getByVideoId(videoId: string): Promise<UserProgressRow> {
     const { data, error } = await supabase
-      .from('user_progress')
+      .from(this.tableName)
       .select('*')
       .eq('video_id', videoId)
       .single();
@@ -192,35 +106,15 @@ export class UserProgress {
   }
 
   static async getById(id: string): Promise<UserProgressRow> {
-    const { data, error } = await supabase
-      .from('user_progress')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async update(id: string, entityData: any): Promise<UserProgressRow> {
-    const { data, error } = await supabase
-      .from('user_progress')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('user_progress')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -229,7 +123,7 @@ export class LearningPathway {
 
   static async getByDifficulty(level: 'beginner' | 'intermediate' | 'advanced'): Promise<LearningPathwayRow[]> {
     const { data, error } = await supabase
-      .from('learning_pathways')
+      .from(this.tableName)
       .select('*')
       .eq('difficulty_level', level)
       .order('completion_count', { ascending: false });
@@ -239,59 +133,23 @@ export class LearningPathway {
   }
 
   static async list(orderBy = '-created_at'): Promise<LearningPathwayRow[]> {
-    const { data, error } = await supabase
-      .from('learning_pathways')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<LearningPathwayRow> {
-    const { data, error } = await supabase
-      .from('learning_pathways')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async create(entityData: any): Promise<LearningPathwayRow> {
-    const { data, error } = await supabase
-      .from('learning_pathways')
-      .insert([{
-        ...entityData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, entityData);
   }
 
   static async update(id: string, entityData: any): Promise<LearningPathwayRow> {
-    const { data, error } = await supabase
-      .from('learning_pathways')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('learning_pathways')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -299,32 +157,16 @@ export class UserPathwayProgress {
   static tableName = 'user_pathway_progress' as const;
 
   static async list(orderBy = '-started_date'): Promise<UserPathwayProgressRow[]> {
-    const { data, error } = await supabase
-      .from('user_pathway_progress')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async create(progressData: Partial<UserPathwayProgressInsert>): Promise<UserPathwayProgressRow> {
-    const { data, error } = await supabase
-      .from('user_pathway_progress')
-      .insert([{
-        ...progressData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      } as UserPathwayProgressInsert])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, progressData);
   }
 
   static async getByPathwayId(pathwayId: string): Promise<UserPathwayProgressRow> {
     const { data, error } = await supabase
-      .from('user_pathway_progress')
+      .from(this.tableName)
       .select('*')
       .eq('pathway_id', pathwayId)
       .single();
@@ -334,35 +176,15 @@ export class UserPathwayProgress {
   }
 
   static async getById(id: string): Promise<UserPathwayProgressRow> {
-    const { data, error } = await supabase
-      .from('user_pathway_progress')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async update(id: string, entityData: any): Promise<UserPathwayProgressRow> {
-    const { data, error } = await supabase
-      .from('user_pathway_progress')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('user_pathway_progress')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -371,7 +193,7 @@ export class Course {
 
   static async getByCategory(category: string): Promise<CourseRow[]> {
     const { data, error } = await supabase
-      .from('courses')
+      .from(this.tableName)
       .select('*')
       .eq('category', category)
       .order('created_at', { ascending: false });
@@ -382,7 +204,7 @@ export class Course {
 
   static async getByDifficulty(difficulty: 'Beginner' | 'Intermediate' | 'Advanced'): Promise<CourseRow[]> {
     const { data, error } = await supabase
-      .from('courses')
+      .from(this.tableName)
       .select('*')
       .eq('difficulty', difficulty)
       .order('created_at', { ascending: false });
@@ -392,58 +214,22 @@ export class Course {
   }
 
   static async list(orderBy = '-created_at'): Promise<CourseRow[]> {
-    const { data, error } = await supabase
-      .from('courses')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<CourseRow> {
-    const { data, error } = await supabase
-      .from('courses')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async create(entityData: any): Promise<CourseRow> {
-    const { data, error } = await supabase
-      .from('courses')
-      .insert([{
-        ...entityData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, entityData);
   }
 
   static async update(id: string, entityData: any): Promise<CourseRow> {
-    const { data, error } = await supabase
-      .from('courses')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('courses')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }

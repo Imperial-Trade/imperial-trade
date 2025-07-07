@@ -2,50 +2,32 @@
 import { supabase } from '@/integrations/supabase/client';
 import { BaseEntity } from '../base/BaseEntity';
 
-export class EconomicEvent extends BaseEntity {
-  static tableName = 'economic_events';
+export class EconomicEvent {
+  static tableName = 'economic_events' as const;
 
   static async list(orderBy = '-event_date') {
-    const { data, error } = await supabase
-      .from('economic_events')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 }
 
-export class PsychologyLog extends BaseEntity {
-  static tableName = 'psychology_logs';
+export class PsychologyLog {
+  static tableName = 'psychology_logs' as const;
 
   static async list(orderBy = '-log_date') {
-    const { data, error } = await supabase
-      .from('psychology_logs')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 }
 
-export class LiveSession extends BaseEntity {
-  static tableName = 'live_sessions';
+export class LiveSession {
+  static tableName = 'live_sessions' as const;
 
   static async list(orderBy = '-session_date') {
-    const { data, error } = await supabase
-      .from('live_sessions')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getUpcoming() {
     const { data, error } = await supabase
-      .from('live_sessions')
+      .from(this.tableName)
       .select('*')
       .gte('session_date', new Date().toISOString())
       .eq('status', 'scheduled')
@@ -56,36 +38,20 @@ export class LiveSession extends BaseEntity {
   }
 }
 
-export class AthenaInteraction extends BaseEntity {
-  static tableName = 'athena_interactions';
+export class AthenaInteraction {
+  static tableName = 'athena_interactions' as const;
 
   static async list(orderBy = '-interaction_time') {
-    const { data, error } = await supabase
-      .from('athena_interactions')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async create(interactionData: any) {
-    const { data, error } = await supabase
-      .from('athena_interactions')
-      .insert([{
-        ...interactionData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, interactionData);
   }
 
   static async getByUserEmail(userEmail: string) {
     const { data, error } = await supabase
-      .from('athena_interactions')
+      .from(this.tableName)
       .select('*')
       .eq('user_email', userEmail)
       .order('interaction_time', { ascending: false });

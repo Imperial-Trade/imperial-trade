@@ -1,4 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
+import { BaseEntity } from '../base/BaseEntity';
 import { Database } from '@/integrations/supabase/types';
 
 type TradeJournalEntryRow = Database['public']['Tables']['trade_journal_entries']['Row'];
@@ -13,59 +15,23 @@ export class TradeJournalEntry {
   static tableName = 'trade_journal_entries' as const;
 
   static async list(orderBy = '-created_at'): Promise<TradeJournalEntryRow[]> {
-    const { data, error } = await supabase
-      .from('trade_journal_entries')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<TradeJournalEntryRow> {
-    const { data, error } = await supabase
-      .from('trade_journal_entries')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async create(entityData: any): Promise<TradeJournalEntryRow> {
-    const { data, error } = await supabase
-      .from('trade_journal_entries')
-      .insert([{
-        ...entityData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, entityData);
   }
 
   static async update(id: string, entityData: any): Promise<TradeJournalEntryRow> {
-    const { data, error } = await supabase
-      .from('trade_journal_entries')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('trade_journal_entries')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -74,7 +40,7 @@ export class TradeAlert {
 
   static async getByStatus(status: 'pending' | 'active' | 'closed'): Promise<TradeAlertRow[]> {
     const { data, error } = await supabase
-      .from('trade_alerts')
+      .from(this.tableName)
       .select('*')
       .eq('status', status)
       .order('created_at', { ascending: false });
@@ -84,59 +50,23 @@ export class TradeAlert {
   }
 
   static async list(orderBy = '-created_at'): Promise<TradeAlertRow[]> {
-    const { data, error } = await supabase
-      .from('trade_alerts')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<TradeAlertRow> {
-    const { data, error } = await supabase
-      .from('trade_alerts')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async create(entityData: any): Promise<TradeAlertRow> {
-    const { data, error } = await supabase
-      .from('trade_alerts')
-      .insert([{
-        ...entityData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, entityData);
   }
 
   static async update(id: string, entityData: any): Promise<TradeAlertRow> {
-    const { data, error } = await supabase
-      .from('trade_alerts')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('trade_alerts')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -144,59 +74,23 @@ export class TradingStrategy {
   static tableName = 'trading_strategies' as const;
 
   static async list(orderBy = '-created_at'): Promise<TradingStrategyRow[]> {
-    const { data, error } = await supabase
-      .from('trading_strategies')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<TradingStrategyRow> {
-    const { data, error } = await supabase
-      .from('trading_strategies')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async create(entityData: any): Promise<TradingStrategyRow> {
-    const { data, error } = await supabase
-      .from('trading_strategies')
-      .insert([{
-        ...entityData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, entityData);
   }
 
   static async update(id: string, entityData: any): Promise<TradingStrategyRow> {
-    const { data, error } = await supabase
-      .from('trading_strategies')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('trading_strategies')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -204,32 +98,20 @@ export class TradingGroup {
   static tableName = 'trading_groups' as const;
 
   static async list(orderBy = '-created_at'): Promise<TradingGroupRow[]> {
-    const { data, error } = await supabase
-      .from('trading_groups')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<TradingGroupRow> {
-    const { data, error } = await supabase
-      .from('trading_groups')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async create(entityData: any): Promise<TradingGroupRow> {
+    const userId = await BaseEntity.getCurrentUserId();
     const { data, error } = await supabase
-      .from('trading_groups')
+      .from(this.tableName)
       .insert([{
         ...entityData,
-        created_by: (await supabase.auth.getUser()).data.user?.id
+        created_by: userId
       }])
       .select()
       .single();
@@ -239,24 +121,11 @@ export class TradingGroup {
   }
 
   static async update(id: string, entityData: any): Promise<TradingGroupRow> {
-    const { data, error } = await supabase
-      .from('trading_groups')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('trading_groups')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -264,59 +133,23 @@ export class GroupJournalEntry {
   static tableName = 'group_journal_entries' as const;
 
   static async list(orderBy = '-created_at'): Promise<GroupJournalEntryRow[]> {
-    const { data, error } = await supabase
-      .from('group_journal_entries')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<GroupJournalEntryRow> {
-    const { data, error } = await supabase
-      .from('group_journal_entries')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async create(entityData: any): Promise<GroupJournalEntryRow> {
-    const { data, error } = await supabase
-      .from('group_journal_entries')
-      .insert([{
-        ...entityData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, entityData);
   }
 
   static async update(id: string, entityData: any): Promise<GroupJournalEntryRow> {
-    const { data, error } = await supabase
-      .from('group_journal_entries')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('group_journal_entries')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -324,59 +157,23 @@ export class VerifiedTrader {
   static tableName = 'verified_traders' as const;
 
   static async list(orderBy = '-created_at'): Promise<VerifiedTraderRow[]> {
-    const { data, error } = await supabase
-      .from('verified_traders')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<VerifiedTraderRow> {
-    const { data, error } = await supabase
-      .from('verified_traders')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async create(entityData: any): Promise<VerifiedTraderRow> {
-    const { data, error } = await supabase
-      .from('verified_traders')
-      .insert([{
-        ...entityData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, entityData);
   }
 
   static async update(id: string, entityData: any): Promise<VerifiedTraderRow> {
-    const { data, error } = await supabase
-      .from('verified_traders')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('verified_traders')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }
 
@@ -384,58 +181,22 @@ export class TradeHistory {
   static tableName = 'trade_history' as const;
 
   static async list(orderBy = '-created_at'): Promise<TradeHistoryRow[]> {
-    const { data, error } = await supabase
-      .from('trade_history')
-      .select('*')
-      .order(orderBy.replace('-', ''), { ascending: !orderBy.startsWith('-') });
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericList(this.tableName, orderBy);
   }
 
   static async getById(id: string): Promise<TradeHistoryRow> {
-    const { data, error } = await supabase
-      .from('trade_history')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericGetById(this.tableName, id);
   }
 
   static async create(entityData: any): Promise<TradeHistoryRow> {
-    const { data, error } = await supabase
-      .from('trade_history')
-      .insert([{
-        ...entityData,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericCreate(this.tableName, entityData);
   }
 
   static async update(id: string, entityData: any): Promise<TradeHistoryRow> {
-    const { data, error } = await supabase
-      .from('trade_history')
-      .update(entityData)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return BaseEntity.genericUpdate(this.tableName, id, entityData);
   }
 
   static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('trade_history')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    return BaseEntity.genericDelete(this.tableName, id);
   }
 }

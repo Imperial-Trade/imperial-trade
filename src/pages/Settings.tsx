@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
-import { User } from '@/api/entities';
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,8 +21,8 @@ import {
   ChevronRight,
   Edit3,
   Zap,
-  Bell, // Add Bell icon
-  Rocket, // Added Rocket for visual aid
+  Bell,
+  Rocket,
 } from 'lucide-react';
 
 // This function is assumed to be defined elsewhere in a real application,
@@ -39,7 +39,7 @@ const createPageUrl = (pageName) => {
 };
 
 export default function Settings() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -52,8 +52,6 @@ export default function Settings() {
     vt_markets_uid: '',
     account_type: 'trader'
   });
-
-  // Removed notificationStatus state as we will display static info
 
   // Expanded sections state
   const [expandedSections, setExpandedSections] = useState({
@@ -82,14 +80,14 @@ export default function Settings() {
 
   const loadUserData = async () => {
     try {
-      const currentUser = await User.me();
-      setUser(currentUser);
-      setDisplayName(currentUser.full_name || '');
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setDisplayName(user?.user_metadata?.full_name || '');
       // Load existing verification data if available
-      if (currentUser.vt_markets_uid) {
+      if (user?.user_metadata?.vt_markets_uid) {
         setVerificationForm({
-          vt_markets_uid: currentUser.vt_markets_uid,
-          account_type: currentUser.vt_account_type || 'trader'
+          vt_markets_uid: user.user_metadata.vt_markets_uid,
+          account_type: user.user_metadata.vt_account_type || 'trader'
         });
       }
     } catch (error) {
@@ -127,7 +125,13 @@ export default function Settings() {
 
     try {
       const trimmedName = displayName.trim();
-      await User.updateMyUserData({ full_name: trimmedName });
+      
+      // Update user metadata in Supabase Auth
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: trimmedName }
+      });
+
+      if (error) throw error;
 
       // Check if this was the initial name verification from the URL parameter
       const urlParams = new URLSearchParams(window.location.search);
@@ -138,22 +142,17 @@ export default function Settings() {
         // Redirect to home page to complete the onboarding flow
         window.location.href = createPageUrl('Home');
       } else {
-        // Construct the updated user object
-        const updatedUser = { ...user, full_name: trimmedName };
-        
-        // Update the local state for the Settings page
-        setUser(updatedUser);
+        // Reload user data to get updated info
+        await loadUserData();
         setMessage({ type: 'success', text: 'Display name updated successfully!' });
         
-        // Dispatch a global event with the complete updated user object in the 'detail' payload
-        window.dispatchEvent(new CustomEvent('user-updated', { detail: updatedUser }));
-        
-        // Re-enable the button now that the process is complete
-        setIsSaving(false);
+        // Dispatch a global event with the updated user
+        window.dispatchEvent(new CustomEvent('user-updated', { detail: user }));
       }
     } catch (error) {
       console.error('Error updating display name:', error);
       setMessage({ type: 'error', text: 'Failed to update display name. Please try again.' });
+    } finally {
       setIsSaving(false);
     }
   };
@@ -167,7 +166,7 @@ export default function Settings() {
     }
 
     // Basic UID validation (adjust pattern as needed)
-    const uidPattern = /^[A-Za-z0-9]{6,20}$/; // Example pattern: 6-20 alphanumeric characters
+    const uidPattern = /^[A-Za-z0-9]{6,20}$/;
     if (!uidPattern.test(verificationForm.vt_markets_uid.trim())) {
       setVerificationMessage({ type: 'error', text: 'Please enter a valid VT Markets UID (6-20 alphanumeric characters).' });
       return;
@@ -177,13 +176,17 @@ export default function Settings() {
     setVerificationMessage({ type: '', text: '' });
 
     try {
-      // Update user with verification data
-      await User.updateMyUserData({
-        vt_markets_uid: verificationForm.vt_markets_uid.trim(),
-        vt_account_type: verificationForm.account_type,
-        verification_status: 'pending',
-        verification_submitted_date: new Date().toISOString()
+      // Update user metadata with verification data
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          vt_markets_uid: verificationForm.vt_markets_uid.trim(),
+          vt_account_type: verificationForm.account_type,
+          verification_status: 'pending',
+          verification_submitted_date: new Date().toISOString()
+        }
       });
+
+      if (error) throw error;
 
       // Reload user data
       await loadUserData();
@@ -201,7 +204,7 @@ export default function Settings() {
   };
 
   const getVerificationStatusBadge = () => {
-    switch (user?.verification_status) {
+    switch (user?.user_metadata?.verification_status) {
       case 'pending':
         return (
           <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/20">
@@ -231,8 +234,6 @@ export default function Settings() {
         );
     }
   };
-
-  // Removed handleNotificationRequest and renderNotificationContent functions
 
   if (isLoading) {
     return (
@@ -286,25 +287,25 @@ export default function Settings() {
                 <div>
                   <p className="text-sm text-secondary">Account Level</p>
                   <div className="flex gap-1 mt-1 flex-wrap">
-                    {user?.access_level === 'admin' && (
+                    {user?.user_metadata?.access_level === 'admin' && (
                       <Badge className="bg-accent-gold/20 text-accent-gold">
                         <Crown className="w-3 h-3 mr-1" />
                         Educator
                       </Badge>
                     )}
-                    {user?.access_level === 'verified' && (
+                    {user?.user_metadata?.access_level === 'verified' && (
                       <Badge className="bg-blue-500/20 text-blue-400">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
                         Verified Trader
                       </Badge>
                     )}
-                    {user?.access_level === 'user' && (
+                    {user?.user_metadata?.access_level === 'user' && (
                       <Badge className="bg-accent-green/20 text-accent-green">
                         <Shield className="w-3 h-3 mr-1" />
                         Member
                       </Badge>
                     )}
-                    {user?.access_level === 'free' && (
+                    {user?.user_metadata?.access_level === 'free' && (
                       <Badge className="bg-accent-blue/20 text-accent-blue">
                         Free Tier
                       </Badge>
@@ -317,22 +318,22 @@ export default function Settings() {
                     {getVerificationStatusBadge()}
                   </div>
                 </div>
-                {user?.vt_markets_uid && (
+                {user?.user_metadata?.vt_markets_uid && (
                   <div>
                     <p className="text-sm text-secondary">VT Markets UID</p>
-                    <p className="font-semibold text-primary">{user.vt_markets_uid}</p>
+                    <p className="font-semibold text-primary">{user.user_metadata.vt_markets_uid}</p>
                   </div>
                 )}
-                {user?.vt_account_type && (
+                {user?.user_metadata?.vt_account_type && (
                   <div>
                     <p className="text-sm text-secondary">Account Type</p>
-                    <p className="font-semibold text-primary capitalize">{user.vt_account_type}</p>
+                    <p className="font-semibold text-primary capitalize">{user.user_metadata.vt_account_type}</p>
                   </div>
                 )}
                 <div>
                   <p className="text-sm text-secondary">Member Since</p>
                   <p className="font-semibold text-primary">
-                    {new Date(user?.created_date).toLocaleDateString('en-US', {
+                    {new Date(user?.created_at).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'
@@ -443,7 +444,7 @@ export default function Settings() {
           </Card>
 
           {/* Verified Trader Section */}
-          {user?.access_level !== 'verified' && (
+          {user?.user_metadata?.access_level !== 'verified' && (
             <Card className="glass-effect border-default">
               <CardHeader
                 className="cursor-pointer hover:bg-surface/20 transition-colors"
@@ -491,27 +492,27 @@ export default function Settings() {
                   )}
 
                   {/* Current Status */}
-                  {user?.verification_status && user?.verification_status !== 'none' && (
+                  {user?.user_metadata?.verification_status && user?.user_metadata?.verification_status !== 'none' && (
                     <div className="bg-surface/50 rounded-lg p-4">
                       <h4 className="font-semibold text-primary mb-2">Verification Status</h4>
                       <div className="flex items-center gap-2 mb-2">
                         {getVerificationStatusBadge()}
                       </div>
-                      {user?.verification_submitted_date && (
+                      {user?.user_metadata?.verification_submitted_date && (
                         <p className="text-sm text-secondary">
-                          Submitted: {new Date(user.verification_submitted_date).toLocaleDateString()}
+                          Submitted: {new Date(user.user_metadata.verification_submitted_date).toLocaleDateString()}
                         </p>
                       )}
-                      {user?.verification_rejection_reason && (
+                      {user?.user_metadata?.verification_rejection_reason && (
                         <p className="text-sm text-red-400 mt-2">
-                          <strong>Rejection Reason:</strong> {user.verification_rejection_reason}
+                          <strong>Rejection Reason:</strong> {user.user_metadata.verification_rejection_reason}
                         </p>
                       )}
                     </div>
                   )}
 
                   {/* Verification Form */}
-                  {user?.verification_status !== 'pending' && user?.verification_status !== 'approved' && (
+                  {user?.user_metadata?.verification_status !== 'pending' && user?.user_metadata?.verification_status !== 'approved' && (
                     <>
                       <div className="bg-surface/50 rounded-lg p-4">
                         <h4 className="font-semibold text-primary mb-2">Requirements:</h4>

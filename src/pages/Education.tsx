@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User } from "@/api/entities";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from '@supabase/supabase-js';
 import { Video } from "@/api/entities";
 import AccessDenied from "../components/AccessDenied";
 import { Button } from "@/components/ui/button";
@@ -236,7 +237,7 @@ const VideoPlayer = ({ video, onClose }) => (
 );
 
 export default function Education() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [videos, setVideos] = useState([]);
   const [groupedVideos, setGroupedVideos] = useState([]);
   const [featuredVideo, setFeaturedVideo] = useState(null);
@@ -247,8 +248,9 @@ export default function Education() {
     const initialize = async () => {
       setIsLoading(true);
       try {
-        const currentUser = await User.me();
-        setUser(currentUser);
+        // Get current user from Supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
 
         const fetchedVideos = await Video.list("-created_date");
         setVideos(fetchedVideos);
@@ -294,7 +296,7 @@ export default function Education() {
     );
   }
 
-  const userAccessLevel = user?.access_level || "free";
+  const userAccessLevel = user?.user_metadata?.access_level || "free";
   if (userAccessLevel === "free") {
     return <AccessDenied requiredLevel="user" />;
   }

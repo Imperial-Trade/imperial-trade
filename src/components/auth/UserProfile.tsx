@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { User } from '@/api/entities';
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,20 +16,30 @@ import {
   Crown,
   Edit
 } from 'lucide-react';
-import { sendWelcomeEmail } from './AuthNotifications';
 
-export default function UserProfile({ user, onUpdate, onLogout }) {
+interface UserProfileProps {
+  user: User | null;
+  onUpdate?: () => void;
+  onLogout?: () => void;
+}
+
+export default function UserProfile({ user, onUpdate, onLogout }: UserProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
-    full_name: user?.full_name || '',
-    trading_experience: user?.trading_experience || '',
-    preferred_markets: user?.preferred_markets || [],
-    risk_tolerance: user?.risk_tolerance || 'medium'
+    full_name: user?.user_metadata?.full_name || '',
+    trading_experience: user?.user_metadata?.trading_experience || '',
+    preferred_markets: user?.user_metadata?.preferred_markets || [],
+    risk_tolerance: user?.user_metadata?.risk_tolerance || 'medium'
   });
 
   const handleSave = async () => {
     try {
-      await User.updateMyUserData(profileData);
+      const { error } = await supabase.auth.updateUser({
+        data: profileData
+      });
+      
+      if (error) throw error;
+      
       onUpdate && onUpdate();
       setIsEditing(false);
     } catch (error) {
@@ -37,14 +49,14 @@ export default function UserProfile({ user, onUpdate, onLogout }) {
 
   const handleLogout = async () => {
     try {
-      await User.logout();
+      await supabase.auth.signOut();
       onLogout && onLogout();
     } catch (error) {
       console.error('Logout failed:', error);
     }
   };
 
-  const getAccessLevelInfo = (level) => {
+  const getAccessLevelInfo = (level: string) => {
     switch(level) {
       case 'admin':
         return { label: 'Educator', color: 'bg-accent-gold/20 text-accent-gold', icon: Crown };
@@ -57,7 +69,7 @@ export default function UserProfile({ user, onUpdate, onLogout }) {
     }
   };
 
-  const accessInfo = getAccessLevelInfo(user?.access_level);
+  const accessInfo = getAccessLevelInfo(user?.user_metadata?.access_level);
   const AccessIcon = accessInfo.icon;
 
   return (
@@ -67,11 +79,11 @@ export default function UserProfile({ user, onUpdate, onLogout }) {
           <CardTitle className="flex items-center gap-3">
             <div className="w-12 h-12 bg-accent-green rounded-full flex items-center justify-center">
               <span className="text-white text-lg font-bold">
-                {user?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                {user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
               </span>
             </div>
             <div>
-              <h3 className="text-xl font-bold text-primary">{user?.full_name || 'User'}</h3>
+              <h3 className="text-xl font-bold text-primary">{user?.user_metadata?.full_name || 'User'}</h3>
               <Badge className={accessInfo.color}>
                 <AccessIcon className="w-3 h-3 mr-1" />
                 {accessInfo.label}

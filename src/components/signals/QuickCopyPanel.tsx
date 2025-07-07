@@ -1,41 +1,13 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Check, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-interface TakeProfit {
-  label: string;
-  value: number;
-}
-
-interface Alert {
-  asset_name: string;
-  trade_type: string;
-  entry_price: number;
-  stop_loss: number;
-  tp1?: number;
-  tp2?: number;
-  tp3?: number;
-  tp4?: number;
-  tp5?: number;
-}
-
-interface QuickCopyPanelProps {
-  alert: Alert;
-}
-
-interface CopyButtonProps {
-  value: number;
-  label: string;
-  variant?: "outline" | "default" | "destructive" | "secondary" | "ghost" | "link";
-}
-
-export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
-  const [copiedItem, setCopiedItem] = useState<string | null>(null);
+export default function QuickCopyPanel({ alert }) {
+  const [copiedItem, setCopiedItem] = useState(null);
   
-  const copyToClipboard = async (text: string, itemName: string) => {
+  const copyToClipboard = async (text, itemName) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedItem(itemName);
@@ -46,15 +18,15 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
   };
 
   const isBuy = alert.trade_type === 'buy';
-  const takeProfits: TakeProfit[] = [
+  const takeProfits = [
     { label: 'TP1', value: alert.tp1 },
     { label: 'TP2', value: alert.tp2 },
     { label: 'TP3', value: alert.tp3 },
     { label: 'TP4', value: alert.tp4 },
     { label: 'TP5', value: alert.tp5 }
-  ].filter((tp): tp is TakeProfit => tp.value !== undefined);
+  ].filter(tp => tp.value);
 
-  const CopyButton: React.FC<CopyButtonProps> = ({ value, label, variant = "outline" }) => (
+  const CopyButton = ({ value, label, variant = "outline" }) => (
     <Button
       variant={variant}
       size="sm"

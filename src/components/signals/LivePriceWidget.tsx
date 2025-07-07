@@ -3,52 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass } from 'lucide-react';
 
-interface Alert {
-  asset_name: string;
-  finnhub_symbol: string;
-  trade_type: string;
-  entry_price: number;
-  stop_loss: number;
-  status: 'pending' | 'active' | 'closed';
-  tp_hits?: number[];
-  tp1?: number;
-  tp2?: number;
-  tp3?: number;
-  tp4?: number;
-  tp5?: number;
-}
-
-interface PriceChange {
-  pips: number | null;
-  points: number | null;
-  absolute: number;
-  isPositive: boolean;
-}
-
-interface ProfitLossDisplay {
-  isProfit: boolean;
-  color: string;
-  bgColor: string;
-  valueText: string;
-  sign: string;
-}
-
-interface TakeProfit {
-  level: number;
-  price: number;
-}
-
-interface LivePriceWidgetProps {
-  alert: Alert;
-  onTakeProfitHit?: (alert: Alert, updatedHits: number[], shouldAutoClose: boolean, autoCloseReason: string | null) => Promise<void>;
-  onStopLossHit?: (alert: Alert, closeReason: string) => Promise<void>;
-  onOrderActivation?: (alert: Alert) => Promise<void>;
-  livePrice: number | null;
-  connectionStatus: 'connected' | 'connecting' | 'error';
-  priceSource?: string;
-}
-
-const calculatePips = (entry: number, current: number, symbol?: string) => {
+const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
   if (!symbol) return { pips: null, points: null, difference };
 
@@ -68,24 +23,17 @@ const calculatePips = (entry: number, current: number, symbol?: string) => {
   return { pips: difference / 0.0001, points: null, difference };
 };
 
-export default function LivePriceWidget({ 
-  alert, 
-  onTakeProfitHit, 
-  onStopLossHit, 
-  onOrderActivation, 
-  livePrice, 
-  connectionStatus, 
-  priceSource 
-}: LivePriceWidgetProps) {
-  const [priceChange, setPriceChange] = useState<PriceChange | null>(null);
-  const [lastProcessedPrice, setLastProcessedPrice] = useState<number | null>(null);
+
+export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit, onOrderActivation, livePrice, connectionStatus, priceSource }) {
+  const [priceChange, setPriceChange] = useState(null);
+  const [lastProcessedPrice, setLastProcessedPrice] = useState(null);
   const isProcessingRef = useRef(false);
   const lastUpdateRef = useRef(0);
 
   // Get the live price for this specific alert
   const currentPrice = livePrice;
   
-  const processLevelHit = useCallback(async (hitType: string, data: any) => {
+  const processLevelHit = useCallback(async (hitType, data) => {
     if (isProcessingRef.current) {
       console.log(`Already processing ${hitType}, skipping...`);
       return;
@@ -120,7 +68,7 @@ export default function LivePriceWidget({
     }
   }, [alert, onTakeProfitHit, onStopLossHit, onOrderActivation]);
 
-  const checkLevels = useCallback((price: number) => {
+  const checkLevels = useCallback((price) => { // Renamed parameter to 'price' to avoid confusion with outer 'currentPrice'
     if (!price || price === lastProcessedPrice || isProcessingRef.current) {
       return;
     }
@@ -176,15 +124,15 @@ export default function LivePriceWidget({
       return;
     }
 
-    const takeProfits: TakeProfit[] = [
+    const takeProfits = [
       { level: 1, price: alert.tp1 },
       { level: 2, price: alert.tp2 },
       { level: 3, price: alert.tp3 },
       { level: 4, price: alert.tp4 },
       { level: 5, price: alert.tp5 }
-    ].filter((tp): tp is TakeProfit => tp.price !== undefined && tp.price > 0);
+    ].filter(tp => tp.price && tp.price > 0);
 
-    const newHits: number[] = [];
+    const newHits = [];
     takeProfits.forEach(tp => {
       const hasHit = isBuy 
         ? price >= (tp.price - buffer)
@@ -224,13 +172,13 @@ export default function LivePriceWidget({
     });
   }, [currentPrice, connectionStatus, priceSource, alert]);
 
-  const profitLossDisplay: ProfitLossDisplay | null = useMemo(() => {
+  const profitLossDisplay = useMemo(() => {
     if (!priceChange) return null;
 
     const isBuy = alert.trade_type.includes('buy');
     const isProfit = isBuy ? priceChange.isPositive : !priceChange.isPositive;
 
-    let valueText: string;
+    let valueText;
     if (priceChange.pips !== null) {
       valueText = `${priceChange.pips.toFixed(1)} pips`;
     } else if (priceChange.points !== null) {

@@ -1,146 +1,334 @@
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Clock, Target } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { TradeAlert } from '@/api/entities';
+import { User } from '@/api/entities';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import TradeAlertCard from '@/components/signals/TradeAlertCard';
+import NotificationSystem from '@/components/notifications/NotificationSystem';
+import usePriceFeed from '@/components/hooks/usePriceFeed';
 
-const SignalStream = () => {
-  const signals = [
-    {
-      pair: "EUR/USD",
-      action: "BUY",
-      entry: "1.0850",
-      target: "1.0920",
-      stopLoss: "1.0800",
-      status: "Active",
-      time: "2 hours ago",
-      profit: "+65 pips",
-      type: "trending-up"
-    },
-    {
-      pair: "GBP/JPY",
-      action: "SELL",
-      entry: "185.50",
-      target: "184.20",
-      stopLoss: "186.00",
-      status: "Completed",
-      time: "4 hours ago",
-      profit: "+130 pips",
-      type: "trending-down"
-    }
-  ];
+export default function SignalStream() {
+  const [alerts, setAlerts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Active": return "bg-green-500/20 text-green-400 border-green-500/30"
-      case "Completed": return "bg-blue-500/20 text-blue-400 border-blue-500/30"
-      case "Pending": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-      default: return "bg-gray-500/20 text-gray-400 border-gray-500/30"
+  const loadAlerts = useCallback(async (isInitialLoad = false, retryAttempt = 0) => {
+    if (isInitialLoad) {
+        setIsLoading(true);
     }
-  };
+    setError(null);
+    
+    try {
+      console.log(`Loading alerts - attempt ${retryAttempt + 1}`);
+      const fetchedAlerts = await TradeAlert.list('-created_date', 50);
+      console.log(`Successfully loaded ${fetchedAlerts.length} alerts`);
+      setAlerts(fetchedAlerts);
+      setRetryCount(0);
+      
+    } catch (err) {
+      console.error("Failed to load trade alerts:", err);
+      if (retryAttempt < 2) { 
+        const backoffDelay = Math.pow(2, retryAttempt) * 3000;
+        console.log(`Retrying in ${backoffDelay / 1000} seconds...`);
+        setRetryCount(retryAttempt + 1);
+        setTimeout(() => {
+          loadAlerts(false, retryAttempt + 1);
+        }, backoffDelay);
+        return;
+      }
+      setError('Failed to load signals. Please refresh the page.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const currentUser = await User.me();
+        setUser(currentUser);
+      } catch (e) {
+        console.log('User not logged in:', e);
+      }
+    };
+
+    // --- Real-time Update Logic ---
+    const handleSignalPosted = () => {
+        console.log('New signal event received, reloading alerts instantly.');
+        loadAlerts(false);
+    };
+
+    window.addEventListener('signal-posted', handleSignalPosted);
+    // --- End Real-time Logic ---
+
+    fetchUser();
+    loadAlerts(true);
+    // The polling interval is a fallback in case the event listener fails.
+    // Reduced from 90s to 30s for better responsiveness.
+    const interval = setInterval(() => loadAlerts(false), 30000); 
+
+    return () => {
+        clearInterval(interval);
+        window.removeEventListener('signal-posted', handleSignalPosted);
+    };
+  }, [loadAlerts]);
+
+  const { activeAlerts, closedAlerts } = useMemo(() => {
+    const safeAlerts = Array.isArray(alerts) ? alerts : [];
+    const active = safeAlerts.filter(a => a.status === 'active' || a.status === 'pending');
+    const closed = safeAlerts.filter(a => a.status === 'closed');
+    return { activeAlerts: active, closedAlerts: closed };
+  }, [alerts]);
+
+  const sortedClosedAlerts = useMemo(() => {
+      return Array.isArray(closedAlerts) ? [...closedAlerts]
+        .sort((a, b) => new Date(b.updated_date) - new Date(a.updated_date))
+        .slice(0, 12) : [];
+  }, [closedAlerts]);
+  
+  const symbols = useMemo(() => {
+    const symbolSet = new Set();
+    const safeActiveAlerts = Array.isArray(activeAlerts) ? activeAlerts : [];
+    
+    safeActiveAlerts.forEach(alert => {
+      // The symbol should now be stored correctly. Just add it.
+      if (alert && alert.finnhub_symbol) {
+        symbolSet.add(alert.finnhub_symbol);
+      }
+    });
+    
+    const symbolList = Array.from(symbolSet);
+    console.log('SignalStream - Final symbols for price feed:', symbolList);
+    return symbolList;
+  }, [activeAlerts]);
+
+  const { prices: livePrices, connectionStatus, priceSource } = usePriceFeed(symbols);
+
+  // Debug logging for price updates
+  useEffect(() => {
+    console.log('SignalStream - Live prices updated:', livePrices);
+    console.log('SignalStream - Connection status:', connectionStatus);
+    console.log('SignalStream - Price source:', priceSource);
+  }, [livePrices, connectionStatus, priceSource]);
+
+  const [updateInProgress, setUpdateInProgress] = useState(new Set());
+
+  const handleStatusUpdate = useCallback(async (alert, newStatus) => {
+      if (updateInProgress.has(alert.id)) return;
+      setUpdateInProgress(prev => new Set(prev).add(alert.id));
+      try {
+          console.log(`Updating alert ${alert.id} status to ${newStatus}`);
+          const updatePayload = { ...alert, status: newStatus, close_reason: newStatus === 'closed' ? 'manual' : null };
+          await TradeAlert.update(alert.id, updatePayload);
+          setTimeout(() => loadAlerts(), 1000);
+          if (newStatus === 'closed' && window.addNotification) {
+            window.addNotification({
+              type: 'trade_closed',
+              title: `🔒 Trade Closed`,
+              message: `${alert.asset_name} trade has been manually closed`
+            });
+          }
+      } catch (err) {
+          console.error("Failed to update status:", err);
+          if (window.addNotification) {
+              window.addNotification({ 
+                  type: 'error', 
+                  title: 'Update Failed', 
+                  message: 'Could not update trade status. Please try again.' 
+              });
+          }
+      } finally {
+        setUpdateInProgress(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(alert.id);
+          return newSet;
+        });
+      }
+  }, [updateInProgress, loadAlerts]);
+
+  const handleTakeProfitHit = useCallback(async (alert, newTPHits, shouldAutoClose = false, closeReason = null) => {
+    if (updateInProgress.has(alert.id)) return;
+    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+    try {
+        console.log(`Updating TP hits for alert ${alert.id}:`, newTPHits);
+        let updatePayload = { ...alert, tp_hits: newTPHits };
+        if (shouldAutoClose) {
+            updatePayload.status = 'closed';
+            updatePayload.close_reason = closeReason;
+        }
+        await TradeAlert.update(alert.id, updatePayload);
+        setTimeout(() => loadAlerts(), 1000);
+        if (window.addNotification) {
+            const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
+            if (highestTP !== null) {
+                window.addNotification({
+                    type: 'tp_hit',
+                    title: `🎯 TP${highestTP} Hit!`,
+                    message: `${alert.asset_name} reached Take Profit ${highestTP}`
+                });
+            }
+        }
+    } catch (err) {
+        console.error("Failed to update TP hits:", err);
+    } finally {
+      setUpdateInProgress(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(alert.id);
+        return newSet;
+      });
+    }
+  }, [updateInProgress, loadAlerts]);
+
+  const handleStopLossHit = useCallback(async (alert, closeReason) => {
+    if (updateInProgress.has(alert.id)) return;
+    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+    try {
+        console.log(`Stop loss hit for alert ${alert.id}, reason: ${closeReason}`);
+        const updatePayload = { ...alert, status: 'closed', close_reason: closeReason };
+        await TradeAlert.update(alert.id, updatePayload);
+        setTimeout(() => loadAlerts(), 1000);
+        if (window.addNotification) {
+            window.addNotification({
+                type: 'stop_loss',
+                title: `🚨 Stop Loss Hit!`,
+                message: `${alert.asset_name} trade closed at stop loss`
+            });
+        }
+    } catch (err) {
+        console.error("Failed to update stop loss:", err);
+    } finally {
+      setUpdateInProgress(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(alert.id);
+        return newSet;
+      });
+    }
+  }, [updateInProgress, loadAlerts]);
+
+  const handleOrderActivation = useCallback(async (alert) => {
+    if (updateInProgress.has(alert.id)) return;
+    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+    try {
+        console.log(`Activating order for alert ${alert.id}`);
+        await TradeAlert.update(alert.id, { ...alert, status: 'active' });
+        setTimeout(() => loadAlerts(), 1000);
+        if (window.addNotification) {
+            window.addNotification({
+                type: 'trade_activated',
+                title: `🚀 Order Activated!`,
+                message: `${alert.asset_name} ${alert.trade_type} is now active`
+            });
+        }
+    } catch (err) {
+        console.error("Failed to activate order:", err);
+    } finally {
+      setUpdateInProgress(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(alert.id);
+        return newSet;
+      });
+    }
+  }, [updateInProgress, loadAlerts]);
 
   return (
     <div className="min-h-screen p-6 bg-background">
+      <NotificationSystem />
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
-            Live Trading Signals
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            Real-time trading opportunities from our professional analysts.
-          </p>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
+              Live Signal <span className="text-accent-green">Stream</span>
+            </h1>
+            <p className="text-secondary text-lg">
+              Real-time trading signals with live price tracking
+            </p>
+          </div>
+          {/* Removed New Signal button - now only in Admin Panel */}
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/30">
-            <CardContent className="p-6 text-center">
-              <TrendingUp className="h-8 w-8 text-green-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-green-400">87%</div>
-              <div className="text-sm text-muted-foreground">Success Rate</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-blue-500/30">
-            <CardContent className="p-6 text-center">
-              <Target className="h-8 w-8 text-blue-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-blue-400">25+</div>
-              <div className="text-sm text-muted-foreground">Daily Signals</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-r from-purple-500/20 to-violet-500/20 border-purple-500/30">
-            <CardContent className="p-6 text-center">
-              <Clock className="h-8 w-8 text-purple-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-purple-400">24/7</div>
-              <div className="text-sm text-muted-foreground">Monitoring</div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-r from-primary/20 to-amber-300/20 border-primary/30">
-            <CardContent className="p-6 text-center">
-              <TrendingUp className="h-8 w-8 text-primary mx-auto mb-2" />
-              <div className="text-2xl font-bold text-primary">+2,450</div>
-              <div className="text-sm text-muted-foreground">Total Pips</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Signals List */}
-        <div className="grid gap-4">
-          {signals.map((signal, index) => (
-            <Card key={index} className="hover:scale-[1.01] transition-all duration-300">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      {signal.type === "trending-up" ? (
-                        <TrendingUp className="h-5 w-5 text-green-400" />
-                      ) : (
-                        <TrendingDown className="h-5 w-5 text-red-400" />
-                      )}
-                      <CardTitle className="text-xl">{signal.pair}</CardTitle>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64 flex-col space-y-4">
+            <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
+            <div className="text-center">
+              <p className="text-secondary">Loading signals...</p>
+              {retryCount > 0 && <p className="text-sm text-secondary/70 mt-2">Retry attempt {retryCount}/2</p>}
+            </div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 text-center">
+              <AlertTriangle className="w-12 h-12 text-accent-red mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-primary mb-2">Connection Error</h3>
+              <p className="text-secondary mb-6">{error}</p>
+              <div className="flex gap-4 justify-center">
+                <button onClick={() => loadAlerts(true)} className="bg-accent-green hover:bg-green-500 text-white px-4 py-2 rounded">Try Again</button>
+                <button onClick={() => window.location.reload()} className="border border-default text-secondary hover:bg-surface px-4 py-2 rounded">Refresh Page</button>
+              </div>
+          </div>
+        ) : (
+          <div className="space-y-8">
+              <div>
+                  <h2 className="text-2xl font-semibold text-accent-green mb-4 border-b-2 border-accent-green/20 pb-2">
+                    Active Signals ({activeAlerts.length})
+                  </h2>
+                  {activeAlerts.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {activeAlerts.map(alert => (
+                              <TradeAlertCard
+                                key={alert.id} 
+                                alert={alert} 
+                                onStatusUpdate={handleStatusUpdate}
+                                onTakeProfitHit={handleTakeProfitHit} 
+                                onStopLossHit={handleStopLossHit}
+                                onOrderActivation={handleOrderActivation} 
+                                isAdmin={user?.access_level === 'admin' || user?.role === 'admin'}
+                                livePrice={livePrices[alert.finnhub_symbol]} 
+                                connectionStatus={connectionStatus}
+                                priceSource={priceSource}
+                              />
+                          ))}
+                      </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-8 h-8 text-secondary/50">📡</div>
+                      </div>
+                      <h3 className="text-xl font-semibold text-primary mb-2">No Active Signals</h3>
+                      <p className="text-secondary">New trading signals will appear here when posted by educators.</p>
                     </div>
-                    <Badge variant="outline" className={`${signal.action === "BUY" ? "text-green-400 border-green-500/30" : "text-red-400 border-red-500/30"}`}>
-                      {signal.action}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <Badge className={getStatusColor(signal.status)}>
-                      {signal.status}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">{signal.time}</span>
-                  </div>
-                </div>
-              </CardHeader>
+                  )}
+              </div>
               
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Entry</div>
-                    <div className="font-semibold">{signal.entry}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Target</div>
-                    <div className="font-semibold text-green-400">{signal.target}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Stop Loss</div>
-                    <div className="font-semibold text-red-400">{signal.stopLoss}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Profit</div>
-                    <div className="font-semibold text-green-400">{signal.profit}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              <div>
+                  <h2 className="text-2xl font-semibold text-secondary mb-4 border-b-2 border-default pb-2">
+                    Recent Closed Trades ({closedAlerts.length})
+                  </h2>
+                   {sortedClosedAlerts.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {sortedClosedAlerts.map(alert => (
+                              <TradeAlertCard
+                                key={alert.id} 
+                                alert={alert}
+                                onStatusUpdate={handleStatusUpdate} 
+                                isAdmin={user?.access_level === 'admin' || user?.role === 'admin'}
+                                isRecentClosure={true}
+                              />
+                          ))}
+                      </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-8 h-8 text-secondary/50">🔒</div>
+                      </div>
+                      <h3 className="text-xl font-semibold text-primary mb-2">No Closed Trades</h3>
+                      <p className="text-secondary">Completed trades will be shown here for reference.</p>
+                    </div>
+                  )}
+              </div>
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-export default SignalStream;
+}

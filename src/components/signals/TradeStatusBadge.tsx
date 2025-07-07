@@ -1,8 +1,19 @@
+
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Check, X, Target, TrendingUp, Hourglass } from 'lucide-react';
 
-export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }) {
+interface TradeStatusBadgeProps {
+  alert: {
+    status: string;
+    tp_hits?: number[];
+    close_reason?: string;
+  };
+  updatedDate?: string;
+  isRecentClosure?: boolean;
+}
+
+export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }: TradeStatusBadgeProps) {
     const hitTPs = alert.tp_hits || [];
     const isActive = alert.status === 'active';
     const isPending = alert.status === 'pending';

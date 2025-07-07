@@ -1,7 +1,13 @@
+
 import React from 'react';
 import { Crown } from 'lucide-react';
 
-export default function Certificate({ studentName, courseName }) {
+interface CertificateProps {
+  studentName: string;
+  courseName: string;
+}
+
+export default function Certificate({ studentName, courseName }: CertificateProps) {
     return (
         <div className="p-4 bg-surface rounded-lg border border-accent-gold/50 relative overflow-hidden">
             <div className="absolute -top-4 -right-4 w-16 h-16 text-accent-gold/20">

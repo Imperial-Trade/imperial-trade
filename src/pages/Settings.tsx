@@ -424,7 +424,7 @@ export default function Settings() {
                 {/* Save Button */}
                 <Button
                   onClick={handleSave}
-                  disabled={isSaving || !displayName.trim() || displayName.trim() === user?.full_name}
+                  disabled={isSaving || !displayName.trim() || displayName.trim() === user?.user_metadata?.full_name}
                   className="bg-accent-green hover:bg-green-500 text-white font-semibold"
                 >
                   {isSaving ? (

@@ -1,13 +1,30 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Check, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function QuickCopyPanel({ alert }) {
-  const [copiedItem, setCopiedItem] = useState(null);
+interface Alert {
+  asset_name: string;
+  trade_type: 'buy' | 'sell';
+  entry_price: number;
+  stop_loss: number;
+  tp1?: number;
+  tp2?: number;
+  tp3?: number;
+  tp4?: number;
+  tp5?: number;
+}
+
+interface QuickCopyPanelProps {
+  alert: Alert;
+}
+
+export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
+  const [copiedItem, setCopiedItem] = useState<string | null>(null);
   
-  const copyToClipboard = async (text, itemName) => {
+  const copyToClipboard = async (text: string, itemName: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedItem(itemName);
@@ -24,9 +41,9 @@ export default function QuickCopyPanel({ alert }) {
     { label: 'TP3', value: alert.tp3 },
     { label: 'TP4', value: alert.tp4 },
     { label: 'TP5', value: alert.tp5 }
-  ].filter(tp => tp.value);
+  ].filter(tp => tp.value !== undefined) as { label: string; value: number }[];
 
-  const CopyButton = ({ value, label, variant = "outline" }) => (
+  const CopyButton = ({ value, label, variant = "outline" }: { value: number; label: string; variant?: "outline" | "default" | "destructive" | "secondary" | "ghost" }) => (
     <Button
       variant={variant}
       size="sm"

@@ -17,38 +17,217 @@ export class BaseEntity {
     }
     return user.email;
   }
+}
 
-  static async genericList(tableName: string, orderBy: string = '-created_at') {
-    const [direction, column] = orderBy.startsWith('-') 
-      ? ['desc', orderBy.slice(1)] 
-      : ['asc', orderBy];
-    
+// Create concrete entity classes that were missing from exports
+export class MarketAlert {
+  static async list(userId: string) {
     const { data, error } = await supabase
-      .from(tableName)
+      .from('market_alerts')
       .select('*')
-      .order(column, { ascending: direction === 'asc' });
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
     
     if (error) throw error;
     return data;
   }
 
-  static async genericCreate(tableName: string, createData: any) {
-    const userId = await this.getCurrentUserId();
+  static async create(alertData: any, userId: string) {
     const { data, error } = await supabase
-      .from(tableName)
-      .insert([{ ...createData, user_id: userId }])
+      .from('market_alerts')
+      .insert([{ ...alertData, user_id: userId }])
       .select()
       .single();
     
     if (error) throw error;
     return data;
   }
+}
 
-  static async genericGetById(tableName: string, id: string) {
+export class OpportunitySignal {
+  static async list(userId: string) {
     const { data, error } = await supabase
-      .from(tableName)
+      .from('opportunity_signals')
       .select('*')
-      .eq('id', id)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(signalData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('opportunity_signals')
+      .insert([{ ...signalData, user_id: userId }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class RiskSimulation {
+  static async list(userId: string) {
+    const { data, error } = await supabase
+      .from('risk_simulations')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(simulationData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('risk_simulations')
+      .insert([{ ...simulationData, user_id: userId }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class TradeJournalEntry {
+  static async list(userId: string) {
+    const { data, error } = await supabase
+      .from('trade_journal_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(entryData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('trade_journal_entries')
+      .insert([{ ...entryData, user_id: userId }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class TradingStrategy {
+  static async list(userId: string) {
+    const { data, error } = await supabase
+      .from('trading_strategies')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(strategyData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('trading_strategies')
+      .insert([{ ...strategyData, user_id: userId }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class TradingGroup {
+  static async list(userId: string) {
+    const { data, error } = await supabase
+      .from('trading_groups')
+      .select('*')
+      .eq('created_by', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(groupData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('trading_groups')
+      .insert([{ ...groupData, created_by: userId }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class GroupJournalEntry {
+  static async list(userId: string) {
+    const { data, error } = await supabase
+      .from('group_journal_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(entryData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('group_journal_entries')
+      .insert([{ ...entryData, user_id: userId }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class VerifiedTrader {
+  static async list() {
+    const { data, error } = await supabase
+      .from('verified_traders')
+      .select('*')
+      .order('rank_position', { ascending: true });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(traderData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('verified_traders')
+      .insert([{ ...traderData, user_id: userId }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+}
+
+export class TradeHistory {
+  static async list(userId: string) {
+    const { data, error } = await supabase
+      .from('trade_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return data;
+  }
+
+  static async create(historyData: any, userId: string) {
+    const { data, error } = await supabase
+      .from('trade_history')
+      .insert([{ ...historyData, user_id: userId }])
+      .select()
       .single();
     
     if (error) throw error;

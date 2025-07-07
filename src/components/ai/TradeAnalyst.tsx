@@ -4,17 +4,36 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Brain, Upload, FileText, TrendingUp, AlertTriangle, Camera, X, Plus } from 'lucide-react';
-// import { UploadFile, InvokeLLM } from '@/api/integrations';
-// import { TradeHistory } from '@/api/entities';
+import { hasProperty, isFile } from '@/lib/utils';
+
+interface UploadedFile {
+  name: string;
+  url: string;
+  type: string;
+}
+
+interface AnalysisResult {
+  overall_analysis: string;
+  screenshots_analyzed: number;
+  total_trades_identified: number;
+  overall_performance: string;
+  consistency_analysis: string;
+  key_insights: string[];
+  risk_management_score: number;
+  recommendations: string[];
+  strengths: string[];
+  areas_for_improvement: string[];
+  performance_evolution: string;
+}
 
 export default function TradeAnalyst() {
-  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState('');
 
-  const handleFileUpload = async (event) => {
-    const files = Array.from(event.target.files);
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
     // Check if all files are images
@@ -34,7 +53,7 @@ export default function TradeAnalyst() {
       setError('');
       
       // Mock file upload - create object URLs for preview
-      const newFiles = files.map(file => ({
+      const newFiles: UploadedFile[] = files.map(file => ({
         name: file.name,
         url: URL.createObjectURL(file),
         type: file.type
@@ -46,7 +65,7 @@ export default function TradeAnalyst() {
     }
   };
 
-  const removeFile = (indexToRemove) => {
+  const removeFile = (indexToRemove: number) => {
     const fileToRemove = uploadedFiles[indexToRemove];
     if (fileToRemove.url.startsWith('blob:')) {
       URL.revokeObjectURL(fileToRemove.url);
@@ -62,7 +81,7 @@ export default function TradeAnalyst() {
 
     try {
       // Mock analysis result
-      const mockResult = {
+      const mockResult: AnalysisResult = {
         overall_analysis: "Based on the uploaded screenshots, your trading shows a balanced approach with good risk management practices. Most trades appear to follow a consistent strategy.",
         screenshots_analyzed: uploadedFiles.length,
         total_trades_identified: Math.floor(Math.random() * 20) + 10,

@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, TrendingDown, AlertTriangle, Target } from 'lucide-react';
-import { InvokeLLM } from '@/api/integrations';
-import { RiskSimulation } from '@/api/entities';
 
 export default function RiskSimulator() {
   const [tradeParams, setTradeParams] = useState({
@@ -34,56 +32,26 @@ export default function RiskSimulator() {
     setError('');
 
     try {
-      const simulationPrompt = `
-        You are an expert risk analyst. Analyze the following trade setup and provide a detailed risk assessment:
+      // Mock simulation result instead of API call
+      const mockResult = {
+        risk_reward_ratio: Math.random() * 3 + 1,
+        stop_loss_probability: Math.floor(Math.random() * 30) + 20,
+        take_profit_probability: Math.floor(Math.random() * 40) + 40,
+        volatility_assessment: "Medium volatility expected based on current market conditions",
+        position_sizing_feedback: "Position size appears appropriate for the account risk level",
+        overall_risk_score: Math.floor(Math.random() * 6) + 3,
+        recommendations: [
+          "Consider tightening stop loss for better risk management",
+          "Monitor market volatility around key economic events",
+          "Ensure position size aligns with overall portfolio risk"
+        ],
+        market_conditions: "Markets showing mixed signals with moderate volatility"
+      };
 
-        Instrument: ${tradeParams.instrument}
-        Entry Price: ${tradeParams.entry_price}
-        Stop Loss: ${tradeParams.stop_loss}
-        Take Profit: ${tradeParams.take_profit}
-        Position Size: ${tradeParams.position_size}
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-        Analyze:
-        1. Risk-to-reward ratio
-        2. Probability of reaching stop loss vs take profit
-        3. Historical volatility impact
-        4. Market condition assessment
-        5. Position sizing appropriateness
-        6. Overall risk assessment and recommendations
-
-        Provide specific percentages and actionable insights.
-      `;
-
-      const result = await InvokeLLM({
-        prompt: simulationPrompt,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            risk_reward_ratio: { type: "number" },
-            stop_loss_probability: { type: "number" },
-            take_profit_probability: { type: "number" },
-            volatility_assessment: { type: "string" },
-            position_sizing_feedback: { type: "string" },
-            overall_risk_score: { type: "number" },
-            recommendations: { type: "array", items: { type: "string" } },
-            market_conditions: { type: "string" }
-          }
-        }
-      });
-
-      // Save simulation to database
-      await RiskSimulation.create({
-        ...tradeParams,
-        entry_price: parseFloat(tradeParams.entry_price),
-        stop_loss: parseFloat(tradeParams.stop_loss),
-        take_profit: parseFloat(tradeParams.take_profit),
-        position_size: parseFloat(tradeParams.position_size),
-        probability_analysis: JSON.stringify(result),
-        risk_reward_ratio: result.risk_reward_ratio
-      });
-
-      setSimulationResult(result);
+      setSimulationResult(mockResult);
     } catch (error) {
       setError('Simulation failed. Please check your inputs and try again.');
     }
@@ -108,7 +76,7 @@ export default function RiskSimulator() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calculator className="w-6 h-6 text-orange-400" />
-          AI Risk Simulator
+          AI Risk Simulator (Mock Mode)
         </CardTitle>
         <p className="text-secondary">
           Simulate your trade setup and get AI-powered risk analysis before entering the market
@@ -184,7 +152,7 @@ export default function RiskSimulator() {
           ) : (
             <>
               <Calculator className="w-5 h-5 mr-2" />
-              Simulate Risk
+              Simulate Risk (Mock)
             </>
           )}
         </Button>
@@ -198,7 +166,7 @@ export default function RiskSimulator() {
         {/* Simulation Results */}
         {simulationResult && (
           <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-primary">Risk Analysis Results</h3>
+            <h3 className="text-xl font-semibold text-primary">Risk Analysis Results (Mock Data)</h3>
             
             {/* Risk Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

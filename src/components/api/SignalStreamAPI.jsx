@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { OpportunitySignal } from '@/api/entities';
 import { Code, Database, Zap, Plus } from 'lucide-react';
 
 export default function SignalStreamAPI() {
@@ -18,57 +17,98 @@ export default function SignalStreamAPI() {
     time_frame: '4H'
   });
 
-  // API Examples - these are the actual functions you can use
+  // Mock data for testing
+  const mockSignals = [
+    {
+      id: 1,
+      instrument: 'EUR/USD',
+      signal_type: 'breakout',
+      description: 'Strong bullish breakout above resistance',
+      probability: 85,
+      key_levels: [1.0850, 1.0820, 1.0950],
+      time_frame: '4H',
+      status: 'active'
+    },
+    {
+      id: 2,
+      instrument: 'GBP/USD',
+      signal_type: 'reversal',
+      description: 'Potential reversal at key support level',
+      probability: 72,
+      key_levels: [1.2750, 1.2700, 1.2800],
+      time_frame: '1H',
+      status: 'active'
+    }
+  ];
+
+  // API Examples - now using mock data
   const apiExamples = {
     // Get all signals
     getAllSignals: async () => {
-      return await OpportunitySignal.list('-created_date', 50);
+      return mockSignals;
     },
 
     // Get signals by type
     getSignalsByType: async (type) => {
-      return await OpportunitySignal.filter({ signal_type: type }, '-created_date', 20);
+      return mockSignals.filter(signal => signal.signal_type === type);
     },
 
     // Get active signals only
     getActiveSignals: async () => {
-      return await OpportunitySignal.filter({ status: 'active' }, '-created_date', 30);
+      return mockSignals.filter(signal => signal.status === 'active');
     },
 
     // Get signals for specific instrument
     getInstrumentSignals: async (instrument) => {
-      return await OpportunitySignal.filter({ instrument: instrument }, '-created_date', 10);
+      return mockSignals.filter(signal => signal.instrument === instrument);
     },
 
     // Create new signal
     createSignal: async (signalData) => {
-      return await OpportunitySignal.create(signalData);
+      const newId = Math.max(...mockSignals.map(s => s.id)) + 1;
+      const newSignal = { ...signalData, id: newId, status: 'active' };
+      mockSignals.push(newSignal);
+      return newSignal;
     },
 
     // Update signal
     updateSignal: async (id, updateData) => {
-      return await OpportunitySignal.update(id, updateData);
+      const index = mockSignals.findIndex(s => s.id === id);
+      if (index !== -1) {
+        mockSignals[index] = { ...mockSignals[index], ...updateData };
+        return mockSignals[index];
+      }
+      return null;
     },
 
     // Delete signal
     deleteSignal: async (id) => {
-      return await OpportunitySignal.delete(id);
+      const index = mockSignals.findIndex(s => s.id === id);
+      if (index !== -1) {
+        return mockSignals.splice(index, 1)[0];
+      }
+      return null;
     },
 
     // Bulk create signals
     bulkCreateSignals: async (signalsArray) => {
-      return await OpportunitySignal.bulkCreate(signalsArray);
+      const newSignals = signalsArray.map((signal, index) => ({
+        ...signal,
+        id: Math.max(...mockSignals.map(s => s.id)) + index + 1,
+        status: 'active'
+      }));
+      mockSignals.push(...newSignals);
+      return newSignals;
     },
 
     // Get high probability signals (80%+)
     getHighProbabilitySignals: async () => {
-      const allSignals = await OpportunitySignal.list('-created_date', 100);
-      return allSignals.filter(signal => signal.probability >= 80);
+      return mockSignals.filter(signal => signal.probability >= 80);
     },
 
     // Get signals by time frame
     getSignalsByTimeFrame: async (timeFrame) => {
-      return await OpportunitySignal.filter({ time_frame: timeFrame }, '-created_date', 20);
+      return mockSignals.filter(signal => signal.time_frame === timeFrame);
     }
   };
 
@@ -129,7 +169,7 @@ export default function SignalStreamAPI() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-primary">
             <Database className="w-6 h-6 text-accent-green" />
-            Signal Stream API Documentation
+            Signal Stream API Documentation (Mock Mode)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -143,7 +183,7 @@ export default function SignalStreamAPI() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <code className="text-sm text-accent-green">{methodName}()</code>
-                      <Badge variant="outline" className="text-xs">Method</Badge>
+                      <Badge variant="outline" className="text-xs">Mock</Badge>
                     </div>
                     <p className="text-xs text-secondary">
                       {methodName.includes('get') ? 'Fetches' : methodName.includes('create') ? 'Creates' : methodName.includes('update') ? 'Updates' : 'Deletes'} signal data
@@ -212,7 +252,7 @@ export default function SignalStreamAPI() {
             </div>
             <Button onClick={createTestSignal} disabled={isLoading} className="mt-4 bg-accent-green hover:bg-green-500">
               <Plus className="w-4 h-4 mr-2" />
-              Create Signal
+              Create Signal (Mock)
             </Button>
           </div>
 
@@ -221,22 +261,15 @@ export default function SignalStreamAPI() {
             <h3 className="text-xl font-semibold text-primary mb-4">Code Examples</h3>
             <Card className="bg-background border-default">
               <CardContent className="p-4">
-                <pre className="text-sm overflow-x-auto text-accent-green">
-{`// Import the entity
-import { OpportunitySignal } from '@/api/entities';
-
-// Get all signals
-const signals = await OpportunitySignal.list('-created_date', 50);
+                <pre className="text-xs overflow-x-auto text-accent-green">
+{`// Mock API usage examples
+const signals = await mockApiExamples.getAllSignals();
 
 // Filter by type
-const breakoutSignals = await OpportunitySignal.filter(
-  { signal_type: 'breakout' }, 
-  '-created_date', 
-  20
-);
+const breakoutSignals = await mockApiExamples.getSignalsByType('breakout');
 
 // Create new signal
-const newSignal = await OpportunitySignal.create({
+const newSignal = await mockApiExamples.createSignal({
   instrument: 'EUR/USD',
   signal_type: 'breakout',
   description: 'Strong breakout pattern',
@@ -246,7 +279,7 @@ const newSignal = await OpportunitySignal.create({
 });
 
 // Update signal
-await OpportunitySignal.update(signalId, { 
+await mockApiExamples.updateSignal(signalId, { 
   status: 'triggered' 
 });`}
                 </pre>
@@ -257,7 +290,7 @@ await OpportunitySignal.update(signalId, {
           {/* Test Results */}
           {testResult && (
             <div>
-              <h3 className="text-xl font-semibold text-primary mb-4">API Test Results</h3>
+              <h3 className="text-xl font-semibold text-primary mb-4">API Test Results (Mock)</h3>
               <Card className={`border-default ${testResult.success ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
                 <CardContent className="p-4">
                   {testResult.success ? (
@@ -267,7 +300,7 @@ await OpportunitySignal.update(signalId, {
                       </p>
                       {testResult.data && (
                         <pre className="text-xs overflow-x-auto bg-surface p-2 rounded">
-                          {JSON.stringify(testResult.data.slice(0, 2), null, 2)}
+                          {JSON.stringify(Array.isArray(testResult.data) ? testResult.data.slice(0, 2) : testResult.data, null, 2)}
                         </pre>
                       )}
                     </div>

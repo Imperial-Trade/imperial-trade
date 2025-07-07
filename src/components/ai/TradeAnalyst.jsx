@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Brain, Upload, FileText, TrendingUp, AlertTriangle, Camera, X, Plus } from 'lucide-react';
-import { UploadFile, InvokeLLM } from '@/api/integrations';
-import { TradeHistory } from '@/api/entities';
+// import { UploadFile, InvokeLLM } from '@/api/integrations';
+// import { TradeHistory } from '@/api/entities';
 
 export default function TradeAnalyst() {
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -32,12 +32,14 @@ export default function TradeAnalyst() {
 
     try {
       setError('');
-      const uploadPromises = files.map(async (file) => {
-        const { file_url } = await UploadFile({ file });
-        return { name: file.name, url: file_url, type: file.type };
-      });
+      
+      // Mock file upload - create object URLs for preview
+      const newFiles = files.map(file => ({
+        name: file.name,
+        url: URL.createObjectURL(file),
+        type: file.type
+      }));
 
-      const newFiles = await Promise.all(uploadPromises);
       setUploadedFiles(prev => [...prev, ...newFiles]);
     } catch (error) {
       setError('Failed to upload screenshots. Please try again.');
@@ -45,6 +47,10 @@ export default function TradeAnalyst() {
   };
 
   const removeFile = (indexToRemove) => {
+    const fileToRemove = uploadedFiles[indexToRemove];
+    if (fileToRemove.url.startsWith('blob:')) {
+      URL.revokeObjectURL(fileToRemove.url);
+    }
     setUploadedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
@@ -55,72 +61,46 @@ export default function TradeAnalyst() {
     setError('');
 
     try {
-      const analysisPrompt = `
-        You are an expert trading performance analyst. Analyze the uploaded trading platform screenshots and provide comprehensive, detailed insights.
+      // Mock analysis result
+      const mockResult = {
+        overall_analysis: "Based on the uploaded screenshots, your trading shows a balanced approach with good risk management practices. Most trades appear to follow a consistent strategy.",
+        screenshots_analyzed: uploadedFiles.length,
+        total_trades_identified: Math.floor(Math.random() * 20) + 10,
+        overall_performance: "Positive performance with consistent profit-taking and controlled losses",
+        consistency_analysis: "Your trading approach shows good consistency across different time periods, with similar position sizing and risk management",
+        key_insights: [
+          "Strong adherence to stop-loss levels",
+          "Consistent position sizing across trades",
+          "Good profit-taking discipline",
+          "Balanced mix of winning and losing trades"
+        ],
+        risk_management_score: Math.floor(Math.random() * 3) + 7,
+        recommendations: [
+          "Consider increasing position size on higher probability setups",
+          "Track your win rate more systematically",
+          "Consider using trailing stops on winning positions",
+          "Document your trading rationale for each setup"
+        ],
+        strengths: [
+          "Disciplined risk management",
+          "Consistent trading approach",
+          "Good emotional control visible in trade execution",
+          "Appropriate position sizing"
+        ],
+        areas_for_improvement: [
+          "Could optimize entry timing",
+          "Consider diversifying across more instruments",
+          "Track performance metrics more systematically"
+        ],
+        performance_evolution: "Your trading approach appears to be evolving positively with improved discipline over time"
+      };
 
-        I have uploaded ${uploadedFiles.length} screenshot(s) of my trading platform. Please analyze ALL screenshots together to get a complete picture of my trading performance.
+      // Simulate analysis delay
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
-        Look for and analyze across all screenshots:
-        1. Individual trade details (entry/exit prices, P&L, lot sizes, instruments)
-        2. Overall win rate and profit/loss patterns across all visible trades
-        3. Risk management consistency (position sizing, stop losses, risk-reward ratios)
-        4. Trading instruments and market exposure diversity
-        5. Time-based patterns if timestamps are visible across sessions
-        6. Account balance progression and equity management
-        7. Behavioral patterns and psychological insights
-        8. Performance differences between different time periods or sessions
-        9. Consistency in trading approach across different screenshots
-
-        Provide specific observations from what you can see across ALL screenshots and give actionable recommendations for improvement.
-
-        Focus on:
-        - Overall trading performance summary across all screenshots
-        - Consistency patterns between different sessions/periods
-        - What they're doing well consistently
-        - Areas for improvement based on multiple data points
-        - Specific risk management suggestions
-        - Position sizing recommendations
-        - Market timing observations
-        - Evolution or changes in trading approach if visible
-      `;
-
-      const fileUrls = uploadedFiles.map(file => file.url);
-
-      const result = await InvokeLLM({
-        prompt: analysisPrompt,
-        file_urls: fileUrls,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            overall_analysis: { type: "string" },
-            screenshots_analyzed: { type: "number" },
-            total_trades_identified: { type: "number" },
-            overall_performance: { type: "string" },
-            consistency_analysis: { type: "string" },
-            key_insights: { type: "array", items: { type: "string" } },
-            risk_management_score: { type: "number" },
-            recommendations: { type: "array", items: { type: "string" } },
-            strengths: { type: "array", items: { type: "string" } },
-            areas_for_improvement: { type: "array", items: { type: "string" } },
-            performance_evolution: { type: "string" }
-          }
-        }
-      });
-
-      // Save analysis to database with all file URLs
-      await TradeHistory.create({
-        file_url: JSON.stringify(fileUrls), // Store multiple URLs as JSON
-        analysis_result: JSON.stringify(result),
-        status: 'analyzed'
-      });
-
-      setAnalysisResult(result);
+      setAnalysisResult(mockResult);
     } catch (error) {
       setError('Analysis failed. Please ensure your screenshots show trading data clearly.');
-      await TradeHistory.create({
-        file_url: JSON.stringify(uploadedFiles.map(f => f.url)),
-        status: 'error'
-      });
     }
 
     setIsAnalyzing(false);
@@ -131,13 +111,28 @@ export default function TradeAnalyst() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Brain className="w-6 h-6 text-purple-400" />
-          AI Trade Analyst - "The Deconstructor"
+          AI Trade Analyst - "The Deconstructor" (Mock Mode)
         </CardTitle>
         <p className="text-secondary">
           Upload multiple screenshots of your trading platform for comprehensive AI analysis of your performance
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Mock Mode Warning */}
+        <div className="p-4 bg-accent-red/10 border border-accent-red/20 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-accent-red mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-accent-red mb-1">Demo Mode Active</h4>
+              <p className="text-sm text-secondary">
+                This is a demonstration version. Analysis results are simulated for testing purposes.
+                <br />
+                <span className="text-accent-red">Upload real screenshots to see the interface in action.</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* File Upload */}
         <div className="border-2 border-dashed border-default rounded-lg p-6 text-center">
           <Camera className="w-12 h-12 text-secondary mx-auto mb-4" />
@@ -223,7 +218,7 @@ export default function TradeAnalyst() {
           ) : (
             <>
               <Brain className="w-5 h-5 mr-2" />
-              Analyze My Trading Performance
+              Analyze My Trading Performance (Mock)
               {uploadedFiles.length > 0 && ` (${uploadedFiles.length} screenshots)`}
             </>
           )}
@@ -238,7 +233,7 @@ export default function TradeAnalyst() {
         {/* Analysis Results */}
         {analysisResult && (
           <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-primary">Comprehensive Analysis Results</h3>
+            <h3 className="text-xl font-semibold text-primary">Comprehensive Analysis Results (Mock Data)</h3>
             
             {/* Overall Analysis */}
             <Card className="bg-surface/50">
@@ -256,6 +251,9 @@ export default function TradeAnalyst() {
                   )}
                   <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20">
                     {analysisResult.screenshots_analyzed} screenshots analyzed
+                  </Badge>
+                  <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
+                    Mock Analysis
                   </Badge>
                 </div>
               </CardContent>

@@ -1,19 +1,68 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, TrendingUp, Calendar, Clock, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { InvokeLLM } from '@/api/integrations';
-import { OpportunitySignal } from '@/api/entities';
-import { getMarketData } from '@/api/functions';
+// import { InvokeLLM } from '@/api/integrations';
+// import { OpportunitySignal } from '@/api/entities';
+// import { getMarketData } from '@/api/functions';
 
 export default function OpportunityScanner() {
   const [signals, setSignals] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
   const [lastScan, setLastScan] = useState(null);
   const [marketData, setMarketData] = useState(null);
-  const [dataStatus, setDataStatus] = useState('checking');
+  const [dataStatus, setDataStatus] = useState('mock');
+
+  // Mock data
+  const mockSignals = [
+    {
+      id: 1,
+      instrument: 'EUR/USD',
+      current_price: 1.0850,
+      signal_type: 'breakout',
+      description: 'Strong bullish breakout above 1.0830 resistance. Price action showing momentum continuation.',
+      probability: 85,
+      key_levels: [1.0830, 1.0780, 1.0900],
+      time_frame: '4H',
+      entry_trigger: 'Break above 1.0860 with volume',
+      risk_reward: 2.5,
+      status: 'active'
+    },
+    {
+      id: 2,
+      instrument: 'GBP/USD',
+      current_price: 1.2750,
+      signal_type: 'reversal',
+      description: 'Potential reversal at key support level. RSI showing oversold conditions.',
+      probability: 72,
+      key_levels: [1.2700, 1.2650, 1.2820],
+      time_frame: '1H',
+      entry_trigger: 'Bounce from 1.2700 support',
+      risk_reward: 1.8,
+      status: 'active'
+    },
+    {
+      id: 3,
+      instrument: 'Gold',
+      current_price: 2055.0,
+      signal_type: 'pattern',
+      description: 'Ascending triangle pattern completion. Bullish momentum building.',
+      probability: 78,
+      key_levels: [2050.0, 2040.0, 2070.0],
+      time_frame: '4H',
+      entry_trigger: 'Break above 2060 resistance',
+      risk_reward: 3.0,
+      status: 'active'
+    }
+  ];
+
+  const mockMarketData = {
+    'EUR/USD': 1.0850,
+    'GBP/USD': 1.2750,
+    'Gold': 2055.0,
+    'XAU/USD': 2055.0
+  };
 
   useEffect(() => {
     loadSignals();
@@ -21,118 +70,44 @@ export default function OpportunityScanner() {
   }, []);
 
   const checkMarketDataAvailability = async () => {
-    try {
-      // The API requires a list of symbols to check. We check a common symbol
-      // to determine if the price feed service is live.
-      const priceData = await getMarketData({ symbols: ['XAU/USD'] });
-      if (priceData?.data?.prices && Object.keys(priceData.data.prices).length > 0) {
-        setMarketData(priceData.data.prices);
-        setDataStatus('live');
-      } else {
-        setDataStatus('limited');
-      }
-    } catch (error) {
-      console.error('Market data check failed:', error);
-      setDataStatus('mock');
-    }
+    // Simulate checking market data
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setMarketData(mockMarketData);
+    setDataStatus('mock');
   };
 
   const loadSignals = async () => {
-    try {
-      const fetchedSignals = await OpportunitySignal.list('-created_date', 10);
-      setSignals(fetchedSignals.filter(s => s.status === 'active'));
-    } catch (error) {
-      console.error('Error loading signals:', error);
-    }
+    // Use mock data instead of API
+    setSignals(mockSignals.filter(s => s.status === 'active'));
   };
 
   const scanForOpportunities = async () => {
     setIsScanning(true);
 
     try {
-      let scanPrompt = `
-        You are an expert market analyst. Based on current market conditions, identify high-probability trading opportunities.
+      // Simulate scanning delay
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
-        CURRENT MARKET DATA:
-        ${marketData ? `Live Prices: ${JSON.stringify(marketData)}` : 'Using general market analysis'}
-        
-        Analysis Framework:
-        1. Major forex pairs (EUR/USD, GBP/USD, USD/JPY, AUD/USD, USD/CAD)
-        2. Major indices (S&P 500, NASDAQ, FTSE, DAX)
-        3. Commodities (Gold, Silver, Oil, Copper)
-        4. Cryptocurrencies (Bitcoin, Ethereum)
-
-        For each opportunity, consider:
-        - Current price action and momentum
-        - Key support/resistance levels
-        - Economic events impact
-        - Market sentiment
-        - Volume confirmation
-
-        Provide 3-5 HIGH-QUALITY opportunities with detailed analysis.
-      `;
-
-      // Enhanced prompt with real market context
-      if (dataStatus === 'live') {
-        scanPrompt += `
-        
-        REAL-TIME PRICE ANALYSIS:
-        Use the provided live price data to identify:
-        - Breakout opportunities
-        - Reversal patterns at key levels
-        - Momentum shifts
-        - Cross-asset correlations
-        `;
-      }
-
-      const result = await InvokeLLM({
-        prompt: scanPrompt,
-        add_context_from_internet: true,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            market_context: {
-              type: "string",
-              description: "Current overall market sentiment and conditions"
-            },
-            data_sources: {
-              type: "array",
-              items: { type: "string" },
-              description: "Sources of data used for analysis"
-            },
-            opportunities: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  instrument: { type: "string" },
-                  current_price: { type: "number" },
-                  signal_type: { type: "string" },
-                  description: { type: "string" },
-                  probability: { type: "number" },
-                  key_levels: { type: "array", items: { type: "number" } },
-                  time_frame: { type: "string" },
-                  entry_trigger: { type: "string" },
-                  risk_reward: { type: "number" }
-                }
-              }
-            }
-          }
+      // Generate additional mock opportunities
+      const newOpportunities = [
+        {
+          id: Date.now(),
+          instrument: 'USD/JPY',
+          current_price: 148.50,
+          signal_type: 'momentum',
+          description: 'Strong bullish momentum continuation. Breaking key resistance levels.',
+          probability: 82,
+          key_levels: [148.00, 147.50, 149.20],
+          time_frame: '1H',
+          entry_trigger: 'Break above 148.80',
+          risk_reward: 2.2,
+          status: 'active'
         }
-      });
+      ];
 
-      // Save new signals to database with enhanced metadata
-      for (const opp of result.opportunities) {
-        await OpportunitySignal.create({
-          ...opp,
-          data_source: dataStatus,
-          market_context: result.market_context,
-          expiry_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-        });
-      }
-
+      // Add new opportunities to existing signals
+      setSignals(prev => [...prev, ...newOpportunities]);
       setLastScan(new Date());
-      loadSignals();
     } catch (error) {
       console.error('Error scanning for opportunities:', error);
     }
@@ -158,32 +133,11 @@ export default function OpportunityScanner() {
   };
 
   const getDataStatusInfo = () => {
-    switch (dataStatus) {
-      case 'live':
-        return {
-          icon: <CheckCircle2 className="w-4 h-4 text-accent-green" />,
-          text: 'Live Market Data Active',
-          color: 'text-accent-green'
-        };
-      case 'limited':
-        return {
-          icon: <AlertCircle className="w-4 h-4 text-accent-gold" />,
-          text: 'Limited Market Data',
-          color: 'text-accent-gold'
-        };
-      case 'mock':
-        return {
-          icon: <AlertCircle className="w-4 h-4 text-accent-red" />,
-          text: 'Using Simulated Data',
-          color: 'text-accent-red'
-        };
-      default:
-        return {
-          icon: <Clock className="w-4 h-4 text-secondary" />,
-          text: 'Checking Data Sources...',
-          color: 'text-secondary'
-        };
-    }
+    return {
+      icon: <AlertCircle className="w-4 h-4 text-accent-red" />,
+      text: 'Using Mock Data',
+      color: 'text-accent-red'
+    };
   };
 
   const statusInfo = getDataStatusInfo();
@@ -195,7 +149,7 @@ export default function OpportunityScanner() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Search className="w-6 h-6 text-blue-400" />
-              AI Opportunity Scanner - "The Signal Finder"
+              AI Opportunity Scanner - "The Signal Finder" (Mock Mode)
             </CardTitle>
             <p className="text-secondary mt-2">
               AI-powered market analysis identifying high-probability trading setups
@@ -207,9 +161,9 @@ export default function OpportunityScanner() {
               <span className={`text-sm ${statusInfo.color}`}>
                 {statusInfo.text}
               </span>
-              {dataStatus === 'live' && marketData && (
-                <Badge variant="outline" className="text-xs border-accent-green text-accent-green">
-                  {Object.keys(marketData).length} assets tracked
+              {dataStatus === 'mock' && marketData && (
+                <Badge variant="outline" className="text-xs border-accent-red text-accent-red">
+                  {Object.keys(marketData).length} mock assets
                 </Badge>
               )}
             </div>
@@ -228,7 +182,7 @@ export default function OpportunityScanner() {
               ) : (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Scan Markets
+                  Scan Markets (Mock)
                 </>
               )}
             </Button>
@@ -250,21 +204,19 @@ export default function OpportunityScanner() {
         )}
       </CardHeader>
       <CardContent>
-        {dataStatus === 'mock' && (
-          <div className="mb-6 p-4 bg-accent-red/10 border border-accent-red/20 rounded-lg">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-accent-red mt-0.5" />
-              <div>
-                <h4 className="font-semibold text-accent-red mb-1">Demo Mode Active</h4>
-                <p className="text-sm text-secondary">
-                  Currently showing simulated market opportunities. Connect real market data feeds for live analysis.
-                  <br />
-                  <span className="text-accent-red">Note: Do not trade based on demo signals.</span>
-                </p>
-              </div>
+        <div className="mb-6 p-4 bg-accent-red/10 border border-accent-red/20 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-accent-red mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-accent-red mb-1">Demo Mode Active</h4>
+              <p className="text-sm text-secondary">
+                Currently showing simulated market opportunities. Connect real market data feeds for live analysis.
+                <br />
+                <span className="text-accent-red">Note: Do not trade based on demo signals.</span>
+              </p>
             </div>
           </div>
-        )}
+        </div>
 
         {signals.length === 0 ? (
           <div className="text-center py-8">
@@ -300,12 +252,10 @@ export default function OpportunityScanner() {
                       <Badge variant="outline" className="border-default text-secondary mb-2">
                         {signal.time_frame}
                       </Badge>
-                      {dataStatus !== 'mock' && (
-                        <div className="flex items-center gap-1 text-xs text-accent-green">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Live Data
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1 text-xs text-accent-red">
+                        <AlertCircle className="w-3 h-3" />
+                        Mock Data
+                      </div>
                     </div>
                   </div>
                   

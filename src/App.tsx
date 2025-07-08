@@ -6,16 +6,23 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import NotificationSystem from "@/components/notifications/NotificationSystem";
 import Pages from "./pages/Pages";
 import "./styles/education.css";
+import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <NotificationSystem />
-      <Pages />
+      <ErrorBoundary componentName="Toast Notifications">
+        <Toaster />
+        <Sonner />
+      </ErrorBoundary>
+      <ErrorBoundary componentName="Notification System">
+        <NotificationSystem />
+      </ErrorBoundary>
+      <ErrorBoundary componentName="Application Router">
+        <Pages />
+      </ErrorBoundary>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
 import { useAccountRequestForm } from "@/hooks/useAccountRequestForm";
 import { AccountRequest } from "@/api/entities";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
@@ -12,6 +11,7 @@ import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { StatusMessage } from "@/components/account-request/StatusMessage";
 import { AccountRequestForm } from "@/components/account-request/AccountRequestForm";
 import { PageStyles } from "@/components/account-request/PageStyles";
+import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 
 export default function AccountRequestPage() {
   const [status, setStatus] = useState({ type: "", message: "" });
@@ -35,10 +35,14 @@ export default function AccountRequestPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
-      <VideoBackground />
+      <ErrorBoundary componentName="Video Background">
+        <VideoBackground />
+      </ErrorBoundary>
 
       <div className="relative z-20 max-w-2xl w-full">
-        <BrandHeader />
+        <ErrorBoundary componentName="Brand Header">
+          <BrandHeader />
+        </ErrorBoundary>
 
         <Card className="glass-effect border-default">
           <CardHeader>
@@ -50,15 +54,19 @@ export default function AccountRequestPage() {
             </p>
           </CardHeader>
           <CardContent>
-            <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
+            <ErrorBoundary componentName="Status Message">
+              <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
+            </ErrorBoundary>
 
             {status.type !== "success" && (
-              <AccountRequestForm
-                form={form}
-                onSubmit={handleFormSubmit}
-                isSubmitting={isSubmitting}
-                canSubmit={canSubmit}
-              />
+              <ErrorBoundary componentName="Account Request Form">
+                <AccountRequestForm
+                  form={form}
+                  onSubmit={handleFormSubmit}
+                  isSubmitting={isSubmitting}
+                  canSubmit={canSubmit}
+                />
+              </ErrorBoundary>
             )}
 
             <div className="pt-4 space-y-3">
@@ -86,7 +94,9 @@ export default function AccountRequestPage() {
         </Card>
       </div>
 
-      <PageStyles />
+      <ErrorBoundary componentName="Page Styles">
+        <PageStyles />
+      </ErrorBoundary>
     </div>
   );
 }

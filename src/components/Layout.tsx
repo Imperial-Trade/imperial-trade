@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar"
 import { Crown } from "lucide-react"
 import { useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
+import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
@@ -13,9 +14,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   if (isHomePage) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-background/95">
-        <AppBar />
+        <ErrorBoundary componentName="AppBar">
+          <AppBar />
+        </ErrorBoundary>
         <main className="pt-16">
-          {children}
+          <ErrorBoundary componentName="Page Content">
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     )
@@ -26,29 +31,35 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gradient-to-br from-background via-background to-background/95">
         {/* Header */}
-        <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
-          <div className="flex items-center gap-4">
-            <SidebarTrigger className="text-primary hover:text-primary/80 transition-colors" />
-            <div className="flex items-center gap-2">
-              <Crown className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
-                IMPERIAL
-              </span>
+        <ErrorBoundary componentName="Header">
+          <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger className="text-primary hover:text-primary/80 transition-colors" />
+              <div className="flex items-center gap-2">
+                <Crown className="h-6 w-6 text-primary" />
+                <span className="text-xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
+                  IMPERIAL
+                </span>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              Market Open
+            
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                Market Open
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        </ErrorBoundary>
 
         <div className="flex w-full pt-16">
-          <AppSidebar />
+          <ErrorBoundary componentName="Sidebar">
+            <AppSidebar />
+          </ErrorBoundary>
           <main className="flex-1 overflow-auto">
-            {children}
+            <ErrorBoundary componentName="Page Content">
+              {children}
+            </ErrorBoundary>
           </main>
         </div>
       </div>

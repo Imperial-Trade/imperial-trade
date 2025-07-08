@@ -2,15 +2,15 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { createPageUrl } from "@/utils";
 import { useLoginForm } from "@/hooks/useLoginForm";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { StatusMessage } from "@/components/account-request/StatusMessage";
 import { LoginForm } from "@/components/login/LoginForm";
 import { PageStyles } from "@/components/account-request/PageStyles";
+import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 
 export default function LoginPage() {
   const [status, setStatus] = useState({ type: "", message: "" });
@@ -35,10 +35,14 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
-      <VideoBackground />
+      <ErrorBoundary componentName="Video Background">
+        <VideoBackground />
+      </ErrorBoundary>
 
       <div className="relative z-20 max-w-md w-full">
-        <BrandHeader />
+        <ErrorBoundary componentName="Brand Header">
+          <BrandHeader />
+        </ErrorBoundary>
 
         <Card className="glass-effect border-default">
           <CardHeader>
@@ -50,19 +54,23 @@ export default function LoginPage() {
             </p>
           </CardHeader>
           <CardContent>
-            <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
+            <ErrorBoundary componentName="Status Message">
+              <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
+            </ErrorBoundary>
 
             {status.type !== "success" && (
-              <LoginForm
-                form={form}
-                onSubmit={handleFormSubmit}
-                isSubmitting={isSubmitting}
-                canSubmit={canSubmit}
-              />
+              <ErrorBoundary componentName="Login Form">
+                <LoginForm
+                  form={form}
+                  onSubmit={handleFormSubmit}
+                  isSubmitting={isSubmitting}
+                  canSubmit={canSubmit}
+                />
+              </ErrorBoundary>
             )}
 
             <div className="pt-4 space-y-3">
-              <Link to="/account-request">
+              <Link to="/AccountRequest">
                 <Button
                   variant="outline"
                   className="w-full border-white/20 text-white/80 hover:bg-white/10"
@@ -86,7 +94,9 @@ export default function LoginPage() {
         </Card>
       </div>
 
-      <PageStyles />
+      <ErrorBoundary componentName="Page Styles">
+        <PageStyles />
+      </ErrorBoundary>
     </div>
   );
 }

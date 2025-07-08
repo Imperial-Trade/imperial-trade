@@ -2,8 +2,26 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { Crown } from "lucide-react"
+import { useLocation } from "react-router-dom"
+import AppBar from "@/components/layout/AppBar"
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+  const isHomePage = location.pathname === '/'
+
+  // For home page, use AppBar instead of sidebar
+  if (isHomePage) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-background/95">
+        <AppBar />
+        <main className="pt-16">
+          {children}
+        </main>
+      </div>
+    )
+  }
+
+  // For other pages, use the sidebar layout
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gradient-to-br from-background via-background to-background/95">

@@ -371,7 +371,7 @@ export default function Home() {
   const activeFeature = features[activeFeatureIndex];
 
   return (
-    <div className="bg-background text-primary w-full overflow-x-hidden">
+    <div className="bg-background text-white w-full overflow-x-hidden">
       {/* Full Screen Video Background */}
       <div className="fixed inset-0 w-screen h-screen overflow-hidden z-0">
         <video
@@ -380,7 +380,7 @@ export default function Home() {
           muted
           playsInline
           className="w-full h-full object-cover"
-          style={{ filter: "brightness(0.4)" }}
+          style={{ filter: "brightness(0.3)" }}
         >
           <source
             src="https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4"
@@ -391,7 +391,7 @@ export default function Home() {
             type="video/mp4"
           />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
       </div>
 
       {/* Hero Section */}
@@ -403,10 +403,10 @@ export default function Home() {
             </div>
           </div>
 
-          <h1 className="text-6xl lg:text-8xl font-black mb-4 uppercase text-white relative z-10">
+          <h1 className="text-6xl lg:text-8xl font-black mb-4 uppercase text-white relative z-10 drop-shadow-2xl">
             <span className="imperial-tech-font">IMPERIAL</span>
           </h1>
-          <p className="text-xl lg:text-2xl text-white mb-10 max-w-3xl mx-auto relative z-10 px-4">
+          <p className="text-xl lg:text-2xl text-white mb-10 max-w-3xl mx-auto relative z-10 px-4 drop-shadow-lg font-medium">
             Ascend to the Apex of Trading.
             <br />
             Premium Education, Live Mentorship, and Professional Partnership
@@ -416,11 +416,11 @@ export default function Home() {
 
         {/* Scroll Down Indicator */}
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10">
-          <div className="text-lg text-white/80">
+          <div className="text-lg text-white font-medium drop-shadow-md">
             Scroll to begin your journey.
           </div>
           <div className="animate-bounce mt-4 flex justify-center">
-            <ChevronDown className="w-8 h-8 text-white/80" />
+            <ChevronDown className="w-8 h-8 text-white drop-shadow-md" />
           </div>
         </div>
       </section>
@@ -465,7 +465,7 @@ export default function Home() {
                     className={`w-10 h-10 ${stat.color} mx-auto mb-3`}
                   />
                   <AnimatedCounter value={stat.value} suffix={stat.suffix} />
-                  <div className="text-sm text-secondary uppercase tracking-widest">
+                  <div className="text-sm text-white/80 uppercase tracking-widest font-medium">
                     {stat.label}
                   </div>
                 </div>
@@ -480,11 +480,11 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <ContentSection>
             <div className="text-center mb-12">
-              <h2 className="text-4xl lg:text-5xl font-bold text-primary mb-4">
+              <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4 drop-shadow-lg">
                 Your Path to{" "}
                 <span className="gold-text-gradient">Trading Mastery</span>
               </h2>
-              <p className="text-xl text-secondary max-w-3xl mx-auto">
+              <p className="text-xl text-white/90 max-w-3xl mx-auto drop-shadow-md">
                 A complete ecosystem of tools, education, and community support,
                 seamlessly integrated.
               </p>
@@ -528,14 +528,14 @@ export default function Home() {
                             className={`w-6 h-6 transition-colors duration-300 ${
                               activeFeatureIndex === index
                                 ? "text-accent-green"
-                                : "text-secondary"
+                                : "text-white/70"
                             }`}
                           />
                           <span
                             className={`font-semibold transition-colors duration-300 ${
                               activeFeatureIndex === index
-                                ? "text-primary"
-                                : "text-secondary"
+                                ? "text-white"
+                                : "text-white/70"
                             }`}
                           >
                             {feature.title}
@@ -555,17 +555,17 @@ export default function Home() {
                     <div className="w-16 h-16 bg-surface/80 rounded-2xl flex items-center justify-center mb-6 glow-effect-green">
                       <activeFeature.icon className="w-8 h-8 text-accent-green" />
                     </div>
-                    <h3 className="text-3xl lg:text-4xl font-bold text-primary mb-4">
+                    <h3 className="text-3xl lg:text-4xl font-bold text-white mb-4 drop-shadow-lg">
                       {activeFeature.title}
                     </h3>
-                    <p className="text-lg text-secondary mb-6">
+                    <p className="text-lg text-white/90 mb-6 drop-shadow-md">
                       {activeFeature.description}
                     </p>
-                    <p className="text-base text-secondary/80 italic mb-8">
+                    <p className="text-base text-white/70 italic mb-8 drop-shadow-md">
                       {activeFeature.detailedContext}
                     </p>
                     <Link to={createPageUrl(activeFeature.link)}>
-                      <Button className="bg-accent-green hover:bg-green-500 text-white font-semibold px-8 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 glow-effect-green">
+                      <Button className="bg-accent-green hover:bg-green-500 text-white font-semibold px-8 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 glow-effect-green drop-shadow-lg">
                         Explore {activeFeature.title}
                         <ArrowRight className="w-5 h-5 ml-2" />
                       </Button>
@@ -590,11 +590,11 @@ export default function Home() {
         />
         <div className="relative max-w-7xl mx-auto px-6 lg:px-12">
           <ContentSection className="text-center mb-8">
-            <h2 className="text-4xl lg:text-5xl font-bold text-primary mb-4">
+            <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4 drop-shadow-lg">
               An Arsenal of{" "}
               <span className="gold-text-gradient">Professional Tools</span>
             </h2>
-            <p className="text-xl text-secondary">
+            <p className="text-xl text-white/90 drop-shadow-md">
               Engineered for performance, powered by AI. Your trading, elevated.
             </p>
           </ContentSection>
@@ -606,7 +606,7 @@ export default function Home() {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-primary border-default hover:bg-surface hover:border-primary"
+                className="text-white border-white/30 hover:bg-white/10 hover:border-white/50 drop-shadow-lg"
               >
                 Explore All Tools <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
@@ -619,20 +619,20 @@ export default function Home() {
       <section className="w-full bg-background py-24 text-center z-10 relative overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <ContentSection>
-            <h2 className="text-4xl lg:text-5xl font-bold text-primary mb-6">
+            <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6 drop-shadow-lg">
               Ready to Join the{" "}
               <span className="gold-text-gradient">Elite?</span>
             </h2>
-            <p className="text-xl text-secondary mb-10">
+            <p className="text-xl text-white/90 mb-10 drop-shadow-md">
               Your journey to trading mastery and professional partnership
               begins now. Take the definitive step towards your financial
               ambitions.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to={createPageUrl("AccessPortal")}>
+              <Link to={createPageUrl("features")}>
                 <Button
                   size="lg"
-                  className="bg-accent-green hover:bg-green-500 text-white font-semibold px-10 py-4 rounded-xl transition-all duration-300 transform hover:scale-105"
+                  className="bg-accent-green hover:bg-green-500 text-white font-semibold px-10 py-4 rounded-xl transition-all duration-300 transform hover:scale-105 drop-shadow-lg"
                 >
                   Become a Member
                 </Button>

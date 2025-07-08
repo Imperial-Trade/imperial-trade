@@ -38,15 +38,15 @@ export function useTypedForm<T extends Record<string, unknown>>(config: TypedFor
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [touched, setTouched] = useState<Set<string>>(new Set());
 
-  const validateField = useCallback((name: string, value: unknown): string | null => {
-    const fieldConfig = config.fields[name as keyof T];
+  const validateField = useCallback((name: keyof T, value: T[keyof T]): string | null => {
+    const fieldConfig = config.fields[name];
     if (!fieldConfig?.validation) return null;
 
     const rules = fieldConfig.validation;
 
     // Required validation
     if (rules.required && (value === undefined || value === null || value === '')) {
-      return `${name} is required`;
+      return `${String(name)} is required`;
     }
 
     // Skip other validations if value is empty and not required
@@ -57,23 +57,23 @@ export function useTypedForm<T extends Record<string, unknown>>(config: TypedFor
     // String validations
     if (typeof value === 'string') {
       if (rules.minLength !== undefined && value.length < rules.minLength) {
-        return `${name} must be at least ${rules.minLength} characters`;
+        return `${String(name)} must be at least ${rules.minLength} characters`;
       }
       if (rules.maxLength !== undefined && value.length > rules.maxLength) {
-        return `${name} must be no more than ${rules.maxLength} characters`;
+        return `${String(name)} must be no more than ${rules.maxLength} characters`;
       }
       if (rules.pattern && !rules.pattern.test(value)) {
-        return `${name} format is invalid`;
+        return `${String(name)} format is invalid`;
       }
     }
 
     // Number validations
     if (typeof value === 'number') {
       if (rules.min !== undefined && value < rules.min) {
-        return `${name} must be at least ${rules.min}`;
+        return `${String(name)} must be at least ${rules.min}`;
       }
       if (rules.max !== undefined && value > rules.max) {
-        return `${name} must be no more than ${rules.max}`;
+        return `${String(name)} must be no more than ${rules.max}`;
       }
     }
 
@@ -89,8 +89,9 @@ export function useTypedForm<T extends Record<string, unknown>>(config: TypedFor
     const newErrors: FormError[] = [];
 
     Object.keys(config.fields).forEach(fieldName => {
-      const value = data[fieldName as keyof T];
-      const error = validateField(fieldName, value);
+      const key = fieldName as keyof T;
+      const value = data[key];
+      const error = validateField(key, value);
       if (error) {
         newErrors.push({ field: fieldName, message: error });
       }
@@ -104,24 +105,23 @@ export function useTypedForm<T extends Record<string, unknown>>(config: TypedFor
     setData(prev => ({ ...prev, [name]: value }));
 
     if (config.validateOnChange) {
-      // Cast to unknown to match validateField signature
-      const error = validateField(name as string, value as unknown);
+      const error = validateField(name, value);
       setErrors(prev => {
         const filtered = prev.filter(e => e.field !== name);
-        return error ? [...filtered, { field: name as string, message: error }] : filtered;
+        return error ? [...filtered, { field: String(name), message: error }] : filtered;
       });
     }
   }, [config.validateOnChange, validateField]);
 
-  const setFieldTouched = useCallback((name: string) => {
-    setTouched(prev => new Set(prev).add(name));
+  const setFieldTouched = useCallback((name: keyof T) => {
+    setTouched(prev => new Set(prev).add(String(name)));
 
     if (config.validateOnBlur) {
-      const value = data[name as keyof T];
-      const error = validateField(name, value as unknown);
+      const value = data[name];
+      const error = validateField(name, value);
       setErrors(prev => {
         const filtered = prev.filter(e => e.field !== name);
-        return error ? [...filtered, { field: name, message: error }] : filtered;
+        return error ? [...filtered, { field: String(name), message: error }] : filtered;
       });
     }
   }, [config.validateOnBlur, data, validateField]);
@@ -206,7 +206,7 @@ export function useTypedForm<T extends Record<string, unknown>>(config: TypedFor
 }
 
 // Specialized hook for trade alert forms - Fixed interface
-export interface TradeAlertFormData extends Record<string, unknown> {
+export interface TradeAlertFormData {
   asset_name: string;
   finnhub_symbol: string;
   trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';

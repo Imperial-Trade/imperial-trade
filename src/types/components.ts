@@ -10,6 +10,19 @@ export interface BaseComponentProps {
   testId?: string;
 }
 
+// Form Types - Adding missing exports
+export interface FormError {
+  field: string;
+  message: string;
+}
+
+export interface FormState<T extends Record<string, unknown>> {
+  data: T;
+  errors: FormError[];
+  isSubmitting: boolean;
+  isValid: boolean;
+}
+
 // Trading Alert Component Types
 export interface TradeAlertData {
   id: string;
@@ -61,11 +74,11 @@ export interface TradingCalculatorProps extends BaseComponentProps {
   livePrice?: number;
 }
 
-// Quick Copy Panel Types
+// Quick Copy Panel Types - Updated to support all trade types
 export interface QuickCopyPanelProps extends BaseComponentProps {
   alert: {
     asset_name: string;
-    trade_type: 'buy' | 'sell';
+    trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
     entry_price: number;
     stop_loss: number;
     tp1?: number;

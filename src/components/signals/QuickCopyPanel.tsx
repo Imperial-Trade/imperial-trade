@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface Alert {
   asset_name: string;
-  trade_type: 'buy' | 'sell';
+  trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entry_price: number;
   stop_loss: number;
   tp1?: number;
@@ -34,7 +34,7 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
     }
   };
 
-  const isBuy = alert.trade_type === 'buy';
+  const isBuy = alert.trade_type.includes('buy');
   const takeProfits = [
     { label: 'TP1', value: alert.tp1 },
     { label: 'TP2', value: alert.tp2 },
@@ -68,7 +68,7 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
           Quick Copy Prices - {alert.asset_name}
           <Badge className={`ml-2 ${isBuy ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
             {isBuy ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-            {alert.trade_type.toUpperCase()}
+            {alert.trade_type.replace('_', ' ').toUpperCase()}
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -100,7 +100,7 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
             variant="outline"
             size="sm"
             onClick={() => copyToClipboard(
-              `${alert.asset_name} ${alert.trade_type.toUpperCase()}\nEntry: ${alert.entry_price}\nSL: ${alert.stop_loss}${takeProfits.map((tp, i) => `\n${tp.label}: ${tp.value}`).join('')}`,
+              `${alert.asset_name} ${alert.trade_type.replace('_', ' ').toUpperCase()}\nEntry: ${alert.entry_price}\nSL: ${alert.stop_loss}${takeProfits.map((tp, i) => `\n${tp.label}: ${tp.value}`).join('')}`,
               'All Prices'
             )}
             className="w-full h-8 text-xs"

@@ -204,8 +204,8 @@ export function useTypedForm<T extends Record<string, unknown>>(config: TypedFor
   };
 }
 
-// Specialized hook for trade alert forms
-export interface TradeAlertFormData {
+// Specialized hook for trade alert forms - Fixed interface
+export interface TradeAlertFormData extends Record<string, unknown> {
   asset_name: string;
   finnhub_symbol: string;
   trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';

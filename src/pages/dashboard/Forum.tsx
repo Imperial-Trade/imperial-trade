@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { ForumPost, Reply } from "@/api/entities";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,19 +7,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  MessageSquare, 
-  Plus, 
-  Search, 
-  ThumbsUp, 
-  MessageCircle, 
+import {
+  MessageSquare,
+  Plus,
+  Search,
+  ThumbsUp,
+  MessageCircle,
   TrendingUp,
   HelpCircle,
   BarChart3,
   Newspaper,
   Target,
   Clock,
-  User as UserIcon
+  User as UserIcon,
 } from "lucide-react";
 
 const categories = [
@@ -29,15 +28,15 @@ const categories = [
   { id: "question", name: "Questions", icon: HelpCircle },
   { id: "analysis", name: "Analysis", icon: BarChart3 },
   { id: "news", name: "News", icon: Newspaper },
-  { id: "strategy", name: "Strategy", icon: Target }
+  { id: "strategy", name: "Strategy", icon: Target },
 ];
 
 const categoryColors = {
   discussion: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  question: "bg-green-500/10 text-green-400 border-green-500/20", 
+  question: "bg-green-500/10 text-green-400 border-green-500/20",
   analysis: "bg-purple-500/10 text-purple-400 border-purple-500/20",
   news: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  strategy: "bg-red-500/10 text-red-400 border-red-500/20"
+  strategy: "bg-red-500/10 text-red-400 border-red-500/20",
 };
 
 export default function Forum() {
@@ -47,7 +46,11 @@ export default function Forum() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewPostForm, setShowNewPostForm] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
-  const [newPost, setNewPost] = useState({ title: "", content: "", category: "discussion" });
+  const [newPost, setNewPost] = useState({
+    title: "",
+    content: "",
+    category: "discussion",
+  });
   const [newReply, setNewReply] = useState("");
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,12 +63,14 @@ export default function Forum() {
     try {
       const [fetchedPosts, fetchedReplies] = await Promise.all([
         ForumPost.list("-created_date"),
-        Reply.list("-created_date")
+        Reply.list("-created_date"),
       ]);
-      
+
       // Get current user from Supabase auth
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
+
       setPosts(fetchedPosts);
       setReplies(fetchedReplies);
       setUser(currentUser);
@@ -75,9 +80,11 @@ export default function Forum() {
     setIsLoading(false);
   };
 
-  const filteredPosts = posts.filter(post => {
-    const matchesCategory = selectedCategory === "all" || post.category === selectedCategory;
-    const matchesSearch = !searchTerm || 
+  const filteredPosts = posts.filter((post) => {
+    const matchesCategory =
+      selectedCategory === "all" || post.category === selectedCategory;
+    const matchesSearch =
+      !searchTerm ||
       post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       post.content.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -85,7 +92,7 @@ export default function Forum() {
 
   const handleCreatePost = async () => {
     if (!newPost.title.trim() || !newPost.content.trim()) return;
-    
+
     try {
       await ForumPost.create(newPost);
       setNewPost({ title: "", content: "", category: "discussion" });
@@ -98,11 +105,11 @@ export default function Forum() {
 
   const handleCreateReply = async () => {
     if (!newReply.trim() || !selectedPost) return;
-    
+
     try {
       await Reply.create({
         post_id: selectedPost.id,
-        content: newReply
+        content: newReply,
       });
       setNewReply("");
       loadData();
@@ -112,24 +119,24 @@ export default function Forum() {
   };
 
   const getPostReplies = (postId) => {
-    return replies.filter(reply => reply.post_id === postId);
+    return replies.filter((reply) => reply.post_id === postId);
   };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
-      month: "short", 
+      month: "short",
       day: "numeric",
       hour: "2-digit",
-      minute: "2-digit"
+      minute: "2-digit",
     });
   };
 
   const PostCard = ({ post }) => {
     const postReplies = getPostReplies(post.id);
-    
+
     return (
-      <Card 
+      <Card
         className="glass-effect hover:border-accent-green transition-all duration-300 cursor-pointer"
         onClick={() => setSelectedPost(post)}
       >
@@ -150,9 +157,9 @@ export default function Forum() {
               {post.category}
             </Badge>
           </div>
-          
+
           <p className="text-secondary mb-4 line-clamp-3">{post.content}</p>
-          
+
           <div className="flex items-center gap-4 text-sm text-secondary">
             <div className="flex items-center gap-1">
               <ThumbsUp className="w-4 h-4" />
@@ -163,11 +170,15 @@ export default function Forum() {
               <span>{postReplies.length} replies</span>
             </div>
           </div>
-          
+
           {post.tags && post.tags.length > 0 && (
             <div className="flex gap-2 mt-3 flex-wrap">
               {post.tags.slice(0, 3).map((tag, index) => (
-                <Badge key={index} variant="outline" className="text-xs border-default text-secondary">
+                <Badge
+                  key={index}
+                  variant="outline"
+                  className="text-xs border-default text-secondary"
+                >
                   {tag}
                 </Badge>
               ))}
@@ -180,7 +191,7 @@ export default function Forum() {
 
   const PostDetail = ({ post, onClose }) => {
     const postReplies = getPostReplies(post.id);
-    
+
     return (
       <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
         <div className="max-w-4xl w-full max-h-full overflow-auto">
@@ -188,52 +199,73 @@ export default function Forum() {
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-primary mb-2">{post.title}</h2>
+                  <h2 className="text-2xl font-bold text-primary mb-2">
+                    {post.title}
+                  </h2>
                   <div className="flex items-center gap-4 text-sm text-secondary">
                     <span>by {post.created_by}</span>
                     <span>{formatDate(post.created_date)}</span>
-                    <Badge className={`${categoryColors[post.category]} border`}>
+                    <Badge
+                      className={`${categoryColors[post.category]} border`}
+                    >
                       {post.category}
                     </Badge>
                   </div>
                 </div>
-                <Button variant="ghost" onClick={onClose} className="text-primary hover:bg-surface">
+                <Button
+                  variant="ghost"
+                  onClick={onClose}
+                  className="text-primary hover:bg-surface"
+                >
                   ✕
                 </Button>
               </div>
-              
+
               <div className="mb-6">
-                <p className="text-secondary whitespace-pre-wrap">{post.content}</p>
+                <p className="text-secondary whitespace-pre-wrap">
+                  {post.content}
+                </p>
               </div>
-              
+
               <div className="flex items-center gap-4 mb-6 text-sm">
-                <Button variant="outline" size="sm" className="border-default text-secondary hover:bg-surface hover:text-primary">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-default text-secondary hover:bg-surface hover:text-primary"
+                >
                   <ThumbsUp className="w-4 h-4 mr-1" />
                   Like ({post.likes || 0})
                 </Button>
               </div>
-              
+
               {/* Replies Section */}
               <div className="border-t border-default pt-6">
                 <h3 className="text-lg font-semibold text-primary mb-4">
                   Replies ({postReplies.length})
                 </h3>
-                
+
                 <div className="space-y-4 mb-6">
                   {postReplies.map((reply) => (
-                    <div key={reply.id} className="p-4 bg-surface/50 rounded-lg">
+                    <div
+                      key={reply.id}
+                      className="p-4 bg-surface/50 rounded-lg"
+                    >
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-8 h-8 bg-surface rounded-full flex items-center justify-center">
                           <UserIcon className="w-4 h-4 text-secondary" />
                         </div>
-                        <span className="text-sm text-secondary">{reply.created_by}</span>
-                        <span className="text-xs text-secondary/70">{formatDate(reply.created_date)}</span>
+                        <span className="text-sm text-secondary">
+                          {reply.created_by}
+                        </span>
+                        <span className="text-xs text-secondary/70">
+                          {formatDate(reply.created_date)}
+                        </span>
                       </div>
                       <p className="text-secondary">{reply.content}</p>
                     </div>
                   ))}
                 </div>
-                
+
                 {/* Reply Form */}
                 {user ? (
                   <div className="space-y-3">
@@ -243,7 +275,7 @@ export default function Forum() {
                       onChange={(e) => setNewReply(e.target.value)}
                       className="bg-surface border-default text-primary placeholder-secondary"
                     />
-                    <Button 
+                    <Button
                       onClick={handleCreateReply}
                       className="bg-accent-green hover:bg-green-500 text-white"
                     >
@@ -277,7 +309,7 @@ export default function Forum() {
             </p>
           </div>
           {user && (
-            <Button 
+            <Button
               onClick={() => setShowNewPostForm(true)}
               className="bg-accent-green hover:bg-green-500 text-white font-semibold"
             >
@@ -298,7 +330,7 @@ export default function Forum() {
               className="pl-10 bg-surface border-default text-primary placeholder-secondary"
             />
           </div>
-          
+
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
             <TabsList className="bg-surface/50 border-0 flex-wrap h-auto p-2">
               {categories.map((category) => {
@@ -348,12 +380,13 @@ export default function Forum() {
         ) : (
           <div className="text-center py-16">
             <MessageSquare className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-primary mb-2">No posts found</h3>
+            <h3 className="text-xl font-semibold text-primary mb-2">
+              No posts found
+            </h3>
             <p className="text-secondary">
-              {searchTerm ? 
-                "Try adjusting your search terms or filters." : 
-                "Be the first to start a discussion!"
-              }
+              {searchTerm
+                ? "Try adjusting your search terms or filters."
+                : "Be the first to start a discussion!"}
             </p>
           </div>
         )}
@@ -364,9 +397,11 @@ export default function Forum() {
             <Card className="glass-effect border-default w-full max-w-2xl">
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-primary">Create New Post</CardTitle>
-                  <Button 
-                    variant="ghost" 
+                  <CardTitle className="text-primary">
+                    Create New Post
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
                     onClick={() => setShowNewPostForm(false)}
                     className="text-primary hover:bg-surface"
                   >
@@ -378,12 +413,16 @@ export default function Forum() {
                 <Input
                   placeholder="Post title..."
                   value={newPost.title}
-                  onChange={(e) => setNewPost({...newPost, title: e.target.value})}
+                  onChange={(e) =>
+                    setNewPost({ ...newPost, title: e.target.value })
+                  }
                   className="bg-surface border-default text-primary placeholder-secondary"
                 />
                 <select
                   value={newPost.category}
-                  onChange={(e) => setNewPost({...newPost, category: e.target.value})}
+                  onChange={(e) =>
+                    setNewPost({ ...newPost, category: e.target.value })
+                  }
                   className="w-full p-3 bg-surface border border-default rounded-lg text-primary"
                 >
                   <option value="discussion">Discussion</option>
@@ -395,19 +434,21 @@ export default function Forum() {
                 <Textarea
                   placeholder="Write your post content..."
                   value={newPost.content}
-                  onChange={(e) => setNewPost({...newPost, content: e.target.value})}
+                  onChange={(e) =>
+                    setNewPost({ ...newPost, content: e.target.value })
+                  }
                   rows={6}
                   className="bg-surface border-default text-primary placeholder-secondary"
                 />
                 <div className="flex gap-3 justify-end">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setShowNewPostForm(false)}
                     className="border-default text-secondary hover:bg-surface hover:text-primary"
                   >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleCreatePost}
                     className="bg-accent-green hover:bg-green-500 text-white"
                   >
@@ -421,9 +462,9 @@ export default function Forum() {
 
         {/* Post Detail Modal */}
         {selectedPost && (
-          <PostDetail 
-            post={selectedPost} 
-            onClose={() => setSelectedPost(null)} 
+          <PostDetail
+            post={selectedPost}
+            onClose={() => setSelectedPost(null)}
           />
         )}
       </div>

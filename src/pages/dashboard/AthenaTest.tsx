@@ -1,5 +1,5 @@
-import React from 'react';
-import AthenaTest from '../components/ai/AthenaTest';
+import React from "react";
+import AthenaTest from "../../components/ai/AthenaTest";
 
 export default function AthenaTestPage() {
   return (

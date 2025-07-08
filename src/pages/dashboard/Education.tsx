@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { User } from '@supabase/supabase-js';
+import type { User } from "@supabase/supabase-js";
 import { Video } from "@/api/entities/index";
-import AccessDenied from "../components/AccessDenied";
-import HeroSection from "../components/learning/HeroSection";
-import VideoRow from "../components/learning/VideoRow";
-import VideoPlayer from "../components/learning/VideoPlayer";
-import { categoryMap } from "../components/learning/constants";
+import AccessDenied from "../../components/AccessDenied";
+import HeroSection from "../../components/learning/HeroSection";
+import VideoRow from "../../components/learning/VideoRow";
+import VideoPlayer from "../../components/learning/VideoPlayer";
+import { categoryMap } from "../../components/learning/constants";
 import { AnimatePresence } from "framer-motion";
 
 export default function Education() {
@@ -23,7 +22,9 @@ export default function Education() {
       setIsLoading(true);
       try {
         // Get current user from Supabase
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         setUser(user);
 
         const fetchedVideos = await Video.list("-created_date");

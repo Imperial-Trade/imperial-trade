@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { LiveSession } from "@/api/entities";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ import {
   TrendingUp, // Ensure TrendingUp is imported
   TrendingDown,
   PlayCircle,
-  Timer
+  Timer,
 } from "lucide-react";
 
 export default function Live() {
@@ -36,7 +35,7 @@ export default function Live() {
     setIsLoading(true);
     try {
       const now = new Date();
-      const allSessions = await LiveSession.list('-session_date');
+      const allSessions = await LiveSession.list("-session_date");
 
       // Find current or next session
       let currentSessionFound = null;
@@ -47,7 +46,8 @@ export default function Live() {
         const timeDiff = sessionTime.getTime() - now.getTime();
 
         // If session is within 5 minutes of start time or already started, it's current
-        if (timeDiff <= 5 * 60 * 1000 && timeDiff >= -2 * 60 * 60 * 1000) { // 5 min before to 2 hours after
+        if (timeDiff <= 5 * 60 * 1000 && timeDiff >= -2 * 60 * 60 * 1000) {
+          // 5 min before to 2 hours after
           if (!currentSessionFound) {
             currentSessionFound = session;
           }
@@ -65,11 +65,10 @@ export default function Live() {
       if (currentSessionFound) {
         const sessionTime = new Date(currentSessionFound.session_date);
         const isScheduledTime = now >= sessionTime;
-        setIsLive(isScheduledTime || currentSessionFound.status === 'live');
+        setIsLive(isScheduledTime || currentSessionFound.status === "live");
       } else {
         setIsLive(false);
       }
-
     } catch (error) {
       console.error("Failed to fetch live sessions:", error);
       setCurrentSession(null);
@@ -118,7 +117,7 @@ export default function Live() {
   // Viewer count simulation
   useEffect(() => {
     const interval = setInterval(() => {
-      setViewerCount(prev => prev + Math.floor(Math.random() * 10) - 5);
+      setViewerCount((prev) => prev + Math.floor(Math.random() * 10) - 5);
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -128,33 +127,34 @@ export default function Live() {
     const loadTradingViewWidget = () => {
       // Clear any existing content
       if (tradingviewWidgetRef.current) {
-        tradingviewWidgetRef.current.innerHTML = '';
+        tradingviewWidgetRef.current.innerHTML = "";
       }
 
       if (tradingviewWidgetRef.current) {
-        const script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js';
+        const script = document.createElement("script");
+        script.type = "text/javascript";
+        script.src =
+          "https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js";
         script.async = true;
 
         script.innerHTML = JSON.stringify({
-          "symbols": [
-            { "description": "S&P 500", "proName": "FOREXCOM:SPXUSD" },
-            { "description": "NASDAQ 100", "proName": "FOREXCOM:NSXUSD" },
-            { "description": "DOW JONES", "proName": "FOREXCOM:DJI" },
-            { "description": "EUR/USD", "proName": "FX_IDC:EURUSD" },
-            { "description": "GBP/USD", "proName": "FX_IDC:GBPUSD" },
-            { "description": "USD/JPY", "proName": "FX_IDC:USDJPY" },
-            { "description": "GOLD", "proName": "OANDA:XAUUSD" },
-            { "description": "BITCOIN", "proName": "BITSTAMP:BTCUSD" },
-            { "description": "ETHEREUM", "proName": "BITSTAMP:ETHUSD" },
-            { "description": "CRUDE OIL", "proName": "NYMEX:CL1!" }
+          symbols: [
+            { description: "S&P 500", proName: "FOREXCOM:SPXUSD" },
+            { description: "NASDAQ 100", proName: "FOREXCOM:NSXUSD" },
+            { description: "DOW JONES", proName: "FOREXCOM:DJI" },
+            { description: "EUR/USD", proName: "FX_IDC:EURUSD" },
+            { description: "GBP/USD", proName: "FX_IDC:GBPUSD" },
+            { description: "USD/JPY", proName: "FX_IDC:USDJPY" },
+            { description: "GOLD", proName: "OANDA:XAUUSD" },
+            { description: "BITCOIN", proName: "BITSTAMP:BTCUSD" },
+            { description: "ETHEREUM", proName: "BITSTAMP:ETHUSD" },
+            { description: "CRUDE OIL", proName: "NYMEX:CL1!" },
           ],
-          "showSymbolLogo": true,
-          "colorTheme": "dark",
-          "isTransparent": false,
-          "displayMode": "adaptive",
-          "locale": "en"
+          showSymbolLogo: true,
+          colorTheme: "dark",
+          isTransparent: false,
+          displayMode: "adaptive",
+          locale: "en",
         });
 
         tradingviewWidgetRef.current.appendChild(script);
@@ -163,7 +163,7 @@ export default function Live() {
 
     // Small delay to ensure the DOM is ready
     const timer = setTimeout(loadTradingViewWidget, 100);
-    
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -187,19 +187,19 @@ export default function Live() {
       if (meetingId) {
         // Build the embed URL with passcode if available
         let embedUrl = `${urlObj.origin}/wc/${meetingId}/join`;
-        
+
         // Add additional parameters for seamless joining
         const params = new URLSearchParams();
         if (currentSession?.zoom_passcode) {
-          params.append('pwd', currentSession.zoom_passcode);
+          params.append("pwd", currentSession.zoom_passcode);
         }
-        params.append('prefer', '1'); // Prefer web client
-        params.append('un', 'ImperialTrader'); // Default username
-        
+        params.append("prefer", "1"); // Prefer web client
+        params.append("un", "ImperialTrader"); // Default username
+
         if (params.toString()) {
-          embedUrl += (embedUrl.includes('?') ? '&' : '?') + params.toString();
+          embedUrl += (embedUrl.includes("?") ? "&" : "?") + params.toString();
         }
-        
+
         return embedUrl;
       }
       return null;
@@ -213,13 +213,13 @@ export default function Live() {
   const handleJoinZoom = () => {
     if (currentSession?.zoom_meeting_url) {
       setIsJoiningZoom(true);
-      
+
       // If there's a passcode, we can also try to auto-fill it via JavaScript
       if (currentSession?.zoom_passcode) {
         // Store passcode in session storage for the Zoom client to potentially use
-        sessionStorage.setItem('zoom_passcode', currentSession.zoom_passcode);
+        sessionStorage.setItem("zoom_passcode", currentSession.zoom_passcode);
       }
-      
+
       // Small delay to show joining state
       setTimeout(() => {
         setZoomJoined(true);
@@ -230,34 +230,43 @@ export default function Live() {
 
   // Auto-join when session goes live (if enabled)
   useEffect(() => {
-    // Only attempt auto-join if currentSession exists, it's live, 
+    // Only attempt auto-join if currentSession exists, it's live,
     // auto_start_enabled is true, and we haven't joined yet.
-    if (isLive && currentSession && currentSession.auto_start_enabled && !zoomJoined) {
+    if (
+      isLive &&
+      currentSession &&
+      currentSession.auto_start_enabled &&
+      !zoomJoined
+    ) {
       // Auto-join 30 seconds after session starts
       const autoJoinTimer = setTimeout(() => {
         handleJoinZoom();
       }, 30000);
-      
+
       return () => clearTimeout(autoJoinTimer);
     }
   }, [isLive, currentSession, zoomJoined]);
 
-  const embedUrl = currentSession ? getZoomEmbedUrl(currentSession.zoom_meeting_url) : null;
+  const embedUrl = currentSession
+    ? getZoomEmbedUrl(currentSession.zoom_meeting_url)
+    : null;
 
   const formatCountdown = (countdown) => {
     if (!countdown) return null;
     const { hours, minutes, seconds } = countdown;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    return `${hours.toString().padStart(2, "0")}:${minutes
+      .toString()
+      .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   };
 
   const formatSessionTime = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString([], {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -267,9 +276,17 @@ export default function Live() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
-            <div className={`w-3 h-3 rounded-full ${isLive ? 'bg-accent-red animate-pulse' : 'bg-secondary'}`}></div>
-            <span className={`font-semibold ${isLive ? 'text-accent-red' : 'text-secondary'}`}>
-              {isLive ? 'LIVE' : countdown ? 'STARTING SOON' : 'OFFLINE'}
+            <div
+              className={`w-3 h-3 rounded-full ${
+                isLive ? "bg-accent-red animate-pulse" : "bg-secondary"
+              }`}
+            ></div>
+            <span
+              className={`font-semibold ${
+                isLive ? "text-accent-red" : "text-secondary"
+              }`}
+            >
+              {isLive ? "LIVE" : countdown ? "STARTING SOON" : "OFFLINE"}
             </span>
             {isLive && (
               <div className="flex items-center gap-2 text-secondary">
@@ -282,10 +299,9 @@ export default function Live() {
             Live Trading <span className="text-accent-red">Sessions</span>
           </h1>
           <p className="text-secondary text-lg">
-            {currentSession ? 
-              `${currentSession.session_title} with ${currentSession.host_name}` : 
-              "No sessions scheduled at the moment"
-            }
+            {currentSession
+              ? `${currentSession.session_title} with ${currentSession.host_name}`
+              : "No sessions scheduled at the moment"}
           </p>
         </div>
 
@@ -313,12 +329,13 @@ export default function Live() {
                     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-accent-green/20 to-accent-blue/20">
                       <div className="text-center">
                         <div className="animate-spin rounded-full h-16 w-16 border-4 border-accent-green border-t-transparent mx-auto mb-6"></div>
-                        <h3 className="text-2xl font-bold text-primary mb-2">Joining Live Session...</h3>
+                        <h3 className="text-2xl font-bold text-primary mb-2">
+                          Joining Live Session...
+                        </h3>
                         <p className="text-secondary">
-                          {currentSession?.zoom_passcode 
-                            ? "Connecting with automatic passcode entry" 
-                            : "Connecting you to the trading room"
-                          }
+                          {currentSession?.zoom_passcode
+                            ? "Connecting with automatic passcode entry"
+                            : "Connecting you to the trading room"}
                         </p>
                       </div>
                     </div>
@@ -329,7 +346,9 @@ export default function Live() {
                         <div className="w-20 h-20 bg-accent-green rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
                           <PlayCircle className="w-12 h-12 text-white" />
                         </div>
-                        <h3 className="text-3xl font-bold text-primary mb-4">Session is Live!</h3>
+                        <h3 className="text-3xl font-bold text-primary mb-4">
+                          Session is Live!
+                        </h3>
                         <p className="text-xl text-secondary mb-6">
                           {currentSession.session_title}
                         </p>
@@ -347,7 +366,9 @@ export default function Live() {
                           </div>
                           {currentSession.zoom_passcode && (
                             <div className="flex items-center gap-2">
-                              <span className="text-accent-green">✓ Passcode Auto-Applied</span>
+                              <span className="text-accent-green">
+                                ✓ Passcode Auto-Applied
+                              </span>
                             </div>
                           )}
                         </div>
@@ -358,7 +379,9 @@ export default function Live() {
                     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-accent-green/20 to-accent-blue/20">
                       <div className="text-center">
                         <Timer className="w-20 h-20 text-accent-green mx-auto mb-6 animate-pulse" />
-                        <h3 className="text-3xl font-bold text-primary mb-4">Starting Soon</h3>
+                        <h3 className="text-3xl font-bold text-primary mb-4">
+                          Starting Soon
+                        </h3>
                         <div className="text-6xl font-mono font-bold text-accent-green mb-4">
                           {formatCountdown(countdown)}
                         </div>
@@ -368,7 +391,9 @@ export default function Live() {
                         <div className="flex items-center justify-center gap-4 text-secondary">
                           <div className="flex items-center gap-2">
                             <Calendar className="w-5 h-5" />
-                            <span>{formatSessionTime(currentSession.session_date)}</span>
+                            <span>
+                              {formatSessionTime(currentSession.session_date)}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Users className="w-5 h-5" />
@@ -382,12 +407,17 @@ export default function Live() {
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center">
                         <Radio className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-primary mb-2">No Live Session</h3>
+                        <h3 className="text-xl font-semibold text-primary mb-2">
+                          No Live Session
+                        </h3>
                         <p className="text-secondary">
-                          {upcomingSessions.length > 0 ? 
-                            `Next session: ${upcomingSessions[0].session_title} on ${formatSessionTime(upcomingSessions[0].session_date)}` : 
-                            "Check back later for upcoming sessions"
-                          }
+                          {upcomingSessions.length > 0
+                            ? `Next session: ${
+                                upcomingSessions[0].session_title
+                              } on ${formatSessionTime(
+                                upcomingSessions[0].session_date
+                              )}`
+                            : "Check back later for upcoming sessions"}
                         </p>
                       </div>
                     </div>
@@ -431,16 +461,22 @@ export default function Live() {
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-xl font-semibold text-primary mb-2">{currentSession.session_title}</h3>
-                      <p className="text-secondary mb-4">{currentSession.description}</p>
+                      <h3 className="text-xl font-semibold text-primary mb-2">
+                        {currentSession.session_title}
+                      </h3>
+                      <p className="text-secondary mb-4">
+                        {currentSession.description}
+                      </p>
                     </div>
                     {!zoomJoined && currentSession.zoom_meeting_url && (
                       <Button
-                        onClick={() => window.open(currentSession.zoom_meeting_url, '_blank')}
+                        onClick={() =>
+                          window.open(currentSession.zoom_meeting_url, "_blank")
+                        }
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                       >
                         <PlayCircle className="w-4 h-4 mr-2" />
-                        {isLive ? 'Join Externally' : 'Join Early'}
+                        {isLive ? "Join Externally" : "Join Early"}
                       </Button>
                     )}
                   </div>
@@ -449,19 +485,33 @@ export default function Live() {
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-secondary" />
                       <span className="text-secondary">
-                        {isLive ? 
-                          `Live since ${new Date(currentSession.session_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 
-                          `Starts at ${new Date(currentSession.session_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                        }
+                        {isLive
+                          ? `Live since ${new Date(
+                              currentSession.session_date
+                            ).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}`
+                          : `Starts at ${new Date(
+                              currentSession.session_date
+                            ).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}`}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-secondary" />
-                      <span className="text-secondary">Host: {currentSession.host_name}</span>
+                      <span className="text-secondary">
+                        Host: {currentSession.host_name}
+                      </span>
                     </div>
                     {currentSession.zoom_meeting_id && (
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="border-default text-secondary">
+                        <Badge
+                          variant="outline"
+                          className="border-default text-secondary"
+                        >
                           Meeting ID: {currentSession.zoom_meeting_id}
                         </Badge>
                       </div>
@@ -487,7 +537,10 @@ export default function Live() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div ref={tradingviewWidgetRef} className="tradingview-widget-container min-h-[80px] w-full">
+                <div
+                  ref={tradingviewWidgetRef}
+                  className="tradingview-widget-container min-h-[80px] w-full"
+                >
                   <div className="tradingview-widget-container__widget"></div>
                   {/* Fallback content while loading */}
                   <div className="flex items-center justify-center h-20 text-secondary">
@@ -510,17 +563,32 @@ export default function Live() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-4">
-                {upcomingSessions.length > 0 ? upcomingSessions.map((session, index) => (
-                  <div key={session.id || index} className="p-3 bg-surface rounded-lg">
-                    <h4 className="font-semibold text-primary text-sm mb-1">{session.session_title}</h4>
-                    <p className="text-secondary text-xs mb-2 line-clamp-2">{session.description}</p>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-secondary">{session.host_name}</span>
-                      <span className="text-accent-green">{formatSessionTime(session.session_date)}</span>
+                {upcomingSessions.length > 0 ? (
+                  upcomingSessions.map((session, index) => (
+                    <div
+                      key={session.id || index}
+                      className="p-3 bg-surface rounded-lg"
+                    >
+                      <h4 className="font-semibold text-primary text-sm mb-1">
+                        {session.session_title}
+                      </h4>
+                      <p className="text-secondary text-xs mb-2 line-clamp-2">
+                        {session.description}
+                      </p>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-secondary">
+                          {session.host_name}
+                        </span>
+                        <span className="text-accent-green">
+                          {formatSessionTime(session.session_date)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                )) : (
-                  <p className="text-secondary text-center py-4">No upcoming sessions scheduled</p>
+                  ))
+                ) : (
+                  <p className="text-secondary text-center py-4">
+                    No upcoming sessions scheduled
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -540,11 +608,13 @@ export default function Live() {
                     disabled={!isLive}
                     className="w-full bg-accent-green hover:bg-green-500 text-white disabled:bg-gray-600 disabled:cursor-not-allowed"
                   >
-                    {isLive ? 'Join Live Session' : 'Session Not Started'}
+                    {isLive ? "Join Live Session" : "Session Not Started"}
                   </Button>
 
                   <Button
-                    onClick={() => window.open(currentSession.zoom_meeting_url, '_blank')}
+                    onClick={() =>
+                      window.open(currentSession.zoom_meeting_url, "_blank")
+                    }
                     variant="outline"
                     className="w-full border-default text-secondary hover:bg-surface hover:text-primary"
                   >
@@ -553,7 +623,12 @@ export default function Live() {
 
                   {currentSession.zoom_meeting_id && (
                     <div className="text-center text-sm text-secondary">
-                      <p>Meeting ID: <span className="font-mono">{currentSession.zoom_meeting_id}</span></p>
+                      <p>
+                        Meeting ID:{" "}
+                        <span className="font-mono">
+                          {currentSession.zoom_meeting_id}
+                        </span>
+                      </p>
                       {currentSession.zoom_passcode && (
                         <p className="text-accent-green">
                           <span className="inline-block w-2 h-2 bg-accent-green rounded-full mr-2"></span>

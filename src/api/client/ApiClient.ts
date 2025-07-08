@@ -1,4 +1,5 @@
 
+
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { ApiResponse } from '@/types/common';
@@ -59,7 +60,7 @@ export class ApiClient {
 
       return {
         success: true,
-        data: data as TableRow<T>[],
+        data: data as unknown as TableRow<T>[],
         error: undefined
       };
     } catch (error) {
@@ -92,7 +93,7 @@ export class ApiClient {
 
       return {
         success: true,
-        data: result as TableRow<T>,
+        data: result as unknown as TableRow<T>,
         error: undefined
       };
     } catch (error) {
@@ -121,7 +122,7 @@ export class ApiClient {
       const { data: result, error } = await supabase
         .from(table)
         .update(data as any)
-        .eq('id', id)
+        .eq('id' as any, id)
         .select()
         .single();
 
@@ -135,7 +136,7 @@ export class ApiClient {
 
       return {
         success: true,
-        data: result as TableRow<T>,
+        data: result as unknown as TableRow<T>,
         error: undefined
       };
     } catch (error) {
@@ -163,7 +164,7 @@ export class ApiClient {
       const { error } = await supabase
         .from(table)
         .delete()
-        .eq('id', id);
+        .eq('id' as any, id);
 
       if (error) {
         return {
@@ -215,3 +216,4 @@ export class ApiClient {
 }
 
 export const apiClient = ApiClient.getInstance();
+

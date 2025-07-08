@@ -36,7 +36,7 @@ const AppBar: React.FC = () => {
       </nav>
 
       <div className="flex items-center gap-4">
-        <Link to="/access-portal">
+        <Link to="/features">
           <Button size="sm" className="bg-accent-green hover:bg-green-500 text-white">
             Get Started
           </Button>

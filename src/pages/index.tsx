@@ -38,7 +38,7 @@ export default function Pages() {
                         <IBPartnership />
                     </LandingLayout>
                 } />
-                <Route path="/access-portal" element={
+                <Route path="/features" element={
                     <LandingLayout>
                         <AccessPortal />
                     </LandingLayout>

@@ -101,7 +101,7 @@ const Landing: React.FC = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/access-portal">
+            <Link to="/features">
               <Button size="lg" className="bg-accent-green hover:bg-green-500 text-white px-8">
                 Get Started <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -197,7 +197,7 @@ const Landing: React.FC = () => {
             Start your journey with Imperial Trading Community today.
           </p>
           
-          <Link to="/access-portal">
+          <Link to="/features">
             <Button size="lg" className="bg-accent-green hover:bg-green-500 text-white px-12">
               Join Now <Star className="ml-2 h-5 w-5" />
             </Button>

@@ -220,7 +220,9 @@ export default function About() {
           </div>
 
           <h1 className="text-4xl lg:text-6xl font-bold text-primary mb-6">
-            <span className="gold-text-gradient">IMPERIAL</span>
+            <span className="gold-text-gradient imperial-tech-font">
+              IMPERIAL
+            </span>
             <br />
             <span className="text-2xl lg:text-3xl text-white">
               Trading Community

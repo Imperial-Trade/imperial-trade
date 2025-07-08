@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -45,8 +44,8 @@ export default function FeatureCarousel() {
                 loop
                 muted
                 playsInline
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
-                  activeFeatureIndex === index ? "opacity-20" : "opacity-0"
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out z-[-1] ${
+                  activeFeatureIndex === index ? "opacity-100" : "opacity-0"
                 }`}
               />
             ))}
@@ -133,12 +132,12 @@ export default function FeatureCarousel() {
               </div>
 
               {/* Content Area */}
-              <div className="flex-1 p-4 sm:p-6 lg:p-12 flex flex-col justify-center lg:w-2/3 lg:ml-auto">
+              <div className="flex-1 p-4 sm:p-6 lg:p-8 flex flex-col justify-center lg:w-2/3 lg:ml-auto">
                 <div key={activeFeature.title} className="animate-fade-in">
                   <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-surface/80 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 lg:mb-6 glow-effect-green">
                     <activeFeature.icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-accent-green" />
                   </div>
-                  <h3 className="text-xl sm:text-2xl lg:text-4xl font-bold text-white mb-2 sm:mb-3 lg:mb-4 drop-shadow-lg leading-tight">
+                  <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 sm:mb-3 lg:mb-4 drop-shadow-lg leading-tight">
                     {activeFeature.title}
                   </h3>
                   <p className="text-sm sm:text-base lg:text-lg text-white/90 mb-3 sm:mb-4 lg:mb-5 drop-shadow-md leading-relaxed">

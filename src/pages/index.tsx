@@ -1,6 +1,8 @@
 
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
-import Layout from "./Layout";
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import LandingLayout from "./layouts/LandingLayout";
+import DashboardLayout from "./layouts/DashboardLayout";
+import Landing from "./Landing";
 import Home from "./Home";
 import Education from "./Education";
 import Live from "./Live";
@@ -16,67 +18,161 @@ import AccessPortal from "./AccessPortal";
 import Settings from "./Settings";
 import SignalStream from "./SignalStream";
 
-const PAGES = {
-    Home: Home,
-    Education: Education,
-    Live: Live,
-    Forum: Forum,
-    About: About,
-    IBPartnership: IBPartnership,
-    AdvancedTools: AdvancedTools,
-    MyProgress: MyProgress,
-    AthenaTest: AthenaTest,
-    AdminPanel: AdminPanel,
-    AccountRequest: AccountRequest,
-    AccessPortal: AccessPortal,
-    Settings: Settings,
-    SignalStream: SignalStream,
-} as const;
-
-function _getCurrentPage(url: string): string {
-    if (url.endsWith('/')) {
-        url = url.slice(0, -1);
-    }
-    let urlLastPart = url.split('/').pop() || '';
-    if (urlLastPart.includes('?')) {
-        urlLastPart = urlLastPart.split('?')[0];
-    }
-
-    const pageName = Object.keys(PAGES).find(page => page.toLowerCase() === urlLastPart.toLowerCase());
-    return pageName || Object.keys(PAGES)[0];
-}
-
-function PagesContent() {
-    const location = useLocation();
-    const currentPage = _getCurrentPage(location.pathname);
-    
-    return (
-        <Layout currentPageName={currentPage}>
-            <Routes>            
-                <Route path="/" element={<Home />} />
-                <Route path="/Home" element={<Home />} />
-                <Route path="/Education" element={<Education />} />
-                <Route path="/Live" element={<Live />} />
-                <Route path="/Forum" element={<Forum />} />
-                <Route path="/About" element={<About />} />
-                <Route path="/IBPartnership" element={<IBPartnership />} />
-                <Route path="/AdvancedTools" element={<AdvancedTools />} />
-                <Route path="/MyProgress" element={<MyProgress />} />
-                <Route path="/AthenaTest" element={<AthenaTest />} />
-                <Route path="/AdminPanel" element={<AdminPanel />} />
-                <Route path="/AccountRequest" element={<AccountRequest />} />
-                <Route path="/AccessPortal" element={<AccessPortal />} />
-                <Route path="/Settings" element={<Settings />} />
-                <Route path="/SignalStream" element={<SignalStream />} />
-            </Routes>
-        </Layout>
-    );
-}
-
 export default function Pages() {
     return (
         <Router>
-            <PagesContent />
+            <Routes>
+                {/* Public Routes with Landing Layout */}
+                <Route path="/" element={
+                    <LandingLayout>
+                        <Landing />
+                    </LandingLayout>
+                } />
+                <Route path="/about" element={
+                    <LandingLayout>
+                        <About />
+                    </LandingLayout>
+                } />
+                <Route path="/partnership" element={
+                    <LandingLayout>
+                        <IBPartnership />
+                    </LandingLayout>
+                } />
+                <Route path="/access-portal" element={
+                    <LandingLayout>
+                        <AccessPortal />
+                    </LandingLayout>
+                } />
+                <Route path="/account-request" element={
+                    <LandingLayout>
+                        <AccountRequest />
+                    </LandingLayout>
+                } />
+
+                {/* Dashboard Routes with Authentication */}
+                <Route path="/dashboard/home" element={
+                    <DashboardLayout>
+                        <Home />
+                    </DashboardLayout>
+                } />
+                <Route path="/dashboard/education" element={
+                    <DashboardLayout>
+                        <Education />
+                    </DashboardLayout>
+                } />
+                <Route path="/dashboard/signals" element={
+                    <DashboardLayout>
+                        <SignalStream />
+                    </DashboardLayout>
+                } />
+                <Route path="/dashboard/live" element={
+                    <DashboardLayout>
+                        <Live />
+                    </DashboardLayout>
+                } />
+                <Route path="/dashboard/forum" element={
+                    <DashboardLayout>
+                        <Forum />
+                    </DashboardLayout>
+                } />
+                <Route path="/dashboard/tools" element={
+                    <DashboardLayout>
+                        <AdvancedTools />
+                    </DashboardLayout>
+                } />
+                <Route path="/dashboard/progress" element={
+                    <DashboardLayout>
+                        <MyProgress />
+                    </DashboardLayout>
+                } />
+                <Route path="/dashboard/athena" element={
+                    <DashboardLayout>
+                        <AthenaTest />
+                    </DashboardLayout>
+                } />
+                <Route path="/dashboard/settings" element={
+                    <DashboardLayout>
+                        <Settings />
+                    </DashboardLayout>
+                } />
+                <Route path="/dashboard/admin" element={
+                    <DashboardLayout>
+                        <AdminPanel />
+                    </DashboardLayout>
+                } />
+
+                {/* Legacy routes - redirect to dashboard */}
+                <Route path="/Home" element={
+                    <DashboardLayout>
+                        <Home />
+                    </DashboardLayout>
+                } />
+                <Route path="/Education" element={
+                    <DashboardLayout>
+                        <Education />
+                    </DashboardLayout>
+                } />
+                <Route path="/Live" element={
+                    <DashboardLayout>
+                        <Live />
+                    </DashboardLayout>
+                } />
+                <Route path="/Forum" element={
+                    <DashboardLayout>
+                        <Forum />
+                    </DashboardLayout>
+                } />
+                <Route path="/About" element={
+                    <LandingLayout>
+                        <About />
+                    </LandingLayout>
+                } />
+                <Route path="/IBPartnership" element={
+                    <LandingLayout>
+                        <IBPartnership />
+                    </LandingLayout>
+                } />
+                <Route path="/AdvancedTools" element={
+                    <DashboardLayout>
+                        <AdvancedTools />
+                    </DashboardLayout>
+                } />
+                <Route path="/MyProgress" element={
+                    <DashboardLayout>
+                        <MyProgress />
+                    </DashboardLayout>
+                } />
+                <Route path="/AthenaTest" element={
+                    <DashboardLayout>
+                        <AthenaTest />
+                    </DashboardLayout>
+                } />
+                <Route path="/AdminPanel" element={
+                    <DashboardLayout>
+                        <AdminPanel />
+                    </DashboardLayout>
+                } />
+                <Route path="/AccountRequest" element={
+                    <LandingLayout>
+                        <AccountRequest />
+                    </LandingLayout>
+                } />
+                <Route path="/AccessPortal" element={
+                    <LandingLayout>
+                        <AccessPortal />
+                    </LandingLayout>
+                } />
+                <Route path="/Settings" element={
+                    <DashboardLayout>
+                        <Settings />
+                    </DashboardLayout>
+                } />
+                <Route path="/SignalStream" element={
+                    <DashboardLayout>
+                        <SignalStream />
+                    </DashboardLayout>
+                } />
+            </Routes>
         </Router>
     );
 }

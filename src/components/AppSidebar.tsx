@@ -34,27 +34,25 @@ import {
 } from "@/components/ui/sidebar"
 
 const mainItems = [
-  { title: "Home", url: "/", icon: Home },
-  { title: "Education", url: "/education", icon: Book },
-  { title: "Signal Stream", url: "/signals", icon: TrendingUp },
-  { title: "Live Sessions", url: "/live", icon: Video },
-  { title: "Community Forum", url: "/community", icon: Users },
-  { title: "IB Partnership", url: "/partnership", icon: Crown },
+  { title: "Home", url: "/dashboard/home", icon: Home },
+  { title: "Education", url: "/dashboard/education", icon: Book },
+  { title: "Signal Stream", url: "/dashboard/signals", icon: TrendingUp },
+  { title: "Live Sessions", url: "/dashboard/live", icon: Video },
+  { title: "Community Forum", url: "/dashboard/forum", icon: Users },
 ]
 
 const toolsItems = [
-  { title: "Advanced Tools", url: "/tools", icon: Wrench },
-  { title: "Market Analysis", url: "/analysis", icon: BarChart3 },
-  { title: "Trading Calendar", url: "/calendar", icon: Calendar },
-  { title: "Performance", url: "/performance", icon: Target },
+  { title: "Advanced Tools", url: "/dashboard/tools", icon: Wrench },
+  { title: "Market Analysis", url: "/dashboard/analysis", icon: BarChart3 },
+  { title: "Trading Calendar", url: "/dashboard/calendar", icon: Calendar },
+  { title: "Performance", url: "/dashboard/progress", icon: Target },
 ]
 
 const accountItems = [
-  { title: "My Progress", url: "/progress", icon: Award },
-  { title: "Notifications", url: "/notifications", icon: Bell },
-  { title: "Messages", url: "/messages", icon: MessageCircle },
-  { title: "Settings", url: "/settings", icon: Settings },
-  { title: "About", url: "/about", icon: Info },
+  { title: "My Progress", url: "/dashboard/progress", icon: Award },
+  { title: "Athena AI", url: "/dashboard/athena", icon: MessageCircle },
+  { title: "Settings", url: "/dashboard/settings", icon: Settings },
+  { title: "Admin Panel", url: "/dashboard/admin", icon: Shield },
 ]
 
 export function AppSidebar() {

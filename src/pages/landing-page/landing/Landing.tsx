@@ -411,7 +411,8 @@ export default function Home() {
           <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white mb-8 sm:mb-10 max-w-xs sm:max-w-2xl md:max-w-3xl mx-auto relative z-10 px-2 sm:px-4 drop-shadow-lg font-medium leading-relaxed">
             Ascend to the Apex of Trading.
             <br />
-            Premium Education, Live Mentorship, and Professional Partnership Programs.
+            Premium Education, Live Mentorship, and Professional Partnership
+            Programs.
           </p>
         </ContentSection>
 
@@ -549,16 +550,16 @@ export default function Home() {
 
                 {/* Desktop Navigation - Vertical */}
                 <div className="hidden lg:flex">
-                  <div className="w-1/3 bg-surface/30 backdrop-blur-sm p-6 lg:p-8 flex flex-col justify-start overflow-y-auto">
+                  <div className="w-full lg:w-1/3 bg-surface/30 backdrop-blur-sm p-6 lg:p-8 flex flex-row lg:flex-col justify-start lg:flex-shrink overflow-x-auto lg:overflow-x-hidden">
                     {features.map((feature, index) => {
                       const Icon = feature.icon;
                       return (
                         <button
                           key={feature.title}
                           onClick={() => setActiveFeatureIndex(index)}
-                          className={`relative w-full text-left p-4 rounded-lg transition-all duration-300 mb-2 ${
+                          className={`relative w-full text-left p-4 rounded-lg transition-all duration-300 mb-2 flex-shrink-0 lg:flex-shrink ${
                             activeFeatureIndex === index
-                              ? "bg-accent-green/20"
+                              ? ""
                               : "hover:bg-surface/50"
                           }`}
                         >

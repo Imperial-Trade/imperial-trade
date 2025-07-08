@@ -1,22 +1,21 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import LandingLayout from "./layouts/LandingLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
-import Landing from "./landing-page/Landing";
-import Home from "./dashboard/Home";
-import Education from "./dashboard/Education";
-import Live from "./dashboard/Live";
-import Forum from "./dashboard/Forum";
-import About from "./landing-page/About";
-import IBPartnership from "./landing-page/IBPartnership";
-import AdvancedTools from "./dashboard/AdvancedTools";
-import MyProgress from "./dashboard/MyProgress";
-import AthenaTest from "./dashboard/AthenaTest";
-import AdminPanel from "./dashboard/AdminPanel";
-import AccountRequest from "./AccountRequest";
-import AccessPortal from "./AccessPortal";
-import Settings from "./dashboard/Settings";
-import SignalStream from "./dashboard/SignalStream";
-import Features from "./landing-page/Features";
+import Landing from "./landing-page/landing/Landing";
+import Home from "./dashboard/home/Home";
+import Live from "./dashboard/live/Live";
+import Forum from "./dashboard/forum/Forum";
+import About from "./landing-page/about/About";
+import IBPartnership from "./landing-page/ib-partnership/IBPartnership";
+import AdminPanel from "./dashboard/admin-panel/AdminPanel";
+import AccountRequest from "./landing-page/account-request/AccountRequest";
+import Settings from "./dashboard/settings/Settings";
+import SignalStream from "./dashboard/signal-stream/SignalStream";
+import Features from "./landing-page/features/Features";
+import AdvancedTools from "./dashboard/advanced-tools/AdvancedTools";
+import AthenaTestPage from "./dashboard/athena/AthenaTest";
+import Education from "./dashboard/education/Education";
+import MyProgress from "./dashboard/my-progress/MyProgress";
 
 export default function Pages() {
   return (
@@ -125,7 +124,7 @@ export default function Pages() {
           path="/dashboard/athena"
           element={
             <DashboardLayout>
-              <AthenaTest />
+              <AthenaTestPage />
             </DashboardLayout>
           }
         />

@@ -96,10 +96,10 @@ export const tradeAlertSchema = z.object({
 // Infer TypeScript type from schema
 export type TradeAlertFormData = z.infer<typeof tradeAlertSchema>;
 
-// Schema with status for API submissions
-export const tradeAlertSubmissionSchema = tradeAlertSchema.extend({
+// Schema with status for API submissions - use merge instead of extend for ZodEffects
+export const tradeAlertSubmissionSchema = tradeAlertSchema.merge(z.object({
   status: z.enum(['pending', 'active']).default('active')
-});
+}));
 
 export type TradeAlertSubmissionData = z.infer<typeof tradeAlertSubmissionSchema>;
 

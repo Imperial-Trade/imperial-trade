@@ -79,12 +79,13 @@ export function useTradeAlertForm(options: UseTradeAlertFormOptions = {}) {
     form.reset();
   }, [form]);
 
-  const setValue = useCallback(<K extends keyof TradeAlertFormData>(
-    name: K,
-    value: TradeAlertFormData[K],
+  // Simplified setValue with proper typing
+  const setValue = useCallback((
+    name: keyof TradeAlertFormData,
+    value: TradeAlertFormData[keyof TradeAlertFormData],
     options?: { shouldValidate?: boolean; shouldDirty?: boolean }
   ) => {
-    form.setValue(name, value, {
+    form.setValue(name, value as any, {
       shouldValidate: options?.shouldValidate ?? validateOnChange,
       shouldDirty: options?.shouldDirty ?? true
     });

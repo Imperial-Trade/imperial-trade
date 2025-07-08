@@ -48,8 +48,9 @@ export default function NewAlertForm({ onSubmit }: NewAlertFormProps) {
 
   const removeTakeProfit = () => {
     if (takeProfitCount > 1) {
-      const tpField = `tp${takeProfitCount}` as keyof typeof form.getValues;
-      form.setValue(tpField, undefined);
+      // Clear the highest TP field when removing
+      const tpFieldName = `tp${takeProfitCount}` as 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5';
+      form.setValue(tpFieldName, undefined);
       setTakeProfitCount(prev => prev - 1);
     }
   };
@@ -186,7 +187,7 @@ export default function NewAlertForm({ onSubmit }: NewAlertFormProps) {
           
           <div className="space-y-3">
             {Array.from({ length: takeProfitCount }, (_, index) => {
-              const tpField = `tp${index + 1}` as const;
+              const tpField = `tp${index + 1}` as 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5';
               return (
                 <FormField
                   key={tpField}

@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Mail, Clock, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Mail, Clock, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
@@ -11,6 +11,7 @@ import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { PageStyles } from "@/components/account-request/PageStyles";
 import { AccountRequest } from "@/api/entities";
 import { useToast } from "@/hooks/use-toast";
+import { ApprovedAccountFlow } from "@/components/account-request/ApprovedAccountFlow";
 
 export default function AccountRequestStatusPage() {
   const [email, setEmail] = useState("");
@@ -27,7 +28,6 @@ export default function AccountRequestStatusPage() {
     setError("");
     
     try {
-      // Fetch account request by email
       const requests = await AccountRequest.list();
       const userRequest = requests.find(req => req.email.toLowerCase() === email.toLowerCase());
       
@@ -54,8 +54,6 @@ export default function AccountRequestStatusPage() {
     switch (status) {
       case "pending":
         return <Clock className="w-8 h-8 text-yellow-400" />;
-      case "approved":
-        return <CheckCircle className="w-8 h-8 text-green-400" />;
       case "rejected":
         return <XCircle className="w-8 h-8 text-red-400" />;
       default:
@@ -70,12 +68,6 @@ export default function AccountRequestStatusPage() {
           title: "Request Pending",
           message: "Your account request is currently being reviewed by our administrators.",
           instructions: "Please wait 12-48 hours for approval. You will receive an email notification once your request has been processed."
-        };
-      case "approved":
-        return {
-          title: "Request Approved!",
-          message: "Congratulations! Your account request has been approved.",
-          instructions: "You can now set up your password to complete your account creation."
         };
       case "rejected":
         return {
@@ -146,6 +138,8 @@ export default function AccountRequestStatusPage() {
                   )}
                 </Button>
               </form>
+            ) : status.status === "approved" ? (
+              <ApprovedAccountFlow accountRequest={status} />
             ) : (
               <div className="space-y-6">
                 <div className="text-center">
@@ -182,22 +176,13 @@ export default function AccountRequestStatusPage() {
                       {new Date(status.created_at).toLocaleDateString()}
                     </span>
                   </div>
+                  {status.rejection_reason && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Reason:</span>
+                      <span className="text-red-300">{status.rejection_reason}</span>
+                    </div>
+                  )}
                 </div>
-
-                {status.status === "approved" && (
-                  <Button
-                    className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
-                    onClick={() => {
-                      // TODO: Navigate to password setup
-                      toast({
-                        title: "Coming Soon",
-                        description: "Password setup will be available shortly.",
-                      });
-                    }}
-                  >
-                    Set Up Password
-                  </Button>
-                )}
 
                 <Button
                   variant="outline"

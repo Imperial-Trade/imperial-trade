@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,188 +12,246 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, X } from 'lucide-react';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { useTradeAlertForm, type TradeAlertSubmissionData } from '@/hooks/useTradeAlertForm';
 
 const supportedAssets = [
   { name: 'Gold', symbol: 'XAU/USD', category: 'Commodities' },
   { name: 'Bitcoin', symbol: 'BTC/USD', category: 'Crypto' }
 ];
 
-export default function NewAlertForm({ onSubmit }) {
-  const [formData, setFormData] = useState({
-    asset_name: '',
-    finnhub_symbol: '',
-    trade_type: 'buy',
-    entry_price: '',
-    stop_loss: '',
-    notes: '',
+interface NewAlertFormProps {
+  onSubmit: (data: TradeAlertSubmissionData) => Promise<void> | void;
+}
+
+export default function NewAlertForm({ onSubmit }: NewAlertFormProps) {
+  const [takeProfitCount, setTakeProfitCount] = useState(1);
+  
+  const { form, handleSubmit, isSubmitting, hasErrors } = useTradeAlertForm({
+    onSubmit,
+    validateOnChange: true,
+    validateOnBlur: true
   });
 
-  const [takeProfits, setTakeProfits] = useState([{ value: '' }]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name, value) => {
-    setFormData(prev => ({...prev, [name]: value}));
-  }
-
-  const handleAssetChange = (symbol) => {
-      const asset = supportedAssets.find(a => a.symbol === symbol);
-      if (asset) {
-          setFormData(prev => ({
-              ...prev,
-              asset_name: asset.name,
-              finnhub_symbol: asset.symbol
-          }));
-      }
-  }
-
   const addTakeProfit = () => {
-    if (takeProfits.length < 10) {
-      setTakeProfits([...takeProfits, { value: '' }]);
+    if (takeProfitCount < 5) {
+      setTakeProfitCount(prev => prev + 1);
     }
   };
 
-  const removeTakeProfit = (index) => {
-    if (takeProfits.length > 1) {
-      const newTPs = takeProfits.filter((_, i) => i !== index);
-      setTakeProfits(newTPs);
+  const removeTakeProfit = () => {
+    if (takeProfitCount > 1) {
+      const tpField = `tp${takeProfitCount}` as keyof typeof form.getValues;
+      form.setValue(tpField, undefined);
+      setTakeProfitCount(prev => prev - 1);
     }
   };
 
-  const updateTakeProfit = (index, value) => {
-    const newTPs = [...takeProfits];
-    newTPs[index].value = value;
-    setTakeProfits(newTPs);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.finnhub_symbol) {
-        alert("Please select an asset.");
-        return;
+  const handleAssetChange = (symbol: string) => {
+    const asset = supportedAssets.find(a => a.symbol === symbol);
+    if (asset) {
+      form.setValue('asset_name', asset.name);
+      form.setValue('finnhub_symbol', asset.symbol);
     }
-
-    const isLimitOrder = formData.trade_type === 'buy_limit' || formData.trade_type === 'sell_limit';
-
-    const tpData = {};
-    takeProfits.forEach((tp, index) => {
-      if (tp.value && parseFloat(tp.value) > 0) {
-        tpData[`tp${index + 1}`] = parseFloat(tp.value);
-      }
-    });
-
-    const numericData = {
-        ...formData,
-        ...tpData,
-        entry_price: parseFloat(formData.entry_price),
-        stop_loss: parseFloat(formData.stop_loss),
-        status: isLimitOrder ? 'pending' : 'active',
-    };
-    
-    onSubmit(numericData);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 py-4 text-white">
-      <div className="col-span-2">
-        <Label htmlFor="asset">Asset (Live Twelve Data)</Label>
-        <Select onValueChange={handleAssetChange} name="asset">
+    <Form {...form}>
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 py-4 text-white">
+        {/* Asset Selection */}
+        <div className="col-span-2">
+          <Label htmlFor="asset">Asset (Live Twelve Data)</Label>
+          <Select onValueChange={handleAssetChange} name="asset">
             <SelectTrigger className="bg-gray-700 border-gray-600">
-                <SelectValue placeholder="Select Gold or Bitcoin..." />
+              <SelectValue placeholder="Select Gold or Bitcoin..." />
             </SelectTrigger>
             <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                {supportedAssets.map(asset => (
-                    <SelectItem key={asset.symbol} value={asset.symbol}>
-                        <div className="flex items-center justify-between w-full">
-                            <span>{asset.name}</span>
-                            <span className="text-xs text-emerald-400 ml-2">{asset.symbol}</span>
-                        </div>
-                    </SelectItem>
-                ))}
+              {supportedAssets.map(asset => (
+                <SelectItem key={asset.symbol} value={asset.symbol}>
+                  <div className="flex items-center justify-between w-full">
+                    <span>{asset.name}</span>
+                    <span className="text-xs text-emerald-400 ml-2">{asset.symbol}</span>
+                  </div>
+                </SelectItem>
+              ))}
             </SelectContent>
-        </Select>
-      </div>
+          </Select>
+        </div>
 
-      <div>
-        <Label htmlFor="trade_type">Trade Type</Label>
-        <Select onValueChange={(value) => handleSelectChange('trade_type', value)} defaultValue="buy" name="trade_type">
-          <SelectTrigger className="bg-gray-700 border-gray-600">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-800 border-gray-700 text-white">
-            <SelectItem value="buy">Buy (Market)</SelectItem>
-            <SelectItem value="sell">Sell (Market)</SelectItem>
-            <SelectItem value="buy_limit">Buy Limit</SelectItem>
-            <SelectItem value="sell_limit">Sell Limit</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+        {/* Trade Type */}
+        <FormField
+          control={form.control}
+          name="trade_type"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-white">Trade Type</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger className="bg-gray-700 border-gray-600">
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent className="bg-gray-800 border-gray-700 text-white">
+                  <SelectItem value="buy">Buy (Market)</SelectItem>
+                  <SelectItem value="sell">Sell (Market)</SelectItem>
+                  <SelectItem value="buy_limit">Buy Limit</SelectItem>
+                  <SelectItem value="sell_limit">Sell Limit</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <div>
-        <Label htmlFor="entry_price">Entry Price</Label>
-        <Input id="entry_price" name="entry_price" type="number" step="any" value={formData.entry_price} onChange={handleChange} required className="bg-gray-700 border-gray-600"/>
-      </div>
-      
-      <div className="col-span-2">
-        <Label htmlFor="stop_loss">Stop Loss</Label>
-        <Input id="stop_loss" name="stop_loss" type="number" step="any" value={formData.stop_loss} onChange={handleChange} required className="bg-gray-700 border-gray-600"/>
-      </div>
-      
-      <div className="col-span-2">
-        <div className="flex items-center justify-between mb-3">
-          <Label>Take Profits</Label>
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            onClick={addTakeProfit}
-            className="bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white"
-            disabled={takeProfits.length >= 10}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add TP
-          </Button>
+        {/* Entry Price */}
+        <FormField
+          control={form.control}
+          name="entry_price"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-white">Entry Price</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  type="number"
+                  step="any"
+                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                  className="bg-gray-700 border-gray-600"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        {/* Stop Loss */}
+        <div className="col-span-2">
+          <FormField
+            control={form.control}
+            name="stop_loss"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Stop Loss</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="number"
+                    step="any"
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    className="bg-gray-700 border-gray-600"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         
-        <div className="space-y-3">
-          {takeProfits.map((tp, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Label className="w-16 text-sm text-gray-400">TP{index + 1}:</Label>
-              <Input
-                type="number"
-                step="any"
-                value={tp.value}
-                onChange={(e) => updateTakeProfit(index, e.target.value)}
-                placeholder={`Take Profit ${index + 1}`}
-                className="bg-gray-700 border-gray-600 flex-1"
-              />
-              {takeProfits.length > 1 && (
+        {/* Take Profits */}
+        <div className="col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <Label className="text-white">Take Profits</Label>
+            <div className="flex gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={addTakeProfit}
+                className="bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white"
+                disabled={takeProfitCount >= 5}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add TP
+              </Button>
+              {takeProfitCount > 1 && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => removeTakeProfit(index)}
+                  onClick={removeTakeProfit}
                   className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
                 >
                   <X className="w-4 h-4" />
                 </Button>
               )}
             </div>
-          ))}
+          </div>
+          
+          <div className="space-y-3">
+            {Array.from({ length: takeProfitCount }, (_, index) => {
+              const tpField = `tp${index + 1}` as const;
+              return (
+                <FormField
+                  key={tpField}
+                  control={form.control}
+                  name={tpField}
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center gap-2">
+                        <Label className="w-16 text-sm text-gray-400">TP{index + 1}:</Label>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            step="any"
+                            value={field.value || ''}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              field.onChange(value ? parseFloat(value) : undefined);
+                            }}
+                            placeholder={`Take Profit ${index + 1}`}
+                            className="bg-gray-700 border-gray-600 flex-1"
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              );
+            })}
+          </div>
         </div>
-      </div>
-       
-      <div className="col-span-2">
-        <Label htmlFor="notes">Notes</Label>
-        <Textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} className="bg-gray-700 border-gray-600"/>
-      </div>
+         
+        {/* Notes */}
+        <div className="col-span-2">
+          <FormField
+            control={form.control}
+            name="notes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white">Notes</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    value={field.value || ''}
+                    className="bg-gray-700 border-gray-600"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
-      <div className="col-span-2 text-right">
-        <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white">Post Alert</Button>
-      </div>
-    </form>
+        {/* Submit Button */}
+        <div className="col-span-2 text-right">
+          <Button 
+            type="submit" 
+            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+            disabled={isSubmitting || hasErrors}
+          >
+            {isSubmitting ? 'Posting...' : 'Post Alert'}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }

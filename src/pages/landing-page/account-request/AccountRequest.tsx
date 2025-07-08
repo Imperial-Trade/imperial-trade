@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AccountRequest } from "@/api/entities";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   User,
   Mail,
@@ -19,65 +27,33 @@ import {
   CheckCircle,
   AlertTriangle,
   ArrowRight,
+  Crown,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Crown } from "lucide-react";
+import { useAccountRequestForm } from "@/hooks/useAccountRequestForm";
+import { HoneypotField } from "@/components/security/HoneypotField";
+import { ValidationFeedback } from "@/components/security/ValidationFeedback";
+import { AccountRequest } from "@/api/entities";
 
 export default function AccountRequestPage() {
-  const [formData, setFormData] = useState({
-    full_name: "",
-    email: "",
-    account_type: "user",
-    reason: "",
-  });
-  const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState({ type: "", message: "" });
+  const { form, onSubmit, canSubmit, isSubmitting } = useAccountRequestForm();
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (value) => {
-    setFormData((prev) => ({ ...prev, account_type: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.full_name || !formData.email || !formData.reason) {
-      setStatus({
-        type: "error",
-        message: "Please fill out all required fields.",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    setStatus({ type: "", message: "" });
-
+  const handleFormSubmit = async (data: any) => {
     try {
-      await AccountRequest.create(formData);
+      await AccountRequest.create(data);
       setStatus({
         type: "success",
-        message:
-          "Your request has been submitted! You will receive an email once an admin has reviewed it.",
+        message: "Your request has been submitted! You will receive an email once an admin has reviewed it.",
       });
-      setFormData({
-        full_name: "",
-        email: "",
-        account_type: "user",
-        reason: "",
-      });
+      form.reset();
     } catch (error) {
       console.error("Failed to submit account request:", error);
       setStatus({
         type: "error",
-        message:
-          "There was an error submitting your request. Please try again later.",
+        message: "There was an error submitting your request. Please try again later.",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -98,7 +74,7 @@ export default function AccountRequestPage() {
       </video>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] z-10"></div>
 
-      <div className="relative z-20 max-w-lg w-full">
+      <div className="relative z-20 max-w-2xl w-full">
         <div className="flex items-center justify-center mb-8">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-surface/90 rounded-2xl flex items-center justify-center glow-effect-gold backdrop-blur-md shadow-2xl">
@@ -121,14 +97,13 @@ export default function AccountRequestPage() {
               Request Community Access
             </CardTitle>
             <p className="text-secondary text-center text-white">
-              Fill out the form below. An admin will review your request
-              shortly.
+              Fill out the form below. An admin will review your request shortly.
             </p>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent>
             {status.message && (
               <div
-                className={`p-3 rounded-md flex items-center gap-2 text-sm ${
+                className={`p-3 rounded-md flex items-center gap-2 text-sm mb-6 ${
                   status.type === "success"
                     ? "bg-green-500/10 border border-green-500/20 text-green-300"
                     : "bg-red-500/10 border border-red-500/20 text-red-300"
@@ -144,84 +119,156 @@ export default function AccountRequestPage() {
             )}
 
             {status.type !== "success" && (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    name="full_name"
-                    placeholder="Full Name"
-                    value={formData.full_name}
-                    onChange={handleInputChange}
-                    className="pl-10 bg-white border-gray-300 text-gray-900"
-                    required
-                  />
-                </div>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    name="email"
-                    type="email"
-                    placeholder="Email Address"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="pl-10 bg-white border-gray-300 text-gray-900"
-                    required
-                  />
-                </div>
-                <div>
-                  <Select
-                    onValueChange={handleSelectChange}
-                    defaultValue="user"
-                  >
-                    <SelectTrigger className="w-full bg-white border-gray-300 text-gray-900">
-                      <div className="flex items-center gap-3">
-                        <Shield className="w-5 h-5 text-gray-400" />
-                        <SelectValue placeholder="Select account type" />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">Standard Member</SelectItem>
-                      <SelectItem value="admin">
-                        Educator / IB Partner
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="relative">
-                  <Textarea
-                    name="reason"
-                    placeholder="Briefly state why you want to join (e.g., 'Referred by John Doe', 'Interested in IB program', etc.)"
-                    value={formData.reason}
-                    onChange={handleInputChange}
-                    className="bg-white border-gray-300 text-gray-900"
-                    rows={3}
-                    required
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
-                >
-                  {isLoading ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4 mr-2" /> Submit Request
-                    </>
-                  )}
-                </Button>
-              </form>
+              <div className="account-request-form-container">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleFormSubmit)} className="form-grid">
+                    <HoneypotField form={form} />
+                    
+                    <div className="form-fields">
+                      <FormField
+                        control={form.control}
+                        name="full_name"
+                        render={({ field, fieldState }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Full Name</FormLabel>
+                            <div className="relative">
+                              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder="Enter your full name"
+                                  className="pl-10 bg-white border-gray-300 text-gray-900"
+                                />
+                              </FormControl>
+                            </div>
+                            <ValidationFeedback
+                              error={fieldState.error}
+                              isValid={!fieldState.error}
+                              value={field.value}
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field, fieldState }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Email Address</FormLabel>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  type="email"
+                                  placeholder="Enter your email address"
+                                  className="pl-10 bg-white border-gray-300 text-gray-900"
+                                />
+                              </FormControl>
+                            </div>
+                            <ValidationFeedback
+                              error={fieldState.error}
+                              isValid={!fieldState.error}
+                              value={field.value}
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="account_type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Account Type</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                                  <div className="flex items-center gap-3">
+                                    <Shield className="w-5 h-5 text-gray-400" />
+                                    <SelectValue placeholder="Select account type" />
+                                  </div>
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="user">Standard Member</SelectItem>
+                                <SelectItem value="admin">Educator / IB Partner</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="reason"
+                        render={({ field, fieldState }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">
+                              Why do you want to join? (10-500 characters)
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                {...field}
+                                placeholder="Briefly state why you want to join (e.g., 'Referred by John Doe', 'Interested in IB program', etc.)"
+                                className="bg-white border-gray-300 text-gray-900"
+                                rows={3}
+                              />
+                            </FormControl>
+                            <div className="flex justify-between items-center">
+                              <ValidationFeedback
+                                error={fieldState.error}
+                                isValid={!fieldState.error}
+                                value={field.value}
+                              />
+                              <span className="text-xs text-gray-400">
+                                {field.value?.length || 0}/500
+                              </span>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="form-actions">
+                      <Button
+                        type="submit"
+                        disabled={isSubmitting || !canSubmit}
+                        className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
+                      >
+                        {isSubmitting ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" /> Submit Request
+                          </>
+                        )}
+                      </Button>
+                      
+                      {!canSubmit && (
+                        <p className="text-sm text-yellow-400 text-center mt-2">
+                          Rate limit reached. Please wait before submitting another request.
+                        </p>
+                      )}
+                    </div>
+                  </form>
+                </Form>
+              </div>
             )}
 
-            <div className="pt-2">
+            <div className="pt-4">
               <Link to={createPageUrl("AccessPortal")}>
                 <Button
                   variant="outline"
                   className="w-full border-white/20 text-white/80 hover:bg-white/10"
                 >
                   Go to Login
-                  <ArrowRight className="w-4 h-4 mr-2" />
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
             </div>
@@ -230,6 +277,49 @@ export default function AccountRequestPage() {
       </div>
 
       <style>{`
+        /* Form Grid Layout */
+        .account-request-form-container {
+          width: 100%;
+        }
+        
+        .form-grid {
+          display: grid;
+          grid-template-areas: 
+            "fields"
+            "actions";
+          gap: 1.5rem;
+        }
+        
+        .form-fields {
+          grid-area: fields;
+          display: grid;
+          gap: 1.5rem;
+        }
+        
+        .form-actions {
+          grid-area: actions;
+        }
+
+        @media (min-width: 768px) {
+          .form-grid {
+            grid-template-areas: 
+              "fields fields"
+              "actions actions";
+            grid-template-columns: 1fr 1fr;
+          }
+          
+          .form-fields {
+            grid-column: span 2;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+          }
+          
+          .form-fields > *:nth-child(3),
+          .form-fields > *:nth-child(4) {
+            grid-column: span 2;
+          }
+        }
+
         /* AI Tech Font Styles */
         .imperial-tech-font {
           font-family: 'Orbitron', 'Courier New', monospace;

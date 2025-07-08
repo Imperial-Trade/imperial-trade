@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,14 +20,15 @@ export default function AccountRequestPage() {
   const handleFormSubmit = async (data: any) => {
     try {
       await AccountRequest.create(data);
-      
+
       // Redirect to status page after successful submission
       navigate("/account-request-status");
     } catch (error) {
       console.error("Failed to submit account request:", error);
       setStatus({
         type: "error",
-        message: "There was an error submitting your request. Please try again later.",
+        message:
+          "There was an error submitting your request. Please try again later.",
       });
     }
   };
@@ -50,12 +50,16 @@ export default function AccountRequestPage() {
               Request Community Access
             </CardTitle>
             <p className="text-secondary text-center text-white">
-              Fill out the form below. An admin will review your request shortly.
+              Fill out the form below. An admin will review your request
+              shortly.
             </p>
           </CardHeader>
           <CardContent>
             <ErrorBoundary componentName="Status Message">
-              <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
+              <StatusMessage
+                type={status.type as "success" | "error" | ""}
+                message={status.message}
+              />
             </ErrorBoundary>
 
             {status.type !== "success" && (
@@ -69,7 +73,7 @@ export default function AccountRequestPage() {
               </ErrorBoundary>
             )}
 
-            <div className="pt-4 space-y-3">
+            <div className="pt-4 space-y-3 grid grid-cols">
               <Link to="/account-request-status">
                 <Button
                   variant="outline"
@@ -79,8 +83,8 @@ export default function AccountRequestPage() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
-              
-              <Link to="/login">
+
+              <Link to="/signin">
                 <Button
                   variant="outline"
                   className="w-full border-white/20 text-white/80 hover:bg-white/10"

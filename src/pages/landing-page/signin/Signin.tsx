@@ -11,7 +11,7 @@ import { LoginForm } from "@/components/login/LoginForm";
 import { PageStyles } from "@/components/account-request/PageStyles";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 
-export default function LoginPage() {
+export default function SigninPage() {
   const [status, setStatus] = useState({ type: "", message: "" });
   const { form, onSubmit, canSubmit, isSubmitting } = useLoginForm();
   const navigate = useNavigate();
@@ -71,7 +71,7 @@ export default function LoginPage() {
               </ErrorBoundary>
             )}
 
-            <div className="pt-4 space-y-3">
+            <div className="pt-4 space-y-3 grid grid-cols">
               <Link to="/account-request">
                 <Button
                   variant="outline"

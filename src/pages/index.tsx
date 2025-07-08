@@ -17,7 +17,7 @@ import AdvancedTools from "./dashboard/advanced-tools/AdvancedTools";
 import AthenaTestPage from "./dashboard/athena/AthenaTest";
 import Education from "./dashboard/education/Education";
 import MyProgress from "./dashboard/my-progress/MyProgress";
-import LoginPage from "./landing-page/login/Login";
+import SigninPage from "./landing-page/signin/Signin";
 
 export default function Pages() {
   return (
@@ -74,10 +74,10 @@ export default function Pages() {
         />
 
         <Route
-          path="/login"
+          path="/signin"
           element={
             <LandingLayout>
-              <LoginPage />
+              <SigninPage />
             </LandingLayout>
           }
         />

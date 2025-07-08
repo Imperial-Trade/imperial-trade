@@ -206,7 +206,7 @@ export default function AccountRequestStatusPage() {
               </div>
             )}
 
-            <div className="pt-4">
+            <div className="pt-4 grid grid-cols">
               <Link to={createPageUrl("account-request")}>
                 <Button
                   variant="outline"

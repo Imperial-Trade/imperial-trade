@@ -8,7 +8,7 @@ interface WithErrorBoundaryOptions {
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
 
-export function withErrorBoundary<P extends object>(
+export function withErrorBoundary<P extends Record<string, any>>(
   Component: React.ComponentType<P>,
   options: WithErrorBoundaryOptions = {}
 ) {

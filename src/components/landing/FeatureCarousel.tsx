@@ -173,7 +173,7 @@ export default function FeatureCarousel() {
               </div>
 
               {/* Content Area */}
-              <div className="p-4 sm:p-6 lg:p-8 flex flex-col justify-center">
+              <div className="p-4 sm:p-6 lg:p-8 grid grid-cols-1 gap-6">
                 <div key={activeFeature.title} className="animate-fade-in">
                   <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-surface/80 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 lg:mb-6 glow-effect-green">
                     <activeFeature.icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-accent-green" />

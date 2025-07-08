@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -590,19 +591,19 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Content Area - Improved Mobile Layout */}
+                {/* Content Area - Fixed spacing issues */}
                 <div className="flex-1 p-4 sm:p-6 lg:p-12 flex flex-col justify-center lg:w-2/3 lg:ml-auto">
                   <div key={activeFeature.title} className="animate-fade-in">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-surface/80 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 glow-effect-green">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-surface/80 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 lg:mb-6 glow-effect-green">
                       <activeFeature.icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-accent-green" />
                     </div>
-                    <h3 className="text-xl sm:text-2xl lg:text-4xl font-bold text-white mb-3 sm:mb-4 drop-shadow-lg leading-tight">
+                    <h3 className="text-xl sm:text-2xl lg:text-4xl font-bold text-white mb-2 sm:mb-3 lg:mb-4 drop-shadow-lg leading-tight">
                       {activeFeature.title}
                     </h3>
-                    <p className="text-sm sm:text-base lg:text-lg text-white/90 mb-3 sm:mb-4 lg:mb-6 drop-shadow-md leading-relaxed">
+                    <p className="text-sm sm:text-base lg:text-lg text-white/90 mb-3 sm:mb-4 lg:mb-5 drop-shadow-md leading-relaxed">
                       {activeFeature.description}
                     </p>
-                    <p className="text-xs sm:text-sm lg:text-base text-white/70 italic mb-6 sm:mb-8 drop-shadow-md leading-relaxed">
+                    <p className="text-xs sm:text-sm lg:text-base text-white/70 italic mb-4 sm:mb-6 lg:mb-8 drop-shadow-md leading-relaxed">
                       {activeFeature.detailedContext}
                     </p>
                     <Link to={createPageUrl(activeFeature.link)}>

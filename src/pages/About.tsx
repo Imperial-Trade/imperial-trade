@@ -222,12 +222,12 @@ export default function About() {
           <h1 className="text-4xl lg:text-6xl font-bold text-primary mb-6">
             <span className="gold-text-gradient">IMPERIAL</span>
             <br />
-            <span className="text-2xl lg:text-3xl text-secondary">
+            <span className="text-2xl lg:text-3xl text-white">
               Trading Community
             </span>
           </h1>
 
-          <p className="text-xl text-secondary max-w-4xl mx-auto leading-relaxed">
+          <p className="text-xl text-white max-w-4xl mx-auto leading-relaxed">
             We are the world's premier trading education platform, dedicated to
             transforming aspiring traders into market professionals through
             comprehensive education, live mentorship, and an elite community of
@@ -242,7 +242,7 @@ export default function About() {
               <h2 className="text-3xl font-bold text-primary mb-6">
                 Our Mission
               </h2>
-              <p className="text-lg text-secondary leading-relaxed max-w-4xl mx-auto">
+              <p className="text-lg text-white leading-relaxed max-w-4xl mx-auto">
                 To democratize access to professional-grade trading education
                 and create a supportive community where traders of all levels
                 can learn, grow, and achieve financial independence through
@@ -260,7 +260,7 @@ export default function About() {
                 <CardContent className="p-6">
                   <stat.icon className="w-8 h-8 text-accent-green mx-auto mb-3" />
                   <AnimatedCounter value={stat.number} suffix={stat.suffix} />
-                  <div className="text-sm text-secondary">{stat.label}</div>
+                  <div className="text-sm text-white">{stat.label}</div>
                 </CardContent>
               </Card>
             ))}
@@ -273,7 +273,7 @@ export default function About() {
             <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-4">
               Why Choose <span className="text-accent-gold">Imperial</span>?
             </h2>
-            <p className="text-xl text-secondary">
+            <p className="text-xl text-white">
               Everything you need to succeed in the markets
             </p>
           </div>
@@ -292,7 +292,7 @@ export default function About() {
                     <h3 className="text-xl font-semibold text-primary mb-4">
                       {feature.title}
                     </h3>
-                    <p className="text-secondary leading-relaxed">
+                    <p className="text-white leading-relaxed">
                       {feature.description}
                     </p>
                   </CardContent>
@@ -308,7 +308,7 @@ export default function About() {
             <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-4">
               Meet Our <span className="text-accent-gold">Expert Team</span>
             </h2>
-            <p className="text-xl text-secondary">
+            <p className="text-xl text-white">
               Learn from seasoned professionals with decades of combined
               experience
             </p>
@@ -333,12 +333,12 @@ export default function About() {
                     <p className="text-accent-gold text-sm mb-2">
                       {member.role}
                     </p>
-                    <p className="text-secondary text-sm mb-2">
+                    <p className="text-white text-sm mb-2">
                       {member.experience}
                     </p>
                     <Badge
                       variant="outline"
-                      className="border-default text-secondary text-xs"
+                      className="border-default text-white text-xs"
                     >
                       {member.specialty}
                     </Badge>
@@ -363,7 +363,7 @@ export default function About() {
                 {achievements.map((achievement, index) => (
                   <div key={index} className="flex items-center gap-3">
                     <CheckCircle className="w-6 h-6 text-accent-green flex-shrink-0" />
-                    <span className="text-secondary">{achievement}</span>
+                    <span className="text-white">{achievement}</span>
                   </div>
                 ))}
               </div>
@@ -406,7 +406,7 @@ export default function About() {
                     <h3 className="text-xl font-semibold text-primary mb-4">
                       {value.title}
                     </h3>
-                    <p className="text-secondary">{value.description}</p>
+                    <p className="text-white">{value.description}</p>
                   </CardContent>
                 </Card>
               </ContentSection>
@@ -422,12 +422,12 @@ export default function About() {
                 Ready to Join the{" "}
                 <span className="text-accent-gold">Imperial</span> Family?
               </h2>
-              <p className="text-lg text-secondary mb-6 max-w-2xl mx-auto">
+              <p className="text-lg text-white mb-6 max-w-2xl mx-auto">
                 Take the first step towards trading mastery. Join thousands of
                 successful traders who have transformed their financial future
                 with Imperial Trading Community.
               </p>
-              <div className="flex items-center justify-center gap-4 text-secondary">
+              <div className="flex items-center justify-center gap-4 text-white">
                 <div className="flex items-center gap-2">
                   <Globe className="w-5 h-5" />
                   <span>Global Community</span>

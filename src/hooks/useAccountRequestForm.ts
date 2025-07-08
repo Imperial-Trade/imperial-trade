@@ -14,6 +14,9 @@ export const useAccountRequestForm = () => {
     defaultValues: {
       full_name: "",
       email: "",
+      phone_number: "",
+      vt_market_account_number: "",
+      referrer: "",
       account_type: "user",
       reason: "",
       website: "", // Honeypot field

@@ -22,13 +22,16 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          phone_number: string | null
           reason: string | null
+          referrer: string | null
           rejection_reason: string | null
           social_id: string | null
           social_provider: Database["public"]["Enums"]["social_provider"] | null
           status: Database["public"]["Enums"]["request_status"]
           updated_at: string
           username: string | null
+          vt_market_account_number: string | null
         }
         Insert: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -37,7 +40,9 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          phone_number?: string | null
           reason?: string | null
+          referrer?: string | null
           rejection_reason?: string | null
           social_id?: string | null
           social_provider?:
@@ -46,6 +51,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["request_status"]
           updated_at?: string
           username?: string | null
+          vt_market_account_number?: string | null
         }
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
@@ -54,7 +60,9 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          phone_number?: string | null
           reason?: string | null
+          referrer?: string | null
           rejection_reason?: string | null
           social_id?: string | null
           social_provider?:
@@ -63,6 +71,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["request_status"]
           updated_at?: string
           username?: string | null
+          vt_market_account_number?: string | null
         }
         Relationships: []
       }

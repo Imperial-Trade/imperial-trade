@@ -22,6 +22,25 @@ export const accountRequestSchema = z.object({
     .refine(validateEmailDomain, {
       message: "Disposable email addresses are not allowed"
     }),
+
+  phone_number: z.string()
+    .min(10, "Phone number must be at least 10 digits")
+    .max(15, "Phone number must not exceed 15 digits")
+    .regex(/^[\+]?[1-9][\d]{0,15}$/, "Please enter a valid phone number")
+    .transform(sanitizeInput),
+
+  vt_market_account_number: z.string()
+    .min(5, "VT Market Account Number must be at least 5 characters")
+    .max(20, "VT Market Account Number must not exceed 20 characters")
+    .regex(/^[A-Za-z0-9]+$/, "Account number can only contain letters and numbers")
+    .transform(sanitizeInput),
+
+  referrer: z.string()
+    .max(100, "Referrer name must not exceed 100 characters")
+    .regex(/^[a-zA-Z\s'-]*$/, "Referrer name can only contain letters, spaces, hyphens, and apostrophes")
+    .transform(sanitizeInput)
+    .optional()
+    .or(z.literal("")),
   
   account_type: z.enum(["user", "admin"], {
     errorMap: () => ({ message: "Please select a valid account type" })

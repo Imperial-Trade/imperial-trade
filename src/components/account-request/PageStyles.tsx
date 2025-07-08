@@ -41,8 +41,8 @@ export const PageStyles: React.FC = () => {
           gap: 1.5rem;
         }
         
-        .form-fields > *:nth-child(3),
-        .form-fields > *:nth-child(4) {
+        .form-fields > *:nth-child(7),
+        .form-fields > *:nth-child(8) {
           grid-column: span 2;
         }
       }

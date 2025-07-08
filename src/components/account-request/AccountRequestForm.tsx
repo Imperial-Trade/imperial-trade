@@ -18,7 +18,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { User, Mail, Shield, Send } from "lucide-react";
+import { User, Mail, Shield, Send, Phone } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
 import { HoneypotField } from "@/components/security/HoneypotField";
@@ -75,14 +75,93 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
               name="email"
               render={({ field, fieldState }) => (
                 <FormItem>
-                  <FormLabel className="text-white">Email Address</FormLabel>
+                  <FormLabel className="text-white">VT Market Email Address</FormLabel>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <FormControl>
                       <Input
                         {...field}
                         type="email"
-                        placeholder="Enter your email address"
+                        placeholder="Enter your VT Market email address"
+                        className="pl-10 bg-white border-gray-300 text-gray-900"
+                      />
+                    </FormControl>
+                  </div>
+                  <ValidationFeedback
+                    error={fieldState.error}
+                    isValid={!fieldState.error}
+                    value={field.value}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phone_number"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel className="text-white">Phone Number</FormLabel>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="tel"
+                        placeholder="Enter your phone number"
+                        className="pl-10 bg-white border-gray-300 text-gray-900"
+                      />
+                    </FormControl>
+                  </div>
+                  <ValidationFeedback
+                    error={fieldState.error}
+                    isValid={!fieldState.error}
+                    value={field.value}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="vt_market_account_number"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel className="text-white">VT Market Account Number</FormLabel>
+                  <div className="relative">
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Enter your VT Market account number"
+                        className="pl-10 bg-white border-gray-300 text-gray-900"
+                      />
+                    </FormControl>
+                  </div>
+                  <ValidationFeedback
+                    error={fieldState.error}
+                    isValid={!fieldState.error}
+                    value={field.value}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="referrer"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel className="text-white">Referrer (Optional)</FormLabel>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Who referred you? (Optional)"
                         className="pl-10 bg-white border-gray-300 text-gray-900"
                       />
                     </FormControl>

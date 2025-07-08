@@ -272,7 +272,9 @@ const ToolsCarousel = () => {
                   <h3 className={`${titleSize} font-bold text-primary mb-3`}>
                     {tool.name}
                   </h3>
-                  <p className={`text-secondary ${descSize} leading-relaxed`}>
+                  <p
+                    className={`text-secondary ${descSize} leading-relaxed text-white`}
+                  >
                     {tool.description}
                   </p>
                 </Card>

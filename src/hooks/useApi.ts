@@ -2,15 +2,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ApiResponse, AsyncState } from '@/types/common';
 
-interface UseApiOptions {
+interface UseApiOptions<T> {
   immediate?: boolean;
-  onSuccess?: (data: any) => void;
+  onSuccess?: (data: T) => void;
   onError?: (error: string) => void;
 }
 
-export function useApi<T = any>(
+export function useApi<T = unknown>(
   apiCall: () => Promise<T>,
-  options: UseApiOptions = {}
+  options: UseApiOptions<T> = {}
 ) {
   const { immediate = true, onSuccess, onError } = options;
   
@@ -49,9 +49,9 @@ export function useApi<T = any>(
   };
 }
 
-export function useMutation<T = any, P = any>(
+export function useMutation<T = unknown, P = unknown>(
   mutationFn: (params: P) => Promise<T>,
-  options: UseApiOptions = {}
+  options: UseApiOptions<T> = {}
 ) {
   const { onSuccess, onError } = options;
   

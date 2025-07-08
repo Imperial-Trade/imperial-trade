@@ -1,7 +1,7 @@
 
 // Common type definitions used across the application
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -55,34 +55,34 @@ export interface PriceData {
   changePercent: number;
 }
 
-// Form types
+// Form types with better constraints
 export interface FormError {
   field: string;
   message: string;
 }
 
-export interface FormState<T = any> {
+export interface FormState<T extends Record<string, unknown> = Record<string, unknown>> {
   data: T;
   errors: FormError[];
   isSubmitting: boolean;
   isValid: boolean;
 }
 
-// UI Component types
+// UI Component types with better constraints
 export interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
 }
 
-export interface TableColumn<T = any> {
+export interface TableColumn<T extends Record<string, unknown> = Record<string, unknown>> {
   key: keyof T;
   title: string;
   sortable?: boolean;
-  render?: (value: any, record: T) => React.ReactNode;
+  render?: (value: unknown, record: T) => React.ReactNode;
 }
 
-export interface TableProps<T = any> {
+export interface TableProps<T extends Record<string, unknown> = Record<string, unknown>> {
   data: T[];
   columns: TableColumn<T>[];
   loading?: boolean;
@@ -107,7 +107,7 @@ export interface ChartSeries {
   color?: string;
 }
 
-// Notification types
+// Notification types - using strict typing
 export interface Notification {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
@@ -137,7 +137,7 @@ export interface FileUploadProgress {
   error?: string;
 }
 
-// Search and filter types
+// Search and filter types with better constraints
 export interface SearchFilters {
   query?: string;
   category?: string;
@@ -155,7 +155,7 @@ export interface FilterOption {
   label: string;
   type: 'text' | 'select' | 'date' | 'number' | 'boolean';
   options?: SelectOption[];
-  defaultValue?: any;
+  defaultValue?: string | number | boolean | Date;
 }
 
 // Generic utility types
@@ -179,7 +179,7 @@ export interface Endpoint {
 export interface ApiError {
   code: string;
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // State management types

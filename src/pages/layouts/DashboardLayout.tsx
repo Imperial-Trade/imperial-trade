@@ -1,53 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import React from 'react';
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Crown } from "lucide-react";
-import LoadingSpinner from '@/components/layout/LoadingSpinner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-      } catch (error) {
-        console.error('Error fetching user:', error);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
-  if (!user) {
-    return <Navigate to="/access-portal" replace />;
-  }
+  const { user } = useAuth();
 
   return (
     <SidebarProvider>
@@ -69,6 +32,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               Market Open
             </div>
+            {user && (
+              <div className="text-sm text-muted-foreground">
+                {user.email}
+              </div>
+            )}
           </div>
         </header>
 

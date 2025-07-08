@@ -22,7 +22,7 @@ export default function SigninPage() {
       await onSubmit(data);
 
       // Redirect to dashboard after successful login
-      navigate("/dashboard");
+      navigate("/dashboard/home");
     } catch (error) {
       console.error("Login failed:", error);
       setStatus({

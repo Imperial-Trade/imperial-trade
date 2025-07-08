@@ -1,6 +1,8 @@
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 import LandingLayout from "./layouts/LandingLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Landing from "./landing-page/landing/Landing";
 import Home from "./dashboard/home/Home";
 import Live from "./dashboard/live/Live";
@@ -18,6 +20,7 @@ import AthenaTestPage from "./dashboard/athena/AthenaTest";
 import Education from "./dashboard/education/Education";
 import MyProgress from "./dashboard/my-progress/MyProgress";
 import SigninPage from "./landing-page/signin/Signin";
+import NotFound from "./NotFound";
 
 export default function Pages() {
   return (
@@ -72,7 +75,6 @@ export default function Pages() {
             </LandingLayout>
           }
         />
-
         <Route
           path="/signin"
           element={
@@ -82,87 +84,116 @@ export default function Pages() {
           }
         />
 
-        {/* Dashboard Routes with Authentication */}
+        {/* Dashboard redirect - redirect /dashboard to /dashboard/home */}
+        <Route
+          path="/dashboard"
+          element={<Navigate to="/dashboard/home" replace />}
+        />
+
+        {/* Protected Dashboard Routes */}
         <Route
           path="/dashboard/home"
           element={
-            <DashboardLayout>
-              <Home />
-            </DashboardLayout>
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Home />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/education"
           element={
-            <DashboardLayout>
-              <Education />
-            </DashboardLayout>
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Education />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/signals"
           element={
-            <DashboardLayout>
-              <SignalStream />
-            </DashboardLayout>
+            <ProtectedRoute>
+              <DashboardLayout>
+                <SignalStream />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/live"
           element={
-            <DashboardLayout>
-              <Live />
-            </DashboardLayout>
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Live />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/forum"
           element={
-            <DashboardLayout>
-              <Forum />
-            </DashboardLayout>
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Forum />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/tools"
           element={
-            <DashboardLayout>
-              <AdvancedTools />
-            </DashboardLayout>
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AdvancedTools />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/progress"
           element={
-            <DashboardLayout>
-              <MyProgress />
-            </DashboardLayout>
+            <ProtectedRoute>
+              <DashboardLayout>
+                <MyProgress />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/athena"
           element={
-            <DashboardLayout>
-              <AthenaTestPage />
-            </DashboardLayout>
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AthenaTestPage />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/settings"
           element={
-            <DashboardLayout>
-              <Settings />
-            </DashboardLayout>
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Settings />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard/admin"
           element={
-            <DashboardLayout>
-              <AdminPanel />
-            </DashboardLayout>
+            <ProtectedRoute requiredRole="admin">
+              <DashboardLayout>
+                <AdminPanel />
+              </DashboardLayout>
+            </ProtectedRoute>
           }
         />
+
+        {/* 404 Route */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );

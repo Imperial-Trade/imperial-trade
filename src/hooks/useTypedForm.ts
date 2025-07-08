@@ -104,7 +104,8 @@ export function useTypedForm<T extends Record<string, unknown>>(config: TypedFor
     setData(prev => ({ ...prev, [name]: value }));
 
     if (config.validateOnChange) {
-      const error = validateField(name as string, value);
+      // Cast to unknown to match validateField signature
+      const error = validateField(name as string, value as unknown);
       setErrors(prev => {
         const filtered = prev.filter(e => e.field !== name);
         return error ? [...filtered, { field: name as string, message: error }] : filtered;
@@ -117,7 +118,7 @@ export function useTypedForm<T extends Record<string, unknown>>(config: TypedFor
 
     if (config.validateOnBlur) {
       const value = data[name as keyof T];
-      const error = validateField(name, value);
+      const error = validateField(name, value as unknown);
       setErrors(prev => {
         const filtered = prev.filter(e => e.field !== name);
         return error ? [...filtered, { field: name, message: error }] : filtered;

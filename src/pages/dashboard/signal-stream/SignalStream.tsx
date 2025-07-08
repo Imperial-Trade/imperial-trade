@@ -322,7 +322,7 @@ export default function SignalStream() {
                       onOrderActivation={handleOrderActivation} 
                       isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
                       livePrice={livePrices[alert.finnhubSymbol]} 
-                      connectionStatus={connectionStatus}
+                      connectionStatus={connectionStatus as 'connecting' | 'connected' | 'error'}
                       priceSource={priceSource}
                       isRecentClosure={false}
                     />
@@ -367,7 +367,7 @@ export default function SignalStream() {
                       onOrderActivation={handleOrderActivation}
                       isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
                       livePrice={undefined}
-                      connectionStatus={connectionStatus}
+                      connectionStatus={connectionStatus as 'connecting' | 'connected' | 'error'}
                       priceSource={priceSource}
                       isRecentClosure={true}
                     />

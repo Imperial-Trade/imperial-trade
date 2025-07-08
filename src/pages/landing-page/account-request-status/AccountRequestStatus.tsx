@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,11 +25,13 @@ export default function AccountRequestStatusPage() {
 
     setIsLoading(true);
     setError("");
-    
+
     try {
       const requests = await AccountRequest.list();
-      const userRequest = requests.find(req => req.email.toLowerCase() === email.toLowerCase());
-      
+      const userRequest = requests.find(
+        (req) => req.email.toLowerCase() === email.toLowerCase()
+      );
+
       if (!userRequest) {
         setError("No account request found with this email address.");
         setStatus(null);
@@ -66,20 +67,23 @@ export default function AccountRequestStatusPage() {
       case "pending":
         return {
           title: "Request Pending",
-          message: "Your account request is currently being reviewed by our administrators.",
-          instructions: "Please wait 12-48 hours for approval. You will receive an email notification once your request has been processed."
+          message:
+            "Your account request is currently being reviewed by our administrators.",
+          instructions:
+            "Please wait 12-48 hours for approval. You will receive an email notification once your request has been processed.",
         };
       case "rejected":
         return {
           title: "Request Denied",
           message: "We're sorry, but your account request has been denied.",
-          instructions: "We cannot validate your VT Market credentials. Please contact support if you believe this is an error."
+          instructions:
+            "We cannot validate your VT Market credentials. Please contact support if you believe this is an error.",
         };
       default:
         return {
           title: "Unknown Status",
           message: "Unable to determine request status.",
-          instructions: "Please contact support for assistance."
+          instructions: "Please contact support for assistance.",
         };
     }
   };
@@ -167,7 +171,9 @@ export default function AccountRequestStatusPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Account Type:</span>
                     <span className="text-white">
-                      {status.account_type === "user" ? "Standard Member" : "Educator / IB Partner"}
+                      {status.account_type === "user"
+                        ? "Standard Member"
+                        : "Educator / IB Partner"}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -179,7 +185,9 @@ export default function AccountRequestStatusPage() {
                   {status.rejection_reason && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Reason:</span>
-                      <span className="text-red-300">{status.rejection_reason}</span>
+                      <span className="text-red-300">
+                        {status.rejection_reason}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -199,7 +207,7 @@ export default function AccountRequestStatusPage() {
             )}
 
             <div className="pt-4">
-              <Link to={createPageUrl("AccountRequest")}>
+              <Link to={createPageUrl("account-request")}>
                 <Button
                   variant="outline"
                   className="w-full border-white/20 text-white/80 hover:bg-white/10"

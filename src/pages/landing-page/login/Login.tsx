@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,7 @@ export default function LoginPage() {
     try {
       // Login logic will be handled in the hook
       await onSubmit(data);
-      
+
       // Redirect to dashboard after successful login
       navigate("/dashboard");
     } catch (error) {
@@ -55,7 +54,10 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <ErrorBoundary componentName="Status Message">
-              <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
+              <StatusMessage
+                type={status.type as "success" | "error" | ""}
+                message={status.message}
+              />
             </ErrorBoundary>
 
             {status.type !== "success" && (
@@ -70,7 +72,7 @@ export default function LoginPage() {
             )}
 
             <div className="pt-4 space-y-3">
-              <Link to="/AccountRequest">
+              <Link to="/account-request">
                 <Button
                   variant="outline"
                   className="w-full border-white/20 text-white/80 hover:bg-white/10"
@@ -79,7 +81,7 @@ export default function LoginPage() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
-              
+
               <Link to="/account-request-status">
                 <Button
                   variant="outline"

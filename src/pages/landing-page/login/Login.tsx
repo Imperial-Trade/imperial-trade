@@ -2,33 +2,33 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { useAccountRequestForm } from "@/hooks/useAccountRequestForm";
-import { AccountRequest } from "@/api/entities";
+import { useLoginForm } from "@/hooks/useLoginForm";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { StatusMessage } from "@/components/account-request/StatusMessage";
-import { AccountRequestForm } from "@/components/account-request/AccountRequestForm";
+import { LoginForm } from "@/components/login/LoginForm";
 import { PageStyles } from "@/components/account-request/PageStyles";
 
-export default function AccountRequestPage() {
+export default function LoginPage() {
   const [status, setStatus] = useState({ type: "", message: "" });
-  const { form, onSubmit, canSubmit, isSubmitting } = useAccountRequestForm();
+  const { form, onSubmit, canSubmit, isSubmitting } = useLoginForm();
   const navigate = useNavigate();
 
   const handleFormSubmit = async (data: any) => {
     try {
-      await AccountRequest.create(data);
+      // Login logic will be handled in the hook
+      await onSubmit(data);
       
-      // Redirect to status page after successful submission
-      navigate("/account-request-status");
+      // Redirect to dashboard after successful login
+      navigate("/dashboard");
     } catch (error) {
-      console.error("Failed to submit account request:", error);
+      console.error("Login failed:", error);
       setStatus({
         type: "error",
-        message: "There was an error submitting your request. Please try again later.",
+        message: "Login failed. Please check your credentials and try again.",
       });
     }
   };
@@ -37,23 +37,23 @@ export default function AccountRequestPage() {
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
       <VideoBackground />
 
-      <div className="relative z-20 max-w-2xl w-full">
+      <div className="relative z-20 max-w-md w-full">
         <BrandHeader />
 
         <Card className="glass-effect border-default">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-primary text-center">
-              Request Community Access
+              Welcome Back
             </CardTitle>
             <p className="text-secondary text-center text-white">
-              Fill out the form below. An admin will review your request shortly.
+              Sign in to access your Imperial Trading account
             </p>
           </CardHeader>
           <CardContent>
             <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
 
             {status.type !== "success" && (
-              <AccountRequestForm
+              <LoginForm
                 form={form}
                 onSubmit={handleFormSubmit}
                 isSubmitting={isSubmitting}
@@ -62,22 +62,22 @@ export default function AccountRequestPage() {
             )}
 
             <div className="pt-4 space-y-3">
+              <Link to="/account-request">
+                <Button
+                  variant="outline"
+                  className="w-full border-white/20 text-white/80 hover:bg-white/10"
+                >
+                  Need an Account? Request Access
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+              
               <Link to="/account-request-status">
                 <Button
                   variant="outline"
                   className="w-full border-white/20 text-white/80 hover:bg-white/10"
                 >
                   Check Request Status
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              
-              <Link to="/login">
-                <Button
-                  variant="outline"
-                  className="w-full border-white/20 text-white/80 hover:bg-white/10"
-                >
-                  Already Have Access? Sign In
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>

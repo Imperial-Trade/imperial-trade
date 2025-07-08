@@ -397,41 +397,40 @@ export default function Home() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative h-screen flex flex-col items-center justify-start text-center pt-24 sm:pt-32 overflow-x-hidden">
+      <section className="relative h-screen flex flex-col items-center justify-start text-center pt-20 sm:pt-24 md:pt-32 overflow-x-hidden px-4">
         <ContentSection>
-          <div className="relative flex justify-center mb-8 z-10">
-            <div className="w-24 h-24 bg-surface/90 backdrop-blur-md rounded-3xl flex items-center justify-center glow-effect-gold shadow-2xl">
-              <Crown className="w-16 h-16 text-accent-gold" />
+          <div className="relative flex justify-center mb-6 sm:mb-8 z-10">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-surface/90 backdrop-blur-md rounded-2xl sm:rounded-3xl flex items-center justify-center glow-effect-gold shadow-2xl">
+              <Crown className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 text-accent-gold" />
             </div>
           </div>
 
-          <h1 className="text-6xl lg:text-8xl font-black mb-4 uppercase text-white relative z-10 drop-shadow-2xl">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-black mb-3 sm:mb-4 uppercase text-white relative z-10 drop-shadow-2xl">
             <span className="imperial-tech-font">IMPERIAL</span>
           </h1>
-          <p className="text-xl lg:text-2xl text-white mb-10 max-w-3xl mx-auto relative z-10 px-4 drop-shadow-lg font-medium">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white mb-8 sm:mb-10 max-w-xs sm:max-w-2xl md:max-w-3xl mx-auto relative z-10 px-2 sm:px-4 drop-shadow-lg font-medium leading-relaxed">
             Ascend to the Apex of Trading.
             <br />
-            Premium Education, Live Mentorship, and Professional Partnership
-            Programs.
+            Premium Education, Live Mentorship, and Professional Partnership Programs.
           </p>
         </ContentSection>
 
-        {/* Scroll Down Indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10">
-          <div className="text-lg text-white font-medium drop-shadow-md">
+        {/* Scroll Down Indicator - Hide on mobile */}
+        <div className="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-10 hidden sm:block">
+          <div className="text-sm sm:text-lg text-white font-medium drop-shadow-md text-center">
             Scroll to begin your journey.
           </div>
-          <div className="animate-bounce mt-4 flex justify-center">
-            <ChevronDown className="w-8 h-8 text-white drop-shadow-md" />
+          <div className="animate-bounce mt-2 sm:mt-4 flex justify-center">
+            <ChevronDown className="w-6 h-6 sm:w-8 sm:h-8 text-white drop-shadow-md" />
           </div>
         </div>
       </section>
 
-      {/* Stats Intro with Animated Counters - Full Edge-to-Edge */}
-      <section className="w-full bg-surface py-20 z-10 relative overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+      {/* Stats Intro with Animated Counters */}
+      <section className="w-full bg-surface py-12 sm:py-16 md:py-20 z-10 relative overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
           <ContentSection>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8 text-center">
               {[
                 {
                   icon: Users,
@@ -462,12 +461,12 @@ export default function Home() {
                   color: "text-accent-red",
                 },
               ].map((stat) => (
-                <div key={stat.label}>
+                <div key={stat.label} className="px-2">
                   <stat.icon
-                    className={`w-10 h-10 ${stat.color} mx-auto mb-3`}
+                    className={`w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 ${stat.color} mx-auto mb-2 sm:mb-3`}
                   />
                   <AnimatedCounter value={stat.value} suffix={stat.suffix} />
-                  <div className="text-sm text-white/80 uppercase tracking-widest font-medium">
+                  <div className="text-xs sm:text-sm text-white/80 uppercase tracking-wider sm:tracking-widest font-medium px-1">
                     {stat.label}
                   </div>
                 </div>
@@ -477,23 +476,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Netflix-style Feature Carousel - Full Edge-to-Edge */}
-      <section className="w-full bg-background py-24 z-10 relative overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+      {/* Netflix-style Feature Carousel */}
+      <section className="w-full bg-background py-16 sm:py-20 md:py-24 z-10 relative overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
           <ContentSection>
-            <div className="text-center mb-12">
-              <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4 drop-shadow-lg">
+            <div className="text-center mb-8 sm:mb-10 md:mb-12">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4 drop-shadow-lg px-2">
                 Your Path to{" "}
                 <span className="gold-text-gradient">Trading Mastery</span>
               </h2>
-              <p className="text-xl text-white/90 max-w-3xl mx-auto drop-shadow-md">
+              <p className="text-base sm:text-lg md:text-xl text-white/90 max-w-xs sm:max-w-2xl md:max-w-3xl mx-auto drop-shadow-md px-2">
                 A complete ecosystem of tools, education, and community support,
                 seamlessly integrated.
               </p>
             </div>
           </ContentSection>
           <ContentSection>
-            <div className="relative w-full aspect-video lg:aspect-[2/1] rounded-2xl overflow-hidden glass-effect">
+            <div className="relative w-full aspect-video sm:aspect-video lg:aspect-[2/1] rounded-xl sm:rounded-2xl overflow-hidden glass-effect">
               {/* Background Videos */}
               {features.map((feature, index) => (
                 <video
@@ -510,31 +509,31 @@ export default function Home() {
               ))}
 
               {/* Content Overlay */}
-              <div className="absolute inset-0 flex flex-col lg:flex-row">
-                {/* Left Navigation */}
-                <div className="w-full lg:w-1/3 bg-surface/30 backdrop-blur-sm p-6 lg:p-8 flex flex-row lg:flex-col justify-start lg:flex-shrink overflow-x-auto lg:overflow-x-hidden">
-                  {features.map((feature, index) => {
-                    const Icon = feature.icon;
-                    return (
-                      <button
-                        key={feature.title}
-                        onClick={() => setActiveFeatureIndex(index)}
-                        className={`relative w-full text-left p-4 rounded-lg transition-all duration-300 mb-2 flex-shrink-0 lg:flex-shrink ${
-                          activeFeatureIndex === index
-                            ? "bg-accent-green/20"
-                            : "hover:bg-surface/50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-4">
+              <div className="absolute inset-0 flex flex-col">
+                {/* Mobile/Tablet Navigation - Horizontal Scroll */}
+                <div className="w-full bg-surface/30 backdrop-blur-sm p-3 sm:p-4 md:p-6 lg:p-8 flex lg:hidden overflow-x-auto scrollbar-hide">
+                  <div className="flex gap-2 sm:gap-3 min-w-max">
+                    {features.map((feature, index) => {
+                      const Icon = feature.icon;
+                      return (
+                        <button
+                          key={feature.title}
+                          onClick={() => setActiveFeatureIndex(index)}
+                          className={`relative flex-shrink-0 text-left p-2 sm:p-3 rounded-lg transition-all duration-300 flex items-center gap-2 sm:gap-3 ${
+                            activeFeatureIndex === index
+                              ? "bg-accent-green/20"
+                              : "hover:bg-surface/50"
+                          }`}
+                        >
                           <Icon
-                            className={`w-6 h-6 transition-colors duration-300 ${
+                            className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-300 ${
                               activeFeatureIndex === index
                                 ? "text-accent-green"
                                 : "text-white/70"
                             }`}
                           />
                           <span
-                            className={`font-semibold transition-colors duration-300 ${
+                            className={`font-semibold text-sm sm:text-base whitespace-nowrap transition-colors duration-300 ${
                               activeFeatureIndex === index
                                 ? "text-white"
                                 : "text-white/70"
@@ -542,34 +541,73 @@ export default function Home() {
                           >
                             {feature.title}
                           </span>
-                        </div>
-                        {activeFeatureIndex === index && (
-                          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-accent-green rounded-t-full"></div>
-                        )}
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Right Content */}
-                <div className="w-full lg:w-2/3 p-6 lg:p-12 flex flex-col justify-center">
+                {/* Desktop Navigation - Vertical */}
+                <div className="hidden lg:flex">
+                  <div className="w-1/3 bg-surface/30 backdrop-blur-sm p-8 flex flex-col justify-start overflow-y-auto">
+                    {features.map((feature, index) => {
+                      const Icon = feature.icon;
+                      return (
+                        <button
+                          key={feature.title}
+                          onClick={() => setActiveFeatureIndex(index)}
+                          className={`relative w-full text-left p-4 rounded-lg transition-all duration-300 mb-2 ${
+                            activeFeatureIndex === index
+                              ? "bg-accent-green/20"
+                              : "hover:bg-surface/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <Icon
+                              className={`w-6 h-6 transition-colors duration-300 ${
+                                activeFeatureIndex === index
+                                  ? "text-accent-green"
+                                  : "text-white/70"
+                              }`}
+                            />
+                            <span
+                              className={`font-semibold transition-colors duration-300 ${
+                                activeFeatureIndex === index
+                                  ? "text-white"
+                                  : "text-white/70"
+                              }`}
+                            >
+                              {feature.title}
+                            </span>
+                          </div>
+                          {activeFeatureIndex === index && (
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-accent-green rounded-t-full"></div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Content Area */}
+                <div className="flex-1 p-4 sm:p-6 md:p-8 lg:p-12 flex flex-col justify-center lg:w-2/3 lg:ml-auto">
                   <div key={activeFeature.title} className="animate-fade-in">
-                    <div className="w-16 h-16 bg-surface/80 rounded-2xl flex items-center justify-center mb-6 glow-effect-green">
-                      <activeFeature.icon className="w-8 h-8 text-accent-green" />
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-surface/80 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 glow-effect-green">
+                      <activeFeature.icon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-accent-green" />
                     </div>
-                    <h3 className="text-3xl lg:text-4xl font-bold text-white mb-4 drop-shadow-lg">
+                    <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-4 drop-shadow-lg">
                       {activeFeature.title}
                     </h3>
-                    <p className="text-lg text-white/90 mb-6 drop-shadow-md">
+                    <p className="text-sm sm:text-base md:text-lg text-white/90 mb-4 sm:mb-6 drop-shadow-md leading-relaxed">
                       {activeFeature.description}
                     </p>
-                    <p className="text-base text-white/70 italic mb-8 drop-shadow-md">
+                    <p className="text-xs sm:text-sm md:text-base text-white/70 italic mb-6 sm:mb-8 drop-shadow-md leading-relaxed">
                       {activeFeature.detailedContext}
                     </p>
                     <Link to={createPageUrl(activeFeature.link)}>
-                      <Button className="bg-accent-green hover:bg-green-500 text-white font-semibold px-8 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 glow-effect-green drop-shadow-lg">
+                      <Button className="bg-accent-green hover:bg-green-500 text-white font-semibold px-4 sm:px-6 md:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-105 glow-effect-green drop-shadow-lg">
                         Explore {activeFeature.title}
-                        <ArrowRight className="w-5 h-5 ml-2" />
+                        <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
                       </Button>
                     </Link>
                   </div>
@@ -580,8 +618,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Apple-style Advanced Tools Showcase - Full Edge-to-Edge */}
-      <section className="relative w-full bg-surface py-12 overflow-hidden z-10">
+      {/* Apple-style Advanced Tools Showcase */}
+      <section className="relative w-full bg-surface py-8 sm:py-10 md:py-12 overflow-hidden z-10">
         <video
           autoPlay
           loop
@@ -590,51 +628,39 @@ export default function Home() {
           className="absolute inset-0 w-full h-full object-cover opacity-10"
           src="https://videos.pexels.com/video-files/3214439/3214439-hd_1920_1080_25fps.mp4"
         />
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-12">
-          <ContentSection className="text-center mb-8">
-            <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4 drop-shadow-lg">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+          <ContentSection className="text-center mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4 drop-shadow-lg px-2">
               An Arsenal of{" "}
               <span className="gold-text-gradient">Professional Tools</span>
             </h2>
-            <p className="text-xl text-white/90 drop-shadow-md">
+            <p className="text-base sm:text-lg md:text-xl text-white/90 drop-shadow-md px-2">
               Engineered for performance, powered by AI. Your trading, elevated.
             </p>
           </ContentSection>
 
           <ToolsCarousel />
-
-          {/* <ContentSection className="text-center mt-8">
-            <Link to={createPageUrl("AdvancedTools")}>
-              <Button
-                size="lg"
-                variant="outline"
-                className="text-white border-white/30 hover:bg-white/10 hover:border-white/50 drop-shadow-lg"
-              >
-                Explore All Tools <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-          </ContentSection> */}
         </div>
       </section>
 
-      {/* Final CTA - Full Edge-to-Edge */}
-      <section className="w-full bg-background py-24 text-center z-10 relative overflow-x-hidden">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+      {/* Final CTA */}
+      <section className="w-full bg-background py-16 sm:py-20 md:py-24 text-center z-10 relative overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
           <ContentSection>
-            <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6 drop-shadow-lg">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 drop-shadow-lg px-2">
               Ready to Join the{" "}
               <span className="gold-text-gradient">Elite?</span>
             </h2>
-            <p className="text-xl text-white/90 mb-10 drop-shadow-md">
+            <p className="text-base sm:text-lg md:text-xl text-white/90 mb-8 sm:mb-10 drop-shadow-md px-2 max-w-2xl mx-auto">
               Your journey to trading mastery and professional partnership
               begins now. Take the definitive step towards your financial
               ambitions.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <Link to={createPageUrl("account-request")}>
                 <Button
                   size="lg"
-                  className="bg-accent-green hover:bg-green-500 text-white font-semibold px-10 py-4 rounded-xl transition-all duration-300 transform hover:scale-105 drop-shadow-lg"
+                  className="bg-accent-green hover:bg-green-500 text-white font-semibold px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-105 drop-shadow-lg w-full sm:w-auto"
                 >
                   Become a Member
                 </Button>
@@ -643,6 +669,8 @@ export default function Home() {
           </ContentSection>
         </div>
       </section>
+
+      {/* Styles */}
       <style>{`
         .animate-fade-in {
           animation: fadeIn 0.7s ease-in-out;
@@ -650,6 +678,14 @@ export default function Home() {
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
         }
 
         /* AI Tech Font Styles */

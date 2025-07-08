@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import NotificationSystem from "@/components/notifications/NotificationSystem";
-import Pages from "./pages";
+import Pages from "./pages/Pages";
 import "./styles/education.css";
 
 const queryClient = new QueryClient();

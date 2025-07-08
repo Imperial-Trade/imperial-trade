@@ -1,29 +1,36 @@
+
 import React from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import Layout from './Layout';
 import LandingLayout from '@/components/layouts/LandingLayout';
 
 // Import all page components
-import Home from './Home';
-import Education from './Education';
-import SignalStream from './SignalStream';
-import Live from './Live';
-import Forum from './Forum';
-import IBPartnership from './IBPartnership';
-import AdvancedTools from './AdvancedTools';
-import MyProgress from './MyProgress';
-import AthenaTest from './AthenaTest';
-import AdminPanel from './AdminPanel';
+import Home from './dashboard/home/Home';
+import Education from './dashboard/education/Education';
+import SignalStream from './dashboard/signal-stream/SignalStream';
+import Live from './dashboard/live/Live';
+import Forum from './dashboard/forum/Forum';
+import IBPartnership from './landing-page/ib-partnership/IBPartnership';
+import AdvancedTools from './dashboard/advanced-tools/AdvancedTools';
+import MyProgress from './dashboard/my-progress/MyProgress';
+import AthenaTest from './dashboard/athena/AthenaTest';
+import AdminPanel from './dashboard/admin-panel/AdminPanel';
 import AccountRequest from './landing-page/account-request/AccountRequest';
 import AccessPortal from './landing-page/access-portal/AccessPortal';
-import Settings from './Settings';
-import About from './About';
+import Settings from './dashboard/settings/Settings';
+import About from './landing-page/about/About';
 import Login from './landing-page/login/Login';
-import AccountRequestStatusPage from './landing-page/account-request/AccountRequestStatus';
+import AccountRequestStatusPage from './landing-page/account-request-status/AccountRequestStatus';
+import Landing from './landing-page/landing/Landing';
 
 const pages = [
   {
     path: "/",
+    element: <LandingLayout><Landing /></LandingLayout>,
+    name: "Landing"
+  },
+  {
+    path: "/dashboard",
     element: <Layout currentPageName="Home"><Home /></Layout>,
     name: "Home"
   },
@@ -94,7 +101,7 @@ const pages = [
   },
   {
     path: "/About",
-    element: <Layout currentPageName="About"><About /></Layout>,
+    element: <LandingLayout><About /></LandingLayout>,
     name: "About"
   },
   {

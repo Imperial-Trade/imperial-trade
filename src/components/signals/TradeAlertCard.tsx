@@ -7,9 +7,18 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
 import TradeStatusBadge from './TradeStatusBadge';
-import TradingCalculator from './TradingCalculator'; // New import
+import TradingCalculator from './TradingCalculator';
+import { TradeAlertCardProps } from '@/types/components';
 
-const PriceRow = ({ label, value, icon: Icon, colorClass, isHit = false }) => (
+interface PriceRowProps {
+  label: string;
+  value?: number;
+  icon: React.ComponentType<{ className?: string }>;
+  colorClass: string;
+  isHit?: boolean;
+}
+
+const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false }) => (
     <div className={`flex justify-between items-center text-sm py-2 border-b border-gray-700/50 last:border-b-0 ${isHit ? 'bg-emerald-900/20' : ''}`}>
         <div className="flex items-center space-x-2 text-gray-400">
             <Icon className={`w-4 h-4 ${colorClass}`} />
@@ -22,17 +31,52 @@ const PriceRow = ({ label, value, icon: Icon, colorClass, isHit = false }) => (
     </div>
 );
 
-export default function TradeAlertCard({ alert, onStatusUpdate, onTakeProfitHit, onStopLossHit, onOrderActivation, isAdmin, livePrice, connectionStatus, priceSource, isRecentClosure }) { // Added isRecentClosure prop
+const TradeAlertCard: React.FC<TradeAlertCardProps> = ({ 
+  alert, 
+  onStatusUpdate, 
+  onTakeProfitHit, 
+  onStopLossHit, 
+  onOrderActivation, 
+  isAdmin, 
+  livePrice, 
+  connectionStatus, 
+  priceSource, 
+  isRecentClosure,
+  className,
+  testId 
+}) => {
   const [showCopyPanel, setShowCopyPanel] = useState(false);
-  const [showCalculator, setShowCalculator] = useState(false); // New state for calculator
+  const [showCalculator, setShowCalculator] = useState(false);
+  
+  // Type-safe derivations
   const isBuy = alert.trade_type.includes('buy');
-  const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter(Boolean);
+  const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter((tp): tp is number => tp !== undefined);
   const hitTPs = alert.tp_hits || [];
   const isClosed = alert.status === 'closed';
   const isPending = alert.status === 'pending';
 
+  // Type-safe event handlers
+  const handleStatusUpdate = async (newStatus: string) => {
+    try {
+      await onStatusUpdate(alert, newStatus);
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
+  };
+
+  const handleCopyPanelToggle = () => {
+    setShowCopyPanel(prev => !prev);
+  };
+
+  const handleCalculatorToggle = () => {
+    setShowCalculator(prev => !prev);
+  };
+
   return (
-    <div className={`bg-gray-800/50 rounded-lg border border-gray-700 shadow-lg overflow-hidden transition-all duration-300 hover:shadow-emerald-500/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-amber-400/50 hover:border-amber-400' : 'hover:border-emerald-400/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-red-500/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-emerald-500/30' : 'ring-2 ring-gray-500/30')}`}>
+    <div 
+      className={`bg-gray-800/50 rounded-lg border border-gray-700 shadow-lg overflow-hidden transition-all duration-300 hover:shadow-emerald-500/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-amber-400/50 hover:border-amber-400' : 'hover:border-emerald-400/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-red-500/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-emerald-500/30' : 'ring-2 ring-gray-500/30')} ${className || ''}`}
+      data-testid={testId}
+    >
       {/* Glowing top indicator for closed trades */}
       {isClosed && (
         <div className={`h-1 w-full ${
@@ -54,11 +98,20 @@ export default function TradeAlertCard({ alert, onStatusUpdate, onTakeProfitHit,
                 </Badge>
             </div>
             <div className="flex items-center gap-2 flex-col items-end">
-                <TradeStatusBadge alert={alert} updatedDate={alert.updated_date} isRecentClosure={isRecentClosure} /> {/* Pass updatedDate and isRecentClosure */}
-                <div className="flex gap-1"> {/* Added a flex container for buttons */}
+                <TradeStatusBadge 
+                  alert={alert} 
+                  updatedDate={alert.updated_date} 
+                  isRecentClosure={isRecentClosure} 
+                />
+                <div className="flex gap-1">
                   <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
                       <CollapsibleTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-sky-400 hover:bg-sky-500/20 hover:text-sky-300">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-sky-400 hover:bg-sky-500/20 hover:text-sky-300"
+                            onClick={handleCopyPanelToggle}
+                          >
                               <Copy className="w-4 h-4 mr-1" />
                               {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                           </Button>
@@ -69,7 +122,12 @@ export default function TradeAlertCard({ alert, onStatusUpdate, onTakeProfitHit,
                   {(alert.status === 'active' || alert.status === 'pending') && (
                     <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
                         <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
+                              onClick={handleCalculatorToggle}
+                            >
                                 <Calculator className="w-4 h-4 mr-1" />
                                 {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             </Button>
@@ -149,7 +207,12 @@ export default function TradeAlertCard({ alert, onStatusUpdate, onTakeProfitHit,
       
       {isAdmin && (alert.status === 'active' || alert.status === 'pending') && (
         <div className="bg-gray-900/50 px-4 py-2 flex justify-end">
-            <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/20 hover:text-red-300" onClick={() => onStatusUpdate(alert, 'closed')}>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="text-red-400 hover:bg-red-500/20 hover:text-red-300" 
+              onClick={() => handleStatusUpdate('closed')}
+            >
                 <Lock className="w-4 h-4 mr-2" />
                 {isPending ? 'Cancel Order' : 'Close Trade'}
             </Button>
@@ -157,4 +220,6 @@ export default function TradeAlertCard({ alert, onStatusUpdate, onTakeProfitHit,
       )}
     </div>
   );
-}
+};
+
+export default TradeAlertCard;

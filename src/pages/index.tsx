@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import LandingLayout from "./layouts/LandingLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -9,6 +10,7 @@ import About from "./landing-page/about/About";
 import IBPartnership from "./landing-page/ib-partnership/IBPartnership";
 import AdminPanel from "./dashboard/admin-panel/AdminPanel";
 import AccountRequest from "./landing-page/account-request/AccountRequest";
+import AccountRequestStatus from "./landing-page/account-request-status/AccountRequestStatus";
 import Settings from "./dashboard/settings/Settings";
 import SignalStream from "./dashboard/signal-stream/SignalStream";
 import Features from "./landing-page/features/Features";
@@ -59,6 +61,14 @@ export default function Pages() {
           element={
             <LandingLayout>
               <AccountRequest />
+            </LandingLayout>
+          }
+        />
+        <Route
+          path="/account-request-status"
+          element={
+            <LandingLayout>
+              <AccountRequestStatus />
             </LandingLayout>
           }
         />

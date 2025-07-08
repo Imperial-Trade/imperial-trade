@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useAccountRequestForm } from "@/hooks/useAccountRequestForm";
 import { AccountRequest } from "@/api/entities";
@@ -16,15 +16,14 @@ import { PageStyles } from "@/components/account-request/PageStyles";
 export default function AccountRequestPage() {
   const [status, setStatus] = useState({ type: "", message: "" });
   const { form, onSubmit, canSubmit, isSubmitting } = useAccountRequestForm();
+  const navigate = useNavigate();
 
   const handleFormSubmit = async (data: any) => {
     try {
       await AccountRequest.create(data);
-      setStatus({
-        type: "success",
-        message: "Your request has been submitted! You will receive an email once an admin has reviewed it.",
-      });
-      form.reset();
+      
+      // Redirect to status page after successful submission
+      navigate("/account-request-status");
     } catch (error) {
       console.error("Failed to submit account request:", error);
       setStatus({
@@ -62,7 +61,17 @@ export default function AccountRequestPage() {
               />
             )}
 
-            <div className="pt-4">
+            <div className="pt-4 space-y-3">
+              <Link to="/account-request-status">
+                <Button
+                  variant="outline"
+                  className="w-full border-white/20 text-white/80 hover:bg-white/10"
+                >
+                  Check Request Status
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+              
               <Link to={createPageUrl("AccessPortal")}>
                 <Button
                   variant="outline"

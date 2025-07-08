@@ -20,8 +20,10 @@ import {
   TrendingUp,
   Database,
   UserCheck,
-  Bell
+  Bell,
+  FileText
 } from "lucide-react";
+import { AccountRequestManagement } from "@/components/account-request/AccountRequestManagement";
 
 export default function AdminPanel() {
   const [user, setUser] = useState(null);
@@ -187,6 +189,13 @@ export default function AdminPanel() {
               Overview
             </TabsTrigger>
             <TabsTrigger
+              value="account-requests"
+              className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              Account Requests
+            </TabsTrigger>
+            <TabsTrigger
               value="users"
               className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
             >
@@ -265,6 +274,10 @@ export default function AdminPanel() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="account-requests">
+            <AccountRequestManagement onRefresh={loadData} />
           </TabsContent>
 
           <TabsContent value="users">

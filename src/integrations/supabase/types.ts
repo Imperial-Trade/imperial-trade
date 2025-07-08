@@ -32,6 +32,7 @@ export type Database = {
           updated_at: string
           username: string | null
           vt_market_account_number: string | null
+          website: string | null
         }
         Insert: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -52,6 +53,7 @@ export type Database = {
           updated_at?: string
           username?: string | null
           vt_market_account_number?: string | null
+          website?: string | null
         }
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
@@ -72,6 +74,7 @@ export type Database = {
           updated_at?: string
           username?: string | null
           vt_market_account_number?: string | null
+          website?: string | null
         }
         Relationships: []
       }

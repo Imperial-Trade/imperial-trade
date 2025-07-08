@@ -127,11 +127,33 @@ export default function SignalStream() {
     
     try {
       console.log(`Updating TP hits for alert ${alert.id}:`, newTPHits);
+      
+      // Ensure closeReason is properly typed
+      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined = undefined;
+      
+      if (shouldAutoClose && closeReason) {
+        // Map closeReason to proper type
+        switch (closeReason) {
+          case 'manual':
+          case 'stop_loss':
+          case 'tp1':
+          case 'tp2':
+          case 'tp3':
+          case 'tp4':
+          case 'tp5':
+          case 'reversal_after_tp':
+            typedCloseReason = closeReason;
+            break;
+          default:
+            typedCloseReason = 'manual';
+        }
+      }
+      
       const updateDto: UpdateTradeAlertDto = { 
         tpHits: newTPHits,
         ...(shouldAutoClose && { 
           status: 'closed', 
-          closeReason: closeReason || undefined 
+          closeReason: typedCloseReason
         })
       };
       
@@ -164,9 +186,29 @@ export default function SignalStream() {
     
     try {
       console.log(`Stop loss hit for alert ${alert.id}, reason: ${closeReason}`);
+      
+      // Ensure closeReason is properly typed
+      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' = 'stop_loss';
+      
+      // Map closeReason to proper type
+      switch (closeReason) {
+        case 'manual':
+        case 'stop_loss':
+        case 'tp1':
+        case 'tp2':
+        case 'tp3':
+        case 'tp4':
+        case 'tp5':
+        case 'reversal_after_tp':
+          typedCloseReason = closeReason;
+          break;
+        default:
+          typedCloseReason = 'stop_loss';
+      }
+      
       const updateDto: UpdateTradeAlertDto = { 
         status: 'closed', 
-        closeReason 
+        closeReason: typedCloseReason
       };
       
       const result = await updateAlert(alert.id, updateDto);

@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { Crown, UserPlus } from 'lucide-react';
-import SocialLoginButtons from '../components/auth/SocialLoginButtons';
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
+import { createPageUrl } from '@/lib/utils';
 
 
 export default function AccessPortal() {

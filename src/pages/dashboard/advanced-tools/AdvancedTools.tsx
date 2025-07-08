@@ -12,12 +12,12 @@ import {
   X,
 } from "lucide-react";
 
-import TradingJournal from "../../components/tools/TradingJournal";
-import EconomicCalendar from "../../components/tools/EconomicCalendar";
-import RiskCalculator from "../../components/tools/RiskCalculator";
-import TradeAnalyst from "../../components/ai/TradeAnalyst";
-import OpportunityScanner from "../../components/ai/OpportunityScanner";
-import RiskSimulator from "../../components/ai/RiskSimulator";
+import TradingJournal from "@/components/tools/TradingJournal";
+import EconomicCalendar from "@/components/tools/EconomicCalendar";
+import RiskCalculator from "@/components/tools/RiskCalculator";
+import TradeAnalyst from "@/components/ai/TradeAnalyst";
+import OpportunityScanner from "@/components/ai/OpportunityScanner";
+import RiskSimulator from "@/components/ai/RiskSimulator";
 
 const coreTools = [
   {

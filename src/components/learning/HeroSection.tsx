@@ -1,8 +1,7 @@
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { Play, Info } from "lucide-react";
-import { motion } from "framer-motion";
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Play, BookOpen } from 'lucide-react';
 
 interface HeroSectionProps {
   video: any;
@@ -10,51 +9,53 @@ interface HeroSectionProps {
 }
 
 export default function HeroSection({ video, onPlay }: HeroSectionProps) {
-  if (!video) return null;
+  if (!video) {
+    return (
+      <div className="relative h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-green-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <BookOpen className="w-16 h-16 mx-auto mb-4 text-accent-green" />
+          <h1 className="text-4xl font-bold mb-4">Premium Education</h1>
+          <p className="text-xl text-gray-300">Loading your learning content...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative h-[65vh] w-full mb-12">
-      <div className="absolute inset-0">
-        <img
-          src={
-            video.thumbnail_url ||
-            "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1920&h=1080&fit=crop"
-          }
-          alt={video.title}
-          className="w-full h-full object-cover"
+    <div className="relative h-screen overflow-hidden">
+      {video.thumbnail_url && (
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ 
+            backgroundImage: `url(${video.thumbnail_url})`,
+            filter: 'brightness(0.4)'
+          }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent" />
-      </div>
-      <div className="relative z-10 flex flex-col justify-end h-full p-6 lg:p-12 text-left">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <h1 className="text-4xl lg:text-6xl font-black text-primary mb-4 max-w-2xl">
-            {video.title}
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+      
+      <div className="relative z-10 h-full flex items-center justify-center px-6">
+        <div className="text-center text-white max-w-4xl">
+          <h1 className="text-5xl lg:text-7xl font-bold mb-6 leading-tight">
+            Master the <span className="gold-text-gradient">Markets</span>
           </h1>
-          <p className="text-secondary text-lg mb-8 max-w-2xl">
-            {video.description}
+          <p className="text-xl lg:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            {video.description || "Unlock professional trading strategies with our comprehensive video library"}
           </p>
-          <div className="flex items-center gap-3">
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button
               onClick={() => onPlay(video)}
-              className="bg-accent-green hover:bg-green-500 text-white font-bold text-lg px-8 py-6 rounded-lg"
+              className="bg-accent-green hover:bg-green-500 text-white px-8 py-4 text-lg"
             >
-              <Play className="w-6 h-6 mr-2 fill-white" />
-              Play
+              <Play className="w-6 h-6 mr-2" />
+              Watch Featured Video
             </Button>
-            <Button
-              variant="outline"
-              className="bg-surface/50 border-default text-primary font-bold text-lg px-8 py-6 rounded-lg hover:bg-surface"
-            >
-              <Info className="w-6 h-6 mr-2" />
-              More Info
-            </Button>
+            <div className="text-sm text-gray-400">
+              Featured: {video.title}
+            </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

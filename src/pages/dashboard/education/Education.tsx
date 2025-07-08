@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { Video } from "@/api/entities/index";
-import AccessDenied from "../../components/AccessDenied";
-import HeroSection from "../../components/learning/HeroSection";
-import VideoRow from "../../components/learning/VideoRow";
-import VideoPlayer from "../../components/learning/VideoPlayer";
-import { categoryMap } from "../../components/learning/constants";
+import AccessDenied from "@/components/AccessDenied";
+import HeroSection from "@/components/learning/HeroSection";
+import VideoRow from "@/components/learning/VideoRow";
+import VideoPlayer from "@/components/learning/VideoPlayer";
+import { categoryMap } from "@/components/learning/constants";
 import { AnimatePresence } from "framer-motion";
 
 export default function Education() {

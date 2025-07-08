@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Award, BookOpen, Percent } from "lucide-react";
-import Certificate from "../../components/learning/Certificate";
+import Certificate from "@/components/learning/Certificate";
 
 export default function MyProgress() {
   // This data would be derived from UserProgress and QuizAttempt entities

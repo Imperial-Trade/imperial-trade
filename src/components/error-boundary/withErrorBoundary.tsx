@@ -18,7 +18,7 @@ export function withErrorBoundary<P extends Record<string, any>>(
       fallback={options.fallback}
       onError={options.onError}
     >
-      <Component {...props} ref={ref} />
+      <Component {...(props as P)} ref={ref} />
     </ErrorBoundary>
   ));
 

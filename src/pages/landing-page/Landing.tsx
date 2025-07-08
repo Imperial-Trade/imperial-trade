@@ -492,7 +492,7 @@ export default function Home() {
             </div>
           </ContentSection>
           <ContentSection>
-            <div className="relative w-full aspect-video sm:aspect-video lg:aspect-[2/1] rounded-xl sm:rounded-2xl overflow-hidden glass-effect">
+            <div className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden glass-effect">
               {/* Background Videos */}
               {features.map((feature, index) => (
                 <video
@@ -509,9 +509,9 @@ export default function Home() {
               ))}
 
               {/* Content Overlay */}
-              <div className="absolute inset-0 flex flex-col">
+              <div className="relative flex flex-col min-h-[400px] sm:min-h-[500px] lg:min-h-[600px]">
                 {/* Mobile/Tablet Navigation - Horizontal Scroll */}
-                <div className="w-full bg-surface/30 backdrop-blur-sm p-3 sm:p-4 md:p-6 lg:p-8 flex lg:hidden overflow-x-auto scrollbar-hide">
+                <div className="w-full bg-surface/30 backdrop-blur-sm p-3 sm:p-4 lg:hidden overflow-x-auto scrollbar-hide">
                   <div className="flex gap-2 sm:gap-3 min-w-max">
                     {features.map((feature, index) => {
                       const Icon = feature.icon;
@@ -549,7 +549,7 @@ export default function Home() {
 
                 {/* Desktop Navigation - Vertical */}
                 <div className="hidden lg:flex">
-                  <div className="w-1/3 bg-surface/30 backdrop-blur-sm p-8 flex flex-col justify-start overflow-y-auto">
+                  <div className="w-1/3 bg-surface/30 backdrop-blur-sm p-6 lg:p-8 flex flex-col justify-start overflow-y-auto">
                     {features.map((feature, index) => {
                       const Icon = feature.icon;
                       return (
@@ -589,23 +589,23 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Content Area */}
-                <div className="flex-1 p-4 sm:p-6 md:p-8 lg:p-12 flex flex-col justify-center lg:w-2/3 lg:ml-auto">
+                {/* Content Area - Improved Mobile Layout */}
+                <div className="flex-1 p-4 sm:p-6 lg:p-12 flex flex-col justify-center lg:w-2/3 lg:ml-auto">
                   <div key={activeFeature.title} className="animate-fade-in">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-surface/80 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 glow-effect-green">
-                      <activeFeature.icon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-accent-green" />
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-surface/80 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 glow-effect-green">
+                      <activeFeature.icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-accent-green" />
                     </div>
-                    <h3 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-4 drop-shadow-lg">
+                    <h3 className="text-xl sm:text-2xl lg:text-4xl font-bold text-white mb-3 sm:mb-4 drop-shadow-lg leading-tight">
                       {activeFeature.title}
                     </h3>
-                    <p className="text-sm sm:text-base md:text-lg text-white/90 mb-4 sm:mb-6 drop-shadow-md leading-relaxed">
+                    <p className="text-sm sm:text-base lg:text-lg text-white/90 mb-3 sm:mb-4 lg:mb-6 drop-shadow-md leading-relaxed">
                       {activeFeature.description}
                     </p>
-                    <p className="text-xs sm:text-sm md:text-base text-white/70 italic mb-6 sm:mb-8 drop-shadow-md leading-relaxed">
+                    <p className="text-xs sm:text-sm lg:text-base text-white/70 italic mb-6 sm:mb-8 drop-shadow-md leading-relaxed">
                       {activeFeature.detailedContext}
                     </p>
                     <Link to={createPageUrl(activeFeature.link)}>
-                      <Button className="bg-accent-green hover:bg-green-500 text-white font-semibold px-4 sm:px-6 md:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-105 glow-effect-green drop-shadow-lg">
+                      <Button className="bg-accent-green hover:bg-green-500 text-white font-semibold px-4 sm:px-6 lg:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-105 glow-effect-green drop-shadow-lg w-full sm:w-auto">
                         Explore {activeFeature.title}
                         <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
                       </Button>

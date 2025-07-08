@@ -106,6 +106,15 @@ export default function FeatureCarousel() {
                     return (
                       <button
                         key={feature.title}
+                        ref={(el) => {
+                          if (activeFeatureIndex === index && el) {
+                            el.scrollIntoView({
+                              behavior: "smooth",
+                              inline: "center",
+                              block: "nearest", // Constrain scrolling to the carousel container
+                            });
+                          }
+                        }}
                         onClick={() => setActiveFeatureIndex(index)}
                         className={`relative flex-shrink-0 text-left p-2 sm:p-3 rounded-lg transition-all duration-300 flex items-center gap-2 sm:gap-3 ${
                           activeFeatureIndex === index
@@ -173,7 +182,7 @@ export default function FeatureCarousel() {
               </div>
 
               {/* Content Area */}
-              <div className="p-4 sm:p-6 lg:p-8 grid grid-cols-1 gap-6">
+              <div className="p-4 sm:p-6 lg:p-8 grid grid-cols-1 gap-6 col-span-2">
                 <div key={activeFeature.title} className="animate-fade-in">
                   <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-surface/80 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 lg:mb-6 glow-effect-green">
                     <activeFeature.icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-accent-green" />

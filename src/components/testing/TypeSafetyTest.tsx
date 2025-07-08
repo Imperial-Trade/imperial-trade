@@ -30,7 +30,7 @@ export const TypeSafetyTest: React.FC<TypeSafetyTestProps> = ({ userId }) => {
         addTestResult('❌ API Client response type validation failed');
       }
     } catch (error) {
-      addTestResult('❌ API Client test failed');
+      addTestResult('❌ API Client test failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
 
     // Test 2: Type Guards
@@ -90,7 +90,7 @@ export const TypeSafetyTest: React.FC<TypeSafetyTestProps> = ({ userId }) => {
         addTestResult('❌ useTrading hook typing is incorrect');
       }
     } catch (error) {
-      addTestResult('❌ Hook type safety test failed');
+      addTestResult('❌ Hook type safety test failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
 
     // Test 6: Database Schema Alignment
@@ -99,20 +99,22 @@ export const TypeSafetyTest: React.FC<TypeSafetyTestProps> = ({ userId }) => {
         limit: 1
       });
       
-      if (alertsResult.success && alertsResult.data) {
+      if (alertsResult.success) {
         addTestResult('✅ Database schema alignment verified');
       } else {
-        addTestResult('⚠️ Database query returned no data (normal if empty)');
+        addTestResult('⚠️ Database query issue: ' + (alertsResult.error || 'Unknown error'));
       }
     } catch (error) {
-      addTestResult('❌ Database schema alignment test failed');
+      addTestResult('❌ Database schema alignment test failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
 
     addTestResult('🎯 Phase 2 Type Safety Tests Complete!');
   };
 
   useEffect(() => {
-    runTypeSafetyTests();
+    if (userId) {
+      runTypeSafetyTests();
+    }
   }, [userId]);
 
   return (

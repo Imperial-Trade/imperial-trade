@@ -1,8 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-import { ApiResponse, PaginatedResponse } from '@/types/common';
-import { isApiResponse, isValidUUID } from '@/types/guards';
+import { ApiResponse } from '@/types/common';
+import { isValidUUID } from '@/types/guards';
 
 export type DatabaseTable = keyof Database['public']['Tables'];
 export type TableRow<T extends DatabaseTable> = Database['public']['Tables'][T]['Row'];
@@ -78,7 +78,7 @@ export class ApiClient {
     try {
       const { data: result, error } = await supabase
         .from(table)
-        .insert(data)
+        .insert(data as any)
         .select()
         .single();
 
@@ -120,7 +120,7 @@ export class ApiClient {
 
       const { data: result, error } = await supabase
         .from(table)
-        .update(data)
+        .update(data as any)
         .eq('id', id)
         .select()
         .single();

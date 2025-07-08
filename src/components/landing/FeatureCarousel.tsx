@@ -154,7 +154,7 @@ export default function FeatureCarousel() {
                       onClick={() => setActiveFeatureIndex(index)}
                       className={`relative w-full text-left p-4 rounded-lg transition-all duration-300 mb-2 ${
                         activeFeatureIndex === index
-                          ? "bg-accent-green/20"
+                          ? ""
                           : "hover:bg-surface/50"
                       }`}
                     >
@@ -176,6 +176,9 @@ export default function FeatureCarousel() {
                           {feature.title}
                         </span>
                       </div>
+                      {activeFeatureIndex === index && (
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-accent-green rounded-t-full"></div>
+                      )}
                     </button>
                   );
                 })}

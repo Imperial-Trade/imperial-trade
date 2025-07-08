@@ -603,7 +603,7 @@ export default function Home() {
 
           <ToolsCarousel />
 
-          <ContentSection className="text-center mt-8">
+          {/* <ContentSection className="text-center mt-8">
             <Link to={createPageUrl("AdvancedTools")}>
               <Button
                 size="lg"
@@ -613,7 +613,7 @@ export default function Home() {
                 Explore All Tools <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
-          </ContentSection>
+          </ContentSection> */}
         </div>
       </section>
 
@@ -631,7 +631,7 @@ export default function Home() {
               ambitions.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to={createPageUrl("features")}>
+              <Link to={createPageUrl("account-request")}>
                 <Button
                   size="lg"
                   className="bg-accent-green hover:bg-green-500 text-white font-semibold px-10 py-4 rounded-xl transition-all duration-300 transform hover:scale-105 drop-shadow-lg"

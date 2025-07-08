@@ -22,7 +22,6 @@ import { User, Mail, Shield, Send, Phone } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
 import { HoneypotField } from "@/components/security/HoneypotField";
-import { ValidationFeedback } from "@/components/security/ValidationFeedback";
 
 interface AccountRequestFormProps {
   form: UseFormReturn<AccountRequestFormData>;
@@ -47,7 +46,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
             <FormField
               control={form.control}
               name="full_name"
-              render={({ field, fieldState }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-white">Full Name</FormLabel>
                   <div className="relative">
@@ -60,11 +59,6 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                       />
                     </FormControl>
                   </div>
-                  <ValidationFeedback
-                    error={fieldState.error}
-                    isValid={!fieldState.error}
-                    value={field.value}
-                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -73,7 +67,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
             <FormField
               control={form.control}
               name="email"
-              render={({ field, fieldState }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-white">VT Market Email Address</FormLabel>
                   <div className="relative">
@@ -87,11 +81,6 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                       />
                     </FormControl>
                   </div>
-                  <ValidationFeedback
-                    error={fieldState.error}
-                    isValid={!fieldState.error}
-                    value={field.value}
-                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -100,7 +89,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
             <FormField
               control={form.control}
               name="phone_number"
-              render={({ field, fieldState }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-white">Phone Number</FormLabel>
                   <div className="relative">
@@ -114,11 +103,6 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                       />
                     </FormControl>
                   </div>
-                  <ValidationFeedback
-                    error={fieldState.error}
-                    isValid={!fieldState.error}
-                    value={field.value}
-                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -127,7 +111,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
             <FormField
               control={form.control}
               name="vt_market_account_number"
-              render={({ field, fieldState }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-white">VT Market Account Number</FormLabel>
                   <div className="relative">
@@ -140,11 +124,6 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                       />
                     </FormControl>
                   </div>
-                  <ValidationFeedback
-                    error={fieldState.error}
-                    isValid={!fieldState.error}
-                    value={field.value}
-                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -153,7 +132,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
             <FormField
               control={form.control}
               name="referrer"
-              render={({ field, fieldState }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-white">Referrer (Optional)</FormLabel>
                   <div className="relative">
@@ -166,11 +145,6 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                       />
                     </FormControl>
                   </div>
-                  <ValidationFeedback
-                    error={fieldState.error}
-                    isValid={!fieldState.error}
-                    value={field.value}
-                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -204,7 +178,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
             <FormField
               control={form.control}
               name="reason"
-              render={({ field, fieldState }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-white">
                     Why do you want to join? (10-500 characters)
@@ -217,12 +191,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                       rows={3}
                     />
                   </FormControl>
-                  <div className="flex justify-between items-center">
-                    <ValidationFeedback
-                      error={fieldState.error}
-                      isValid={!fieldState.error}
-                      value={field.value}
-                    />
+                  <div className="flex justify-end">
                     <span className="text-xs text-gray-400">
                       {field.value?.length || 0}/500
                     </span>

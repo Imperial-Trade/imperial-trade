@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -8,6 +9,8 @@ import { features } from "./constants";
 
 export default function FeatureCarousel() {
   const [activeFeatureIndex, setActiveFeatureIndex] = useState(0);
+  const [videoLoadErrors, setVideoLoadErrors] = useState<{ [key: number]: boolean }>({});
+  const [videoLoadStates, setVideoLoadStates] = useState<{ [key: number]: 'loading' | 'loaded' | 'error' }>({});
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -15,6 +18,22 @@ export default function FeatureCarousel() {
     }, 7000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleVideoError = (index: number, error: any) => {
+    console.error(`Video ${index} failed to load:`, error);
+    setVideoLoadErrors(prev => ({ ...prev, [index]: true }));
+    setVideoLoadStates(prev => ({ ...prev, [index]: 'error' }));
+  };
+
+  const handleVideoLoad = (index: number) => {
+    console.log(`Video ${index} loaded successfully`);
+    setVideoLoadStates(prev => ({ ...prev, [index]: 'loaded' }));
+  };
+
+  const handleVideoLoadStart = (index: number) => {
+    console.log(`Video ${index} started loading`);
+    setVideoLoadStates(prev => ({ ...prev, [index]: 'loading' }));
+  };
 
   const activeFeature = features[activeFeatureIndex];
 
@@ -35,19 +54,41 @@ export default function FeatureCarousel() {
         </ContentSection>
         <ContentSection>
           <div className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden glass-effect">
+            {/* Fallback Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-surface/80 via-surface/60 to-surface/40 z-[-2]" />
+            
             {/* Background Videos */}
             {features.map((feature, index) => (
-              <video
-                key={feature.videoSrc}
-                src={feature.videoSrc}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out z-[-1] ${
-                  activeFeatureIndex === index ? "opacity-100" : "opacity-0"
-                }`}
-              />
+              <div key={feature.videoSrc} className="absolute inset-0">
+                {!videoLoadErrors[index] && (
+                  <video
+                    src={feature.videoSrc}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="metadata"
+                    onError={(e) => handleVideoError(index, e)}
+                    onLoadedData={() => handleVideoLoad(index)}
+                    onLoadStart={() => handleVideoLoadStart(index)}
+                    className={`w-full h-full object-cover transition-opacity duration-1000 ease-in-out z-[-1] ${
+                      activeFeatureIndex === index && videoLoadStates[index] === 'loaded' 
+                        ? "opacity-100" 
+                        : "opacity-0"
+                    }`}
+                  />
+                )}
+                {/* Fallback gradient background for failed videos */}
+                {videoLoadErrors[index] && activeFeatureIndex === index && (
+                  <div className="w-full h-full bg-gradient-to-br from-surface/90 via-accent-green/10 to-surface/70 z-[-1]" />
+                )}
+                {/* Loading indicator */}
+                {videoLoadStates[index] === 'loading' && activeFeatureIndex === index && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-surface/50 z-0">
+                    <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+              </div>
             ))}
 
             {/* Content Overlay */}

@@ -8,7 +8,7 @@ export type EmailValidationStatus =
   | 'pending'          // Account request exists but pending
   | 'approved'         // Account request approved
   | 'rejected'         // Account request rejected
-  | 'authenticated'    // User has auth account
+  | 'authenticated'    // User has auth account (we'll detect this differently)
   | 'loading'
   | 'idle';
 
@@ -35,19 +35,6 @@ export const useEmailValidation = () => {
     setValidationResult({ status: 'loading', message: 'Checking email...' });
 
     try {
-      // First check if user already exists in auth
-      const { data: authData } = await supabase.auth.admin.listUsers();
-      const existingAuthUser = authData?.users?.find(user => user.email === email);
-      
-      if (existingAuthUser) {
-        const result = {
-          status: 'authenticated' as EmailValidationStatus,
-          message: 'Email is registered'
-        };
-        setValidationResult(result);
-        return result;
-      }
-
       // Check account request status
       const { data: accountRequest, error } = await supabase
         .from('account_requests')

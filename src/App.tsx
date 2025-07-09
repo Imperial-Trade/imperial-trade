@@ -1,6 +1,5 @@
 
 import React from "react";
-import { ThemeProvider } from "@/components/ui/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
@@ -19,26 +18,24 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <CustomThemeProvider>
-          <TooltipProvider>
-            <WebSocketPriceProvider>
-              <AuthProvider>
-                <ErrorBoundary componentName="Toast Notifications">
-                  <Toaster />
-                  <Sonner />
-                </ErrorBoundary>
-                <ErrorBoundary componentName="Notification System">
-                  <NotificationSystem />
-                </ErrorBoundary>
-                <ErrorBoundary componentName="Application Router">
-                  <Pages />
-                </ErrorBoundary>
-              </AuthProvider>
-            </WebSocketPriceProvider>
-          </TooltipProvider>
-        </CustomThemeProvider>
-      </ThemeProvider>
+      <CustomThemeProvider>
+        <TooltipProvider>
+          <WebSocketPriceProvider>
+            <AuthProvider>
+              <ErrorBoundary componentName="Toast Notifications">
+                <Toaster />
+                <Sonner />
+              </ErrorBoundary>
+              <ErrorBoundary componentName="Notification System">
+                <NotificationSystem />
+              </ErrorBoundary>
+              <ErrorBoundary componentName="Application Router">
+                <Pages />
+              </ErrorBoundary>
+            </AuthProvider>
+          </WebSocketPriceProvider>
+        </TooltipProvider>
+      </CustomThemeProvider>
     </QueryClientProvider>
   );
 }

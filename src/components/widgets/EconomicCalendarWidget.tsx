@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -52,13 +51,13 @@ export default function EconomicCalendarWidget({
       console.error('Failed to load economic events:', err);
       setError('Failed to load events');
       
-      // Fallback to mock data for today
+      // Fallback to mock data for today - properly typed
       const mockEvents: EconomicEvent[] = [
         { 
           id: '1', 
           time: '08:30', 
           currency: 'USD', 
-          impact: 'high', 
+          impact: 'high' as const, 
           event: 'Non-Farm Payrolls', 
           actual: '', 
           forecast: '180K', 
@@ -70,7 +69,7 @@ export default function EconomicCalendarWidget({
           id: '2', 
           time: '10:00', 
           currency: 'USD', 
-          impact: 'medium', 
+          impact: 'medium' as const, 
           event: 'Unemployment Rate', 
           actual: '', 
           forecast: '4.2%', 

@@ -10,6 +10,7 @@ import NotificationSystem from "@/components/notifications/NotificationSystem";
 import "./styles/education.css";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider as CustomThemeProvider } from "@/contexts/ThemeContext";
 import Pages from "./pages";
 
 // Create QueryClient instance
@@ -19,22 +20,24 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <TooltipProvider>
-          <WebSocketPriceProvider>
-            <AuthProvider>
-              <ErrorBoundary componentName="Toast Notifications">
-                <Toaster />
-                <Sonner />
-              </ErrorBoundary>
-              <ErrorBoundary componentName="Notification System">
-                <NotificationSystem />
-              </ErrorBoundary>
-              <ErrorBoundary componentName="Application Router">
-                <Pages />
-              </ErrorBoundary>
-            </AuthProvider>
-          </WebSocketPriceProvider>
-        </TooltipProvider>
+        <CustomThemeProvider>
+          <TooltipProvider>
+            <WebSocketPriceProvider>
+              <AuthProvider>
+                <ErrorBoundary componentName="Toast Notifications">
+                  <Toaster />
+                  <Sonner />
+                </ErrorBoundary>
+                <ErrorBoundary componentName="Notification System">
+                  <NotificationSystem />
+                </ErrorBoundary>
+                <ErrorBoundary componentName="Application Router">
+                  <Pages />
+                </ErrorBoundary>
+              </AuthProvider>
+            </WebSocketPriceProvider>
+          </TooltipProvider>
+        </CustomThemeProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

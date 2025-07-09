@@ -1,1 +1,14 @@
+
 project_id = "kmuoqkcxguafxulqlbmi"
+
+[functions.economic-calendar]
+verify_jwt = false
+
+[functions.get-market-data]
+verify_jwt = false
+
+[functions.get-historical-data]
+verify_jwt = false
+
+[functions.share-trade-signal]
+verify_jwt = false

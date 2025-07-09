@@ -61,7 +61,7 @@ export class TradingRepository implements ITradingRepository {
       tp5: dto.tp5,
       notes: dto.notes,
       user_id: userId,
-      status: 'active'
+      status: 'active' as const
     };
 
     const result = await apiClient.insert('trade_alerts', insertData);

@@ -1,10 +1,10 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ApiResponse } from '@/types/common';
 import { isValidUUID } from '@/types/guards';
 import { DatabaseTable, TableRow, TableInsert, TableUpdate, RequestConfig } from '../types';
 import { withTimeout } from '../utils/timeout';
 import { withRetry } from '../utils/retry';
+import { performanceMonitor } from '@/services/PerformanceMonitorService';
 
 export class DatabaseOperations {
   private defaultTimeout = 10000;
@@ -19,6 +19,8 @@ export class DatabaseOperations {
     },
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>[]>> {
+    const startTime = performance.now();
+    
     try {
       const result = await withRetry(async () => {
         const executeQuery = async () => {
@@ -60,8 +62,18 @@ export class DatabaseOperations {
         maxAttempts: config.retries || 3
       });
 
+      // Track performance
+      const duration = performance.now() - startTime;
+      performanceMonitor.trackMetric(`db_select_${table}`, duration, 'database_query');
+
       return result;
     } catch (error) {
+      const duration = performance.now() - startTime;
+      performanceMonitor.trackMetric(`db_select_${table}`, duration, 'database_query', { 
+        error: true,
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

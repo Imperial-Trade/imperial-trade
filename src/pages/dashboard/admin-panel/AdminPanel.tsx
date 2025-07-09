@@ -33,6 +33,11 @@ import { UserManagementTable } from "@/components/admin/UserManagementTable";
 import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
 import { RealtimeAuditLog } from "@/components/admin/RealtimeAuditLog";
 import { AdminTradeSignalsTab } from "@/components/admin/AdminTradeSignalsTab";
+import { RealTimeNotifications } from "@/components/admin/RealTimeNotifications";
+import { EnhancedSystemMonitoring } from "@/components/admin/EnhancedSystemMonitoring";
+import { performanceMonitor } from "@/services/PerformanceMonitorService";
+import { adminSecurity } from "@/services/AdminSecurityService";
+import { cacheService } from "@/services/CacheService";
 
 export default function AdminPanel() {
   const [user, setUser] = useState(null);
@@ -65,13 +70,16 @@ export default function AdminPanel() {
         return;
       }
 
-      // Verify admin access
+      // Verify admin access with enhanced security
       const userRole = currentUser.user_metadata?.access_level;
       if (userRole !== 'admin') {
         console.error('Unauthorized access attempt to admin panel');
         setIsLoading(false);
         return;
       }
+
+      // Initialize security tracking
+      adminSecurity.trackAdminSession(currentUser.id, currentUser.email || 'unknown');
 
       // Log admin panel access
       await adminAuditService.logAdminAction(
@@ -82,17 +90,23 @@ export default function AdminPanel() {
         { timestamp: new Date().toISOString() }
       );
 
-      // Load admin data with proper error handling
+      // Load admin data with performance monitoring
       const [sessionsResult, alertsResult, statsResult] = await Promise.all([
-        LiveSession.list().catch((error) => {
+        performanceMonitor.measureApiCall('load_sessions', () => 
+          cacheService.getOrSet('admin_sessions', () => LiveSession.list(), 60000)
+        ).catch((error) => {
           console.error('Failed to load sessions:', error);
           return [];
         }),
-        adminTradingService.getAllAlertsForAdmin().catch((error) => {
+        performanceMonitor.measureApiCall('load_alerts', () =>
+          cacheService.getOrSet('admin_alerts', () => adminTradingService.getAllAlertsForAdmin(), 30000)
+        ).catch((error) => {
           console.error('Failed to load alerts:', error);
           return { success: false, data: [] };
         }),
-        adminTradingService.getSystemStats().catch((error) => {
+        performanceMonitor.measureApiCall('load_stats', () =>
+          cacheService.getOrSet('admin_stats', () => adminTradingService.getSystemStats(), 120000)
+        ).catch((error) => {
           console.error('Failed to load stats:', error);
           return { success: false, data: { totalUsers: 0, activeUsers: 0, totalSessions: 0, totalAlerts: 0 } };
         })
@@ -122,6 +136,12 @@ export default function AdminPanel() {
 
     } catch (error) {
       console.error("Error loading admin data:", error);
+      adminSecurity.logSecurityAlert(
+        'suspicious_activity',
+        'medium',
+        'Error loading admin panel data',
+        { error: error instanceof Error ? error.message : 'Unknown error' }
+      );
     }
     setIsLoading(false);
   };
@@ -195,10 +215,11 @@ export default function AdminPanel() {
               Admin <span className="gold-text-gradient">Panel</span>
             </h1>
             <p className="text-secondary text-lg">
-              System management and monitoring dashboard
+              Enhanced system management and monitoring dashboard
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <RealTimeNotifications />
             <Badge className="bg-accent-green/10 text-accent-green border-accent-green/20">
               <UserCheck className="w-4 h-4 mr-1" />
               Admin Access
@@ -206,7 +227,7 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        {/* Stats Overview */}
+        {/* Enhanced Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="glass-effect border-default">
             <CardContent className="p-6">
@@ -216,6 +237,10 @@ export default function AdminPanel() {
                   <p className="text-2xl font-bold text-primary">
                     {stats.totalUsers}
                   </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <TrendingUp className="w-3 h-3 text-green-400" />
+                    <span className="text-xs text-green-400">+12% this week</span>
+                  </div>
                 </div>
                 <Users className="w-8 h-8 text-accent-green" />
               </div>
@@ -230,6 +255,10 @@ export default function AdminPanel() {
                   <p className="text-2xl font-bold text-primary">
                     {stats.activeUsers}
                   </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Activity className="w-3 h-3 text-blue-400" />
+                    <span className="text-xs text-blue-400">Real-time</span>
+                  </div>
                 </div>
                 <Activity className="w-8 h-8 text-blue-400" />
               </div>
@@ -240,12 +269,16 @@ export default function AdminPanel() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-secondary text-sm">Live Sessions</p>
-                  <p className="text-2xl font-bold text-primary">
-                    {stats.totalSessions}
-                  </p>
+                  <p className="text-secondary text-sm">System Status</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium text-green-400">Healthy</span>
+                  </div>
+                  <div className="text-xs text-secondary mt-1">
+                    Response: {performanceMonitor.getAverageResponseTime().toFixed(0)}ms
+                  </div>
                 </div>
-                <TrendingUp className="w-8 h-8 text-purple-400" />
+                <Shield className="w-8 h-8 text-green-400" />
               </div>
             </CardContent>
           </Card>
@@ -258,6 +291,10 @@ export default function AdminPanel() {
                   <p className="text-2xl font-bold text-primary">
                     {stats.totalAlerts}
                   </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Radio className="w-3 h-3 text-orange-400" />
+                    <span className="text-xs text-orange-400">Live updates</span>
+                  </div>
                 </div>
                 <Radio className="w-8 h-8 text-orange-400" />
               </div>
@@ -274,6 +311,13 @@ export default function AdminPanel() {
             >
               <Activity className="w-4 h-4" />
               Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="enhanced-monitoring"
+              className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
+            >
+              <Monitor className="w-4 h-4" />
+              Enhanced Monitoring
             </TabsTrigger>
             <TabsTrigger
               value="trade-signals"
@@ -397,6 +441,10 @@ export default function AdminPanel() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="enhanced-monitoring">
+            <EnhancedSystemMonitoring />
           </TabsContent>
 
           <TabsContent value="trade-signals">

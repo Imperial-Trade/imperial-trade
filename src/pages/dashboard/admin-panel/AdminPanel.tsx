@@ -8,11 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Users, 
-  Settings, 
-  Shield, 
-  Activity, 
+import {
+  Users,
+  Settings,
+  Shield,
+  Activity,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -21,7 +21,7 @@ import {
   Database,
   UserCheck,
   Bell,
-  FileText
+  FileText,
 } from "lucide-react";
 import { AccountRequestManagement } from "@/components/account-request/AccountRequestManagement";
 
@@ -36,7 +36,7 @@ export default function AdminPanel() {
     totalUsers: 0,
     activeUsers: 0,
     totalSessions: 0,
-    totalAlerts: 0
+    totalAlerts: 0,
   });
 
   useEffect(() => {
@@ -46,13 +46,21 @@ export default function AdminPanel() {
   const loadData = async () => {
     try {
       // Get current user from Supabase auth
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
       setUser(currentUser);
 
       // Load admin data
       const [fetchedSessions, fetchedAlerts] = await Promise.all([
-        LiveSession.list(),
-        TradeAlert.list()
+        // LiveSession.list(),
+        () => {
+          return null;
+        },
+        () => {
+          return null;
+        },
+        // TradeAlert.list()
       ]);
 
       setSessions(fetchedSessions);
@@ -61,9 +69,9 @@ export default function AdminPanel() {
       // Calculate stats
       setStats({
         totalUsers: users.length,
-        activeUsers: users.filter(u => u.is_active).length,
+        activeUsers: users.filter((u) => u.is_active).length,
         totalSessions: fetchedSessions.length,
-        totalAlerts: fetchedAlerts.length
+        totalAlerts: fetchedAlerts.length,
       });
     } catch (error) {
       console.error("Error loading admin data:", error);
@@ -74,10 +82,10 @@ export default function AdminPanel() {
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
-      month: "short", 
+      month: "short",
       day: "numeric",
       hour: "2-digit",
-      minute: "2-digit"
+      minute: "2-digit",
     });
   };
 
@@ -98,8 +106,12 @@ export default function AdminPanel() {
         <Card className="glass-effect border-default max-w-md w-full">
           <CardContent className="p-6 text-center">
             <Shield className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-primary mb-2">Access Denied</h2>
-            <p className="text-secondary">You need to be logged in to access the admin panel.</p>
+            <h2 className="text-xl font-semibold text-primary mb-2">
+              Access Denied
+            </h2>
+            <p className="text-secondary">
+              You need to be logged in to access the admin panel.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -134,7 +146,9 @@ export default function AdminPanel() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-secondary text-sm">Total Users</p>
-                  <p className="text-2xl font-bold text-primary">{stats.totalUsers}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {stats.totalUsers}
+                  </p>
                 </div>
                 <Users className="w-8 h-8 text-accent-green" />
               </div>
@@ -146,7 +160,9 @@ export default function AdminPanel() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-secondary text-sm">Active Users</p>
-                  <p className="text-2xl font-bold text-primary">{stats.activeUsers}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {stats.activeUsers}
+                  </p>
                 </div>
                 <Activity className="w-8 h-8 text-blue-400" />
               </div>
@@ -158,7 +174,9 @@ export default function AdminPanel() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-secondary text-sm">Live Sessions</p>
-                  <p className="text-2xl font-bold text-primary">{stats.totalSessions}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {stats.totalSessions}
+                  </p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-purple-400" />
               </div>
@@ -170,7 +188,9 @@ export default function AdminPanel() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-secondary text-sm">Total Alerts</p>
-                  <p className="text-2xl font-bold text-primary">{stats.totalAlerts}</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {stats.totalAlerts}
+                  </p>
                 </div>
                 <Bell className="w-8 h-8 text-orange-400" />
               </div>
@@ -237,34 +257,56 @@ export default function AdminPanel() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h4 className="font-semibold text-primary mb-3">Recent Activity</h4>
+                      <h4 className="font-semibold text-primary mb-3">
+                        Recent Activity
+                      </h4>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm">
                           <CheckCircle className="w-4 h-4 text-green-400" />
-                          <span className="text-secondary">System running normally</span>
+                          <span className="text-secondary">
+                            System running normally
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Clock className="w-4 h-4 text-blue-400" />
-                          <span className="text-secondary">Last backup: 2 hours ago</span>
+                          <span className="text-secondary">
+                            Last backup: 2 hours ago
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Database className="w-4 h-4 text-purple-400" />
-                          <span className="text-secondary">Database health: Good</span>
+                          <span className="text-secondary">
+                            Database health: Good
+                          </span>
                         </div>
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-primary mb-3">Quick Actions</h4>
+                      <h4 className="font-semibold text-primary mb-3">
+                        Quick Actions
+                      </h4>
                       <div className="space-y-2">
-                        <Button variant="outline" size="sm" className="w-full justify-start border-default text-secondary hover:bg-surface hover:text-primary">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start border-default text-secondary hover:bg-surface hover:text-primary"
+                        >
                           <Users className="w-4 h-4 mr-2" />
                           Manage Users
                         </Button>
-                        <Button variant="outline" size="sm" className="w-full justify-start border-default text-secondary hover:bg-surface hover:text-primary">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start border-default text-secondary hover:bg-surface hover:text-primary"
+                        >
                           <Settings className="w-4 h-4 mr-2" />
                           System Settings
                         </Button>
-                        <Button variant="outline" size="sm" className="w-full justify-start border-default text-secondary hover:bg-surface hover:text-primary">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start border-default text-secondary hover:bg-surface hover:text-primary"
+                        >
                           <Database className="w-4 h-4 mr-2" />
                           Database Backup
                         </Button>
@@ -291,7 +333,9 @@ export default function AdminPanel() {
               <CardContent>
                 <div className="text-center py-8">
                   <Users className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-primary mb-2">User Management</h3>
+                  <h3 className="text-xl font-semibold text-primary mb-2">
+                    User Management
+                  </h3>
                   <p className="text-secondary">
                     User management features will be implemented here.
                   </p>
@@ -312,17 +356,26 @@ export default function AdminPanel() {
                 {sessions.length > 0 ? (
                   <div className="space-y-4">
                     {sessions.map((session) => (
-                      <div key={session.id} className="p-4 bg-surface/50 rounded-lg">
+                      <div
+                        key={session.id}
+                        className="p-4 bg-surface/50 rounded-lg"
+                      >
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-primary">{session.title}</h4>
+                          <h4 className="font-semibold text-primary">
+                            {session.title}
+                          </h4>
                           <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
                             Live
                           </Badge>
                         </div>
-                        <p className="text-secondary text-sm mb-2">{session.description}</p>
+                        <p className="text-secondary text-sm mb-2">
+                          {session.description}
+                        </p>
                         <div className="flex items-center gap-4 text-xs text-secondary">
                           <span>Started: {formatDate(session.created_at)}</span>
-                          <span>Participants: {session.participant_count || 0}</span>
+                          <span>
+                            Participants: {session.participant_count || 0}
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -330,7 +383,9 @@ export default function AdminPanel() {
                 ) : (
                   <div className="text-center py-8">
                     <TrendingUp className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-primary mb-2">No Active Sessions</h3>
+                    <h3 className="text-xl font-semibold text-primary mb-2">
+                      No Active Sessions
+                    </h3>
                     <p className="text-secondary">
                       There are currently no live trading sessions.
                     </p>
@@ -352,18 +407,29 @@ export default function AdminPanel() {
                 {alerts.length > 0 ? (
                   <div className="space-y-4">
                     {alerts.map((alert) => (
-                      <div key={alert.id} className="p-4 bg-surface/50 rounded-lg">
+                      <div
+                        key={alert.id}
+                        className="p-4 bg-surface/50 rounded-lg"
+                      >
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-primary">{alert.title}</h4>
-                          <Badge className={`${
-                            alert.priority === 'high' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                            alert.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                            'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                          } border`}>
+                          <h4 className="font-semibold text-primary">
+                            {alert.title}
+                          </h4>
+                          <Badge
+                            className={`${
+                              alert.priority === "high"
+                                ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                : alert.priority === "medium"
+                                ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                            } border`}
+                          >
                             {alert.priority}
                           </Badge>
                         </div>
-                        <p className="text-secondary text-sm mb-2">{alert.message}</p>
+                        <p className="text-secondary text-sm mb-2">
+                          {alert.message}
+                        </p>
                         <div className="flex items-center gap-4 text-xs text-secondary">
                           <span>Created: {formatDate(alert.created_at)}</span>
                           <span>Type: {alert.alert_type}</span>
@@ -374,7 +440,9 @@ export default function AdminPanel() {
                 ) : (
                   <div className="text-center py-8">
                     <AlertTriangle className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-primary mb-2">No Active Alerts</h3>
+                    <h3 className="text-xl font-semibold text-primary mb-2">
+                      No Active Alerts
+                    </h3>
                     <p className="text-secondary">
                       All systems are running normally.
                     </p>
@@ -395,7 +463,9 @@ export default function AdminPanel() {
               <CardContent>
                 <div className="space-y-6">
                   <div>
-                    <h4 className="font-semibold text-primary mb-3">General Settings</h4>
+                    <h4 className="font-semibold text-primary mb-3">
+                      General Settings
+                    </h4>
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-secondary mb-2">
@@ -412,14 +482,18 @@ export default function AdminPanel() {
                         </label>
                         <div className="flex items-center gap-2">
                           <input type="checkbox" className="rounded" />
-                          <span className="text-secondary text-sm">Enable maintenance mode</span>
+                          <span className="text-secondary text-sm">
+                            Enable maintenance mode
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="font-semibold text-primary mb-3">Security Settings</h4>
+                    <h4 className="font-semibold text-primary mb-3">
+                      Security Settings
+                    </h4>
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-secondary mb-2">
@@ -448,7 +522,10 @@ export default function AdminPanel() {
                     <Button className="bg-accent-green hover:bg-green-500 text-white">
                       Save Settings
                     </Button>
-                    <Button variant="outline" className="border-default text-secondary hover:bg-surface hover:text-primary">
+                    <Button
+                      variant="outline"
+                      className="border-default text-secondary hover:bg-surface hover:text-primary"
+                    >
                       Reset to Defaults
                     </Button>
                   </div>

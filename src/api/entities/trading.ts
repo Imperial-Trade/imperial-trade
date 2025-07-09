@@ -1,5 +1,6 @@
 
 import { tradingApiService } from '../services/TradingApiService';
+import { adminTradingService } from '../services/AdminTradingService';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { apiClient } from '../client/ApiClient';
 
@@ -17,6 +18,15 @@ export class TradeAlert {
     const result = await tradingApiService.getAllAlerts(userId);
     if (!result.success) {
       throw new Error(result.error || 'Failed to fetch alerts');
+    }
+    return result.data || [];
+  }
+
+  // Admin-specific method to get all alerts
+  static async listAllForAdmin(): Promise<TradeAlertResponseDto[]> {
+    const result = await adminTradingService.getAllAlertsForAdmin();
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to fetch all alerts for admin');
     }
     return result.data || [];
   }

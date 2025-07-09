@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { LiveSession } from "@/api/entities";
-import { TradeAlert } from "@/api/entities";
+import { adminTradingService } from "@/api/services/AdminTradingService";
+import { adminAuditService } from "@/api/services/AdminAuditService";
+import { TradeAlertResponseDto } from "@/domain/dtos/trading/CreateTradeAlertDto";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,7 +33,7 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState("overview");
   const [users, setUsers] = useState([]);
   const [sessions, setSessions] = useState([]);
-  const [alerts, setAlerts] = useState([]);
+  const [alerts, setAlerts] = useState<TradeAlertResponseDto[]>([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -51,28 +53,66 @@ export default function AdminPanel() {
       } = await supabase.auth.getUser();
       setUser(currentUser);
 
-      // Load admin data
-      const [fetchedSessions, fetchedAlerts] = await Promise.all([
-        // LiveSession.list(),
-        () => {
-          return null;
-        },
-        () => {
-          return null;
-        },
-        // TradeAlert.list()
+      if (!currentUser) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Verify admin access
+      const userRole = currentUser.user_metadata?.access_level;
+      if (userRole !== 'admin') {
+        console.error('Unauthorized access attempt to admin panel');
+        setIsLoading(false);
+        return;
+      }
+
+      // Log admin panel access
+      await adminAuditService.logAdminAction(
+        'admin_panel_access',
+        currentUser.email || 'unknown',
+        'admin_panel',
+        'dashboard',
+        { timestamp: new Date().toISOString() }
+      );
+
+      // Load admin data with proper error handling
+      const [sessionsResult, alertsResult, statsResult] = await Promise.all([
+        LiveSession.list().catch((error) => {
+          console.error('Failed to load sessions:', error);
+          return [];
+        }),
+        adminTradingService.getAllAlertsForAdmin().catch((error) => {
+          console.error('Failed to load alerts:', error);
+          return { success: false, data: [] };
+        }),
+        adminTradingService.getSystemStats().catch((error) => {
+          console.error('Failed to load stats:', error);
+          return { success: false, data: { totalUsers: 0, activeUsers: 0, totalSessions: 0, totalAlerts: 0 } };
+        })
       ]);
 
-      setSessions(fetchedSessions);
-      setAlerts(fetchedAlerts);
+      // Safely set sessions data
+      setSessions(Array.isArray(sessionsResult) ? sessionsResult : []);
 
-      // Calculate stats
-      setStats({
-        totalUsers: users.length,
-        activeUsers: users.filter((u) => u.is_active).length,
-        totalSessions: fetchedSessions.length,
-        totalAlerts: fetchedAlerts.length,
-      });
+      // Safely set alerts data
+      if (alertsResult.success && alertsResult.data) {
+        setAlerts(alertsResult.data);
+      } else {
+        setAlerts([]);
+      }
+
+      // Safely set stats data
+      if (statsResult.success && statsResult.data) {
+        setStats(statsResult.data);
+      } else {
+        setStats({
+          totalUsers: 0,
+          activeUsers: 0,
+          totalSessions: Array.isArray(sessionsResult) ? sessionsResult.length : 0,
+          totalAlerts: Array.isArray(alerts) ? alerts.length : 0,
+        });
+      }
+
     } catch (error) {
       console.error("Error loading admin data:", error);
     }
@@ -111,6 +151,26 @@ export default function AdminPanel() {
             </h2>
             <p className="text-secondary">
               You need to be logged in to access the admin panel.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check admin access
+  const userRole = user.user_metadata?.access_level;
+  if (userRole !== 'admin') {
+    return (
+      <div className="min-h-screen p-6 bg-background flex items-center justify-center">
+        <Card className="glass-effect border-default max-w-md w-full">
+          <CardContent className="p-6 text-center">
+            <Shield className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-primary mb-2">
+              Unauthorized Access
+            </h2>
+            <p className="text-secondary">
+              You don't have admin privileges to access this panel.
             </p>
           </CardContent>
         </Card>
@@ -234,7 +294,7 @@ export default function AdminPanel() {
               className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
             >
               <AlertTriangle className="w-4 h-4" />
-              Alerts
+              Trade Alerts
             </TabsTrigger>
             <TabsTrigger
               value="settings"
@@ -245,6 +305,7 @@ export default function AdminPanel() {
             </TabsTrigger>
           </TabsList>
 
+          
           <TabsContent value="overview">
             <div className="space-y-6">
               <Card className="glass-effect border-default">
@@ -400,51 +461,63 @@ export default function AdminPanel() {
               <CardHeader>
                 <CardTitle className="text-primary flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5" />
-                  System Alerts
+                  Trade Alerts
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {alerts.length > 0 ? (
                   <div className="space-y-4">
-                    {alerts.map((alert) => (
+                    {alerts.slice(0, 10).map((alert) => (
                       <div
                         key={alert.id}
                         className="p-4 bg-surface/50 rounded-lg"
                       >
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-semibold text-primary">
-                            {alert.title}
+                            {alert.assetName} ({alert.finnhubSymbol})
                           </h4>
                           <Badge
                             className={`${
-                              alert.priority === "high"
+                              alert.status === "active"
+                                ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                : alert.status === "closed"
                                 ? "bg-red-500/10 text-red-400 border-red-500/20"
-                                : alert.priority === "medium"
-                                ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
                             } border`}
                           >
-                            {alert.priority}
+                            {alert.status}
                           </Badge>
                         </div>
-                        <p className="text-secondary text-sm mb-2">
-                          {alert.message}
-                        </p>
-                        <div className="flex items-center gap-4 text-xs text-secondary">
-                          <span>Created: {formatDate(alert.created_at)}</span>
-                          <span>Type: {alert.alert_type}</span>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-secondary">
+                          <div>
+                            <span className="font-medium">Type:</span> {alert.tradeType}
+                          </div>
+                          <div>
+                            <span className="font-medium">Entry:</span> ${alert.entryPrice}
+                          </div>
+                          <div>
+                            <span className="font-medium">Stop Loss:</span> ${alert.stopLoss}
+                          </div>
+                          <div>
+                            <span className="font-medium">Created:</span> {formatDate(alert.createdAt)}
+                          </div>
                         </div>
                       </div>
                     ))}
+                    {alerts.length > 10 && (
+                      <div className="text-center text-secondary text-sm">
+                        Showing 10 of {alerts.length} alerts
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <AlertTriangle className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-primary mb-2">
-                      No Active Alerts
+                      No Trade Alerts
                     </h3>
                     <p className="text-secondary">
-                      All systems are running normally.
+                      No trade alerts have been created yet.
                     </p>
                   </div>
                 )}

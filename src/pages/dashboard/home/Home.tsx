@@ -13,10 +13,10 @@ export default function Home() {
       <EconomicNotificationSystem enabled={true} />
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
+          <h1 className="text-3xl lg:text-4xl font-bold mb-2">
             Welcome to <span className="text-accent-green">Imperial Trading</span>
           </h1>
-          <p className="text-secondary text-lg">
+          <p className="text-muted-foreground text-lg">
             Your comprehensive trading education and signal platform
           </p>
         </div>
@@ -34,29 +34,29 @@ export default function Home() {
 
         {/* Hero Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="p-6 bg-surface rounded-lg border border-default">
-            <h2 className="text-2xl font-semibold text-primary mb-4">
+          <div className="p-6 bg-card rounded-lg border border-border">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">
               Start Your Trading Journey
             </h2>
-            <p className="text-secondary mb-6">
+            <p className="text-muted-foreground mb-6">
               Access premium trading signals, educational resources, and community support to enhance your trading skills.
             </p>
-            <a href="/dashboard/signal-stream">
-              <button className="bg-accent-green hover:bg-green-500 text-white px-6 py-3 rounded-full font-semibold">
+            <a href="/dashboard/signals">
+              <button className="bg-accent-green hover:bg-green-500 text-white px-6 py-3 rounded-full font-semibold transition-colors">
                 Explore Trading Signals
               </button>
             </a>
           </div>
 
-          <div className="p-6 bg-surface rounded-lg border border-default">
-            <h2 className="text-2xl font-semibold text-primary mb-4">
+          <div className="p-6 bg-card rounded-lg border border-border">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">
               Learn and Grow
             </h2>
-            <p className="text-secondary mb-6">
+            <p className="text-muted-foreground mb-6">
               Dive into our comprehensive courses and learning paths designed to take you from beginner to expert trader.
             </p>
             <a href="/dashboard/education">
-              <button className="bg-accent-green hover:bg-green-500 text-white px-6 py-3 rounded-full font-semibold">
+              <button className="bg-accent-green hover:bg-green-500 text-white px-6 py-3 rounded-full font-semibold transition-colors">
                 Start Learning Now
               </button>
             </a>
@@ -65,22 +65,22 @@ export default function Home() {
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <div className="p-4 bg-surface rounded-lg border border-default">
-            <h3 className="text-lg font-semibold text-primary mb-2">
+          <div className="p-4 bg-card rounded-lg border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Total Signals
             </h3>
             <p className="text-3xl text-accent-green font-bold">1,245+</p>
           </div>
 
-          <div className="p-4 bg-surface rounded-lg border border-default">
-            <h3 className="text-lg font-semibold text-primary mb-2">
+          <div className="p-4 bg-card rounded-lg border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Active Members
             </h3>
             <p className="text-3xl text-accent-green font-bold">8,792+</p>
           </div>
 
-          <div className="p-4 bg-surface rounded-lg border border-default">
-            <h3 className="text-lg font-semibold text-primary mb-2">
+          <div className="p-4 bg-card rounded-lg border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Avg. Signal Accuracy
             </h3>
             <p className="text-3xl text-accent-green font-bold">78.5%</p>
@@ -88,18 +88,18 @@ export default function Home() {
         </div>
 
         {/* Latest News & Updates */}
-        <div className="mt-8 p-6 bg-surface rounded-lg border border-default">
-          <h2 className="text-2xl font-semibold text-primary mb-4">
+        <div className="mt-8 p-6 bg-card rounded-lg border border-border">
+          <h2 className="text-2xl font-semibold text-foreground mb-4">
             Latest News & Updates
           </h2>
           <ul className="space-y-4">
-            <li className="text-secondary">
+            <li className="text-muted-foreground">
               <span className="text-accent-green font-semibold">New Feature:</span> Real-time Economic Calendar with notifications
             </li>
-            <li className="text-secondary">
+            <li className="text-muted-foreground">
               <span className="text-accent-green font-semibold">Update:</span> Enhanced market data integration
             </li>
-            <li className="text-secondary">
+            <li className="text-muted-foreground">
               <span className="text-accent-green font-semibold">Event:</span> Live Trading Session with Expert Trader - Next Week
             </li>
           </ul>

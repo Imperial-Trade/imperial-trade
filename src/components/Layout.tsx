@@ -13,7 +13,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   // For home page, use AppBar instead of sidebar
   if (isHomePage) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-background/95">
+      <div className="min-h-screen bg-background">
         <ErrorBoundary componentName="AppBar">
           <AppBar />
         </ErrorBoundary>
@@ -29,10 +29,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   // For other pages, use the sidebar layout
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gradient-to-br from-background via-background to-background/95">
+      <div className="min-h-screen flex w-full bg-background">
         {/* Header */}
         <ErrorBoundary componentName="Header">
-          <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
+          <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/95 backdrop-blur-xl border-b border-border">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="text-primary hover:text-primary/80 transition-colors" />
               <div className="flex items-center gap-2">
@@ -56,7 +56,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <ErrorBoundary componentName="Sidebar">
             <AppSidebar />
           </ErrorBoundary>
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto bg-background">
             <ErrorBoundary componentName="Page Content">
               {children}
             </ErrorBoundary>

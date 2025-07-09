@@ -8,17 +8,17 @@ interface SidebarBrandProps {
 
 export function SidebarBrand({ isCollapsed }: SidebarBrandProps) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary">
-        <Crown className="w-4 h-4 text-primary-foreground" />
+    <div className="flex items-center gap-3 p-2">
+      <div className="flex items-center justify-center w-8 h-8">
+        <Crown className="w-6 h-6 text-primary" />
       </div>
       {!isCollapsed && (
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-sidebar-foreground">
-            Imperial Trading
+          <span className="text-lg font-bold text-sidebar-foreground">
+            IMPERIAL
           </span>
           <span className="text-xs text-muted-foreground">
-            Premium Platform
+            Trading Community
           </span>
         </div>
       )}

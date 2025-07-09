@@ -19,12 +19,12 @@ export function AppSidebar() {
   const isCollapsed = sidebarState === "collapsed";
 
   return (
-    <Sidebar className="border-r border-sidebar-border">
-      <SidebarHeader className="p-4">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar">
+      <SidebarHeader className="p-4 border-b border-sidebar-border">
         <SidebarBrand isCollapsed={isCollapsed} />
       </SidebarHeader>
 
-      <SidebarContent className="px-3">
+      <SidebarContent className="px-3 py-4">
         <SidebarNavigation isCollapsed={isCollapsed} />
         <SidebarAdminSection 
           isCollapsed={isCollapsed} 

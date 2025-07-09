@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -238,43 +237,47 @@ export default function SignalStream() {
   }, [updateInProgress, updateAlert]);
 
   return (
-    <div className="min-h-screen p-6 bg-background">
+    <div className="min-h-screen bg-background">
       <NotificationSystem />
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
+      
+      {/* Header */}
+      <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
+            <h1 className="text-3xl font-bold text-foreground mb-1">
               Live Signal <span className="text-accent-green">Stream</span>
             </h1>
-            <p className="text-secondary text-lg">
-              Real-time trading signals with live price tracking and economic context
+            <p className="text-muted-foreground">
+              Real-time trading signals with live price tracking
             </p>
           </div>
         </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto p-6">
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           <div className="xl:col-span-3">
             {isLoading ? (
               <div className="flex justify-center items-center h-64 flex-col space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
                 <div className="text-center">
-                  <p className="text-secondary">Loading signals...</p>
+                  <p className="text-muted-foreground">Loading signals...</p>
                 </div>
               </div>
             ) : error ? (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 text-center">
-                <AlertTriangle className="w-12 h-12 text-accent-red mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-primary mb-2">Connection Error</h3>
-                <p className="text-secondary mb-6">{error}</p>
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
+                <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">Connection Error</h3>
+                <p className="text-muted-foreground mb-6">{error}</p>
                 <div className="flex gap-4 justify-center">
-                  <button onClick={() => refreshAlerts()} className="bg-accent-green hover:bg-green-500 text-white px-4 py-2 rounded">Try Again</button>
-                  <button onClick={() => window.location.reload()} className="border border-default text-secondary hover:bg-surface px-4 py-2 rounded">Refresh Page</button>
+                  <button onClick={() => refreshAlerts()} className="bg-accent-green hover:bg-accent-green/90 text-white px-4 py-2 rounded">Try Again</button>
+                  <button onClick={() => window.location.reload()} className="border border-border text-muted-foreground hover:bg-muted px-4 py-2 rounded">Refresh Page</button>
                 </div>
               </div>
             ) : (
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-semibold text-accent-green mb-4 border-b-2 border-accent-green/20 pb-2">
+                  <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
                     Active Signals ({activeAlerts.length})
                   </h2>
                   {activeAlerts.length > 0 ? (
@@ -308,17 +311,17 @@ export default function SignalStream() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
-                        <div className="w-8 h-8 text-secondary/50">📡</div>
+                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-8 h-8 text-muted-foreground/50">📡</div>
                       </div>
-                      <h3 className="text-xl font-semibold text-primary mb-2">No Active Signals</h3>
-                      <p className="text-secondary">New trading signals will appear here when posted by educators.</p>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No Active Signals</h3>
+                      <p className="text-muted-foreground">New trading signals will appear here when posted by educators.</p>
                     </div>
                   )}
                 </div>
                 
                 <div>
-                  <h2 className="text-2xl font-semibold text-secondary mb-4 border-b-2 border-default pb-2">
+                  <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
                     Recent Closed Trades ({closedAlerts.length})
                   </h2>
                   {sortedClosedAlerts.length > 0 ? (
@@ -352,11 +355,11 @@ export default function SignalStream() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
-                        <div className="w-8 h-8 text-secondary/50">🔒</div>
+                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
                       </div>
-                      <h3 className="text-xl font-semibold text-primary mb-2">No Closed Trades</h3>
-                      <p className="text-secondary">Completed trades will be shown here for reference.</p>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No Closed Trades</h3>
+                      <p className="text-muted-foreground">Completed trades will be shown here for reference.</p>
                     </div>
                   )}
                 </div>

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { OptimizedNewAlertForm } from '@/components/signals/OptimizedNewAlertForm';
+import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 
 const NewSignalPage: React.FC = () => {
   return (

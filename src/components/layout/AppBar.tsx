@@ -1,9 +1,29 @@
-import React from "react";
+
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Crown, Info, Briefcase, Star } from "lucide-react";
+import { Crown, Info, Briefcase, Star, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const AppBar: React.FC = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isMobile = useIsMobile();
+
+  const navigationItems = [
+    { to: "/about", icon: Info, label: "About" },
+    { to: "/partnership", icon: Briefcase, label: "IB Partnership" },
+    { to: "/features", icon: Star, label: "Features" },
+  ];
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
       <Link to="/" className="flex items-center gap-2">
@@ -11,37 +31,23 @@ const AppBar: React.FC = () => {
         <span className="text-xl imperial-tech-font">IMPERIAL</span>
       </Link>
 
+      {/* Desktop Navigation */}
       <nav className="hidden md:flex items-center gap-6">
-        <Link to="/about">
-          <Button
-            variant="ghost"
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <Info className="h-4 w-4" />
-            About
-          </Button>
-        </Link>
-        <Link to="/partnership">
-          <Button
-            variant="ghost"
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <Briefcase className="h-4 w-4" />
-            IB Partnership
-          </Button>
-        </Link>
-        <Link to="/features">
-          <Button
-            variant="ghost"
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <Star className="h-4 w-4" />
-            Features
-          </Button>
-        </Link>
+        {navigationItems.map((item) => (
+          <Link key={item.to} to={item.to}>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </Button>
+          </Link>
+        ))}
       </nav>
 
-      <div className="flex items-center gap-4">
+      {/* Desktop Get Started Button */}
+      <div className="hidden md:flex items-center gap-4">
         <Link to="/account-request">
           <Button
             size="sm"
@@ -51,6 +57,55 @@ const AppBar: React.FC = () => {
           </Button>
         </Link>
       </div>
+
+      {/* Mobile Navigation */}
+      {isMobile && (
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden text-primary hover:text-primary/80"
+            >
+              <Menu className="h-6 w-6" />
+              <span className="sr-only">Open navigation menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-80 bg-background/95 backdrop-blur-xl">
+            <SheetHeader className="border-b border-border/50 pb-6">
+              <SheetTitle className="flex items-center gap-2 text-left">
+                <Crown className="h-6 w-6 text-primary" />
+                <span className="text-xl imperial-tech-font">IMPERIAL</span>
+              </SheetTitle>
+            </SheetHeader>
+            
+            <nav className="flex flex-col gap-4 mt-8">
+              {navigationItems.map((item) => (
+                <Link 
+                  key={item.to} 
+                  to={item.to} 
+                  onClick={closeMobileMenu}
+                  className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-secondary/50 text-foreground"
+                >
+                  <item.icon className="h-5 w-5 text-primary" />
+                  <span className="text-base font-medium">{item.label}</span>
+                </Link>
+              ))}
+              
+              <div className="mt-6 pt-6 border-t border-border/50">
+                <Link to="/account-request" onClick={closeMobileMenu}>
+                  <Button
+                    size="lg"
+                    className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold"
+                  >
+                    Get Started
+                  </Button>
+                </Link>
+              </div>
+            </nav>
+          </SheetContent>
+        </Sheet>
+      )}
 
       <style>{`
         /* AI Tech Font Styles */

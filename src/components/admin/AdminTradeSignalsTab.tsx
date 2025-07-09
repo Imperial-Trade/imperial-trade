@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { adminTradingService } from '@/api/services/AdminTradingService';
@@ -13,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
-import NewAlertForm from '@/components/signals/NewAlertForm';
+import EnhancedNewAlertForm from '@/components/signals/EnhancedNewAlertForm';
 import {
   Plus,
   Search,
@@ -333,11 +332,14 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     Post New Signal
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl bg-gray-800 border-gray-700">
-                  <DialogHeader>
-                    <DialogTitle className="text-white">Create New Trade Signal</DialogTitle>
+                <DialogContent className="max-w-2xl bg-transparent border-0 p-0">
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>Create New Trade Signal</DialogTitle>
                   </DialogHeader>
-                  <NewAlertForm onSubmit={handleNewSignalSubmit} />
+                  <EnhancedNewAlertForm 
+                    onSubmit={handleNewSignalSubmit}
+                    onCancel={() => setIsNewSignalModalOpen(false)}
+                  />
                 </DialogContent>
               </Dialog>
               
@@ -486,11 +488,14 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       Post Your First Signal
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl bg-gray-800 border-gray-700">
-                    <DialogHeader>
-                      <DialogTitle className="text-white">Create New Trade Signal</DialogTitle>
+                  <DialogContent className="max-w-2xl bg-transparent border-0 p-0">
+                    <DialogHeader className="sr-only">
+                      <DialogTitle>Create New Trade Signal</DialogTitle>
                     </DialogHeader>
-                    <NewAlertForm onSubmit={handleNewSignalSubmit} />
+                    <EnhancedNewAlertForm 
+                      onSubmit={handleNewSignalSubmit}
+                      onCancel={() => setIsNewSignalModalOpen(false)}
+                    />
                   </DialogContent>
                 </Dialog>
               )}

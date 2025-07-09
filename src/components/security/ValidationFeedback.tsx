@@ -8,13 +8,17 @@ interface ValidationFeedbackProps {
   isValid?: boolean;
   isValidating?: boolean;
   value?: string;
+  customError?: string;
+  customSuccess?: string;
 }
 
 export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({
   error,
   isValid,
   isValidating,
-  value
+  value,
+  customError,
+  customSuccess
 }) => {
   if (isValidating) {
     return (
@@ -25,6 +29,17 @@ export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({
     );
   }
 
+  // Show custom error if provided
+  if (customError) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-red-500">
+        <XCircle className="w-4 h-4" />
+        <span>{customError}</span>
+      </div>
+    );
+  }
+
+  // Show form validation error
   if (error) {
     return (
       <div className="flex items-center gap-2 text-sm text-red-500">
@@ -34,6 +49,17 @@ export const ValidationFeedback: React.FC<ValidationFeedbackProps> = ({
     );
   }
 
+  // Show custom success message if provided
+  if (customSuccess) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-green-500">
+        <CheckCircle className="w-4 h-4" />
+        <span>{customSuccess}</span>
+      </div>
+    );
+  }
+
+  // Show default success state
   if (isValid && value && value.length > 0) {
     return (
       <div className="flex items-center gap-2 text-sm text-green-500">

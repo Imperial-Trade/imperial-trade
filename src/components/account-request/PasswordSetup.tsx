@@ -34,9 +34,15 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
       password: '',
       confirmPassword: '',
     },
+    mode: 'onChange', // Enable real-time validation
   });
 
   const password = form.watch('password');
+  const confirmPassword = form.watch('confirmPassword');
+
+  // Real-time password match validation
+  const passwordsMatch = password && confirmPassword && password === confirmPassword;
+  const showPasswordMismatch = confirmPassword && confirmPassword.length > 0 && password !== confirmPassword;
 
   const handlePasswordSetup = async (data: PasswordSetupFormData) => {
     setIsSubmitting(true);
@@ -183,7 +189,13 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
                         {...field}
                         type={showConfirmPassword ? "text" : "password"}
                         placeholder="Confirm your password"
-                        className="pr-10 bg-white border-gray-300 text-gray-900"
+                        className={`pr-10 bg-white text-gray-900 ${
+                          showPasswordMismatch 
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                            : passwordsMatch 
+                            ? 'border-green-500 focus:border-green-500 focus:ring-green-500'
+                            : 'border-gray-300'
+                        }`}
                         disabled={isSubmitting}
                       />
                       <button
@@ -196,9 +208,25 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
                       </button>
                     </div>
                   </FormControl>
+                  
+                  {/* Enhanced validation feedback for password confirmation */}
+                  {showPasswordMismatch && (
+                    <div className="flex items-center gap-2 text-sm text-red-500 mt-1">
+                      <span className="w-4 h-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">×</span>
+                      <span>Passwords don't match</span>
+                    </div>
+                  )}
+                  
+                  {passwordsMatch && (
+                    <div className="flex items-center gap-2 text-sm text-green-500 mt-1">
+                      <span className="w-4 h-4 rounded-full bg-green-500 text-white text-xs flex items-center justify-center">✓</span>
+                      <span>Passwords match</span>
+                    </div>
+                  )}
+                  
                   <ValidationFeedback
                     error={fieldState.error}
-                    isValid={!fieldState.error && field.value.length > 0}
+                    isValid={!fieldState.error && passwordsMatch}
                     value={field.value}
                   />
                 </FormItem>
@@ -207,7 +235,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
 
             <Button
               type="submit"
-              disabled={isSubmitting || !form.formState.isValid}
+              disabled={isSubmitting || !form.formState.isValid || showPasswordMismatch}
               className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
             >
               {isSubmitting ? (

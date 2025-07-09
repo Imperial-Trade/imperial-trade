@@ -8,6 +8,7 @@ import { WebSocketPriceProvider } from '@/contexts/WebSocketPriceContext';
 
 // Import pages from their correct locations
 import LandingPage from './pages/landing-page/landing/Landing';
+import LandingLayout from './components/layouts/LandingLayout';
 import DashboardLayout from './pages/layouts/DashboardLayout';
 import AccountRequest from './pages/landing-page/account-request/AccountRequest';
 import AboutPage from './pages/landing-page/about/About';
@@ -27,11 +28,11 @@ function App() {
           <WebSocketPriceProvider>
             <div className="min-h-screen bg-background font-sans antialiased">
               <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/account-request" element={<AccountRequest />} />
-                <Route path="/about" element={<AboutPage />} />
-                <Route path="/partnership" element={<PartnershipPage />} />
-                <Route path="/features" element={<FeaturesPage />} />
+                <Route path="/" element={<LandingLayout><LandingPage /></LandingLayout>} />
+                <Route path="/account-request" element={<LandingLayout><AccountRequest /></LandingLayout>} />
+                <Route path="/about" element={<LandingLayout><AboutPage /></LandingLayout>} />
+                <Route path="/partnership" element={<LandingLayout><PartnershipPage /></LandingLayout>} />
+                <Route path="/features" element={<LandingLayout><FeaturesPage /></LandingLayout>} />
                 
                 {/* Dashboard Routes */}
                 <Route path="/dashboard" element={<DashboardLayout><SignalStream /></DashboardLayout>} />

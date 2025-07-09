@@ -19,7 +19,7 @@ import {
   Search,
   Filter,
   RefreshCw,
-  Broadcast,
+  Radio,
   AlertTriangle,
   CheckCircle,
   Clock,
@@ -255,7 +255,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
       {showBroadcastBanner && (
         <div className="bg-gradient-to-r from-accent-green/10 to-blue-500/10 border border-accent-green/20 rounded-lg p-4 animate-fade-in">
           <div className="flex items-center gap-3">
-            <Broadcast className="w-5 h-5 text-accent-green animate-pulse" />
+            <Radio className="w-5 h-5 text-accent-green animate-pulse" />
             <div className="flex-1">
               <p className="text-primary font-medium">Signal Broadcasted</p>
               <p className="text-secondary text-sm">{broadcastMessage}</p>
@@ -449,7 +449,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       tp_hits: signal.tpHits,
                       notes: signal.notes,
                       close_reason: signal.closeReason,
-                      created_at: signal.createdAt,
+                      created_date: signal.createdAt,
                       updated_date: signal.updatedAt
                     }}
                     onStatusUpdate={async () => {}}
@@ -458,8 +458,9 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     onOrderActivation={async () => {}}
                     isAdmin={true}
                     livePrice={null}
-                    connectionStatus="disconnected"
+                    connectionStatus="connected"
                     priceSource=""
+                    isRecentClosure={false}
                     className="ml-8"
                   />
                 </div>

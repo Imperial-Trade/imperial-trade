@@ -26,7 +26,7 @@ import {
   FileText,
   Monitor,
   UserCog,
-  Broadcast,
+  Radio,
 } from "lucide-react";
 import { AccountRequestManagement } from "@/components/account-request/AccountRequestManagement";
 import { UserManagementTable } from "@/components/admin/UserManagementTable";
@@ -259,7 +259,7 @@ export default function AdminPanel() {
                     {stats.totalAlerts}
                   </p>
                 </div>
-                <Broadcast className="w-8 h-8 text-orange-400" />
+                <Radio className="w-8 h-8 text-orange-400" />
               </div>
             </CardContent>
           </Card>
@@ -279,7 +279,7 @@ export default function AdminPanel() {
               value="trade-signals"
               className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
             >
-              <Broadcast className="w-4 h-4" />
+              <Radio className="w-4 h-4" />
               Trade Signals
             </TabsTrigger>
             <TabsTrigger

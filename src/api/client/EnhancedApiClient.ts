@@ -169,7 +169,7 @@ export class EnhancedApiClient {
         operation(),
         config.timeout || this.defaultTimeout,
         config.abortSignal
-      );
+      ) as { data: any; error: any };
 
       if (response.error) {
         throw new Error(response.error.message);
@@ -210,7 +210,7 @@ export class EnhancedApiClient {
         supabase.from(table).insert(data as any).select().single(),
         config.timeout || this.defaultTimeout,
         config.abortSignal
-      );
+      ) as { data: any; error: any };
 
       if (response.error) {
         throw new Error(response.error.message);
@@ -249,7 +249,7 @@ export class EnhancedApiClient {
         supabase.from(table).update(data as any).eq('id' as any, id).select().single(),
         config.timeout || this.defaultTimeout,
         config.abortSignal
-      );
+      ) as { data: any; error: any };
 
       if (response.error) {
         throw new Error(response.error.message);
@@ -287,7 +287,7 @@ export class EnhancedApiClient {
         supabase.from(table).delete().eq('id' as any, id),
         config.timeout || this.defaultTimeout,
         config.abortSignal
-      );
+      ) as { data: any; error: any };
 
       if (response.error) {
         throw new Error(response.error.message);
@@ -313,7 +313,7 @@ export class EnhancedApiClient {
         supabase.auth.getUser(),
         config.timeout || this.defaultTimeout,
         config.abortSignal
-      );
+      ) as { data: { user: any }; error: any };
       
       if (response.error) {
         throw new Error(response.error.message);

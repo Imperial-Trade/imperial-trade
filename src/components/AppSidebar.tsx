@@ -1,17 +1,36 @@
+
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
-import { Crown, Settings, LogOut } from "lucide-react";
+import { 
+  Crown, 
+  Home, 
+  BookOpen, 
+  TrendingUp, 
+  Video, 
+  MessageCircle, 
+  Handshake, 
+  BarChart3, 
+  Trophy, 
+  Settings, 
+  Info,
+  LogOut,
+  Sun,
+  Moon,
+  ChevronsUpDown
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,108 +40,133 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronsUpDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+
+const navigationItems = [
+  { title: "Home", url: "/dashboard/home", icon: Home },
+  { title: "Education", url: "/dashboard/education", icon: BookOpen },
+  { title: "Signal Stream", url: "/dashboard/signals", icon: TrendingUp },
+  { title: "Live Sessions", url: "/dashboard/live", icon: Video },
+  { title: "Community Forum", url: "/dashboard/forum", icon: MessageCircle },
+  { title: "IB Partnership", url: "/ib-partnership", icon: Handshake },
+  { title: "Advanced Tools", url: "/dashboard/tools", icon: BarChart3 },
+  { title: "My Progress", url: "/dashboard/progress", icon: Trophy },
+  { title: "Settings", url: "/dashboard/settings", icon: Settings },
+  { title: "About", url: "/about", icon: Info },
+];
 
 export function AppSidebar() {
   const { user, signOut } = useAuth();
+  const location = useLocation();
+  const { state: sidebarState } = useSidebar();
+  const isCollapsed = sidebarState === "collapsed";
 
   const handleSignOut = async () => {
     await signOut();
   };
 
+  const isActive = (url: string) => {
+    return location.pathname === url;
+  };
+
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="/">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Crown className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold text-primary">
-                    Imperial Trading
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    Premium Platform
-                  </span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+    <Sidebar className="border-r border-sidebar-border">
+      <SidebarHeader className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary">
+            <Crown className="w-4 h-4 text-primary-foreground" />
+          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-sidebar-foreground">
+                Imperial Trading
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Premium Platform
+              </span>
+            </div>
+          )}
+        </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-3">
         <SidebarGroup>
-          <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <Link to="/dashboard/home">Home</Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link to="/dashboard/education">Education</Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link to="/dashboard/signals">Signal Stream</Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link to="/dashboard/live">Live Sessions</Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link to="/dashboard/forum">Forum</Link>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Trading</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <Link to="/dashboard/tools">Advanced Tools</Link>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Learning</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <Link to="/dashboard/progress">My Progress</Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link to="/dashboard/athena">Athena AI</Link>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Community</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <Link to="/account-request">Account Request</Link>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <Link to="/account-request-status">Request Status</Link>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
+            Navigation
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="space-y-1">
+              {navigationItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive(item.url)}
+                    className={`w-full justify-start ${
+                      isActive(item.url) 
+                        ? "bg-primary/20 text-primary border border-primary/30" 
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    }`}
+                    tooltip={isCollapsed ? item.title : undefined}
+                  >
+                    <Link to={item.url} className="flex items-center gap-3 px-3 py-2">
+                      <item.icon className="w-4 h-4 shrink-0" />
+                      {!isCollapsed && (
+                        <span className="text-sm font-medium">{item.title}</span>
+                      )}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
         </SidebarGroup>
 
         {user?.user_metadata?.access_level === "admin" && (
           <SidebarGroup>
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <Link to="/dashboard/admin">Admin Panel</Link>
-              </SidebarMenuItem>
-            </SidebarMenu>
+            <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
+              Administration
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild
+                    isActive={isActive("/dashboard/admin")}
+                    className={`w-full justify-start ${
+                      isActive("/dashboard/admin") 
+                        ? "bg-primary/20 text-primary border border-primary/30" 
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    }`}
+                    tooltip={isCollapsed ? "Admin Panel" : undefined}
+                  >
+                    <Link to="/dashboard/admin" className="flex items-center gap-3 px-3 py-2">
+                      <Settings className="w-4 h-4 shrink-0" />
+                      {!isCollapsed && (
+                        <span className="text-sm font-medium">Admin Panel</span>
+                      )}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
           </SidebarGroup>
         )}
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="p-4">
+        {!isCollapsed && (
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Theme</span>
+            <div className="flex items-center gap-1">
+              <Sun className="w-3 h-3 text-muted-foreground" />
+              <div className="w-8 h-4 bg-muted rounded-full relative">
+                <div className="w-3 h-3 bg-primary rounded-full absolute top-0.5 left-0.5 transition-transform" />
+              </div>
+              <Moon className="w-3 h-3 text-muted-foreground" />
+            </div>
+          </div>
+        )}
+        
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -132,53 +176,57 @@ export function AppSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarFallback className="rounded-lg">
+                    <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
                       {user?.email?.[0]?.toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">
-                      {user?.email || "User"}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {user?.user_metadata?.access_level || "user"}
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto size-4" />
+                  {!isCollapsed && (
+                    <>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold text-sidebar-foreground">
+                          {user?.user_metadata?.full_name || user?.email || "User"}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          Member
+                        </span>
+                      </div>
+                      <ChevronsUpDown className="ml-auto size-4" />
+                    </>
+                  )}
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                side="bottom"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg bg-popover border border-border"
+                side={isCollapsed ? "right" : "bottom"}
                 align="end"
                 sideOffset={4}
               >
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarFallback className="rounded-lg">
+                      <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
                         {user?.email?.[0]?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">
-                        {user?.email || "User"}
+                      <span className="truncate font-semibold text-popover-foreground">
+                        {user?.user_metadata?.full_name || user?.email || "User"}
                       </span>
                       <span className="truncate text-xs text-muted-foreground">
-                        {user?.user_metadata?.access_level || "user"}
+                        Member
                       </span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/dashboard/settings">
+                  <Link to="/dashboard/settings" className="text-popover-foreground">
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
+                <DropdownMenuItem onClick={handleSignOut} className="text-popover-foreground">
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out
                 </DropdownMenuItem>

@@ -165,8 +165,9 @@ export class EnhancedApiClient {
         return query;
       };
 
+      const queryBuilder = await operation();
       const { data, error } = await this.withTimeout(
-        operation(),
+        queryBuilder,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       );
@@ -206,8 +207,9 @@ export class EnhancedApiClient {
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>>> {
     return this.withRetry(async () => {
+      const queryBuilder = supabase.from(table).insert(data as any).select().single();
       const { data: result, error } = await this.withTimeout(
-        supabase.from(table).insert(data as any).select().single(),
+        queryBuilder,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       );
@@ -245,8 +247,9 @@ export class EnhancedApiClient {
     }
 
     return this.withRetry(async () => {
+      const queryBuilder = supabase.from(table).update(data as any).eq('id' as any, id).select().single();
       const { data: result, error } = await this.withTimeout(
-        supabase.from(table).update(data as any).eq('id' as any, id).select().single(),
+        queryBuilder,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       );
@@ -283,8 +286,9 @@ export class EnhancedApiClient {
     }
 
     return this.withRetry(async () => {
+      const queryBuilder = supabase.from(table).delete().eq('id' as any, id);
       const { error } = await this.withTimeout(
-        supabase.from(table).delete().eq('id' as any, id),
+        queryBuilder,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       );

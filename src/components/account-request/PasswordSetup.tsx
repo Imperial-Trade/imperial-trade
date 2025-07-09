@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import { Lock, Eye, EyeOff } from 'lucide-react';
 import { passwordSetupSchema, type PasswordSetupFormData } from '@/lib/validations/accountRequestSchema';
 import { supabase } from '@/integrations/supabase/client';
 import { sendWelcomeEmail } from '@/components/auth/AuthNotifications';
+import { cleanupAuthState } from '@/utils/authUtils';
 import { useToast } from '@/hooks/use-toast';
 
 interface PasswordSetupProps {
@@ -24,6 +26,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const form = useForm<PasswordSetupFormData>({
     resolver: zodResolver(passwordSetupSchema),
@@ -39,6 +42,17 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
     setIsSubmitting(true);
     
     try {
+      // Clean up any existing auth state first
+      cleanupAuthState();
+      
+      // Attempt to sign out any existing session
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Continue even if this fails
+        console.log('No existing session to sign out');
+      }
+
       // Create Supabase auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: accountRequest.email,
@@ -60,17 +74,24 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
         throw new Error('Failed to create user account');
       }
 
+      console.log('Account created successfully:', authData.user.email);
+
       // Send welcome email
-      await sendWelcomeEmail(accountRequest.email, accountRequest.full_name);
+      try {
+        await sendWelcomeEmail(accountRequest.email, accountRequest.full_name);
+      } catch (emailError) {
+        console.warn('Welcome email failed:', emailError);
+        // Continue anyway - don't fail the whole process for email issues
+      }
 
       toast({
         title: "Account Created Successfully!",
-        description: "Welcome to Imperial Trading. You are now logged in.",
+        description: "Welcome to Imperial Trading. Redirecting to dashboard...",
       });
 
-      // Auto-login and redirect
+      // Use React Router navigation instead of hard redirect
       setTimeout(() => {
-        window.location.href = '/dashboard/home';
+        navigate('/dashboard/home');
       }, 2000);
 
     } catch (error: any) {
@@ -82,6 +103,12 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
           variant: "destructive",
           title: "Account Already Exists",
           description: "An account with this email already exists. Please try logging in instead.",
+        });
+      } else if (error.message?.includes('Password')) {
+        toast({
+          variant: "destructive",
+          title: "Password Error",
+          description: error.message || "Password does not meet security requirements.",
         });
       } else {
         toast({
@@ -128,6 +155,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        disabled={isSubmitting}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -162,6 +190,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        disabled={isSubmitting}
                       >
                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>

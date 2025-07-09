@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { cleanupAuthState } from '@/utils/authUtils';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 
 interface AuthContextType {
@@ -9,6 +10,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,6 +32,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshSession = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+    } catch (error) {
+      console.error('Error refreshing session:', error);
+      setSession(null);
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -38,6 +52,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Handle specific auth events
+        if (event === 'SIGNED_IN') {
+          // Defer any additional data fetching to prevent deadlocks
+          setTimeout(() => {
+            console.log('User signed in successfully');
+          }, 0);
+        } else if (event === 'SIGNED_OUT') {
+          cleanupAuthState();
+        }
       }
     );
 
@@ -53,23 +77,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async () => {
     try {
-      // Clean up auth state
-      localStorage.removeItem('supabase.auth.token');
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
-      });
+      setLoading(true);
+      
+      // Clean up auth state first
+      cleanupAuthState();
       
       // Attempt global sign out
       await supabase.auth.signOut({ scope: 'global' });
       
-      // Force page reload for clean state
+      // Reset state
+      setSession(null);
+      setUser(null);
+      
+      // Navigate to signin page
       window.location.href = '/signin';
     } catch (error) {
       console.error('Error signing out:', error);
       // Force redirect even if signout fails
       window.location.href = '/signin';
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,7 +105,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signOut, refreshSession }}>
       {children}
     </AuthContext.Provider>
   );

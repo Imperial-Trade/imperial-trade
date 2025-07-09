@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Crown } from "lucide-react";
@@ -13,39 +12,40 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, session, loading, refreshSession } = useAuth();
+  const [isValidating, setIsValidating] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-      } catch (error) {
-        console.error('Error fetching user:', error);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
+    const validateSession = async () => {
+      if (!loading && !user) {
+        // No user found, redirect to access portal
+        navigate('/access-portal', { replace: true });
+        return;
       }
+
+      if (user && session) {
+        // Validate session is still active
+        try {
+          await refreshSession();
+        } catch (error) {
+          console.error('Session validation failed:', error);
+          navigate('/signin', { replace: true });
+          return;
+        }
+      }
+
+      setIsValidating(false);
     };
 
-    initializeAuth();
+    validateSession();
+  }, [user, session, loading, navigate, refreshSession]);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        setIsLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (isLoading) {
+  if (loading || isValidating) {
     return <LoadingSpinner />;
   }
 
-  if (!user) {
+  if (!user || !session) {
     return <Navigate to="/access-portal" replace />;
   }
 
@@ -72,6 +72,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               Market Open
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Welcome, {user.user_metadata?.full_name || user.email}
             </div>
           </div>
         </header>

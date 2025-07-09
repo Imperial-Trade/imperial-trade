@@ -37,7 +37,7 @@ export const useEmailValidation = () => {
     try {
       // First check if user already exists in auth
       const { data: authData } = await supabase.auth.admin.listUsers();
-      const existingAuthUser = authData.users?.find(user => user.email === email);
+      const existingAuthUser = authData?.users?.find(user => user.email === email);
       
       if (existingAuthUser) {
         const result = {

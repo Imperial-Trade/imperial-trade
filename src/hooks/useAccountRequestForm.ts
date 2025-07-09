@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { accountRequestSchema, type AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
 import { useRateLimiting } from "./useRateLimiting";
 import { useToast } from "@/hooks/use-toast";
+import { AccountRequest } from "@/api/entities";
 
 export const useAccountRequestForm = () => {
   const { toast } = useToast();
@@ -34,27 +35,17 @@ export const useAccountRequestForm = () => {
       return;
     }
 
-    // Check honeypot
+    // Check honeypot - silent fail for bots
     if (data.website && data.website.length > 0) {
       console.log("Bot detected via honeypot");
-      return; // Silent fail for bots
+      return;
     }
 
     try {
       recordAttempt();
       
-      // Your existing submission logic here
-      const response = await fetch('/api/account-request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to submit request');
-      }
+      // Use direct Supabase call instead of REST API
+      await AccountRequest.create(data);
 
       toast({
         title: "Success!",
@@ -63,6 +54,7 @@ export const useAccountRequestForm = () => {
 
       form.reset();
     } catch (error) {
+      console.error("Failed to submit account request:", error);
       toast({
         variant: "destructive",
         title: "Error",

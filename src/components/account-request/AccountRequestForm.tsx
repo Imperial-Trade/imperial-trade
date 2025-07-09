@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,10 +35,20 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
   isSubmitting,
   canSubmit,
 }) => {
+  const handleSubmit = (data: AccountRequestFormData) => {
+    // Component-level honeypot validation
+    if (data.website && data.website.length > 0) {
+      console.log("Bot detected via honeypot at component level");
+      return; // Silent fail for bots
+    }
+    
+    onSubmit(data);
+  };
+
   return (
     <div className="account-request-form-container">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="form-grid">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="form-grid">
           <HoneypotField form={form} />
           
           <div className="form-fields">

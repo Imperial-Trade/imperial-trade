@@ -1,10 +1,10 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAccountRequestForm } from "@/hooks/useAccountRequestForm";
-import { AccountRequest } from "@/api/entities";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { StatusMessage } from "@/components/account-request/StatusMessage";
@@ -19,16 +19,16 @@ export default function AccountRequestPage() {
 
   const handleFormSubmit = async (data: any) => {
     try {
-      await AccountRequest.create(data);
-
-      // Redirect to status page after successful submission
-      navigate("/account-request-status");
+      await onSubmit(data);
+      // Only navigate on successful submission
+      if (!form.formState.errors || Object.keys(form.formState.errors).length === 0) {
+        navigate("/account-request-status");
+      }
     } catch (error) {
-      console.error("Failed to submit account request:", error);
+      console.error("Form submission error:", error);
       setStatus({
         type: "error",
-        message:
-          "There was an error submitting your request. Please try again later.",
+        message: "There was an error submitting your request. Please try again later.",
       });
     }
   };

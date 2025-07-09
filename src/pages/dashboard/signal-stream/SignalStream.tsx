@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useTrading } from '@/hooks/useTrading';
+import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
@@ -10,7 +11,6 @@ import { supabase } from '@/integrations/supabase/client';
 
 export default function SignalStream() {
   const [user, setUser] = useState<any>(null);
-  const [retryCount, setRetryCount] = useState(0);
 
   // Get user ID first
   useEffect(() => {
@@ -26,32 +26,14 @@ export default function SignalStream() {
     fetchUser();
   }, []);
 
-  // Use the strongly typed trading hook
+  // Use the optimized trading hook
   const {
     alerts,
     isLoading,
     error,
     updateAlert,
     refreshAlerts
-  } = useTrading(user?.id || '');
-
-  // Real-time update logic
-  useEffect(() => {
-    const handleSignalPosted = () => {
-      console.log('New signal event received, reloading alerts instantly.');
-      refreshAlerts();
-    };
-
-    window.addEventListener('signal-posted', handleSignalPosted);
-    
-    // Polling fallback
-    const interval = setInterval(() => refreshAlerts(), 30000); 
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('signal-posted', handleSignalPosted);
-    };
-  }, [refreshAlerts]);
+  } = useOptimizedTrading(user?.id || '');
 
   const { activeAlerts, closedAlerts } = useMemo(() => {
     const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
@@ -128,11 +110,9 @@ export default function SignalStream() {
     try {
       console.log(`Updating TP hits for alert ${alert.id}:`, newTPHits);
       
-      // Ensure closeReason is properly typed
       let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined = undefined;
       
       if (shouldAutoClose && closeReason) {
-        // Map closeReason to proper type
         switch (closeReason) {
           case 'manual':
           case 'stop_loss':
@@ -187,10 +167,8 @@ export default function SignalStream() {
     try {
       console.log(`Stop loss hit for alert ${alert.id}, reason: ${closeReason}`);
       
-      // Ensure closeReason is properly typed
       let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' = 'stop_loss';
       
-      // Map closeReason to proper type
       switch (closeReason) {
         case 'manual':
         case 'stop_loss':
@@ -281,7 +259,6 @@ export default function SignalStream() {
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
                 <div className="text-center">
                   <p className="text-secondary">Loading signals...</p>
-                  {retryCount > 0 && <p className="text-sm text-secondary/70 mt-2">Retry attempt {retryCount}/2</p>}
                 </div>
               </div>
             ) : error ? (
@@ -307,7 +284,6 @@ export default function SignalStream() {
                           key={alert.id} 
                           alert={{
                             ...alert,
-                            // Map DTO fields to component expected fields
                             asset_name: alert.assetName,
                             finnhub_symbol: alert.finnhubSymbol,
                             trade_type: alert.tradeType,
@@ -352,7 +328,6 @@ export default function SignalStream() {
                           key={alert.id} 
                           alert={{
                             ...alert,
-                            // Map DTO fields to component expected fields
                             asset_name: alert.assetName,
                             finnhub_symbol: alert.finnhubSymbol,
                             trade_type: alert.tradeType,
@@ -389,7 +364,6 @@ export default function SignalStream() {
             )}
           </div>
           
-          {/* Economic Calendar Sidebar */}
           <div className="xl:col-span-1">
             <div className="sticky top-6 space-y-4">
               <EconomicSidebar />

@@ -21,6 +21,7 @@ declare global {
 
 const NotificationSystem = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [lastNotificationTime, setLastNotificationTime] = useState<number>(0); // Track last notification time
 
   const playNotificationSound = useCallback((type: string) => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -60,6 +61,16 @@ const NotificationSystem = () => {
 
   const addNotification = useCallback(
     (notification: any) => {
+      const now = Date.now();
+      const cooldown = 5000; // 5 seconds cooldown
+
+      if (now - lastNotificationTime < cooldown) {
+        console.warn("Notification suppressed due to cooldown.");
+        return;
+      }
+
+      setLastNotificationTime(now); // Update last notification time
+
       const id = Date.now() + Math.random();
       setNotifications((prev) => [
         { ...notification, id, timestamp: new Date() },
@@ -68,7 +79,7 @@ const NotificationSystem = () => {
       setTimeout(() => removeNotification(id.toString()), 8000);
       playNotificationSound(notification.type);
     },
-    [playNotificationSound, removeNotification]
+    [playNotificationSound, removeNotification, lastNotificationTime]
   );
 
   useEffect(() => {

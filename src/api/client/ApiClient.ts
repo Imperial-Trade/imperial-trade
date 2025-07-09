@@ -1,5 +1,3 @@
-
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { ApiResponse } from '@/types/common';
@@ -51,6 +49,7 @@ export class ApiClient {
       const { data, error } = await query;
 
       if (error) {
+        console.error(`Database error in ${table} select:`, error);
         return {
           success: false,
           error: error.message,
@@ -64,6 +63,7 @@ export class ApiClient {
         error: undefined
       };
     } catch (error) {
+      console.error(`Unexpected error in ${table} select:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -84,6 +84,7 @@ export class ApiClient {
         .single();
 
       if (error) {
+        console.error(`Database error in ${table} insert:`, error);
         return {
           success: false,
           error: error.message,
@@ -97,6 +98,7 @@ export class ApiClient {
         error: undefined
       };
     } catch (error) {
+      console.error(`Unexpected error in ${table} insert:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -127,6 +129,7 @@ export class ApiClient {
         .single();
 
       if (error) {
+        console.error(`Database error in ${table} update:`, error);
         return {
           success: false,
           error: error.message,
@@ -140,6 +143,7 @@ export class ApiClient {
         error: undefined
       };
     } catch (error) {
+      console.error(`Unexpected error in ${table} update:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -167,6 +171,7 @@ export class ApiClient {
         .eq('id' as any, id);
 
       if (error) {
+        console.error(`Database error in ${table} delete:`, error);
         return {
           success: false,
           error: error.message,
@@ -180,6 +185,7 @@ export class ApiClient {
         error: undefined
       };
     } catch (error) {
+      console.error(`Unexpected error in ${table} delete:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -216,4 +222,3 @@ export class ApiClient {
 }
 
 export const apiClient = ApiClient.getInstance();
-

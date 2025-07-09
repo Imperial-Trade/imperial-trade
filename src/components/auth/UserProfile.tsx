@@ -63,7 +63,7 @@ export default function UserProfile({ user, onUpdate, onLogout }: UserProfilePro
       case 'user':
         return { label: 'Full Member', color: 'bg-accent-green/20 text-accent-green', icon: UserIcon };
       case 'free':
-        return { label: 'Free Tier', color: 'bg-accent-blue/20 text-accent-blue', icon: UserIcon };
+        return { label: 'Free Tier', color: 'bg-blue-500/20 text-blue-400', icon: UserIcon };
       default:
         return { label: 'Member', color: 'bg-gray-500/20 text-gray-400', icon: UserIcon };
     }
@@ -83,7 +83,7 @@ export default function UserProfile({ user, onUpdate, onLogout }: UserProfilePro
               </span>
             </div>
             <div>
-              <h3 className="text-xl font-bold text-primary">{user?.user_metadata?.full_name || 'User'}</h3>
+              <h3 className="text-xl font-bold text-foreground">{user?.user_metadata?.full_name || 'User'}</h3>
               <Badge className={accessInfo.color}>
                 <AccessIcon className="w-3 h-3 mr-1" />
                 {accessInfo.label}
@@ -94,7 +94,7 @@ export default function UserProfile({ user, onUpdate, onLogout }: UserProfilePro
             variant="ghost"
             size="sm"
             onClick={() => setIsEditing(!isEditing)}
-            className="text-secondary hover:text-primary"
+            className="text-foreground hover:text-foreground"
           >
             <Edit className="w-4 h-4 mr-2" />
             {isEditing ? 'Cancel' : 'Edit'}
@@ -111,27 +111,27 @@ export default function UserProfile({ user, onUpdate, onLogout }: UserProfilePro
           <TabsContent value="profile" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-secondary">Full Name</label>
+                <label className="text-sm font-medium text-foreground">Full Name</label>
                 <Input
                   value={profileData.full_name}
                   onChange={(e) => setProfileData({...profileData, full_name: e.target.value})}
                   disabled={!isEditing}
-                  className="bg-surface border-default text-primary"
+                  className="bg-surface border-default text-foreground"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-secondary">Email</label>
+                <label className="text-sm font-medium text-foreground">Email</label>
                 <Input
                   value={user?.email || ''}
                   disabled
-                  className="bg-surface/50 border-default text-secondary"
+                  className="bg-surface/50 border-default text-muted-foreground"
                 />
               </div>
             </div>
             
             {isEditing && (
               <div className="flex gap-3 justify-end pt-4">
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                <Button variant="outline" onClick={() => setIsEditing(false)} className="text-foreground">
                   Cancel
                 </Button>
                 <Button onClick={handleSave} className="bg-accent-green hover:bg-green-500 text-white">
@@ -146,20 +146,20 @@ export default function UserProfile({ user, onUpdate, onLogout }: UserProfilePro
               <div className="p-4 bg-surface/50 rounded-lg">
                 <div className="flex items-center gap-3 mb-2">
                   <Shield className="w-5 h-5 text-accent-green" />
-                  <span className="font-medium text-primary">Secure Authentication</span>
+                  <span className="font-medium text-foreground">Secure Authentication</span>
                 </div>
-                <p className="text-sm text-secondary">
+                <p className="text-sm text-muted-foreground">
                   Your account is secured through social login providers (Google, etc.). 
                   No passwords are stored on our platform.
                 </p>
               </div>
               
               <div className="p-4 bg-red-500/10 rounded-lg border border-red-500/20">
-                <h4 className="font-medium text-primary mb-2 flex items-center gap-2">
+                <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
                   <LogOut className="w-4 h-4" />
                   Sign Out
                 </h4>
-                <p className="text-sm text-secondary mb-3">
+                <p className="text-sm text-muted-foreground mb-3">
                   This will sign you out of your Imperial Trading account on this device.
                 </p>
                 <Button

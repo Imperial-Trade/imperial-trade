@@ -24,7 +24,7 @@
     --secondary-foreground: 210 30% 95%;
 
     --muted: 217 19% 16%;
-    --muted-foreground: 210 30% 80%;
+    --muted-foreground: 210 30% 85%;
 
     --accent: 45 93% 58%;
     --accent-foreground: 217 19% 12%;
@@ -65,6 +65,48 @@
     @apply bg-background text-foreground;
     background: hsl(217 19% 12%);
     min-height: 100vh;
+    color: hsl(210 40% 98%);
+  }
+
+  /* Ensure all text elements have proper contrast */
+  h1, h2, h3, h4, h5, h6 {
+    color: hsl(210 40% 98%);
+  }
+
+  p, span, div {
+    color: hsl(210 40% 98%);
+  }
+
+  /* Specific overrides for muted text */
+  .text-muted-foreground {
+    color: hsl(210 30% 85%) !important;
+  }
+
+  .text-secondary {
+    color: hsl(210 30% 85%) !important;
+  }
+
+  /* Card content text */
+  .card {
+    background: hsl(217 19% 15%);
+    color: hsl(210 40% 98%);
+  }
+
+  /* Input styling */
+  input, textarea, select {
+    background: hsl(217 19% 18%);
+    color: hsl(210 40% 98%);
+    border-color: hsl(217 19% 20%);
+  }
+
+  /* Button text */
+  button {
+    color: hsl(210 40% 98%);
+  }
+
+  /* Labels */
+  label {
+    color: hsl(210 40% 98%);
   }
 }
 

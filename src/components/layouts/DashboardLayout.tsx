@@ -55,7 +55,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gradient-to-br from-background via-background to-background/95">
+      <div className="min-h-screen flex w-full bg-background text-foreground">
         {/* Header */}
         <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
           <div className="flex items-center gap-4">
@@ -69,11 +69,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="hidden md:flex items-center gap-2 text-sm text-foreground">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              Market Open
+              <span className="text-foreground">Market Open</span>
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-foreground">
               Welcome, {user.user_metadata?.full_name || user.email}
             </div>
           </div>
@@ -81,7 +81,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
         <div className="flex w-full pt-16">
           <AppSidebar />
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto bg-background text-foreground">
             {children}
           </main>
         </div>

@@ -2,13 +2,15 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator } from 'lucide-react';
+import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
 import TradeStatusBadge from './TradeStatusBadge';
 import TradingCalculator from './TradingCalculator';
+import SignalSharingModal from './SignalSharingModal';
 import { TradeAlertCardProps } from '@/types/components';
+import { TradeSignal } from '@/services/SignalSharingService';
 
 interface PriceRowProps {
   label: string;
@@ -54,6 +56,17 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
   const hitTPs = alert.tp_hits || [];
   const isClosed = alert.status === 'closed';
   const isPending = alert.status === 'pending';
+
+  // Convert alert to TradeSignal format for sharing
+  const tradeSignal: TradeSignal = {
+    id: alert.id,
+    assetName: alert.asset_name,
+    tradeType: alert.trade_type,
+    entryPrice: alert.entry_price,
+    stopLoss: alert.stop_loss,
+    takeProfits: takeProfits,
+    notes: alert.notes || undefined
+  };
 
   // Type-safe event handlers
   const handleStatusUpdate = async (newStatus: string) => {
@@ -117,6 +130,21 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
                           </Button>
                       </CollapsibleTrigger>
                   </Collapsible>
+                  
+                  {/* Share Button */}
+                  <SignalSharingModal 
+                    signal={tradeSignal}
+                    trigger={
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-blue-400 hover:bg-blue-500/20 hover:text-blue-300"
+                      >
+                        <Share2 className="w-4 h-4 mr-1" />
+                        <ChevronDown className="w-3 h-3" />
+                      </Button>
+                    }
+                  />
                   
                   {/* Calculator Toggle - Only for active/pending trades */}
                   {(alert.status === 'active' || alert.status === 'pending') && (

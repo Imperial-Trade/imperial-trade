@@ -1,15 +1,22 @@
 
 import { useState, useEffect, useRef } from 'react';
-// import { getMarketData } from '@/api/functions';
+import { useMarketData } from '@/hooks/useMarketData';
 
 const usePriceFeed = (symbols = []) => {
     const [prices, setPrices] = useState({});
     const [connectionStatus, setConnectionStatus] = useState('disconnected');
     const [priceSource, setPriceSource] = useState(null);
     const intervalRef = useRef(null);
-    const isFetchingRef = useRef(false);
 
-    // Mock data for testing
+    // Use real market data when symbols are provided
+    const { 
+        data: marketData, 
+        isLoading, 
+        error, 
+        refetch 
+    } = useMarketData(symbols, symbols.length > 0);
+
+    // Mock data for fallback
     const mockPrices = {
         'EUR/USD': 1.0850 + (Math.random() - 0.5) * 0.01,
         'GBP/USD': 1.2750 + (Math.random() - 0.5) * 0.01,
@@ -32,58 +39,49 @@ const usePriceFeed = (symbols = []) => {
             return;
         }
 
-        const fetchPricesData = async () => {
-            if (isFetchingRef.current) return;
-            
-            isFetchingRef.current = true;
-            setConnectionStatus('connecting');
+        // Handle market data updates
+        if (marketData && marketData.length > 0) {
+            console.log('usePriceFeed - Got real market data:', marketData);
+            const pricesMap = {};
+            marketData.forEach(item => {
+                pricesMap[item.symbol] = item.price;
+            });
+            setPrices(pricesMap);
+            setConnectionStatus('connected');
+            setPriceSource('EdgeFunction');
+        } else if (error) {
+            console.log('usePriceFeed - Market data error, falling back to mock:', error);
+            // Fallback to mock data
+            const mockResponse = {};
+            symbols.forEach(symbol => {
+                const cleanSymbol = symbol.replace('/', '').replace('-', '');
+                mockResponse[symbol] = mockPrices[symbol] || mockPrices[cleanSymbol] || (100 + Math.random() * 100);
+            });
+            setPrices(mockResponse);
+            setConnectionStatus('connected');
+            setPriceSource('MockData');
+        }
 
-            try {
-                console.log('usePriceFeed - Using mock data for:', symbols);
-                
-                // Comment out real API call
-                // const response = await getMarketData({ symbols });
-                
-                // Use mock data instead
-                const mockResponse = {
-                    data: {
-                        prices: {}
-                    }
-                };
-                
-                symbols.forEach(symbol => {
-                    const cleanSymbol = symbol.replace('/', '').replace('-', '');
-                    mockResponse.data.prices[symbol] = mockPrices[symbol] || mockPrices[cleanSymbol] || (100 + Math.random() * 100);
-                });
-                
-                console.log('usePriceFeed - Mock response:', mockResponse);
-                
-                if (mockResponse?.data?.prices) {
-                    console.log('usePriceFeed - Got mock prices:', mockResponse.data.prices);
-                    setPrices(mockResponse.data.prices);
-                    setConnectionStatus('connected');
-                    setPriceSource('MockData');
-                } else {
-                    console.error('usePriceFeed - No prices in mock response data', mockResponse);
-                    setConnectionStatus('error');
-                }
-            } catch (error) {
-                console.error('usePriceFeed - Error:', error.message, error);
-                setConnectionStatus('error');
-            } finally {
-                isFetchingRef.current = false;
-            }
-        };
-
-        fetchPricesData();
+        // Set up polling interval for real-time updates
         if (intervalRef.current) clearInterval(intervalRef.current);
-        intervalRef.current = setInterval(fetchPricesData, 15000); // Poll every 15 seconds
+        intervalRef.current = setInterval(() => {
+            if (symbols.length > 0) {
+                refetch();
+            }
+        }, 15000); // Poll every 15 seconds
 
         return () => {
             console.log('usePriceFeed - Cleanup, clearing interval');
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [JSON.stringify(symbols)]); // Re-run effect when symbols change
+    }, [symbols, marketData, error, refetch]);
+
+    // Update connection status based on loading state
+    useEffect(() => {
+        if (isLoading) {
+            setConnectionStatus('connecting');
+        }
+    }, [isLoading]);
 
     return { prices, connectionStatus, priceSource };
 };

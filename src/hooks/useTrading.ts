@@ -3,7 +3,6 @@ import { useState, useCallback } from 'react';
 import { tradingApiService } from '@/api/services/TradingApiService';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { useApi } from './useApi';
-import { apiClient } from '@/api/client/ApiClient';
 
 interface UseTradingReturn {
   alerts: TradeAlertResponseDto[];
@@ -18,6 +17,9 @@ interface UseTradingReturn {
 export const useTrading = (userId: string): UseTradingReturn => {
   const [alerts, setAlerts] = useState<TradeAlertResponseDto[]>([]);
 
+  // Only execute API call if userId is valid and not empty
+  const shouldFetchAlerts = Boolean(userId && userId.trim() !== '');
+
   const {
     data: alertsData,
     isLoading,
@@ -26,7 +28,7 @@ export const useTrading = (userId: string): UseTradingReturn => {
   } = useApi(
     () => tradingApiService.getAllAlerts(userId),
     {
-      immediate: true,
+      immediate: shouldFetchAlerts, // Only fetch immediately if we have a valid userId
       onSuccess: (response) => {
         if (response.success && response.data) {
           setAlerts(response.data);
@@ -39,6 +41,11 @@ export const useTrading = (userId: string): UseTradingReturn => {
   );
 
   const createAlert = useCallback(async (dto: CreateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
+    if (!shouldFetchAlerts) {
+      console.warn('Cannot create alert: invalid userId');
+      return null;
+    }
+
     try {
       const result = await tradingApiService.createAlert(dto, userId);
       if (result.success && result.data) {
@@ -52,9 +59,14 @@ export const useTrading = (userId: string): UseTradingReturn => {
       console.error('Error creating alert:', error);
       return null;
     }
-  }, [userId]);
+  }, [userId, shouldFetchAlerts]);
 
   const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
+    if (!shouldFetchAlerts) {
+      console.warn('Cannot update alert: invalid userId');
+      return null;
+    }
+
     try {
       const result = await tradingApiService.updateAlert(id, dto, userId);
       if (result.success && result.data) {
@@ -70,9 +82,14 @@ export const useTrading = (userId: string): UseTradingReturn => {
       console.error('Error updating alert:', error);
       return null;
     }
-  }, [userId]);
+  }, [userId, shouldFetchAlerts]);
 
   const deleteAlert = useCallback(async (id: string): Promise<boolean> => {
+    if (!shouldFetchAlerts) {
+      console.warn('Cannot delete alert: invalid userId');
+      return false;
+    }
+
     try {
       const result = await tradingApiService.deleteAlert(id, userId);
       if (result.success) {
@@ -86,16 +103,18 @@ export const useTrading = (userId: string): UseTradingReturn => {
       console.error('Error deleting alert:', error);
       return false;
     }
-  }, [userId]);
+  }, [userId, shouldFetchAlerts]);
 
   const refreshAlerts = useCallback(async () => {
-    await fetchAlerts();
-  }, [fetchAlerts]);
+    if (shouldFetchAlerts) {
+      await fetchAlerts();
+    }
+  }, [fetchAlerts, shouldFetchAlerts]);
 
   return {
     alerts: alertsData?.success ? alertsData.data || [] : alerts,
-    isLoading,
-    error,
+    isLoading: shouldFetchAlerts ? isLoading : false,
+    error: shouldFetchAlerts ? error : null,
     createAlert,
     updateAlert,
     deleteAlert,

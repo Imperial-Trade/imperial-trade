@@ -1,12 +1,17 @@
+
 import React from 'react';
 import { TypeSafetyTest } from '@/components/testing/TypeSafetyTest';
 import { useAuth } from '@/contexts/AuthContext';
+import EconomicCalendarWidget from '@/components/widgets/EconomicCalendarWidget';
+import EconomicEventCountdown from '@/components/widgets/EconomicEventCountdown';
+import EconomicNotificationSystem from '@/components/widgets/EconomicNotificationSystem';
 
 export default function Home() {
   const { user } = useAuth();
 
   return (
     <div className="min-h-screen p-6 bg-background">
+      <EconomicNotificationSystem enabled={true} />
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
@@ -24,6 +29,17 @@ export default function Home() {
           </div>
         )}
 
+        {/* Economic Calendar Widgets */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2">
+            <EconomicCalendarWidget variant="full" maxEvents={6} />
+          </div>
+          <div>
+            <EconomicEventCountdown className="mb-4" />
+            <EconomicCalendarWidget variant="compact" maxEvents={3} showOnlyHighImpact={true} />
+          </div>
+        </div>
+
         {/* Hero Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="p-6 bg-surface rounded-lg border border-default">
@@ -33,7 +49,7 @@ export default function Home() {
             <p className="text-secondary mb-6">
               Access premium trading signals, educational resources, and community support to enhance your trading skills.
             </p>
-            <a href="/dashboard/trading-signals">
+            <a href="/dashboard/signal-stream">
               <button className="bg-accent-green hover:bg-green-500 text-white px-6 py-3 rounded-full font-semibold">
                 Explore Trading Signals
               </button>
@@ -86,13 +102,13 @@ export default function Home() {
           </h2>
           <ul className="space-y-4">
             <li className="text-secondary">
-              <span className="text-accent-green font-semibold">New Course:</span> Advanced Charting Techniques
+              <span className="text-accent-green font-semibold">New Feature:</span> Real-time Economic Calendar with notifications
             </li>
             <li className="text-secondary">
-              <span className="text-accent-green font-semibold">Update:</span> Improved Signal Filtering Options
+              <span className="text-accent-green font-semibold">Update:</span> Enhanced market data integration
             </li>
             <li className="text-secondary">
-              <span className="text-accent-green font-semibold">Event:</span> Live Trading Session with Expert Trader - July 28th
+              <span className="text-accent-green font-semibold">Event:</span> Live Trading Session with Expert Trader - Next Week
             </li>
           </ul>
         </div>

@@ -4,6 +4,7 @@ import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/
 import { Loader2, AlertTriangle } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
+import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import usePriceFeed from '@/components/hooks/usePriceFeed';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -268,122 +269,133 @@ export default function SignalStream() {
               Live Signal <span className="text-accent-green">Stream</span>
             </h1>
             <p className="text-secondary text-lg">
-              Real-time trading signals with live price tracking
+              Real-time trading signals with live price tracking and economic context
             </p>
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64 flex-col space-y-4">
-            <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
-            <div className="text-center">
-              <p className="text-secondary">Loading signals...</p>
-              {retryCount > 0 && <p className="text-sm text-secondary/70 mt-2">Retry attempt {retryCount}/2</p>}
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+          <div className="xl:col-span-3">
+            {isLoading ? (
+              <div className="flex justify-center items-center h-64 flex-col space-y-4">
+                <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
+                <div className="text-center">
+                  <p className="text-secondary">Loading signals...</p>
+                  {retryCount > 0 && <p className="text-sm text-secondary/70 mt-2">Retry attempt {retryCount}/2</p>}
+                </div>
+              </div>
+            ) : error ? (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 text-center">
+                <AlertTriangle className="w-12 h-12 text-accent-red mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-primary mb-2">Connection Error</h3>
+                <p className="text-secondary mb-6">{error}</p>
+                <div className="flex gap-4 justify-center">
+                  <button onClick={() => refreshAlerts()} className="bg-accent-green hover:bg-green-500 text-white px-4 py-2 rounded">Try Again</button>
+                  <button onClick={() => window.location.reload()} className="border border-default text-secondary hover:bg-surface px-4 py-2 rounded">Refresh Page</button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <div>
+                  <h2 className="text-2xl font-semibold text-accent-green mb-4 border-b-2 border-accent-green/20 pb-2">
+                    Active Signals ({activeAlerts.length})
+                  </h2>
+                  {activeAlerts.length > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {activeAlerts.map(alert => (
+                        <TradeAlertCard
+                          key={alert.id} 
+                          alert={{
+                            ...alert,
+                            // Map DTO fields to component expected fields
+                            asset_name: alert.assetName,
+                            finnhub_symbol: alert.finnhubSymbol,
+                            trade_type: alert.tradeType,
+                            entry_price: alert.entryPrice,
+                            stop_loss: alert.stopLoss,
+                            tp_hits: alert.tpHits,
+                            close_reason: alert.closeReason,
+                            created_date: alert.createdAt,
+                            updated_date: alert.updatedAt
+                          }} 
+                          onStatusUpdate={handleStatusUpdate}
+                          onTakeProfitHit={handleTakeProfitHit} 
+                          onStopLossHit={handleStopLossHit}
+                          onOrderActivation={handleOrderActivation} 
+                          isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
+                          livePrice={livePrices[alert.finnhubSymbol]} 
+                          connectionStatus={connectionStatus as 'connecting' | 'connected' | 'error'}
+                          priceSource={priceSource}
+                          isRecentClosure={false}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-8 h-8 text-secondary/50">📡</div>
+                      </div>
+                      <h3 className="text-xl font-semibold text-primary mb-2">No Active Signals</h3>
+                      <p className="text-secondary">New trading signals will appear here when posted by educators.</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <h2 className="text-2xl font-semibold text-secondary mb-4 border-b-2 border-default pb-2">
+                    Recent Closed Trades ({closedAlerts.length})
+                  </h2>
+                  {sortedClosedAlerts.length > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {sortedClosedAlerts.map(alert => (
+                        <TradeAlertCard
+                          key={alert.id} 
+                          alert={{
+                            ...alert,
+                            // Map DTO fields to component expected fields
+                            asset_name: alert.assetName,
+                            finnhub_symbol: alert.finnhubSymbol,
+                            trade_type: alert.tradeType,
+                            entry_price: alert.entryPrice,
+                            stop_loss: alert.stopLoss,
+                            tp_hits: alert.tpHits,
+                            close_reason: alert.closeReason,
+                            created_date: alert.createdAt,
+                            updated_date: alert.updatedAt
+                          }}
+                          onStatusUpdate={handleStatusUpdate}
+                          onTakeProfitHit={handleTakeProfitHit} 
+                          onStopLossHit={handleStopLossHit}
+                          onOrderActivation={handleOrderActivation}
+                          isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
+                          livePrice={undefined}
+                          connectionStatus={connectionStatus as 'connecting' | 'connected' | 'error'}
+                          priceSource={priceSource}
+                          isRecentClosure={true}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-8 h-8 text-secondary/50">🔒</div>
+                      </div>
+                      <h3 className="text-xl font-semibold text-primary mb-2">No Closed Trades</h3>
+                      <p className="text-secondary">Completed trades will be shown here for reference.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Economic Calendar Sidebar */}
+          <div className="xl:col-span-1">
+            <div className="sticky top-6 space-y-4">
+              <EconomicSidebar />
             </div>
           </div>
-        ) : error ? (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 text-center">
-            <AlertTriangle className="w-12 h-12 text-accent-red mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-primary mb-2">Connection Error</h3>
-            <p className="text-secondary mb-6">{error}</p>
-            <div className="flex gap-4 justify-center">
-              <button onClick={() => refreshAlerts()} className="bg-accent-green hover:bg-green-500 text-white px-4 py-2 rounded">Try Again</button>
-              <button onClick={() => window.location.reload()} className="border border-default text-secondary hover:bg-surface px-4 py-2 rounded">Refresh Page</button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-semibold text-accent-green mb-4 border-b-2 border-accent-green/20 pb-2">
-                Active Signals ({activeAlerts.length})
-              </h2>
-              {activeAlerts.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {activeAlerts.map(alert => (
-                    <TradeAlertCard
-                      key={alert.id} 
-                      alert={{
-                        ...alert,
-                        // Map DTO fields to component expected fields
-                        asset_name: alert.assetName,
-                        finnhub_symbol: alert.finnhubSymbol,
-                        trade_type: alert.tradeType,
-                        entry_price: alert.entryPrice,
-                        stop_loss: alert.stopLoss,
-                        tp_hits: alert.tpHits,
-                        close_reason: alert.closeReason,
-                        created_date: alert.createdAt,
-                        updated_date: alert.updatedAt
-                      }} 
-                      onStatusUpdate={handleStatusUpdate}
-                      onTakeProfitHit={handleTakeProfitHit} 
-                      onStopLossHit={handleStopLossHit}
-                      onOrderActivation={handleOrderActivation} 
-                      isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
-                      livePrice={livePrices[alert.finnhubSymbol]} 
-                      connectionStatus={connectionStatus as 'connecting' | 'connected' | 'error'}
-                      priceSource={priceSource}
-                      isRecentClosure={false}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
-                    <div className="w-8 h-8 text-secondary/50">📡</div>
-                  </div>
-                  <h3 className="text-xl font-semibold text-primary mb-2">No Active Signals</h3>
-                  <p className="text-secondary">New trading signals will appear here when posted by educators.</p>
-                </div>
-              )}
-            </div>
-            
-            <div>
-              <h2 className="text-2xl font-semibold text-secondary mb-4 border-b-2 border-default pb-2">
-                Recent Closed Trades ({closedAlerts.length})
-              </h2>
-              {sortedClosedAlerts.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sortedClosedAlerts.map(alert => (
-                    <TradeAlertCard
-                      key={alert.id} 
-                      alert={{
-                        ...alert,
-                        // Map DTO fields to component expected fields
-                        asset_name: alert.assetName,
-                        finnhub_symbol: alert.finnhubSymbol,
-                        trade_type: alert.tradeType,
-                        entry_price: alert.entryPrice,
-                        stop_loss: alert.stopLoss,
-                        tp_hits: alert.tpHits,
-                        close_reason: alert.closeReason,
-                        created_date: alert.createdAt,
-                        updated_date: alert.updatedAt
-                      }}
-                      onStatusUpdate={handleStatusUpdate}
-                      onTakeProfitHit={handleTakeProfitHit} 
-                      onStopLossHit={handleStopLossHit}
-                      onOrderActivation={handleOrderActivation}
-                      isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
-                      livePrice={undefined}
-                      connectionStatus={connectionStatus as 'connecting' | 'connected' | 'error'}
-                      priceSource={priceSource}
-                      isRecentClosure={true}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mx-auto mb-4">
-                    <div className="w-8 h-8 text-secondary/50">🔒</div>
-                  </div>
-                  <h3 className="text-xl font-semibold text-primary mb-2">No Closed Trades</h3>
-                  <p className="text-secondary">Completed trades will be shown here for reference.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

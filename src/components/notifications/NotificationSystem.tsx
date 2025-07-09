@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import {
   XCircle,
   AlertCircle,
   Rocket,
+  Calendar,
+  TrendingUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -21,7 +24,7 @@ declare global {
 
 const NotificationSystem = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [lastNotificationTime, setLastNotificationTime] = useState<number>(0); // Track last notification time
+  const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
 
   const playNotificationSound = useCallback((type: string) => {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -40,6 +43,7 @@ const NotificationSystem = () => {
       trade_activated: 900,
       trade_closed: 600,
       stop_loss: 400,
+      economic_event: 750,
       error: 200,
       default: 700,
     };
@@ -69,7 +73,7 @@ const NotificationSystem = () => {
         return;
       }
 
-      setLastNotificationTime(now); // Update last notification time
+      setLastNotificationTime(now);
 
       const id = Date.now() + Math.random();
       setNotifications((prev) => [
@@ -95,6 +99,7 @@ const NotificationSystem = () => {
     trade_activated: <Rocket className="w-5 h-5 text-purple-400" />,
     trade_closed: <CheckCircle className="w-5 h-5 text-green-400" />,
     stop_loss: <XCircle className="w-5 h-5 text-red-400" />,
+    economic_event: <Calendar className="w-5 h-5 text-orange-400" />,
     error: <AlertCircle className="w-5 h-5 text-red-400" />,
   };
 
@@ -104,6 +109,7 @@ const NotificationSystem = () => {
     trade_activated: "border-purple-500 bg-purple-500/10",
     trade_closed: "border-green-500 bg-green-500/10",
     stop_loss: "border-red-500 bg-red-500/10",
+    economic_event: "border-orange-500 bg-orange-500/10",
     error: "border-red-500 bg-red-500/10",
   };
 
@@ -129,7 +135,7 @@ const NotificationSystem = () => {
                   <div className="flex items-start space-x-3">
                     <div className="mt-1">
                       {icons[notification.type] || (
-                        <AlertCircle className="w-5 h-5 text-yellow-400" />
+                        <TrendingUp className="w-5 h-5 text-yellow-400" />
                       )}
                     </div>
                     <div className="flex-1">

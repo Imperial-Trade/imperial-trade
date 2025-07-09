@@ -453,7 +453,7 @@ export default function Phase4TestSuite() {
                                 {test.duration}ms
                               </span>
                             )}
-                            <Badge variant={test.passed ? 'default' : 'destructive'} size="sm">
+                            <Badge variant={test.passed ? 'default' : 'destructive'}>
                               {test.passed ? 'PASS' : 'FAIL'}
                             </Badge>
                           </div>

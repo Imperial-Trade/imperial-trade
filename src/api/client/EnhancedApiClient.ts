@@ -145,7 +145,7 @@ export class EnhancedApiClient {
     }
 
     const requestPromise = this.withRetry(async () => {
-      const operation = async () => {
+      const executeQuery = async () => {
         let query = supabase.from(table).select(options?.select || '*');
 
         if (options?.eq) {
@@ -165,9 +165,9 @@ export class EnhancedApiClient {
         return query;
       };
 
-      const queryBuilder = await operation();
+      const queryPromise = executeQuery();
       const response = await this.withTimeout(
-        queryBuilder,
+        queryPromise,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       ) as { data: any; error: any };
@@ -207,9 +207,9 @@ export class EnhancedApiClient {
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>>> {
     return this.withRetry(async () => {
-      const queryBuilder = supabase.from(table).insert(data as any).select().single();
+      const queryPromise = supabase.from(table).insert(data as any).select().single();
       const response = await this.withTimeout(
-        queryBuilder,
+        queryPromise,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       ) as { data: any; error: any };
@@ -247,9 +247,9 @@ export class EnhancedApiClient {
     }
 
     return this.withRetry(async () => {
-      const queryBuilder = supabase.from(table).update(data as any).eq('id' as any, id).select().single();
+      const queryPromise = supabase.from(table).update(data as any).eq('id' as any, id).select().single();
       const response = await this.withTimeout(
-        queryBuilder,
+        queryPromise,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       ) as { data: any; error: any };
@@ -286,9 +286,9 @@ export class EnhancedApiClient {
     }
 
     return this.withRetry(async () => {
-      const queryBuilder = supabase.from(table).delete().eq('id' as any, id);
+      const queryPromise = supabase.from(table).delete().eq('id' as any, id);
       const response = await this.withTimeout(
-        queryBuilder,
+        queryPromise,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       ) as { data: any; error: any };

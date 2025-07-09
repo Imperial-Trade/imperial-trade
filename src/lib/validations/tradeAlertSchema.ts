@@ -36,8 +36,8 @@ export const baseSchemas = {
     .or(z.literal(""))
 };
 
-// Main trade alert schema with optimized validation
-export const tradeAlertSchema = z.object({
+// Base trade alert object schema without refinements
+const baseTradeAlertSchema = z.object({
   asset_name: baseSchemas.assetName,
   finnhub_symbol: baseSchemas.finnhubSymbol,
   trade_type: baseSchemas.tradeType,
@@ -49,7 +49,10 @@ export const tradeAlertSchema = z.object({
   tp4: baseSchemas.optionalPrice,
   tp5: baseSchemas.optionalPrice,
   notes: baseSchemas.notes,
-}).refine((data) => {
+});
+
+// Main trade alert schema with optimized validation
+export const tradeAlertSchema = baseTradeAlertSchema.refine((data) => {
   // Custom validation: Stop loss should be different from entry price
   if (data.stop_loss === data.entry_price) {
     return false;
@@ -96,10 +99,52 @@ export const tradeAlertSchema = z.object({
 // Infer TypeScript type from schema
 export type TradeAlertFormData = z.infer<typeof tradeAlertSchema>;
 
-// Schema with status for API submissions - use merge instead of extend for ZodEffects
-export const tradeAlertSubmissionSchema = tradeAlertSchema.merge(z.object({
-  status: z.enum(['pending', 'active']).default('active')
-}));
+// Schema with status for API submissions - use base schema and add status, then apply refinements
+export const tradeAlertSubmissionSchema = baseTradeAlertSchema
+  .extend({
+    status: z.enum(['pending', 'active']).default('active')
+  })
+  .refine((data) => {
+    // Apply the same stop loss validation
+    if (data.stop_loss === data.entry_price) {
+      return false;
+    }
+    
+    if (data.trade_type.includes('buy') && data.stop_loss >= data.entry_price) {
+      return false;
+    }
+    
+    if (data.trade_type.includes('sell') && data.stop_loss <= data.entry_price) {
+      return false;
+    }
+    
+    return true;
+  }, {
+    message: "Stop loss must be set appropriately based on trade direction",
+    path: ["stop_loss"]
+  })
+  .refine((data) => {
+    // Apply the same take profit validation
+    const tps = [data.tp1, data.tp2, data.tp3, data.tp4, data.tp5].filter(tp => tp !== undefined) as number[];
+    
+    if (tps.length === 0) return true;
+    
+    const isBuy = data.trade_type.includes('buy');
+    
+    for (let i = 0; i < tps.length - 1; i++) {
+      if (isBuy && tps[i] >= tps[i + 1]) {
+        return false;
+      }
+      if (!isBuy && tps[i] <= tps[i + 1]) {
+        return false;
+      }
+    }
+    
+    return true;
+  }, {
+    message: "Take profit levels must be in correct order based on trade direction",
+    path: ["tp1"]
+  });
 
 export type TradeAlertSubmissionData = z.infer<typeof tradeAlertSubmissionSchema>;
 

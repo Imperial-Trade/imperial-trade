@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,7 +33,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
       password: '',
       confirmPassword: '',
     },
-    mode: 'onChange', // Enable real-time validation
+    mode: 'onChange',
   });
 
   const password = form.watch('password');
@@ -209,7 +208,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
                     </div>
                   </FormControl>
                   
-                  {/* Enhanced validation feedback for password confirmation */}
+                  {/* Enhanced validation feedback for password confirmation - ONLY custom validation */}
                   {showPasswordMismatch && (
                     <div className="flex items-center gap-2 text-sm text-red-500 mt-1">
                       <span className="w-4 h-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">×</span>
@@ -223,12 +222,6 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
                       <span>Passwords match</span>
                     </div>
                   )}
-                  
-                  <ValidationFeedback
-                    error={fieldState.error}
-                    isValid={!fieldState.error && passwordsMatch}
-                    value={field.value}
-                  />
                 </FormItem>
               )}
             />

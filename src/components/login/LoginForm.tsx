@@ -14,7 +14,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { LoginFormData } from '@/lib/validations/loginSchema';
-import { ValidationFeedback } from '@/components/security/ValidationFeedback';
 import { HoneypotField } from '@/components/security/HoneypotField';
 
 interface LoginFormProps {
@@ -57,11 +56,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                   />
                 </div>
               </FormControl>
-              <ValidationFeedback
-                error={fieldState.error}
-                isValid={fieldState.isDirty && !fieldState.error}
-                value={field.value}
-              />
               <FormMessage />
             </FormItem>
           )}
@@ -93,11 +87,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                   </button>
                 </div>
               </FormControl>
-              <ValidationFeedback
-                error={fieldState.error}
-                isValid={fieldState.isDirty && !fieldState.error}
-                value={field.value}
-              />
               <FormMessage />
             </FormItem>
           )}

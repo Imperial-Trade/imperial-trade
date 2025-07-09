@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider } from "@/components/ui/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WebSocketPriceProvider } from '@/contexts/WebSocketPriceContext';
@@ -34,10 +34,8 @@ function App() {
                 <Route path="/features" element={<FeaturesPage />} />
                 
                 {/* Dashboard Routes */}
-                <Route path="/dashboard" element={<DashboardLayout />}>
-                  <Route index element={<SignalStream />} />
-                  <Route path="new-signal" element={<NewSignalPage />} />
-                </Route>
+                <Route path="/dashboard" element={<DashboardLayout><SignalStream /></DashboardLayout>} />
+                <Route path="/dashboard/new-signal" element={<DashboardLayout><NewSignalPage /></DashboardLayout>} />
               </Routes>
               <Toaster />
             </div>

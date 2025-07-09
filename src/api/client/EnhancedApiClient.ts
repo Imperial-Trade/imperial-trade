@@ -165,8 +165,9 @@ export class EnhancedApiClient {
         return query;
       };
 
+      const queryBuilder = await operation();
       const response = await this.withTimeout(
-        operation(),
+        queryBuilder,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       ) as { data: any; error: any };
@@ -206,8 +207,9 @@ export class EnhancedApiClient {
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>>> {
     return this.withRetry(async () => {
+      const queryBuilder = supabase.from(table).insert(data as any).select().single();
       const response = await this.withTimeout(
-        supabase.from(table).insert(data as any).select().single(),
+        queryBuilder,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       ) as { data: any; error: any };
@@ -245,8 +247,9 @@ export class EnhancedApiClient {
     }
 
     return this.withRetry(async () => {
+      const queryBuilder = supabase.from(table).update(data as any).eq('id' as any, id).select().single();
       const response = await this.withTimeout(
-        supabase.from(table).update(data as any).eq('id' as any, id).select().single(),
+        queryBuilder,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       ) as { data: any; error: any };
@@ -283,8 +286,9 @@ export class EnhancedApiClient {
     }
 
     return this.withRetry(async () => {
+      const queryBuilder = supabase.from(table).delete().eq('id' as any, id);
       const response = await this.withTimeout(
-        supabase.from(table).delete().eq('id' as any, id),
+        queryBuilder,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       ) as { data: any; error: any };
@@ -309,8 +313,9 @@ export class EnhancedApiClient {
 
   async getCurrentUser(config: RequestConfig = {}) {
     return this.withRetry(async () => {
+      const authPromise = supabase.auth.getUser();
       const response = await this.withTimeout(
-        supabase.auth.getUser(),
+        authPromise,
         config.timeout || this.defaultTimeout,
         config.abortSignal
       ) as { data: { user: any }; error: any };

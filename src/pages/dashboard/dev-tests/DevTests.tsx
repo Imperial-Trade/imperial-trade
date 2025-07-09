@@ -2,6 +2,7 @@
 import React from 'react';
 import { TypeSafetyTest } from '@/components/testing/TypeSafetyTest';
 import ComponentTypeSafetyTest from '@/components/testing/ComponentTypeSafetyTest';
+import Phase4TestSuite from '@/components/testing/Phase4TestSuite';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function DevTests() {
@@ -38,6 +39,11 @@ export default function DevTests() {
         </div>
 
         <div className="space-y-8">
+          {/* Phase 4: Enhanced Resilience Test Suite */}
+          <div className="mb-8">
+            <Phase4TestSuite />
+          </div>
+
           {/* Phase 2: API & Data Flow Type Safety Test */}
           {user?.id && (
             <div className="mb-8">

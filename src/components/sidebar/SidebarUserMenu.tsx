@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
-import { Settings, LogOut, ChevronsUpDown, Palette } from 'lucide-react';
+import { Settings, LogOut, ChevronsUpDown } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 interface SidebarUserMenuProps {
   isCollapsed: boolean;
@@ -31,12 +32,10 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
 
   return (
     <div className="mt-auto border-t border-sidebar-border pt-4">
-      {!isCollapsed && (
-        <div className="flex items-center gap-2 px-3 py-2 mb-2">
-          <Palette className="w-4 h-4 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Toggle Theme</span>
-        </div>
-      )}
+      {/* Theme Toggle Section */}
+      <div className="px-3 py-2">
+        <ThemeToggle isCollapsed={isCollapsed} />
+      </div>
       
       <SidebarMenu>
         <SidebarMenuItem>

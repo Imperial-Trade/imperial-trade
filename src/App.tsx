@@ -7,6 +7,7 @@ import NotificationSystem from "@/components/notifications/NotificationSystem";
 import "./styles/education.css";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import Pages from "./pages";
 
 const queryClient = new QueryClient();
@@ -14,18 +15,20 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <ErrorBoundary componentName="Toast Notifications">
-          <Toaster />
-          <Sonner />
-        </ErrorBoundary>
-        <ErrorBoundary componentName="Notification System">
-          <NotificationSystem />
-        </ErrorBoundary>
-        <ErrorBoundary componentName="Application Router">
-          <Pages />
-        </ErrorBoundary>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ErrorBoundary componentName="Toast Notifications">
+            <Toaster />
+            <Sonner />
+          </ErrorBoundary>
+          <ErrorBoundary componentName="Notification System">
+            <NotificationSystem />
+          </ErrorBoundary>
+          <ErrorBoundary componentName="Application Router">
+            <Pages />
+          </ErrorBoundary>
+        </AuthProvider>
+      </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

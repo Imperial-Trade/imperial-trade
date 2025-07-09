@@ -17,8 +17,8 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <ThemeProvider>
+      <ThemeProvider>
+        <TooltipProvider>
           <WebSocketPriceProvider>
             <AuthProvider>
               <ErrorBoundary componentName="Toast Notifications">
@@ -33,8 +33,8 @@ function App() {
               </ErrorBoundary>
             </AuthProvider>
           </WebSocketPriceProvider>
-        </ThemeProvider>
-      </TooltipProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

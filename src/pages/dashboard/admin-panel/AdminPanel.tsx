@@ -24,8 +24,13 @@ import {
   UserCheck,
   Bell,
   FileText,
+  Monitor,
+  UserCog,
 } from "lucide-react";
 import { AccountRequestManagement } from "@/components/account-request/AccountRequestManagement";
+import { UserManagementTable } from "@/components/admin/UserManagementTable";
+import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
+import { RealtimeAuditLog } from "@/components/admin/RealtimeAuditLog";
 
 export default function AdminPanel() {
   const [user, setUser] = useState(null);
@@ -269,18 +274,32 @@ export default function AdminPanel() {
               Overview
             </TabsTrigger>
             <TabsTrigger
+              value="monitoring"
+              className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
+            >
+              <Monitor className="w-4 h-4" />
+              System Monitor
+            </TabsTrigger>
+            <TabsTrigger
+              value="user-management"
+              className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
+            >
+              <UserCog className="w-4 h-4" />
+              User Management
+            </TabsTrigger>
+            <TabsTrigger
+              value="audit-logs"
+              className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              Audit Logs
+            </TabsTrigger>
+            <TabsTrigger
               value="account-requests"
               className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
             >
               <FileText className="w-4 h-4" />
               Account Requests
-            </TabsTrigger>
-            <TabsTrigger
-              value="users"
-              className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
-            >
-              <Users className="w-4 h-4" />
-              Users
             </TabsTrigger>
             <TabsTrigger
               value="sessions"
@@ -305,7 +324,6 @@ export default function AdminPanel() {
             </TabsTrigger>
           </TabsList>
 
-          
           <TabsContent value="overview">
             <div className="space-y-6">
               <Card className="glass-effect border-default">
@@ -379,30 +397,20 @@ export default function AdminPanel() {
             </div>
           </TabsContent>
 
-          <TabsContent value="account-requests">
-            <AccountRequestManagement onRefresh={loadData} />
+          <TabsContent value="monitoring">
+            <SystemMonitoring />
           </TabsContent>
 
-          <TabsContent value="users">
-            <Card className="glass-effect border-default">
-              <CardHeader>
-                <CardTitle className="text-primary flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  User Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Users className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-primary mb-2">
-                    User Management
-                  </h3>
-                  <p className="text-secondary">
-                    User management features will be implemented here.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="user-management">
+            <UserManagementTable onRefresh={loadData} />
+          </TabsContent>
+
+          <TabsContent value="audit-logs">
+            <RealtimeAuditLog />
+          </TabsContent>
+
+          <TabsContent value="account-requests">
+            <AccountRequestManagement onRefresh={loadData} />
           </TabsContent>
 
           <TabsContent value="sessions">

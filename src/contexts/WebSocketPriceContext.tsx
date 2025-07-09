@@ -35,7 +35,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
   const [connectionStatus, setConnectionStatus] = useState<WebSocketContextType['connectionStatus']>('disconnected');
   const socketRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<number | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
 
   const connect = useCallback(() => {

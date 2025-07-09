@@ -1,22 +1,28 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import LandingPage from './pages/LandingPage';
-import DashboardLayout from './pages/dashboard/DashboardLayout';
-import AccountRequest from './pages/AccountRequest';
-import AboutPage from './pages/AboutPage';
-import PartnershipPage from './pages/PartnershipPage';
-import FeaturesPage from './pages/FeaturesPage';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { WebSocketPriceProvider } from '@/contexts/WebSocketPriceContext';
+
+// Import pages from their correct locations
+import LandingPage from './pages/landing-page/landing/Landing';
+import DashboardLayout from './pages/layouts/DashboardLayout';
+import AccountRequest from './pages/landing-page/account-request/AccountRequest';
+import AboutPage from './pages/landing-page/about/About';
+import PartnershipPage from './pages/landing-page/ib-partnership/IBPartnership';
+import FeaturesPage from './pages/landing-page/features/Features';
 import SignalStream from './pages/dashboard/signal-stream/SignalStream';
 import NewSignalPage from './pages/dashboard/new-signal/NewSignalPage';
-import { QueryClient } from '@tanstack/react-query';
-import { WebSocketPriceProvider } from '@/contexts/WebSocketPriceContext';
+
+// Create QueryClient instance
+const queryClient = new QueryClient();
 
 function App() {
   return (
     <Router>
-      <QueryClient>
+      <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
           <WebSocketPriceProvider>
             <div className="min-h-screen bg-background font-sans antialiased">
@@ -37,7 +43,7 @@ function App() {
             </div>
           </WebSocketPriceProvider>
         </ThemeProvider>
-      </QueryClient>
+      </QueryClientProvider>
     </Router>
   );
 }

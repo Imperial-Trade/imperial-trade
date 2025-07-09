@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -117,17 +116,17 @@ export default function Features() {
       {/* Hero Section */}
       <ContentSection className="py-24 px-4">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <Crown className="h-8 w-8 text-primary" />
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <Crown className="h-10 w-10 text-primary" />
             <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
-              Imperial Features
+              IMPERIAL FEATURES
             </h1>
           </div>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-            Discover the comprehensive suite of professional trading tools, educational resources, 
-            and community features designed to elevate your trading journey.
+          <p className="text-xl text-muted-foreground max-w-4xl mx-auto mb-8 leading-relaxed">
+            Join the elite ranks of Imperial Trading Partners. Unlock premium commissions, exclusive resources, 
+            and build your trading empire with our industry-leading platform features.
           </p>
-          <Badge variant="secondary" className="text-sm px-4 py-2">
+          <Badge variant="secondary" className="text-sm px-4 py-2 bg-primary/10 text-primary border-primary/20">
             <Shield className="h-4 w-4 mr-2" />
             Professional Grade • Secure • Reliable
           </Badge>

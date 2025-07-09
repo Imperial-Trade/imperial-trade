@@ -21,14 +21,9 @@ import {
   TrendingUp, 
   Video, 
   MessageCircle, 
-  Handshake, 
-  BarChart3, 
-  Trophy, 
-  Settings, 
-  Info,
+  BarChart3,
+  Settings,
   LogOut,
-  Sun,
-  Moon,
   ChevronsUpDown
 } from "lucide-react";
 import {
@@ -46,13 +41,9 @@ const navigationItems = [
   { title: "Home", url: "/dashboard/home", icon: Home },
   { title: "Education", url: "/dashboard/education", icon: BookOpen },
   { title: "Signal Stream", url: "/dashboard/signals", icon: TrendingUp },
-  { title: "Live Sessions", url: "/dashboard/live", icon: Video },
+  { title: "Live Session", url: "/dashboard/live", icon: Video },
   { title: "Community Forum", url: "/dashboard/forum", icon: MessageCircle },
-  { title: "IB Partnership", url: "/ib-partnership", icon: Handshake },
   { title: "Advanced Tools", url: "/dashboard/tools", icon: BarChart3 },
-  { title: "My Progress", url: "/dashboard/progress", icon: Trophy },
-  { title: "Settings", url: "/dashboard/settings", icon: Settings },
-  { title: "About", url: "/about", icon: Info },
 ];
 
 export function AppSidebar() {
@@ -154,19 +145,6 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        {!isCollapsed && (
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Theme</span>
-            <div className="flex items-center gap-1">
-              <Sun className="w-3 h-3 text-muted-foreground" />
-              <div className="w-8 h-4 bg-muted rounded-full relative">
-                <div className="w-3 h-3 bg-primary rounded-full absolute top-0.5 left-0.5 transition-transform" />
-              </div>
-              <Moon className="w-3 h-3 text-muted-foreground" />
-            </div>
-          </div>
-        )}
-        
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>

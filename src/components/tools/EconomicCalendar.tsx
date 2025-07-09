@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +22,7 @@ export default function EconomicCalendar() {
   
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const allImpacts = ['high', 'medium', 'low'];
+  const allImpacts: ('high' | 'medium' | 'low')[] = ['high', 'medium', 'low'];
   const allCurrencies = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF'];
 
   useEffect(() => {

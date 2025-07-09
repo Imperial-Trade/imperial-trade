@@ -1,131 +1,27 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
+import { DatabaseTable, TableRow, TableInsert, TableUpdate, RequestConfig } from './types';
+import { DatabaseOperations } from './operations/DatabaseOperations';
+import { AuthOperations } from './operations/AuthOperations';
+import { RequestQueue } from './RequestQueue';
 import { ApiResponse } from '@/types/common';
-import { isValidUUID } from '@/types/guards';
-
-export type DatabaseTable = keyof Database['public']['Tables'];
-export type TableRow<T extends DatabaseTable> = Database['public']['Tables'][T]['Row'];
-export type TableInsert<T extends DatabaseTable> = Database['public']['Tables'][T]['Insert'];
-export type TableUpdate<T extends DatabaseTable> = Database['public']['Tables'][T]['Update'];
-
-interface RequestConfig {
-  timeout?: number;
-  retries?: number;
-  retryDelay?: number;
-  abortSignal?: AbortSignal;
-}
-
-interface RetryConfig {
-  maxAttempts: number;
-  initialDelay: number;
-  maxDelay: number;
-  backoffFactor: number;
-}
 
 export class EnhancedApiClient {
   private static instance: EnhancedApiClient;
-  private requestQueue: Map<string, Promise<any>> = new Map();
-  private defaultTimeout = 10000; // 10 seconds
-  private defaultRetryConfig: RetryConfig = {
-    maxAttempts: 3,
-    initialDelay: 1000,
-    maxDelay: 10000,
-    backoffFactor: 2
-  };
+  private databaseOps: DatabaseOperations;
+  private authOps: AuthOperations;
+  private requestQueue: RequestQueue;
 
-  private constructor() {}
+  private constructor() {
+    this.databaseOps = new DatabaseOperations();
+    this.authOps = new AuthOperations();
+    this.requestQueue = new RequestQueue();
+  }
 
   static getInstance(): EnhancedApiClient {
     if (!EnhancedApiClient.instance) {
       EnhancedApiClient.instance = new EnhancedApiClient();
     }
     return EnhancedApiClient.instance;
-  }
-
-  private async withTimeout<T>(
-    promise: Promise<T>,
-    timeoutMs: number,
-    abortSignal?: AbortSignal
-  ): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`Request timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-
-      const cleanup = () => clearTimeout(timeoutId);
-
-      if (abortSignal) {
-        abortSignal.addEventListener('abort', () => {
-          cleanup();
-          reject(new Error('Request aborted'));
-        });
-      }
-
-      promise
-        .then((result) => {
-          cleanup();
-          resolve(result);
-        })
-        .catch((error) => {
-          cleanup();
-          reject(error);
-        });
-    });
-  }
-
-  private async withRetry<T>(
-    operation: () => Promise<T>,
-    config: Partial<RetryConfig> = {}
-  ): Promise<T> {
-    const retryConfig = { ...this.defaultRetryConfig, ...config };
-    let lastError: Error;
-
-    for (let attempt = 1; attempt <= retryConfig.maxAttempts; attempt++) {
-      try {
-        return await operation();
-      } catch (error) {
-        lastError = error as Error;
-        
-        if (attempt === retryConfig.maxAttempts) {
-          throw lastError;
-        }
-
-        // Don't retry on certain errors
-        if (this.isNonRetryableError(lastError)) {
-          throw lastError;
-        }
-
-        const delay = Math.min(
-          retryConfig.initialDelay * Math.pow(retryConfig.backoffFactor, attempt - 1),
-          retryConfig.maxDelay
-        );
-
-        console.log(`Attempt ${attempt} failed, retrying in ${delay}ms:`, lastError.message);
-        await this.delay(delay);
-      }
-    }
-
-    throw lastError!;
-  }
-
-  private isNonRetryableError(error: Error): boolean {
-    const message = error.message.toLowerCase();
-    return (
-      message.includes('invalid') ||
-      message.includes('unauthorized') ||
-      message.includes('forbidden') ||
-      message.includes('not found') ||
-      message.includes('bad request')
-    );
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  private getCacheKey(operation: string, params: any): string {
-    return `${operation}_${JSON.stringify(params)}`;
   }
 
   async select<T extends DatabaseTable>(
@@ -138,66 +34,22 @@ export class EnhancedApiClient {
     },
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>[]>> {
-    const cacheKey = this.getCacheKey('select', { table, options });
+    const cacheKey = this.requestQueue.getCacheKey('select', { table, options });
     
-    if (this.requestQueue.has(cacheKey)) {
-      return this.requestQueue.get(cacheKey);
+    if (this.requestQueue.hasRequest(cacheKey)) {
+      return this.requestQueue.getRequest(cacheKey);
     }
 
-    const requestPromise = this.withRetry(async () => {
-      const executeQuery = async () => {
-        let query = supabase.from(table).select(options?.select || '*');
-
-        if (options?.eq) {
-          query = query.eq(options.eq.column, options.eq.value);
-        }
-
-        if (options?.order) {
-          query = query.order(options.order.column, { 
-            ascending: options.order.ascending ?? true 
-          });
-        }
-
-        if (options?.limit) {
-          query = query.limit(options.limit);
-        }
-
-        return query;
-      };
-
-      const queryPromise = executeQuery();
-      const response = await this.withTimeout(
-        queryPromise,
-        config.timeout || this.defaultTimeout,
-        config.abortSignal
-      ) as { data: any; error: any };
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      return {
-        success: true,
-        data: response.data as unknown as TableRow<T>[],
-        error: undefined
-      } as ApiResponse<TableRow<T>[]>;
-    }, {
-      maxAttempts: config.retries || this.defaultRetryConfig.maxAttempts
-    });
-
-    this.requestQueue.set(cacheKey, requestPromise);
+    const requestPromise = this.databaseOps.select(table, options, config);
+    this.requestQueue.addRequest(cacheKey, requestPromise);
     
     try {
       const result = await requestPromise;
-      this.requestQueue.delete(cacheKey);
+      this.requestQueue.removeRequest(cacheKey);
       return result;
     } catch (error) {
-      this.requestQueue.delete(cacheKey);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
-      };
+      this.requestQueue.removeRequest(cacheKey);
+      throw error;
     }
   }
 
@@ -206,33 +58,7 @@ export class EnhancedApiClient {
     data: TableInsert<T>,
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>>> {
-    return this.withRetry(async () => {
-      const executeQuery = async () => {
-        return supabase.from(table).insert(data as any).select().single();
-      };
-      
-      const response = await this.withTimeout(
-        executeQuery(),
-        config.timeout || this.defaultTimeout,
-        config.abortSignal
-      ) as { data: any; error: any };
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      return {
-        success: true,
-        data: response.data as unknown as TableRow<T>,
-        error: undefined
-      };
-    }, {
-      maxAttempts: config.retries || this.defaultRetryConfig.maxAttempts
-    }).catch(error => ({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      data: undefined
-    }));
+    return this.databaseOps.insert(table, data, config);
   }
 
   async update<T extends DatabaseTable>(
@@ -241,41 +67,7 @@ export class EnhancedApiClient {
     data: TableUpdate<T>,
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>>> {
-    if (!isValidUUID(id)) {
-      return {
-        success: false,
-        error: 'Invalid ID format',
-        data: undefined
-      };
-    }
-
-    return this.withRetry(async () => {
-      const executeQuery = async () => {
-        return supabase.from(table).update(data as any).eq('id' as any, id).select().single();
-      };
-      
-      const response = await this.withTimeout(
-        executeQuery(),
-        config.timeout || this.defaultTimeout,
-        config.abortSignal
-      ) as { data: any; error: any };
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      return {
-        success: true,
-        data: response.data as unknown as TableRow<T>,
-        error: undefined
-      };
-    }, {
-      maxAttempts: config.retries || this.defaultRetryConfig.maxAttempts
-    }).catch(error => ({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      data: undefined
-    }));
+    return this.databaseOps.update(table, id, data, config);
   }
 
   async delete<T extends DatabaseTable>(
@@ -283,78 +75,19 @@ export class EnhancedApiClient {
     id: string,
     config: RequestConfig = {}
   ): Promise<ApiResponse<void>> {
-    if (!isValidUUID(id)) {
-      return {
-        success: false,
-        error: 'Invalid ID format',
-        data: undefined
-      };
-    }
-
-    return this.withRetry(async () => {
-      const executeQuery = async () => {
-        return supabase.from(table).delete().eq('id' as any, id);
-      };
-      
-      const response = await this.withTimeout(
-        executeQuery(),
-        config.timeout || this.defaultTimeout,
-        config.abortSignal
-      ) as { data: any; error: any };
-
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      return {
-        success: true,
-        data: undefined,
-        error: undefined
-      };
-    }, {
-      maxAttempts: config.retries || this.defaultRetryConfig.maxAttempts
-    }).catch(error => ({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      data: undefined
-    }));
+    return this.databaseOps.delete(table, id, config);
   }
 
   async getCurrentUser(config: RequestConfig = {}) {
-    return this.withRetry(async () => {
-      const authPromise = supabase.auth.getUser();
-      const response = await this.withTimeout(
-        authPromise,
-        config.timeout || this.defaultTimeout,
-        config.abortSignal
-      ) as { data: { user: any }; error: any };
-      
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
-
-      return {
-        success: true,
-        data: response.data.user,
-        error: undefined
-      };
-    }, {
-      maxAttempts: config.retries || this.defaultRetryConfig.maxAttempts
-    }).catch(error => ({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      data: undefined
-    }));
+    return this.authOps.getCurrentUser(config);
   }
 
-  // Cancel all pending requests
   cancelAllRequests() {
-    this.requestQueue.clear();
+    this.requestQueue.cancelAllRequests();
   }
 
-  // Get pending request count
   getPendingRequestCount(): number {
-    return this.requestQueue.size;
+    return this.requestQueue.getPendingRequestCount();
   }
 }
 

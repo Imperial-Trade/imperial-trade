@@ -26,11 +26,13 @@ import {
   FileText,
   Monitor,
   UserCog,
+  Broadcast,
 } from "lucide-react";
 import { AccountRequestManagement } from "@/components/account-request/AccountRequestManagement";
 import { UserManagementTable } from "@/components/admin/UserManagementTable";
 import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
 import { RealtimeAuditLog } from "@/components/admin/RealtimeAuditLog";
+import { AdminTradeSignalsTab } from "@/components/admin/AdminTradeSignalsTab";
 
 export default function AdminPanel() {
   const [user, setUser] = useState(null);
@@ -252,12 +254,12 @@ export default function AdminPanel() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-secondary text-sm">Total Alerts</p>
+                  <p className="text-secondary text-sm">Total Signals</p>
                   <p className="text-2xl font-bold text-primary">
                     {stats.totalAlerts}
                   </p>
                 </div>
-                <Bell className="w-8 h-8 text-orange-400" />
+                <Broadcast className="w-8 h-8 text-orange-400" />
               </div>
             </CardContent>
           </Card>
@@ -272,6 +274,13 @@ export default function AdminPanel() {
             >
               <Activity className="w-4 h-4" />
               Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="trade-signals"
+              className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
+            >
+              <Broadcast className="w-4 h-4" />
+              Trade Signals
             </TabsTrigger>
             <TabsTrigger
               value="monitoring"
@@ -307,13 +316,6 @@ export default function AdminPanel() {
             >
               <TrendingUp className="w-4 h-4" />
               Sessions
-            </TabsTrigger>
-            <TabsTrigger
-              value="alerts"
-              className="data-[state=active]:bg-accent-green data-[state=active]:text-white text-secondary flex items-center gap-2"
-            >
-              <AlertTriangle className="w-4 h-4" />
-              Trade Alerts
             </TabsTrigger>
             <TabsTrigger
               value="settings"
@@ -397,6 +399,10 @@ export default function AdminPanel() {
             </div>
           </TabsContent>
 
+          <TabsContent value="trade-signals">
+            <AdminTradeSignalsTab currentUser={user} />
+          </TabsContent>
+
           <TabsContent value="monitoring">
             <SystemMonitoring />
           </TabsContent>
@@ -457,75 +463,6 @@ export default function AdminPanel() {
                     </h3>
                     <p className="text-secondary">
                       There are currently no live trading sessions.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="alerts">
-            <Card className="glass-effect border-default">
-              <CardHeader>
-                <CardTitle className="text-primary flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  Trade Alerts
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {alerts.length > 0 ? (
-                  <div className="space-y-4">
-                    {alerts.slice(0, 10).map((alert) => (
-                      <div
-                        key={alert.id}
-                        className="p-4 bg-surface/50 rounded-lg"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-primary">
-                            {alert.assetName} ({alert.finnhubSymbol})
-                          </h4>
-                          <Badge
-                            className={`${
-                              alert.status === "active"
-                                ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                : alert.status === "closed"
-                                ? "bg-red-500/10 text-red-400 border-red-500/20"
-                                : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                            } border`}
-                          >
-                            {alert.status}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-secondary">
-                          <div>
-                            <span className="font-medium">Type:</span> {alert.tradeType}
-                          </div>
-                          <div>
-                            <span className="font-medium">Entry:</span> ${alert.entryPrice}
-                          </div>
-                          <div>
-                            <span className="font-medium">Stop Loss:</span> ${alert.stopLoss}
-                          </div>
-                          <div>
-                            <span className="font-medium">Created:</span> {formatDate(alert.createdAt)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {alerts.length > 10 && (
-                      <div className="text-center text-secondary text-sm">
-                        Showing 10 of {alerts.length} alerts
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <AlertTriangle className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-primary mb-2">
-                      No Trade Alerts
-                    </h3>
-                    <p className="text-secondary">
-                      No trade alerts have been created yet.
                     </p>
                   </div>
                 )}

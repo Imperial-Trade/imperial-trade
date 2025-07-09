@@ -5,10 +5,12 @@ import { loginSchema, type LoginFormData } from "@/lib/validations/loginSchema";
 import { useRateLimiting } from "./useRateLimiting";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmailValidation } from "./useEmailValidation";
 
 export const useLoginForm = () => {
   const { toast } = useToast();
   const { canSubmit, recordAttempt } = useRateLimiting('login', 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
+  const { validateEmail } = useEmailValidation();
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -34,6 +36,45 @@ export const useLoginForm = () => {
     if (data.website && data.website.length > 0) {
       console.log("Bot detected via honeypot");
       return; // Silent fail for bots
+    }
+
+    // Pre-validate email status before attempting login
+    const emailValidation = await validateEmail(data.email);
+    
+    if (emailValidation.status === 'not_found') {
+      toast({
+        variant: "destructive",
+        title: "Email Not Found",
+        description: "This email is not registered. Please submit an account request first.",
+      });
+      return;
+    }
+
+    if (emailValidation.status === 'pending') {
+      toast({
+        variant: "destructive",
+        title: "Account Request Pending",
+        description: "Your account request is still pending approval. Please check your request status.",
+      });
+      return;
+    }
+
+    if (emailValidation.status === 'rejected') {
+      toast({
+        variant: "destructive",
+        title: "Account Request Rejected",
+        description: "Your account request was rejected. Please check your request status for more details.",
+      });
+      return;
+    }
+
+    if (emailValidation.status === 'approved') {
+      toast({
+        variant: "destructive",
+        title: "Account Setup Incomplete",
+        description: "Your account was approved but password setup is incomplete. Please complete your account setup.",
+      });
+      return;
     }
 
     try {

@@ -165,20 +165,19 @@ export class EnhancedApiClient {
         return query;
       };
 
-      const queryBuilder = await operation();
-      const { data, error } = await this.withTimeout(
-        queryBuilder,
+      const response = await this.withTimeout(
+        operation(),
         config.timeout || this.defaultTimeout,
         config.abortSignal
       );
 
-      if (error) {
-        throw new Error(error.message);
+      if (response.error) {
+        throw new Error(response.error.message);
       }
 
       return {
         success: true,
-        data: data as unknown as TableRow<T>[],
+        data: response.data as unknown as TableRow<T>[],
         error: undefined
       } as ApiResponse<TableRow<T>[]>;
     }, {
@@ -207,20 +206,19 @@ export class EnhancedApiClient {
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>>> {
     return this.withRetry(async () => {
-      const queryBuilder = supabase.from(table).insert(data as any).select().single();
-      const { data: result, error } = await this.withTimeout(
-        queryBuilder,
+      const response = await this.withTimeout(
+        supabase.from(table).insert(data as any).select().single(),
         config.timeout || this.defaultTimeout,
         config.abortSignal
       );
 
-      if (error) {
-        throw new Error(error.message);
+      if (response.error) {
+        throw new Error(response.error.message);
       }
 
       return {
         success: true,
-        data: result as unknown as TableRow<T>,
+        data: response.data as unknown as TableRow<T>,
         error: undefined
       };
     }, {
@@ -247,20 +245,19 @@ export class EnhancedApiClient {
     }
 
     return this.withRetry(async () => {
-      const queryBuilder = supabase.from(table).update(data as any).eq('id' as any, id).select().single();
-      const { data: result, error } = await this.withTimeout(
-        queryBuilder,
+      const response = await this.withTimeout(
+        supabase.from(table).update(data as any).eq('id' as any, id).select().single(),
         config.timeout || this.defaultTimeout,
         config.abortSignal
       );
 
-      if (error) {
-        throw new Error(error.message);
+      if (response.error) {
+        throw new Error(response.error.message);
       }
 
       return {
         success: true,
-        data: result as unknown as TableRow<T>,
+        data: response.data as unknown as TableRow<T>,
         error: undefined
       };
     }, {
@@ -286,15 +283,14 @@ export class EnhancedApiClient {
     }
 
     return this.withRetry(async () => {
-      const queryBuilder = supabase.from(table).delete().eq('id' as any, id);
-      const { error } = await this.withTimeout(
-        queryBuilder,
+      const response = await this.withTimeout(
+        supabase.from(table).delete().eq('id' as any, id),
         config.timeout || this.defaultTimeout,
         config.abortSignal
       );
 
-      if (error) {
-        throw new Error(error.message);
+      if (response.error) {
+        throw new Error(response.error.message);
       }
 
       return {
@@ -313,19 +309,19 @@ export class EnhancedApiClient {
 
   async getCurrentUser(config: RequestConfig = {}) {
     return this.withRetry(async () => {
-      const { data: { user }, error } = await this.withTimeout(
+      const response = await this.withTimeout(
         supabase.auth.getUser(),
         config.timeout || this.defaultTimeout,
         config.abortSignal
       );
       
-      if (error) {
-        throw new Error(error.message);
+      if (response.error) {
+        throw new Error(response.error.message);
       }
 
       return {
         success: true,
-        data: user,
+        data: response.data.user,
         error: undefined
       };
     }, {

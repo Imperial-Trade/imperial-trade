@@ -42,9 +42,18 @@ export class AdminAuditService {
 
       if (!result.success) {
         console.error('Failed to log admin action:', result.error);
+        return {
+          success: false,
+          error: result.error || 'Failed to log admin action',
+          data: undefined
+        };
       }
 
-      return result;
+      return {
+        success: true,
+        data: undefined,
+        error: undefined
+      };
     } catch (error) {
       console.error('Error logging admin action:', error);
       return {

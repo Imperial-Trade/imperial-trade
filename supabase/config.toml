@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.share-trade-signal]
 verify_jwt = false
+
+[functions.live-price-stream]
+verify_jwt = false

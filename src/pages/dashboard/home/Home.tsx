@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { TypeSafetyTest } from '@/components/testing/TypeSafetyTest';
 import { useAuth } from '@/contexts/AuthContext';
 import EconomicCalendarWidget from '@/components/widgets/EconomicCalendarWidget';
 import EconomicEventCountdown from '@/components/widgets/EconomicEventCountdown';
@@ -21,13 +20,6 @@ export default function Home() {
             Your comprehensive trading education and signal platform
           </p>
         </div>
-
-        {/* Development Test Component */}
-        {process.env.NODE_ENV === 'development' && user?.id && (
-          <div className="mb-8">
-            <TypeSafetyTest userId={user.id} />
-          </div>
-        )}
 
         {/* Economic Calendar Widgets */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

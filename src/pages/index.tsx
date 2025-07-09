@@ -20,6 +20,7 @@ import AthenaTestPage from "./dashboard/athena/AthenaTest";
 import Education from "./dashboard/education/Education";
 import MyProgress from "./dashboard/my-progress/MyProgress";
 import SigninPage from "./landing-page/signin/Signin";
+import DevTests from "./dashboard/dev-tests/DevTests";
 import NotFound from "./NotFound";
 
 export default function Pages() {
@@ -177,6 +178,16 @@ export default function Pages() {
             <ProtectedRoute>
               <DashboardLayout>
                 <Settings />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/dev-tests"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <DevTests />
               </DashboardLayout>
             </ProtectedRoute>
           }

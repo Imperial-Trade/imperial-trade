@@ -15,9 +15,7 @@ import {
   Video, 
   MessageCircle, 
   BarChart3,
-  Users,
-  Settings,
-  Info
+  Users
 } from 'lucide-react';
 
 const navigationItems = [
@@ -29,8 +27,6 @@ const navigationItems = [
   { title: "IB Partnership", url: "/partnership", icon: Users },
   { title: "Advanced Tools", url: "/dashboard/tools", icon: BarChart3 },
   { title: "My Progress", url: "/dashboard/progress", icon: BarChart3 },
-  { title: "Settings", url: "/dashboard/settings", icon: Settings },
-  { title: "About", url: "/about", icon: Info },
 ];
 
 interface SidebarNavigationProps {

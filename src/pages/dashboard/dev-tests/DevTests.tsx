@@ -6,8 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TestUserGenerator } from '@/components/admin/TestUserGenerator';
 import { AutomatedTestRunner } from '@/components/admin/AutomatedTestRunner';
 import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuite';
-import { ComponentTypeSafetyTest } from '@/components/testing/ComponentTypeSafetyTest';
-import { AlertTriangle, Code, Flask } from 'lucide-react';
+import ComponentTypeSafetyTest from '@/components/testing/ComponentTypeSafetyTest';
+import { AlertTriangle, Code, Beaker } from 'lucide-react';
 
 const DevTests = () => {
   // Only show in development mode
@@ -32,7 +32,7 @@ const DevTests = () => {
       <Card className="glass-effect border-default">
         <CardHeader>
           <CardTitle className="text-primary flex items-center gap-2">
-            <Flask className="w-5 h-5" />
+            <Beaker className="w-5 h-5" />
             Development Testing Suite
             <Badge variant="outline" className="bg-orange-500/20 text-orange-400 border-orange-500/30">
               DEV ONLY

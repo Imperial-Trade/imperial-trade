@@ -33,14 +33,43 @@ serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
-    // Check if user is admin
-    const { data: profile } = await supabaseClient
+    console.log('Checking admin access for user:', user.id)
+
+    // Enhanced admin check with fallback logic
+    const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
-      .select('access_level, role')
+      .select('access_level, role, user_type')
       .eq('id', user.id)
       .single()
 
-    const isAdmin = profile?.access_level === 'admin' || profile?.role === 'admin'
+    let isAdmin = false
+    
+    if (profile) {
+      console.log('Profile found:', profile)
+      isAdmin = profile.access_level === 'admin' || profile.role === 'admin'
+    } else {
+      console.log('Profile not found, checking user metadata')
+      // Fallback to user metadata if profile doesn't exist
+      const userRole = user.user_metadata?.role || user.user_metadata?.access_level
+      isAdmin = userRole === 'admin'
+      
+      // Create missing profile for admin user
+      if (isAdmin) {
+        console.log('Creating missing admin profile')
+        await supabaseClient
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            display_name: user.user_metadata?.full_name || user.email || 'Admin User',
+            role: 'admin',
+            access_level: 'admin',
+            user_type: 'admin',
+            account_status: 'active',
+            registration_source: 'direct'
+          })
+      }
+    }
+
     if (!isAdmin) {
       throw new Error('Insufficient permissions - admin access required')
     }

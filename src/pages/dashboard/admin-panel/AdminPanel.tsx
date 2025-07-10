@@ -26,6 +26,7 @@ import AccessDenied from '@/components/AccessDenied';
 
 export default function AdminPanel() {
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [systemStats, setSystemStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -44,6 +45,18 @@ export default function AdminPanel() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
+      if (user) {
+        // Get user profile with enhanced fields
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        console.log('User profile:', profileData);
+        setProfile(profileData);
+      }
     } catch (error) {
       console.error('Error checking user:', error);
     } finally {
@@ -92,11 +105,18 @@ export default function AdminPanel() {
     );
   }
 
-  // Check if user is admin - enhanced check for new access_level field
-  const userAccessLevel = user?.user_metadata?.access_level || 'free';
-  const userRole = user?.user_metadata?.role || 'user';
-  
-  if (userAccessLevel !== 'admin' && userRole !== 'admin') {
+  // Enhanced admin check with fallback logic
+  const isAdmin = () => {
+    if (profile) {
+      return profile.access_level === 'admin' || profile.role === 'admin';
+    }
+    // Fallback to user metadata if profile doesn't exist or is incomplete
+    const userAccessLevel = user?.user_metadata?.access_level;
+    const userRole = user?.user_metadata?.role;
+    return userAccessLevel === 'admin' || userRole === 'admin';
+  };
+
+  if (!isAdmin()) {
     return <AccessDenied requiredLevel="admin" />;
   }
 
@@ -111,6 +131,11 @@ export default function AdminPanel() {
           <p className="text-secondary text-lg">
             Comprehensive system management and monitoring dashboard
           </p>
+          {profile && (
+            <div className="mt-2 text-sm text-secondary">
+              Logged in as: {profile.display_name} ({profile.access_level})
+            </div>
+          )}
         </div>
 
         {/* System Overview Cards */}

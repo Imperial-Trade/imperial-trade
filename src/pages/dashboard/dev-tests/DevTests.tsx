@@ -1,87 +1,83 @@
 
 import React from 'react';
-import { TypeSafetyTest } from '@/components/testing/TypeSafetyTest';
-import ComponentTypeSafetyTest from '@/components/testing/ComponentTypeSafetyTest';
-import Phase4TestSuite from '@/components/testing/Phase4TestSuite';
-import { useAuth } from '@/contexts/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TestUserGenerator } from '@/components/admin/TestUserGenerator';
+import { AutomatedTestRunner } from '@/components/admin/AutomatedTestRunner';
+import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuite';
+import { ComponentTypeSafetyTest } from '@/components/testing/ComponentTypeSafetyTest';
+import { AlertTriangle, Code, Flask } from 'lucide-react';
 
-export default function DevTests() {
-  const { user } = useAuth();
-
-  // Only show in development
+const DevTests = () => {
+  // Only show in development mode
   if (process.env.NODE_ENV !== 'development') {
     return (
-      <div className="p-6 bg-background">
-        <div className="w-full">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-primary mb-4">
-              Development Tools
-            </h1>
+      <div className="container mx-auto p-6">
+        <Card className="glass-effect border-default">
+          <CardContent className="p-6 text-center">
+            <AlertTriangle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold text-primary mb-2">Development Only</h2>
             <p className="text-secondary">
               This page is only available in development mode.
             </p>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-background">
-      <div className="w-full">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">
+    <div className="container mx-auto p-6 space-y-6">
+      <Card className="glass-effect border-default">
+        <CardHeader>
+          <CardTitle className="text-primary flex items-center gap-2">
+            <Flask className="w-5 h-5" />
             Development Testing Suite
-          </h1>
-          <p className="text-secondary text-lg">
-            Comprehensive type safety and component testing for Imperial Trading
+            <Badge variant="outline" className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+              DEV ONLY
+            </Badge>
+          </CardTitle>
+          <p className="text-secondary">
+            Developer tools for testing and debugging. Not available in production.
           </p>
-        </div>
+        </CardHeader>
+      </Card>
 
-        <div className="space-y-8">
-          {/* Phase 4: Enhanced Resilience Test Suite */}
-          <div className="mb-8">
-            <Phase4TestSuite />
-          </div>
+      <Tabs defaultValue="test-users" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4 bg-surface">
+          <TabsTrigger value="test-users" className="data-[state=active]:bg-accent-green/20">
+            Test Users
+          </TabsTrigger>
+          <TabsTrigger value="auto-tests" className="data-[state=active]:bg-accent-green/20">
+            Auto Tests
+          </TabsTrigger>
+          <TabsTrigger value="comprehensive" className="data-[state=active]:bg-accent-green/20">
+            Test Suite
+          </TabsTrigger>
+          <TabsTrigger value="component-safety" className="data-[state=active]:bg-accent-green/20">
+            Type Safety
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Phase 2: API & Data Flow Type Safety Test */}
-          {user?.id && (
-            <div className="mb-8">
-              <TypeSafetyTest userId={user.id} />
-            </div>
-          )}
+        <TabsContent value="test-users" className="space-y-6">
+          <TestUserGenerator />
+        </TabsContent>
 
-          {/* Phase 4: Component Type Safety Test */}
-          <div>
-            <ComponentTypeSafetyTest />
-          </div>
-        </div>
+        <TabsContent value="auto-tests" className="space-y-6">
+          <AutomatedTestRunner />
+        </TabsContent>
 
-        {/* Development Info */}
-        <div className="mt-8 p-6 bg-surface rounded-lg border border-default">
-          <h2 className="text-xl font-semibold text-primary mb-4">
-            Development Environment Info
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium text-primary">Environment:</span>
-              <span className="ml-2 text-secondary">{process.env.NODE_ENV}</span>
-            </div>
-            <div>
-              <span className="font-medium text-primary">User ID:</span>
-              <span className="ml-2 text-secondary font-mono">{user?.id || 'Not authenticated'}</span>
-            </div>
-            <div>
-              <span className="font-medium text-primary">User Email:</span>
-              <span className="ml-2 text-secondary">{user?.email || 'Not authenticated'}</span>
-            </div>
-            <div>
-              <span className="font-medium text-primary">Access Level:</span>
-              <span className="ml-2 text-secondary">{user?.user_metadata?.access_level || 'free'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+        <TabsContent value="comprehensive" className="space-y-6">
+          <ComprehensiveTestSuite />
+        </TabsContent>
+
+        <TabsContent value="component-safety" className="space-y-6">
+          <ComponentTypeSafetyTest />
+        </TabsContent>
+      </Tabs>
     </div>
   );
-}
+};
+
+export default DevTests;

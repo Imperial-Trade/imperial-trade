@@ -1,4 +1,5 @@
 
+
 // Enhanced utility to track legacy components and monitor migration progress
 // This helps identify components that are no longer needed after optimization
 
@@ -28,7 +29,8 @@ export const LEGACY_COMPONENTS = {
   NewAlertForm: {
     replacement: 'OptimizedNewAlertForm',
     reason: 'Unnecessary wrapper component causing redirect overhead',
-    status: 'removed'
+    status: 'removed',
+    performance_gain: 'Reduced bundle size'
   },
 
   // DEPRECATED BUT KEPT FOR COMPATIBILITY
@@ -54,12 +56,12 @@ export function logLegacyUsage(componentName: keyof typeof LEGACY_COMPONENTS) {
       `⚠️ Legacy component "${componentName}" is deprecated.\n` +
       `Reason: ${info.reason}\n` +
       `Please migrate to "${info.replacement}" for better performance.\n` +
-      `Benefits: ${info.performance_gain}`
+      `Benefits: ${info.performance_gain || 'General improvements'}`
     );
   } else if (info.status === 'migrated') {
     console.info(
       `🔄 Legacy component "${componentName}" automatically redirected to "${info.replacement}"\n` +
-      `Performance improvement: ${info.performance_gain}`
+      `Performance improvement: ${info.performance_gain || 'System optimization'}`
     );
   }
 }
@@ -105,3 +107,4 @@ if (typeof window !== 'undefined') {
     }
   }, 1000);
 }
+

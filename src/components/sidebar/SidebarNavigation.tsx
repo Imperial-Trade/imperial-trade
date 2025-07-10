@@ -29,19 +29,23 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
   const location = useLocation();
 
   const isActive = (url: string) => {
+    // Handle both exact matches and home route special case
+    if (url === "/dashboard/home") {
+      return location.pathname === "/dashboard/home" || location.pathname === "/dashboard";
+    }
     return location.pathname === url;
   };
 
   const navigationItems = [
     { to: "/dashboard/home", icon: Home, label: "Home" },
     { to: "/dashboard/education", icon: GraduationCap, label: "Education" },
-    { to: "/dashboard/signal-stream", icon: Radio, label: "Signal Stream" },
+    { to: "/dashboard/signals", icon: Radio, label: "Signal Stream" },
     { to: "/dashboard/live", icon: Video, label: "Live Sessions" },
     { to: "/dashboard/forum", icon: MessageSquare, label: "Forum" },
     { to: "/partnership", icon: Briefcase, label: "IB Partnership" },
-    { to: "/dashboard/advanced-tools", icon: Wrench, label: "Advanced Tools" },
-    { to: "/dashboard/my-progress", icon: TrendingUp, label: "My Progress" },
-    { to: "/dashboard/athena", icon: Bot, label: "Athena AI" },
+    { to: "/dashboard/tools", icon: Wrench, label: "Advanced Tools" },
+    { to: "/dashboard/progress", icon: TrendingUp, label: "My Progress" },
+    { to: "/dashboard/athena-test", icon: Bot, label: "Athena AI" },
   ];
 
   const handleNavigationClick = (e: React.MouseEvent) => {

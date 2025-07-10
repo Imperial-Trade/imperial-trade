@@ -23,6 +23,11 @@ export function SidebarAdminSection({ isCollapsed, userAccessLevel }: SidebarAdm
     return location.pathname === url;
   };
 
+  const handleNavigationClick = (e: React.MouseEvent) => {
+    // Prevent the sidebar click handler from being triggered
+    e.stopPropagation();
+  };
+
   if (userAccessLevel !== "admin") {
     return null;
   }
@@ -45,7 +50,11 @@ export function SidebarAdminSection({ isCollapsed, userAccessLevel }: SidebarAdm
               }`}
               tooltip={isCollapsed ? "Admin Panel" : undefined}
             >
-              <Link to="/dashboard/admin" className="flex items-center gap-3 px-3 py-2">
+              <Link 
+                to="/dashboard/admin" 
+                className="flex items-center gap-3 px-3 py-2"
+                onClick={handleNavigationClick}
+              >
                 <Settings className="w-4 h-4 shrink-0" />
                 {!isCollapsed && (
                   <span className="text-sm font-medium">Admin Panel</span>

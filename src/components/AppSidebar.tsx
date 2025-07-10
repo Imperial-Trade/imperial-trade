@@ -18,8 +18,15 @@ export function AppSidebar() {
   const { state: sidebarState, setOpenMobile } = useSidebar();
   const isCollapsed = sidebarState === "collapsed";
 
-  const handleSidebarClick = () => {
-    // Close the sidebar when clicking inside it
+  const handleSidebarClick = (e: React.MouseEvent) => {
+    // Close the sidebar when clicking inside it (but not on interactive elements)
+    if (e.target === e.currentTarget) {
+      setOpenMobile(false);
+    }
+  };
+
+  const handleContentClick = () => {
+    // Close the sidebar when clicking on the main content area
     setOpenMobile(false);
   };
 
@@ -30,21 +37,23 @@ export function AppSidebar() {
       variant="floating"
       onClick={handleSidebarClick}
     >
-      <SidebarHeader className="p-4 border-b border-border/20">
-        <SidebarBrand isCollapsed={isCollapsed} />
-      </SidebarHeader>
+      <div className="h-full bg-background/80 backdrop-blur-xl" onClick={handleContentClick}>
+        <SidebarHeader className="p-4 border-b border-border/20">
+          <SidebarBrand isCollapsed={isCollapsed} />
+        </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4">
-        <SidebarNavigation isCollapsed={isCollapsed} />
-        <SidebarAdminSection 
-          isCollapsed={isCollapsed} 
-          userAccessLevel={user?.user_metadata?.access_level} 
-        />
-      </SidebarContent>
+        <SidebarContent className="px-3 py-4">
+          <SidebarNavigation isCollapsed={isCollapsed} />
+          <SidebarAdminSection 
+            isCollapsed={isCollapsed} 
+            userAccessLevel={user?.user_metadata?.access_level} 
+          />
+        </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        <SidebarUserMenu isCollapsed={isCollapsed} />
-      </SidebarFooter>
+        <SidebarFooter className="p-4">
+          <SidebarUserMenu isCollapsed={isCollapsed} />
+        </SidebarFooter>
+      </div>
     </Sidebar>
   );
 }

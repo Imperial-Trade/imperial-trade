@@ -14,8 +14,8 @@ import {
   XCircle,
   Activity
 } from 'lucide-react';
-import { OptimizedNewAlertForm } from '@/components/signals/OptimizedNewAlertForm';
-import { TradeAlertCard } from '@/components/signals/TradeAlertCard';
+import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
+import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { useOptimizedTradingRealtime } from '@/hooks/useOptimizedTradingRealtime';
 import { tradingApiService } from '@/api/services/TradingApiService';
@@ -35,27 +35,27 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
   });
 
   const { 
-    tradeAlerts, 
-    loading, 
+    alerts, 
+    isLoading, 
     error, 
-    refetch 
-  } = useOptimizedTrading();
+    refreshAlerts 
+  } = useOptimizedTrading(currentUser?.id || '', true);
 
   // Enable real-time updates
-  useOptimizedTradingRealtime();
+  useOptimizedTradingRealtime(currentUser?.id || '', true);
 
   useEffect(() => {
-    if (tradeAlerts.length > 0) {
+    if (alerts.length > 0) {
       calculateStats();
     }
-  }, [tradeAlerts]);
+  }, [alerts]);
 
   const calculateStats = () => {
-    const total = tradeAlerts.length;
-    const active = tradeAlerts.filter(alert => alert.status === 'active').length;
-    const closed = tradeAlerts.filter(alert => alert.status === 'closed').length;
-    const successful = tradeAlerts.filter(alert => 
-      alert.status === 'closed' && alert.tp_hits && alert.tp_hits.length > 0
+    const total = alerts.length;
+    const active = alerts.filter(alert => alert.status === 'active').length;
+    const closed = alerts.filter(alert => alert.status === 'closed').length;
+    const successful = alerts.filter(alert => 
+      alert.status === 'closed' && alert.tpHits && alert.tpHits.length > 0
     ).length;
     
     setSignalStats({
@@ -83,7 +83,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
         tp4: signalData.tp4,
         tp5: signalData.tp5,
         notes: signalData.notes
-      });
+      }, currentUser?.id || '');
 
       if (result.success) {
         console.log('Signal created successfully:', result.data);
@@ -104,7 +104,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
         }
 
         // Refresh the trade alerts list
-        refetch();
+        await refreshAlerts();
         
         // Hide the form
         setShowCreateForm(false);
@@ -122,7 +122,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
   const handleSignalUpdate = async (signalId: string, updates: any) => {
     try {
-      const result = await tradingApiService.updateAlert(signalId, updates);
+      const result = await tradingApiService.updateAlert(signalId, updates, currentUser?.id || '');
       
       if (result.success && currentUser) {
         // Log admin action
@@ -135,7 +135,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
         );
         
         // Refresh the list
-        refetch();
+        await refreshAlerts();
       }
       
       return result;
@@ -147,7 +147,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
   const handleSignalDelete = async (signalId: string) => {
     try {
-      const result = await tradingApiService.deleteAlert(signalId);
+      const result = await tradingApiService.deleteAlert(signalId, currentUser?.id || '');
       
       if (result.success && currentUser) {
         // Log admin action
@@ -160,7 +160,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
         );
         
         // Refresh the list
-        refetch();
+        await refreshAlerts();
       }
       
       return result;
@@ -170,7 +170,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card className="glass-effect border-default">
         <CardContent className="p-6">
@@ -285,11 +285,22 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
             <TabsContent value="all" className="p-6">
               <div className="grid gap-4">
-                {tradeAlerts.length > 0 ? (
-                  tradeAlerts.map((alert) => (
+                {alerts.length > 0 ? (
+                  alerts.map((alert) => (
                     <TradeAlertCard
                       key={alert.id}
-                      alert={alert}
+                      alert={{
+                        ...alert,
+                        asset_name: alert.assetName,
+                        finnhub_symbol: alert.finnhubSymbol,
+                        trade_type: alert.tradeType,
+                        entry_price: alert.entryPrice,
+                        stop_loss: alert.stopLoss,
+                        tp_hits: alert.tpHits,
+                        close_reason: alert.closeReason,
+                        created_date: alert.createdAt,
+                        updated_date: alert.updatedAt
+                      }}
                       onUpdate={(updates) => handleSignalUpdate(alert.id, updates)}
                       onDelete={() => handleSignalDelete(alert.id)}
                       isAdmin={true}
@@ -311,10 +322,21 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
             <TabsContent value="active" className="p-6">
               <div className="grid gap-4">
-                {tradeAlerts.filter(alert => alert.status === 'active').map((alert) => (
+                {alerts.filter(alert => alert.status === 'active').map((alert) => (
                   <TradeAlertCard
                     key={alert.id}
-                    alert={alert}
+                    alert={{
+                      ...alert,
+                      asset_name: alert.assetName,
+                      finnhub_symbol: alert.finnhubSymbol,
+                      trade_type: alert.tradeType,
+                      entry_price: alert.entryPrice,
+                      stop_loss: alert.stopLoss,
+                      tp_hits: alert.tpHits,
+                      close_reason: alert.closeReason,
+                      created_date: alert.createdAt,
+                      updated_date: alert.updatedAt
+                    }}
                     onUpdate={(updates) => handleSignalUpdate(alert.id, updates)}
                     onDelete={() => handleSignalDelete(alert.id)}
                     isAdmin={true}
@@ -325,10 +347,21 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
             <TabsContent value="closed" className="p-6">
               <div className="grid gap-4">
-                {tradeAlerts.filter(alert => alert.status === 'closed').map((alert) => (
+                {alerts.filter(alert => alert.status === 'closed').map((alert) => (
                   <TradeAlertCard
                     key={alert.id}
-                    alert={alert}
+                    alert={{
+                      ...alert,
+                      asset_name: alert.assetName,
+                      finnhub_symbol: alert.finnhubSymbol,
+                      trade_type: alert.tradeType,
+                      entry_price: alert.entryPrice,
+                      stop_loss: alert.stopLoss,
+                      tp_hits: alert.tpHits,
+                      close_reason: alert.closeReason,
+                      created_date: alert.createdAt,
+                      updated_date: alert.updatedAt
+                    }}
                     onUpdate={(updates) => handleSignalUpdate(alert.id, updates)}
                     onDelete={() => handleSignalDelete(alert.id)}
                     isAdmin={true}

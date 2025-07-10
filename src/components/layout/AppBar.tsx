@@ -1,7 +1,6 @@
-
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Crown, Info, Briefcase, Star, Menu } from "lucide-react";
+import { Crown, Info, Briefcase, Star, Menu, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -11,10 +10,12 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AppBar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { user, loading } = useAuth();
 
   const navigationItems = [
     { to: "/about", icon: Info, label: "About" },
@@ -23,6 +24,36 @@ const AppBar: React.FC = () => {
   ];
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  // Don't render the auth-dependent button while loading
+  const renderAuthButton = () => {
+    if (loading) return null;
+    
+    if (user) {
+      return (
+        <Link to="/dashboard/home">
+          <Button
+            size="sm"
+            className="bg-accent-green hover:bg-green-500 text-white flex items-center gap-2"
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Dashboard
+          </Button>
+        </Link>
+      );
+    }
+    
+    return (
+      <Link to="/account-request">
+        <Button
+          size="sm"
+          className="bg-accent-green hover:bg-green-500 text-white"
+        >
+          Get Started
+        </Button>
+      </Link>
+    );
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
@@ -46,16 +77,9 @@ const AppBar: React.FC = () => {
         ))}
       </nav>
 
-      {/* Desktop Get Started Button */}
+      {/* Desktop Auth Button */}
       <div className="hidden md:flex items-center gap-4">
-        <Link to="/account-request">
-          <Button
-            size="sm"
-            className="bg-accent-green hover:bg-green-500 text-white"
-          >
-            Get Started
-          </Button>
-        </Link>
+        {renderAuthButton()}
       </div>
 
       {/* Mobile Navigation */}
@@ -93,14 +117,28 @@ const AppBar: React.FC = () => {
               ))}
               
               <div className="mt-6 pt-6 border-t border-border/50">
-                <Link to="/account-request" onClick={closeMobileMenu}>
-                  <Button
-                    size="lg"
-                    className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold"
-                  >
-                    Get Started
-                  </Button>
-                </Link>
+                {!loading && (
+                  user ? (
+                    <Link to="/dashboard/home" onClick={closeMobileMenu}>
+                      <Button
+                        size="lg"
+                        className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold flex items-center gap-2"
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link to="/account-request" onClick={closeMobileMenu}>
+                      <Button
+                        size="lg"
+                        className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold"
+                      >
+                        Get Started
+                      </Button>
+                    </Link>
+                  )
+                )}
               </div>
             </nav>
           </SheetContent>

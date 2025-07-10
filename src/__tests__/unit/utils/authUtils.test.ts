@@ -1,5 +1,6 @@
 
 import { describe, it, expect } from 'vitest';
+import { User } from '@supabase/supabase-js';
 import { 
   validateUserAccess, 
   hasAdminAccess, 
@@ -10,32 +11,45 @@ import {
 } from '@/utils/authUtils';
 
 describe('Auth Utils', () => {
-  const mockUser = {
+  const createMockUser = (overrides: Partial<User> = {}): User => ({
     id: '123',
+    aud: 'authenticated',
+    role: 'authenticated',
     email: 'test@example.com',
+    email_confirmed_at: '2023-01-01T00:00:00.000Z',
+    phone: null,
+    confirmed_at: '2023-01-01T00:00:00.000Z',
+    last_sign_in_at: '2023-01-01T00:00:00.000Z',
+    app_metadata: {},
     user_metadata: {
       access_level: 'user',
       role: 'user'
-    }
-  };
+    },
+    identities: [],
+    created_at: '2023-01-01T00:00:00.000Z',
+    updated_at: '2023-01-01T00:00:00.000Z',
+    ...overrides
+  });
 
-  const mockAdminUser = {
+  const mockUser = createMockUser();
+
+  const mockAdminUser = createMockUser({
     id: '456',
     email: 'admin@example.com',
     user_metadata: {
       access_level: 'admin',
       role: 'admin'
     }
-  };
+  });
 
-  const mockModeratorUser = {
+  const mockModeratorUser = createMockUser({
     id: '789',
     email: 'mod@example.com',
     user_metadata: {
       access_level: 'moderator',
       role: 'moderator'
     }
-  };
+  });
 
   describe('validateUserAccess', () => {
     it('returns true for valid user with matching access level', () => {
@@ -51,11 +65,10 @@ describe('Auth Utils', () => {
     });
 
     it('returns false for user without metadata', () => {
-      const userWithoutMetadata = {
-        id: '123',
-        email: 'test@example.com'
-      };
-      expect(validateUserAccess(userWithoutMetadata as any, 'user')).toBe(false);
+      const userWithoutMetadata = createMockUser({
+        user_metadata: undefined as any
+      });
+      expect(validateUserAccess(userWithoutMetadata, 'user')).toBe(false);
     });
   });
 
@@ -115,24 +128,24 @@ describe('Auth Utils', () => {
 
   describe('getUserDisplayName', () => {
     it('returns display name from metadata', () => {
-      const userWithDisplayName = {
-        ...mockUser,
+      const userWithDisplayName = createMockUser({
         user_metadata: {
-          ...mockUser.user_metadata,
-          display_name: 'John Doe'
+          display_name: 'John Doe',
+          access_level: 'user',
+          role: 'user'
         }
-      };
+      });
       expect(getUserDisplayName(userWithDisplayName)).toBe('John Doe');
     });
 
     it('returns full name from metadata if no display name', () => {
-      const userWithFullName = {
-        ...mockUser,
+      const userWithFullName = createMockUser({
         user_metadata: {
-          ...mockUser.user_metadata,
-          full_name: 'Jane Smith'
+          full_name: 'Jane Smith',
+          access_level: 'user',
+          role: 'user'
         }
-      };
+      });
       expect(getUserDisplayName(userWithFullName)).toBe('Jane Smith');
     });
 

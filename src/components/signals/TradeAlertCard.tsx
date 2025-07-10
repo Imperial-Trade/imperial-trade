@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2, User, Crown, GraduationCap } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
@@ -33,7 +33,7 @@ const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClas
     </div>
 );
 
-const TradeAlertCard: React.FC<TradeAlertCardProps> = ({ 
+const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string } }> = ({ 
   alert, 
   onStatusUpdate, 
   onTakeProfitHit, 
@@ -45,7 +45,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
   priceSource, 
   isRecentClosure,
   className,
-  testId 
+  testId,
+  creator
 }) => {
   const [showCopyPanel, setShowCopyPanel] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
@@ -85,6 +86,42 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
     setShowCalculator(prev => !prev);
   };
 
+  // Get role icon and color
+  const getRoleIcon = (role: string) => {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return <Crown className="w-4 h-4 text-yellow-400" />;
+      case 'educator':
+        return <GraduationCap className="w-4 h-4 text-blue-400" />;
+      default:
+        return <User className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const getRoleBadgeClass = (role: string) => {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
+      case 'educator':
+        return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+      default:
+        return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d ago`;
+  };
+
   return (
     <div 
       className={`bg-gray-800/50 rounded-lg border border-gray-700 shadow-lg overflow-hidden transition-all duration-300 hover:shadow-emerald-500/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-amber-400/50 hover:border-amber-400' : 'hover:border-emerald-400/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-red-500/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-emerald-500/30' : 'ring-2 ring-gray-500/30')} ${className || ''}`}
@@ -102,6 +139,25 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
       )}
 
       <div className="p-4">
+        {/* Signal Creator Attribution */}
+        {creator && (
+          <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-700/30">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-sm text-gray-400">
+                {getRoleIcon(creator.role)}
+                <span>Posted by</span>
+              </div>
+              <span className="font-semibold text-gray-200">{creator.display_name}</span>
+              <Badge className={getRoleBadgeClass(creator.role)}>
+                {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
+              </Badge>
+            </div>
+            <div className="text-xs text-gray-500">
+              {formatTimeAgo(alert.created_date)}
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-between items-start">
             <div>
                 <h3 className="text-lg font-bold">{alert.asset_name}</h3>

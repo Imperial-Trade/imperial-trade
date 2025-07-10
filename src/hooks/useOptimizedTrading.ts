@@ -1,10 +1,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { tradingApiService } from '@/api/services/TradingApiService';
+import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
 interface UseOptimizedTradingReturn {
-  alerts: TradeAlertResponseDto[];
+  alerts: TradeAlertWithProfile[];
   isLoading: boolean;
   error: string | null;
   createAlert: (dto: CreateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
@@ -14,12 +14,12 @@ interface UseOptimizedTradingReturn {
 }
 
 // Cache for storing alerts data
-const alertsCache = new Map<string, { data: TradeAlertResponseDto[], timestamp: number }>();
+const alertsCache = new Map<string, { data: TradeAlertWithProfile[], timestamp: number }>();
 const CACHE_DURATION = 10000; // 10 seconds cache
 const POLLING_INTERVAL = 60000; // Reduced from 30s to 60s
 
-export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn => {
-  const [alerts, setAlerts] = useState<TradeAlertResponseDto[]>([]);
+export const useOptimizedTrading = (userId: string, showAllSignals: boolean = false): UseOptimizedTradingReturn => {
+  const [alerts, setAlerts] = useState<TradeAlertWithProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<number>(0);
@@ -27,11 +27,12 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const shouldFetchAlerts = Boolean(userId && userId.trim() !== '');
+  const shouldFetchAlerts = showAllSignals || Boolean(userId && userId.trim() !== '');
+  const cacheKey = showAllSignals ? 'all_signals' : userId;
 
   // Check cache first
-  const getCachedAlerts = useCallback((userId: string): TradeAlertResponseDto[] | null => {
-    const cached = alertsCache.get(userId);
+  const getCachedAlerts = useCallback((key: string): TradeAlertWithProfile[] | null => {
+    const cached = alertsCache.get(key);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
       return cached.data;
     }
@@ -39,8 +40,8 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
   }, []);
 
   // Update cache
-  const setCachedAlerts = useCallback((userId: string, data: TradeAlertResponseDto[]) => {
-    alertsCache.set(userId, { data, timestamp: Date.now() });
+  const setCachedAlerts = useCallback((key: string, data: TradeAlertWithProfile[]) => {
+    alertsCache.set(key, { data, timestamp: Date.now() });
   }, []);
 
   const fetchAlerts = useCallback(async (force = false) => {
@@ -53,7 +54,7 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
     }
 
     // Check cache first
-    const cachedData = getCachedAlerts(userId);
+    const cachedData = getCachedAlerts(cacheKey);
     if (cachedData && !force) {
       setAlerts(cachedData);
       return;
@@ -70,11 +71,28 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
     setLastFetch(now);
 
     try {
-      const result = await tradingApiService.getAllAlerts(userId);
+      let result;
+      
+      if (showAllSignals) {
+        // Fetch all public signals with profile information
+        result = await tradingApiService.getAllPublicAlertsWithProfiles();
+      } else {
+        // Fetch user-specific signals and convert to TradeAlertWithProfile format
+        const userAlertsResult = await tradingApiService.getAllAlerts(userId);
+        if (userAlertsResult.success && userAlertsResult.data) {
+          result = {
+            success: true,
+            data: userAlertsResult.data.map(alert => ({ ...alert, creator: undefined })),
+            error: undefined
+          };
+        } else {
+          result = userAlertsResult;
+        }
+      }
       
       if (result.success && result.data) {
         setAlerts(result.data);
-        setCachedAlerts(userId, result.data);
+        setCachedAlerts(cacheKey, result.data);
       } else {
         setError(result.error || 'Failed to fetch alerts');
       }
@@ -87,7 +105,7 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
     } finally {
       setIsLoading(false);
     }
-  }, [userId, shouldFetchAlerts, lastFetch, getCachedAlerts, setCachedAlerts]);
+  }, [userId, shouldFetchAlerts, lastFetch, getCachedAlerts, setCachedAlerts, showAllSignals, cacheKey]);
 
   // Setup polling with smart intervals
   useEffect(() => {
@@ -126,7 +144,7 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
   }, [fetchAlerts, shouldFetchAlerts]);
 
   const createAlert = useCallback(async (dto: CreateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
-    if (!shouldFetchAlerts) {
+    if (!userId || !userId.trim()) {
       console.warn('Cannot create alert: invalid userId');
       return null;
     }
@@ -134,11 +152,8 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
     try {
       const result = await tradingApiService.createAlert(dto, userId);
       if (result.success && result.data) {
-        // Update local state immediately
-        setAlerts(prev => [result.data!, ...prev]);
-        // Update cache
-        const updatedAlerts = [result.data, ...alerts];
-        setCachedAlerts(userId, updatedAlerts);
+        // Force refresh to get the updated list with profile information
+        await fetchAlerts(true);
         return result.data;
       } else {
         console.error('Failed to create alert:', result.error);
@@ -148,10 +163,10 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
       console.error('Error creating alert:', error);
       return null;
     }
-  }, [userId, shouldFetchAlerts, alerts, setCachedAlerts]);
+  }, [userId, fetchAlerts]);
 
   const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
-    if (!shouldFetchAlerts) {
+    if (!userId || !userId.trim()) {
       console.warn('Cannot update alert: invalid userId');
       return null;
     }
@@ -161,13 +176,13 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
       if (result.success && result.data) {
         // Update local state immediately
         setAlerts(prev => prev.map(alert => 
-          alert.id === id ? result.data! : alert
+          alert.id === id ? { ...alert, ...result.data! } : alert
         ));
         // Update cache
         const updatedAlerts = alerts.map(alert => 
-          alert.id === id ? result.data! : alert
+          alert.id === id ? { ...alert, ...result.data! } : alert
         );
-        setCachedAlerts(userId, updatedAlerts);
+        setCachedAlerts(cacheKey, updatedAlerts);
         return result.data;
       } else {
         console.error('Failed to update alert:', result.error);
@@ -177,10 +192,10 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
       console.error('Error updating alert:', error);
       return null;
     }
-  }, [userId, shouldFetchAlerts, alerts, setCachedAlerts]);
+  }, [userId, alerts, setCachedAlerts, cacheKey]);
 
   const deleteAlert = useCallback(async (id: string): Promise<boolean> => {
-    if (!shouldFetchAlerts) {
+    if (!userId || !userId.trim()) {
       console.warn('Cannot delete alert: invalid userId');
       return false;
     }
@@ -192,7 +207,7 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
         setAlerts(prev => prev.filter(alert => alert.id !== id));
         // Update cache
         const updatedAlerts = alerts.filter(alert => alert.id !== id);
-        setCachedAlerts(userId, updatedAlerts);
+        setCachedAlerts(cacheKey, updatedAlerts);
         return true;
       } else {
         console.error('Failed to delete alert:', result.error);
@@ -202,7 +217,7 @@ export const useOptimizedTrading = (userId: string): UseOptimizedTradingReturn =
       console.error('Error deleting alert:', error);
       return false;
     }
-  }, [userId, shouldFetchAlerts, alerts, setCachedAlerts]);
+  }, [userId, alerts, setCachedAlerts, cacheKey]);
 
   const refreshAlerts = useCallback(async () => {
     await fetchAlerts(true);

@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
-import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
@@ -25,14 +26,14 @@ export default function SignalStream() {
     fetchUser();
   }, []);
 
-  // Use the optimized trading hook
+  // Use the optimized trading hook with showAllSignals = true to get all public signals
   const {
     alerts,
     isLoading,
     error,
     updateAlert,
     refreshAlerts
-  } = useOptimizedTrading(user?.id || '');
+  } = useOptimizedTrading(user?.id || '', true); // TRUE = show all signals from all users
 
   const { activeAlerts, closedAlerts } = useMemo(() => {
     const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
@@ -66,6 +67,13 @@ export default function SignalStream() {
 
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
     if (updateInProgress.has(alert.id)) return;
+    
+    // Only allow users to modify their own signals
+    if (user?.id !== alert.user_id && user?.user_metadata?.role !== 'admin') {
+      console.warn('User not authorized to update this signal');
+      return;
+    }
+    
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     
     try {
@@ -100,10 +108,16 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert]);
+  }, [updateInProgress, updateAlert, user]);
 
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     if (updateInProgress.has(alert.id)) return;
+    
+    // Only allow users to modify their own signals
+    if (user?.id !== alert.user_id && user?.user_metadata?.role !== 'admin') {
+      return;
+    }
+    
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     
     try {
@@ -157,10 +171,16 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert]);
+  }, [updateInProgress, updateAlert, user]);
 
   const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
     if (updateInProgress.has(alert.id)) return;
+    
+    // Only allow users to modify their own signals
+    if (user?.id !== alert.user_id && user?.user_metadata?.role !== 'admin') {
+      return;
+    }
+    
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     
     try {
@@ -206,10 +226,16 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert]);
+  }, [updateInProgress, updateAlert, user]);
 
   const handleOrderActivation = useCallback(async (alert: any) => {
     if (updateInProgress.has(alert.id)) return;
+    
+    // Only allow users to modify their own signals
+    if (user?.id !== alert.user_id && user?.user_metadata?.role !== 'admin') {
+      return;
+    }
+    
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     
     try {
@@ -234,7 +260,7 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert]);
+  }, [updateInProgress, updateAlert, user]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -248,7 +274,7 @@ export default function SignalStream() {
               Live Signal <span className="text-accent-green">Stream</span>
             </h1>
             <p className="text-muted-foreground">
-              Real-time trading signals with live price tracking
+              Real-time trading signals with live price tracking from all educators
             </p>
           </div>
         </div>
@@ -295,7 +321,8 @@ export default function SignalStream() {
                             tp_hits: alert.tpHits,
                             close_reason: alert.closeReason,
                             created_date: alert.createdAt,
-                            updated_date: alert.updatedAt
+                            updated_date: alert.updatedAt,
+                            user_id: alert.creator?.id
                           }} 
                           onStatusUpdate={handleStatusUpdate}
                           onTakeProfitHit={handleTakeProfitHit} 
@@ -306,6 +333,7 @@ export default function SignalStream() {
                           connectionStatus={connectionStatus as 'connecting' | 'connected' | 'error'}
                           priceSource={priceSource}
                           isRecentClosure={false}
+                          creator={alert.creator}
                         />
                       ))}
                     </div>
@@ -339,7 +367,8 @@ export default function SignalStream() {
                             tp_hits: alert.tpHits,
                             close_reason: alert.closeReason,
                             created_date: alert.createdAt,
-                            updated_date: alert.updatedAt
+                            updated_date: alert.updatedAt,
+                            user_id: alert.creator?.id
                           }}
                           onStatusUpdate={handleStatusUpdate}
                           onTakeProfitHit={handleTakeProfitHit} 
@@ -350,6 +379,7 @@ export default function SignalStream() {
                           connectionStatus={connectionStatus as 'connecting' | 'connected' | 'error'}
                           priceSource={priceSource}
                           isRecentClosure={true}
+                          creator={alert.creator}
                         />
                       ))}
                     </div>

@@ -1,8 +1,16 @@
-
 import { apiClient, TableRow, TableInsert, TableUpdate } from '../client/ApiClient';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { ApiResponse } from '@/types/common';
 import { isTradeAlert } from '@/types/guards';
+
+export interface TradeAlertWithProfile extends TradeAlertResponseDto {
+  creator?: {
+    id: string;
+    display_name: string;
+    role: string;
+    avatar_url?: string;
+  };
+}
 
 export class TradingApiService {
   private static instance: TradingApiService;
@@ -71,6 +79,9 @@ export class TradingApiService {
         createdAt: result.data.created_at,
         updatedAt: result.data.updated_at
       };
+
+      // Dispatch custom event to notify about new signal
+      window.dispatchEvent(new CustomEvent('signal-posted'));
 
       return {
         success: true,
@@ -192,6 +203,81 @@ export class TradingApiService {
           closeReason: alert.close_reason,
           createdAt: alert.created_at,
           updatedAt: alert.updated_at
+        }));
+
+      return {
+        success: true,
+        data: responseDtos,
+        error: undefined
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        data: undefined
+      };
+    }
+  }
+
+  // NEW: Get all public signals with user profile information
+  async getAllPublicAlertsWithProfiles(): Promise<ApiResponse<TradeAlertWithProfile[]>> {
+    try {
+      // Use a raw query to join trade_alerts with profiles
+      const { data, error } = await apiClient.supabase
+        .from('trade_alerts')
+        .select(`
+          *,
+          profiles!inner(
+            id,
+            display_name,
+            role,
+            avatar_url
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        return {
+          success: false,
+          error: error.message,
+          data: undefined
+        };
+      }
+
+      if (!data) {
+        return {
+          success: true,
+          data: [],
+          error: undefined
+        };
+      }
+
+      const responseDtos: TradeAlertWithProfile[] = data
+        .filter(isTradeAlert)
+        .map(alert => ({
+          id: alert.id,
+          assetName: alert.asset_name,
+          finnhubSymbol: alert.finnhub_symbol,
+          tradeType: alert.trade_type,
+          entryPrice: Number(alert.entry_price),
+          stopLoss: Number(alert.stop_loss),
+          status: alert.status,
+          tp1: alert.tp1 ? Number(alert.tp1) : undefined,
+          tp2: alert.tp2 ? Number(alert.tp2) : undefined,
+          tp3: alert.tp3 ? Number(alert.tp3) : undefined,
+          tp4: alert.tp4 ? Number(alert.tp4) : undefined,
+          tp5: alert.tp5 ? Number(alert.tp5) : undefined,
+          tpHits: alert.tp_hits || [],
+          notes: alert.notes,
+          closeReason: alert.close_reason,
+          createdAt: alert.created_at,
+          updatedAt: alert.updated_at,
+          creator: alert.profiles ? {
+            id: alert.profiles.id,
+            display_name: alert.profiles.display_name || 'Anonymous User',
+            role: alert.profiles.role || 'user',
+            avatar_url: alert.profiles.avatar_url
+          } : undefined
         }));
 
       return {

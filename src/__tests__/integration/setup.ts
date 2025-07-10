@@ -1,5 +1,5 @@
 
-import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
 // Integration test setup

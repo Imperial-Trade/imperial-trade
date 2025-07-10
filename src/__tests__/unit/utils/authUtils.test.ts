@@ -1,0 +1,174 @@
+
+import { describe, it, expect } from 'vitest';
+import { 
+  validateUserAccess, 
+  hasAdminAccess, 
+  hasModeratorAccess,
+  canAccessAdminPanel,
+  getUserDisplayName,
+  formatUserRole 
+} from '@/utils/authUtils';
+
+describe('Auth Utils', () => {
+  const mockUser = {
+    id: '123',
+    email: 'test@example.com',
+    user_metadata: {
+      access_level: 'user',
+      role: 'user'
+    }
+  };
+
+  const mockAdminUser = {
+    id: '456',
+    email: 'admin@example.com',
+    user_metadata: {
+      access_level: 'admin',
+      role: 'admin'
+    }
+  };
+
+  const mockModeratorUser = {
+    id: '789',
+    email: 'mod@example.com',
+    user_metadata: {
+      access_level: 'moderator',
+      role: 'moderator'
+    }
+  };
+
+  describe('validateUserAccess', () => {
+    it('returns true for valid user with matching access level', () => {
+      expect(validateUserAccess(mockUser, 'user')).toBe(true);
+    });
+
+    it('returns false for user without required access level', () => {
+      expect(validateUserAccess(mockUser, 'admin')).toBe(false);
+    });
+
+    it('returns false for null user', () => {
+      expect(validateUserAccess(null, 'user')).toBe(false);
+    });
+
+    it('returns false for user without metadata', () => {
+      const userWithoutMetadata = {
+        id: '123',
+        email: 'test@example.com'
+      };
+      expect(validateUserAccess(userWithoutMetadata as any, 'user')).toBe(false);
+    });
+  });
+
+  describe('hasAdminAccess', () => {
+    it('returns true for admin user', () => {
+      expect(hasAdminAccess(mockAdminUser)).toBe(true);
+    });
+
+    it('returns false for regular user', () => {
+      expect(hasAdminAccess(mockUser)).toBe(false);
+    });
+
+    it('returns false for moderator user', () => {
+      expect(hasAdminAccess(mockModeratorUser)).toBe(false);
+    });
+
+    it('returns false for null user', () => {
+      expect(hasAdminAccess(null)).toBe(false);
+    });
+  });
+
+  describe('hasModeratorAccess', () => {
+    it('returns true for moderator user', () => {
+      expect(hasModeratorAccess(mockModeratorUser)).toBe(true);
+    });
+
+    it('returns true for admin user (admin has moderator privileges)', () => {
+      expect(hasModeratorAccess(mockAdminUser)).toBe(true);
+    });
+
+    it('returns false for regular user', () => {
+      expect(hasModeratorAccess(mockUser)).toBe(false);
+    });
+
+    it('returns false for null user', () => {
+      expect(hasModeratorAccess(null)).toBe(false);
+    });
+  });
+
+  describe('canAccessAdminPanel', () => {
+    it('returns true for admin user', () => {
+      expect(canAccessAdminPanel(mockAdminUser)).toBe(true);
+    });
+
+    it('returns true for moderator user', () => {
+      expect(canAccessAdminPanel(mockModeratorUser)).toBe(true);
+    });
+
+    it('returns false for regular user', () => {
+      expect(canAccessAdminPanel(mockUser)).toBe(false);
+    });
+
+    it('returns false for null user', () => {
+      expect(canAccessAdminPanel(null)).toBe(false);
+    });
+  });
+
+  describe('getUserDisplayName', () => {
+    it('returns display name from metadata', () => {
+      const userWithDisplayName = {
+        ...mockUser,
+        user_metadata: {
+          ...mockUser.user_metadata,
+          display_name: 'John Doe'
+        }
+      };
+      expect(getUserDisplayName(userWithDisplayName)).toBe('John Doe');
+    });
+
+    it('returns full name from metadata if no display name', () => {
+      const userWithFullName = {
+        ...mockUser,
+        user_metadata: {
+          ...mockUser.user_metadata,
+          full_name: 'Jane Smith'
+        }
+      };
+      expect(getUserDisplayName(userWithFullName)).toBe('Jane Smith');
+    });
+
+    it('returns email if no display name or full name', () => {
+      expect(getUserDisplayName(mockUser)).toBe('test@example.com');
+    });
+
+    it('returns "Unknown User" for null user', () => {
+      expect(getUserDisplayName(null)).toBe('Unknown User');
+    });
+  });
+
+  describe('formatUserRole', () => {
+    it('formats admin role correctly', () => {
+      expect(formatUserRole('admin')).toBe('Administrator');
+    });
+
+    it('formats moderator role correctly', () => {
+      expect(formatUserRole('moderator')).toBe('Moderator');
+    });
+
+    it('formats educator role correctly', () => {
+      expect(formatUserRole('educator')).toBe('Educator');
+    });
+
+    it('formats user role correctly', () => {
+      expect(formatUserRole('user')).toBe('User');
+    });
+
+    it('handles unknown roles', () => {
+      expect(formatUserRole('unknown')).toBe('Unknown');
+    });
+
+    it('handles null/undefined roles', () => {
+      expect(formatUserRole(null as any)).toBe('User');
+      expect(formatUserRole(undefined as any)).toBe('User');
+    });
+  });
+});

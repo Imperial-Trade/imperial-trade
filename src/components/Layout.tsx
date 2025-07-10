@@ -8,7 +8,6 @@ import AppBar from "@/components/layout/AppBar"
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
 import { useSidebar } from "@/components/ui/sidebar"
 import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile"
-import { useEffect, useState } from "react"
 
 function DashboardHeader() {
   const { openMobile } = useSidebar();
@@ -58,7 +57,7 @@ function SidebarOverlay() {
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out ${
         isTablet ? 'w-72' : 'w-64'
       }`}>
-        <div className="h-full bg-background/95 backdrop-blur-xl border-r border-border/50 shadow-2xl flex flex-col">
+        <div className="h-full bg-background/95 backdrop-blur-xl border-r border-border/50 shadow-2xl">
           <AppSidebar />
         </div>
       </div>

@@ -34,7 +34,7 @@ export class TestDataFactory {
       id: '456e7890-f12b-34c5-d678-901234567890',
       assetName: 'EUR/USD',
       finnhubSymbol: 'OANDA:EUR_USD',
-      tradeType: 'BUY',
+      tradeType: 'buy',
       entryPrice: 1.0500,
       stopLoss: 1.0450,
       status: 'active',
@@ -98,7 +98,7 @@ export class TestDataFactory {
 
   static createMockTradeAlerts(count: number): TradeAlertResponseDto[] {
     const assets = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD'];
-    const tradeTypes = ['BUY', 'SELL'] as const;
+    const tradeTypes = ['buy', 'sell'] as const;
     const statuses = ['active', 'closed', 'pending'] as const;
 
     return Array.from({ length: count }, (_, index) =>

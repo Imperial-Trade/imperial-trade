@@ -150,8 +150,51 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
 
+      case 'createUser':
+        // Create new user
+        const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
+          email: userData.email,
+          password: userData.password,
+          email_confirm: true,
+          user_metadata: {
+            full_name: userData.display_name,
+            role: userData.role,
+            access_level: userData.access_level
+          }
+        })
+
+        if (createError) throw createError
+
+        // Create profile
+        const { error: profileCreateError } = await supabaseClient
+          .from('profiles')
+          .insert({
+            id: newUser.user.id,
+            display_name: userData.display_name,
+            role: userData.role,
+            user_type: userData.user_type,
+            access_level: userData.access_level,
+            account_status: 'active',
+            registration_source: 'admin_created'
+          })
+
+        if (profileCreateError) throw profileCreateError
+
+        // Log admin action
+        await supabaseClient.from('audit_logs').insert({
+          action: 'create_user',
+          admin_email: user.email,
+          target_entity: 'user',
+          target_id: newUser.user.id,
+          details: { created_user: userData }
+        })
+
+        return new Response(JSON.stringify({ success: true, user: newUser.user }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+
       case 'deleteUser':
-        // Delete user from auth
+        // Delete user
         const { error: deleteError } = await supabaseClient.auth.admin.deleteUser(userId)
         if (deleteError) throw deleteError
 
@@ -165,35 +208,6 @@ serve(async (req) => {
         })
 
         return new Response(JSON.stringify({ success: true }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-
-      case 'createUser':
-        // Create new user
-        const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
-          email: userData.email,
-          password: userData.password,
-          email_confirm: true,
-          user_metadata: {
-            full_name: userData.display_name,
-            role: userData.role,
-            access_level: userData.access_level,
-            registration_source: 'admin_created'
-          }
-        })
-
-        if (createError) throw createError
-
-        // Log admin action
-        await supabaseClient.from('audit_logs').insert({
-          action: 'create_user',
-          admin_email: user.email,
-          target_entity: 'user',
-          target_id: newUser.user.id,
-          details: { created_user_email: userData.email, role: userData.role }
-        })
-
-        return new Response(JSON.stringify({ success: true, user: newUser.user }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
 
@@ -224,10 +238,13 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('Error:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    console.error('Admin function error:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
   }
 })

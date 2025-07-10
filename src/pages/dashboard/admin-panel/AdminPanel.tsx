@@ -13,7 +13,8 @@ import {
   Database,
   Settings,
   Bell,
-  UserPlus
+  UserPlus,
+  TestTube
 } from 'lucide-react';
 import { ResponsiveUserManagementTable } from '@/components/admin/ResponsiveUserManagementTable';
 import { SystemMonitoring } from '@/components/admin/SystemMonitoring';
@@ -22,6 +23,7 @@ import { RealTimeNotifications } from '@/components/admin/RealTimeNotifications'
 import { RealtimeAuditLog } from '@/components/admin/RealtimeAuditLog';
 import { AdminTradeSignalsTab } from '@/components/admin/AdminTradeSignalsTab';
 import { AccountRequestManagement } from '@/components/account-request/AccountRequestManagement';
+import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuite';
 import AccessDenied from '@/components/AccessDenied';
 
 export default function AdminPanel() {
@@ -212,7 +214,7 @@ export default function AdminPanel() {
         {/* Main Admin Tabs */}
         <div className="px-4 sm:px-6">
           <Tabs defaultValue="users" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 bg-surface mb-6 h-auto">
+            <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 bg-surface mb-6 h-auto">
               <TabsTrigger value="users" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
                 <Users className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Users</span>
@@ -240,6 +242,10 @@ export default function AdminPanel() {
               <TabsTrigger value="trades" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
                 <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Trades</span>
+              </TabsTrigger>
+              <TabsTrigger value="tests" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                <TestTube className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Tests</span>
               </TabsTrigger>
             </TabsList>
 
@@ -269,6 +275,10 @@ export default function AdminPanel() {
 
             <TabsContent value="trades" className="w-full">
               <AdminTradeSignalsTab currentUser={user} />
+            </TabsContent>
+
+            <TabsContent value="tests" className="w-full">
+              <ComprehensiveTestSuite />
             </TabsContent>
           </Tabs>
         </div>

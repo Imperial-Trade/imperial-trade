@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { UserPlus, Info, Save, X } from 'lucide-react';
-import { createUserSchema, CreateUserData } from '@/lib/validations/adminUserSchema';
+import { CreateUserData } from '@/hooks/useAdminUserManagement';
+import { createUserSchema } from '@/lib/validations/adminUserSchema';
 import { toast } from 'sonner';
+import { UserPlus, Save, X, Info } from 'lucide-react';
 
 interface CreateUserDialogProps {
   onCreateUser: (userData: CreateUserData) => Promise<void>;
@@ -16,16 +17,16 @@ interface CreateUserDialogProps {
 
 export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateUserData>({
     email: '',
     password: '',
     display_name: '',
-    role: 'user',
-    access_level: 'user',
     user_type: 'member',
+    access_level: 'user',
+    role: 'user'
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
 
   const validateForm = () => {
     try {
@@ -54,17 +55,16 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
     try {
       setLoading(true);
       await onCreateUser(formData);
+      toast.success('User created successfully');
       setOpen(false);
       setFormData({
         email: '',
         password: '',
         display_name: '',
-        role: 'user',
-        access_level: 'user',
         user_type: 'member',
+        access_level: 'user',
+        role: 'user'
       });
-      setErrors({});
-      toast.success('User created successfully');
     } catch (error) {
       console.error('Error creating user:', error);
       toast.error('Failed to create user');
@@ -84,20 +84,16 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button className="bg-accent-green hover:bg-accent-green/80 text-white">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Create User
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Create a new user account</TooltipContent>
-        </Tooltip>
+        <Button className="bg-accent-blue hover:bg-accent-blue/80 text-white">
+          <UserPlus className="w-4 h-4 mr-2" />
+          Create User
+        </Button>
       </DialogTrigger>
       <DialogContent className="bg-surface border-default max-w-md">
         <DialogHeader>
           <DialogTitle className="text-primary">Create New User</DialogTitle>
         </DialogHeader>
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="email" className="text-primary">
@@ -124,12 +120,12 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
           
           <div>
             <Label htmlFor="password" className="text-primary">
-              Temporary Password
+              Password
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-3 h-3 ml-1 inline" />
                 </TooltipTrigger>
-                <TooltipContent>User will be prompted to change this password on first login</TooltipContent>
+                <TooltipContent>Minimum 8 characters required</TooltipContent>
               </Tooltip>
             </Label>
             <Input
@@ -138,7 +134,7 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
               value={formData.password}
               onChange={(e) => handleInputChange('password', e.target.value)}
               className={`bg-background border-default text-primary ${errors.password ? 'border-red-500' : ''}`}
-              placeholder="Enter temporary password"
+              placeholder="Enter secure password"
             />
             {errors.password && (
               <p className="text-red-400 text-sm mt-1">{errors.password}</p>
@@ -160,7 +156,7 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
               value={formData.display_name}
               onChange={(e) => handleInputChange('display_name', e.target.value)}
               className={`bg-background border-default text-primary ${errors.display_name ? 'border-red-500' : ''}`}
-              placeholder="Enter display name"
+              placeholder="Full Name"
             />
             {errors.display_name && (
               <p className="text-red-400 text-sm mt-1">{errors.display_name}</p>
@@ -199,7 +195,7 @@ export function CreateUserDialog({ onCreateUser }: CreateUserDialogProps) {
                 <TooltipTrigger asChild>
                   <Info className="w-3 h-3 ml-1 inline" />
                 </TooltipTrigger>
-                <TooltipContent>Controls what features the user can access</TooltipContent>
+                <TooltipContent>Controls system permissions</TooltipContent>
               </Tooltip>
             </Label>
             <Select value={formData.access_level} onValueChange={(value: 'user' | 'moderator' | 'admin') => handleInputChange('access_level', value)}>

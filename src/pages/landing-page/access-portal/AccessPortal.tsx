@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Crown, UserPlus } from "lucide-react";
 import SocialLoginButtons from "@/components/auth/SocialLoginButtons";
@@ -14,7 +15,7 @@ export default function AccessPortal() {
         loop
         muted
         playsInline
-        className="absolute z-0 w-auto min-w-full min-h-full max-w-none object-cover"
+        className="fixed inset-0 w-full h-full object-cover z-0"
         style={{ filter: "brightness(0.4)" }}
       >
         <source
@@ -34,7 +35,7 @@ export default function AccessPortal() {
 
       {/* Fallback Background if Video Fails */}
       <div
-        className="absolute inset-0 z-0 bg-gradient-to-br from-gray-900 via-blue-900 to-green-900"
+        className="fixed inset-0 z-0 bg-gradient-to-br from-gray-900 via-blue-900 to-green-900"
         style={{
           backgroundImage: `
             radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.3) 0%, transparent 50%),
@@ -45,7 +46,7 @@ export default function AccessPortal() {
       ></div>
 
       {/* Animated Chart Lines Overlay */}
-      <div className="absolute inset-0 z-5 opacity-20">
+      <div className="fixed inset-0 z-5 opacity-20">
         <svg
           className="w-full h-full"
           viewBox="0 0 1000 600"
@@ -78,7 +79,7 @@ export default function AccessPortal() {
       </div>
 
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] z-10"></div>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-[1px] z-10"></div>
 
       {/* Content */}
       <div className="relative z-20 max-w-md w-full">
@@ -139,13 +140,13 @@ export default function AccessPortal() {
       </div>
 
       {/* Floating Elements */}
-      <div className="absolute top-10 left-10 w-20 h-20 bg-green-500/10 rounded-full blur-xl animate-pulse z-5"></div>
+      <div className="fixed top-10 left-10 w-20 h-20 bg-green-500/10 rounded-full blur-xl animate-pulse z-5"></div>
       <div
-        className="absolute bottom-20 right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-pulse z-5"
+        className="fixed bottom-20 right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-pulse z-5"
         style={{ animationDelay: "1.5s" }}
       ></div>
       <div
-        className="absolute top-1/2 right-20 w-16 h-16 bg-purple-500/10 rounded-full blur-xl animate-pulse z-5"
+        className="fixed top-1/2 right-20 w-16 h-16 bg-purple-500/10 rounded-full blur-xl animate-pulse z-5"
         style={{ animationDelay: "3s" }}
       ></div>
 

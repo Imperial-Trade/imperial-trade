@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -89,7 +90,7 @@ export default function AccountRequestStatusPage() {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
+    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
       <VideoBackground />
 
       <div className="relative z-20 max-w-2xl w-full">

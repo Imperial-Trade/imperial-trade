@@ -9,7 +9,7 @@ export const VideoBackground: React.FC = () => {
         loop
         muted
         playsInline
-        className="absolute z-0 w-auto min-w-full min-h-full max-w-none object-cover"
+        className="fixed inset-0 w-full h-full object-cover z-0"
         style={{ filter: "brightness(0.4)" }}
       >
         <source
@@ -17,7 +17,7 @@ export const VideoBackground: React.FC = () => {
           type="video/mp4"
         />
       </video>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] z-10"></div>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-[1px] z-10"></div>
     </>
   );
 };

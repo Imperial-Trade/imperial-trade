@@ -34,7 +34,7 @@ export default function AccountRequestPage() {
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
+    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
       <ErrorBoundary componentName="Video Background">
         <VideoBackground />
       </ErrorBoundary>

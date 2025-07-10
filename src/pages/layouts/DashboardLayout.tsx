@@ -9,6 +9,7 @@ import { Crown } from "lucide-react";
 import LoadingSpinner from "@/components/layout/LoadingSpinner";
 import { useSidebar } from "@/components/ui/sidebar";
 import { User } from "@supabase/supabase-js";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -22,7 +23,7 @@ function DashboardHeader({ user }: DashboardHeaderProps) {
   const { openMobile } = useSidebar();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
+    <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/95 backdrop-blur-xl border-b border-border/50">
       <div className="flex items-center gap-4">
         <SidebarTriggerButton />
         <div
@@ -54,10 +55,73 @@ function DashboardHeader({ user }: DashboardHeaderProps) {
   );
 }
 
+function DesktopSidebarOverlay() {
+  const { openMobile, setOpenMobile } = useSidebar();
+  const isMobile = useIsMobile();
+  const [isTablet, setIsTablet] = useState(false);
+
+  // Detect tablet
+  useEffect(() => {
+    const checkDevice = () => {
+      const width = window.innerWidth;
+      setIsTablet(width >= 640 && width < 1024);
+    };
+
+    checkDevice();
+    window.addEventListener('resize', checkDevice);
+    window.addEventListener('orientationchange', checkDevice);
+    
+    return () => {
+      window.removeEventListener('resize', checkDevice);
+      window.removeEventListener('orientationchange', checkDevice);
+    };
+  }, []);
+
+  // Only render on desktop (not mobile or tablet)
+  if (isMobile || isTablet) return null;
+
+  if (!openMobile) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm"
+        onClick={() => setOpenMobile(false)}
+      />
+      {/* Sidebar */}
+      <div className="fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out">
+        <div className="h-full bg-background/95 backdrop-blur-xl border-r border-border/50 shadow-2xl flex flex-col">
+          <AppSidebar />
+        </div>
+      </div>
+    </>
+  );
+}
+
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { user, session, loading, refreshSession } = useAuth();
   const [isValidating, setIsValidating] = useState(true);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const [isTablet, setIsTablet] = useState(false);
+
+  // Detect tablet and handle orientation changes
+  useEffect(() => {
+    const checkDevice = () => {
+      const width = window.innerWidth;
+      setIsTablet(width >= 640 && width < 1024);
+    };
+
+    checkDevice();
+    window.addEventListener('resize', checkDevice);
+    window.addEventListener('orientationchange', checkDevice);
+    
+    return () => {
+      window.removeEventListener('resize', checkDevice);
+      window.removeEventListener('orientationchange', checkDevice);
+    };
+  }, []);
 
   useEffect(() => {
     const validateSession = async () => {
@@ -92,12 +156,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen bg-background text-foreground w-full relative">
+      <div className="min-h-screen bg-background text-foreground w-full">
         {/* Fixed Header - Always stays at top */}
         <DashboardHeader user={user} />
         
-        {/* Sidebar - Overlay positioned, doesn't affect content flow */}
-        <AppSidebar />
+        {/* Mobile & Tablet: Use existing Sheet-based sidebar */}
+        {(isMobile || isTablet) && <AppSidebar />}
+
+        {/* Desktop: Use custom overlay sidebar */}
+        <DesktopSidebarOverlay />
         
         {/* Main Content - Full width, independent of sidebar state */}
         <main className="w-full min-h-screen pt-16 bg-background text-foreground">

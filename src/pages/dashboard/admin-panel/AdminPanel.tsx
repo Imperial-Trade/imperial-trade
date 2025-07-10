@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +11,8 @@ import {
   Shield,
   Database,
   Settings,
-  Bell
+  Bell,
+  UserPlus
 } from 'lucide-react';
 import { UserManagementTable } from '@/components/admin/UserManagementTable';
 import { SystemMonitoring } from '@/components/admin/SystemMonitoring';
@@ -20,6 +20,7 @@ import { EnhancedSystemMonitoring } from '@/components/admin/EnhancedSystemMonit
 import { RealTimeNotifications } from '@/components/admin/RealTimeNotifications';
 import { RealtimeAuditLog } from '@/components/admin/RealtimeAuditLog';
 import { AdminTradeSignalsTab } from '@/components/admin/AdminTradeSignalsTab';
+import { AccountRequestManagement } from '@/components/account-request/AccountRequestManagement';
 import AccessDenied from '@/components/AccessDenied';
 
 export default function AdminPanel() {
@@ -28,6 +29,7 @@ export default function AdminPanel() {
     totalUsers: 0,
     activeUsers: 0,
     totalTrades: 0,
+    pendingRequests: 0,
     systemHealth: 'good'
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -59,15 +61,26 @@ export default function AdminPanel() {
         .from('trade_alerts')
         .select('*', { count: 'exact', head: true });
 
+      // Fetch pending account requests count
+      const { count: pendingCount } = await supabase
+        .from('account_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
       setSystemStats({
         totalUsers: userCount || 0,
         activeUsers: Math.floor((userCount || 0) * 0.7), // Rough estimate
         totalTrades: tradeCount || 0,
+        pendingRequests: pendingCount || 0,
         systemHealth: 'good'
       });
     } catch (error) {
       console.error('Error fetching system stats:', error);
     }
+  };
+
+  const handleRequestsRefresh = () => {
+    fetchSystemStats();
   };
 
   if (isLoading) {
@@ -101,7 +114,7 @@ export default function AdminPanel() {
 
         {/* System Overview Cards */}
         <div className="px-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             <Card className="glass-effect">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -137,6 +150,17 @@ export default function AdminPanel() {
 
             <Card className="glass-effect">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                <UserPlus className="h-4 w-4 text-orange-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">{systemStats.pendingRequests}</div>
+                <p className="text-xs text-secondary">Account requests</p>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">System Health</CardTitle>
                 <Shield className="h-4 w-4 text-accent-green" />
               </CardHeader>
@@ -162,10 +186,14 @@ export default function AdminPanel() {
         {/* Main Admin Tabs */}
         <div className="px-6">
           <Tabs defaultValue="users" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 bg-surface mb-6">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 bg-surface mb-6">
               <TabsTrigger value="users" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">Users</span>
+              </TabsTrigger>
+              <TabsTrigger value="requests" className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                <span className="hidden sm:inline">Requests</span>
               </TabsTrigger>
               <TabsTrigger value="system" className="flex items-center gap-2">
                 <Database className="h-4 w-4" />
@@ -191,6 +219,10 @@ export default function AdminPanel() {
 
             <TabsContent value="users" className="w-full">
               <UserManagementTable />
+            </TabsContent>
+
+            <TabsContent value="requests" className="w-full">
+              <AccountRequestManagement onRefresh={handleRequestsRefresh} />
             </TabsContent>
 
             <TabsContent value="system" className="w-full">

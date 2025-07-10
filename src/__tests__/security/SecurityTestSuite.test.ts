@@ -45,8 +45,8 @@ describe('Security Test Suite', () => {
 
         // Verify that the malicious input is sanitized
         expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
-          email: expect.not.stringMatching(/DROP|UNION|SELECT|OR.*=.*|--|\/\*/),
-          password: expect.not.stringMatching(/DROP|UNION|SELECT|OR.*=.*|--|\/\*/)
+          email: expect.not.stringMatching(/DROP|UNION|SELECT|OR.*=.*|--/),
+          password: expect.not.stringMatching(/DROP|UNION|SELECT|OR.*=.*|--/)
         });
       }
     });

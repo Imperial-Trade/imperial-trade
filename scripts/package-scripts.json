@@ -3,10 +3,20 @@
   "scripts": {
     "test": "vitest",
     "test:unit": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:performance": "vitest run --config vitest.performance.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:visual": "playwright test --config playwright.visual.config.ts",
+    "test:load": "playwright test --config playwright.performance.config.ts",
+    "test:security": "vitest run src/__tests__/security --reporter=verbose",
+    "test:maintenance": "playwright test src/__tests__/maintenance",
+    "test:monitoring": "playwright test src/__tests__/monitoring",
+    "test:comprehensive": "node scripts/run-comprehensive-tests.js",
     "test:coverage": "vitest run --coverage --reporter=lcov",
     "test:ci": "npm run test:unit && npm run test:e2e",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "test:debug": "vitest --inspect-brk --no-coverage",
+    "test:ui": "vitest --ui"
   }
 }

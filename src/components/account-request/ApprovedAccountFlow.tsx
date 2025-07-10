@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,11 +76,11 @@ export const ApprovedAccountFlow: React.FC<ApprovedAccountFlowProps> = ({
       }
 
       if (authData.user) {
-        // Update the account request status
+        // Update the account request status to approved (since it was already approved, we don't change it)
+        // The account is now fully activated, but we keep the status as approved
         const { error: updateError } = await supabase
           .from('account_requests')
           .update({ 
-            status: 'completed',
             updated_at: new Date().toISOString()
           })
           .eq('id', accountRequest.id);

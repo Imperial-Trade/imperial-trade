@@ -55,7 +55,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const { data: profileData, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          id,
+          display_name,
+          role,
+          user_type,
+          access_level,
+          account_status,
+          registration_source,
+          phone_number,
+          last_login,
+          approved_at,
+          approved_by,
+          created_at,
+          updated_at
+        `)
         .eq('id', userId)
         .single();
 
@@ -64,7 +78,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return null;
       }
 
-      return profileData;
+      // Handle the case where profile data might be incomplete
+      return profileData ? {
+        id: profileData.id,
+        display_name: profileData.display_name,
+        role: profileData.role,
+        user_type: profileData.user_type,
+        access_level: profileData.access_level,
+        account_status: profileData.account_status,
+        registration_source: profileData.registration_source,
+        phone_number: profileData.phone_number,
+        last_login: profileData.last_login,
+        approved_at: profileData.approved_at,
+        approved_by: profileData.approved_by,
+        created_at: profileData.created_at,
+        updated_at: profileData.updated_at
+      } as Profile : null;
     } catch (error) {
       console.error('Error fetching profile:', error);
       return null;

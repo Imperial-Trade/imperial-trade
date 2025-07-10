@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { adminTradingService } from '@/api/services/AdminTradingService';
@@ -493,7 +492,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     <DialogHeader className="sr-only">
                       <DialogTitle>Create New Trade Signal</DialogTitle>
                     </DialogHeader>
-                    <EnhancedNewAlertForm 
+                    <OptimizedNewAlertForm 
                       onSubmit={handleNewSignalSubmit}
                       onCancel={() => setIsNewSignalModalOpen(false)}
                     />

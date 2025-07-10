@@ -158,7 +158,7 @@ export default function AdminPanel() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen p-6 bg-background flex items-center justify-center">
+      <div className="min-h-screen p-6 bg-background flex items-center justify-center w-full">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-green mx-auto mb-4"></div>
           <p className="text-secondary">Loading admin panel...</p>
@@ -169,7 +169,7 @@ export default function AdminPanel() {
 
   if (!user) {
     return (
-      <div className="min-h-screen p-6 bg-background flex items-center justify-center">
+      <div className="min-h-screen p-6 bg-background flex items-center justify-center w-full">
         <Card className="glass-effect border-default max-w-md w-full">
           <CardContent className="p-6 text-center">
             <Shield className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
@@ -189,7 +189,7 @@ export default function AdminPanel() {
   const userRole = user.user_metadata?.access_level;
   if (userRole !== 'admin') {
     return (
-      <div className="min-h-screen p-6 bg-background flex items-center justify-center">
+      <div className="min-h-screen p-6 bg-background flex items-center justify-center w-full">
         <Card className="glass-effect border-default max-w-md w-full">
           <CardContent className="p-6 text-center">
             <Shield className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
@@ -206,8 +206,8 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="min-h-screen p-6 bg-background">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen p-6 bg-background w-full">
+      <div className="w-full">
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
           <div>
@@ -228,7 +228,7 @@ export default function AdminPanel() {
         </div>
 
         {/* Enhanced Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 mb-8">
           <Card className="glass-effect border-default">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">

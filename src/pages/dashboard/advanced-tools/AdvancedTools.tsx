@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,8 +106,8 @@ export default function AdvancedTools() {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-background">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen p-6 bg-background w-full">
+      <div className="w-full">
         <div className="mb-12 text-center">
           <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
             Advanced <span className="gold-text-gradient">Trading Arsenal</span>
@@ -124,7 +125,7 @@ export default function AdvancedTools() {
               <span className="w-2 h-2 bg-accent-blue rounded-full"></span>
               Core Trading Tools
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-6">
               {coreTools.map((tool) => (
                 <ToolCard
                   key={tool.name}
@@ -141,7 +142,7 @@ export default function AdvancedTools() {
               <span className="w-2 h-2 bg-accent-gold rounded-full"></span>
               AI-Powered Intelligence
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-6">
               {aiTools.map((tool) => (
                 <ToolCard
                   key={tool.name}

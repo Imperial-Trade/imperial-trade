@@ -271,8 +271,8 @@ export default function Live() {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-background">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen p-6 bg-background w-full">
+      <div className="w-full">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
@@ -305,9 +305,9 @@ export default function Live() {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-4 gap-6">
+        <div className="grid lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6">
           {/* Main Stream */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-4 xl:col-span-5 2xl:col-span-6">
             <Card className="glass-effect border-default mb-6">
               <CardContent className="p-0">
                 <div className="relative aspect-video bg-background rounded-lg overflow-hidden">
@@ -553,7 +553,7 @@ export default function Live() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="lg:col-span-1 xl:col-span-1 2xl:col-span-1 space-y-6">
             {/* Upcoming Sessions */}
             <Card className="glass-effect border-default">
               <CardHeader>

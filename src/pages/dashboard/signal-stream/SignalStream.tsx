@@ -292,12 +292,12 @@ export default function SignalStream() {
   }, [updateInProgress, updateAlert, user]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full">
       <NotificationSystem />
       
       {/* Header */}
       <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="w-full px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-1">
@@ -319,9 +319,9 @@ export default function SignalStream() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-          <div className="xl:col-span-3">
+      <div className="w-full p-6">
+        <div className="grid grid-cols-1 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+          <div className="xl:col-span-4 2xl:col-span-5">
             {isLoading ? (
               <div className="flex justify-center items-center h-64 flex-col space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
@@ -349,7 +349,7 @@ export default function SignalStream() {
                     Active Signals ({activeAlerts.length})
                   </h2>
                   {activeAlerts.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
                       {activeAlerts.map(alert => (
                         <TradeAlertCard
                           key={alert.id} 
@@ -394,7 +394,7 @@ export default function SignalStream() {
                     Recent Closed Trades ({closedAlerts.length})
                   </h2>
                   {sortedClosedAlerts.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
                       {sortedClosedAlerts.map(alert => (
                         <TradeAlertCard
                           key={alert.id} 
@@ -437,7 +437,7 @@ export default function SignalStream() {
             )}
           </div>
           
-          <div className="xl:col-span-1">
+          <div className="xl:col-span-1 2xl:col-span-1">
             <div className="sticky top-6 space-y-4">
               <EconomicSidebar />
             </div>

@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Award, BookOpen, Percent } from "lucide-react";
@@ -16,8 +17,8 @@ export default function MyProgress() {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-background">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen p-6 bg-background w-full">
+      <div className="w-full">
         <div className="mb-8">
           <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
             My <span className="gold-text-gradient">Learning Journey</span>
@@ -28,7 +29,7 @@ export default function MyProgress() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mb-8">
           <Card className="bg-surface">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="p-3 bg-green-500/20 rounded-lg">
@@ -68,33 +69,37 @@ export default function MyProgress() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="glass-effect">
-            <CardHeader>
-              <CardTitle>My Certificates</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Certificate
-                studentName="Your Name"
-                courseName="Introduction to Technical Analysis"
-              />
-              <Certificate
-                studentName="Your Name"
-                courseName="Advanced Risk Management"
-              />
-            </CardContent>
-          </Card>
-          <Card className="glass-effect">
-            <CardHeader>
-              <CardTitle>Course Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-center text-secondary">
-                A list of all courses showing your completion status would be
-                displayed here.
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
+          <div className="lg:col-span-1 xl:col-span-2 2xl:col-span-2">
+            <Card className="glass-effect">
+              <CardHeader>
+                <CardTitle>My Certificates</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Certificate
+                  studentName="Your Name"
+                  courseName="Introduction to Technical Analysis"
+                />
+                <Certificate
+                  studentName="Your Name"
+                  courseName="Advanced Risk Management"
+                />
+              </CardContent>
+            </Card>
+          </div>
+          <div className="lg:col-span-1 xl:col-span-1 2xl:col-span-2">
+            <Card className="glass-effect">
+              <CardHeader>
+                <CardTitle>Course Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-secondary">
+                  A list of all courses showing your completion status would be
+                  displayed here.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

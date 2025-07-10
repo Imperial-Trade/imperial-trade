@@ -4,9 +4,9 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { performance } from 'perf_hooks';
 import { TestWrapper } from '@/test/utils/test-helpers';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
-import EnhancedSystemMonitoring from '@/components/admin/EnhancedSystemMonitoring';
+import { EnhancedSystemMonitoring } from '@/components/admin/EnhancedSystemMonitoring';
 import LivePriceWidget from '@/components/signals/LivePriceWidget';
-import { TestDataFactory } from '@/src/__tests__/utils/testDataFactory';
+import { TestDataFactory } from '@/__tests__/utils/testDataFactory';
 
 describe('Component Performance Tests', () => {
   let memoryBefore: number;
@@ -42,7 +42,8 @@ describe('Component Performance Tests', () => {
         isAdmin: false,
         livePrice: 1.0525,
         connectionStatus: 'connected' as const,
-        priceSource: 'WebSocket'
+        priceSource: 'WebSocket',
+        isRecentClosure: false
       };
 
       const startTime = performance.now();
@@ -72,7 +73,8 @@ describe('Component Performance Tests', () => {
         isAdmin: false,
         livePrice: 1.0500,
         connectionStatus: 'connected' as const,
-        priceSource: 'WebSocket'
+        priceSource: 'WebSocket',
+        isRecentClosure: false
       };
 
       const { rerender } = render(

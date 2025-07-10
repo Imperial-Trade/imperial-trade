@@ -1,5 +1,5 @@
 
-import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { beforeAll, afterAll, beforeEach, afterEach, expect } from 'vitest';
 import { performanceReporter } from './PerformanceReporter';
 
 // Global performance test setup
@@ -117,11 +117,9 @@ expect.extend({
 });
 
 // Declare custom matchers for TypeScript
-declare global {
-  namespace jest {
-    interface Matchers<R> {
-      toBeWithinPerformanceThreshold(threshold: number, unit?: string): R;
-      toHaveMemoryLeakLessThan(threshold: number): R;
-    }
+declare module 'vitest' {
+  interface Assertion<T = any> {
+    toBeWithinPerformanceThreshold(threshold: number, unit?: string): T;
+    toHaveMemoryLeakLessThan(threshold: number): T;
   }
 }

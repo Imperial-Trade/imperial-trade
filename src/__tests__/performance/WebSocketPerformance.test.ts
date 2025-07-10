@@ -11,17 +11,17 @@ class MockWebSocket {
   
   onopen: ((event: Event) => void) | null = null;
   onmessage: ((event: MessageEvent) => void) | null = null;
-  onclose: ((event: CloseEvent) => void) | null = null;
+  onclose: ((event: CloseEvent) => void) | null = null;  
   onerror: ((event: Event) => void) | null = null;
   
-  readyState = WebSocket.CONNECTING;
+  readyState = 0; // WebSocket.CONNECTING
   
   constructor(url: string) {
     MockWebSocket.instances.push(this);
     
     // Simulate connection after short delay
     setTimeout(() => {
-      this.readyState = WebSocket.OPEN;
+      this.readyState = 1; // WebSocket.OPEN
       this.onopen?.(new Event('open'));
     }, 10);
   }
@@ -31,7 +31,7 @@ class MockWebSocket {
   }
   
   close() {
-    this.readyState = WebSocket.CLOSED;
+    this.readyState = 3; // WebSocket.CLOSED
     this.onclose?.(new CloseEvent('close'));
   }
   
@@ -41,7 +41,7 @@ class MockWebSocket {
   
   static simulateMessage(data: any) {
     MockWebSocket.instances.forEach(ws => {
-      if (ws.readyState === WebSocket.OPEN && ws.onmessage) {
+      if (ws.readyState === 1 && ws.onmessage) {
         ws.onmessage(new MessageEvent('message', { data: JSON.stringify(data) }));
       }
     });

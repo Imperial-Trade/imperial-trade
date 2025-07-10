@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { performance } from 'perf_hooks';
 import { enhancedApiClient } from '@/api/client/EnhancedApiClient';
 import { supabase } from '@/integrations/supabase/client';
-import { TestDataFactory } from '@/src/__tests__/utils/testDataFactory';
+import { TestDataFactory } from '@/__tests__/utils/testDataFactory';
 
 // Mock Supabase
 vi.mock('@/integrations/supabase/client', () => ({

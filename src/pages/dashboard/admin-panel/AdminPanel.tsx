@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,7 @@ import {
   Bell,
   UserPlus
 } from 'lucide-react';
-import { UserManagementTable } from '@/components/admin/UserManagementTable';
+import { EnhancedUserManagementTable } from '@/components/admin/EnhancedUserManagementTable';
 import { SystemMonitoring } from '@/components/admin/SystemMonitoring';
 import { EnhancedSystemMonitoring } from '@/components/admin/EnhancedSystemMonitoring';
 import { RealTimeNotifications } from '@/components/admin/RealTimeNotifications';
@@ -91,7 +92,7 @@ export default function AdminPanel() {
     );
   }
 
-  // Check if user is admin
+  // Check if user is admin - enhanced check for new access_level field
   const userAccessLevel = user?.user_metadata?.access_level || 'free';
   const userRole = user?.user_metadata?.role || 'user';
   
@@ -218,7 +219,7 @@ export default function AdminPanel() {
             </TabsList>
 
             <TabsContent value="users" className="w-full">
-              <UserManagementTable />
+              <EnhancedUserManagementTable />
             </TabsContent>
 
             <TabsContent value="requests" className="w-full">

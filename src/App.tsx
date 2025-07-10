@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -50,64 +49,63 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <WebSocketPriceProvider>
+    <QueryClient>
+      <BrowserRouter>
+        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+          <ErrorBoundary>
+            <AuthContextProvider>
               <SignalRealtimeProvider>
-                <Router>
-                  <Routes>
-                    {/* Landing Pages */}
-                    <Route path="/" element={<LandingLayout><Outlet /></LandingLayout>}>
-                      <Route index element={<Landing />} />
-                      <Route path="about" element={<About />} />
-                      <Route path="features" element={<Features />} />
-                      <Route path="account-request" element={<AccountRequest />} />
-                      <Route path="account-request-status" element={<AccountRequestStatus />} />
-                      <Route path="access-portal" element={<AccessPortal />} />
-                      <Route path="signin" element={<Signin />} />
-                    </Route>
+                <WebSocketPriceProvider>
+                  <div className="min-h-screen bg-background text-foreground">
+                    <Toaster />
+                    <Routes>
+                      {/* Public Routes */}
+                      <Route path="/" element={<Landing />} />
+                      <Route path="/about" element={<About />} />
+                      <Route path="/features" element={<Features />} />
+                      <Route path="/signin" element={<Signin />} />
+                      <Route path="/ib-partnership" element={<IBPartnership />} />
+                      <Route path="/account-request" element={<AccountRequest />} />
+                      <Route path="/account-request-status" element={<AccountRequestStatus />} />
+                      <Route path="/access-portal" element={<AccessPortal />} />
 
-                    {/* IB Partnership with AppBar - now consolidated under one route */}
-                    <Route path="/partnership" element={<LandingLayout><IBPartnership /></LandingLayout>} />
+                      {/* Protected Dashboard Routes */}
+                      <Route path="/dashboard" element={
+                        <ProtectedRoute>
+                          <DashboardLayout />
+                        </ProtectedRoute>
+                      }>
+                        <Route path="home" element={<Home />} />
+                        <Route path="live" element={<Live />} />
+                        <Route path="new-signal" element={<NewSignalPage />} />
+                        <Route path="signal-stream" element={<SignalStream />} />
+                        <Route path="education" element={<Education />} />
+                        <Route path="forum" element={<Forum />} />
+                        <Route path="my-progress" element={<MyProgress />} />
+                        <Route path="advanced-tools" element={<AdvancedTools />} />
+                        <Route path="settings" element={<Settings />} />
+                        <Route path="athena" element={<AthenaTest />} />
+                        <Route path="dev-tests" element={<DevTests />} />
+                        
+                        {/* Admin Only Route */}
+                        <Route path="admin" element={
+                          <ProtectedRoute requiredRole="admin">
+                            <AdminPanel />
+                          </ProtectedRoute>
+                        } />
+                      </Route>
 
-                    {/* Dashboard Pages */}
-                    <Route path="/dashboard" element={<DashboardLayout><Outlet /></DashboardLayout>}>
-                      <Route index element={<Home />} />
-                      <Route path="home" element={<Home />} />
-                      <Route path="education" element={<Education />} />
-                      <Route path="forum" element={<Forum />} />
-                      <Route path="live" element={<Live />} />
-                      <Route path="tools" element={<AdvancedTools />} />
-                      <Route path="settings" element={<Settings />} />
-                      <Route path="progress" element={<MyProgress />} />
-                      <Route path="admin" element={<AdminPanel />} />
-                      <Route path="new-signal" element={<NewSignalPage />} />
-                      <Route path="signals" element={<SignalStream />} />
-                      <Route path="dev-tests" element={<DevTests />} />
-                      <Route path="athena-test" element={<AthenaTest />} />
-                      
-                      {/* Legacy route redirects for backward compatibility */}
-                      <Route path="advanced-tools" element={<AdvancedTools />} />
-                      <Route path="my-progress" element={<MyProgress />} />
-                      <Route path="admin-panel" element={<AdminPanel />} />
-                    </Route>
-
-                    {/* Legacy redirect for old IB partnership route */}
-                    <Route path="/ib-partnership" element={<LandingLayout><IBPartnership /></LandingLayout>} />
-
-                    {/* 404 Page with AppBar */}
-                    <Route path="*" element={<LandingLayout><NotFound /></LandingLayout>} />
-                  </Routes>
-                  <Toaster />
-                </Router>
+                      {/* Catch-all */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </div>
+                </WebSocketPriceProvider>
               </SignalRealtimeProvider>
-            </WebSocketPriceProvider>
-          </AuthProvider>
+            </AuthContextProvider>
+          </ErrorBoundary>
         </ThemeProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+      </BrowserRouter>
+    </QueryClient>
   );
 }
 

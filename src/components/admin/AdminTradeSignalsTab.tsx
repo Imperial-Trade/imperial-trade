@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -72,11 +71,11 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
       
       // Create the signal using the trading API service - fix property names to match CreateTradeAlertDto
       const result = await tradingApiService.createAlert({
-        assetName: signalData.asset_name,
-        finnhubSymbol: signalData.finnhub_symbol,
-        tradeType: signalData.trade_type,
-        entryPrice: signalData.entry_price,
-        stopLoss: signalData.stop_loss,
+        assetName: signalData.assetName,
+        finnhubSymbol: signalData.finnhubSymbol,
+        tradeType: signalData.tradeType,
+        entryPrice: signalData.entryPrice,
+        stopLoss: signalData.stopLoss,
         tp1: signalData.tp1,
         tp2: signalData.tp2,
         tp3: signalData.tp3,
@@ -96,9 +95,9 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
             'trade_alert',
             result.data?.id || '',
             {
-              asset_name: signalData.asset_name,
-              trade_type: signalData.trade_type,
-              entry_price: signalData.entry_price
+              assetName: signalData.assetName,
+              tradeType: signalData.tradeType,
+              entryPrice: signalData.entryPrice
             }
           );
         }
@@ -116,7 +115,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
     }
   };
 
-  const handleSignalStatusUpdate = async (alert: any, newStatus: string) => {
+  const handleSignalStatusUpdate = async (alert: any, newStatus: string): Promise<void> => {
     try {
       const result = await tradingApiService.updateAlert(
         alert.id, 
@@ -137,25 +136,19 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
         // Refresh the list
         await refreshAlerts();
       }
-      
-      return result;
     } catch (error) {
       console.error('Error updating signal:', error);
-      return { success: false, error: 'Failed to update signal' };
     }
   };
 
-  const handleTakeProfitHit = async (alert: any, tpLevel: number) => {
-    try {
-      const currentTpHits = alert.tp_hits || [];
-      const newTpHits = [...currentTpHits, tpLevel];
-      
+  const handleTakeProfitHit = async (alert: any, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string): Promise<void> => {
+    try {      
       const result = await tradingApiService.updateAlert(
         alert.id,
         { 
-          tpHits: newTpHits,
-          closeReason: `tp${tpLevel}` as any,
-          status: 'closed' as const
+          tpHits: newTPHits,
+          closeReason: closeReason as any,
+          status: shouldAutoClose ? 'closed' as const : alert.status
         },
         currentUser?.id || ''
       );
@@ -166,7 +159,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
           currentUser.email || 'unknown',
           'trade_alert',
           alert.id,
-          { tpLevel, newTpHits }
+          { newTPHits, closeReason }
         );
         
         await refreshAlerts();
@@ -176,12 +169,12 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
     }
   };
 
-  const handleStopLossHit = async (alert: any) => {
+  const handleStopLossHit = async (alert: any, closeReason: string): Promise<void> => {
     try {
       const result = await tradingApiService.updateAlert(
         alert.id,
         { 
-          closeReason: 'stop_loss' as any,
+          closeReason: closeReason as any,
           status: 'closed' as const
         },
         currentUser?.id || ''
@@ -193,7 +186,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
           currentUser.email || 'unknown',
           'trade_alert',
           alert.id,
-          { reason: 'Stop loss triggered' }
+          { reason: closeReason }
         );
         
         await refreshAlerts();
@@ -203,7 +196,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
     }
   };
 
-  const handleOrderActivation = async (alert: any) => {
+  const handleOrderActivation = async (alert: any): Promise<void> => {
     try {
       const result = await tradingApiService.updateAlert(
         alert.id,
@@ -363,6 +356,9 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       onStopLossHit={handleStopLossHit}
                       onOrderActivation={handleOrderActivation}
                       isAdmin={true}
+                      connectionStatus="connected"
+                      priceSource="admin"
+                      isRecentClosure={false}
                     />
                   ))
                 ) : (
@@ -401,6 +397,9 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     onStopLossHit={handleStopLossHit}
                     onOrderActivation={handleOrderActivation}
                     isAdmin={true}
+                    connectionStatus="connected"
+                    priceSource="admin"
+                    isRecentClosure={false}
                   />
                 ))}
               </div>
@@ -428,6 +427,9 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     onStopLossHit={handleStopLossHit}
                     onOrderActivation={handleOrderActivation}
                     isAdmin={true}
+                    connectionStatus="connected"
+                    priceSource="admin"
+                    isRecentClosure={false}
                   />
                 ))}
               </div>

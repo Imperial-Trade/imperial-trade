@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { adminTradingService } from '@/api/services/AdminTradingService';
 import { adminAuditService } from '@/api/services/AdminAuditService';
-import { TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import { tradingApiService } from '@/api/services/TradingApiService';
+import { TradeAlertResponseDto, CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -138,26 +139,60 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
   };
 
   const handleNewSignalSubmit = async (data: any) => {
+    console.log('Admin creating new signal with data:', data);
+    
     try {
-      // Log the signal creation action
-      await adminAuditService.logAdminAction(
-        'admin_create_trade_signal',
-        currentUser.email || 'unknown',
-        'trade_signals',
-        'new_signal',
-        {
-          asset: data.asset_name,
-          trade_type: data.trade_type,
-          entry_price: data.entry_price
-        }
-      );
+      // Transform form data to CreateTradeAlertDto format
+      const createAlertDto: CreateTradeAlertDto = {
+        assetName: data.asset_name,
+        finnhubSymbol: data.finnhub_symbol,
+        tradeType: data.trade_type,
+        entryPrice: Number(data.entry_price),
+        stopLoss: Number(data.stop_loss),
+        tp1: data.tp1 ? Number(data.tp1) : undefined,
+        tp2: data.tp2 ? Number(data.tp2) : undefined,
+        tp3: data.tp3 ? Number(data.tp3) : undefined,
+        tp4: data.tp4 ? Number(data.tp4) : undefined,
+        tp5: data.tp5 ? Number(data.tp5) : undefined,
+        notes: data.notes || undefined
+      };
+
+      console.log('Transformed DTO:', createAlertDto);
+      console.log('Current user ID:', currentUser.id);
+
+      // Create the signal in the database
+      const result = await tradingApiService.createAlert(createAlertDto, currentUser.id);
+
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to create signal');
+      }
+
+      console.log('Signal created successfully:', result.data);
+
+      // Log the signal creation action (only after successful creation)
+      try {
+        await adminAuditService.logAdminAction(
+          'admin_create_trade_signal',
+          currentUser.email || 'unknown',
+          'trade_signals',
+          result.data.id,
+          {
+            asset: createAlertDto.assetName,
+            trade_type: createAlertDto.tradeType,
+            entry_price: createAlertDto.entryPrice
+          }
+        );
+      } catch (auditError) {
+        console.warn('Failed to log audit action:', auditError);
+        // Don't fail the whole operation if audit logging fails
+      }
 
       // Show broadcast notification
-      setBroadcastMessage(`New ${data.trade_type.toUpperCase()} signal posted for ${data.asset_name}`);
+      setBroadcastMessage(`New ${createAlertDto.tradeType.toUpperCase()} signal posted for ${createAlertDto.assetName}`);
       setShowBroadcastBanner(true);
       setTimeout(() => setShowBroadcastBanner(false), 5000);
 
-      // Reload signals
+      // Reload signals to refresh the display
       await loadSignals();
       
       // Close modal
@@ -168,11 +203,12 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
         description: "Trade signal posted successfully and broadcasted to all users",
         variant: "default"
       });
+
     } catch (error) {
       console.error('Error creating signal:', error);
       toast({
         title: "Error",
-        description: "Failed to post trade signal",
+        description: error instanceof Error ? error.message : "Failed to post trade signal",
         variant: "destructive"
       });
     }

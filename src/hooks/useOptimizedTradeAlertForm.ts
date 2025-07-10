@@ -1,28 +1,29 @@
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { tradeAlertSchema, tradeAlertSubmissionSchema, type TradeAlertFormData, type TradeAlertSubmissionData } from "@/lib/validations/tradeAlertSchema";
-import { useCallback, useMemo, useRef } from "react";
-import { useDebounce } from "./useDebounce";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useState, useCallback } from 'react';
+import { tradeAlertSubmissionSchema, type TradeAlertSubmissionData } from '@/lib/validations/tradeAlertSchema';
 
-export interface UseOptimizedTradeAlertFormOptions {
-  onSubmit?: (data: TradeAlertSubmissionData) => Promise<void> | void;
-  defaultValues?: Partial<TradeAlertFormData>;
+interface UseOptimizedTradeAlertFormProps {
+  onSubmit: (data: TradeAlertSubmissionData) => Promise<void> | void;
   enableSmartValidation?: boolean;
 }
 
-export function useOptimizedTradeAlertForm(options: UseOptimizedTradeAlertFormOptions = {}) {
-  const {
-    onSubmit,
-    defaultValues,
-    enableSmartValidation = true
-  } = options;
+interface UseOptimizedTradeAlertFormReturn {
+  form: ReturnType<typeof useForm<TradeAlertSubmissionData>>;
+  handleSubmit: (e: React.FormEvent) => void;
+  isSubmitting: boolean;
+  hasErrors: boolean;
+}
 
-  const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+export const useOptimizedTradeAlertForm = ({
+  onSubmit,
+  enableSmartValidation = true
+}: UseOptimizedTradeAlertFormProps): UseOptimizedTradeAlertFormReturn => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Create form with minimal validation mode for better performance
-  const form = useForm<TradeAlertFormData>({
-    resolver: zodResolver(tradeAlertSchema),
+  const form = useForm<TradeAlertSubmissionData>({
+    resolver: zodResolver(tradeAlertSubmissionSchema),
     defaultValues: {
       asset_name: '',
       finnhub_symbol: '',
@@ -35,120 +36,36 @@ export function useOptimizedTradeAlertForm(options: UseOptimizedTradeAlertFormOp
       tp4: undefined,
       tp5: undefined,
       notes: '',
-      ...defaultValues,
+      status: 'active'
     },
-    mode: 'onBlur', // Only validate on blur for better performance
+    mode: enableSmartValidation ? 'onChange' : 'onSubmit'
   });
 
-  // Debounced form data to prevent excessive re-renders
-  const watchedData = form.watch();
-  const debouncedFormData = useDebounce(watchedData, 300);
-
-  // Optimized validation with debouncing
-  const triggerValidation = useCallback((fieldName?: keyof TradeAlertFormData) => {
-    if (!enableSmartValidation) return;
-
-    if (validationTimeoutRef.current) {
-      clearTimeout(validationTimeoutRef.current);
-    }
-
-    validationTimeoutRef.current = setTimeout(() => {
-      if (fieldName) {
-        form.trigger(fieldName);
-      } else {
-        form.trigger();
-      }
-    }, 500);
-  }, [form, enableSmartValidation]);
-
-  // Optimized submission handler
-  const handleSubmit = useCallback(async (data: TradeAlertFormData) => {
-    if (!onSubmit) return;
-
-    try {
-      // Determine status based on trade type
-      const isLimitOrder = data.trade_type === 'buy_limit' || data.trade_type === 'sell_limit';
-      const submissionData: TradeAlertSubmissionData = {
-        ...data,
-        status: isLimitOrder ? 'pending' : 'active'
-      };
-
-      // Validate submission data
-      const validatedData = tradeAlertSubmissionSchema.parse(submissionData);
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    
+    form.handleSubmit(async (data) => {
+      console.log('Form submitting with data:', data);
       
-      await onSubmit(validatedData);
-    } catch (error) {
-      console.error('Form submission error:', error);
-      throw error;
-    }
-  }, [onSubmit]);
+      try {
+        setIsSubmitting(true);
+        await onSubmit(data);
+      } catch (error) {
+        console.error('Form submission error:', error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    })(e);
+  }, [form, onSubmit]);
 
-  // Memoized form state for performance
-  const formState = useMemo(() => ({
-    errors: Object.keys(form.formState.errors).map(field => ({
-      field,
-      message: form.formState.errors[field as keyof TradeAlertFormData]?.message || 'Invalid value'
-    })),
-    isSubmitting: form.formState.isSubmitting,
-    isValid: form.formState.isValid,
-    isDirty: form.formState.isDirty,
-    hasErrors: Object.keys(form.formState.errors).length > 0
-  }), [form.formState]);
-
-  // Utility functions with proper memoization
-  const reset = useCallback(() => {
-    form.reset();
-  }, [form]);
-
-  const setValue = useCallback((
-    name: keyof TradeAlertFormData,
-    value: TradeAlertFormData[keyof TradeAlertFormData],
-    options?: { shouldValidate?: boolean; shouldDirty?: boolean }
-  ) => {
-    form.setValue(name, value as any, {
-      shouldValidate: options?.shouldValidate ?? false, // Don't validate immediately
-      shouldDirty: options?.shouldDirty ?? true
-    });
-
-    // Trigger debounced validation for better UX
-    if (enableSmartValidation && options?.shouldValidate) {
-      triggerValidation(name);
-    }
-  }, [form, enableSmartValidation, triggerValidation]);
-
-  const getFieldError = useCallback((name: keyof TradeAlertFormData): string | undefined => {
-    return form.formState.errors[name]?.message;
-  }, [form.formState.errors]);
+  const hasErrors = Object.keys(form.formState.errors).length > 0;
 
   return {
-    // React Hook Form instance
     form,
-    
-    // Optimized form state
-    formState,
-    data: debouncedFormData, // Use debounced data
-    errors: formState.errors,
-    isSubmitting: formState.isSubmitting,
-    isValid: formState.isValid,
-    isDirty: formState.isDirty,
-    hasErrors: formState.hasErrors,
-
-    // Form operations
-    handleSubmit: form.handleSubmit(handleSubmit),
-    reset,
-    setValue,
-    
-    // Field utilities
-    getFieldError,
-    triggerValidation,
-    
-    // Direct form methods for advanced usage
-    register: form.register,
-    control: form.control,
-    watch: form.watch,
-    trigger: form.trigger,
+    handleSubmit,
+    isSubmitting,
+    hasErrors
   };
-}
+};
 
-// Export the form data type for external use
-export type { TradeAlertFormData, TradeAlertSubmissionData };
+export type { TradeAlertSubmissionData };

@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // Mock dependencies
-vi.mock '@/integrations/supabase/client';
+vi.mock('@/integrations/supabase/client');
 vi.mock('sonner');
 
 const mockSupabase = supabase as any;

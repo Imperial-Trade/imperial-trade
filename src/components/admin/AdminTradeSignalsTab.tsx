@@ -4,6 +4,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { 
   TrendingUp, 
   Plus, 
   BarChart3, 
@@ -25,7 +31,7 @@ interface AdminTradeSignalsTabProps {
 }
 
 export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps) {
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [signalStats, setSignalStats] = useState({
     totalSignals: 0,
     activeSignals: 0,
@@ -69,7 +75,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
     try {
       console.log('Creating new signal:', signalData);
       
-      // Create the signal using the trading API service - fix property names to match CreateTradeAlertDto
+      // Create the signal using the trading API service
       const result = await tradingApiService.createAlert({
         assetName: signalData.assetName,
         finnhubSymbol: signalData.finnhubSymbol,
@@ -105,8 +111,8 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
         // Refresh the trade alerts list
         await refreshAlerts();
         
-        // Hide the form
-        setShowCreateForm(false);
+        // Close the dialog
+        setShowCreateDialog(false);
       } else {
         console.error('Failed to create signal:', result.error);
       }
@@ -297,24 +303,15 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
               </Badge>
             </CardTitle>
             <Button
-              onClick={() => setShowCreateForm(!showCreateForm)}
+              onClick={() => setShowCreateDialog(true)}
               className="bg-accent-green hover:bg-accent-green/90 text-white"
             >
               <Plus className="w-4 h-4 mr-2" />
-              {showCreateForm ? 'Cancel' : 'Create Signal'}
+              Create Signal
             </Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {showCreateForm && (
-            <div className="p-6 border-b border-border/20">
-              <OptimizedNewAlertForm
-                onSubmit={handleNewSignalSubmit}
-                onCancel={() => setShowCreateForm(false)}
-              />
-            </div>
-          )}
-
           <Tabs defaultValue="all" className="w-full">
             <div className="px-6 pt-6">
               <TabsList className="grid w-full grid-cols-3 bg-surface">
@@ -437,6 +434,22 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Create Signal Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-primary flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Create New Trade Signal
+            </DialogTitle>
+          </DialogHeader>
+          <OptimizedNewAlertForm
+            onSubmit={handleNewSignalSubmit}
+            onCancel={() => setShowCreateDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

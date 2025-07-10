@@ -7,7 +7,7 @@ import { useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
 import { useSidebar } from "@/components/ui/sidebar"
-import { useIsMobile } from "@/hooks/use-mobile"
+import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile"
 import { useEffect, useState } from "react"
 
 function DashboardHeader() {
@@ -35,13 +35,16 @@ function DashboardHeader() {
   );
 }
 
-function DesktopSidebarOverlay() {
+function SidebarOverlay() {
   const { openMobile, setOpenMobile } = useSidebar();
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+  const isDesktop = useIsDesktop();
 
-  // Only render on desktop
+  // Don't render overlay for mobile (uses Sheet)
   if (isMobile) return null;
 
+  // For tablet and desktop, show custom overlay when open
   if (!openMobile) return null;
 
   return (
@@ -51,9 +54,11 @@ function DesktopSidebarOverlay() {
         className="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm"
         onClick={() => setOpenMobile(false)}
       />
-      {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out">
-        <div className="h-full bg-background/95 backdrop-blur-xl border-r border-border/50 shadow-2xl">
+      {/* Sidebar Content */}
+      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out ${
+        isTablet ? 'w-72' : 'w-64'
+      }`}>
+        <div className="h-full bg-background/95 backdrop-blur-xl border-r border-border/50 shadow-2xl flex flex-col">
           <AppSidebar />
         </div>
       </div>
@@ -65,27 +70,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const isHomePage = location.pathname === '/'
   const isMobile = useIsMobile()
-  const [isTablet, setIsTablet] = useState(false)
-
-  // Detect tablet and handle orientation changes
-  useEffect(() => {
-    const checkDevice = () => {
-      const width = window.innerWidth
-      const height = window.innerHeight
-      
-      // Tablet detection: 640px - 1024px
-      setIsTablet(width >= 640 && width < 1024)
-    }
-
-    checkDevice()
-    window.addEventListener('resize', checkDevice)
-    window.addEventListener('orientationchange', checkDevice)
-    
-    return () => {
-      window.removeEventListener('resize', checkDevice)
-      window.removeEventListener('orientationchange', checkDevice)
-    }
-  }, [])
 
   // For home page, use AppBar instead of sidebar
   if (isHomePage) {
@@ -103,8 +87,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // For mobile and tablet, use the existing overlay sidebar
-  // For desktop, use custom overlay implementation
+  // For dashboard pages, use sidebar layout
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background">
@@ -112,16 +95,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <DashboardHeader />
         </ErrorBoundary>
 
-        {/* Mobile & Tablet: Use existing Sheet-based sidebar */}
-        {(isMobile || isTablet) && (
-          <ErrorBoundary componentName="Sidebar">
+        {/* Mobile: Use existing Sheet-based sidebar */}
+        {isMobile && (
+          <ErrorBoundary componentName="Mobile Sidebar">
             <AppSidebar />
           </ErrorBoundary>
         )}
 
-        {/* Desktop: Use custom overlay sidebar */}
-        <ErrorBoundary componentName="Desktop Sidebar">
-          <DesktopSidebarOverlay />
+        {/* Tablet & Desktop: Use custom overlay sidebar */}
+        <ErrorBoundary componentName="Sidebar Overlay">
+          <SidebarOverlay />
         </ErrorBoundary>
         
         {/* Main content - always full width, independent of sidebar */}

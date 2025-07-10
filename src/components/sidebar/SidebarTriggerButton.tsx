@@ -5,25 +5,30 @@ import { Menu, X } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 
 export function SidebarTriggerButton() {
-  const { openMobile, toggleSidebar } = useSidebar();
+  const { openMobile, setOpenMobile, toggleSidebar } = useSidebar();
 
   // Handle escape key to close sidebar
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && openMobile) {
-        toggleSidebar();
+        setOpenMobile(false);
       }
     };
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, [openMobile, toggleSidebar]);
+  }, [openMobile, setOpenMobile]);
+
+  const handleClick = () => {
+    console.log('Sidebar trigger clicked, current state:', openMobile);
+    setOpenMobile(!openMobile);
+  };
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={toggleSidebar}
+      onClick={handleClick}
       className="h-8 w-8 text-primary hover:text-primary/80 transition-colors relative z-60"
       aria-label={openMobile ? "Close sidebar" : "Open sidebar"}
     >

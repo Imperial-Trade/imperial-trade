@@ -19,10 +19,9 @@ export function AppSidebar() {
   const { state: sidebarState } = useSidebar();
   const isCollapsed = sidebarState === "collapsed";
   const isMobile = useIsMobile();
-  const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024;
 
-  // For mobile and tablet, use Sheet behavior (existing)
-  if (isMobile || isTablet) {
+  // For mobile, use Sheet behavior
+  if (isMobile) {
     return (
       <Sidebar 
         className="border-r-0 bg-background/95 backdrop-blur-xl"
@@ -50,7 +49,7 @@ export function AppSidebar() {
     );
   }
 
-  // For desktop, render just the content (overlay handles positioning)
+  // For tablet and desktop, render just the content (overlay handles positioning)
   return (
     <>
       <SidebarHeader className="p-4 border-b border-border/20">

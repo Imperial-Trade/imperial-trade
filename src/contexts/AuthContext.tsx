@@ -3,7 +3,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/utils/authUtils';
-import LoadingSpinner from '@/components/layout/LoadingSpinner';
 
 interface Profile {
   id: string;
@@ -181,10 +180,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
 
   return (
     <AuthContext.Provider value={{ 

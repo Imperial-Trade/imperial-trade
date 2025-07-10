@@ -15,7 +15,7 @@ import {
   Bell,
   UserPlus
 } from 'lucide-react';
-import { EnhancedUserManagementTable } from '@/components/admin/EnhancedUserManagementTable';
+import { ResponsiveUserManagementTable } from '@/components/admin/ResponsiveUserManagementTable';
 import { SystemMonitoring } from '@/components/admin/SystemMonitoring';
 import { EnhancedSystemMonitoring } from '@/components/admin/EnhancedSystemMonitoring';
 import { RealTimeNotifications } from '@/components/admin/RealTimeNotifications';
@@ -124,71 +124,71 @@ export default function AdminPanel() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-none">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4">
-          <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
+        <div className="px-4 sm:px-6 pt-6 pb-4">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-2">
             Admin <span className="gold-text-gradient">Control Panel</span>
           </h1>
-          <p className="text-secondary text-lg">
+          <p className="text-secondary text-sm sm:text-base lg:text-lg">
             Comprehensive system management and monitoring dashboard
           </p>
           {profile && (
-            <div className="mt-2 text-sm text-secondary">
+            <div className="mt-2 text-xs sm:text-sm text-secondary">
               Logged in as: {profile.display_name} ({profile.access_level})
             </div>
           )}
         </div>
 
         {/* System Overview Cards */}
-        <div className="px-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="px-4 sm:px-6 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
             <Card className="glass-effect">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                <Users className="h-4 w-4 text-accent-blue" />
+                <CardTitle className="text-xs sm:text-sm font-medium">Total Users</CardTitle>
+                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-accent-blue" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{systemStats.totalUsers}</div>
+                <div className="text-lg sm:text-2xl font-bold text-primary">{systemStats.totalUsers}</div>
                 <p className="text-xs text-secondary">Registered accounts</p>
               </CardContent>
             </Card>
 
             <Card className="glass-effect">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-                <Activity className="h-4 w-4 text-accent-green" />
+                <CardTitle className="text-xs sm:text-sm font-medium">Active Users</CardTitle>
+                <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-accent-green" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{systemStats.activeUsers}</div>
+                <div className="text-lg sm:text-2xl font-bold text-primary">{systemStats.activeUsers}</div>
                 <p className="text-xs text-secondary">Last 7 days</p>
               </CardContent>
             </Card>
 
             <Card className="glass-effect">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Trades</CardTitle>
-                <TrendingUp className="h-4 w-4 text-accent-gold" />
+                <CardTitle className="text-xs sm:text-sm font-medium">Total Trades</CardTitle>
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-accent-gold" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{systemStats.totalTrades}</div>
+                <div className="text-lg sm:text-2xl font-bold text-primary">{systemStats.totalTrades}</div>
                 <p className="text-xs text-secondary">All time signals</p>
               </CardContent>
             </Card>
 
             <Card className="glass-effect">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-                <UserPlus className="h-4 w-4 text-orange-400" />
+                <CardTitle className="text-xs sm:text-sm font-medium">Pending Requests</CardTitle>
+                <UserPlus className="h-3 w-3 sm:h-4 sm:w-4 text-orange-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{systemStats.pendingRequests}</div>
+                <div className="text-lg sm:text-2xl font-bold text-primary">{systemStats.pendingRequests}</div>
                 <p className="text-xs text-secondary">Account requests</p>
               </CardContent>
             </Card>
 
-            <Card className="glass-effect">
+            <Card className="glass-effect col-span-2 sm:col-span-1">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">System Health</CardTitle>
-                <Shield className="h-4 w-4 text-accent-green" />
+                <CardTitle className="text-xs sm:text-sm font-medium">System Health</CardTitle>
+                <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-accent-green" />
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
@@ -210,41 +210,41 @@ export default function AdminPanel() {
         </div>
 
         {/* Main Admin Tabs */}
-        <div className="px-6">
+        <div className="px-4 sm:px-6">
           <Tabs defaultValue="users" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 bg-surface mb-6">
-              <TabsTrigger value="users" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 bg-surface mb-6 h-auto">
+              <TabsTrigger value="users" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                <Users className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Users</span>
               </TabsTrigger>
-              <TabsTrigger value="requests" className="flex items-center gap-2">
-                <UserPlus className="h-4 w-4" />
+              <TabsTrigger value="requests" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Requests</span>
               </TabsTrigger>
-              <TabsTrigger value="system" className="flex items-center gap-2">
-                <Database className="h-4 w-4" />
+              <TabsTrigger value="system" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                <Database className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">System</span>
               </TabsTrigger>
-              <TabsTrigger value="monitoring" className="flex items-center gap-2">
-                <Activity className="h-4 w-4" />
+              <TabsTrigger value="monitoring" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Monitor</span>
               </TabsTrigger>
-              <TabsTrigger value="notifications" className="flex items-center gap-2">
-                <Bell className="h-4 w-4" />
+              <TabsTrigger value="notifications" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Alerts</span>
               </TabsTrigger>
-              <TabsTrigger value="audit" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
+              <TabsTrigger value="audit" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Audit</span>
               </TabsTrigger>
-              <TabsTrigger value="trades" className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
+              <TabsTrigger value="trades" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm p-2 sm:p-3">
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Trades</span>
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users" className="w-full">
-              <EnhancedUserManagementTable />
+              <ResponsiveUserManagementTable />
             </TabsContent>
 
             <TabsContent value="requests" className="w-full">

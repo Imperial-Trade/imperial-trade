@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { adminUserUpdateSchema, createUserSchema } from '@/lib/validations/adminUserSchema';
 
 export interface AdminUser {
   id: string;
@@ -37,6 +38,8 @@ export const useAdminUserManagement = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Not authenticated');
 
+    console.log('Calling admin function with:', { action, userId, userData });
+
     const response = await supabase.functions.invoke('admin-user-management', {
       body: { action, userId, userData },
       headers: {
@@ -44,7 +47,10 @@ export const useAdminUserManagement = () => {
       },
     });
 
+    console.log('Admin function response:', response);
+
     if (response.error) {
+      console.error('Admin function error:', response.error);
       throw new Error(response.error.message || 'Admin operation failed');
     }
 
@@ -55,10 +61,11 @@ export const useAdminUserManagement = () => {
     try {
       setLoading(true);
       const data = await callAdminFunction('listUsers');
-      setUsers(data.users);
+      console.log('Loaded users:', data);
+      setUsers(data.users || []);
     } catch (error) {
       console.error('Error loading users:', error);
-      toast.error('Failed to load users');
+      toast.error('Failed to load users: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -66,12 +73,21 @@ export const useAdminUserManagement = () => {
 
   const updateUser = useCallback(async (userId: string, userData: Partial<AdminUser>) => {
     try {
-      await callAdminFunction('updateUser', userId, userData);
+      // Validate data before sending
+      const validatedData = adminUserUpdateSchema.parse(userData);
+      console.log('Updating user with validated data:', validatedData);
+      
+      await callAdminFunction('updateUser', userId, validatedData);
       toast.success('User updated successfully');
       await loadUsers(); // Refresh the list
     } catch (error) {
       console.error('Error updating user:', error);
-      toast.error('Failed to update user');
+      if (error instanceof Error) {
+        toast.error('Failed to update user: ' + error.message);
+      } else {
+        toast.error('Failed to update user');
+      }
+      throw error;
     }
   }, [callAdminFunction, loadUsers]);
 
@@ -82,18 +98,32 @@ export const useAdminUserManagement = () => {
       await loadUsers(); // Refresh the list
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast.error('Failed to delete user');
+      if (error instanceof Error) {
+        toast.error('Failed to delete user: ' + error.message);
+      } else {
+        toast.error('Failed to delete user');
+      }
+      throw error;
     }
   }, [callAdminFunction, loadUsers]);
 
   const createUser = useCallback(async (userData: CreateUserData) => {
     try {
-      await callAdminFunction('createUser', undefined, userData);
+      // Validate data before sending
+      const validatedData = createUserSchema.parse(userData);
+      console.log('Creating user with validated data:', validatedData);
+      
+      await callAdminFunction('createUser', undefined, validatedData);
       toast.success('User created successfully');
       await loadUsers(); // Refresh the list
     } catch (error) {
       console.error('Error creating user:', error);
-      toast.error('Failed to create user');
+      if (error instanceof Error) {
+        toast.error('Failed to create user: ' + error.message);
+      } else {
+        toast.error('Failed to create user');
+      }
+      throw error;
     }
   }, [callAdminFunction, loadUsers]);
 
@@ -103,7 +133,12 @@ export const useAdminUserManagement = () => {
       toast.success('Password reset email sent');
     } catch (error) {
       console.error('Error resetting password:', error);
-      toast.error('Failed to send password reset email');
+      if (error instanceof Error) {
+        toast.error('Failed to send password reset email: ' + error.message);
+      } else {
+        toast.error('Failed to send password reset email');
+      }
+      throw error;
     }
   }, [callAdminFunction]);
 

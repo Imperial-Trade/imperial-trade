@@ -11,8 +11,8 @@ export default function DevTests() {
   // Only show in development
   if (process.env.NODE_ENV !== 'development') {
     return (
-      <div className="min-h-screen p-6 bg-background">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-full p-6 bg-background">
+        <div className="w-full">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-primary mb-4">
               Development Tools
@@ -27,8 +27,8 @@ export default function DevTests() {
   }
 
   return (
-    <div className="min-h-screen p-6 bg-background">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-full p-6 bg-background">
+      <div className="w-full">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">
             Development Testing Suite

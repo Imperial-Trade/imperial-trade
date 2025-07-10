@@ -106,7 +106,7 @@ export default function AdvancedTools() {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-background w-full">
+    <div className="min-h-full p-6 bg-background w-full">
       <div className="w-full">
         <div className="mb-12 text-center">
           <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">

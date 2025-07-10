@@ -1,4 +1,3 @@
-
 // Type-safe routing definitions
 export interface RouteParams {
   [key: string]: string | undefined;
@@ -68,7 +67,7 @@ export const ROUTES = {
   DASHBOARD_PROGRESS: '/dashboard/progress',
   DASHBOARD_ATHENA: '/dashboard/athena-test',
   
-  // IB Partnership route
+  // IB Partnership route - Consolidated to single route
   IB_PARTNERSHIP: '/partnership',
   
   // Signal-specific routes

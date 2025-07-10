@@ -63,15 +63,14 @@ function App() {
                       <Route index element={<Landing />} />
                       <Route path="about" element={<About />} />
                       <Route path="features" element={<Features />} />
-                      <Route path="ib-partnership" element={<IBPartnership />} />
                       <Route path="account-request" element={<AccountRequest />} />
                       <Route path="account-request-status" element={<AccountRequestStatus />} />
                       <Route path="access-portal" element={<AccessPortal />} />
                       <Route path="signin" element={<Signin />} />
                     </Route>
 
-                    {/* IB Partnership as standalone route for sidebar */}
-                    <Route path="/partnership" element={<IBPartnership />} />
+                    {/* IB Partnership with AppBar - now consolidated under one route */}
+                    <Route path="/partnership" element={<LandingLayout><IBPartnership /></LandingLayout>} />
 
                     {/* Dashboard Pages */}
                     <Route path="/dashboard" element={<DashboardLayout><Outlet /></DashboardLayout>}>
@@ -95,8 +94,11 @@ function App() {
                       <Route path="admin-panel" element={<AdminPanel />} />
                     </Route>
 
-                    {/* 404 Page */}
-                    <Route path="*" element={<NotFound />} />
+                    {/* Legacy redirect for old IB partnership route */}
+                    <Route path="/ib-partnership" element={<LandingLayout><IBPartnership /></LandingLayout>} />
+
+                    {/* 404 Page with AppBar */}
+                    <Route path="*" element={<LandingLayout><NotFound /></LandingLayout>} />
                   </Routes>
                   <Toaster />
                 </Router>

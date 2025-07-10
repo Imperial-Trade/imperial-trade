@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton";
 import { Crown } from "lucide-react";
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
+import { useSidebar } from "@/components/ui/sidebar";
 import { User } from '@supabase/supabase-js';
 
 interface DashboardLayoutProps {
@@ -21,7 +22,7 @@ function DashboardHeader({ user }: DashboardHeaderProps) {
   const { openMobile } = useSidebar();
 
   return (
-    <header className="h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50 sticky top-0 z-50">
+    <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
       <div className="flex items-center gap-4">
         <SidebarTriggerButton />
         <div className={`flex items-center gap-2 transition-all duration-300 ${
@@ -87,12 +88,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <div className="min-h-screen bg-background text-foreground">
         <DashboardHeader user={user} />
         
-        <div className="flex-1 relative">
+        <div className="pt-16 min-h-screen">
           <AppSidebar />
-          <main className="w-full min-h-0 flex-1 overflow-auto bg-background text-foreground">
+          <main className="min-h-0 flex-1 bg-background text-foreground">
             {children}
           </main>
         </div>

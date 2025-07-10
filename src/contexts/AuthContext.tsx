@@ -53,69 +53,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      // First try to get the basic profile data that we know exists
-      const { data: basicProfileData, error: basicError } = await supabase
+      const { data: profileData, error } = await supabase
         .from('profiles')
         .select(`
           id,
           display_name,
           role,
+          user_type,
+          access_level,
+          account_status,
+          registration_source,
+          phone_number,
+          last_login,
+          approved_at,
+          approved_by,
           created_at,
           updated_at
         `)
         .eq('id', userId)
         .single();
 
-      if (basicError && basicError.code !== 'PGRST116') {
-        console.error('Error fetching basic profile:', basicError);
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
         return null;
       }
 
-      if (!basicProfileData) {
-        return null;
-      }
-
-      // Try to get extended profile data, but handle gracefully if columns don't exist
-      let extendedData = null;
-      try {
-        const { data: extendedProfileData, error: extendedError } = await supabase
-          .from('profiles')
-          .select(`
-            user_type,
-            access_level,
-            account_status,
-            registration_source,
-            phone_number,
-            last_login,
-            approved_at,
-            approved_by
-          `)
-          .eq('id', userId)
-          .single();
-
-        if (!extendedError) {
-          extendedData = extendedProfileData;
-        }
-      } catch (error) {
-        console.log('Extended profile fields not available yet:', error);
-      }
-
-      // Construct the complete profile with fallbacks
-      return {
-        id: basicProfileData.id,
-        display_name: basicProfileData.display_name,
-        role: basicProfileData.role,
-        user_type: extendedData?.user_type || null,
-        access_level: extendedData?.access_level || null,
-        account_status: extendedData?.account_status || 'active',
-        registration_source: extendedData?.registration_source || 'direct',
-        phone_number: extendedData?.phone_number || null,
-        last_login: extendedData?.last_login || null,
-        approved_at: extendedData?.approved_at || null,
-        approved_by: extendedData?.approved_by || null,
-        created_at: basicProfileData.created_at,
-        updated_at: basicProfileData.updated_at
-      } as Profile;
+      return profileData as Profile;
     } catch (error) {
       console.error('Error fetching profile:', error);
       return null;

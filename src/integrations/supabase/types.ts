@@ -506,28 +506,64 @@ export type Database = {
       }
       profiles: {
         Row: {
+          access_level: Database["public"]["Enums"]["access_level_enum"] | null
+          account_status:
+            | Database["public"]["Enums"]["account_status_enum"]
+            | null
+          approved_at: string | null
+          approved_by: string | null
           avatar_url: string | null
           created_at: string | null
           display_name: string | null
           id: string
+          last_login: string | null
+          phone_number: string | null
+          registration_source:
+            | Database["public"]["Enums"]["registration_source_enum"]
+            | null
           role: string | null
           updated_at: string | null
+          user_type: Database["public"]["Enums"]["user_type_enum"] | null
         }
         Insert: {
+          access_level?: Database["public"]["Enums"]["access_level_enum"] | null
+          account_status?:
+            | Database["public"]["Enums"]["account_status_enum"]
+            | null
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
           id: string
+          last_login?: string | null
+          phone_number?: string | null
+          registration_source?:
+            | Database["public"]["Enums"]["registration_source_enum"]
+            | null
           role?: string | null
           updated_at?: string | null
+          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
         }
         Update: {
+          access_level?: Database["public"]["Enums"]["access_level_enum"] | null
+          account_status?:
+            | Database["public"]["Enums"]["account_status_enum"]
+            | null
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
           id?: string
+          last_login?: string | null
+          phone_number?: string | null
+          registration_source?:
+            | Database["public"]["Enums"]["registration_source_enum"]
+            | null
           role?: string | null
           updated_at?: string | null
+          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
         }
         Relationships: []
       }
@@ -1121,6 +1157,12 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      access_level_enum: "user" | "moderator" | "admin"
+      account_status_enum:
+        | "active"
+        | "suspended"
+        | "pending_verification"
+        | "inactive"
       account_type: "user" | "admin"
       alert_condition: "above" | "below"
       alert_status: "active" | "triggered"
@@ -1145,6 +1187,12 @@ export type Database = {
         | "news"
         | "strategy"
       progress_status: "completed" | "in_progress"
+      registration_source_enum:
+        | "direct"
+        | "account_request"
+        | "social"
+        | "admin_created"
+        | "invitation"
       request_status: "pending" | "approved" | "rejected"
       session_status: "scheduled" | "live" | "completed"
       signal_status: "active" | "expired" | "triggered"
@@ -1154,6 +1202,7 @@ export type Database = {
       trade_alert_type: "buy" | "sell" | "buy_limit" | "sell_limit"
       trade_type: "Long" | "Short"
       upload_status: "pending" | "analyzed" | "error"
+      user_type_enum: "member" | "educator" | "admin"
       verification_status: "pending" | "verified" | "rejected"
     }
     CompositeTypes: {
@@ -1282,6 +1331,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      access_level_enum: ["user", "moderator", "admin"],
+      account_status_enum: [
+        "active",
+        "suspended",
+        "pending_verification",
+        "inactive",
+      ],
       account_type: ["user", "admin"],
       alert_condition: ["above", "below"],
       alert_status: ["active", "triggered"],
@@ -1302,6 +1358,13 @@ export const Constants = {
       mood_type: ["Confident", "Anxious", "Greedy", "Fearful", "Neutral"],
       post_category: ["discussion", "question", "analysis", "news", "strategy"],
       progress_status: ["completed", "in_progress"],
+      registration_source_enum: [
+        "direct",
+        "account_request",
+        "social",
+        "admin_created",
+        "invitation",
+      ],
       request_status: ["pending", "approved", "rejected"],
       session_status: ["scheduled", "live", "completed"],
       signal_status: ["active", "expired", "triggered"],
@@ -1311,6 +1374,7 @@ export const Constants = {
       trade_alert_type: ["buy", "sell", "buy_limit", "sell_limit"],
       trade_type: ["Long", "Short"],
       upload_status: ["pending", "analyzed", "error"],
+      user_type_enum: ["member", "educator", "admin"],
       verification_status: ["pending", "verified", "rejected"],
     },
   },

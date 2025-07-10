@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { adminAuditService } from '@/api/services/AdminAuditService';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -15,198 +15,202 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Search, UserCog, Shield, Trash2, Edit } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { 
+  Users, 
+  Search, 
+  Filter, 
+  Shield, 
+  UserX, 
+  RefreshCw,
+  Crown,
+  User
+} from 'lucide-react';
 
-interface User {
+interface UserData {
   id: string;
   email: string;
+  display_name?: string;
+  role?: string;
   created_at: string;
-  last_sign_in_at: string | null;
-  user_metadata?: {
-    full_name?: string;
-    access_level?: string;
-  };
+  last_sign_in_at?: string;
+  email_confirmed_at?: string;
 }
 
-interface UserManagementTableProps {
-  onRefresh?: () => void;
-}
-
-export function UserManagementTable({ onRefresh }: UserManagementTableProps) {
-  const [users, setUsers] = useState<User[]>([]);
+export function UserManagementTable() {
+  const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [newAccessLevel, setNewAccessLevel] = useState<string>('');
-  const { toast } = useToast();
+  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
+    getCurrentUser();
     loadUsers();
   }, []);
+
+  const getCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUser(user);
+  };
 
   const loadUsers = async () => {
     try {
       setLoading(true);
       
-      // Get current admin user for audit logging
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) return;
+      // Get auth users (this requires admin privileges)
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (authError) {
+        console.error('Error loading auth users:', authError);
+        return;
+      }
 
-      // For now, we'll simulate user data since we can't directly access auth.users
-      // In a real implementation, you'd need service role access or a user profiles table
-      const mockUsers: User[] = [
-        {
-          id: currentUser.id,
-          email: currentUser.email || 'admin@example.com',
-          created_at: new Date().toISOString(),
-          last_sign_in_at: new Date().toISOString(),
-          user_metadata: {
-            full_name: currentUser.user_metadata?.full_name || 'Admin User',
-            access_level: 'admin'
-          }
-        }
-      ];
+      // Get profiles data
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*');
 
-      setUsers(mockUsers);
+      if (profilesError) {
+        console.error('Error loading profiles:', profilesError);
+      }
 
-      // Log admin action
-      await adminAuditService.logAdminAction(
-        'user_management_view',
-        currentUser.email || 'unknown',
-        'users',
-        'all',
-        { user_count: mockUsers.length }
-      );
+      // Combine auth data with profile data
+      const combinedUsers = authUsers.users.map(user => {
+        const profile = profiles?.find(p => p.id === user.id);
+        return {
+          id: user.id,
+          email: user.email || '',
+          display_name: profile?.display_name || user.user_metadata?.full_name || 'Unknown',
+          role: profile?.role || user.user_metadata?.role || 'user',
+          created_at: user.created_at,
+          last_sign_in_at: user.last_sign_in_at,
+          email_confirmed_at: user.email_confirmed_at,
+        };
+      });
 
+      setUsers(combinedUsers);
     } catch (error) {
       console.error('Error loading users:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load users",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateAccessLevel = async () => {
-    if (!selectedUser || !newAccessLevel) return;
-
+  const updateUserRole = async (userId: string, newRole: string) => {
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) return;
+      // Update in profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          role: newRole,
+          updated_at: new Date().toISOString()
+        });
 
-      // In a real implementation, you'd update the user's metadata
-      // For now, we'll just log the action and show success
-      
-      await adminAuditService.logAdminAction(
-        'user_access_level_update',
-        currentUser.email || 'unknown',
-        'user',
-        selectedUser.id,
-        { 
-          old_access_level: selectedUser.user_metadata?.access_level,
-          new_access_level: newAccessLevel,
-          target_email: selectedUser.email
-        }
-      );
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        return;
+      }
 
-      toast({
-        title: "Success",
-        description: `User access level updated to ${newAccessLevel}`,
+      // Update in auth metadata
+      const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: { role: newRole }
       });
 
-      setEditDialogOpen(false);
-      setSelectedUser(null);
-      setNewAccessLevel('');
-      onRefresh?.();
+      if (authError) {
+        console.error('Error updating auth metadata:', authError);
+      }
 
+      // Log the action
+      if (currentUser) {
+        await adminAuditService.logAdminAction(
+          'update_user_role',
+          currentUser.email || 'unknown',
+          'user',
+          userId,
+          { old_role: users.find(u => u.id === userId)?.role, new_role: newRole }
+        );
+      }
+
+      // Reload users to show updated data
+      loadUsers();
     } catch (error) {
-      console.error('Error updating user:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update user access level",
-        variant: "destructive",
-      });
+      console.error('Error updating user role:', error);
     }
   };
 
-  const handleDeleteUser = async () => {
-    if (!selectedUser) return;
-
+  const deleteUser = async (userId: string) => {
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) return;
-
-      // In a real implementation, you'd delete the user
-      // For now, we'll just log the action
+      const { error } = await supabase.auth.admin.deleteUser(userId);
       
-      await adminAuditService.logAdminAction(
-        'user_delete',
-        currentUser.email || 'unknown',
-        'user',
-        selectedUser.id,
-        { 
-          deleted_email: selectedUser.email,
-          deleted_name: selectedUser.user_metadata?.full_name
-        }
-      );
+      if (error) {
+        console.error('Error deleting user:', error);
+        return;
+      }
 
-      toast({
-        title: "Success",
-        description: "User deleted successfully",
-      });
+      // Log the action
+      if (currentUser) {
+        await adminAuditService.logAdminAction(
+          'delete_user',
+          currentUser.email || 'unknown',
+          'user',
+          userId,
+          { deleted_user_email: users.find(u => u.id === userId)?.email }
+        );
+      }
 
-      setDeleteDialogOpen(false);
-      setSelectedUser(null);
+      // Reload users
       loadUsers();
-      onRefresh?.();
-
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete user",
-        variant: "destructive",
-      });
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.user_metadata?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getAccessLevelBadge = (level?: string) => {
-    switch (level) {
-      case 'admin':
-        return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Admin</Badge>;
-      case 'premium':
-        return <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">Premium</Badge>;
-      case 'free':
-      default:
-        return <Badge className="bg-gray-500/10 text-gray-400 border-gray-500/20">Free</Badge>;
+  const getRoleBadge = (role: string) => {
+    if (role === 'admin') {
+      return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Admin</Badge>;
     }
+    if (role === 'moderator') {
+      return <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">Moderator</Badge>;
+    }
+    return <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">User</Badge>;
   };
+
+  const getStatusBadge = (user: UserData) => {
+    if (!user.email_confirmed_at) {
+      return <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/20">Unconfirmed</Badge>;
+    }
+    if (user.last_sign_in_at) {
+      const lastSignIn = new Date(user.last_sign_in_at);
+      const daysSinceLastSignIn = Math.floor((Date.now() - lastSignIn.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSinceLastSignIn <= 7) {
+        return <Badge className="bg-green-500/10 text-green-400 border-green-500/20">Active</Badge>;
+      }
+    }
+    return <Badge className="bg-gray-500/10 text-gray-400 border-gray-500/20">Inactive</Badge>;
+  };
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.display_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = !roleFilter || user.role === roleFilter;
+    
+    return matchesSearch && matchesRole;
+  });
+
+  const uniqueRoles = [...new Set(users.map(user => user.role))];
 
   if (loading) {
     return (
@@ -221,169 +225,152 @@ export function UserManagementTable({ onRefresh }: UserManagementTableProps) {
   }
 
   return (
-    <Card className="glass-effect border-default">
-      <CardHeader>
-        <CardTitle className="text-primary flex items-center gap-2">
-          <UserCog className="w-5 h-5" />
-          User Management
-        </CardTitle>
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary w-4 h-4" />
-            <Input
-              placeholder="Search users..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-surface border-default text-primary"
-            />
-          </div>
-          <Button
-            onClick={loadUsers}
-            variant="outline"
-            className="border-default text-secondary hover:bg-surface hover:text-primary"
-          >
-            Refresh
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {filteredUsers.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-primary">Email</TableHead>
-                <TableHead className="text-primary">Name</TableHead>
-                <TableHead className="text-primary">Access Level</TableHead>
-                <TableHead className="text-primary">Created</TableHead>
-                <TableHead className="text-primary">Last Sign In</TableHead>
-                <TableHead className="text-primary">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="text-secondary">{user.email}</TableCell>
-                  <TableCell className="text-secondary">
-                    {user.user_metadata?.full_name || 'N/A'}
-                  </TableCell>
-                  <TableCell>
-                    {getAccessLevelBadge(user.user_metadata?.access_level)}
-                  </TableCell>
-                  <TableCell className="text-secondary">
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-secondary">
-                    {user.last_sign_in_at 
-                      ? new Date(user.last_sign_in_at).toLocaleDateString()
-                      : 'Never'
-                    }
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setNewAccessLevel(user.user_metadata?.access_level || 'free');
-                            }}
-                            className="border-default text-secondary hover:bg-surface hover:text-primary"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="glass-effect border-default">
-                          <DialogHeader>
-                            <DialogTitle className="text-primary">Edit User Access</DialogTitle>
-                            <DialogDescription className="text-secondary">
-                              Update the access level for {selectedUser?.email}
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="py-4">
-                            <Select value={newAccessLevel} onValueChange={setNewAccessLevel}>
-                              <SelectTrigger className="bg-surface border-default text-primary">
-                                <SelectValue placeholder="Select access level" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="free">Free</SelectItem>
-                                <SelectItem value="premium">Premium</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <DialogFooter>
-                            <Button
-                              variant="outline"
-                              onClick={() => setEditDialogOpen(false)}
-                              className="border-default text-secondary hover:bg-surface hover:text-primary"
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              onClick={handleUpdateAccessLevel}
-                              className="bg-accent-green hover:bg-green-500 text-white"
-                            >
-                              Update Access
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-
-                      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedUser(user)}
-                            className="border-red-500/20 text-red-400 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="glass-effect border-default">
-                          <DialogHeader>
-                            <DialogTitle className="text-primary">Delete User</DialogTitle>
-                            <DialogDescription className="text-secondary">
-                              Are you sure you want to delete {selectedUser?.email}? This action cannot be undone.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <DialogFooter>
-                            <Button
-                              variant="outline"
-                              onClick={() => setDeleteDialogOpen(false)}
-                              className="border-default text-secondary hover:bg-surface hover:text-primary"
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              onClick={handleDeleteUser}
-                              className="bg-red-500 hover:bg-red-600 text-white"
-                            >
-                              Delete User
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
+    <div className="w-full space-y-6">
+      <Card className="glass-effect border-default">
+        <CardHeader>
+          <CardTitle className="text-primary flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            User Management
+            <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 ml-2">
+              {filteredUsers.length} Users
+            </Badge>
+          </CardTitle>
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary w-4 h-4" />
+              <Input
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 bg-surface border-default text-primary"
+              />
+            </div>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="px-3 py-2 bg-surface border border-default rounded-md text-primary"
+            >
+              <option value="">All Roles</option>
+              {uniqueRoles.map(role => (
+                <option key={role} value={role}>{role}</option>
               ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="text-center py-8">
-            <UserCog className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-primary mb-2">
-              No Users Found
-            </h3>
-            <p className="text-secondary">
-              {searchTerm ? 'No users match your search criteria.' : 'No users to display.'}
-            </p>
+            </select>
+            <Button
+              onClick={loadUsers}
+              variant="outline"
+              size="sm"
+              className="border-default text-secondary hover:bg-surface hover:text-primary"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent className="p-0">
+          {filteredUsers.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-primary">User</TableHead>
+                    <TableHead className="text-primary">Role</TableHead>
+                    <TableHead className="text-primary">Status</TableHead>
+                    <TableHead className="text-primary">Created</TableHead>
+                    <TableHead className="text-primary">Last Active</TableHead>
+                    <TableHead className="text-primary">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-surface rounded-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-secondary" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-primary">{user.display_name}</div>
+                            <div className="text-sm text-secondary">{user.email}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getRoleBadge(user.role || 'user')}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(user)}
+                      </TableCell>
+                      <TableCell className="text-secondary">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-secondary">
+                        {user.last_sign_in_at 
+                          ? new Date(user.last_sign_in_at).toLocaleDateString()
+                          : 'Never'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={user.role || 'user'}
+                            onChange={(e) => updateUserRole(user.id, e.target.value)}
+                            className="px-2 py-1 text-sm bg-surface border border-default rounded text-primary"
+                          >
+                            <option value="user">User</option>
+                            <option value="moderator">Moderator</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                              >
+                                <UserX className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-surface border-default">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-primary">Delete User</AlertDialogTitle>
+                                <AlertDialogDescription className="text-secondary">
+                                  Are you sure you want to delete {user.email}? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="bg-surface border-default text-secondary hover:bg-background">
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteUser(user.id)}
+                                  className="bg-red-500 hover:bg-red-600 text-white"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Users className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-primary mb-2">
+                No Users Found
+              </h3>
+              <p className="text-secondary">
+                {searchTerm || roleFilter ? 'No users match your search criteria.' : 'No users found.'}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

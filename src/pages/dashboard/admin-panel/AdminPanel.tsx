@@ -87,10 +87,10 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="min-h-full bg-background p-6 w-full">
-      <div className="w-full">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-none">
         {/* Header */}
-        <div className="mb-8">
+        <div className="px-6 pt-6 pb-4">
           <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
             Admin <span className="gold-text-gradient">Control Panel</span>
           </h1>
@@ -100,118 +100,120 @@ export default function AdminPanel() {
         </div>
 
         {/* System Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="glass-effect">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-accent-blue" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{systemStats.totalUsers}</div>
-              <p className="text-xs text-secondary">Registered accounts</p>
-            </CardContent>
-          </Card>
+        <div className="px-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="glass-effect">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <Users className="h-4 w-4 text-accent-blue" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">{systemStats.totalUsers}</div>
+                <p className="text-xs text-secondary">Registered accounts</p>
+              </CardContent>
+            </Card>
 
-          <Card className="glass-effect">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <Activity className="h-4 w-4 text-accent-green" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{systemStats.activeUsers}</div>
-              <p className="text-xs text-secondary">Last 7 days</p>
-            </CardContent>
-          </Card>
+            <Card className="glass-effect">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                <Activity className="h-4 w-4 text-accent-green" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">{systemStats.activeUsers}</div>
+                <p className="text-xs text-secondary">Last 7 days</p>
+              </CardContent>
+            </Card>
 
-          <Card className="glass-effect">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Trades</CardTitle>
-              <TrendingUp className="h-4 w-4 text-accent-gold" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{systemStats.totalTrades}</div>
-              <p className="text-xs text-secondary">All time signals</p>
-            </CardContent>
-          </Card>
+            <Card className="glass-effect">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Trades</CardTitle>
+                <TrendingUp className="h-4 w-4 text-accent-gold" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">{systemStats.totalTrades}</div>
+                <p className="text-xs text-secondary">All time signals</p>
+              </CardContent>
+            </Card>
 
-          <Card className="glass-effect">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">System Health</CardTitle>
-              <Shield className="h-4 w-4 text-accent-green" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Badge 
-                  className={`
-                    ${systemStats.systemHealth === 'good' 
-                      ? 'bg-green-500/20 text-green-400 border-green-500/30' 
-                      : 'bg-red-500/20 text-red-400 border-red-500/30'
-                    }
-                  `}
-                >
-                  {systemStats.systemHealth === 'good' ? 'Operational' : 'Issues'}
-                </Badge>
-              </div>
-              <p className="text-xs text-secondary">All systems</p>
-            </CardContent>
-          </Card>
+            <Card className="glass-effect">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">System Health</CardTitle>
+                <Shield className="h-4 w-4 text-accent-green" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <Badge 
+                    className={`
+                      ${systemStats.systemHealth === 'good' 
+                        ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                        : 'bg-red-500/20 text-red-400 border-red-500/30'
+                      }
+                    `}
+                  >
+                    {systemStats.systemHealth === 'good' ? 'Operational' : 'Issues'}
+                  </Badge>
+                </div>
+                <p className="text-xs text-secondary">All systems</p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Main Admin Tabs */}
-        <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 bg-surface">
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Users</span>
-            </TabsTrigger>
-            <TabsTrigger value="system" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              <span className="hidden sm:inline">System</span>
-            </TabsTrigger>
-            <TabsTrigger value="monitoring" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              <span className="hidden sm:inline">Monitor</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              <span className="hidden sm:inline">Alerts</span>
-            </TabsTrigger>
-            <TabsTrigger value="audit" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Audit</span>
-            </TabsTrigger>
-            <TabsTrigger value="trades" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Trades</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="px-6">
+          <Tabs defaultValue="users" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 bg-surface mb-6">
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Users</span>
+              </TabsTrigger>
+              <TabsTrigger value="system" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                <span className="hidden sm:inline">System</span>
+              </TabsTrigger>
+              <TabsTrigger value="monitoring" className="flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                <span className="hidden sm:inline">Monitor</span>
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                <span className="hidden sm:inline">Alerts</span>
+              </TabsTrigger>
+              <TabsTrigger value="audit" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Audit</span>
+              </TabsTrigger>
+              <TabsTrigger value="trades" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                <span className="hidden sm:inline">Trades</span>
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="mt-6">
-            <TabsContent value="users" className="space-y-6">
+            <TabsContent value="users" className="w-full">
               <UserManagementTable />
             </TabsContent>
 
-            <TabsContent value="system" className="space-y-6">
+            <TabsContent value="system" className="w-full">
               <SystemMonitoring />
             </TabsContent>
 
-            <TabsContent value="monitoring" className="space-y-6">
+            <TabsContent value="monitoring" className="w-full">
               <EnhancedSystemMonitoring />
             </TabsContent>
 
-            <TabsContent value="notifications" className="space-y-6">
+            <TabsContent value="notifications" className="w-full">
               <RealTimeNotifications />
             </TabsContent>
 
-            <TabsContent value="audit" className="space-y-6">
+            <TabsContent value="audit" className="w-full">
               <RealtimeAuditLog />
             </TabsContent>
 
-            <TabsContent value="trades" className="space-y-6">
+            <TabsContent value="trades" className="w-full">
               <AdminTradeSignalsTab currentUser={user} />
             </TabsContent>
-          </div>
-        </Tabs>
+          </Tabs>
+        </div>
       </div>
     </div>
   );

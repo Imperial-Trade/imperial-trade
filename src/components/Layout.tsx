@@ -1,6 +1,7 @@
 
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
+import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton"
 import { Crown } from "lucide-react"
 import { useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
@@ -26,15 +27,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // For other pages, use the grid-based sidebar layout
+  // For other pages, use the overlay sidebar layout
   return (
-    <SidebarProvider>
-      <div className="min-h-screen grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] w-full bg-background">
-        {/* Header spans both columns */}
+    <SidebarProvider defaultOpen={false}>
+      <div className="min-h-screen flex flex-col w-full bg-background">
+        {/* Fixed Header */}
         <ErrorBoundary componentName="Header">
-          <header className="col-span-2 h-16 flex items-center justify-between px-6 bg-background/95 backdrop-blur-xl border-b border-border sticky top-0 z-50">
+          <header className="h-16 flex items-center justify-between px-6 bg-background/95 backdrop-blur-xl border-b border-border sticky top-0 z-50">
             <div className="flex items-center gap-4">
-              <SidebarTrigger className="text-primary hover:text-primary/80 transition-colors" />
+              <SidebarTriggerButton />
               <div className="flex items-center gap-2">
                 <Crown className="h-6 w-6 text-primary" />
                 <span className="text-xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
@@ -52,19 +53,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </header>
         </ErrorBoundary>
 
-        {/* Sidebar */}
-        <div className="row-start-2">
+        {/* Main Content Area with Sidebar Overlay */}
+        <div className="flex-1 relative">
           <ErrorBoundary componentName="Sidebar">
             <AppSidebar />
           </ErrorBoundary>
+          <main className="w-full h-full overflow-auto bg-background">
+            <ErrorBoundary componentName="Page Content">
+              {children}
+            </ErrorBoundary>
+          </main>
         </div>
-
-        {/* Main content area */}
-        <main className="row-start-2 col-start-2 overflow-auto bg-background">
-          <ErrorBoundary componentName="Page Content">
-            {children}
-          </ErrorBoundary>
-        </main>
       </div>
     </SidebarProvider>
   )

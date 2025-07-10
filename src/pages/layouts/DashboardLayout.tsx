@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton";
 import { Crown } from "lucide-react";
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 
@@ -48,12 +49,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] bg-background text-foreground">
-        {/* Header spans both columns */}
-        <header className="col-span-2 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50 sticky top-0 z-50">
+    <SidebarProvider defaultOpen={false}>
+      <div className="min-h-screen flex flex-col bg-background text-foreground">
+        {/* Fixed Header */}
+        <header className="h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50 sticky top-0 z-50">
           <div className="flex items-center gap-4">
-            <SidebarTrigger className="text-primary hover:text-primary/80 transition-colors" />
+            <SidebarTriggerButton />
             <div className="flex items-center gap-2">
               <Crown className="h-6 w-6 text-primary" />
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
@@ -73,15 +74,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </div>
         </header>
 
-        {/* Sidebar */}
-        <div className="row-start-2">
+        {/* Main Content Area with Sidebar Overlay */}
+        <div className="flex-1 relative">
           <AppSidebar />
+          <main className="w-full h-full overflow-auto bg-background text-foreground">
+            {children}
+          </main>
         </div>
-
-        {/* Main content area */}
-        <main className="row-start-2 col-start-2 overflow-auto bg-background text-foreground">
-          {children}
-        </main>
       </div>
     </SidebarProvider>
   );

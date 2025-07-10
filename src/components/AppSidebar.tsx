@@ -19,7 +19,11 @@ export function AppSidebar() {
   const isCollapsed = sidebarState === "collapsed";
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar">
+    <Sidebar 
+      className="border-r border-sidebar-border bg-sidebar"
+      collapsible="offcanvas"
+      variant="floating"
+    >
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <SidebarBrand isCollapsed={isCollapsed} />
       </SidebarHeader>

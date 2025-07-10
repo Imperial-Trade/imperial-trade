@@ -46,7 +46,7 @@ export function useLivePrice(symbol: string): LivePriceData {
   return useWebSocketLivePrice(symbol);
 }
 
-// Legacy compatibility export
+// Legacy compatibility export with proper typing
 export function useEnhancedLivePrice(symbol: string, config?: any): LivePriceData & { retry: () => void } {
   useEffect(() => {
     logLegacyUsage('useEnhancedLivePrice');
@@ -56,8 +56,6 @@ export function useEnhancedLivePrice(symbol: string, config?: any): LivePriceDat
   
   return {
     ...data,
-    retry: () => {}, // No-op for compatibility
-    isRetrying: false,
-    canRetry: false
+    retry: () => {} // No-op for compatibility
   };
 }

@@ -17,7 +17,7 @@ export const useEmailValidation = () => {
 
   const validateEmail = useCallback(async (email: string): Promise<ValidationResult> => {
     if (!email) {
-      const result = { status: 'idle' as const, message: '' };
+      const result: ValidationResult = { status: 'idle', message: '' };
       setValidationResult(result);
       return result;
     }
@@ -26,8 +26,8 @@ export const useEmailValidation = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const isValid = emailRegex.test(email);
 
-    const result = {
-      status: (isValid ? 'valid' : 'invalid') as const,
+    const result: ValidationResult = {
+      status: isValid ? 'valid' : 'invalid',
       message: isValid ? '' : 'Please enter a valid email address'
     };
 

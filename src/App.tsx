@@ -117,7 +117,6 @@ function App() {
                         />
                         <Route path="settings" element={<Settings />} />
                         <Route path="athena" element={<AthenaTest />} />
-                        <Route path="dev-tests" element={<DevTests />} />
 
                         {/* Admin Only Route */}
                         <Route
@@ -125,6 +124,14 @@ function App() {
                           element={
                             <ProtectedRoute requiredRole="admin">
                               <AdminPanel />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="dev-tests"
+                          element={
+                            <ProtectedRoute requiredRole="admin">
+                              <DevTests />
                             </ProtectedRoute>
                           }
                         />

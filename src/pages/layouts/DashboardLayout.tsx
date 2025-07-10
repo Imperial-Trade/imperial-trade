@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -68,14 +67,16 @@ function DesktopSidebarOverlay() {
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/20 z-40 backdrop-blur-sm"
         onClick={() => setOpenMobile(false)}
       />
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out ${
-        isTablet ? 'w-72' : 'w-64'
-      }`}>
+      <div
+        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out ${
+          isTablet ? "w-72" : "w-64"
+        }`}
+      >
         <div className="h-full bg-background/95 backdrop-blur-xl border-r border-border/50 shadow-2xl">
           <AppSidebar />
         </div>
@@ -118,7 +119,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   }
 
   if (!user || !session) {
-    return <Navigate to="/access-portal" replace />;
+    return <Navigate to="/signin" replace />;
   }
 
   return (
@@ -126,13 +127,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       <div className="min-h-screen bg-background text-foreground w-full">
         {/* Fixed Header - Always stays at top */}
         <DashboardHeader user={user} />
-        
+
         {/* Mobile: Use existing Sheet-based sidebar */}
         {isMobile && <AppSidebar />}
 
         {/* Desktop & Tablet: Use custom overlay sidebar */}
         <DesktopSidebarOverlay />
-        
+
         {/* Main Content - Full width, independent of sidebar state */}
         <main className="w-full min-h-screen pt-16 bg-background text-foreground">
           {children}

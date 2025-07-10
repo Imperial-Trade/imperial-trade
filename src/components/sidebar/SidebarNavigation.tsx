@@ -1,6 +1,5 @@
-
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -8,7 +7,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar';
+} from "@/components/ui/sidebar";
 import {
   Home,
   GraduationCap,
@@ -19,7 +18,7 @@ import {
   Wrench,
   TrendingUp,
   Bot,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface SidebarNavigationProps {
   isCollapsed: boolean;
@@ -31,7 +30,10 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
   const isActive = (url: string) => {
     // Handle both exact matches and home route special case
     if (url === "/dashboard/home") {
-      return location.pathname === "/dashboard/home" || location.pathname === "/dashboard";
+      return (
+        location.pathname === "/dashboard/home" ||
+        location.pathname === "/dashboard"
+      );
     }
     return location.pathname === url;
   };
@@ -39,13 +41,12 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
   const navigationItems = [
     { to: "/dashboard/home", icon: Home, label: "Home" },
     { to: "/dashboard/education", icon: GraduationCap, label: "Education" },
-    { to: "/dashboard/signals", icon: Radio, label: "Signal Stream" },
+    { to: "/dashboard/signal-stream", icon: Radio, label: "Signal Stream" },
     { to: "/dashboard/live", icon: Video, label: "Live Sessions" },
     { to: "/dashboard/forum", icon: MessageSquare, label: "Forum" },
-    { to: "/partnership", icon: Briefcase, label: "IB Partnership" },
-    { to: "/dashboard/tools", icon: Wrench, label: "Advanced Tools" },
-    { to: "/dashboard/progress", icon: TrendingUp, label: "My Progress" },
-    { to: "/dashboard/athena-test", icon: Bot, label: "Athena AI" },
+    { to: "/dashboard/advanced-tools", icon: Wrench, label: "Advanced Tools" },
+    { to: "/dashboard/my-progress", icon: TrendingUp, label: "My Progress" },
+    { to: "/dashboard/athena", icon: Bot, label: "Athena AI" },
   ];
 
   const handleNavigationClick = (e: React.MouseEvent) => {
@@ -62,18 +63,18 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
         <SidebarMenu>
           {navigationItems.map((item) => (
             <SidebarMenuItem key={item.to}>
-              <SidebarMenuButton 
+              <SidebarMenuButton
                 asChild
                 isActive={isActive(item.to)}
                 className={`w-full justify-start ${
-                  isActive(item.to) 
-                    ? "bg-primary/20 text-primary border border-primary/30" 
+                  isActive(item.to)
+                    ? "bg-primary/20 text-primary border border-primary/30"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 }`}
                 tooltip={isCollapsed ? item.label : undefined}
               >
-                <Link 
-                  to={item.to} 
+                <Link
+                  to={item.to}
                   className="flex items-center gap-3 px-3 py-2"
                   onClick={handleNavigationClick}
                 >

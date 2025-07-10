@@ -1,12 +1,11 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 
 export function SidebarTriggerButton() {
-  const { state, toggleSidebar } = useSidebar();
-  const isCollapsed = state === "collapsed";
+  const { openMobile, toggleSidebar } = useSidebar();
 
   return (
     <Button
@@ -15,13 +14,13 @@ export function SidebarTriggerButton() {
       onClick={toggleSidebar}
       className="h-8 w-8 text-primary hover:text-primary/80 transition-colors"
     >
-      {isCollapsed ? (
-        <ChevronRight className="h-4 w-4" />
+      {openMobile ? (
+        <X className="h-5 w-5" />
       ) : (
-        <ChevronLeft className="h-4 w-4" />
+        <Menu className="h-5 w-5" />
       )}
       <span className="sr-only">
-        {isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        {openMobile ? "Close sidebar" : "Open sidebar"}
       </span>
     </Button>
   );

@@ -4,28 +4,22 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { 
-  Home, 
-  BookOpen, 
-  TrendingUp, 
-  Video, 
-  MessageCircle, 
-  BarChart3
+import {
+  Home,
+  GraduationCap,
+  Radio,
+  Video,
+  MessageSquare,
+  Briefcase,
+  Wrench,
+  TrendingUp,
+  Bot,
 } from 'lucide-react';
-
-const navigationItems = [
-  { title: "Home", url: "/dashboard/home", icon: Home },
-  { title: "Education", url: "/dashboard/education", icon: BookOpen },
-  { title: "Signal Stream", url: "/dashboard/signals", icon: TrendingUp },
-  { title: "Live Sessions", url: "/dashboard/live", icon: Video },
-  { title: "Community Forum", url: "/dashboard/forum", icon: MessageCircle },
-  { title: "Advanced Tools", url: "/dashboard/tools", icon: BarChart3 },
-  { title: "My Progress", url: "/dashboard/progress", icon: BarChart3 },
-];
 
 interface SidebarNavigationProps {
   isCollapsed: boolean;
@@ -38,26 +32,50 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
     return location.pathname === url;
   };
 
+  const navigationItems = [
+    { to: "/dashboard/home", icon: Home, label: "Home" },
+    { to: "/dashboard/education", icon: GraduationCap, label: "Education" },
+    { to: "/dashboard/signal-stream", icon: Radio, label: "Signal Stream" },
+    { to: "/dashboard/live", icon: Video, label: "Live Sessions" },
+    { to: "/dashboard/forum", icon: MessageSquare, label: "Forum" },
+    { to: "/partnership", icon: Briefcase, label: "IB Partnership" },
+    { to: "/dashboard/advanced-tools", icon: Wrench, label: "Advanced Tools" },
+    { to: "/dashboard/my-progress", icon: TrendingUp, label: "My Progress" },
+    { to: "/dashboard/athena", icon: Bot, label: "Athena AI" },
+  ];
+
+  const handleNavigationClick = (e: React.MouseEvent) => {
+    // Prevent the sidebar click handler from being triggered
+    e.stopPropagation();
+  };
+
   return (
     <SidebarGroup>
+      <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
+        Navigation
+      </SidebarGroupLabel>
       <SidebarGroupContent>
-        <SidebarMenu className="space-y-1">
+        <SidebarMenu>
           {navigationItems.map((item) => (
-            <SidebarMenuItem key={item.title}>
+            <SidebarMenuItem key={item.to}>
               <SidebarMenuButton 
-                asChild 
-                isActive={isActive(item.url)}
-                className={`w-full justify-start transition-colors ${
-                  isActive(item.url) 
-                    ? "bg-accent-green text-white" 
+                asChild
+                isActive={isActive(item.to)}
+                className={`w-full justify-start ${
+                  isActive(item.to) 
+                    ? "bg-primary/20 text-primary border border-primary/30" 
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 }`}
-                tooltip={isCollapsed ? item.title : undefined}
+                tooltip={isCollapsed ? item.label : undefined}
               >
-                <Link to={item.url} className="flex items-center gap-3 px-3 py-2 rounded-md">
+                <Link 
+                  to={item.to} 
+                  className="flex items-center gap-3 px-3 py-2"
+                  onClick={handleNavigationClick}
+                >
                   <item.icon className="w-4 h-4 shrink-0" />
                   {!isCollapsed && (
-                    <span className="text-sm font-medium">{item.title}</span>
+                    <span className="text-sm font-medium">{item.label}</span>
                   )}
                 </Link>
               </SidebarMenuButton>

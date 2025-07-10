@@ -15,16 +15,22 @@ import { SidebarUserMenu } from "./sidebar/SidebarUserMenu";
 
 export function AppSidebar() {
   const { user } = useAuth();
-  const { state: sidebarState } = useSidebar();
+  const { state: sidebarState, setOpenMobile } = useSidebar();
   const isCollapsed = sidebarState === "collapsed";
+
+  const handleSidebarClick = () => {
+    // Close the sidebar when clicking inside it
+    setOpenMobile(false);
+  };
 
   return (
     <Sidebar 
-      className="border-r border-sidebar-border bg-sidebar"
+      className="border-r-0 bg-background/80 backdrop-blur-xl"
       collapsible="offcanvas"
       variant="floating"
+      onClick={handleSidebarClick}
     >
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
+      <SidebarHeader className="p-4 border-b border-border/20">
         <SidebarBrand isCollapsed={isCollapsed} />
       </SidebarHeader>
 

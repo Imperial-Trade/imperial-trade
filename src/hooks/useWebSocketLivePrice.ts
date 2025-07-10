@@ -1,5 +1,8 @@
 
+// Enhanced WebSocket live price hook with performance optimizations
 import { useOptimizedLivePrice } from './useOptimizedLivePrice';
+import { logLegacyUsage } from '@/utils/legacyCleanup';
+import { useEffect } from 'react';
 
 interface LivePriceData {
   price: number;
@@ -12,9 +15,14 @@ interface LivePriceData {
 }
 
 export function useWebSocketLivePrice(symbol: string): LivePriceData {
+  // Log usage for performance monitoring
+  useEffect(() => {
+    console.log('✅ Using WebSocket-based live pricing for', symbol);
+  }, [symbol]);
+
   const optimizedData = useOptimizedLivePrice(symbol, {
     enableSmartPausing: true,
-    debounceMs: 500,
+    debounceMs: 300,
     pauseOnInput: true
   });
 
@@ -26,5 +34,30 @@ export function useWebSocketLivePrice(symbol: string): LivePriceData {
     error: optimizedData.error,
     lastUpdated: optimizedData.lastUpdated,
     connectionStatus: optimizedData.connectionStatus
+  };
+}
+
+// Legacy compatibility export
+export function useLivePrice(symbol: string): LivePriceData {
+  useEffect(() => {
+    logLegacyUsage('useLivePrice');
+  }, []);
+
+  return useWebSocketLivePrice(symbol);
+}
+
+// Legacy compatibility export
+export function useEnhancedLivePrice(symbol: string, config?: any): LivePriceData & { retry: () => void } {
+  useEffect(() => {
+    logLegacyUsage('useEnhancedLivePrice');
+  }, []);
+
+  const data = useWebSocketLivePrice(symbol);
+  
+  return {
+    ...data,
+    retry: () => {}, // No-op for compatibility
+    isRetrying: false,
+    canRetry: false
   };
 }

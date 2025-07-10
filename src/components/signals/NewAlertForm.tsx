@@ -1,9 +1,10 @@
 
-// Legacy form component - replaced by OptimizedNewAlertForm
-// This file is kept for backward compatibility but should not be used for new implementations
-// Use OptimizedNewAlertForm instead for better performance with WebSocket-based live pricing
+// Legacy form component - fully deprecated and replaced by OptimizedNewAlertForm
+// This component now redirects to the optimized version to prevent accidental usage
 
 import React from 'react';
+import OptimizedNewAlertForm from './OptimizedNewAlertForm';
+import { logLegacyUsage } from '@/utils/legacyCleanup';
 
 interface NewAlertFormProps {
   onSubmit: (data: any) => void;
@@ -11,20 +12,16 @@ interface NewAlertFormProps {
 }
 
 export default function NewAlertForm({ onSubmit, onCancel }: NewAlertFormProps) {
+  // Log legacy usage for monitoring
+  React.useEffect(() => {
+    logLegacyUsage('NewAlertForm');
+  }, []);
+
+  // Redirect to optimized component
   return (
-    <div className="p-4 bg-gray-800 rounded-lg">
-      <div className="text-center text-yellow-400 mb-4">
-        <p>⚠️ This component has been deprecated</p>
-        <p className="text-sm text-gray-400">Please use OptimizedNewAlertForm instead</p>
-      </div>
-      {onCancel && (
-        <button 
-          onClick={onCancel}
-          className="w-full bg-gray-600 text-white py-2 rounded hover:bg-gray-500"
-        >
-          Close
-        </button>
-      )}
-    </div>
+    <OptimizedNewAlertForm 
+      onSubmit={onSubmit}
+      onCancel={onCancel}
+    />
   );
 }

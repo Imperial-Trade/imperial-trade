@@ -1,4 +1,6 @@
+
 import { apiClient, TableRow, TableInsert, TableUpdate } from '../client/ApiClient';
+import { supabase } from '@/integrations/supabase/client';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { ApiResponse } from '@/types/common';
 import { isTradeAlert } from '@/types/guards';
@@ -222,8 +224,8 @@ export class TradingApiService {
   // NEW: Get all public signals with user profile information
   async getAllPublicAlertsWithProfiles(): Promise<ApiResponse<TradeAlertWithProfile[]>> {
     try {
-      // Use a raw query to join trade_alerts with profiles
-      const { data, error } = await apiClient.supabase
+      // Use supabase directly for the join query
+      const { data, error } = await supabase
         .from('trade_alerts')
         .select(`
           *,

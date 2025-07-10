@@ -115,7 +115,6 @@ const NewSignalPage: React.FC = () => {
         <div className="bg-card rounded-lg border border-border p-6">
           <OptimizedNewAlertForm 
             onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
           />
         </div>
       </div>

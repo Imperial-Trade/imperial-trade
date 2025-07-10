@@ -69,7 +69,7 @@ export default function SignalStream() {
     if (updateInProgress.has(alert.id)) return;
     
     // Only allow users to modify their own signals
-    if (user?.id !== alert.user_id && user?.user_metadata?.role !== 'admin') {
+    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
       console.warn('User not authorized to update this signal');
       return;
     }
@@ -114,7 +114,7 @@ export default function SignalStream() {
     if (updateInProgress.has(alert.id)) return;
     
     // Only allow users to modify their own signals
-    if (user?.id !== alert.user_id && user?.user_metadata?.role !== 'admin') {
+    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
       return;
     }
     
@@ -177,7 +177,7 @@ export default function SignalStream() {
     if (updateInProgress.has(alert.id)) return;
     
     // Only allow users to modify their own signals
-    if (user?.id !== alert.user_id && user?.user_metadata?.role !== 'admin') {
+    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
       return;
     }
     
@@ -232,7 +232,7 @@ export default function SignalStream() {
     if (updateInProgress.has(alert.id)) return;
     
     // Only allow users to modify their own signals
-    if (user?.id !== alert.user_id && user?.user_metadata?.role !== 'admin') {
+    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
       return;
     }
     
@@ -321,8 +321,7 @@ export default function SignalStream() {
                             tp_hits: alert.tpHits,
                             close_reason: alert.closeReason,
                             created_date: alert.createdAt,
-                            updated_date: alert.updatedAt,
-                            user_id: alert.creator?.id
+                            updated_date: alert.updatedAt
                           }} 
                           onStatusUpdate={handleStatusUpdate}
                           onTakeProfitHit={handleTakeProfitHit} 
@@ -367,8 +366,7 @@ export default function SignalStream() {
                             tp_hits: alert.tpHits,
                             close_reason: alert.closeReason,
                             created_date: alert.createdAt,
-                            updated_date: alert.updatedAt,
-                            user_id: alert.creator?.id
+                            updated_date: alert.updatedAt
                           }}
                           onStatusUpdate={handleStatusUpdate}
                           onTakeProfitHit={handleTakeProfitHit} 

@@ -92,7 +92,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         
         <div className="flex-1 relative">
           <AppSidebar />
-          <main className="w-full h-full overflow-auto bg-background text-foreground">
+          <main className="w-full min-h-0 flex-1 overflow-auto bg-background text-foreground">
             {children}
           </main>
         </div>

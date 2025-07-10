@@ -27,7 +27,7 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="min-h-full flex items-center justify-center bg-background">
+      <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
@@ -36,7 +36,7 @@ export default function Home() {
   const userAccessLevel = user?.user_metadata?.access_level || 'free';
 
   return (
-    <div className="min-h-full bg-background p-6">
+    <div className="p-6 bg-background">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Welcome Section */}
         <div className="text-center space-y-4">

@@ -66,7 +66,7 @@ export default function Education() {
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center bg-background">
+      <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-green"></div>
       </div>
     );
@@ -78,10 +78,10 @@ export default function Education() {
   }
 
   return (
-    <div className="h-full grid grid-rows-[auto_1fr] bg-background text-primary overflow-hidden">
+    <div className="flex flex-col bg-background text-primary overflow-hidden">
       <HeroSection video={featuredVideo} onPlay={setSelectedVideo} />
 
-      <div className="relative z-10 -mt-20 overflow-auto">
+      <div className="relative z-10 -mt-20 overflow-auto flex-1">
         {groupedVideos.map((group) => (
           <VideoRow
             key={group.category}

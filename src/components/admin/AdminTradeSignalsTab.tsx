@@ -70,13 +70,13 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
     try {
       console.log('Creating new signal:', signalData);
       
-      // Create the signal using the trading API service
+      // Create the signal using the trading API service - fix property names to match CreateTradeAlertDto
       const result = await tradingApiService.createAlert({
-        asset_name: signalData.asset_name,
-        finnhub_symbol: signalData.finnhub_symbol,
-        trade_type: signalData.trade_type,
-        entry_price: signalData.entry_price,
-        stop_loss: signalData.stop_loss,
+        assetName: signalData.asset_name,
+        finnhubSymbol: signalData.finnhub_symbol,
+        tradeType: signalData.trade_type,
+        entryPrice: signalData.entry_price,
+        stopLoss: signalData.stop_loss,
         tp1: signalData.tp1,
         tp2: signalData.tp2,
         tp3: signalData.tp3,
@@ -94,7 +94,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
             'create_trade_signal',
             currentUser.email || 'unknown',
             'trade_alert',
-            result.data.id,
+            result.data?.id || '',
             {
               asset_name: signalData.asset_name,
               trade_type: signalData.trade_type,
@@ -108,21 +108,21 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
         
         // Hide the form
         setShowCreateForm(false);
-        
-        return { success: true, data: result.data };
       } else {
         console.error('Failed to create signal:', result.error);
-        return { success: false, error: result.error };
       }
     } catch (error) {
       console.error('Error creating signal:', error);
-      return { success: false, error: 'Failed to create signal' };
     }
   };
 
-  const handleSignalUpdate = async (signalId: string, updates: any) => {
+  const handleSignalStatusUpdate = async (alert: any, newStatus: string) => {
     try {
-      const result = await tradingApiService.updateAlert(signalId, updates, currentUser?.id || '');
+      const result = await tradingApiService.updateAlert(
+        alert.id, 
+        { status: newStatus as 'pending' | 'active' | 'closed' }, 
+        currentUser?.id || ''
+      );
       
       if (result.success && currentUser) {
         // Log admin action
@@ -130,8 +130,8 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
           'update_trade_signal',
           currentUser.email || 'unknown',
           'trade_alert',
-          signalId,
-          updates
+          alert.id,
+          { status: newStatus }
         );
         
         // Refresh the list
@@ -145,28 +145,85 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
     }
   };
 
-  const handleSignalDelete = async (signalId: string) => {
+  const handleTakeProfitHit = async (alert: any, tpLevel: number) => {
     try {
-      const result = await tradingApiService.deleteAlert(signalId, currentUser?.id || '');
+      const currentTpHits = alert.tp_hits || [];
+      const newTpHits = [...currentTpHits, tpLevel];
+      
+      const result = await tradingApiService.updateAlert(
+        alert.id,
+        { 
+          tpHits: newTpHits,
+          closeReason: `tp${tpLevel}` as any,
+          status: 'closed' as const
+        },
+        currentUser?.id || ''
+      );
       
       if (result.success && currentUser) {
-        // Log admin action
         await adminAuditService.logAdminAction(
-          'delete_trade_signal',
+          'tp_hit',
           currentUser.email || 'unknown',
           'trade_alert',
-          signalId,
-          { reason: 'Admin deletion' }
+          alert.id,
+          { tpLevel, newTpHits }
         );
         
-        // Refresh the list
         await refreshAlerts();
       }
-      
-      return result;
     } catch (error) {
-      console.error('Error deleting signal:', error);
-      return { success: false, error: 'Failed to delete signal' };
+      console.error('Error handling TP hit:', error);
+    }
+  };
+
+  const handleStopLossHit = async (alert: any) => {
+    try {
+      const result = await tradingApiService.updateAlert(
+        alert.id,
+        { 
+          closeReason: 'stop_loss' as any,
+          status: 'closed' as const
+        },
+        currentUser?.id || ''
+      );
+      
+      if (result.success && currentUser) {
+        await adminAuditService.logAdminAction(
+          'stop_loss_hit',
+          currentUser.email || 'unknown',
+          'trade_alert',
+          alert.id,
+          { reason: 'Stop loss triggered' }
+        );
+        
+        await refreshAlerts();
+      }
+    } catch (error) {
+      console.error('Error handling stop loss:', error);
+    }
+  };
+
+  const handleOrderActivation = async (alert: any) => {
+    try {
+      const result = await tradingApiService.updateAlert(
+        alert.id,
+        { status: 'active' as const },
+        currentUser?.id || ''
+      );
+      
+      if (result.success && currentUser) {
+        await adminAuditService.logAdminAction(
+          'order_activated',
+          currentUser.email || 'unknown',
+          'trade_alert',
+          alert.id,
+          { previousStatus: alert.status }
+        );
+        
+        await refreshAlerts();
+      }
+    } catch (error) {
+      console.error('Error activating order:', error);
     }
   };
 
@@ -301,8 +358,10 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                         created_date: alert.createdAt,
                         updated_date: alert.updatedAt
                       }}
-                      onUpdate={(updates) => handleSignalUpdate(alert.id, updates)}
-                      onDelete={() => handleSignalDelete(alert.id)}
+                      onStatusUpdate={handleSignalStatusUpdate}
+                      onTakeProfitHit={handleTakeProfitHit}
+                      onStopLossHit={handleStopLossHit}
+                      onOrderActivation={handleOrderActivation}
                       isAdmin={true}
                     />
                   ))
@@ -337,8 +396,10 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       created_date: alert.createdAt,
                       updated_date: alert.updatedAt
                     }}
-                    onUpdate={(updates) => handleSignalUpdate(alert.id, updates)}
-                    onDelete={() => handleSignalDelete(alert.id)}
+                    onStatusUpdate={handleSignalStatusUpdate}
+                    onTakeProfitHit={handleTakeProfitHit}
+                    onStopLossHit={handleStopLossHit}
+                    onOrderActivation={handleOrderActivation}
                     isAdmin={true}
                   />
                 ))}
@@ -362,8 +423,10 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       created_date: alert.createdAt,
                       updated_date: alert.updatedAt
                     }}
-                    onUpdate={(updates) => handleSignalUpdate(alert.id, updates)}
-                    onDelete={() => handleSignalDelete(alert.id)}
+                    onStatusUpdate={handleSignalStatusUpdate}
+                    onTakeProfitHit={handleTakeProfitHit}
+                    onStopLossHit={handleStopLossHit}
+                    onOrderActivation={handleOrderActivation}
                     isAdmin={true}
                   />
                 ))}

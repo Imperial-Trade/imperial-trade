@@ -1,4 +1,3 @@
-
 import { apiClient, TableRow, TableInsert, TableUpdate } from '../client/ApiClient';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -224,29 +223,21 @@ export class TradingApiService {
   // NEW: Get all public signals with user profile information
   async getAllPublicAlertsWithProfiles(): Promise<ApiResponse<TradeAlertWithProfile[]>> {
     try {
-      // Use supabase directly for the join query
-      const { data, error } = await supabase
+      // First get all trade alerts
+      const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
-        .select(`
-          *,
-          profiles!inner(
-            id,
-            display_name,
-            role,
-            avatar_url
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
+      if (alertsError) {
         return {
           success: false,
-          error: error.message,
+          error: alertsError.message,
           data: undefined
         };
       }
 
-      if (!data) {
+      if (!alertsData) {
         return {
           success: true,
           data: [],
@@ -254,33 +245,58 @@ export class TradingApiService {
         };
       }
 
-      const responseDtos: TradeAlertWithProfile[] = data
+      // Get all unique user IDs from the alerts
+      const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
+
+      // Fetch profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Continue without profiles if there's an error
+      }
+
+      // Create a map of user_id to profile for quick lookup
+      const profilesMap = new Map();
+      if (profilesData) {
+        profilesData.forEach(profile => {
+          profilesMap.set(profile.id, profile);
+        });
+      }
+
+      const responseDtos: TradeAlertWithProfile[] = alertsData
         .filter(isTradeAlert)
-        .map(alert => ({
-          id: alert.id,
-          assetName: alert.asset_name,
-          finnhubSymbol: alert.finnhub_symbol,
-          tradeType: alert.trade_type,
-          entryPrice: Number(alert.entry_price),
-          stopLoss: Number(alert.stop_loss),
-          status: alert.status,
-          tp1: alert.tp1 ? Number(alert.tp1) : undefined,
-          tp2: alert.tp2 ? Number(alert.tp2) : undefined,
-          tp3: alert.tp3 ? Number(alert.tp3) : undefined,
-          tp4: alert.tp4 ? Number(alert.tp4) : undefined,
-          tp5: alert.tp5 ? Number(alert.tp5) : undefined,
-          tpHits: alert.tp_hits || [],
-          notes: alert.notes,
-          closeReason: alert.close_reason,
-          createdAt: alert.created_at,
-          updatedAt: alert.updated_at,
-          creator: alert.profiles ? {
-            id: alert.profiles.id,
-            display_name: alert.profiles.display_name || 'Anonymous User',
-            role: alert.profiles.role || 'user',
-            avatar_url: alert.profiles.avatar_url
-          } : undefined
-        }));
+        .map(alert => {
+          const profile = profilesMap.get(alert.user_id);
+          return {
+            id: alert.id,
+            assetName: alert.asset_name,
+            finnhubSymbol: alert.finnhub_symbol,
+            tradeType: alert.trade_type,
+            entryPrice: Number(alert.entry_price),
+            stopLoss: Number(alert.stop_loss),
+            status: alert.status,
+            tp1: alert.tp1 ? Number(alert.tp1) : undefined,
+            tp2: alert.tp2 ? Number(alert.tp2) : undefined,
+            tp3: alert.tp3 ? Number(alert.tp3) : undefined,
+            tp4: alert.tp4 ? Number(alert.tp4) : undefined,
+            tp5: alert.tp5 ? Number(alert.tp5) : undefined,
+            tpHits: alert.tp_hits || [],
+            notes: alert.notes,
+            closeReason: alert.close_reason,
+            createdAt: alert.created_at,
+            updatedAt: alert.updated_at,
+            creator: profile ? {
+              id: profile.id,
+              display_name: profile.display_name || 'Anonymous User',
+              role: profile.role || 'user',
+              avatar_url: profile.avatar_url
+            } : undefined
+          };
+        });
 
       return {
         success: true,

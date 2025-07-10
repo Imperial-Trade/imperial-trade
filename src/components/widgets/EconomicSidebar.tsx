@@ -11,19 +11,19 @@ interface EconomicSidebarProps {
 
 export default function EconomicSidebar({ className = '' }: EconomicSidebarProps) {
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-3 ${className}`}>
       <Card className="bg-surface/50 border-default">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Calendar className="w-4 h-4 text-blue-400" />
             Market Events
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 pt-0">
           <EconomicEventCountdown />
           <EconomicCalendarWidget 
             variant="compact" 
-            maxEvents={4} 
+            maxEvents={3} 
             showOnlyHighImpact={true}
           />
         </CardContent>

@@ -295,9 +295,9 @@ export default function SignalStream() {
     <div className="min-h-screen bg-background w-full">
       <NotificationSystem />
       
-      {/* Header */}
+      {/* Header - Optimized spacing */}
       <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="w-full px-6 py-4">
+        <div className="w-full px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-1">
@@ -319,9 +319,10 @@ export default function SignalStream() {
         </div>
       </div>
 
-      <div className="w-full p-6">
-        <div className="grid grid-cols-1 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-          <div className="xl:col-span-4 2xl:col-span-5">
+      {/* Main Content - Improved grid layout */}
+      <div className="w-full px-4 py-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+          <div className="xl:col-span-3">
             {isLoading ? (
               <div className="flex justify-center items-center h-64 flex-col space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
@@ -343,13 +344,13 @@ export default function SignalStream() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 <div>
                   <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
                     Active Signals ({activeAlerts.length})
                   </h2>
                   {activeAlerts.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                       {activeAlerts.map(alert => (
                         <TradeAlertCard
                           key={alert.id} 
@@ -379,7 +380,7 @@ export default function SignalStream() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-12">
+                    <div className="text-center py-8">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <div className="w-8 h-8 text-muted-foreground/50">📡</div>
                       </div>
@@ -394,7 +395,7 @@ export default function SignalStream() {
                     Recent Closed Trades ({closedAlerts.length})
                   </h2>
                   {sortedClosedAlerts.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                       {sortedClosedAlerts.map(alert => (
                         <TradeAlertCard
                           key={alert.id} 
@@ -424,7 +425,7 @@ export default function SignalStream() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-12">
+                    <div className="text-center py-8">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
                       </div>
@@ -437,8 +438,9 @@ export default function SignalStream() {
             )}
           </div>
           
-          <div className="xl:col-span-1 2xl:col-span-1">
-            <div className="sticky top-6 space-y-4">
+          {/* Economic Sidebar - Optimized positioning and visibility */}
+          <div className="xl:col-span-1 hidden xl:block">
+            <div className="sticky top-20 space-y-4">
               <EconomicSidebar />
             </div>
           </div>

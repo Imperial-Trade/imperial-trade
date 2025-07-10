@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useOptimizedTradingRealtime } from './useOptimizedTradingRealtime';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
@@ -11,26 +12,35 @@ interface UseOptimizedTradingReturn {
   updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
   deleteAlert: (id: string) => Promise<boolean>;
   refreshAlerts: () => Promise<void>;
+  connectionStatus?: 'connecting' | 'connected' | 'disconnected' | 'error';
+  lastUpdated?: Date | null;
 }
 
-// Cache for storing alerts data
+// Cache for storing alerts data (fallback for when realtime fails)
 const alertsCache = new Map<string, { data: TradeAlertWithProfile[], timestamp: number }>();
 const CACHE_DURATION = 10000; // 10 seconds cache
-const POLLING_INTERVAL = 60000; // Reduced from 30s to 60s
+const POLLING_INTERVAL = 60000; // Fallback polling interval
 
 export const useOptimizedTrading = (userId: string, showAllSignals: boolean = false): UseOptimizedTradingReturn => {
-  const [alerts, setAlerts] = useState<TradeAlertWithProfile[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Try real-time first
+  const realtimeHook = useOptimizedTradingRealtime(userId, showAllSignals);
+  
+  // Fallback state for HTTP polling
+  const [fallbackAlerts, setFallbackAlerts] = useState<TradeAlertWithProfile[]>([]);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+  const [fallbackError, setFallbackError] = useState<string | null>(null);
+  const [usingFallback, setUsingFallback] = useState(false);
   const [lastFetch, setLastFetch] = useState<number>(0);
   
-  const abortControllerRef = useRef<AbortController | null>(null);
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const shouldFetchAlerts = showAllSignals || Boolean(userId && userId.trim() !== '');
   const cacheKey = showAllSignals ? 'all_signals' : userId;
 
-  // Check cache first
+  // Check if we should use fallback based on connection status
+  const shouldUseFallback = realtimeHook.connectionStatus === 'error' || 
+                           realtimeHook.connectionStatus === 'disconnected';
+
+  // Cache management for fallback
   const getCachedAlerts = useCallback((key: string): TradeAlertWithProfile[] | null => {
     const cached = alertsCache.get(key);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -39,45 +49,33 @@ export const useOptimizedTrading = (userId: string, showAllSignals: boolean = fa
     return null;
   }, []);
 
-  // Update cache
   const setCachedAlerts = useCallback((key: string, data: TradeAlertWithProfile[]) => {
     alertsCache.set(key, { data, timestamp: Date.now() });
   }, []);
 
-  const fetchAlerts = useCallback(async (force = false) => {
-    if (!shouldFetchAlerts) return;
+  // HTTP fallback fetch function
+  const fetchAlertsFallback = useCallback(async (force = false) => {
+    if (!shouldFetchAlerts || !shouldUseFallback) return;
 
-    // Prevent duplicate requests within 2 seconds
     const now = Date.now();
-    if (!force && now - lastFetch < 2000) {
-      return;
-    }
+    if (!force && now - lastFetch < 2000) return;
 
-    // Check cache first
     const cachedData = getCachedAlerts(cacheKey);
     if (cachedData && !force) {
-      setAlerts(cachedData);
+      setFallbackAlerts(cachedData);
       return;
     }
 
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    abortControllerRef.current = new AbortController();
-    setIsLoading(true);
-    setError(null);
+    setFallbackLoading(true);
+    setFallbackError(null);
     setLastFetch(now);
 
     try {
       let result;
       
       if (showAllSignals) {
-        // Fetch all public signals with profile information
         result = await tradingApiService.getAllPublicAlertsWithProfiles();
       } else {
-        // Fetch user-specific signals and convert to TradeAlertWithProfile format
         const userAlertsResult = await tradingApiService.getAllAlerts(userId);
         if (userAlertsResult.success && userAlertsResult.data) {
           result = {
@@ -91,145 +89,108 @@ export const useOptimizedTrading = (userId: string, showAllSignals: boolean = fa
       }
       
       if (result.success && result.data) {
-        setAlerts(result.data);
+        setFallbackAlerts(result.data);
         setCachedAlerts(cacheKey, result.data);
+        setFallbackError(null);
       } else {
-        setError(result.error || 'Failed to fetch alerts');
+        setFallbackError(result.error || 'Failed to fetch alerts');
       }
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setError(errorMessage);
-        console.error('Failed to fetch alerts:', errorMessage);
-      }
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setFallbackError(errorMessage);
+      console.error('Fallback fetch failed:', errorMessage);
     } finally {
-      setIsLoading(false);
+      setFallbackLoading(false);
     }
-  }, [userId, shouldFetchAlerts, lastFetch, getCachedAlerts, setCachedAlerts, showAllSignals, cacheKey]);
+  }, [userId, shouldFetchAlerts, shouldUseFallback, lastFetch, getCachedAlerts, setCachedAlerts, showAllSignals, cacheKey]);
 
-  // Setup polling with smart intervals
+  // Setup fallback polling when real-time fails
   useEffect(() => {
-    if (!shouldFetchAlerts) return;
+    if (!shouldUseFallback || !shouldFetchAlerts) {
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+      setUsingFallback(false);
+      return;
+    }
 
-    // Initial fetch
-    fetchAlerts();
+    console.log('Real-time connection failed, switching to HTTP polling fallback');
+    setUsingFallback(true);
+    fetchAlertsFallback();
 
-    // Setup polling
     const setupPolling = () => {
       pollingTimeoutRef.current = setTimeout(() => {
-        fetchAlerts();
-        setupPolling(); // Recursively setup next poll
+        fetchAlertsFallback();
+        setupPolling();
       }, POLLING_INTERVAL);
     };
 
     setupPolling();
 
-    // Listen for custom events to trigger immediate refresh
-    const handleSignalPosted = () => {
-      console.log('Signal posted event received, refreshing alerts');
-      fetchAlerts(true); // Force refresh
-    };
-
-    window.addEventListener('signal-posted', handleSignalPosted);
-
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
       if (pollingTimeoutRef.current) {
         clearTimeout(pollingTimeoutRef.current);
       }
-      window.removeEventListener('signal-posted', handleSignalPosted);
     };
-  }, [fetchAlerts, shouldFetchAlerts]);
+  }, [shouldUseFallback, shouldFetchAlerts, fetchAlertsFallback]);
 
+  // Return appropriate data based on connection status
+  const alerts = usingFallback ? fallbackAlerts : realtimeHook.alerts;
+  const isLoading = usingFallback ? fallbackLoading : realtimeHook.isLoading;
+  const error = usingFallback ? fallbackError : realtimeHook.error;
+
+  // Fallback implementations for CRUD operations when real-time is not available
   const createAlert = useCallback(async (dto: CreateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
-    if (!userId || !userId.trim()) {
-      console.warn('Cannot create alert: invalid userId');
-      return null;
+    const result = await realtimeHook.createAlert(dto);
+    
+    // If using fallback, refresh alerts after create
+    if (usingFallback && result) {
+      await fetchAlertsFallback(true);
     }
-
-    try {
-      const result = await tradingApiService.createAlert(dto, userId);
-      if (result.success && result.data) {
-        // Force refresh to get the updated list with profile information
-        await fetchAlerts(true);
-        return result.data;
-      } else {
-        console.error('Failed to create alert:', result.error);
-        return null;
-      }
-    } catch (error) {
-      console.error('Error creating alert:', error);
-      return null;
-    }
-  }, [userId, fetchAlerts]);
+    
+    return result;
+  }, [realtimeHook.createAlert, usingFallback, fetchAlertsFallback]);
 
   const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
-    if (!userId || !userId.trim()) {
-      console.warn('Cannot update alert: invalid userId');
-      return null;
+    const result = await realtimeHook.updateAlert(id, dto);
+    
+    // If using fallback, refresh alerts after update
+    if (usingFallback && result) {
+      await fetchAlertsFallback(true);
     }
-
-    try {
-      const result = await tradingApiService.updateAlert(id, dto, userId);
-      if (result.success && result.data) {
-        // Update local state immediately
-        setAlerts(prev => prev.map(alert => 
-          alert.id === id ? { ...alert, ...result.data! } : alert
-        ));
-        // Update cache
-        const updatedAlerts = alerts.map(alert => 
-          alert.id === id ? { ...alert, ...result.data! } : alert
-        );
-        setCachedAlerts(cacheKey, updatedAlerts);
-        return result.data;
-      } else {
-        console.error('Failed to update alert:', result.error);
-        return null;
-      }
-    } catch (error) {
-      console.error('Error updating alert:', error);
-      return null;
-    }
-  }, [userId, alerts, setCachedAlerts, cacheKey]);
+    
+    return result;
+  }, [realtimeHook.updateAlert, usingFallback, fetchAlertsFallback]);
 
   const deleteAlert = useCallback(async (id: string): Promise<boolean> => {
-    if (!userId || !userId.trim()) {
-      console.warn('Cannot delete alert: invalid userId');
-      return false;
+    const result = await realtimeHook.deleteAlert(id);
+    
+    // If using fallback, refresh alerts after delete
+    if (usingFallback && result) {
+      await fetchAlertsFallback(true);
     }
-
-    try {
-      const result = await tradingApiService.deleteAlert(id, userId);
-      if (result.success) {
-        // Update local state immediately
-        setAlerts(prev => prev.filter(alert => alert.id !== id));
-        // Update cache
-        const updatedAlerts = alerts.filter(alert => alert.id !== id);
-        setCachedAlerts(cacheKey, updatedAlerts);
-        return true;
-      } else {
-        console.error('Failed to delete alert:', result.error);
-        return false;
-      }
-    } catch (error) {
-      console.error('Error deleting alert:', error);
-      return false;
-    }
-  }, [userId, alerts, setCachedAlerts, cacheKey]);
+    
+    return result;
+  }, [realtimeHook.deleteAlert, usingFallback, fetchAlertsFallback]);
 
   const refreshAlerts = useCallback(async () => {
-    await fetchAlerts(true);
-  }, [fetchAlerts]);
+    if (usingFallback) {
+      await fetchAlertsFallback(true);
+    } else {
+      await realtimeHook.refreshAlerts();
+    }
+  }, [usingFallback, fetchAlertsFallback, realtimeHook.refreshAlerts]);
 
   return {
     alerts,
-    isLoading: shouldFetchAlerts ? isLoading : false,
-    error: shouldFetchAlerts ? error : null,
+    isLoading,
+    error,
     createAlert,
     updateAlert,
     deleteAlert,
-    refreshAlerts
+    refreshAlerts,
+    connectionStatus: realtimeHook.connectionStatus,
+    lastUpdated: realtimeHook.lastUpdated
   };
 };

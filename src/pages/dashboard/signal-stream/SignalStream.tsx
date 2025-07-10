@@ -1,13 +1,13 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import usePriceFeed from '@/components/hooks/usePriceFeed';
 import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
 
 export default function SignalStream() {
   const [user, setUser] = useState<any>(null);
@@ -26,13 +26,15 @@ export default function SignalStream() {
     fetchUser();
   }, []);
 
-  // Use the optimized trading hook with showAllSignals = true to get all public signals
+  // Use the optimized trading hook with real-time updates
   const {
     alerts,
     isLoading,
     error,
     updateAlert,
-    refreshAlerts
+    refreshAlerts,
+    connectionStatus,
+    lastUpdated
   } = useOptimizedTrading(user?.id || '', true); // TRUE = show all signals from all users
 
   const { activeAlerts, closedAlerts } = useMemo(() => {
@@ -61,9 +63,39 @@ export default function SignalStream() {
     return symbolList as string[];
   }, [activeAlerts]);
 
-  const { prices: livePrices, connectionStatus, priceSource } = usePriceFeed(symbols);
+  const { prices: livePrices, connectionStatus: priceConnectionStatus, priceSource } = usePriceFeed(symbols);
 
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
+
+  // Real-time connection status badge
+  const getConnectionStatusBadge = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return (
+          <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+            <Wifi className="w-3 h-3 mr-1" />
+            Live Updates
+          </Badge>
+        );
+      case 'connecting':
+        return (
+          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+            Connecting...
+          </Badge>
+        );
+      case 'error':
+      case 'disconnected':
+        return (
+          <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
+            <WifiOff className="w-3 h-3 mr-1" />
+            Offline Mode
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
 
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
     if (updateInProgress.has(alert.id)) return;
@@ -113,7 +145,6 @@ export default function SignalStream() {
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     if (updateInProgress.has(alert.id)) return;
     
-    // Only allow users to modify their own signals
     if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
       return;
     }
@@ -176,7 +207,6 @@ export default function SignalStream() {
   const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
     if (updateInProgress.has(alert.id)) return;
     
-    // Only allow users to modify their own signals
     if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
       return;
     }
@@ -231,7 +261,6 @@ export default function SignalStream() {
   const handleOrderActivation = useCallback(async (alert: any) => {
     if (updateInProgress.has(alert.id)) return;
     
-    // Only allow users to modify their own signals
     if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
       return;
     }
@@ -269,13 +298,23 @@ export default function SignalStream() {
       {/* Header */}
       <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-1">
-              Live Signal <span className="text-accent-green">Stream</span>
-            </h1>
-            <p className="text-muted-foreground">
-              Real-time trading signals with live price tracking from all educators
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-1">
+                Live Signal <span className="text-accent-green">Stream</span>
+              </h1>
+              <p className="text-muted-foreground">
+                Real-time trading signals with live price tracking from all educators
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {getConnectionStatusBadge()}
+              {lastUpdated && (
+                <span className="text-xs text-muted-foreground">
+                  Last update: {lastUpdated.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -288,6 +327,9 @@ export default function SignalStream() {
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
                 <div className="text-center">
                   <p className="text-muted-foreground">Loading signals...</p>
+                  {connectionStatus === 'connecting' && (
+                    <p className="text-xs text-muted-foreground mt-1">Establishing real-time connection...</p>
+                  )}
                 </div>
               </div>
             ) : error ? (
@@ -329,7 +371,7 @@ export default function SignalStream() {
                           onOrderActivation={handleOrderActivation} 
                           isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
                           livePrice={livePrices[alert.finnhubSymbol]} 
-                          connectionStatus={connectionStatus as 'connecting' | 'connected' | 'error'}
+                          connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'}
                           priceSource={priceSource}
                           isRecentClosure={false}
                           creator={alert.creator}
@@ -374,7 +416,7 @@ export default function SignalStream() {
                           onOrderActivation={handleOrderActivation}
                           isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
                           livePrice={undefined}
-                          connectionStatus={connectionStatus as 'connecting' | 'connected' | 'error'}
+                          connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'}
                           priceSource={priceSource}
                           isRecentClosure={true}
                           creator={alert.creator}

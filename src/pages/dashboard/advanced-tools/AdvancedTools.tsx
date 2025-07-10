@@ -106,26 +106,28 @@ export default function AdvancedTools() {
   };
 
   return (
-    <div className="min-h-full p-6 bg-background w-full">
-      <div className="w-full">
-        <div className="mb-12 text-center">
-          <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
-            Advanced <span className="gold-text-gradient">Trading Arsenal</span>
-          </h1>
-          <p className="text-secondary text-lg max-w-3xl mx-auto">
-            Your centralized hub for professional-grade trading analysis,
-            AI-powered insights, and risk management.
-          </p>
-        </div>
+    <div className="h-full grid grid-rows-[auto_1fr] p-6 bg-background w-full">
+      {/* Header Section */}
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
+          Advanced <span className="gold-text-gradient">Trading Arsenal</span>
+        </h1>
+        <p className="text-secondary text-lg max-w-3xl mx-auto">
+          Your centralized hub for professional-grade trading analysis,
+          AI-powered insights, and risk management.
+        </p>
+      </div>
 
+      {/* Content Grid */}
+      <div className="grid grid-rows-[auto_1fr] gap-8 overflow-auto">
         {/* Tool Selection Grid */}
-        <div className="space-y-10 mb-12">
+        <div className="space-y-8">
           <div>
             <h2 className="text-2xl font-semibold text-primary mb-6 flex items-center gap-3">
               <span className="w-2 h-2 bg-accent-blue rounded-full"></span>
               Core Trading Tools
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {coreTools.map((tool) => (
                 <ToolCard
                   key={tool.name}
@@ -142,7 +144,7 @@ export default function AdvancedTools() {
               <span className="w-2 h-2 bg-accent-gold rounded-full"></span>
               AI-Powered Intelligence
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {aiTools.map((tool) => (
                 <ToolCard
                   key={tool.name}
@@ -163,9 +165,9 @@ export default function AdvancedTools() {
               animate={{ opacity: 1, y: 0, height: "auto" }}
               exit={{ opacity: 0, y: 50, height: 0 }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
-              className="relative"
+              className="relative min-h-0"
             >
-              <Card className="glass-effect p-2 rounded-xl border-accent-green/50">
+              <Card className="glass-effect p-2 rounded-xl border-accent-green/50 h-full">
                 <div className="absolute top-4 right-4 z-10">
                   <Button
                     variant="ghost"
@@ -176,7 +178,9 @@ export default function AdvancedTools() {
                     <X className="w-5 h-5 text-secondary" />
                   </Button>
                 </div>
-                {activeTool.component}
+                <div className="h-full overflow-auto">
+                  {activeTool.component}
+                </div>
               </Card>
             </motion.div>
           )}

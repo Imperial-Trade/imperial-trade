@@ -17,90 +17,87 @@ export default function MyProgress() {
   };
 
   return (
-    <div className="min-h-full p-6 bg-background w-full">
-      <div className="w-full">
-        <div className="mb-8">
-          <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
-            My <span className="gold-text-gradient">Learning Journey</span>
-          </h1>
-          <p className="text-secondary text-lg">
-            Track your progress, review completed courses, and access your
-            certificates.
-          </p>
-        </div>
+    <div className="h-full grid grid-rows-[auto_auto_1fr] p-6 bg-background w-full gap-8">
+      {/* Header */}
+      <div className="text-center">
+        <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
+          My <span className="gold-text-gradient">Learning Journey</span>
+        </h1>
+        <p className="text-secondary text-lg">
+          Track your progress, review completed courses, and access your
+          certificates.
+        </p>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 mb-8">
-          <Card className="bg-surface">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="p-3 bg-green-500/20 rounded-lg">
-                <BookOpen className="w-6 h-6 text-accent-green" />
-              </div>
-              <div>
-                <p className="text-sm text-secondary">Courses Completed</p>
-                <p className="text-2xl font-bold text-primary">
-                  {progressSummary.coursesCompleted}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-surface">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="p-3 bg-blue-500/20 rounded-lg">
-                <Percent className="w-6 h-6 text-accent-blue" />
-              </div>
-              <div>
-                <p className="text-sm text-secondary">Average Quiz Score</p>
-                <p className="text-2xl font-bold text-primary">
-                  {progressSummary.avgScore}%
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-surface">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="p-3 bg-purple-500/20 rounded-lg">
-                <Award className="w-6 h-6 text-purple-400" />
-              </div>
-              <div>
-                <p className="text-sm text-secondary">Certificates Earned</p>
-                <p className="text-2xl font-bold text-primary">2</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="bg-surface">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="p-3 bg-green-500/20 rounded-lg">
+              <BookOpen className="w-6 h-6 text-accent-green" />
+            </div>
+            <div>
+              <p className="text-sm text-secondary">Courses Completed</p>
+              <p className="text-2xl font-bold text-primary">
+                {progressSummary.coursesCompleted}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-surface">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="p-3 bg-blue-500/20 rounded-lg">
+              <Percent className="w-6 h-6 text-accent-blue" />
+            </div>
+            <div>
+              <p className="text-sm text-secondary">Average Quiz Score</p>
+              <p className="text-2xl font-bold text-primary">
+                {progressSummary.avgScore}%
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-surface">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="p-3 bg-purple-500/20 rounded-lg">
+              <Award className="w-6 h-6 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm text-secondary">Certificates Earned</p>
+              <p className="text-2xl font-bold text-primary">2</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
-          <div className="lg:col-span-1 xl:col-span-2 2xl:col-span-2">
-            <Card className="glass-effect">
-              <CardHeader>
-                <CardTitle>My Certificates</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Certificate
-                  studentName="Your Name"
-                  courseName="Introduction to Technical Analysis"
-                />
-                <Certificate
-                  studentName="Your Name"
-                  courseName="Advanced Risk Management"
-                />
-              </CardContent>
-            </Card>
-          </div>
-          <div className="lg:col-span-1 xl:col-span-1 2xl:col-span-2">
-            <Card className="glass-effect">
-              <CardHeader>
-                <CardTitle>Course Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-center text-secondary">
-                  A list of all courses showing your completion status would be
-                  displayed here.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0 overflow-auto">
+        <Card className="glass-effect">
+          <CardHeader>
+            <CardTitle>My Certificates</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 overflow-auto">
+            <Certificate
+              studentName="Your Name"
+              courseName="Introduction to Technical Analysis"
+            />
+            <Certificate
+              studentName="Your Name"
+              courseName="Advanced Risk Management"
+            />
+          </CardContent>
+        </Card>
+        <Card className="glass-effect">
+          <CardHeader>
+            <CardTitle>Course Progress</CardTitle>
+          </CardHeader>
+          <CardContent className="overflow-auto">
+            <p className="text-center text-secondary">
+              A list of all courses showing your completion status would be
+              displayed here.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

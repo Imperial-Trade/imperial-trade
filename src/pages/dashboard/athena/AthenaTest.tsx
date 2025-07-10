@@ -4,7 +4,7 @@ import React from "react";
 
 export default function AthenaTestPage() {
   return (
-    <div className="min-h-full bg-background p-6">
+    <div className="h-full bg-background p-6">
       <AthenaTest />
     </div>
   );

@@ -19,13 +19,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   useEffect(() => {
     const validateSession = async () => {
       if (!loading && !user) {
-        // No user found, redirect to access portal
         navigate('/access-portal', { replace: true });
         return;
       }
 
       if (user && session) {
-        // Validate session is still active
         try {
           await refreshSession();
         } catch (error) {
@@ -49,15 +47,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     return <Navigate to="/access-portal" replace />;
   }
 
-  const getUserAccessLevel = () => {
-    return (user.user_metadata?.access_level as string) || 'free';
-  };
-
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
-        {/* Header */}
-        <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/95 backdrop-blur-xl border-b border-border">
+      <div className="min-h-screen grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] bg-background text-foreground">
+        {/* Header spans both columns */}
+        <header className="col-span-2 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50 sticky top-0 z-50">
           <div className="flex items-center gap-4">
             <SidebarTrigger className="text-primary hover:text-primary/80 transition-colors" />
             <div className="flex items-center gap-2">
@@ -69,22 +63,25 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="hidden md:flex items-center gap-2 text-sm text-foreground">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              Market Open
+              <span className="text-foreground">Market Open</span>
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-foreground">
               Welcome, {user.user_metadata?.full_name || user.email}
             </div>
           </div>
         </header>
 
-        <div className="flex w-full pt-16">
+        {/* Sidebar */}
+        <div className="row-start-2">
           <AppSidebar />
-          <main className="flex-1 overflow-auto bg-background">
-            {children}
-          </main>
         </div>
+
+        {/* Main content area */}
+        <main className="row-start-2 col-start-2 overflow-auto bg-background text-foreground">
+          {children}
+        </main>
       </div>
     </SidebarProvider>
   );

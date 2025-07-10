@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,10 +24,10 @@ import { AdminTradeSignalsTab } from '@/components/admin/AdminTradeSignalsTab';
 import { AccountRequestManagement } from '@/components/account-request/AccountRequestManagement';
 import { ComprehensiveTestSuite } from '@/components/admin/ComprehensiveTestSuite';
 import AccessDenied from '@/components/AccessDenied';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AdminPanel() {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const { user, profile, loading: authLoading } = useAuth();
   const [systemStats, setSystemStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -39,32 +38,11 @@ export default function AdminPanel() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkAdminAccess();
-    fetchSystemStats();
-  }, []);
-
-  const checkAdminAccess = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      if (user) {
-        // Get user profile with enhanced fields
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-          
-        console.log('User profile:', profileData);
-        setProfile(profileData);
-      }
-    } catch (error) {
-      console.error('Error checking user:', error);
-    } finally {
+    if (!authLoading) {
+      fetchSystemStats();
       setIsLoading(false);
     }
-  };
+  }, [authLoading]);
 
   const fetchSystemStats = async () => {
     try {
@@ -99,7 +77,7 @@ export default function AdminPanel() {
     fetchSystemStats();
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-full flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-green"></div>

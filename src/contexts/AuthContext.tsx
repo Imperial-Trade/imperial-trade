@@ -5,12 +5,30 @@ import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/utils/authUtils';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 
+interface Profile {
+  id: string;
+  display_name: string | null;
+  role: string | null;
+  user_type: string | null;
+  access_level: string | null;
+  account_status: string | null;
+  registration_source: string | null;
+  phone_number: string | null;
+  last_login: string | null;
+  approved_at: string | null;
+  approved_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,45 +48,123 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          display_name,
+          role,
+          user_type,
+          access_level,
+          account_status,
+          registration_source,
+          phone_number,
+          last_login,
+          approved_at,
+          approved_by,
+          created_at,
+          updated_at
+        `)
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+
+      // Handle the case where profile data might be incomplete
+      return profileData ? {
+        id: profileData.id,
+        display_name: profileData.display_name,
+        role: profileData.role,
+        user_type: profileData.user_type,
+        access_level: profileData.access_level,
+        account_status: profileData.account_status,
+        registration_source: profileData.registration_source,
+        phone_number: profileData.phone_number,
+        last_login: profileData.last_login,
+        approved_at: profileData.approved_at,
+        approved_by: profileData.approved_by,
+        created_at: profileData.created_at,
+        updated_at: profileData.updated_at
+      } as Profile : null;
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      return null;
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      const profileData = await fetchProfile(user.id);
+      setProfile(profileData);
+    }
+  };
 
   const refreshSession = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        const profileData = await fetchProfile(session.user.id);
+        setProfile(profileData);
+      } else {
+        setProfile(null);
+      }
     } catch (error) {
       console.error('Error refreshing session:', error);
       setSession(null);
       setUser(null);
+      setProfile(null);
     }
   };
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
+
+        if (session?.user) {
+          // Fetch profile data for the authenticated user
+          const profileData = await fetchProfile(session.user.id);
+          setProfile(profileData);
+        } else {
+          setProfile(null);
+        }
+
         setLoading(false);
 
         // Handle specific auth events
         if (event === 'SIGNED_IN') {
-          // Defer any additional data fetching to prevent deadlocks
-          setTimeout(() => {
-            console.log('User signed in successfully');
-          }, 0);
+          console.log('User signed in successfully');
         } else if (event === 'SIGNED_OUT') {
           cleanupAuthState();
+          setProfile(null);
         }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        const profileData = await fetchProfile(session.user.id);
+        setProfile(profileData);
+      }
+      
       setLoading(false);
     });
 
@@ -88,6 +184,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Reset state
       setSession(null);
       setUser(null);
+      setProfile(null);
       
       // Navigate to signin page
       window.location.href = '/signin';
@@ -105,7 +202,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut, refreshSession }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      profile, 
+      loading, 
+      signOut, 
+      refreshSession, 
+      refreshProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );

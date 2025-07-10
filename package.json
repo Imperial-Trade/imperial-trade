@@ -8,7 +8,21 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:unit": "vitest run --coverage",
+    "test:security": "vitest run src/__tests__/security --reporter=verbose",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:performance": "vitest run --config vitest.performance.config.ts",
+    "test:e2e": "playwright test",
+    "test:visual": "playwright test --config playwright.visual.config.ts",
+    "test:load": "playwright test --config playwright.performance.config.ts",
+    "test:maintenance": "playwright test src/__tests__/maintenance",
+    "test:monitoring": "playwright test src/__tests__/monitoring",
+    "test:comprehensive": "node scripts/run-comprehensive-tests.js",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage --reporter=lcov"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

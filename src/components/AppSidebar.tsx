@@ -28,46 +28,48 @@ export function AppSidebar() {
         collapsible="offcanvas"
         variant="floating"
       >
-        <div className="h-full bg-background/95 backdrop-blur-xl flex flex-col">
-          <SidebarHeader className="p-4 border-b border-border/20">
-            <SidebarBrand isCollapsed={false} />
-          </SidebarHeader>
+        <SidebarHeader className="p-4 border-b border-border/20">
+          <SidebarBrand isCollapsed={false} />
+        </SidebarHeader>
 
-          <SidebarContent className="px-3 py-4 flex-1">
-            <SidebarNavigation isCollapsed={false} />
-            <SidebarAdminSection 
-              isCollapsed={false} 
-              userAccessLevel={user?.user_metadata?.access_level} 
-            />
-          </SidebarContent>
+        <SidebarContent className="px-3 py-4 flex-1">
+          <SidebarNavigation isCollapsed={false} />
+          <SidebarAdminSection 
+            isCollapsed={false} 
+            userAccessLevel={user?.user_metadata?.access_level} 
+          />
+        </SidebarContent>
 
-          <SidebarFooter className="p-4 mt-auto">
-            <SidebarUserMenu isCollapsed={false} />
-          </SidebarFooter>
-        </div>
+        <SidebarFooter className="p-4 mt-auto">
+          <SidebarUserMenu isCollapsed={false} />
+        </SidebarFooter>
       </Sidebar>
     );
   }
 
-  // For tablet and desktop, return the content directly (not wrapped in Sidebar component)
-  // The Layout component handles the positioning and overlay
+  // For tablet and desktop, use proper Sidebar component with no collapsing
+  // This ensures proper styling context and always shows labels
   return (
-    <div className="h-full bg-background/95 backdrop-blur-xl flex flex-col">
+    <Sidebar 
+      className="border-r-0 bg-background/95 backdrop-blur-xl"
+      collapsible="none"
+      variant="sidebar"
+    >
       <SidebarHeader className="p-4 border-b border-border/20">
-        <SidebarBrand isCollapsed={isCollapsed} />
+        <SidebarBrand isCollapsed={false} />
       </SidebarHeader>
 
       <SidebarContent className="px-3 py-4 flex-1 overflow-auto">
-        <SidebarNavigation isCollapsed={isCollapsed} />
+        <SidebarNavigation isCollapsed={false} />
         <SidebarAdminSection 
-          isCollapsed={isCollapsed} 
+          isCollapsed={false} 
           userAccessLevel={user?.user_metadata?.access_level} 
         />
       </SidebarContent>
 
       <SidebarFooter className="p-4 mt-auto">
-        <SidebarUserMenu isCollapsed={isCollapsed} />
+        <SidebarUserMenu isCollapsed={false} />
       </SidebarFooter>
-    </div>
+    </Sidebar>
   );
 }

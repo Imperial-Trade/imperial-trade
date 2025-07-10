@@ -25,6 +25,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  profileLoading: boolean;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -49,9 +50,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const fetchProfile = async (userId: string) => {
     try {
+      setProfileLoading(true);
       const { data: profileData, error } = await supabase
         .from('profiles')
         .select(`
@@ -81,6 +84,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Error fetching profile:', error);
       return null;
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -98,8 +103,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
+        // Load profile in background - don't block main loading state
+        setTimeout(() => {
+          fetchProfile(session.user.id).then(setProfile);
+        }, 0);
       } else {
         setProfile(null);
       }
@@ -119,15 +126,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSession(session);
         setUser(session?.user ?? null);
 
+        // Set main loading to false as soon as we have auth state
+        setLoading(false);
+
         if (session?.user) {
-          // Fetch profile data for the authenticated user
-          const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
+          // Fetch profile data in background - don't block UI
+          setTimeout(() => {
+            fetchProfile(session.user.id).then(setProfile);
+          }, 0);
         } else {
           setProfile(null);
         }
-
-        setLoading(false);
 
         // Handle specific auth events
         if (event === 'SIGNED_IN') {
@@ -144,12 +153,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
-      if (session?.user) {
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
-      }
-      
+      // Set main loading to false immediately after getting initial session
       setLoading(false);
+      
+      if (session?.user) {
+        // Load profile in background
+        setTimeout(() => {
+          fetchProfile(session.user.id).then(setProfile);
+        }, 0);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -187,6 +199,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       session, 
       profile, 
       loading, 
+      profileLoading,
       signOut, 
       refreshSession, 
       refreshProfile 

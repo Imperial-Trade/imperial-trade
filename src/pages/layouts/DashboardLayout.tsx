@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import React from "react";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -87,38 +87,16 @@ function DesktopSidebarOverlay() {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const { user, session, loading, refreshSession } = useAuth();
-  const [isValidating, setIsValidating] = useState(true);
-  const navigate = useNavigate();
+  const { user, session, loading } = useAuth();
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    const validateSession = async () => {
-      if (!loading && !user) {
-        navigate("/signin", { replace: true });
-        return;
-      }
-
-      if (user && session) {
-        try {
-          await refreshSession();
-        } catch (error) {
-          console.error("Session validation failed:", error);
-          navigate("/signin", { replace: true });
-          return;
-        }
-      }
-
-      setIsValidating(false);
-    };
-
-    validateSession();
-  }, [user, session, loading, navigate, refreshSession]);
-
-  if (loading || isValidating) {
+  // Only show loading if we don't know the auth state yet
+  if (loading && !user) {
     return <LoadingSpinner />;
   }
 
+  // Trust that ProtectedRoute has already validated authentication
+  // If we get here without user/session, redirect to signin
   if (!user || !session) {
     return <Navigate to="/signin" replace />;
   }

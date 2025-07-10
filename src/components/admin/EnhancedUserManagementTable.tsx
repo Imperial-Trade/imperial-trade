@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,9 +45,9 @@ import { CreateUserDialog } from './CreateUserDialog';
 export function EnhancedUserManagementTable() {
   const { users, loading, loadUsers, updateUser, deleteUser, createUser, resetPassword } = useAdminUserManagement();
   const [searchTerm, setSearchTerm] = useState('');
-  const [userTypeFilter, setUserTypeFilter] = useState<string>('');
-  const [accessLevelFilter, setAccessLevelFilter] = useState<string>('');
-  const [accountStatusFilter, setAccountStatusFilter] = useState<string>('');
+  const [userTypeFilter, setUserTypeFilter] = useState<string>('all');
+  const [accessLevelFilter, setAccessLevelFilter] = useState<string>('all');
+  const [accountStatusFilter, setAccountStatusFilter] = useState<string>('all');
 
   useEffect(() => {
     loadUsers();
@@ -110,9 +109,9 @@ export function EnhancedUserManagementTable() {
       user.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.phone_number && user.phone_number.includes(searchTerm));
     
-    const matchesUserType = !userTypeFilter || user.user_type === userTypeFilter;
-    const matchesAccessLevel = !accessLevelFilter || user.access_level === accessLevelFilter;
-    const matchesAccountStatus = !accountStatusFilter || user.account_status === accountStatusFilter;
+    const matchesUserType = userTypeFilter === 'all' || user.user_type === userTypeFilter;
+    const matchesAccessLevel = accessLevelFilter === 'all' || user.access_level === accessLevelFilter;
+    const matchesAccountStatus = accountStatusFilter === 'all' || user.account_status === accountStatusFilter;
     
     return matchesSearch && matchesUserType && matchesAccessLevel && matchesAccountStatus;
   });
@@ -181,7 +180,7 @@ export function EnhancedUserManagementTable() {
                   <SelectValue placeholder="User Type" />
                 </SelectTrigger>
                 <SelectContent className="bg-surface border-default">
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="member">Member</SelectItem>
                   <SelectItem value="educator">Educator</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
@@ -193,7 +192,7 @@ export function EnhancedUserManagementTable() {
                   <SelectValue placeholder="Access Level" />
                 </SelectTrigger>
                 <SelectContent className="bg-surface border-default">
-                  <SelectItem value="">All Levels</SelectItem>
+                  <SelectItem value="all">All Levels</SelectItem>
                   <SelectItem value="user">User</SelectItem>
                   <SelectItem value="moderator">Moderator</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
@@ -205,7 +204,7 @@ export function EnhancedUserManagementTable() {
                   <SelectValue placeholder="Account Status" />
                 </SelectTrigger>
                 <SelectContent className="bg-surface border-default">
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="suspended">Suspended</SelectItem>
                   <SelectItem value="pending_verification">Pending</SelectItem>
@@ -397,7 +396,7 @@ export function EnhancedUserManagementTable() {
                 No Users Found
               </h3>
               <p className="text-secondary">
-                {searchTerm || userTypeFilter || accessLevelFilter || accountStatusFilter
+                {searchTerm || userTypeFilter !== 'all' || accessLevelFilter !== 'all' || accountStatusFilter !== 'all'
                   ? 'No users match your search criteria.'
                   : 'No users found in the system.'}
               </p>

@@ -66,7 +66,7 @@ export default function Education() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-full flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-green"></div>
       </div>
     );
@@ -78,7 +78,7 @@ export default function Education() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-primary overflow-x-hidden">
+    <div className="min-h-full bg-background text-primary overflow-x-hidden">
       <HeroSection video={featuredVideo} onPlay={setSelectedVideo} />
 
       <div className="relative z-10 -mt-20">

@@ -45,7 +45,7 @@ export interface NavigationState {
   error?: string;
 }
 
-// Route configuration with type safety
+// Route configuration with type safety - Updated to match actual routes
 export const ROUTES = {
   // Landing pages
   LANDING: '/',
@@ -55,18 +55,21 @@ export const ROUTES = {
   ACCOUNT_REQUEST: '/account-request',
   ACCESS_PORTAL: '/access-portal',
   
-  // Dashboard routes
+  // Dashboard routes - Standardized to match sidebar navigation
   DASHBOARD: '/dashboard',
   DASHBOARD_HOME: '/dashboard/home',
   DASHBOARD_SIGNALS: '/dashboard/signals',
   DASHBOARD_EDUCATION: '/dashboard/education',
-  DASHBOARD_TOOLS: '/dashboard/advanced-tools',
+  DASHBOARD_TOOLS: '/dashboard/tools',
   DASHBOARD_SETTINGS: '/dashboard/settings',
   DASHBOARD_FORUM: '/dashboard/forum',
   DASHBOARD_LIVE: '/dashboard/live',
-  DASHBOARD_ADMIN: '/dashboard/admin-panel',
-  DASHBOARD_PROGRESS: '/dashboard/my-progress',
-  DASHBOARD_ATHENA: '/dashboard/athena',
+  DASHBOARD_ADMIN: '/dashboard/admin',
+  DASHBOARD_PROGRESS: '/dashboard/progress',
+  DASHBOARD_ATHENA: '/dashboard/athena-test',
+  
+  // IB Partnership route
+  IB_PARTNERSHIP: '/partnership',
   
   // Signal-specific routes
   SIGNAL_DETAIL: '/dashboard/signals/:signalId',

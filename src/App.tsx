@@ -4,7 +4,6 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { WebSocketPriceProvider } from '@/contexts/WebSocketPriceContext';
 import { SignalRealtimeProvider } from '@/contexts/SignalRealtimeContext';
-import { SignalRealtimeProvider as SignalRealtimeContextProvider } from '@/contexts/SignalRealtimeContext';
 import { Toaster } from '@/components/ui/sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary/ErrorBoundary';
@@ -56,7 +55,7 @@ function App() {
         <ThemeProvider>
           <AuthProvider>
             <WebSocketPriceProvider>
-              <SignalRealtimeContextProvider>
+              <SignalRealtimeProvider>
                 <Router>
                   <Routes>
                     {/* Landing Pages */}
@@ -71,6 +70,9 @@ function App() {
                       <Route path="signin" element={<Signin />} />
                     </Route>
 
+                    {/* IB Partnership as standalone route for sidebar */}
+                    <Route path="/partnership" element={<IBPartnership />} />
+
                     {/* Dashboard Pages */}
                     <Route path="/dashboard" element={<DashboardLayout><Outlet /></DashboardLayout>}>
                       <Route index element={<Home />} />
@@ -78,14 +80,19 @@ function App() {
                       <Route path="education" element={<Education />} />
                       <Route path="forum" element={<Forum />} />
                       <Route path="live" element={<Live />} />
-                      <Route path="advanced-tools" element={<AdvancedTools />} />
+                      <Route path="tools" element={<AdvancedTools />} />
                       <Route path="settings" element={<Settings />} />
-                      <Route path="my-progress" element={<MyProgress />} />
-                      <Route path="admin-panel" element={<AdminPanel />} />
+                      <Route path="progress" element={<MyProgress />} />
+                      <Route path="admin" element={<AdminPanel />} />
                       <Route path="new-signal" element={<NewSignalPage />} />
                       <Route path="signals" element={<SignalStream />} />
                       <Route path="dev-tests" element={<DevTests />} />
                       <Route path="athena-test" element={<AthenaTest />} />
+                      
+                      {/* Legacy route redirects for backward compatibility */}
+                      <Route path="advanced-tools" element={<AdvancedTools />} />
+                      <Route path="my-progress" element={<MyProgress />} />
+                      <Route path="admin-panel" element={<AdminPanel />} />
                     </Route>
 
                     {/* 404 Page */}
@@ -93,7 +100,7 @@ function App() {
                   </Routes>
                   <Toaster />
                 </Router>
-              </SignalRealtimeContextProvider>
+              </SignalRealtimeProvider>
             </WebSocketPriceProvider>
           </AuthProvider>
         </ThemeProvider>

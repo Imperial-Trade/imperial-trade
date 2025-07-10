@@ -7,12 +7,17 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton";
 import { Crown } from "lucide-react";
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
+import { User } from '@supabase/supabase-js';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-function DashboardHeader() {
+interface DashboardHeaderProps {
+  user: User | null;
+}
+
+function DashboardHeader({ user }: DashboardHeaderProps) {
   const { openMobile } = useSidebar();
 
   return (
@@ -83,7 +88,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex flex-col bg-background text-foreground">
-        <DashboardHeader />
+        <DashboardHeader user={user} />
         
         <div className="flex-1 relative">
           <AppSidebar />

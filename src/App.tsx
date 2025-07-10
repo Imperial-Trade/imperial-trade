@@ -1,12 +1,13 @@
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { WebSocketPriceProvider } from '@/contexts/WebSocketPriceContext';
 import { SignalRealtimeProvider } from '@/contexts/SignalRealtimeContext';
+import { SignalRealtimeProvider as SignalRealtimeContextProvider } from '@/contexts/SignalRealtimeContext';
 import { Toaster } from '@/components/ui/sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import ErrorBoundary from '@/components/error-boundary/ErrorBoundary';
+import { ErrorBoundary } from '@/components/error-boundary/ErrorBoundary';
 
 // Layout imports
 import LandingLayout from '@/pages/layouts/LandingLayout';
@@ -34,7 +35,7 @@ import AdminPanel from '@/pages/dashboard/admin-panel/AdminPanel';
 import NewSignalPage from '@/pages/dashboard/new-signal/NewSignalPage';
 import SignalStream from '@/pages/dashboard/signal-stream/SignalStream';
 import DevTests from '@/pages/dashboard/dev-tests/DevTests';
-import AthenaTest from '@/pages/athena/AthenaTest';
+import AthenaTest from '@/pages/dashboard/athena/AthenaTest';
 
 import NotFound from '@/pages/NotFound';
 import './App.css';
@@ -55,11 +56,11 @@ function App() {
         <ThemeProvider>
           <AuthProvider>
             <WebSocketPriceProvider>
-              <SignalRealtimeProvider>
+              <SignalRealtimeContextProvider>
                 <Router>
                   <Routes>
                     {/* Landing Pages */}
-                    <Route path="/" element={<LandingLayout />}>
+                    <Route path="/" element={<LandingLayout><Outlet /></LandingLayout>}>
                       <Route index element={<Landing />} />
                       <Route path="about" element={<About />} />
                       <Route path="features" element={<Features />} />
@@ -71,7 +72,7 @@ function App() {
                     </Route>
 
                     {/* Dashboard Pages */}
-                    <Route path="/dashboard" element={<DashboardLayout />}>
+                    <Route path="/dashboard" element={<DashboardLayout><Outlet /></DashboardLayout>}>
                       <Route index element={<Home />} />
                       <Route path="education" element={<Education />} />
                       <Route path="forum" element={<Forum />} />
@@ -91,7 +92,7 @@ function App() {
                   </Routes>
                   <Toaster />
                 </Router>
-              </SignalRealtimeProvider>
+              </SignalRealtimeContextProvider>
             </WebSocketPriceProvider>
           </AuthProvider>
         </ThemeProvider>

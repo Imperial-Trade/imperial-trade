@@ -89,14 +89,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen bg-background text-foreground">
+        <AppSidebar />
         <DashboardHeader user={user} />
-        
-        <div className="pt-16 min-h-screen">
-          <AppSidebar />
-          <main className="min-h-0 flex-1 bg-background text-foreground">
-            {children}
-          </main>
-        </div>
+        <main className="pt-16 w-full bg-background text-foreground">
+          {children}
+        </main>
       </div>
     </SidebarProvider>
   );

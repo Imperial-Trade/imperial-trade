@@ -32,7 +32,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar 
-      className="border-r-0 bg-background/80 backdrop-blur-xl z-60"
+      className="border-r-0 bg-background/80 backdrop-blur-xl"
       collapsible="offcanvas"
       variant="floating"
       onClick={handleSidebarClick}

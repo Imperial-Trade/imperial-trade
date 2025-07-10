@@ -1,6 +1,7 @@
 
 import { AdminUser } from '@/hooks/useAdminUserManagement';
 import { TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import { TradeAlertData } from '@/types/components';
 
 export class TestDataFactory {
   static createMockUser(overrides: Partial<AdminUser> = {}): AdminUser {
@@ -44,6 +45,26 @@ export class TestDataFactory {
       notes: 'Test trade alert',
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
+      ...overrides
+    };
+  }
+
+  // New method for creating TradeAlertData format used by components
+  static createMockTradeAlertData(overrides: Partial<TradeAlertData> = {}): TradeAlertData {
+    return {
+      id: '456e7890-f12b-34c5-d678-901234567890',
+      asset_name: 'EUR/USD',
+      finnhub_symbol: 'OANDA:EUR_USD',
+      trade_type: 'buy',
+      entry_price: 1.0500,
+      stop_loss: 1.0450,
+      status: 'active',
+      tp1: 1.0550,
+      tp2: 1.0600,
+      tp_hits: [],
+      notes: 'Test trade alert',
+      created_date: '2024-01-01T00:00:00Z',
+      updated_date: '2024-01-01T00:00:00Z',
       ...overrides
     };
   }
@@ -109,6 +130,24 @@ export class TestDataFactory {
         status: statuses[index % statuses.length],
         entryPrice: 1.0500 + (index * 0.0010),
         stopLoss: 1.0450 + (index * 0.0010),
+      })
+    );
+  }
+
+  // New method for creating multiple TradeAlertData objects
+  static createMockTradeAlertDataList(count: number): TradeAlertData[] {
+    const assets = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD'];
+    const tradeTypes = ['buy', 'sell'] as const;
+    const statuses = ['active', 'closed', 'pending'] as const;
+
+    return Array.from({ length: count }, (_, index) =>
+      this.createMockTradeAlertData({
+        id: `alert-${index + 1}`,
+        asset_name: assets[index % assets.length],
+        trade_type: tradeTypes[index % tradeTypes.length],
+        status: statuses[index % statuses.length],
+        entry_price: 1.0500 + (index * 0.0010),
+        stop_loss: 1.0450 + (index * 0.0010),
       })
     );
   }

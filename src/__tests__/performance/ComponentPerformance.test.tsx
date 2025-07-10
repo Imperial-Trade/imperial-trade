@@ -32,7 +32,7 @@ describe('Component Performance Tests', () => {
 
   describe('TradeAlertCard Performance', () => {
     it('should render within performance threshold', () => {
-      const mockAlert = TestDataFactory.createMockTradeAlert();
+      const mockAlert = TestDataFactory.createMockTradeAlertData();
       const mockProps = {
         alert: mockAlert,
         onStatusUpdate: vi.fn(),
@@ -59,11 +59,11 @@ describe('Component Performance Tests', () => {
 
       // Assert render time is under 100ms
       expect(renderTime).toBeLessThan(100);
-      expect(screen.getByText(mockAlert.assetName)).toBeInTheDocument();
+      expect(screen.getByText(mockAlert.asset_name)).toBeInTheDocument();
     });
 
     it('should handle rapid prop updates efficiently', () => {
-      const mockAlert = TestDataFactory.createMockTradeAlert();
+      const mockAlert = TestDataFactory.createMockTradeAlertData();
       const mockProps = {
         alert: mockAlert,
         onStatusUpdate: vi.fn(),
@@ -125,7 +125,7 @@ describe('Component Performance Tests', () => {
 
   describe('Memory Leak Detection', () => {
     it('should not leak memory with LivePriceWidget', () => {
-      const mockAlert = TestDataFactory.createMockTradeAlert();
+      const mockAlert = TestDataFactory.createMockTradeAlertData();
       const mockProps = {
         alert: mockAlert,
         onTakeProfitHit: vi.fn(),

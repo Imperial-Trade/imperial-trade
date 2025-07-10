@@ -1,14 +1,13 @@
-
-import React, { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState, useEffect } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton";
 import { Crown } from "lucide-react";
-import LoadingSpinner from '@/components/layout/LoadingSpinner';
+import LoadingSpinner from "@/components/layout/LoadingSpinner";
 import { useSidebar } from "@/components/ui/sidebar";
-import { User } from '@supabase/supabase-js';
+import { User } from "@supabase/supabase-js";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -25,16 +24,20 @@ function DashboardHeader({ user }: DashboardHeaderProps) {
     <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
       <div className="flex items-center gap-4">
         <SidebarTriggerButton />
-        <div className={`flex items-center gap-2 transition-all duration-300 ${
-          openMobile ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'
-        }`}>
+        <div
+          className={`flex items-center gap-2 transition-all duration-300 ${
+            openMobile
+              ? "opacity-0 pointer-events-none scale-95"
+              : "opacity-100 scale-100"
+          }`}
+        >
           <Crown className="h-6 w-6 text-primary" />
           <span className="text-xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
             IMPERIAL
           </span>
         </div>
       </div>
-      
+
       <div className="flex items-center gap-4">
         <div className="hidden md:flex items-center gap-2 text-sm text-foreground">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -58,7 +61,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   useEffect(() => {
     const validateSession = async () => {
       if (!loading && !user) {
-        navigate('/access-portal', { replace: true });
+        navigate("/access-portal", { replace: true });
         return;
       }
 
@@ -66,8 +69,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         try {
           await refreshSession();
         } catch (error) {
-          console.error('Session validation failed:', error);
-          navigate('/signin', { replace: true });
+          console.error("Session validation failed:", error);
+          navigate("/signin", { replace: true });
           return;
         }
       }
@@ -88,8 +91,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   return (
     <SidebarProvider defaultOpen={false}>
+      <AppSidebar />
       <div className="min-h-screen bg-background text-foreground">
-        <AppSidebar />
         <DashboardHeader user={user} />
         <main className="pt-16 w-full bg-background text-foreground">
           {children}

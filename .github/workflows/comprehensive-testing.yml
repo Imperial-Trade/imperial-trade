@@ -1,0 +1,249 @@
+
+name: Comprehensive Testing Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run performance tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  NODE_VERSION: '18'
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+jobs:
+  # Parallel job matrix for different test types
+  unit-integration-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-group: [unit, integration]
+        node-version: [18, 20]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ${{ matrix.test-group }} tests
+        run: |
+          if [ "${{ matrix.test-group }}" = "unit" ]; then
+            npm run test:unit:parallel
+          else
+            npm run test:integration:parallel
+          fi
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results-${{ matrix.test-group }}-node${{ matrix.node-version }}
+          path: |
+            test-results/
+            coverage/
+          retention-days: 30
+  
+  performance-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[perf]')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run performance tests
+        run: npm run test:performance:ci
+      
+      - name: Performance regression check
+        run: node scripts/performance-regression-check.js
+      
+      - name: Upload performance reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: performance-reports
+          path: |
+            test-results/performance-*.json
+            test-results/performance-*.md
+          retention-days: 90
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Run E2E tests (${{ matrix.browser }})
+        run: npx playwright test --project=${{ matrix.browser }}
+        env:
+          PLAYWRIGHT_BROWSER: ${{ matrix.browser }}
+      
+      - name: Upload E2E reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-report-${{ matrix.browser }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 30
+
+  load-tests:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[load]')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Run load tests
+        run: npm run test:load
+      
+      - name: Upload load test reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: load-test-reports
+          path: |
+            playwright-report/load/
+            test-results/load-*.json
+          retention-days: 30
+
+  quality-gates:
+    runs-on: ubuntu-latest
+    needs: [unit-integration-tests, e2e-tests]
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run quality gate analysis
+        run: node scripts/quality-gate-analysis.js
+      
+      - name: Generate comprehensive report
+        run: node scripts/generate-test-report.js
+      
+      - name: Check quality gates
+        run: |
+          echo "Checking quality gates..."
+          if [ -f "test-results/quality-gates-failed.txt" ]; then
+            echo "Quality gates failed:"
+            cat test-results/quality-gates-failed.txt
+            exit 1
+          fi
+          echo "All quality gates passed!"
+      
+      - name: Upload comprehensive report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: comprehensive-test-report
+          path: |
+            test-results/comprehensive-report.*
+            test-results/quality-gates-*
+          retention-days: 90
+      
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let reportContent = 'Test execution completed!\n\n';
+            
+            try {
+              if (fs.existsSync('test-results/comprehensive-report.md')) {
+                reportContent += fs.readFileSync('test-results/comprehensive-report.md', 'utf8');
+              }
+            } catch (error) {
+              reportContent += 'Error reading test report: ' + error.message;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: reportContent
+            });
+
+  notify-results:
+    runs-on: ubuntu-latest
+    needs: [unit-integration-tests, performance-tests, e2e-tests, load-tests, quality-gates]
+    if: always() && (failure() || success())
+    
+    steps:
+      - name: Notify team
+        run: |
+          echo "Test pipeline completed with status: ${{ needs.quality-gates.result }}"
+          # Add webhook notifications here if needed

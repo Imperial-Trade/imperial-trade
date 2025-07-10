@@ -58,7 +58,7 @@ export const ROUTES = {
   // Dashboard routes
   DASHBOARD: '/dashboard',
   DASHBOARD_HOME: '/dashboard/home',
-  DASHBOARD_SIGNALS: '/dashboard/signal-stream',
+  DASHBOARD_SIGNALS: '/dashboard/signals',
   DASHBOARD_EDUCATION: '/dashboard/education',
   DASHBOARD_TOOLS: '/dashboard/advanced-tools',
   DASHBOARD_SETTINGS: '/dashboard/settings',
@@ -69,8 +69,8 @@ export const ROUTES = {
   DASHBOARD_ATHENA: '/dashboard/athena',
   
   // Signal-specific routes
-  SIGNAL_DETAIL: '/dashboard/signal-stream/:signalId',
-  SIGNAL_EDIT: '/dashboard/signal-stream/:signalId/edit',
+  SIGNAL_DETAIL: '/dashboard/signals/:signalId',
+  SIGNAL_EDIT: '/dashboard/signals/:signalId/edit',
   
   // User routes
   USER_PROFILE: '/user/:userId',

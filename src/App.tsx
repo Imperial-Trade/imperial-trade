@@ -74,6 +74,7 @@ function App() {
                     {/* Dashboard Pages */}
                     <Route path="/dashboard" element={<DashboardLayout><Outlet /></DashboardLayout>}>
                       <Route index element={<Home />} />
+                      <Route path="home" element={<Home />} />
                       <Route path="education" element={<Education />} />
                       <Route path="forum" element={<Forum />} />
                       <Route path="live" element={<Live />} />
@@ -82,7 +83,7 @@ function App() {
                       <Route path="my-progress" element={<MyProgress />} />
                       <Route path="admin-panel" element={<AdminPanel />} />
                       <Route path="new-signal" element={<NewSignalPage />} />
-                      <Route path="signal-stream" element={<SignalStream />} />
+                      <Route path="signals" element={<SignalStream />} />
                       <Route path="dev-tests" element={<DevTests />} />
                       <Route path="athena-test" element={<AthenaTest />} />
                     </Route>

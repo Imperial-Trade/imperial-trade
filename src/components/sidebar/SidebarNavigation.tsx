@@ -14,8 +14,7 @@ import {
   TrendingUp, 
   Video, 
   MessageCircle, 
-  BarChart3,
-  Users
+  BarChart3
 } from 'lucide-react';
 
 const navigationItems = [
@@ -24,7 +23,6 @@ const navigationItems = [
   { title: "Signal Stream", url: "/dashboard/signals", icon: TrendingUp },
   { title: "Live Sessions", url: "/dashboard/live", icon: Video },
   { title: "Community Forum", url: "/dashboard/forum", icon: MessageCircle },
-  { title: "IB Partnership", url: "/partnership", icon: Users },
   { title: "Advanced Tools", url: "/dashboard/tools", icon: BarChart3 },
   { title: "My Progress", url: "/dashboard/progress", icon: BarChart3 },
 ];

@@ -6,11 +6,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // Mock dependencies
-vi.mock('@/integrations/supabase/client');
+vi.mock '@/integrations/supabase/client';
 vi.mock('sonner');
 
-const mockSupabase = vi.mocked(supabase);
-const mockToast = vi.mocked(toast);
+const mockSupabase = supabase as any;
+const mockToast = toast as any;
 
 describe('useAdminUserManagement', () => {
   const mockUsers = [
@@ -42,18 +42,24 @@ describe('useAdminUserManagement', () => {
     vi.clearAllMocks();
     
     // Mock auth session
-    mockSupabase.auth.getSession.mockResolvedValue({
-      data: {
-        session: {
-          access_token: 'mock-token',
-          refresh_token: 'mock-refresh-token',
-          expires_in: 3600,
-          token_type: 'bearer',
-          user: { id: 'admin-id' }
-        }
-      },
-      error: null
-    });
+    mockSupabase.auth = {
+      getSession: vi.fn().mockResolvedValue({
+        data: {
+          session: {
+            access_token: 'mock-token',
+            refresh_token: 'mock-refresh-token',
+            expires_in: 3600,
+            token_type: 'bearer',
+            user: { id: 'admin-id' }
+          }
+        },
+        error: null
+      })
+    };
+
+    mockSupabase.functions = {
+      invoke: vi.fn()
+    };
   });
 
   it('loads users successfully', async () => {

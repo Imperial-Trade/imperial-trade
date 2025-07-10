@@ -1,7 +1,7 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useForm } from 'react-hook-form';
 import { LoginForm } from '@/components/login/LoginForm';
 import { LoginFormData } from '@/lib/validations/loginSchema';
@@ -20,7 +20,7 @@ const TestLoginForm = ({
     defaultValues: {
       email: '',
       password: '',
-      honeypot: ''
+      website: '' // Changed from honeypot to website to match schema
     }
   });
 
@@ -87,7 +87,7 @@ describe('LoginForm', () => {
     expect(mockOnSubmit).toHaveBeenCalledWith({
       email: 'test@example.com',
       password: 'password123',
-      honeypot: ''
+      website: '' // Changed from honeypot to website
     });
   });
 
@@ -120,8 +120,8 @@ describe('LoginForm', () => {
   it('includes honeypot field for security', () => {
     render(<TestLoginForm />);
     
-    // Honeypot field should be present but hidden
-    const honeypotField = document.querySelector('input[name="honeypot"]');
+    // Honeypot field should be present but hidden (website field)
+    const honeypotField = document.querySelector('input[name="website"]');
     expect(honeypotField).toBeInTheDocument();
   });
 

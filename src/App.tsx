@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -6,6 +7,7 @@ import { SignalRealtimeProvider } from '@/contexts/SignalRealtimeContext';
 import { Toaster } from '@/components/ui/sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary/ErrorBoundary';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 // Layout imports
 import LandingLayout from '@/pages/layouts/LandingLayout';
@@ -49,11 +51,11 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <QueryClient>
-      <BrowserRouter>
-        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <ThemeProvider>
           <ErrorBoundary>
-            <AuthContextProvider>
+            <AuthProvider>
               <SignalRealtimeProvider>
                 <WebSocketPriceProvider>
                   <div className="min-h-screen bg-background text-foreground">
@@ -72,7 +74,9 @@ function App() {
                       {/* Protected Dashboard Routes */}
                       <Route path="/dashboard" element={
                         <ProtectedRoute>
-                          <DashboardLayout />
+                          <DashboardLayout>
+                            <Outlet />
+                          </DashboardLayout>
                         </ProtectedRoute>
                       }>
                         <Route path="home" element={<Home />} />
@@ -101,11 +105,11 @@ function App() {
                   </div>
                 </WebSocketPriceProvider>
               </SignalRealtimeProvider>
-            </AuthContextProvider>
+            </AuthProvider>
           </ErrorBoundary>
         </ThemeProvider>
-      </BrowserRouter>
-    </QueryClient>
+      </Router>
+    </QueryClientProvider>
   );
 }
 

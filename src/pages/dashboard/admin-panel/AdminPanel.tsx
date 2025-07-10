@@ -14,12 +14,12 @@ import {
   Settings,
   Bell
 } from 'lucide-react';
-import UserManagementTable from '@/components/admin/UserManagementTable';
-import SystemMonitoring from '@/components/admin/SystemMonitoring';
-import EnhancedSystemMonitoring from '@/components/admin/EnhancedSystemMonitoring';
-import RealTimeNotifications from '@/components/admin/RealTimeNotifications';
-import RealtimeAuditLog from '@/components/admin/RealtimeAuditLog';
-import AdminTradeSignalsTab from '@/components/admin/AdminTradeSignalsTab';
+import { UserManagementTable } from '@/components/admin/UserManagementTable';
+import { SystemMonitoring } from '@/components/admin/SystemMonitoring';
+import { EnhancedSystemMonitoring } from '@/components/admin/EnhancedSystemMonitoring';
+import { RealTimeNotifications } from '@/components/admin/RealTimeNotifications';
+import { RealtimeAuditLog } from '@/components/admin/RealtimeAuditLog';
+import { AdminTradeSignalsTab } from '@/components/admin/AdminTradeSignalsTab';
 import AccessDenied from '@/components/AccessDenied';
 
 export default function AdminPanel() {
@@ -208,7 +208,7 @@ export default function AdminPanel() {
             </TabsContent>
 
             <TabsContent value="trades" className="space-y-6">
-              <AdminTradeSignalsTab />
+              <AdminTradeSignalsTab currentUser={user} />
             </TabsContent>
           </div>
         </Tabs>

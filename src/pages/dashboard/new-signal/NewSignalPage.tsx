@@ -2,7 +2,7 @@
 import React from 'react';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/components/ui/use-toast';
-import type { TradeAlertSubmissionData } from '@/hooks/useTradeAlertForm';
+import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 
 const NewSignalPage: React.FC = () => {
   const { toast } = useToast();

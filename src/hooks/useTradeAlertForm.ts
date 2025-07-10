@@ -1,9 +1,13 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { tradeAlertSchema, tradeAlertSubmissionSchema, type TradeAlertFormData, type TradeAlertSubmissionData } from "@/lib/validations/tradeAlertSchema";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 
+/**
+ * @deprecated This hook is deprecated in favor of useOptimizedTradeAlertForm
+ * Please migrate to useOptimizedTradeAlertForm for better performance and features
+ * This hook will be removed in a future version
+ */
 export interface UseTradeAlertFormOptions {
   onSubmit?: (data: TradeAlertSubmissionData) => Promise<void> | void;
   defaultValues?: Partial<TradeAlertFormData>;
@@ -11,6 +15,10 @@ export interface UseTradeAlertFormOptions {
   validateOnBlur?: boolean;
 }
 
+/**
+ * @deprecated Use useOptimizedTradeAlertForm instead
+ * This legacy hook provides basic form functionality but lacks performance optimizations
+ */
 export function useTradeAlertForm(options: UseTradeAlertFormOptions = {}) {
   const {
     onSubmit,
@@ -18,6 +26,14 @@ export function useTradeAlertForm(options: UseTradeAlertFormOptions = {}) {
     validateOnChange = true,
     validateOnBlur = true
   } = options;
+
+  // Log deprecation warning
+  useEffect(() => {
+    console.warn(
+      '⚠️ useTradeAlertForm is deprecated. Please migrate to useOptimizedTradeAlertForm for better performance.\n' +
+      'Benefits: Debounced validation, smart input detection, reduced re-renders'
+    );
+  }, []);
 
   // Create form with optimized default values
   const form = useForm<TradeAlertFormData>({

@@ -36,26 +36,3 @@ export function useWebSocketLivePrice(symbol: string): LivePriceData {
     connectionStatus: optimizedData.connectionStatus
   };
 }
-
-// Legacy compatibility export
-export function useLivePrice(symbol: string): LivePriceData {
-  useEffect(() => {
-    logLegacyUsage('useLivePrice');
-  }, []);
-
-  return useWebSocketLivePrice(symbol);
-}
-
-// Legacy compatibility export with proper typing
-export function useEnhancedLivePrice(symbol: string, config?: any): LivePriceData & { retry: () => void } {
-  useEffect(() => {
-    logLegacyUsage('useEnhancedLivePrice');
-  }, []);
-
-  const data = useWebSocketLivePrice(symbol);
-  
-  return {
-    ...data,
-    retry: () => {} // No-op for compatibility
-  };
-}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -91,10 +92,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <AppSidebar />
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-background text-foreground w-full relative">
+        {/* Fixed Header - Always stays at top */}
         <DashboardHeader user={user} />
-        <main className="pt-16 w-full bg-background text-foreground">
+        
+        {/* Sidebar - Overlay positioned, doesn't affect content flow */}
+        <AppSidebar />
+        
+        {/* Main Content - Full width, independent of sidebar state */}
+        <main className="w-full min-h-screen pt-16 bg-background text-foreground">
           {children}
         </main>
       </div>

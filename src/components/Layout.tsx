@@ -53,24 +53,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // For other pages, use the overlay sidebar layout
+  // For other pages, use the overlay sidebar layout with fixed positioning
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen flex flex-col w-full bg-background">
+      <div className="min-h-screen w-full bg-background relative">
         <ErrorBoundary componentName="Header">
           <DashboardHeader />
         </ErrorBoundary>
 
-        <div className="flex-1 relative">
-          <ErrorBoundary componentName="Sidebar">
-            <AppSidebar />
+        <ErrorBoundary componentName="Sidebar">
+          <AppSidebar />
+        </ErrorBoundary>
+        
+        <main className="w-full min-h-screen pt-16 bg-background">
+          <ErrorBoundary componentName="Page Content">
+            {children}
           </ErrorBoundary>
-          <main className="w-full h-full overflow-auto bg-background">
-            <ErrorBoundary componentName="Page Content">
-              {children}
-            </ErrorBoundary>
-          </main>
-        </div>
+        </main>
       </div>
     </SidebarProvider>
   )

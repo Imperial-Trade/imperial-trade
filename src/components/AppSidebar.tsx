@@ -25,19 +25,19 @@ export function AppSidebar() {
     }
   };
 
-  const handleContentClick = () => {
-    // Close the sidebar when clicking on the main content area
-    setOpenMobile(false);
+  const handleContentClick = (e: React.MouseEvent) => {
+    // Prevent closing when clicking on sidebar content
+    e.stopPropagation();
   };
 
   return (
     <Sidebar 
-      className="border-r-0 bg-background/80 backdrop-blur-xl"
+      className="border-r-0 bg-background/90 backdrop-blur-xl"
       collapsible="offcanvas"
       variant="floating"
       onClick={handleSidebarClick}
     >
-      <div className="h-full bg-background/80 backdrop-blur-xl" onClick={handleContentClick}>
+      <div className="h-full bg-background/90 backdrop-blur-xl" onClick={handleContentClick}>
         <SidebarHeader className="p-4 border-b border-border/20">
           <SidebarBrand isCollapsed={isCollapsed} />
         </SidebarHeader>

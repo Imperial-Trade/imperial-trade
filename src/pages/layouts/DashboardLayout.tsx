@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -94,7 +95,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   useEffect(() => {
     const validateSession = async () => {
       if (!loading && !user) {
-        navigate("/access-portal", { replace: true });
+        navigate("/signin", { replace: true });
         return;
       }
 

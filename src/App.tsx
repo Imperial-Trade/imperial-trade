@@ -1,8 +1,10 @@
+
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Outlet,
+  Navigate,
 } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -101,6 +103,7 @@ function App() {
                           </ProtectedRoute>
                         }
                       >
+                        <Route index element={<Navigate to="home" replace />} />
                         <Route path="home" element={<Home />} />
                         <Route path="live" element={<Live />} />
                         <Route path="new-signal" element={<NewSignalPage />} />

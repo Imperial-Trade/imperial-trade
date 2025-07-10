@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, X, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -20,67 +20,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { useTradeAlertForm, type TradeAlertSubmissionData } from '@/hooks/useTradeAlertForm';
-import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
+import { useOptimizedTradeAlertForm, type TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
+import EnhancedLivePriceDisplay from './EnhancedLivePriceDisplay';
 
 const supportedAssets = [
   { name: 'Gold', symbol: 'XAU/USD', category: 'Commodities' },
   { name: 'Bitcoin', symbol: 'BTC/USD', category: 'Crypto' }
 ];
-
-// Memoized price display component to prevent unnecessary re-renders
-const LivePriceDisplay = React.memo(({ 
-  symbol, 
-  assetName 
-}: { 
-  symbol: string; 
-  assetName: string; 
-}) => {
-  const { price, change, changePercent, isLoading, connectionStatus } = useWebSocketLivePrice(symbol);
-
-  const formatPrice = useCallback((price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(price);
-  }, []);
-
-  if (!symbol) return null;
-
-  return (
-    <div className="bg-gray-700/50 border border-gray-600 rounded-lg p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="text-white font-medium">
-            Live Price for {assetName}:
-          </div>
-          {isLoading ? (
-            <div className="animate-pulse text-gray-400">Loading...</div>
-          ) : (
-            <div className="text-accent-green font-mono text-lg">
-              ${formatPrice(price)}
-            </div>
-          )}
-        </div>
-        {!isLoading && (
-          <div className={`flex items-center gap-1 ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-            <span className="text-sm font-medium">
-              {change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%
-            </span>
-          </div>
-        )}
-      </div>
-      {connectionStatus !== 'connected' && (
-        <div className="text-xs text-gray-400 mt-1">
-          Connection: {connectionStatus}
-        </div>
-      )}
-    </div>
-  );
-});
-
-LivePriceDisplay.displayName = 'LivePriceDisplay';
 
 interface OptimizedNewAlertFormProps {
   onSubmit: (data: TradeAlertSubmissionData) => Promise<void> | void;
@@ -92,11 +38,10 @@ export default function OptimizedNewAlertForm({ onSubmit, onCancel }: OptimizedN
   const [selectedSymbol, setSelectedSymbol] = useState('');
   const [selectedAssetName, setSelectedAssetName] = useState('');
   
-  // Use onBlur validation instead of onChange to reduce re-renders
-  const { form, handleSubmit, isSubmitting, hasErrors } = useTradeAlertForm({
+  // Use optimized form hook with smart validation
+  const { form, handleSubmit, isSubmitting, hasErrors } = useOptimizedTradeAlertForm({
     onSubmit,
-    validateOnChange: false, // Changed to false for better performance
-    validateOnBlur: true
+    enableSmartValidation: true
   });
 
   // Memoized handlers to prevent unnecessary re-renders
@@ -122,6 +67,10 @@ export default function OptimizedNewAlertForm({ onSubmit, onCancel }: OptimizedN
       setSelectedSymbol(symbol);
       setSelectedAssetName(asset.name);
     }
+  }, [form]);
+
+  const handleUseCurrentPrice = useCallback((price: number) => {
+    form.setValue('entry_price', price, { shouldValidate: true });
   }, [form]);
 
   // Memoized take profit fields to prevent re-rendering
@@ -169,7 +118,7 @@ export default function OptimizedNewAlertForm({ onSubmit, onCancel }: OptimizedN
           {/* Asset Selection */}
           <div className="space-y-3">
             <Label htmlFor="asset" className="text-white text-sm font-medium">
-              Asset (Live WebSocket Data)
+              Asset (Optimized Live Data)
             </Label>
             <Select onValueChange={handleAssetChange} name="asset">
               <SelectTrigger className="bg-gray-700 border-gray-600 text-white h-11">
@@ -187,11 +136,12 @@ export default function OptimizedNewAlertForm({ onSubmit, onCancel }: OptimizedN
               </SelectContent>
             </Select>
             
-            {/* Live Price Display - Memoized and separated */}
+            {/* Enhanced Live Price Display with smart controls */}
             {selectedSymbol && (
-              <LivePriceDisplay 
+              <EnhancedLivePriceDisplay 
                 symbol={selectedSymbol} 
-                assetName={selectedAssetName} 
+                assetName={selectedAssetName}
+                onUseCurrentPrice={handleUseCurrentPrice}
               />
             )}
           </div>

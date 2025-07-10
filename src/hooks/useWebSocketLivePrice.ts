@@ -1,6 +1,5 @@
 
-import { useEffect, useMemo } from 'react';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useOptimizedLivePrice } from './useOptimizedLivePrice';
 
 interface LivePriceData {
   price: number;
@@ -13,45 +12,19 @@ interface LivePriceData {
 }
 
 export function useWebSocketLivePrice(symbol: string): LivePriceData {
-  const { prices, connectionStatus, subscribe, unsubscribe, getPrice } = useWebSocketPrices();
+  const optimizedData = useOptimizedLivePrice(symbol, {
+    enableSmartPausing: true,
+    debounceMs: 500,
+    pauseOnInput: true
+  });
 
-  useEffect(() => {
-    if (!symbol) return;
-
-    // Subscribe to the symbol
-    subscribe([symbol]);
-
-    // Cleanup: unsubscribe when component unmounts or symbol changes
-    return () => {
-      unsubscribe([symbol]);
-    };
-  }, [symbol, subscribe, unsubscribe]);
-
-  const priceData = useMemo(() => {
-    const price = getPrice(symbol);
-    
-    if (!price) {
-      return {
-        price: 0,
-        change: 0,
-        changePercent: 0,
-        isLoading: connectionStatus === 'connecting',
-        error: connectionStatus === 'error' ? 'Connection failed' : null,
-        lastUpdated: null,
-        connectionStatus
-      };
-    }
-
-    return {
-      price: price.price,
-      change: price.change,
-      changePercent: price.changePercent,
-      isLoading: false,
-      error: null,
-      lastUpdated: new Date(price.timestamp),
-      connectionStatus
-    };
-  }, [prices, symbol, connectionStatus, getPrice]);
-
-  return priceData;
+  return {
+    price: optimizedData.price,
+    change: optimizedData.change,
+    changePercent: optimizedData.changePercent,
+    isLoading: optimizedData.isLoading,
+    error: optimizedData.error,
+    lastUpdated: optimizedData.lastUpdated,
+    connectionStatus: optimizedData.connectionStatus
+  };
 }

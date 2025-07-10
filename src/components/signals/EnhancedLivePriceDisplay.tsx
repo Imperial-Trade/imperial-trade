@@ -1,0 +1,156 @@
+
+import React, { useCallback, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { TrendingUp, TrendingDown, RefreshCw, Pause, Play, Clock } from 'lucide-react';
+
+interface EnhancedLivePriceDisplayProps {
+  symbol: string;
+  assetName: string;
+  onUseCurrentPrice?: (price: number) => void;
+  className?: string;
+}
+
+const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
+  symbol,
+  assetName,
+  onUseCurrentPrice,
+  className = ''
+}) => {
+  const {
+    price,
+    change,
+    changePercent,
+    isLoading,
+    error,
+    lastUpdated,
+    connectionStatus,
+    isPaused,
+    refreshPrice,
+    pauseUpdates,
+    resumeUpdates
+  } = useOptimizedLivePrice(symbol, {
+    enableSmartPausing: true,
+    debounceMs: 500,
+    pauseOnInput: true
+  });
+
+  const formatPrice = useCallback((price: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(price);
+  }, []);
+
+  const formatTime = useCallback((date: Date | null) => {
+    if (!date) return '';
+    return date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }, []);
+
+  const connectionStatusColor = useMemo(() => {
+    switch (connectionStatus) {
+      case 'connected': return 'text-green-400';
+      case 'connecting': return 'text-yellow-400';
+      case 'error': return 'text-red-400';
+      default: return 'text-gray-400';
+    }
+  }, [connectionStatus]);
+
+  const priceChangeColor = useMemo(() => {
+    return change >= 0 ? 'text-green-400' : 'text-red-400';
+  }, [change]);
+
+  if (!symbol) return null;
+
+  return (
+    <div className={`bg-gray-700/50 border border-gray-600 rounded-lg p-4 ${className}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="text-white font-medium">
+            Live Price for {assetName}:
+          </div>
+          <div className={`text-xs ${connectionStatusColor}`}>
+            ● {connectionStatus}
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={isPaused ? resumeUpdates : pauseUpdates}
+            className="text-gray-400 hover:text-white h-8 w-8 p-0"
+            title={isPaused ? 'Resume updates' : 'Pause updates'}
+          >
+            {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+          </Button>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={refreshPrice}
+            className="text-gray-400 hover:text-white h-8 w-8 p-0"
+            title="Refresh price"
+            disabled={isLoading}
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          {isLoading ? (
+            <div className="animate-pulse text-gray-400">Loading...</div>
+          ) : error ? (
+            <div className="text-red-400">Error: {error}</div>
+          ) : (
+            <div className="text-accent-green font-mono text-lg">
+              ${formatPrice(price)}
+            </div>
+          )}
+        </div>
+        
+        {!isLoading && !error && (
+          <div className={`flex items-center gap-1 ${priceChangeColor}`}>
+            {change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+            <span className="text-sm font-medium">
+              {change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 text-xs text-gray-400">
+          <Clock className="w-3 h-3" />
+          <span>
+            {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
+          </span>
+          {isPaused && <span className="text-yellow-400 ml-2">● Paused</span>}
+        </div>
+        
+        {onUseCurrentPrice && !isLoading && !error && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onUseCurrentPrice(price)}
+            className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-2 text-xs"
+          >
+            Use Current Price
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default EnhancedLivePriceDisplay;

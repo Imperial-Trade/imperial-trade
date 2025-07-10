@@ -25,10 +25,8 @@ const AppBar: React.FC = () => {
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
-  // Don't render the auth-dependent button while loading
+  // Show "Get Started" by default, "Dashboard" when authenticated
   const renderAuthButton = () => {
-    if (loading) return null;
-    
     if (user) {
       return (
         <Link to="/dashboard/home">
@@ -117,27 +115,25 @@ const AppBar: React.FC = () => {
               ))}
               
               <div className="mt-6 pt-6 border-t border-border/50">
-                {!loading && (
-                  user ? (
-                    <Link to="/dashboard/home" onClick={closeMobileMenu}>
-                      <Button
-                        size="lg"
-                        className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold flex items-center gap-2"
-                      >
-                        <LayoutDashboard className="h-4 w-4" />
-                        Dashboard
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Link to="/account-request" onClick={closeMobileMenu}>
-                      <Button
-                        size="lg"
-                        className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold"
-                      >
-                        Get Started
-                      </Button>
-                    </Link>
-                  )
+                {user ? (
+                  <Link to="/dashboard/home" onClick={closeMobileMenu}>
+                    <Button
+                      size="lg"
+                      className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold flex items-center gap-2"
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link to="/account-request" onClick={closeMobileMenu}>
+                    <Button
+                      size="lg"
+                      className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold"
+                    >
+                      Get Started
+                    </Button>
+                  </Link>
                 )}
               </div>
             </nav>

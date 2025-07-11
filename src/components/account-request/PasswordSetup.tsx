@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -54,11 +55,10 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
       try {
         await supabase.auth.signOut({ scope: 'global' });
       } catch (err) {
-        // Continue even if this fails
         console.log('No existing session to sign out');
       }
 
-      // Create Supabase auth user
+      // Create Supabase auth user with all the approved request metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: accountRequest.email,
         password: data.password,
@@ -66,12 +66,51 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
           data: {
             full_name: accountRequest.full_name,
             account_type: accountRequest.account_type,
-          },
-          emailRedirectTo: `${window.location.origin}/dashboard/home`
+            role: accountRequest.account_type === 'educator' ? 'educator' : 'user',
+            access_level: accountRequest.account_type === 'educator' ? 'moderator' : 'user',
+            user_type: accountRequest.account_type === 'educator' ? 'educator' : 'member',
+            account_status: 'active',
+            registration_source: 'account_request',
+            phone_number: accountRequest.phone_number,
+            username: accountRequest.username,
+            vt_market_account_number: accountRequest.vt_market_account_number,
+            website: accountRequest.website,
+            referrer: accountRequest.referrer
+          }
         }
       });
 
       if (authError) {
+        // Handle case where user already exists
+        if (authError.message?.includes('already registered')) {
+          // Try to sign in instead
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: accountRequest.email,
+            password: data.password,
+          });
+
+          if (signInError) {
+            toast({
+              variant: "destructive",
+              title: "Account Setup Issue",
+              description: "An account already exists with this email. Please contact support if you need assistance.",
+            });
+            return;
+          }
+
+          // Successful sign-in for existing user
+          toast({
+            title: "Welcome back!",
+            description: "Redirecting to your dashboard...",
+          });
+
+          // Direct navigation to dashboard
+          setTimeout(() => {
+            navigate('/dashboard/home', { replace: true });
+          }, 1500);
+          return;
+        }
+
         throw new Error(authError.message);
       }
 
@@ -81,35 +120,49 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
 
       console.log('Account created successfully:', authData.user.email);
 
+      // Update the account request with completion timestamp
+      try {
+        const { error: updateError } = await supabase
+          .from('account_requests')
+          .update({ 
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', accountRequest.id);
+
+        if (updateError) {
+          console.warn('Could not update account request timestamp:', updateError);
+        }
+      } catch (updateErr) {
+        console.warn('Error updating request timestamp:', updateErr);
+      }
+
       // Send welcome email
       try {
         await sendWelcomeEmail(accountRequest.email, accountRequest.full_name);
       } catch (emailError) {
         console.warn('Welcome email failed:', emailError);
-        // Continue anyway - don't fail the whole process for email issues
+        // Don't fail the whole process for email issues
       }
 
+      // Success - user is now authenticated and should be automatically signed in
       toast({
-        title: "Account Created Successfully!",
-        description: "Welcome to Imperial Trading. Redirecting to dashboard...",
+        title: "Welcome to Imperial Trading!",
+        description: "Your account has been created successfully. Redirecting to dashboard...",
       });
 
-      // Use React Router navigation instead of hard redirect
+      // Call success callback
+      onSuccess();
+
+      // Direct navigation to dashboard - the user should already be authenticated
       setTimeout(() => {
-        navigate('/dashboard/home');
+        navigate('/dashboard/home', { replace: true });
       }, 2000);
 
     } catch (error: any) {
       console.error('Password setup error:', error);
       
       // Handle specific error cases
-      if (error.message?.includes('already registered')) {
-        toast({
-          variant: "destructive",
-          title: "Account Already Exists",
-          description: "An account with this email already exists. Please try logging in instead.",
-        });
-      } else if (error.message?.includes('Password')) {
+      if (error.message?.includes('Password')) {
         toast({
           variant: "destructive",
           title: "Password Error",
@@ -135,7 +188,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
           Set Up Your Password
         </CardTitle>
         <p className="text-secondary text-center text-white">
-          Create a secure password to complete your account setup
+          Create a secure password to complete your account setup and access your dashboard
         </p>
       </CardHeader>
       <CardContent>
@@ -208,7 +261,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
                     </div>
                   </FormControl>
                   
-                  {/* Enhanced validation feedback for password confirmation - ONLY custom validation */}
+                  {/* Enhanced validation feedback for password confirmation */}
                   {showPasswordMismatch && (
                     <div className="flex items-center gap-2 text-sm text-red-500 mt-1">
                       <span className="w-4 h-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">×</span>
@@ -237,11 +290,15 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
                   Creating Account...
                 </div>
               ) : (
-                "Create Account & Login"
+                "Create Account & Access Dashboard"
               )}
             </Button>
           </form>
         </Form>
+
+        <div className="text-xs text-gray-400 text-center mt-4">
+          After creation, you'll be automatically logged in and redirected to your dashboard.
+        </div>
       </CardContent>
     </Card>
   );

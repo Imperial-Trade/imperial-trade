@@ -41,6 +41,11 @@ export default function AccountRequestStatusPage() {
     }, 1000);
   };
 
+  const handleCheckAnother = () => {
+    setSearchEmail("");
+    setEmail("");
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
@@ -188,11 +193,7 @@ export default function AccountRequestStatusPage() {
                 <Button
                   variant="outline"
                   className="w-full border-white/20 text-white/80 hover:bg-white/10"
-                  onClick={() => {
-                    setStatus(null);
-                    setSearchEmail("");
-                    setEmail("");
-                  }}
+                  onClick={handleCheckAnother}
                 >
                   Check Another Email
                 </Button>

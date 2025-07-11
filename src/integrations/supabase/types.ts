@@ -668,6 +668,42 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          attempt_count: number
+          blocked_until: string | null
+          created_at: string
+          id: string
+          identifier: string
+          last_attempt: string
+          limit_type: string
+          updated_at: string
+          window_start: string
+        }
+        Insert: {
+          attempt_count?: number
+          blocked_until?: string | null
+          created_at?: string
+          id?: string
+          identifier: string
+          last_attempt?: string
+          limit_type: string
+          updated_at?: string
+          window_start?: string
+        }
+        Update: {
+          attempt_count?: number
+          blocked_until?: string | null
+          created_at?: string
+          id?: string
+          identifier?: string
+          last_attempt?: string
+          limit_type?: string
+          updated_at?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       replies: {
         Row: {
           content: string
@@ -1154,7 +1190,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_old_rate_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       access_level_enum: "user" | "moderator" | "admin"
@@ -1163,7 +1202,7 @@ export type Database = {
         | "suspended"
         | "pending_verification"
         | "inactive"
-      account_type: "user" | "admin"
+      account_type: "user" | "admin" | "educator"
       alert_condition: "above" | "below"
       alert_status: "active" | "triggered"
       asset_type: "Stock" | "Crypto" | "Forex" | "Commodity"
@@ -1338,7 +1377,7 @@ export const Constants = {
         "pending_verification",
         "inactive",
       ],
-      account_type: ["user", "admin"],
+      account_type: ["user", "admin", "educator"],
       alert_condition: ["above", "below"],
       alert_status: ["active", "triggered"],
       asset_type: ["Stock", "Crypto", "Forex", "Commodity"],

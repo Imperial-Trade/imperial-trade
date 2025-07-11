@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,7 @@ import {
   FormItem,
   FormLabel,
 } from "@/components/ui/form";
-import { User, Mail, Shield, Send, Phone } from "lucide-react";
+import { User, Mail, Shield, Send, Phone, Clock, AlertTriangle } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
 import { HoneypotField } from "@/components/security/HoneypotField";
@@ -28,6 +27,10 @@ interface AccountRequestFormProps {
   onSubmit: (data: AccountRequestFormData) => void;
   isSubmitting: boolean;
   canSubmit: boolean;
+  attemptsLeft?: number;
+  nextAttemptDelay?: number;
+  getDelayMessage?: (delay: number) => string;
+  maxAttempts?: number;
 }
 
 export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
@@ -35,6 +38,10 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
   onSubmit,
   isSubmitting,
   canSubmit,
+  attemptsLeft = 0,
+  nextAttemptDelay = 0,
+  getDelayMessage,
+  maxAttempts = 5,
 }) => {
   const handleSubmit = (data: AccountRequestFormData) => {
     // Component-level honeypot validation
@@ -46,11 +53,45 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
     onSubmit(data);
   };
 
+  const getRateLimitStatus = () => {
+    if (canSubmit) {
+      if (attemptsLeft < maxAttempts) {
+        return {
+          type: 'warning' as const,
+          message: `${attemptsLeft} attempts remaining`,
+          icon: <AlertTriangle className="w-4 h-4" />,
+        };
+      }
+      return null;
+    }
+
+    const delayMessage = getDelayMessage?.(nextAttemptDelay || 0);
+    return {
+      type: 'error' as const,
+      message: delayMessage || 'Rate limit reached. Please wait before trying again.',
+      icon: <Clock className="w-4 h-4" />,
+    };
+  };
+
+  const rateLimitStatus = getRateLimitStatus();
+
   return (
     <div className="account-request-form-container">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="form-grid">
           <HoneypotField form={form} />
+          
+          {/* Rate Limit Status Display */}
+          {rateLimitStatus && (
+            <div className={`p-3 rounded-md border flex items-center gap-2 text-sm font-medium ${
+              rateLimitStatus.type === 'warning' 
+                ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                : 'bg-red-500/10 border-red-500/20 text-red-400'
+            }`}>
+              {rateLimitStatus.icon}
+              {rateLimitStatus.message}
+            </div>
+          )}
           
           <div className="form-fields">
             <FormField
@@ -276,7 +317,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
             <Button
               type="submit"
               disabled={isSubmitting || !canSubmit}
-              className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12 transition-colors"
+              className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
@@ -286,12 +327,6 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                 </>
               )}
             </Button>
-            
-            {!canSubmit && (
-              <p className="text-sm text-yellow-400 text-center mt-2 font-medium">
-                Rate limit reached. Please wait before submitting another request.
-              </p>
-            )}
           </div>
         </form>
       </Form>

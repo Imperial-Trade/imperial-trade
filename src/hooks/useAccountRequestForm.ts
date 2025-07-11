@@ -2,13 +2,19 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { accountRequestSchema, type AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
-import { useRateLimiting } from "./useRateLimiting";
+import { useProgressiveRateLimiting } from "./useProgressiveRateLimiting";
+import { serverRateLimitService } from "@/services/ServerRateLimitService";
 import { useToast } from "@/hooks/use-toast";
 import { AccountRequest } from "@/api/entities";
 
 // Error message mapping for user-friendly error display
 const getErrorMessage = (error: any): string => {
   console.log("Full error object:", error);
+  
+  // Check for rate limiting errors
+  if (error?.message?.includes('rate limit') || error?.message?.includes('too many')) {
+    return "Too many requests. Please wait before submitting another request.";
+  }
   
   // Check for specific database constraint errors
   if (error?.message?.includes('violates check constraint')) {
@@ -45,7 +51,12 @@ const getErrorMessage = (error: any): string => {
 
 export const useAccountRequestForm = () => {
   const { toast } = useToast();
-  const { canSubmit, recordAttempt } = useRateLimiting('account-request', 3, 60 * 60 * 1000); // 3 attempts per hour
+  const progressiveRateLimit = useProgressiveRateLimiting('account-request', {
+    maxAttempts: 5,
+    windowMs: 10 * 60 * 1000, // 10 minutes
+    progressiveDelays: [0, 30000, 120000, 300000, 600000], // 0s, 30s, 2m, 5m, 10m
+    recoveryRate: 2 * 60 * 1000, // Recover 1 attempt every 2 minutes
+  });
 
   const form = useForm<AccountRequestFormData>({
     resolver: zodResolver(accountRequestSchema),
@@ -63,14 +74,16 @@ export const useAccountRequestForm = () => {
   });
 
   const onSubmit = async (data: AccountRequestFormData): Promise<{ success: boolean; error?: string }> => {
-    if (!canSubmit) {
-      const errorMsg = "Too many attempts. Please wait before submitting another request.";
+    // Check client-side progressive rate limiting
+    if (!progressiveRateLimit.canSubmit) {
+      const delay = progressiveRateLimit.nextAttemptDelay;
+      const message = progressiveRateLimit.getDelayMessage(delay);
       toast({
         variant: "destructive",
         title: "Rate Limited",
-        description: errorMsg,
+        description: message || "Too many attempts. Please wait before submitting another request.",
       });
-      return { success: false, error: errorMsg };
+      return { success: false, error: message };
     }
 
     // Check honeypot - silent fail for bots
@@ -91,7 +104,36 @@ export const useAccountRequestForm = () => {
     }
 
     try {
-      recordAttempt();
+      // Server-side rate limiting checks
+      console.log('Performing server-side rate limit checks...');
+      
+      // Check email rate limit (1 per day per email)
+      const emailCheck = await serverRateLimitService.checkEmailRateLimit(data.email);
+      if (!emailCheck.allowed) {
+        const errorMsg = `This email has already been used for an account request today. Please try again after ${new Date(emailCheck.resetTime).toLocaleString()}.`;
+        toast({
+          variant: "destructive",
+          title: "Email Rate Limited",
+          description: errorMsg,
+        });
+        return { success: false, error: errorMsg };
+      }
+
+      // Check IP rate limit (10 per hour per IP)
+      const clientIP = serverRateLimitService.getClientIP();
+      const ipCheck = await serverRateLimitService.checkIPRateLimit(clientIP);
+      if (!ipCheck.allowed) {
+        const errorMsg = `Too many requests from your network. Please try again after ${new Date(ipCheck.resetTime).toLocaleString()}.`;
+        toast({
+          variant: "destructive",
+          title: "Network Rate Limited",
+          description: errorMsg,
+        });
+        return { success: false, error: errorMsg };
+      }
+
+      // Record client-side attempt (with progressive delay)
+      await progressiveRateLimit.recordAttempt();
       
       console.log("Submitting account request with data:", {
         ...data,
@@ -128,7 +170,11 @@ export const useAccountRequestForm = () => {
   return {
     form,
     onSubmit,
-    canSubmit,
+    canSubmit: progressiveRateLimit.canSubmit,
     isSubmitting: form.formState.isSubmitting,
+    attemptsLeft: progressiveRateLimit.attemptsLeft,
+    nextAttemptDelay: progressiveRateLimit.nextAttemptDelay,
+    getDelayMessage: progressiveRateLimit.getDelayMessage,
+    maxAttempts: progressiveRateLimit.maxAttempts,
   };
 };

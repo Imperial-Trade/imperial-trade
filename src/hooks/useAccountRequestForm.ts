@@ -79,7 +79,7 @@ export const useAccountRequestForm = () => {
       return { success: false, error: "Invalid submission detected" };
     }
 
-    // Client-side validation for account_type
+    // Enhanced client-side validation for account_type
     if (!['user', 'educator'].includes(data.account_type)) {
       const errorMsg = "Please select a valid account type: Standard Member or Educator/IB Partner.";
       toast({
@@ -93,14 +93,19 @@ export const useAccountRequestForm = () => {
     try {
       recordAttempt();
       
-      console.log("Submitting account request with data:", data);
+      console.log("Submitting account request with data:", {
+        ...data,
+        account_type: data.account_type // Explicitly log the account type being sent
+      });
       
       // Use direct Supabase call instead of REST API
-      await AccountRequest.create(data);
+      const result = await AccountRequest.create(data);
+      
+      console.log("Account request created successfully:", result);
 
       toast({
         title: "Success!",
-        description: "Your request has been submitted successfully. You will receive an email notification once it's reviewed.",
+        description: `Your ${data.account_type === 'educator' ? 'Educator/IB Partner' : 'Standard Member'} request has been submitted successfully. You will receive an email notification once it's reviewed.`,
       });
 
       form.reset();

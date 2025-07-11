@@ -42,7 +42,7 @@ export const accountRequestSchema = z.object({
     .optional()
     .or(z.literal("")),
   
-  account_type: z.enum(["user", "admin"], {
+  account_type: z.enum(["user", "educator"], {
     errorMap: () => ({ message: "Please select a valid account type" })
   }),
   

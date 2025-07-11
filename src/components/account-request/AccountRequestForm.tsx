@@ -196,7 +196,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="user">Standard Member</SelectItem>
-                      <SelectItem value="admin">Educator / IB Partner</SelectItem>
+                      <SelectItem value="educator">Educator / IB Partner</SelectItem>
                     </SelectContent>
                   </Select>
                   <ValidationFeedback 

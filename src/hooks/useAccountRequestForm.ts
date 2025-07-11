@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { accountRequestSchema, type AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
@@ -7,6 +6,7 @@ import { serverRateLimitService } from "@/services/ServerRateLimitService";
 import { useToast } from "@/hooks/use-toast";
 import { AccountRequest } from "@/api/entities";
 import { detectSuspiciousPatterns } from "@/lib/validations/enhancedSecurityRules";
+import { adaptiveRateLimitService } from "@/services/AdaptiveRateLimitService";
 
 // Error message mapping for user-friendly error display
 const getErrorMessage = (error: any): string => {
@@ -75,7 +75,7 @@ export const useAccountRequestForm = () => {
   });
 
   const onSubmit = async (data: AccountRequestFormData): Promise<{ success: boolean; error?: string }> => {
-    console.log('🚀 Enhanced form submission started');
+    console.log('🚀 Enhanced form submission started with Phase 4 adaptive limits');
     
     // Check client-side progressive rate limiting
     if (!progressiveRateLimit.canSubmit) {
@@ -124,10 +124,34 @@ export const useAccountRequestForm = () => {
     }
 
     try {
-      // Server-side rate limiting checks
-      console.log('🔍 Performing server-side rate limit checks...');
+      // 🧠 NEW PHASE 4: Adaptive rate limiting with intelligent adjustments
+      console.log('🧠 Phase 4: Applying adaptive rate limiting...');
       
-      // Check email rate limit (1 per day per email)
+      // Get adaptive rate limits based on user behavior and system conditions
+      const adaptedLimits = await adaptiveRateLimitService.getAdaptiveRateLimit(
+        serverRateLimitService.getClientIP(),
+        data.email,
+        securityAnalysis,
+        { suspiciousScore: 0, reasons: [] } // Placeholder for behavioral analysis
+      );
+
+      console.log('🎯 Adaptive limits applied:', adaptedLimits);
+
+      // Check if adaptive limits allow submission
+      if (adaptedLimits.additionalVerification) {
+        const errorMsg = "Additional verification required. Please contact support.";
+        toast({
+          variant: "destructive",
+          title: "Additional Verification Required",
+          description: errorMsg,
+        });
+        return { success: false, error: errorMsg };
+      }
+
+      // Server-side rate limiting checks (enhanced with adaptive data)
+      console.log('🔍 Performing enhanced server-side rate limit checks...');
+      
+      // Check email rate limit (now with adaptive adjustments)
       const emailCheck = await serverRateLimitService.checkEmailRateLimit(data.email);
       if (!emailCheck.allowed) {
         const errorMsg = `This email has already been used for an account request today. Please try again after ${new Date(emailCheck.resetTime).toLocaleString()}.`;
@@ -139,7 +163,7 @@ export const useAccountRequestForm = () => {
         return { success: false, error: errorMsg };
       }
 
-      // Check IP rate limit (10 per hour per IP)
+      // Check IP rate limit (now with adaptive adjustments)
       const clientIP = serverRateLimitService.getClientIP();
       const ipCheck = await serverRateLimitService.checkIPRateLimit(clientIP);
       if (!ipCheck.allowed) {
@@ -152,19 +176,36 @@ export const useAccountRequestForm = () => {
         return { success: false, error: errorMsg };
       }
 
+      // Check system threat level
+      const currentThreatLevel = adaptiveRateLimitService.getCurrentThreatLevel();
+      if (currentThreatLevel.recommendedAction === 'block') {
+        const errorMsg = "System security alert - submissions temporarily restricted.";
+        toast({
+          variant: "destructive",
+          title: "Security Alert",
+          description: errorMsg,
+        });
+        return { success: false, error: errorMsg };
+      }
+
       // Record client-side attempt (with progressive delay)
       await progressiveRateLimit.recordAttempt();
       
-      console.log("✅ Submitting enhanced account request with data:", {
+      console.log("✅ Submitting enhanced account request with adaptive security:", {
         ...data,
         securityScore: securityAnalysis.score,
-        securityFlags: securityAnalysis.reasons
+        securityFlags: securityAnalysis.reasons,
+        adaptiveLimits: adaptedLimits,
+        threatLevel: currentThreatLevel.current,
       });
       
       // Use direct Supabase call instead of REST API
       const result = await AccountRequest.create(data);
       
       console.log("🎉 Account request created successfully:", result);
+
+      // Update adaptive service with successful submission
+      await adaptiveRateLimitService.updateSubmissionResult(clientIP, true);
 
       toast({
         title: "Success!",
@@ -175,6 +216,10 @@ export const useAccountRequestForm = () => {
       return { success: true };
     } catch (error) {
       console.error("❌ Failed to submit enhanced account request:", error);
+      
+      // Update adaptive service with failed submission
+      const clientIP = serverRateLimitService.getClientIP();
+      await adaptiveRateLimitService.updateSubmissionResult(clientIP, false);
       
       const userFriendlyError = getErrorMessage(error);
       

@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +23,8 @@ import { EnhancedHoneypotFields } from "@/components/security/EnhancedHoneypotFi
 import { ValidationFeedback } from "@/components/security/ValidationFeedback";
 import { BotProtectionWrapper } from "@/components/security/BotProtectionWrapper";
 import { useAdvancedBotProtection } from "@/hooks/useAdvancedBotProtection";
+import { useAdaptiveRateLimit } from "@/hooks/useAdaptiveRateLimit";
+import { AdaptiveRateLimitStatus } from "@/components/account-request/AdaptiveRateLimitStatus";
 
 interface AccountRequestFormProps {
   form: UseFormReturn<AccountRequestFormData>;
@@ -48,8 +49,16 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
 }) => {
   const { protectionResult, analyzeSubmission, handleFieldFocus } = useAdvancedBotProtection();
 
+  // 🧠 NEW PHASE 4: Adaptive rate limiting integration
+  const adaptiveRateLimit = useAdaptiveRateLimit({
+    identifier: 'user-ip', // In production, use actual IP or user identifier
+    email: form.watch('email') || '',
+    securityAnalysis: protectionResult,
+    behavioralAnalysis: { suspiciousScore: 0, reasons: [] }, // Placeholder
+  });
+
   const handleSubmit = async (data: AccountRequestFormData) => {
-    console.log('🚀 Form submission started with enhanced bot protection');
+    console.log('🚀 Form submission started with Phase 4 adaptive protection');
     
     // Run advanced bot protection analysis
     const botAnalysis = await analyzeSubmission(data);
@@ -60,16 +69,53 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
       return; // Silent fail for bots
     }
     
+    // Check adaptive rate limits
+    if (!adaptiveRateLimit.canSubmit) {
+      console.log('🚫 Submission blocked by adaptive rate limiting');
+      return;
+    }
+    
     // If requires CAPTCHA, show warning but allow submission for now
     // In production, you'd integrate with reCAPTCHA here
-    if (botAnalysis.requiresCaptcha) {
+    if (botAnalysis.requiresCaptcha || adaptiveRateLimit.requiresCaptcha) {
       console.log('⚠️ CAPTCHA required but proceeding:', botAnalysis);
     }
     
     onSubmit(data);
+    
+    // Record result for adaptive learning
+    setTimeout(() => {
+      adaptiveRateLimit.recordSubmissionResult(true); // Assume success for now
+    }, 1000);
   };
 
   const getRateLimitStatus = () => {
+    // Use adaptive rate limit status if available
+    if (adaptiveRateLimit.isAdapting) {
+      return {
+        type: 'info' as const,
+        message: 'Analyzing security profile...',
+        icon: <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-400 border-t-transparent" />,
+      };
+    }
+
+    if (!adaptiveRateLimit.canSubmit) {
+      return {
+        type: 'error' as const,
+        message: adaptiveRateLimit.getStatusMessage(),
+        icon: <Clock className="w-4 h-4" />,
+      };
+    }
+
+    if (adaptiveRateLimit.requiresCaptcha || adaptiveRateLimit.additionalVerification) {
+      return {
+        type: 'warning' as const,
+        message: adaptiveRateLimit.getStatusMessage(),
+        icon: <AlertTriangle className="w-4 h-4" />,
+      };
+    }
+
+    // Fallback to original rate limiting
     if (canSubmit) {
       if (attemptsLeft < maxAttempts) {
         return {
@@ -92,12 +138,25 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
   const rateLimitStatus = getRateLimitStatus();
 
   return (
-    <div className="account-request-form-container">
+    <div className="account-request-form-container space-y-4">
       <BotProtectionWrapper
         isProtected={protectionResult?.isBot || false}
         confidence={protectionResult?.confidence || 0}
         reasons={protectionResult?.reasons || []}
       >
+        {/* 🧠 NEW PHASE 4: Adaptive Rate Limit Status Display */}
+        <AdaptiveRateLimitStatus
+          trustScore={adaptiveRateLimit.trustScore}
+          riskCategory={adaptiveRateLimit.riskCategory}
+          threatLevel={adaptiveRateLimit.threatLevel}
+          attemptsLeft={adaptiveRateLimit.attemptsLeft}
+          requiresCaptcha={adaptiveRateLimit.requiresCaptcha}
+          additionalVerification={adaptiveRateLimit.additionalVerification}
+          systemLoad={adaptiveRateLimit.systemLoad}
+          isAdapting={adaptiveRateLimit.isAdapting}
+          statusMessage={adaptiveRateLimit.getStatusMessage()}
+        />
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="form-grid">
             <EnhancedHoneypotFields form={form} />
@@ -107,6 +166,8 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
               <div className={`p-3 rounded-md border flex items-center gap-2 text-sm font-medium ${
                 rateLimitStatus.type === 'warning' 
                   ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                  : rateLimitStatus.type === 'info'
+                  ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
                   : 'bg-red-500/10 border-red-500/20 text-red-400'
               }`}>
                 {rateLimitStatus.icon}
@@ -346,7 +407,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
             <div className="form-actions">
               <Button
                 type="submit"
-                disabled={isSubmitting || !canSubmit || protectionResult?.isBot}
+                disabled={isSubmitting || !adaptiveRateLimit.canSubmit || protectionResult?.isBot}
                 className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (

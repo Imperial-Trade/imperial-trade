@@ -9,7 +9,7 @@ import { AccountRequestManagement } from "@/components/account-request/AccountRe
 import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
 import { RateLimitManager } from "@/components/admin/RateLimitManager";
 
-export const AdminPanel: React.FC = () => {
+const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("users");
 
   return (
@@ -112,3 +112,5 @@ export const AdminPanel: React.FC = () => {
     </div>
   );
 };
+
+export default AdminPanel;

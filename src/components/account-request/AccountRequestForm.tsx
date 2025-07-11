@@ -30,12 +30,14 @@ interface AccountRequestFormProps {
   form: UseFormReturn<AccountRequestFormData>;
   onSubmit: (data: AccountRequestFormData) => void;
   isSubmitting: boolean;
+  canSubmit: boolean;
 }
 
 export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
   form,
   onSubmit,
   isSubmitting,
+  canSubmit,
 }) => {
   const location = useLocation();
   const isAccountRequestPage = location.pathname === '/account-request';

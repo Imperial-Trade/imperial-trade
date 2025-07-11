@@ -30,33 +30,65 @@ export const FormInputStyles: React.FC = () => {
         box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
       }
       
-      /* Select field styling */
-      .account-request-form-container [data-radix-select-trigger] {
+      /* Enhanced Select field styling with maximum specificity */
+      .account-request-form-container [data-radix-select-trigger],
+      .account-request-form-container button[role="combobox"] {
         color: #1f2937 !important;
         background-color: #ffffff !important;
         border-color: #d1d5db !important;
         font-weight: 500 !important;
       }
       
-      .account-request-form-container [data-radix-select-value] {
+      .account-request-form-container [data-radix-select-trigger]:focus,
+      .account-request-form-container button[role="combobox"]:focus {
         color: #1f2937 !important;
+        background-color: #ffffff !important;
+        border-color: #3b82f6 !important;
+        outline: none !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+      }
+      
+      .account-request-form-container [data-radix-select-value],
+      .account-request-form-container [data-radix-select-trigger] span {
+        color: #1f2937 !important;
+        font-weight: 500 !important;
       }
       
       .account-request-form-container [data-radix-select-content] {
         background-color: #ffffff !important;
         border-color: #d1d5db !important;
         z-index: 50 !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
       }
       
-      .account-request-form-container [data-radix-select-item] {
+      .account-request-form-container [data-radix-select-item],
+      .account-request-form-container [data-radix-select-content] div[role="option"] {
         color: #1f2937 !important;
         font-weight: 500 !important;
+        background-color: #ffffff !important;
       }
       
       .account-request-form-container [data-radix-select-item]:hover,
-      .account-request-form-container [data-radix-select-item]:focus {
+      .account-request-form-container [data-radix-select-item]:focus,
+      .account-request-form-container [data-radix-select-content] div[role="option"]:hover,
+      .account-request-form-container [data-radix-select-content] div[role="option"]:focus {
         background-color: #f3f4f6 !important;
         color: #1f2937 !important;
+      }
+      
+      .account-request-form-container [data-radix-select-item][data-state="checked"],
+      .account-request-form-container [data-radix-select-content] div[role="option"][data-state="checked"] {
+        background-color: #e5e7eb !important;
+        color: #1f2937 !important;
+        font-weight: 600 !important;
+      }
+      
+      /* Additional select field text overrides */
+      .account-request-form-container select,
+      .account-request-form-container select option {
+        color: #1f2937 !important;
+        background-color: #ffffff !important;
+        font-weight: 500 !important;
       }
       
       /* Form labels */
@@ -100,6 +132,15 @@ export const FormInputStyles: React.FC = () => {
       .account-request-form-container button[type="submit"]:disabled {
         opacity: 0.5 !important;
         cursor: not-allowed !important;
+      }
+      
+      /* Override any theme conflicts for select components */
+      .account-request-form-container * {
+        box-sizing: border-box;
+      }
+      
+      .account-request-form-container [role="combobox"] * {
+        color: inherit !important;
       }
     `}</style>
   );

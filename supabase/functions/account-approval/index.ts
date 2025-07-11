@@ -27,23 +27,37 @@ serve(async (req) => {
       )
     }
 
+    // Get the current user to track who approved the request
+    const authHeader = req.headers.get('Authorization')
+    let approvedBy = 'admin'
+    
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '')
+      const { data: { user } } = await supabaseClient.auth.getUser(token)
+      if (user) {
+        approvedBy = user.email || 'admin'
+      }
+    }
+
     // Update the account request status only
     const { data: request, error: updateError } = await supabaseClient
       .from('account_requests')
       .update({ 
         status, 
         rejection_reason: rejectionReason || null,
-        approved_at: status === 'approved' ? new Date().toISOString() : null
+        approved_by: status === 'approved' ? approvedBy : null,
+        updated_at: new Date().toISOString()
       })
       .eq('id', requestId)
       .select()
       .single()
 
     if (updateError) {
+      console.error('Database update error:', updateError)
       throw updateError
     }
 
-    console.log(`Account request ${status}: ${request.email}`)
+    console.log(`Account request ${status}: ${request.email} by ${approvedBy}`)
 
     return new Response(
       JSON.stringify({ success: true, data: request }),

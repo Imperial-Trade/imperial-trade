@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,24 +56,34 @@ export const AccountRequestManagement: React.FC<AccountRequestManagementProps> =
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Update request status
-      await AccountRequest.update(requestId, {
-        status: "approved",
-        approved_by: user?.email || "admin"
+      // Call the account-approval edge function to handle both status update and user creation
+      const { data, error } = await supabase.functions.invoke('account-approval', {
+        body: {
+          requestId: requestId,
+          status: 'approved'
+        }
       });
 
-      // Log the action
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to approve account request');
+      }
+
+      // Log the admin action
       await AuditLog.create({
         action: "approve_account_request",
         admin_email: user?.email || "admin",
         target_entity: "account_requests",
         target_id: requestId,
-        details: { user_email: userEmail }
+        details: { 
+          user_email: userEmail,
+          user_created: true 
+        }
       });
 
       toast({
         title: "Success",
-        description: "Account request approved successfully.",
+        description: "Account request approved and user account created successfully.",
       });
 
       await loadRequests();
@@ -84,7 +93,7 @@ export const AccountRequestManagement: React.FC<AccountRequestManagementProps> =
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to approve account request.",
+        description: error instanceof Error ? error.message : "Failed to approve account request.",
       });
     } finally {
       setActionLoading(null);
@@ -105,14 +114,21 @@ export const AccountRequestManagement: React.FC<AccountRequestManagementProps> =
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Update request status
-      await AccountRequest.update(requestId, {
-        status: "rejected",
-        approved_by: user?.email || "admin",
-        rejection_reason: rejectionReason
+      // Call the account-approval edge function for rejection
+      const { data, error } = await supabase.functions.invoke('account-approval', {
+        body: {
+          requestId: requestId,
+          status: 'rejected',
+          rejectionReason: rejectionReason
+        }
       });
 
-      // Log the action
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to reject account request');
+      }
+
+      // Log the admin action
       await AuditLog.create({
         action: "reject_account_request",
         admin_email: user?.email || "admin",
@@ -138,7 +154,7 @@ export const AccountRequestManagement: React.FC<AccountRequestManagementProps> =
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to reject account request.",
+        description: error instanceof Error ? error.message : "Failed to reject account request.",
       });
     } finally {
       setActionLoading(null);

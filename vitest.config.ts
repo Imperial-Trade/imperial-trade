@@ -16,7 +16,9 @@ export default defineConfig({
       'dist/',
       'e2e/',
       'src/**/*.{test,spec}.{ts,tsx}',
-      'src/__tests__/**/*'
+      'src/__tests__/**/*',
+      '**/*.test.*',
+      '**/*.spec.*'
     ],
     coverage: {
       provider: 'v8',
@@ -29,7 +31,9 @@ export default defineConfig({
         'dist/',
         'e2e/',
         'src/integrations/supabase/types.ts',
-        'src/__tests__/**'
+        'src/__tests__/**',
+        '**/*.test.*',
+        '**/*.spec.*'
       ],
       thresholds: {
         global: {

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
+import { useEducatorSignals } from '@/hooks/useEducatorSignals';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,57 +24,16 @@ import {
   Clock,
   XCircle
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-
-interface EducatorAnalytics {
-  total_signals: number;
-  active_signals: number;
-  closed_signals: number;
-  total_followers: number;
-  total_views: number;
-  total_copies: number;
-  avg_success_rate: number;
-  avg_performance_score: number;
-}
 
 export default function EducatorTradeSignalsPage() {
   const { user } = useAuth();
-  const tradingData = useOptimizedTrading();
-  const { alerts } = tradingData;
-  const [analytics, setAnalytics] = useState<EducatorAnalytics | null>(null);
+  const { alerts, loading: tradingLoading } = useOptimizedTrading(user?.id);
+  const { analytics, loading: analyticsLoading } = useEducatorSignals();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  // Load educator analytics using RPC call
-  useEffect(() => {
-    const loadAnalytics = async () => {
-      if (!user?.id) return;
-
-      try {
-        // Simulate analytics data since RPC functions aren't created yet
-        const mockAnalytics: EducatorAnalytics = {
-          total_signals: alerts.length,
-          active_signals: alerts.filter(a => a.status === 'active').length,
-          closed_signals: alerts.filter(a => a.status === 'closed').length,
-          total_followers: 0,
-          total_views: 0,
-          total_copies: 0,
-          avg_success_rate: 0.75,
-          avg_performance_score: 85
-        };
-
-        setAnalytics(mockAnalytics);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading analytics:', error);
-        setLoading(false);
-      }
-    };
-
-    loadAnalytics();
-  }, [user?.id, alerts]);
+  const loading = tradingLoading || analyticsLoading;
 
   // Filter alerts based on search and status
   const filteredAlerts = useMemo(() => {

@@ -2,7 +2,7 @@
 import Layout from "@/components/Layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, TrendingDown, Clock, Target } from "lucide-react"
+import { TrendingUp, TrendingDown, Clock, Target, Shield } from "lucide-react"
 
 const Signals = () => {
   const signals = [
@@ -15,7 +15,9 @@ const Signals = () => {
       status: "Active",
       time: "2 hours ago",
       profit: "+65 pips",
-      type: "trending-up"
+      type: "trending-up",
+      educator: "Pro Trader Alex",
+      verified: true
     },
     {
       pair: "GBP/JPY",
@@ -26,7 +28,9 @@ const Signals = () => {
       status: "Completed",
       time: "4 hours ago",
       profit: "+130 pips",
-      type: "trending-down"
+      type: "trending-down",
+      educator: "FX Master Sarah",
+      verified: true
     },
     {
       pair: "USD/CAD",
@@ -37,7 +41,9 @@ const Signals = () => {
       status: "Pending",
       time: "1 hour ago",
       profit: "Waiting",
-      type: "trending-up"
+      type: "trending-up",
+      educator: "Trade Guru Mike",
+      verified: true
     },
     {
       pair: "AUD/USD",
@@ -48,7 +54,9 @@ const Signals = () => {
       status: "Active",
       time: "30 minutes ago",
       profit: "+25 pips",
-      type: "trending-down"
+      type: "trending-down",
+      educator: "Expert Analyst Lisa",
+      verified: true
     }
   ]
 
@@ -65,11 +73,17 @@ const Signals = () => {
     <Layout>
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
-            Live Trading Signals
-          </h1>
+          <div className="flex items-center gap-3 mb-4">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
+              Professional Trading Signals
+            </h1>
+            <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+              <Shield className="w-4 h-4 mr-1" />
+              Verified Educators Only
+            </Badge>
+          </div>
           <p className="text-lg text-muted-foreground">
-            Real-time trading opportunities from our professional analysts.
+            Real-time trading opportunities from our verified professional analysts and educators.
           </p>
         </div>
 
@@ -101,9 +115,9 @@ const Signals = () => {
           
           <Card className="bg-gradient-to-r from-primary/20 to-amber-300/20 border-primary/30">
             <CardContent className="p-6 text-center">
-              <TrendingUp className="h-8 w-8 text-primary mx-auto mb-2" />
-              <div className="text-2xl font-bold text-primary">+2,450</div>
-              <div className="text-sm text-muted-foreground">Total Pips</div>
+              <Shield className="h-8 w-8 text-primary mx-auto mb-2" />
+              <div className="text-2xl font-bold text-primary">15+</div>
+              <div className="text-sm text-muted-foreground">Pro Educators</div>
             </CardContent>
           </Card>
         </div>
@@ -126,6 +140,12 @@ const Signals = () => {
                     <Badge variant="outline" className={`${signal.action === "BUY" ? "text-green-400 border-green-500/30" : "text-red-400 border-red-500/30"}`}>
                       {signal.action}
                     </Badge>
+                    {signal.verified && (
+                      <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                        <Shield className="w-3 h-3 mr-1" />
+                        Verified
+                      </Badge>
+                    )}
                   </div>
                   
                   <div className="flex items-center gap-4">
@@ -134,6 +154,9 @@ const Signals = () => {
                     </Badge>
                     <span className="text-sm text-muted-foreground">{signal.time}</span>
                   </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  By {signal.educator}
                 </div>
               </CardHeader>
               

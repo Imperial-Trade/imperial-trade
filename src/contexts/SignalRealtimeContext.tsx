@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
@@ -31,6 +30,24 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
+  // Helper function to check if user is educator or admin
+  const isEducatorOrAdmin = (profile: any) => {
+    if (!profile) return false;
+    
+    const role = profile.role?.toLowerCase();
+    const userType = profile.user_type?.toLowerCase();
+    const accessLevel = profile.access_level?.toLowerCase();
+    
+    return (
+      role === 'admin' ||
+      role === 'educator' ||
+      userType === 'admin' ||
+      userType === 'educator' ||
+      accessLevel === 'admin' ||
+      accessLevel === 'moderator'
+    );
+  };
+
   const refreshSignals = useCallback(async () => {
     try {
       // Fetch alerts and profiles separately for better performance
@@ -49,7 +66,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       // Get unique user IDs
       const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
 
-      // Fetch profiles
+      // Fetch profiles with role information
       const { data: profilesData } = await supabase
         .from('profiles')
         .select('*')
@@ -63,35 +80,37 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         });
       }
 
-      // Map alerts with profiles
-      const alertsWithProfiles: TradeAlertWithProfile[] = alertsData.map(alert => {
-        const profile = profilesMap.get(alert.user_id);
-        return {
-          id: alert.id,
-          assetName: alert.asset_name,
-          finnhubSymbol: alert.finnhub_symbol,
-          tradeType: alert.trade_type,
-          entryPrice: Number(alert.entry_price),
-          stopLoss: Number(alert.stop_loss),
-          status: alert.status,
-          tp1: alert.tp1 ? Number(alert.tp1) : undefined,
-          tp2: alert.tp2 ? Number(alert.tp2) : undefined,
-          tp3: alert.tp3 ? Number(alert.tp3) : undefined,
-          tp4: alert.tp4 ? Number(alert.tp4) : undefined,
-          tp5: alert.tp5 ? Number(alert.tp5) : undefined,
-          tpHits: alert.tp_hits || [],
-          notes: alert.notes,
-          closeReason: alert.close_reason,
-          createdAt: alert.created_at,
-          updatedAt: alert.updated_at,
-          creator: profile ? {
-            id: profile.id,
-            display_name: profile.display_name || 'Anonymous User',
-            role: profile.role || 'user',
-            avatar_url: profile.avatar_url
-          } : undefined
-        };
-      });
+      // Map alerts with profiles and filter for educators/admins only
+      const alertsWithProfiles: TradeAlertWithProfile[] = alertsData
+        .map(alert => {
+          const profile = profilesMap.get(alert.user_id);
+          return {
+            id: alert.id,
+            assetName: alert.asset_name,
+            finnhubSymbol: alert.finnhub_symbol,
+            tradeType: alert.trade_type,
+            entryPrice: Number(alert.entry_price),
+            stopLoss: Number(alert.stop_loss),
+            status: alert.status,
+            tp1: alert.tp1 ? Number(alert.tp1) : undefined,
+            tp2: alert.tp2 ? Number(alert.tp2) : undefined,
+            tp3: alert.tp3 ? Number(alert.tp3) : undefined,
+            tp4: alert.tp4 ? Number(alert.tp4) : undefined,
+            tp5: alert.tp5 ? Number(alert.tp5) : undefined,
+            tpHits: alert.tp_hits || [],
+            notes: alert.notes,
+            closeReason: alert.close_reason,
+            createdAt: alert.created_at,
+            updatedAt: alert.updated_at,
+            creator: profile ? {
+              id: profile.id,
+              display_name: profile.display_name || 'Anonymous User',
+              role: profile.role || 'user',
+              avatar_url: profile.avatar_url
+            } : undefined
+          };
+        })
+        .filter(alert => isEducatorOrAdmin(alert.creator)); // Only show educator/admin signals
 
       setSignals(alertsWithProfiles);
       setLastUpdated(new Date());
@@ -115,6 +134,11 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
           .select('*')
           .eq('id', newRecord.user_id)
           .single();
+
+        // Only process if user is educator or admin
+        if (!isEducatorOrAdmin(profile)) {
+          return;
+        }
 
         const newSignal: TradeAlertWithProfile = {
           id: newRecord.id,
@@ -148,15 +172,27 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         window.dispatchEvent(new CustomEvent('signal-posted'));
       } 
       else if (eventType === 'UPDATE' && newRecord) {
-        setSignals(prev => prev.map(signal => 
-          signal.id === newRecord.id ? {
-            ...signal,
-            status: newRecord.status,
-            tpHits: newRecord.tp_hits || [],
-            closeReason: newRecord.close_reason,
-            updatedAt: newRecord.updated_at
-          } : signal
-        ));
+        // Check if the updated signal should remain visible (still from educator/admin)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', newRecord.user_id)
+          .single();
+
+        if (isEducatorOrAdmin(profile)) {
+          setSignals(prev => prev.map(signal => 
+            signal.id === newRecord.id ? {
+              ...signal,
+              status: newRecord.status,
+              tpHits: newRecord.tp_hits || [],
+              closeReason: newRecord.close_reason,
+              updatedAt: newRecord.updated_at
+            } : signal
+          ));
+        } else {
+          // Remove signal if user is no longer educator/admin
+          setSignals(prev => prev.filter(signal => signal.id !== newRecord.id));
+        }
       }
       else if (eventType === 'DELETE' && oldRecord) {
         setSignals(prev => prev.filter(signal => signal.id !== oldRecord.id));

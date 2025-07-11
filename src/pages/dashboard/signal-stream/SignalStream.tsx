@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Shield } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
@@ -35,7 +35,7 @@ export default function SignalStream() {
     refreshAlerts,
     connectionStatus,
     lastUpdated
-  } = useOptimizedTrading(user?.id || '', true); // TRUE = show all signals from all users
+  } = useOptimizedTrading(user?.id || '', true); // TRUE = show all signals from all users (but now filtered to educators/admins)
 
   const { activeAlerts, closedAlerts } = useMemo(() => {
     const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
@@ -300,11 +300,17 @@ export default function SignalStream() {
         <div className="w-full px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground mb-1">
-                Live Signal <span className="text-accent-green">Stream</span>
-              </h1>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-3xl font-bold text-foreground">
+                  Professional Signal <span className="text-accent-green">Stream</span>
+                </h1>
+                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                  <Shield className="w-3 h-3 mr-1" />
+                  Educators Only
+                </Badge>
+              </div>
               <p className="text-muted-foreground">
-                Real-time trading signals with live price tracking from all educators
+                Real-time trading signals with live price tracking from verified educators and admins
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -327,7 +333,7 @@ export default function SignalStream() {
               <div className="flex justify-center items-center h-64 flex-col space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
                 <div className="text-center">
-                  <p className="text-muted-foreground">Loading signals...</p>
+                  <p className="text-muted-foreground">Loading professional signals...</p>
                   {connectionStatus === 'connecting' && (
                     <p className="text-xs text-muted-foreground mt-1">Establishing real-time connection...</p>
                   )}
@@ -347,7 +353,7 @@ export default function SignalStream() {
               <div className="space-y-6">
                 <div>
                   <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
-                    Active Signals ({activeAlerts.length})
+                    Active Professional Signals ({activeAlerts.length})
                   </h2>
                   {activeAlerts.length > 0 ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
@@ -382,17 +388,17 @@ export default function SignalStream() {
                   ) : (
                     <div className="text-center py-8">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                        <div className="w-8 h-8 text-muted-foreground/50">📡</div>
+                        <Shield className="w-8 h-8 text-muted-foreground/50" />
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-2">No Active Signals</h3>
-                      <p className="text-muted-foreground">New trading signals will appear here when posted by educators.</p>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No Active Professional Signals</h3>
+                      <p className="text-muted-foreground">New professional trading signals will appear here when posted by verified educators and admins.</p>
                     </div>
                   )}
                 </div>
                 
                 <div>
                   <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
-                    Recent Closed Trades ({closedAlerts.length})
+                    Recent Closed Professional Trades ({closedAlerts.length})
                   </h2>
                   {sortedClosedAlerts.length > 0 ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
@@ -429,8 +435,8 @@ export default function SignalStream() {
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-2">No Closed Trades</h3>
-                      <p className="text-muted-foreground">Completed trades will be shown here for reference.</p>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No Closed Professional Trades</h3>
+                      <p className="text-muted-foreground">Completed professional trades will be shown here for reference.</p>
                     </div>
                   )}
                 </div>

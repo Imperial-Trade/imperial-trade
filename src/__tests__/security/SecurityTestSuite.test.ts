@@ -40,12 +40,24 @@ const SECURITY_CONFIG = {
     REQUIRES_LOWER: true,
     REQUIRES_NUMBER: true,
     REQUIRES_SPECIAL: true
-  }
+  },
+  DANGEROUS_PATTERNS: [
+    /script/i,
+    /javascript:/i,
+    /drop\s+table/i,
+    /union\s+select/i,
+    /eval\s*\(/i,
+    /document\.cookie/i,
+    /window\.location/i,
+    /\.\.\/\.\.\//,
+    /%3c/i,
+    /on\w+\s*=/i
+  ]
 };
 
 // Dynamic Security Test Utilities
 class SecurityTestUtils {
-  static testSQLInjectionPrevention(inputElement: HTMLElement, patterns: string[] = SECURITY_CONFIG.SQL_INJECTION_PATTERNS) {
+  static testSQLInjectionPrevention(inputElement: HTMLElement, patterns: string[] = SECURITY_CONFIG.SQL_INJECTION_PATTERNS): boolean {
     return patterns.every(pattern => {
       const sanitizedValue = inputElement.getAttribute('value') || '';
       return !sanitizedValue.includes('DROP') && 
@@ -55,7 +67,7 @@ class SecurityTestUtils {
     });
   }
 
-  static testXSSPrevention(inputElement: HTMLElement, patterns: string[] = SECURITY_CONFIG.XSS_PATTERNS) {
+  static testXSSPrevention(inputElement: HTMLElement, patterns: string[] = SECURITY_CONFIG.XSS_PATTERNS): boolean {
     return patterns.every(pattern => {
       const sanitizedValue = inputElement.getAttribute('value') || '';
       return !sanitizedValue.includes('<script') && 
@@ -67,11 +79,13 @@ class SecurityTestUtils {
   }
 
   static validateJWTStructure(token: string): boolean {
+    if (!token || typeof token !== 'string') return false;
     const parts = token.split('.');
     return parts.length === 3 && parts.every(part => part.length > 0);
   }
 
   static validateEmailFormat(email: string): boolean {
+    if (!email || typeof email !== 'string') return false;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email) && 
            !email.includes('<') && 
@@ -80,6 +94,7 @@ class SecurityTestUtils {
   }
 
   static validatePasswordStrength(password: string): boolean {
+    if (!password || typeof password !== 'string') return false;
     const { MIN_LENGTH, REQUIRES_UPPER, REQUIRES_LOWER, REQUIRES_NUMBER, REQUIRES_SPECIAL } = SECURITY_CONFIG.PASSWORD_REQUIREMENTS;
     
     const minLength = password.length >= MIN_LENGTH;
@@ -89,6 +104,11 @@ class SecurityTestUtils {
     const hasSpecial = REQUIRES_SPECIAL ? /[!@#$%^&*(),.?":{}|<>]/.test(password) : true;
     
     return minLength && hasUpper && hasLower && hasNumber && hasSpecial;
+  }
+
+  static sanitizeInput(input: string): boolean {
+    if (!input || typeof input !== 'string') return true;
+    return !SECURITY_CONFIG.DANGEROUS_PATTERNS.some(pattern => pattern.test(input));
   }
 }
 
@@ -121,7 +141,7 @@ class RateLimiterTestClass {
     return true;
   }
 
-  reset() {
+  reset(): void {
     this.requests.clear();
   }
 }
@@ -154,8 +174,8 @@ describe('Security Test Suite', () => {
 
         // Verify that malicious SQL patterns are sanitized
         expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
-          email: expect.not.stringContaining('DROP'),
-          password: expect.not.stringContaining('DROP')
+          email: expect.not.stringMatching(/DROP|UNION|--/i),
+          password: expect.not.stringMatching(/DROP|UNION|--/i)
         });
 
         // Additional dynamic validation
@@ -367,10 +387,10 @@ describe('Security Test Suite', () => {
       expect(rateLimiter.isAllowed(testIP)).toBe(false);
 
       // Wait for time window to pass and test reset
-      return new Promise(resolve => {
+      return new Promise<void>(resolve => {
         setTimeout(() => {
           expect(rateLimiter.isAllowed(testIP)).toBe(true);
-          resolve(undefined);
+          resolve();
         }, shortTimeWindow + 10);
       });
     });
@@ -389,31 +409,14 @@ describe('Security Test Suite', () => {
         'onmouseover=alert(1)'
       ];
 
-      const sanitizeInput = (input: string): boolean => {
-        const dangerousPatterns = [
-          /script/i,
-          /javascript:/i,
-          /drop\s+table/i,
-          /union\s+select/i,
-          /eval\s*\(/i,
-          /document\.cookie/i,
-          /window\.location/i,
-          /\.\.\/\.\.\//,
-          /%3c/i,
-          /on\w+\s*=/i
-        ];
-
-        return !dangerousPatterns.some(pattern => pattern.test(input));
-      };
-
       suspiciousInputs.forEach(input => {
-        expect(sanitizeInput(input)).toBe(false);
+        expect(SecurityTestUtils.sanitizeInput(input)).toBe(false);
       });
 
       // Test safe inputs
       const safeInputs = ['user@example.com', 'Valid User Name', 'Safe123!'];
       safeInputs.forEach(input => {
-        expect(sanitizeInput(input)).toBe(true);
+        expect(SecurityTestUtils.sanitizeInput(input)).toBe(true);
       });
     });
   });

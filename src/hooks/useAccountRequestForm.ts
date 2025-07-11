@@ -6,6 +6,7 @@ import { useProgressiveRateLimiting } from "./useProgressiveRateLimiting";
 import { serverRateLimitService } from "@/services/ServerRateLimitService";
 import { useToast } from "@/hooks/use-toast";
 import { AccountRequest } from "@/api/entities";
+import { detectSuspiciousPatterns } from "@/lib/validations/enhancedSecurityRules";
 
 // Error message mapping for user-friendly error display
 const getErrorMessage = (error: any): string => {
@@ -74,6 +75,8 @@ export const useAccountRequestForm = () => {
   });
 
   const onSubmit = async (data: AccountRequestFormData): Promise<{ success: boolean; error?: string }> => {
+    console.log('🚀 Enhanced form submission started');
+    
     // Check client-side progressive rate limiting
     if (!progressiveRateLimit.canSubmit) {
       const delay = progressiveRateLimit.nextAttemptDelay;
@@ -86,9 +89,26 @@ export const useAccountRequestForm = () => {
       return { success: false, error: message };
     }
 
+    // Enhanced security validation
+    const securityAnalysis = detectSuspiciousPatterns(data);
+    if (securityAnalysis.isSuspicious) {
+      console.log('🚫 Suspicious patterns detected:', securityAnalysis);
+      
+      // Block high-risk submissions
+      if (securityAnalysis.score >= 80) {
+        console.log('🛑 High-risk submission blocked');
+        return { success: false, error: "Submission blocked due to security concerns" };
+      }
+      
+      // Log medium-risk submissions for monitoring
+      if (securityAnalysis.score >= 50) {
+        console.log('⚠️ Medium-risk submission flagged:', securityAnalysis.reasons);
+      }
+    }
+
     // Check honeypot - silent fail for bots
     if (data.website && data.website.length > 0) {
-      console.log("Bot detected via honeypot");
+      console.log('🤖 Bot detected via honeypot - silent fail');
       return { success: false, error: "Invalid submission detected" };
     }
 
@@ -105,7 +125,7 @@ export const useAccountRequestForm = () => {
 
     try {
       // Server-side rate limiting checks
-      console.log('Performing server-side rate limit checks...');
+      console.log('🔍 Performing server-side rate limit checks...');
       
       // Check email rate limit (1 per day per email)
       const emailCheck = await serverRateLimitService.checkEmailRateLimit(data.email);
@@ -135,15 +155,16 @@ export const useAccountRequestForm = () => {
       // Record client-side attempt (with progressive delay)
       await progressiveRateLimit.recordAttempt();
       
-      console.log("Submitting account request with data:", {
+      console.log("✅ Submitting enhanced account request with data:", {
         ...data,
-        account_type: data.account_type // Explicitly log the account type being sent
+        securityScore: securityAnalysis.score,
+        securityFlags: securityAnalysis.reasons
       });
       
       // Use direct Supabase call instead of REST API
       const result = await AccountRequest.create(data);
       
-      console.log("Account request created successfully:", result);
+      console.log("🎉 Account request created successfully:", result);
 
       toast({
         title: "Success!",
@@ -153,7 +174,7 @@ export const useAccountRequestForm = () => {
       form.reset();
       return { success: true };
     } catch (error) {
-      console.error("Failed to submit account request:", error);
+      console.error("❌ Failed to submit enhanced account request:", error);
       
       const userFriendlyError = getErrorMessage(error);
       

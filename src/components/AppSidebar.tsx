@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SidebarBrand } from "./sidebar/SidebarBrand";
 import { SidebarNavigation } from "./sidebar/SidebarNavigation";
 import { SidebarAdminSection } from "./sidebar/SidebarAdminSection";
+import { SidebarEducatorSection } from "./sidebar/SidebarEducatorSection";
 import { SidebarUserMenu } from "./sidebar/SidebarUserMenu";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -34,6 +35,10 @@ export function AppSidebar() {
 
         <SidebarContent className="px-3 py-4 flex-1">
           <SidebarNavigation isCollapsed={false} />
+          <SidebarEducatorSection 
+            isCollapsed={false} 
+            userType={user?.user_metadata?.user_type} 
+          />
           <SidebarAdminSection 
             isCollapsed={false} 
             userAccessLevel={user?.user_metadata?.access_level} 
@@ -48,7 +53,6 @@ export function AppSidebar() {
   }
 
   // For tablet and desktop, use proper Sidebar component with no collapsing
-  // This ensures proper styling context and always shows labels
   return (
     <Sidebar 
       className="border-r-0 bg-background/95 backdrop-blur-xl"
@@ -61,6 +65,10 @@ export function AppSidebar() {
 
       <SidebarContent className="px-3 py-4 flex-1 overflow-auto">
         <SidebarNavigation isCollapsed={false} />
+        <SidebarEducatorSection 
+          isCollapsed={false} 
+          userType={user?.user_metadata?.user_type} 
+        />
         <SidebarAdminSection 
           isCollapsed={false} 
           userAccessLevel={user?.user_metadata?.access_level} 

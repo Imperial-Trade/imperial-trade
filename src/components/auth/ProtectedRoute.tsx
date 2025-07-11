@@ -1,41 +1,46 @@
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import LoadingSpinner from '@/components/layout/LoadingSpinner';
+import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'user';
+  requiredAccessLevel?: string;
+  requiredUserType?: string | string[];
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children, 
-  requiredRole 
+  requiredAccessLevel,
+  requiredUserType 
 }) => {
-  const { user, loading, profile } = useAuth();
+  const { user, loading } = useAuth();
+  const location = useLocation();
 
-  // Only show loading spinner if we truly don't know the auth state yet
-  // Don't wait for profile data to load
-  if (loading && !user) {
+  if (loading) {
     return <LoadingSpinner />;
   }
 
   if (!user) {
-    return <Navigate to="/signin" replace />;
+    return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-  // Check role if required - only redirect if we explicitly know they don't have access
-  if (requiredRole === 'admin') {
-    const isAdmin = profile?.access_level === 'admin' || 
-                   profile?.role === 'admin' || 
-                   user?.user_metadata?.access_level === 'admin' || 
-                   user?.user_metadata?.role === 'admin';
+  // Check access level (admin, moderator, user)
+  if (requiredAccessLevel) {
+    const userAccessLevel = user.user_metadata?.access_level || 'user';
+    if (userAccessLevel !== requiredAccessLevel) {
+      return <Navigate to="/access-denied" replace />;
+    }
+  }
+
+  // Check user type (educator, ib_partner, etc.)
+  if (requiredUserType) {
+    const userType = user.user_metadata?.user_type || 'member';
+    const allowedTypes = Array.isArray(requiredUserType) ? requiredUserType : [requiredUserType];
     
-    // Only redirect if we have profile data and they're not admin
-    // If profile is still loading, allow through (admin check can happen later)
-    if (profile && !isAdmin) {
-      return <Navigate to="/dashboard/home" replace />;
+    if (!allowedTypes.includes(userType)) {
+      return <Navigate to="/access-denied" replace />;
     }
   }
 

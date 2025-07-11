@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle, Circle, Loader2 } from 'lucide-react';
+import { CheckCircle, Circle, Loader2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Step {

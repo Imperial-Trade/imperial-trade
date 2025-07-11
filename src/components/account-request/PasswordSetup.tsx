@@ -23,6 +23,13 @@ interface PasswordSetupProps {
   onSuccess: () => void;
 }
 
+interface Step {
+  id: string;
+  label: string;
+  description: string;
+  status: 'pending' | 'current' | 'completed' | 'error';
+}
+
 export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, onSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -32,34 +39,34 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
   const { success, error, celebrate } = useProfessionalToast();
   const navigate = useNavigate();
 
-  const steps = [
+  const initialSteps: Step[] = [
     {
       id: 'validation',
       label: 'Password Validation',
       description: 'Checking password requirements',
-      status: 'pending' as const
+      status: 'pending'
     },
     {
       id: 'account-creation',
       label: 'Account Creation',
       description: 'Creating your user account',
-      status: 'pending' as const
+      status: 'pending'
     },
     {
       id: 'profile-setup',
       label: 'Profile Setup',
       description: 'Setting up your profile',
-      status: 'pending' as const
+      status: 'pending'
     },
     {
       id: 'authentication',
       label: 'Authentication',
       description: 'Logging you in securely',
-      status: 'pending' as const
+      status: 'pending'
     }
   ];
 
-  const [stepStatuses, setStepStatuses] = useState(steps);
+  const [stepStatuses, setStepStatuses] = useState<Step[]>(initialSteps);
 
   const updateStepStatus = (stepIndex: number, status: 'pending' | 'current' | 'completed' | 'error') => {
     setStepStatuses(prev => prev.map((step, index) => 

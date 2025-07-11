@@ -14,22 +14,46 @@ import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 
 export default function AccountRequestPage() {
   const [status, setStatus] = useState({ type: "", message: "" });
-  const { form, onSubmit, canSubmit, isSubmitting } = useAccountRequestForm();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { form, onSubmit, canSubmit } = useAccountRequestForm();
   const navigate = useNavigate();
 
   const handleFormSubmit = async (data: any) => {
     try {
-      await onSubmit(data);
-      // Only navigate on successful submission
-      if (!form.formState.errors || Object.keys(form.formState.errors).length === 0) {
-        navigate("/account-request-status");
+      setIsSubmitting(true);
+      setStatus({ type: "", message: "" }); // Clear previous status
+      
+      console.log("Form submission started with data:", data);
+      
+      const result = await onSubmit(data);
+      
+      if (result.success) {
+        // Only navigate on successful submission
+        setStatus({
+          type: "success",
+          message: "Your request has been submitted successfully! Redirecting to status page...",
+        });
+        
+        // Small delay to show success message before navigation
+        setTimeout(() => {
+          navigate("/account-request-status");
+        }, 2000);
+      } else {
+        // Stay on current page and show error
+        setStatus({
+          type: "error",
+          message: result.error || "There was an error submitting your request. Please try again.",
+        });
+        console.error("Form submission failed:", result.error);
       }
     } catch (error) {
       console.error("Form submission error:", error);
       setStatus({
         type: "error",
-        message: "There was an error submitting your request. Please try again later.",
+        message: "There was an unexpected error submitting your request. Please try again later.",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

@@ -6,6 +6,43 @@ import { useRateLimiting } from "./useRateLimiting";
 import { useToast } from "@/hooks/use-toast";
 import { AccountRequest } from "@/api/entities";
 
+// Error message mapping for user-friendly error display
+const getErrorMessage = (error: any): string => {
+  console.log("Full error object:", error);
+  
+  // Check for specific database constraint errors
+  if (error?.message?.includes('violates check constraint')) {
+    return "Please check that all form fields are filled correctly. The account type or other fields may contain invalid values.";
+  }
+  
+  if (error?.message?.includes('account_type')) {
+    return "Invalid account type selected. Please choose either Standard Member or Educator/IB Partner.";
+  }
+  
+  if (error?.message?.includes('email')) {
+    return "Please enter a valid email address.";
+  }
+  
+  if (error?.message?.includes('phone_number')) {
+    return "Please enter a valid phone number.";
+  }
+  
+  if (error?.message?.includes('duplicate key')) {
+    return "An account request with this email already exists. Please use a different email address.";
+  }
+  
+  if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+    return "Network error. Please check your internet connection and try again.";
+  }
+  
+  if (error?.code === 'PGRST301') {
+    return "Database error: Please verify all required fields are filled correctly.";
+  }
+  
+  // Default error message
+  return "Failed to submit your request. Please check all fields and try again. If the problem persists, please contact support.";
+};
+
 export const useAccountRequestForm = () => {
   const { toast } = useToast();
   const { canSubmit, recordAttempt } = useRateLimiting('account-request', 3, 60 * 60 * 1000); // 3 attempts per hour
@@ -25,47 +62,67 @@ export const useAccountRequestForm = () => {
     mode: "onChange", // Real-time validation
   });
 
-  const onSubmit = async (data: AccountRequestFormData) => {
+  const onSubmit = async (data: AccountRequestFormData): Promise<{ success: boolean; error?: string }> => {
     if (!canSubmit) {
+      const errorMsg = "Too many attempts. Please wait before submitting another request.";
       toast({
         variant: "destructive",
-        title: "Too Many Attempts",
-        description: "Please wait before submitting another request.",
+        title: "Rate Limited",
+        description: errorMsg,
       });
-      return;
+      return { success: false, error: errorMsg };
     }
 
     // Check honeypot - silent fail for bots
     if (data.website && data.website.length > 0) {
       console.log("Bot detected via honeypot");
-      return;
+      return { success: false, error: "Invalid submission detected" };
+    }
+
+    // Client-side validation for account_type
+    if (!['user', 'educator'].includes(data.account_type)) {
+      const errorMsg = "Please select a valid account type: Standard Member or Educator/IB Partner.";
+      toast({
+        variant: "destructive",
+        title: "Invalid Account Type",
+        description: errorMsg,
+      });
+      return { success: false, error: errorMsg };
     }
 
     try {
       recordAttempt();
+      
+      console.log("Submitting account request with data:", data);
       
       // Use direct Supabase call instead of REST API
       await AccountRequest.create(data);
 
       toast({
         title: "Success!",
-        description: "Your request has been submitted successfully.",
+        description: "Your request has been submitted successfully. You will receive an email notification once it's reviewed.",
       });
 
       form.reset();
+      return { success: true };
     } catch (error) {
       console.error("Failed to submit account request:", error);
+      
+      const userFriendlyError = getErrorMessage(error);
+      
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to submit your request. Please try again.",
+        title: "Submission Failed",
+        description: userFriendlyError,
       });
+      
+      return { success: false, error: userFriendlyError };
     }
   };
 
   return {
     form,
-    onSubmit: form.handleSubmit(onSubmit),
+    onSubmit,
     canSubmit,
     isSubmitting: form.formState.isSubmitting,
   };

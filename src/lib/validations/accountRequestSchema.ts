@@ -42,8 +42,9 @@ export const accountRequestSchema = z.object({
     .optional()
     .or(z.literal("")),
   
+  // Updated to match the new database enum: user, admin, educator
   account_type: z.enum(["user", "educator"], {
-    errorMap: () => ({ message: "Please select a valid account type" })
+    errorMap: () => ({ message: "Please select a valid account type: Standard Member or Educator/IB Partner" })
   }),
   
   reason: z.string()

@@ -1,18 +1,23 @@
 
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react-swc'
+import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   test: {
-    environment: 'happy-dom',
-    setupFiles: ['./src/test/setup.ts'],
-    globals: true,
-    // Disable all tests by matching nothing
+    // Completely disable all test file processing
     include: [],
     exclude: [
-      'node_modules/',
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
       'dist/',
       'e2e/',
       'src/**/*.{test,spec}.{ts,tsx}',
@@ -22,12 +27,12 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html', 'lcov'],
+      reporter: ['text', 'json', 'html'],
       exclude: [
         'node_modules/',
         'src/test/',
-        '**/*.d.ts',
-        '**/*.config.*',
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.spec.{ts,tsx}',
         'dist/',
         'e2e/',
         'src/integrations/supabase/types.ts',
@@ -43,11 +48,9 @@ export default defineConfig({
           statements: 80
         }
       }
-    }
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
-    }
+    },
+    environment: 'happy-dom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts']
   }
-});
+})

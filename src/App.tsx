@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
-import { ThemeProvider } from "@/components/ui/theme-provider";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
@@ -48,8 +48,8 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <ThemeProvider>
+        <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -153,8 +153,8 @@ function App() {
               </SignalRealtimeProvider>
             </AuthProvider>
           </BrowserRouter>
-        </ThemeProvider>
-      </TooltipProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

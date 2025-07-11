@@ -1,10 +1,13 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { CheckCircle, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { sendWelcomeEmail } from '@/components/auth/WelcomeEmailService';
+import { cleanupAuthState } from '@/utils/authUtils';
 
 interface ApprovedAccountFlowProps {
   accountRequest: any;
@@ -44,6 +47,16 @@ export const ApprovedAccountFlow: React.FC<ApprovedAccountFlowProps> = ({
     setIsCreating(true);
 
     try {
+      // Clean up any existing auth state first
+      cleanupAuthState();
+      
+      // Attempt to sign out any existing session
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        console.log('No existing session to sign out');
+      }
+
       // Create the user account with enhanced metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: accountRequest.email,
@@ -76,8 +89,7 @@ export const ApprovedAccountFlow: React.FC<ApprovedAccountFlowProps> = ({
       }
 
       if (authData.user) {
-        // Update the account request status to approved (since it was already approved, we don't change it)
-        // The account is now fully activated, but we keep the status as approved
+        // Update the account request with approved timestamp
         const { error: updateError } = await supabase
           .from('account_requests')
           .update({ 
@@ -89,18 +101,44 @@ export const ApprovedAccountFlow: React.FC<ApprovedAccountFlowProps> = ({
           console.error('Error updating account request:', updateError);
         }
 
-        toast({
-          title: "Account Created Successfully!",
-          description: "Your account has been created. You can now sign in.",
+        // Send welcome email
+        try {
+          await sendWelcomeEmail(accountRequest.email, accountRequest.full_name);
+        } catch (emailError) {
+          console.warn('Welcome email failed:', emailError);
+          // Don't fail the whole process for email issues
+        }
+
+        // Sign in the user automatically
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: accountRequest.email,
+          password: password,
         });
 
-        // Navigate to sign in page
-        navigate('/signin', { 
-          state: { 
-            message: 'Account created successfully! Please sign in with your credentials.',
-            email: accountRequest.email
-          }
+        if (signInError) {
+          console.error('Auto sign-in error:', signInError);
+          toast({
+            title: "Account Created Successfully!",
+            description: "Please sign in with your new credentials.",
+          });
+          navigate('/signin', { 
+            state: { 
+              message: 'Account created successfully! Please sign in with your credentials.',
+              email: accountRequest.email
+            }
+          });
+          return;
+        }
+
+        toast({
+          title: "Welcome to Imperial Trading!",
+          description: "Your account has been created successfully. Redirecting to dashboard...",
         });
+
+        // Redirect to dashboard after successful creation and login
+        setTimeout(() => {
+          navigate('/dashboard/home');
+        }, 2000);
       }
     } catch (error) {
       console.error('Error creating account:', error);
@@ -122,7 +160,7 @@ export const ApprovedAccountFlow: React.FC<ApprovedAccountFlowProps> = ({
           Account Request Approved!
         </h3>
         <p className="text-gray-300">
-          Your account request has been approved. Please set up your password to complete the registration.
+          Congratulations! Your account request has been approved. Please create your password to complete registration and gain exclusive access.
         </p>
       </div>
 
@@ -167,11 +205,13 @@ export const ApprovedAccountFlow: React.FC<ApprovedAccountFlowProps> = ({
               className="pr-10 bg-white border-gray-300 text-gray-900"
               required
               minLength={8}
+              disabled={isCreating}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              disabled={isCreating}
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -190,6 +230,7 @@ export const ApprovedAccountFlow: React.FC<ApprovedAccountFlowProps> = ({
             className="bg-white border-gray-300 text-gray-900"
             required
             minLength={8}
+            disabled={isCreating}
           />
         </div>
 
@@ -199,10 +240,13 @@ export const ApprovedAccountFlow: React.FC<ApprovedAccountFlowProps> = ({
           className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
         >
           {isCreating ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Creating Account...
+            </div>
           ) : (
             <>
-              Complete Registration
+              Complete Registration & Access Dashboard
               <ArrowRight className="w-4 h-4 ml-2" />
             </>
           )}
@@ -210,7 +254,7 @@ export const ApprovedAccountFlow: React.FC<ApprovedAccountFlowProps> = ({
       </form>
 
       <div className="text-xs text-gray-400 text-center">
-        Password must be at least 8 characters long and contain a mix of letters, numbers, and symbols for security.
+        Password must be at least 8 characters long. After creation, you'll receive a welcome email and be automatically logged into your dashboard.
       </div>
     </div>
   );

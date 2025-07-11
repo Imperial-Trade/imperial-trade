@@ -40,9 +40,9 @@ export default function FinalCTA() {
                 <Link to={createPageUrl("account-request")}>
                   <Button
                     size="lg"
-                    className="bg-accent-green hover:bg-green-500 text-white font-semibold px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-105 drop-shadow-lg w-full sm:w-auto"
+                    className="bg-accent-green hover:bg-green-500 text-white font-semibant px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-105 drop-shadow-lg w-full sm:w-auto"
                   >
-                    Become a Member
+                    Get Started
                   </Button>
                 </Link>
               )

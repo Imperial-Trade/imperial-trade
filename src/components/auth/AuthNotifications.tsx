@@ -1,24 +1,30 @@
 
 import { toast } from '@/hooks/use-toast';
+import { sendWelcomeEmail as sendWelcomeEmailService } from './WelcomeEmailService';
 
 export const sendWelcomeEmail = async (userEmail: string, userName?: string | boolean) => {
   try {
     const name = typeof userName === 'string' ? userName : 'Trader';
-    // Simulate sending welcome email
-    console.log(`Welcome email sent to ${userEmail} for ${name}`);
     
-    toast({
-      title: "Welcome!",
-      description: `Welcome to Imperial Trading, ${name}! Check your email for important information.`,
-    });
+    // Use the new welcome email service
+    const result = await sendWelcomeEmailService(userEmail, name);
     
-    return { success: true };
+    if (result.success) {
+      toast({
+        title: "Welcome!",
+        description: `Welcome to Imperial Trading, ${name}! Check your email for exclusive access information.`,
+      });
+      
+      return { success: true };
+    } else {
+      throw new Error(result.error?.message || 'Failed to send welcome email');
+    }
   } catch (error) {
     console.error('Failed to send welcome email:', error);
     toast({
-      title: "Notice",
-      description: "Welcome to Imperial Trading! There was an issue sending your welcome email, but your account is ready.",
-      variant: "destructive",
+      title: "Account Created Successfully!",
+      description: `Welcome to Imperial Trading, ${typeof userName === 'string' ? userName : 'Trader'}! There was an issue sending your welcome email, but your account is ready.`,
+      variant: "default",
     });
     return { success: false, error };
   }

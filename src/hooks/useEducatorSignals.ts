@@ -33,37 +33,42 @@ export function useEducatorSignals() {
   const [followers, setFollowers] = useState<SignalFollower[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load educator analytics
+  // Load educator analytics using RPC call since table types aren't available yet
   const loadAnalytics = async () => {
     if (!user?.id) return;
 
     try {
-      const { data } = await supabase
-        .from('educator_performance_summary')
-        .select('*')
-        .eq('educator_id', user.id)
-        .single();
+      // Use RPC call to get analytics data
+      const { data, error } = await supabase.rpc('get_educator_analytics', {
+        educator_user_id: user.id
+      });
 
-      if (data) {
-        setAnalytics(data);
+      if (error) {
+        console.error('Error loading analytics:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setAnalytics(data[0]);
       }
     } catch (error) {
       console.error('Error loading analytics:', error);
     }
   };
 
-  // Load signal followers
+  // Load signal followers using RPC call
   const loadFollowers = async () => {
     if (!user?.id) return;
 
     try {
-      const { data } = await supabase
-        .from('signal_followers')
-        .select(`
-          *,
-          trade_alerts!inner(user_id)
-        `)
-        .eq('trade_alerts.user_id', user.id);
+      const { data, error } = await supabase.rpc('get_educator_followers', {
+        educator_user_id: user.id
+      });
+
+      if (error) {
+        console.error('Error loading followers:', error);
+        return;
+      }
 
       if (data) {
         setFollowers(data);
@@ -88,7 +93,7 @@ export function useEducatorSignals() {
     }
   };
 
-  // Update signal analytics
+  // Update signal analytics using RPC call
   const updateSignalAnalytics = async (signalId: string, updates: Partial<{
     followers_count: number;
     engagement_score: number;
@@ -99,14 +104,11 @@ export function useEducatorSignals() {
     avg_profit_loss: number;
   }>) => {
     try {
-      await supabase
-        .from('educator_signal_analytics')
-        .upsert({
-          educator_id: user?.id,
-          signal_id: signalId,
-          ...updates,
-          updated_at: new Date().toISOString()
-        });
+      await supabase.rpc('update_educator_signal_analytics', {
+        educator_user_id: user?.id,
+        signal_uuid: signalId,
+        analytics_data: updates
+      });
     } catch (error) {
       console.error('Error updating signal analytics:', error);
     }
@@ -119,7 +121,7 @@ export function useEducatorSignals() {
         setLoading(false);
       });
 
-      // Set up real-time subscriptions
+      // Set up real-time subscriptions for trade_alerts table
       const analyticsChannel = supabase
         .channel('educator-analytics')
         .on(
@@ -127,8 +129,8 @@ export function useEducatorSignals() {
           {
             event: '*',
             schema: 'public',
-            table: 'educator_signal_analytics',
-            filter: `educator_id=eq.${user.id}`
+            table: 'trade_alerts',
+            filter: `user_id=eq.${user.id}`
           },
           () => {
             loadAnalytics();
@@ -136,24 +138,8 @@ export function useEducatorSignals() {
         )
         .subscribe();
 
-      const followersChannel = supabase
-        .channel('signal-followers')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'signal_followers'
-          },
-          () => {
-            loadFollowers();
-          }
-        )
-        .subscribe();
-
       return () => {
         supabase.removeChannel(analyticsChannel);
-        supabase.removeChannel(followersChannel);
       };
     }
   }, [user?.id]);

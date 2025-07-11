@@ -1,8 +1,9 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
@@ -57,7 +58,7 @@ function App() {
                 <WebSocketPriceProvider>
                   <Routes>
                     {/* Landing Routes */}
-                    <Route path="/" element={<LandingLayout />}>
+                    <Route path="/" element={<LandingLayout><Outlet /></LandingLayout>}>
                       <Route index element={<Landing />} />
                       <Route path="about" element={<About />} />
                       <Route path="features" element={<Features />} />
@@ -72,7 +73,7 @@ function App() {
                       path="/dashboard"
                       element={
                         <ProtectedRoute>
-                          <DashboardLayout />
+                          <DashboardLayout><Outlet /></DashboardLayout>
                         </ProtectedRoute>
                       }
                     >

@@ -24,7 +24,7 @@ import { ValidationFeedback } from "@/components/security/ValidationFeedback";
 import { BotProtectionWrapper } from "@/components/security/BotProtectionWrapper";
 import { useAdvancedBotProtection } from "@/hooks/useAdvancedBotProtection";
 import { useAdaptiveRateLimit } from "@/hooks/useAdaptiveRateLimit";
-import { AdaptiveRateLimitStatus } from "@/components/account-request/AdaptiveRateLimitStatus";
+import { useLocation } from "react-router-dom";
 
 interface AccountRequestFormProps {
   form: UseFormReturn<AccountRequestFormData>;
@@ -47,18 +47,22 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
   getDelayMessage,
   maxAttempts = 5,
 }) => {
+  const location = useLocation();
+  const isAccountRequestPage = location.pathname === '/account-request';
   const { protectionResult, analyzeSubmission, handleFieldFocus } = useAdvancedBotProtection();
 
-  // 🧠 NEW PHASE 4: Adaptive rate limiting integration
+  // Only use adaptive rate limiting on the account request page, and don't watch email in real-time
   const adaptiveRateLimit = useAdaptiveRateLimit({
-    identifier: 'user-ip', // In production, use actual IP or user identifier
-    email: form.watch('email') || '',
+    identifier: 'user-ip',
+    email: '', // Don't pass email until submission - this prevents continuous API calls
     securityAnalysis: protectionResult,
-    behavioralAnalysis: { suspiciousScore: 0, reasons: [] }, // Placeholder
+    behavioralAnalysis: { suspiciousScore: 0, reasons: [] },
   });
 
   const handleSubmit = async (data: AccountRequestFormData) => {
-    console.log('🚀 Form submission started with Phase 4 adaptive protection');
+    if (!isAccountRequestPage) return;
+    
+    console.log('🚀 Form submission started with optimized adaptive protection');
     
     // Run advanced bot protection analysis
     const botAnalysis = await analyzeSubmission(data);
@@ -69,28 +73,24 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
       return; // Silent fail for bots
     }
     
-    // Check adaptive rate limits
+    // Check adaptive rate limits (now with email)
     if (!adaptiveRateLimit.canSubmit) {
       console.log('🚫 Submission blocked by adaptive rate limiting');
       return;
-    }
-    
-    // If requires CAPTCHA, show warning but allow submission for now
-    // In production, you'd integrate with reCAPTCHA here
-    if (botAnalysis.requiresCaptcha || adaptiveRateLimit.requiresCaptcha) {
-      console.log('⚠️ CAPTCHA required but proceeding:', botAnalysis);
     }
     
     onSubmit(data);
     
     // Record result for adaptive learning
     setTimeout(() => {
-      adaptiveRateLimit.recordSubmissionResult(true); // Assume success for now
+      adaptiveRateLimit.recordSubmissionResult(true);
     }, 1000);
   };
 
+  // Only show rate limit status on account request page
   const getRateLimitStatus = () => {
-    // Use adaptive rate limit status if available
+    if (!isAccountRequestPage) return null;
+
     if (adaptiveRateLimit.isAdapting) {
       return {
         type: 'info' as const,
@@ -104,14 +104,6 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
         type: 'error' as const,
         message: adaptiveRateLimit.getStatusMessage(),
         icon: <Clock className="w-4 h-4" />,
-      };
-    }
-
-    if (adaptiveRateLimit.requiresCaptcha || adaptiveRateLimit.additionalVerification) {
-      return {
-        type: 'warning' as const,
-        message: adaptiveRateLimit.getStatusMessage(),
-        icon: <AlertTriangle className="w-4 h-4" />,
       };
     }
 
@@ -137,6 +129,11 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
 
   const rateLimitStatus = getRateLimitStatus();
 
+  // Don't render the form if not on account request page
+  if (!isAccountRequestPage) {
+    return null;
+  }
+
   return (
     <div className="account-request-form-container space-y-4">
       <BotProtectionWrapper
@@ -144,24 +141,11 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
         confidence={protectionResult?.confidence || 0}
         reasons={protectionResult?.reasons || []}
       >
-        {/* 🧠 NEW PHASE 4: Adaptive Rate Limit Status Display */}
-        <AdaptiveRateLimitStatus
-          trustScore={adaptiveRateLimit.trustScore}
-          riskCategory={adaptiveRateLimit.riskCategory}
-          threatLevel={adaptiveRateLimit.threatLevel}
-          attemptsLeft={adaptiveRateLimit.attemptsLeft}
-          requiresCaptcha={adaptiveRateLimit.requiresCaptcha}
-          additionalVerification={adaptiveRateLimit.additionalVerification}
-          systemLoad={adaptiveRateLimit.systemLoad}
-          isAdapting={adaptiveRateLimit.isAdapting}
-          statusMessage={adaptiveRateLimit.getStatusMessage()}
-        />
-
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="form-grid">
             <EnhancedHoneypotFields form={form} />
             
-            {/* Rate Limit Status Display */}
+            {/* Rate Limit Status Display - Only show if there's a status */}
             {rateLimitStatus && (
               <div className={`p-3 rounded-md border flex items-center gap-2 text-sm font-medium ${
                 rateLimitStatus.type === 'warning' 

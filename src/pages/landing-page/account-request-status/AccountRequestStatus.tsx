@@ -9,47 +9,36 @@ import { createPageUrl } from "@/utils";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { PageStyles } from "@/components/account-request/PageStyles";
-import { AccountRequest } from "@/api/entities";
 import { useToast } from "@/hooks/use-toast";
 import { ApprovedAccountFlow } from "@/components/account-request/ApprovedAccountFlow";
+import { useAccountStatusWebSocket } from "@/hooks/useAccountStatusWebSocket";
 
 export default function AccountRequestStatusPage() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [searchEmail, setSearchEmail] = useState(""); // Email being searched via WebSocket
   const { toast } = useToast();
+
+  // Use WebSocket for real-time status updates
+  const { status, isConnected, error, checkStatus } = useAccountStatusWebSocket({
+    email: searchEmail,
+    enabled: !!searchEmail
+  });
 
   const handleCheckStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
     setIsLoading(true);
-    setError("");
-
-    try {
-      const requests = await AccountRequest.list();
-      const userRequest = requests.find(
-        (req) => req.email.toLowerCase() === email.toLowerCase()
-      );
-
-      if (!userRequest) {
-        setError("No account request found with this email address.");
-        setStatus(null);
-      } else {
-        setStatus(userRequest);
-      }
-    } catch (err) {
-      console.error("Error checking status:", err);
-      setError("Failed to check status. Please try again.");
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to check account request status.",
-      });
-    } finally {
+    setSearchEmail(email.toLowerCase());
+    
+    // Check status via WebSocket
+    checkStatus(email.toLowerCase());
+    
+    // Show loading for a brief moment for UX
+    setTimeout(() => {
       setIsLoading(false);
-    }
+    }, 1000);
   };
 
   const getStatusIcon = (status: string) => {
@@ -103,6 +92,9 @@ export default function AccountRequestStatusPage() {
             </CardTitle>
             <p className="text-secondary text-center text-white">
               Check the status of your account request
+              {isConnected && (
+                <span className="ml-2 text-green-400 text-sm">● Real-time updates</span>
+              )}
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -125,7 +117,7 @@ export default function AccountRequestStatusPage() {
                   </div>
                 </div>
 
-                {error && (
+                {(error && searchEmail) && (
                   <div className="p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
                     {error}
                   </div>
@@ -198,8 +190,8 @@ export default function AccountRequestStatusPage() {
                   className="w-full border-white/20 text-white/80 hover:bg-white/10"
                   onClick={() => {
                     setStatus(null);
+                    setSearchEmail("");
                     setEmail("");
-                    setError("");
                   }}
                 >
                   Check Another Email

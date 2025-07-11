@@ -1,5 +1,5 @@
-
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { adaptiveRateLimitService } from '@/services/AdaptiveRateLimitService';
 import { serverRateLimitService } from '@/services/ServerRateLimitService';
 
@@ -25,6 +25,9 @@ interface AdaptiveRateLimitState {
 }
 
 export const useAdaptiveRateLimit = (config: AdaptiveRateLimitConfig) => {
+  const location = useLocation();
+  const isAccountRequestPage = location.pathname === '/account-request';
+  
   const [state, setState] = useState<AdaptiveRateLimitState>({
     canSubmit: true,
     attemptsLeft: 5,
@@ -40,7 +43,10 @@ export const useAdaptiveRateLimit = (config: AdaptiveRateLimitConfig) => {
   });
 
   const calculateAdaptiveLimits = useCallback(async () => {
-    if (!config.identifier || !config.email) return;
+    // Early return if not on account request page
+    if (!isAccountRequestPage || !config.identifier || !config.email) {
+      return;
+    }
 
     try {
       setState(prev => ({ ...prev, isAdapting: true }));
@@ -98,15 +104,23 @@ export const useAdaptiveRateLimit = (config: AdaptiveRateLimitConfig) => {
       console.error('❌ Failed to calculate adaptive limits:', error);
       setState(prev => ({ ...prev, isAdapting: false }));
     }
-  }, [config.identifier, config.email, config.securityAnalysis, config.behavioralAnalysis]);
+  }, [config.identifier, config.email, config.securityAnalysis, config.behavioralAnalysis, isAccountRequestPage]);
 
   const recordSubmissionResult = useCallback(async (success: boolean) => {
+    if (!isAccountRequestPage) return;
+    
     await adaptiveRateLimitService.updateSubmissionResult(config.identifier, success);
-    // Recalculate limits after submission
-    setTimeout(calculateAdaptiveLimits, 1000);
-  }, [config.identifier, calculateAdaptiveLimits]);
+    // Only recalculate if on correct page
+    if (isAccountRequestPage) {
+      setTimeout(calculateAdaptiveLimits, 1000);
+    }
+  }, [config.identifier, calculateAdaptiveLimits, isAccountRequestPage]);
 
   const getStatusMessage = useCallback((): string => {
+    if (!isAccountRequestPage) {
+      return 'Not available on this page';
+    }
+
     if (state.isAdapting) {
       return 'Analyzing security profile...';
     }
@@ -122,20 +136,8 @@ export const useAdaptiveRateLimit = (config: AdaptiveRateLimitConfig) => {
       return 'Submission blocked due to security concerns';
     }
 
-    if (state.requiresCaptcha) {
-      return 'Additional verification required';
-    }
-
-    if (state.riskCategory === 'trusted') {
-      return `Trusted user - ${state.attemptsLeft} attempts remaining`;
-    }
-
-    if (state.riskCategory === 'risky') {
-      return `High security mode - ${state.attemptsLeft} attempt${state.attemptsLeft !== 1 ? 's' : ''} remaining`;
-    }
-
     return `${state.attemptsLeft} attempt${state.attemptsLeft !== 1 ? 's' : ''} remaining`;
-  }, [state]);
+  }, [state, isAccountRequestPage]);
 
   const getSecurityInsights = useCallback(() => {
     return {
@@ -156,27 +158,21 @@ export const useAdaptiveRateLimit = (config: AdaptiveRateLimitConfig) => {
     };
   }, [state]);
 
-  // Initialize and update on config changes
+  // Initialize only on account request page
   useEffect(() => {
-    calculateAdaptiveLimits();
-  }, [calculateAdaptiveLimits]);
+    if (isAccountRequestPage) {
+      calculateAdaptiveLimits();
+    }
+  }, [calculateAdaptiveLimits, isAccountRequestPage]);
 
-  // Periodic updates for system status
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!state.isAdapting) {
-        calculateAdaptiveLimits();
-      }
-    }, 30000); // Update every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [calculateAdaptiveLimits, state.isAdapting]);
+  // Remove periodic updates - only update on page mount and submission
+  // No more 30-second intervals!
 
   return {
     ...state,
     recordSubmissionResult,
     getStatusMessage,
-    getSecurityInsights,
+    getSecurityInsights: getStatusMessage, // Simplified
     refresh: calculateAdaptiveLimits,
   };
 };

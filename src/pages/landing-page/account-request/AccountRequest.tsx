@@ -10,6 +10,7 @@ import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { StatusMessage } from "@/components/account-request/StatusMessage";
 import { AccountRequestForm } from "@/components/account-request/AccountRequestForm";
 import { PageStyles } from "@/components/account-request/PageStyles";
+import { FormInputStyles } from "@/components/account-request/FormInputStyles";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 
 export default function AccountRequestPage() {
@@ -124,6 +125,10 @@ export default function AccountRequestPage() {
 
       <ErrorBoundary componentName="Page Styles">
         <PageStyles />
+      </ErrorBoundary>
+      
+      <ErrorBoundary componentName="Form Input Styles">
+        <FormInputStyles />
       </ErrorBoundary>
     </div>
   );

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,7 +26,7 @@ import {
 
 export default function EducatorTradeSignalsPage() {
   const { user } = useAuth();
-  const { alerts, loading: tradingLoading } = useOptimizedTrading(user?.id);
+  const { alerts, isLoading: tradingLoading } = useOptimizedTrading(user?.id || '');
   const { analytics, loading: analyticsLoading } = useEducatorSignals();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');

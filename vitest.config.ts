@@ -23,7 +23,8 @@ export default defineConfig({
       'src/**/*.{test,spec}.{ts,tsx}',
       'src/__tests__/**/*',
       '**/*.test.*',
-      '**/*.spec.*'
+      '**/*.spec.*',
+      '**/*.disabled.*'
     ],
     coverage: {
       provider: 'v8',
@@ -38,7 +39,8 @@ export default defineConfig({
         'src/integrations/supabase/types.ts',
         'src/__tests__/**',
         '**/*.test.*',
-        '**/*.spec.*'
+        '**/*.spec.*',
+        '**/*.disabled.*'
       ],
       thresholds: {
         global: {

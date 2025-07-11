@@ -16,53 +16,44 @@ import {
   FormItem,
   FormLabel,
 } from "@/components/ui/form";
-import { User, Mail, Shield, Send, Phone, Clock, AlertTriangle } from "lucide-react";
+import { User, Mail, Shield, Send, Phone, Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
 import { EnhancedHoneypotFields } from "@/components/security/EnhancedHoneypotFields";
 import { ValidationFeedback } from "@/components/security/ValidationFeedback";
 import { BotProtectionWrapper } from "@/components/security/BotProtectionWrapper";
 import { useAdvancedBotProtection } from "@/hooks/useAdvancedBotProtection";
-import { useAdaptiveRateLimit } from "@/hooks/useAdaptiveRateLimit";
+import { useImprovedRateLimit } from "@/hooks/useImprovedRateLimit";
 import { useLocation } from "react-router-dom";
 
 interface AccountRequestFormProps {
   form: UseFormReturn<AccountRequestFormData>;
   onSubmit: (data: AccountRequestFormData) => void;
   isSubmitting: boolean;
-  canSubmit: boolean;
-  attemptsLeft?: number;
-  nextAttemptDelay?: number;
-  getDelayMessage?: (delay: number) => string;
-  maxAttempts?: number;
 }
 
 export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
   form,
   onSubmit,
   isSubmitting,
-  canSubmit,
-  attemptsLeft = 0,
-  nextAttemptDelay = 0,
-  getDelayMessage,
-  maxAttempts = 5,
 }) => {
   const location = useLocation();
   const isAccountRequestPage = location.pathname === '/account-request';
   const { protectionResult, analyzeSubmission, handleFieldFocus } = useAdvancedBotProtection();
 
-  // Only use adaptive rate limiting on the account request page, and don't watch email in real-time
-  const adaptiveRateLimit = useAdaptiveRateLimit({
-    identifier: 'user-ip',
-    email: '', // Don't pass email until submission - this prevents continuous API calls
-    securityAnalysis: protectionResult,
-    behavioralAnalysis: { suspiciousScore: 0, reasons: [] },
+  // Watch the email field for rate limiting
+  const emailValue = form.watch('email');
+
+  // Use improved rate limiting
+  const rateLimit = useImprovedRateLimit({
+    identifier: 'account-request',
+    email: emailValue,
   });
 
   const handleSubmit = async (data: AccountRequestFormData) => {
     if (!isAccountRequestPage) return;
     
-    console.log('🚀 Form submission started with optimized adaptive protection');
+    console.log('🚀 Form submission started with improved rate limiting');
     
     // Run advanced bot protection analysis
     const botAnalysis = await analyzeSubmission(data);
@@ -73,58 +64,57 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
       return; // Silent fail for bots
     }
     
-    // Check adaptive rate limits (now with email)
-    if (!adaptiveRateLimit.canSubmit) {
-      console.log('🚫 Submission blocked by adaptive rate limiting');
+    // Check rate limits
+    if (!rateLimit.canSubmit) {
+      console.log('🚫 Submission blocked by rate limiting');
       return;
     }
     
     onSubmit(data);
     
-    // Record result for adaptive learning
+    // Record the attempt
     setTimeout(() => {
-      adaptiveRateLimit.recordSubmissionResult(true);
+      rateLimit.recordAttempt();
     }, 1000);
   };
 
-  // Only show rate limit status on account request page
+  // Get status display for rate limiting
   const getRateLimitStatus = () => {
     if (!isAccountRequestPage) return null;
 
-    if (adaptiveRateLimit.isAdapting) {
+    if (rateLimit.isLoading) {
       return {
         type: 'info' as const,
-        message: 'Analyzing security profile...',
+        message: 'Checking submission limits...',
         icon: <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-400 border-t-transparent" />,
       };
     }
 
-    if (!adaptiveRateLimit.canSubmit) {
+    if (!rateLimit.canSubmit) {
       return {
         type: 'error' as const,
-        message: adaptiveRateLimit.getStatusMessage(),
+        message: rateLimit.message,
         icon: <Clock className="w-4 h-4" />,
       };
     }
 
-    // Fallback to original rate limiting
-    if (canSubmit) {
-      if (attemptsLeft < maxAttempts) {
-        return {
-          type: 'warning' as const,
-          message: `${attemptsLeft} attempts remaining`,
-          icon: <AlertTriangle className="w-4 h-4" />,
-        };
-      }
-      return null;
+    if (rateLimit.message) {
+      return {
+        type: 'warning' as const,
+        message: rateLimit.message,
+        icon: <AlertTriangle className="w-4 h-4" />,
+      };
     }
 
-    const delayMessage = getDelayMessage?.(nextAttemptDelay || 0);
-    return {
-      type: 'error' as const,
-      message: delayMessage || 'Rate limit reached. Please wait before trying again.',
-      icon: <Clock className="w-4 h-4" />,
-    };
+    if (emailValue && !rateLimit.isLoading) {
+      return {
+        type: 'success' as const,
+        message: 'Ready to submit',
+        icon: <CheckCircle className="w-4 h-4" />,
+      };
+    }
+
+    return null;
   };
 
   const rateLimitStatus = getRateLimitStatus();
@@ -145,10 +135,12 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
           <form onSubmit={form.handleSubmit(handleSubmit)} className="form-grid">
             <EnhancedHoneypotFields form={form} />
             
-            {/* Rate Limit Status Display - Only show if there's a status */}
+            {/* Rate Limit Status Display */}
             {rateLimitStatus && (
               <div className={`p-3 rounded-md border flex items-center gap-2 text-sm font-medium ${
-                rateLimitStatus.type === 'warning' 
+                rateLimitStatus.type === 'success' 
+                  ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                  : rateLimitStatus.type === 'warning' 
                   ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
                   : rateLimitStatus.type === 'info'
                   ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
@@ -391,7 +383,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
             <div className="form-actions">
               <Button
                 type="submit"
-                disabled={isSubmitting || !adaptiveRateLimit.canSubmit || protectionResult?.isBot}
+                disabled={isSubmitting || !rateLimit.canSubmit || protectionResult?.isBot}
                 className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (

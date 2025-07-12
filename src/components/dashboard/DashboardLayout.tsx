@@ -8,7 +8,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Bell, Search, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
-import { LoadingSpinner } from '@/components/layout/LoadingSpinner';
+import LoadingSpinner from '@/components/layout/LoadingSpinner';
 
 export const DashboardLayout: React.FC = () => {
   const { user } = useAuth();

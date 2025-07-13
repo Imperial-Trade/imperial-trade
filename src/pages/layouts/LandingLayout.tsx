@@ -1,17 +1,14 @@
 
 import React from 'react';
+import { Outlet } from 'react-router-dom';
 import AppBar from '@/components/layout/AppBar';
 
-interface LandingLayoutProps {
-  children: React.ReactNode;
-}
-
-const LandingLayout: React.FC<LandingLayoutProps> = ({ children }) => {
+const LandingLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <AppBar />
       <main className="pt-16">
-        {children}
+        <Outlet />
       </main>
     </div>
   );

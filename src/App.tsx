@@ -10,7 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import Layout from "@/components/Layout";
 
 // Landing Pages
 import Landing from "@/pages/landing-page/landing/Landing";
@@ -72,7 +72,9 @@ function App() {
                       path="/dashboard"
                       element={
                         <ProtectedRoute>
-                          <DashboardLayout />
+                          <Layout>
+                            <div>Dashboard Content</div>
+                          </Layout>
                         </ProtectedRoute>
                       }
                     >

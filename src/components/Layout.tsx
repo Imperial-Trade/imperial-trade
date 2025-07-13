@@ -2,30 +2,64 @@
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton"
-import { Crown } from "lucide-react"
-import { useLocation } from "react-router-dom"
+import { Crown, Bell } from "lucide-react"
+import { Outlet, useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
 import { useSidebar } from "@/components/ui/sidebar"
 import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile"
+import { useAuth } from "@/contexts/AuthContext"
+import { Badge } from "@/components/ui/badge"
 
 function DashboardHeader() {
   const { openMobile } = useSidebar();
+  const { user } = useAuth();
+
+  const getUserAccessLevel = () => {
+    if (!user) return 'free';
+    return (user.user_metadata?.access_level as string) || 'free';
+  };
+
+  const getAccessLevelDisplay = (level: string) => {
+    const levels = {
+      free: { label: 'Free', color: 'bg-gray-500' },
+      user: { label: 'Member', color: 'bg-blue-500' },
+      admin: { label: 'Admin', color: 'bg-red-500' }
+    };
+    return levels[level as keyof typeof levels] || levels.free;
+  };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/95 backdrop-blur-xl border-b border-border">
+    <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50">
       <div className="flex items-center gap-4">
         <SidebarTriggerButton />
         <div className={`flex items-center gap-2 transition-opacity duration-300 ${openMobile ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-          <Crown className="h-6 w-6 text-primary" />
-          <span className="text-xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
+          <Crown className="h-6 w-6 text-amber-400" />
+          <span className="text-xl font-bold text-white">
             IMPERIAL
           </span>
         </div>
       </div>
       
       <div className="flex items-center gap-4">
-        <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+        {user && (
+          <>
+            <div className="hidden md:flex flex-col items-end text-sm">
+              <span className="text-white font-medium">
+                Welcome back, {user.email?.split('@')[0] || 'User'}
+              </span>
+              <div className="flex items-center gap-2">
+                <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-white text-xs`}>
+                  {getAccessLevelDisplay(getUserAccessLevel()).label}
+                </Badge>
+              </div>
+            </div>
+            
+            <Bell className="h-5 w-5 text-slate-300 hover:text-white cursor-pointer" />
+          </>
+        )}
+        
+        <div className="hidden md:flex items-center gap-2 text-sm text-slate-300">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           Market Open
         </div>
@@ -109,7 +143,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Main content - always full width, independent of sidebar */}
         <main className="w-full min-h-screen pt-16 bg-background">
           <ErrorBoundary componentName="Page Content">
-            {children}
+            <Outlet />
           </ErrorBoundary>
         </main>
       </div>

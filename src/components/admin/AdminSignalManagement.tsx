@@ -38,27 +38,39 @@ interface AdminSignalAnalytics {
 export function AdminSignalManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { alerts, isLoading, refreshAlerts } = useOptimizedTrading('', true); // All signals
+  const { alerts: allAlerts, isLoading, refreshAlerts } = useOptimizedTrading(user?.id || '', false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [analytics, setAnalytics] = useState<AdminSignalAnalytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
-  // Fetch admin analytics
+  // Filter alerts to show only the current admin's own signals
+  const userAlerts = useMemo(() => {
+    if (!user?.id || !allAlerts) return [];
+    return allAlerts.filter(alert => alert.userId === user.id);
+  }, [allAlerts, user?.id]);
+
+  // Fetch admin analytics - now based on user's own signals
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setLoadingAnalytics(true);
         
-        // Get signal statistics
+        if (!user?.id) {
+          setLoadingAnalytics(false);
+          return;
+        }
+        
+        // Get signal statistics for current admin only
         const { data: signalStats, error: signalError } = await supabase
           .from('trade_alerts')
           .select('status, user_id, tp_hits, created_at')
+          .eq('user_id', user.id) // Filter by current admin's ID
           .order('created_at', { ascending: false });
 
         if (signalError) throw signalError;
 
-        // Get unique educators count
+        // Get unique educators count (this can remain global)
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
           .select('id, user_type, access_level, display_name')
@@ -73,7 +85,7 @@ export function AdminSignalManagement() {
         const successRate = closedSignals > 0 ? (successfulSignals / closedSignals) : 0;
         const totalEducators = profiles?.length || 0;
 
-        // Recent activity (last 24 hours)
+        // Recent activity (last 24 hours) - for current admin only
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const recentActivity = signalStats?.filter(s => 
@@ -101,18 +113,18 @@ export function AdminSignalManagement() {
     };
 
     fetchAnalytics();
-  }, [toast]);
+  }, [toast, user?.id]);
 
-  // Filter alerts based on search and status
+  // Filter alerts based on search and status - now using userAlerts
   const filteredAlerts = useMemo(() => {
-    return alerts.filter(alert => {
+    return userAlerts.filter(alert => {
       const matchesSearch = alert.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            alert.finnhubSymbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            alert.creator?.display_name?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = filterStatus === 'all' || alert.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
-  }, [alerts, searchTerm, filterStatus]);
+  }, [userAlerts, searchTerm, filterStatus]);
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -196,27 +208,27 @@ export function AdminSignalManagement() {
           <div>
             <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Shield className="w-6 h-6 text-primary" />
-              Admin Signal Management
+              My Signal Management
             </h2>
-            <p className="text-muted-foreground">Oversee all trading signals from educators and admins</p>
+            <p className="text-muted-foreground">Manage your own trading signals</p>
           </div>
           <Button
             onClick={() => window.open('/dashboard/new-signal', '_blank')}
             className="bg-primary hover:bg-primary/90"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Create Admin Signal
+            Create Signal
           </Button>
         </div>
 
-        {/* Analytics Cards */}
+        {/* Analytics Cards - now showing admin's own signals */}
         {analytics && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Signals</p>
+                    <p className="text-sm text-muted-foreground">My Signals</p>
                     <p className="text-2xl font-bold">{analytics.total_signals}</p>
                   </div>
                   <Signal className="w-8 h-8 text-primary" />
@@ -252,7 +264,7 @@ export function AdminSignalManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Success Rate</p>
+                    <p className="text-sm text-muted-foreground">My Success Rate</p>
                     <p className="text-2xl font-bold text-green-400">{(analytics.success_rate * 100).toFixed(1)}%</p>
                   </div>
                   <BarChart3 className="w-8 h-8 text-green-400" />
@@ -264,7 +276,7 @@ export function AdminSignalManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Educators</p>
+                    <p className="text-sm text-muted-foreground">Total Educators</p>
                     <p className="text-2xl font-bold text-purple-400">{analytics.total_educators}</p>
                   </div>
                   <Users className="w-8 h-8 text-purple-400" />
@@ -276,7 +288,7 @@ export function AdminSignalManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">24h Activity</p>
+                    <p className="text-sm text-muted-foreground">My 24h Activity</p>
                     <p className="text-2xl font-bold text-orange-400">{analytics.recent_activity}</p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-orange-400" />
@@ -294,7 +306,7 @@ export function AdminSignalManagement() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Search signals by asset, symbol, or educator..."
+                placeholder="Search your signals by asset or symbol..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -326,7 +338,7 @@ export function AdminSignalManagement() {
       {/* Signals Tabs */}
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="all">All Signals ({filteredAlerts.length})</TabsTrigger>
+          <TabsTrigger value="all">My Signals ({filteredAlerts.length})</TabsTrigger>
           <TabsTrigger value="active">Active ({filteredAlerts.filter(a => a.status === 'active').length})</TabsTrigger>
           <TabsTrigger value="closed">Closed ({filteredAlerts.filter(a => a.status === 'closed').length})</TabsTrigger>
         </TabsList>
@@ -433,8 +445,15 @@ export function AdminSignalManagement() {
                 <p className="text-muted-foreground mb-4">
                   {searchTerm || filterStatus !== 'all' 
                     ? 'No signals match your search criteria.' 
-                    : 'No trading signals have been created yet.'}
+                    : 'You haven\'t created any trading signals yet.'}
                 </p>
+                <Button
+                  onClick={() => window.open('/dashboard/new-signal', '_blank')}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Your First Signal
+                </Button>
               </CardContent>
             </Card>
           )}

@@ -62,8 +62,8 @@ export default function EducatorSignalManagement() {
     }
   }, [user]);
 
-  // Only initialize hooks after user is authenticated
-  const { alerts, isLoading: tradingLoading, createAlert, updateAlert, deleteAlert, error, connectionStatus } = useOptimizedTrading(user?.id || '', false);
+  // Only initialize hooks after user is authenticated - now using false to get all signals then filter
+  const { alerts: allAlerts, isLoading: tradingLoading, createAlert, updateAlert, deleteAlert, error, connectionStatus } = useOptimizedTrading(user?.id || '', false);
   const { analytics, loading: analyticsLoading } = useEducatorSignals();
   const { toast } = useToast();
   
@@ -76,15 +76,23 @@ export default function EducatorSignalManagement() {
 
   const loading = tradingLoading || analyticsLoading;
 
+  // Filter alerts to show only the current educator's own signals
+  const userAlerts = useMemo(() => {
+    if (!user?.id || !allAlerts) return [];
+    return allAlerts.filter(alert => alert.userId === user.id);
+  }, [allAlerts, user?.id]);
+
   // Debug logging for alerts
   useEffect(() => {
     console.log('EducatorSignalManagement - Alerts state:', {
-      alertsCount: alerts.length,
+      allAlertsCount: allAlerts.length,
+      userAlertsCount: userAlerts.length,
+      userId: user?.id,
       connectionStatus,
       error,
       loading
     });
-  }, [alerts, connectionStatus, error, loading]);
+  }, [allAlerts, userAlerts, connectionStatus, error, loading, user?.id]);
 
   // CRUD Handlers
   const handleCreateSignal = async (data: any) => {
@@ -207,15 +215,15 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
     });
   };
 
-  // Filter alerts based on search and status
+  // Filter alerts based on search and status - now using userAlerts instead of alerts
   const filteredAlerts = useMemo(() => {
-    return alerts.filter(alert => {
+    return userAlerts.filter(alert => {
       const matchesSearch = alert.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            alert.finnhubSymbol.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = filterStatus === 'all' || alert.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
-  }, [alerts, searchTerm, filterStatus]);
+  }, [userAlerts, searchTerm, filterStatus]);
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -304,7 +312,7 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-secondary">Total Signals</p>
-                    <p className="text-2xl font-bold text-primary">{analytics.total_signals}</p>
+                    <p className="text-2xl font-bold text-primary">{userAlerts.length}</p>
                   </div>
                   <Signal className="w-8 h-8 text-accent-green" />
                 </div>
@@ -357,7 +365,7 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary w-4 h-4" />
               <Input
-                placeholder="Search signals by asset name or symbol..."
+                placeholder="Search your signals by asset name or symbol..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 bg-surface border-default text-primary"
@@ -382,7 +390,7 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
       {/* Signals Tabs */}
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList className="bg-surface border-default">
-          <TabsTrigger value="all">All Signals ({filteredAlerts.length})</TabsTrigger>
+          <TabsTrigger value="all">My Signals ({filteredAlerts.length})</TabsTrigger>
           <TabsTrigger value="active">Active ({filteredAlerts.filter(a => a.status === 'active').length})</TabsTrigger>
           <TabsTrigger value="closed">Closed ({filteredAlerts.filter(a => a.status === 'closed').length})</TabsTrigger>
         </TabsList>

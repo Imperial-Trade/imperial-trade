@@ -16,7 +16,7 @@ export default function Landing() {
       <ToolsShowcase />
       
       {/* An Arsenal of Professional Tools Section */}
-      <section className="relative py-24 bg-muted/30">
+      <section className="relative py-24 bg-gradient-to-b from-white to-gray-50/50">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <ContentSection>
             <div className="text-center mb-12">

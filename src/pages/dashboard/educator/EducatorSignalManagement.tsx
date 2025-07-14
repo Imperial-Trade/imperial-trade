@@ -24,7 +24,7 @@ import {
   XCircle
 } from 'lucide-react';
 
-export default function EducatorTradeSignalsPage() {
+export default function EducatorSignalManagement() {
   const { user } = useAuth();
   const { alerts, isLoading: tradingLoading } = useOptimizedTrading(user?.id || '');
   const { analytics, loading: analyticsLoading } = useEducatorSignals();
@@ -95,7 +95,7 @@ export default function EducatorTradeSignalsPage() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-primary">Trade Signal Management</h1>
+            <h1 className="text-3xl font-bold text-primary">Signal Management</h1>
             <p className="text-secondary">Manage and track your professional trading signals</p>
           </div>
           <Button

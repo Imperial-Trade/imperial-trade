@@ -10,6 +10,8 @@ export interface TradeAlertWithProfile extends TradeAlertResponseDto {
     display_name: string;
     role: string;
     avatar_url?: string;
+    user_type?: string;
+    access_level?: string;
   };
 }
 
@@ -293,7 +295,9 @@ export class TradingApiService {
               id: profile.id,
               display_name: profile.display_name || 'Anonymous User',
               role: profile.role || 'user',
-              avatar_url: profile.avatar_url
+              avatar_url: profile.avatar_url,
+              user_type: profile.user_type,
+              access_level: profile.access_level
             } : undefined
           };
         });

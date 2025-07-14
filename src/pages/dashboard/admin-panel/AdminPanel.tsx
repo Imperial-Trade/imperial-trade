@@ -3,11 +3,12 @@ import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Shield, Settings, Database, RefreshCw } from "lucide-react";
+import { Users, Shield, Settings, Database, RefreshCw, Signal } from "lucide-react";
 import { EnhancedUserManagementTable } from "@/components/admin/EnhancedUserManagementTable";
 import { AccountRequestManagement } from "@/components/account-request/AccountRequestManagement";
 import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
 import { RateLimitManager } from "@/components/admin/RateLimitManager";
+import { AdminSignalManagement } from "@/components/admin/AdminSignalManagement";
 
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("users");
@@ -26,10 +27,14 @@ const AdminPanel: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Users
+          </TabsTrigger>
+          <TabsTrigger value="signals" className="flex items-center gap-2">
+            <Signal className="w-4 h-4" />
+            Signals
           </TabsTrigger>
           <TabsTrigger value="requests" className="flex items-center gap-2">
             <Database className="w-4 h-4" />
@@ -59,6 +64,20 @@ const AdminPanel: React.FC = () => {
             </CardHeader>
             <CardContent>
               <EnhancedUserManagementTable />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="signals" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Signal className="w-5 h-5" />
+                Signal Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AdminSignalManagement />
             </CardContent>
           </Card>
         </TabsContent>

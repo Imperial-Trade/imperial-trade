@@ -43,7 +43,7 @@ export function SidebarEducatorSection({
 
   const menuItems = [
     {
-      title: "Trade Signal Management",
+      title: "Signal Management",
       url: "/dashboard/educator/signals",
       icon: Signal,
       description: "Manage your trading signals"

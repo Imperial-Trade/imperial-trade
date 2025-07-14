@@ -8,9 +8,16 @@ import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import usePriceFeed from '@/components/hooks/usePriceFeed';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 
 export default function SignalStream() {
   const [user, setUser] = useState<any>(null);
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+    tradeType: '',
+    educator: ''
+  });
 
   // Get user ID first
   useEffect(() => {
@@ -26,22 +33,90 @@ export default function SignalStream() {
     fetchUser();
   }, []);
 
-  // Use the optimized trading hook with real-time updates
+  // Use the optimized trading hook with real-time updates for all signals
   const {
-    alerts,
+    alerts: allAlerts,
     isLoading,
     error,
     updateAlert,
     refreshAlerts,
     connectionStatus,
     lastUpdated
-  } = useOptimizedTrading(user?.id || '', true); // TRUE = show all signals from all users (but now filtered to educators/admins)
+  } = useOptimizedTrading('', true); // Empty string = show all signals, true = enable real-time
 
-  const { activeAlerts, closedAlerts } = useMemo(() => {
+  // Filter signals by educator/admin status and user filters
+  const alerts = useMemo(() => {
+    let filteredAlerts = allAlerts.filter(alert => {
+      const creator = alert.creator;
+      return creator && (
+        creator.user_type === 'educator' || 
+        creator.access_level === 'admin' || 
+        creator.role === 'admin'
+      );
+    });
+
+    // Apply user filters
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filteredAlerts = filteredAlerts.filter(alert =>
+        alert.assetName.toLowerCase().includes(searchLower) ||
+        alert.finnhubSymbol.toLowerCase().includes(searchLower) ||
+        alert.creator?.display_name?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (filters.status) {
+      filteredAlerts = filteredAlerts.filter(alert => alert.status === filters.status);
+    }
+
+    if (filters.tradeType) {
+      filteredAlerts = filteredAlerts.filter(alert => alert.tradeType.includes(filters.tradeType));
+    }
+
+    if (filters.educator) {
+      filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
+    }
+
+    return filteredAlerts;
+  }, [allAlerts, filters]);
+
+  const { activeAlerts, closedAlerts, educatorOptions, signalCounts } = useMemo(() => {
     const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
     const closed = alerts.filter(a => a.status === 'closed');
-    return { activeAlerts: active, closedAlerts: closed };
-  }, [alerts]);
+    
+    // Get unique educators for filter dropdown
+    const educatorsMap = new Map();
+    allAlerts.forEach(alert => {
+      if (alert.creator && (
+        alert.creator.user_type === 'educator' || 
+        alert.creator.access_level === 'admin' || 
+        alert.creator.role === 'admin'
+      )) {
+        educatorsMap.set(alert.creator.id, {
+          id: alert.creator.id,
+          name: alert.creator.display_name || 'Unknown Educator'
+        });
+      }
+    });
+    
+    const educatorsList = Array.from(educatorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Calculate signal counts for filter badges
+    const counts = {
+      total: alerts.length,
+      active: active.length,
+      closed: closed.length,
+      buy: alerts.filter(a => a.tradeType.includes('buy')).length,
+      sell: alerts.filter(a => a.tradeType.includes('sell')).length
+    };
+    
+    return { 
+      activeAlerts: active, 
+      closedAlerts: closed, 
+      educatorOptions: educatorsList,
+      signalCounts: counts 
+    };
+  }, [alerts, allAlerts]);
 
   const sortedClosedAlerts = useMemo(() => {
     return [...closedAlerts]
@@ -306,11 +381,11 @@ export default function SignalStream() {
                 </h1>
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
                   <Shield className="w-3 h-3 mr-1" />
-                  Educators Only
+                  Verified Educators & Admins
                 </Badge>
               </div>
               <p className="text-muted-foreground">
-                Real-time trading signals with live price tracking from verified educators and admins
+                Real-time professional trading signals with live price tracking from verified educators and admins
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -329,6 +404,13 @@ export default function SignalStream() {
       <div className="w-full px-4 py-6">
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           <div className="xl:col-span-3">
+            {/* Enhanced Filters */}
+            <SignalStreamFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              educatorOptions={educatorOptions}
+              signalCounts={signalCounts}
+            />
             {isLoading ? (
               <div className="flex justify-center items-center h-64 flex-col space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />

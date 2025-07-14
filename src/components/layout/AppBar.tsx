@@ -61,29 +61,29 @@ const AppBar: React.FC = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-between px-8 lg:px-16 bg-background/90 backdrop-blur-xl border-b border-border/30 shadow-lg">
-      <Link to="/" className="flex items-center gap-3">
-        <Crown className="h-8 w-8 text-primary" />
-        <span className="text-2xl imperial-tech-font">IMPERIAL</span>
+    <header className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/50">
+      <Link to="/" className="flex items-center gap-2">
+        <Crown className="h-6 w-6 text-primary" />
+        <span className="text-xl imperial-tech-font">IMPERIAL</span>
       </Link>
 
-      {/* Desktop Navigation - Wider with more spacing */}
-      <nav className="hidden lg:flex items-center gap-12">
+      {/* Desktop Navigation */}
+      <nav className="hidden md:flex items-center gap-6">
         {navigationItems.map((item) => (
           <Link key={item.to} to={item.to}>
             <Button
               variant="ghost"
-              className="flex items-center gap-3 text-muted-foreground hover:text-foreground hover:bg-secondary/50 px-6 py-3 rounded-full transition-all duration-300"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
             >
-              <item.icon className="h-5 w-5" />
-              <span className="font-medium">{item.label}</span>
+              <item.icon className="h-4 w-4" />
+              {item.label}
             </Button>
           </Link>
         ))}
       </nav>
 
       {/* Desktop Auth Button */}
-      <div className="hidden lg:flex items-center gap-6">
+      <div className="hidden md:flex items-center gap-4">
         {renderAuthButton()}
       </div>
 

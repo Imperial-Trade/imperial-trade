@@ -2,51 +2,54 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, TrendingUp, Radio, MessageSquare, Briefcase, Brain } from "lucide-react";
+import { ArrowRight, BookOpen, TrendingUp, Radio, MessageSquare, Briefcase } from "lucide-react";
 import ContentSection from "./ContentSection";
-import { LaptopMockup, PhoneMockup } from "./DeviceMockups";
-import { TradingDashboard, MobileTradingApp, AnalyticsInterface } from "./TradingInterface";
 
 const features = [
   {
+    icon: BookOpen,
+    title: "AI-Powered Education",
+    description: "Learn from personalized trading courses powered by artificial intelligence.",
+    details: "Master trading with 50+ courses tailored to your skill level and trading style.",
+    link: "Education",
+    color: "hsl(var(--feature-purple))",
+    gradient: "from-purple-500 to-blue-500"
+  },
+  {
     icon: TrendingUp,
-    title: "Professional Trading Platform",
-    description: "Advanced trading tools with institutional-grade execution and real-time analytics.",
-    details: "Experience lightning-fast execution, advanced charting, and comprehensive market analysis in one powerful platform.",
+    title: "Smart Signals",
+    description: "Get real-time trading signals with 92% accuracy powered by machine learning.",
+    details: "Never miss a profitable trade with our AI-driven signal detection system.",
     link: "SignalStream",
     color: "hsl(var(--feature-blue))",
-    mockup: "laptop",
-    interface: <TradingDashboard />
+    gradient: "from-blue-500 to-cyan-500"
   },
   {
     icon: Radio,
-    title: "Mobile Trading Excellence",
-    description: "Trade anywhere with our award-winning mobile application designed for professionals.",
-    details: "Full-featured mobile trading with advanced order types, real-time alerts, and seamless synchronization.",
+    title: "Live Trading",
+    description: "Join live trading sessions with professional traders and learn in real-time.",
+    details: "Watch experts trade live and copy their strategies in real-time.",
     link: "Live",
     color: "hsl(var(--feature-green))",
-    mockup: "phone",
-    interface: <MobileTradingApp />
-  },
-  {
-    icon: Brain,
-    title: "AI-Powered Analytics",
-    description: "Harness the power of artificial intelligence for superior market insights and predictions.",
-    details: "Our advanced AI algorithms analyze market patterns, sentiment, and technical indicators to provide actionable insights.",
-    link: "Education",
-    color: "hsl(var(--feature-purple))",
-    mockup: "laptop",
-    interface: <AnalyticsInterface />
+    gradient: "from-green-500 to-emerald-500"
   },
   {
     icon: MessageSquare,
-    title: "Professional Community",
-    description: "Connect with elite traders and industry professionals in our exclusive network.",
-    details: "Access premium insights, share strategies, and learn from the most successful traders in the industry.",
+    title: "Community",
+    description: "Connect with 10,000+ traders in our exclusive community forum.",
+    details: "Share ideas, get feedback, and learn from successful traders worldwide.",
     link: "Forum",
     color: "hsl(var(--feature-orange))",
-    mockup: "phone",
-    interface: <MobileTradingApp />
+    gradient: "from-orange-500 to-red-500"
+  },
+  {
+    icon: Briefcase,
+    title: "Partnership",
+    description: "Earn up to $20 per lot with our exclusive IB partnership program.",
+    details: "Build a profitable business with industry-leading compensation and support.",
+    link: "IBPartnership",
+    color: "hsl(var(--feature-pink))",
+    gradient: "from-pink-500 to-purple-500"
   },
 ];
 
@@ -54,53 +57,49 @@ export default function FeatureCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
 
   return (
-    <section className="relative py-32 bg-gradient-to-b from-background via-muted/5 to-background">
+    <section className="relative py-24 bg-gradient-to-b from-muted/20 to-background">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <ContentSection>
-          <div className="text-center mb-20">
-            <h2 className="text-4xl lg:text-6xl font-bold mb-6 tracking-tight">
-              Professional Trading
-              <span className="block bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-                Experience
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              Everything You Need
+              <span className="gradient-text block">
+                In One Platform
               </span>
             </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto font-light">
-              Cutting-edge technology meets professional trading in our comprehensive platform ecosystem.
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              A complete trading ecosystem designed to help you succeed in the markets.
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-5 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Feature Navigation */}
-            <div className="lg:col-span-2 space-y-3">
+            <div className="space-y-4">
               {features.map((feature, index) => (
                 <div
                   key={feature.title}
-                  className={`group p-5 rounded-xl cursor-pointer transition-all duration-500 ${
+                  className={`p-6 rounded-2xl border-2 cursor-pointer transition-all duration-300 card-hover ${
                     activeIndex === index
-                      ? 'bg-card border-2 border-primary/20 shadow-lg'
-                      : 'bg-muted/20 border border-border hover:bg-card hover:border-primary/10'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-card hover:border-primary/50'
                   }`}
                   onClick={() => setActiveIndex(index)}
                 >
                   <div className="flex items-start gap-4">
                     <div 
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                        activeIndex === index ? 'scale-110' : 'group-hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: feature.color + '15' }}
+                      className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: feature.color + '20' }}
                     >
                       <feature.icon 
-                        className="w-5 h-5" 
+                        className="w-6 h-6" 
                         style={{ color: feature.color }}
                       />
                     </div>
                     <div className="flex-1">
-                      <h3 className={`font-semibold mb-1 transition-all duration-300 ${
-                        activeIndex === index ? 'text-foreground text-lg' : 'text-foreground/80'
-                      }`}>
+                      <h3 className="text-lg font-semibold mb-2">
                         {feature.title}
                       </h3>
-                      <p className="text-muted-foreground text-sm leading-relaxed">
+                      <p className="text-muted-foreground text-sm">
                         {feature.description}
                       </p>
                     </div>
@@ -109,42 +108,40 @@ export default function FeatureCarousel() {
               ))}
             </div>
 
-            {/* Device Mockup Display */}
-            <div className="lg:col-span-3 relative">
-              <div className="relative animate-device-float">
-                {features[activeIndex].mockup === "laptop" ? (
-                  <LaptopMockup className="transform transition-all duration-700">
-                    {features[activeIndex].interface}
-                  </LaptopMockup>
-                ) : (
-                  <PhoneMockup className="transform transition-all duration-700">
-                    {features[activeIndex].interface}
-                  </PhoneMockup>
-                )}
-              </div>
-              
-              {/* Floating elements */}
-              <div className="absolute -top-8 -right-8 w-24 h-24 bg-gradient-to-br from-primary/10 to-primary/5 rounded-full blur-xl animate-pulse" />
-              <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-gradient-to-br from-muted to-muted/50 rounded-full blur-2xl opacity-50 animate-float" />
-            </div>
-          </div>
-
-          {/* Feature Details */}
-          <div className="mt-16 text-center">
-            <div className="max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl p-8 border border-border/50">
-              <h3 className="text-2xl font-bold mb-4">{features[activeIndex].title}</h3>
-              <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
-                {features[activeIndex].details}
-              </p>
-              <Link to={createPageUrl(features[activeIndex].link)}>
-                <Button 
-                  size="lg"
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-3 rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg"
+            {/* Feature Display */}
+            <div className="relative">
+              <div className="bg-card rounded-3xl border-2 border-border p-8 lg:p-12">
+                <div 
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 animate-pulse-glow"
+                  style={{ backgroundColor: features[activeIndex].color + '20' }}
                 >
-                  Explore {features[activeIndex].title.split(' ')[0]}
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+                  {React.createElement(features[activeIndex].icon, {
+                    className: "w-10 h-10",
+                    style: { color: features[activeIndex].color }
+                  })}
+                </div>
+                
+                <h3 className="text-2xl lg:text-3xl font-bold mb-4">
+                  {features[activeIndex].title}
+                </h3>
+                
+                <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
+                  {features[activeIndex].details}
+                </p>
+                
+                <Link to={createPageUrl(features[activeIndex].link)}>
+                  <Button 
+                    size="lg"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105"
+                    style={{ 
+                      background: `linear-gradient(135deg, ${features[activeIndex].color}, ${features[activeIndex].color}dd)`
+                    }}
+                  >
+                    Explore {features[activeIndex].title}
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </ContentSection>

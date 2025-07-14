@@ -1,133 +1,132 @@
 
 import React, { useEffect, useRef } from "react";
-import { BarChart3, Brain, Shield, Zap, Target, Smartphone, TrendingUp, DollarSign, Lock, Activity, Globe, Users } from "lucide-react";
+import { BarChart3, Brain, Shield, Zap, Target, Smartphone, TrendingUp, DollarSign } from "lucide-react";
 import ContentSection from "./ContentSection";
 
 const tools = [
   {
     icon: BarChart3,
     title: "Advanced Analytics",
-    description: "Real-time market analysis with AI-powered insights and predictive modeling for institutional-grade decision making.",
+    description: "Real-time market analysis with AI-powered insights and predictive modeling",
     color: "hsl(var(--feature-blue))",
-    badge: "Popular"
+    gradient: "from-blue-500 to-purple-500"
   },
   {
     icon: Brain,
     title: "AI Trading Assistant", 
-    description: "Personalized trading recommendations powered by machine learning algorithms and market sentiment analysis.",
+    description: "Personalized trading recommendations and strategy optimization",
     color: "hsl(var(--feature-purple))",
-    badge: "New"
+    gradient: "from-purple-500 to-pink-500"
   },
   {
     icon: Shield,
     title: "Risk Management",
-    description: "Automated risk controls with dynamic position sizing, portfolio protection, and regulatory compliance.",
+    description: "Automated risk controls with position sizing and portfolio protection",
     color: "hsl(var(--feature-green))",
-    badge: "Essential"
+    gradient: "from-green-500 to-emerald-500"
   },
   {
     icon: Zap,
     title: "Lightning Execution",
-    description: "Ultra-low latency order execution with smart routing and institutional-grade infrastructure.",
+    description: "Ultra-low latency order execution with institutional-grade infrastructure",
     color: "hsl(var(--feature-orange))",
-    badge: "Pro"
+    gradient: "from-orange-500 to-red-500"
   },
   {
     icon: Target,
     title: "Precision Signals",
-    description: "Machine learning algorithms analyze market patterns for precise entry and exit timing.",
+    description: "Machine learning algorithms for precise entry and exit points",
     color: "hsl(var(--feature-pink))",
-    badge: "AI-Powered"
+    gradient: "from-pink-500 to-purple-500"
   },
   {
-    icon: Lock,
-    title: "Bank-Grade Security",
-    description: "Multi-layer security protocols with encryption, 2FA, and cold storage protection.",
+    icon: Smartphone,
+    title: "Mobile Trading",
+    description: "Full-featured mobile app for professional trading on the go",
     color: "hsl(var(--feature-blue))",
-    badge: "Secure"
+    gradient: "from-blue-500 to-cyan-500"
   },
   {
-    icon: Activity,
-    title: "Live Market Data",
-    description: "Real-time data feeds from major exchanges with microsecond precision and reliability.",
-    color: "hsl(var(--feature-green))",
-    badge: "Real-time"
-  },
-  {
-    icon: Globe,
-    title: "Global Markets",
-    description: "Access to forex, stocks, commodities, and crypto markets from a single unified platform.",
+    icon: TrendingUp,
+    title: "Market Scanner",
+    description: "Real-time opportunity detection across global markets",
     color: "hsl(var(--feature-purple))",
-    badge: "Worldwide"
-  },
-  {
-    icon: Users,
-    title: "Copy Trading",
-    description: "Follow and copy successful traders automatically with transparent performance tracking.",
-    color: "hsl(var(--feature-orange))",
-    badge: "Social"
+    gradient: "from-purple-500 to-indigo-500"
   },
   {
     icon: DollarSign,
-    title: "Performance Analytics",
-    description: "Comprehensive P&L analysis, tax optimization, and detailed performance reporting tools.",
-    color: "hsl(var(--feature-yellow))",
-    badge: "Insights"
+    title: "Profit Tracker",
+    description: "Comprehensive P&L analysis with tax optimization tools",
+    color: "hsl(var(--feature-green))",
+    gradient: "from-green-500 to-teal-500"
   }
 ];
 
 export default function ToolsShowcase() {
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!sectionRef.current) return;
+      
+      const rect = sectionRef.current.getBoundingClientRect();
+      const scrolled = window.pageYOffset;
+      const parallax = scrolled * 0.5;
+      
+      sectionRef.current.style.transform = `translate3d(0, ${parallax}px, 0)`;
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <section className="relative py-32 bg-gradient-to-b from-background via-muted/10 to-background">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+    <section ref={sectionRef} className="relative py-32 bg-gradient-to-b from-background via-muted/30 to-background overflow-hidden">
+      {/* Parallax Background Elements */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-20 left-20 w-96 h-96 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-gradient-to-r from-pink-400 to-purple-600 rounded-full blur-3xl animate-float" style={{ animationDelay: '4s' }} />
+        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-gradient-to-r from-blue-400 to-green-400 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
         <ContentSection>
           <div className="text-center mb-20">
-            <h2 className="text-4xl lg:text-6xl font-bold mb-6 tracking-tight">
-              Professional Grade
-              <span className="block bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-                Trading Tools
+            <h2 className="text-4xl lg:text-6xl font-bold mb-6">
+              Professional Trading
+              <span className="gradient-text block">
+                Arsenal
               </span>
             </h2>
-            <p className="text-xl text-muted-foreground max-w-4xl mx-auto font-light leading-relaxed">
-              Built with institutional-grade technology and designed for professional traders who demand excellence in every trade.
+            <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Everything you need to dominate the markets. Built by traders, for traders.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {tools.map((tool, index) => (
               <div
                 key={tool.title}
-                className="group relative bg-card rounded-2xl p-6 border border-border hover:border-primary/20 transition-all duration-500 hover:shadow-lg animate-fade-in-up"
-                style={{ animationDelay: `${index * 100}ms` }}
+                className="group relative bg-card/50 backdrop-blur-xl rounded-3xl p-8 border border-border/50 card-hover animate-fade-in-up overflow-hidden"
+                style={{ animationDelay: `${index * 150}ms` }}
               >
-                {/* Badge */}
-                <div className="absolute -top-2 -right-2 z-10">
-                  <span 
-                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white shadow-sm"
-                    style={{ backgroundColor: tool.color }}
-                  >
-                    {tool.badge}
-                  </span>
-                </div>
-
-                {/* Hover effect background */}
+                {/* Gradient Background */}
                 <div 
-                  className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-5 transition-opacity duration-500"
-                  style={{ backgroundColor: tool.color }}
+                  className={`absolute inset-0 bg-gradient-to-br ${tool.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-3xl`}
                 />
                 
                 <div className="relative z-10">
                   <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-all duration-300"
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-all duration-300 animate-pulse-glow"
                     style={{ backgroundColor: tool.color + '15' }}
                   >
                     <tool.icon 
-                      className="w-6 h-6" 
+                      className="w-8 h-8" 
                       style={{ color: tool.color }}
                     />
                   </div>
                   
-                  <h3 className="font-bold mb-3 text-foreground group-hover:text-foreground transition-colors duration-300">
+                  <h3 className="text-xl font-bold mb-4 group-hover:gradient-text transition-all duration-300">
                     {tool.title}
                   </h3>
                   
@@ -137,14 +136,6 @@ export default function ToolsShowcase() {
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Bottom CTA */}
-          <div className="text-center mt-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border text-sm font-medium mb-4">
-              <div className="w-2 h-2 bg-feature-green rounded-full animate-pulse" />
-              All tools included in every plan
-            </div>
           </div>
         </ContentSection>
       </div>

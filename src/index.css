@@ -6,35 +6,35 @@
 
 @layer base {
   :root {
-    /* Monochrome professional backgrounds */
-    --background: 0 0% 99%;
-    --foreground: 0 0% 6%;
+    /* Apple-inspired clean backgrounds */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 8%;
+    --card-foreground: 0 0% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 6%;
+    --popover-foreground: 0 0% 9%;
 
-    /* Professional accent colors */
-    --primary: 0 0% 15%;
+    /* Stripe-inspired primary colors */
+    --primary: 242 47% 58%;
     --primary-foreground: 0 0% 98%;
 
     --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 15%;
+    --secondary-foreground: 0 0% 9%;
 
-    --muted: 0 0% 97%;
-    --muted-foreground: 0 0% 40%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 0 0% 15%;
+    --accent: 242 47% 58%;
     --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 92%;
-    --input: 0 0% 97%;
-    --ring: 0 0% 15%;
+    --border: 0 0% 90%;
+    --input: 0 0% 96%;
+    --ring: 242 47% 58%;
 
     --radius: 1rem;
 
@@ -48,50 +48,49 @@
     --sidebar-border: 0 0% 90%;
     --sidebar-ring: 242 47% 58%;
 
-    /* Professional monochrome gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(0, 0%, 8%) 0%, hsl(0, 0%, 20%) 100%);
+    /* Gradient colors for Apple/Stripe aesthetics */
+    --gradient-primary: linear-gradient(135deg, hsl(242, 47%, 58%) 0%, hsl(250, 84%, 54%) 100%);
     --gradient-secondary: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 98%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(0, 0%, 15%) 0%, hsl(0, 0%, 25%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(0, 0%, 99%) 0%, hsl(0, 0%, 96%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(242, 47%, 58%) 0%, hsl(264, 83%, 58%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(0, 0%, 98%) 0%, hsl(242, 47%, 98%) 100%);
     
-    /* Bright accent colors for contrast */
-    --feature-purple: 262 83% 58%;
+    /* Feature colors */
+    --feature-purple: 250 84% 54%;
     --feature-blue: 210 100% 56%;
-    --feature-green: 142 76% 40%;
+    --feature-green: 142 76% 36%;
     --feature-orange: 25 95% 53%;
     --feature-pink: 330 81% 60%;
-    --feature-yellow: 45 93% 58%;
   }
 
   .dark {
-    /* Dark professional theme */
+    /* Dark theme with Apple/Stripe inspiration */
     --background: 0 0% 3%;
-    --foreground: 0 0% 96%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 5%;
-    --card-foreground: 0 0% 96%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 4%;
-    --popover-foreground: 0 0% 96%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 0 0% 96%;
-    --primary-foreground: 0 0% 6%;
+    --primary: 242 47% 58%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 0 0% 8%;
-    --secondary-foreground: 0 0% 96%;
+    --secondary: 0 0% 9%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 8%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 0 0% 9%;
+    --muted-foreground: 0 0% 63%;
 
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 6%;
+    --accent: 242 47% 58%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 12%;
-    --input: 0 0% 8%;
-    --ring: 0 0% 96%;
+    --border: 0 0% 15%;
+    --input: 0 0% 9%;
+    --ring: 242 47% 58%;
 
     /* Sidebar colors for dark theme */
     --sidebar-background: 0 0% 2%;
@@ -103,11 +102,11 @@
     --sidebar-border: 0 0% 15%;
     --sidebar-ring: 242 47% 58%;
 
-    /* Professional dark gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(0, 0%, 96%) 0%, hsl(0, 0%, 80%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(0, 0%, 5%) 0%, hsl(0, 0%, 8%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(0, 0%, 96%) 0%, hsl(0, 0%, 85%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(0, 0%, 3%) 0%, hsl(0, 0%, 6%) 100%);
+    /* Gradient colors for dark theme */
+    --gradient-primary: linear-gradient(135deg, hsl(242, 47%, 25%) 0%, hsl(250, 84%, 30%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(0, 0%, 6%) 0%, hsl(0, 0%, 9%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(242, 47%, 25%) 0%, hsl(264, 83%, 30%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(0, 0%, 3%) 0%, hsl(242, 47%, 8%) 100%);
     
     /* Feature colors for dark theme */
     --feature-purple: 250 84% 54%;
@@ -215,37 +214,6 @@
   }
 }
 
-@keyframes morphContainer {
-  0%, 100% {
-    border-radius: 1rem;
-    transform: scale(1);
-  }
-  50% {
-    border-radius: 2rem;
-    transform: scale(1.02);
-  }
-}
-
-@keyframes slideInScale {
-  0% {
-    opacity: 0;
-    transform: translateY(30px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes hoverFloat {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
 .animate-fade-in-up {
   animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -256,28 +224,6 @@
 
 .animate-pulse-glow {
   animation: pulseGlow 3s ease-in-out infinite;
-}
-
-.animate-morph-container {
-  animation: morphContainer 4s ease-in-out infinite;
-}
-
-.animate-slide-in-scale {
-  animation: slideInScale 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.animate-hover-float {
-  animation: hoverFloat 2s ease-in-out infinite;
-}
-
-/* Container hover effects */
-.container-hover {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.container-hover:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
 @keyframes parallaxFloat {
@@ -292,34 +238,8 @@
   }
 }
 
-@keyframes deviceFloat {
-  0%, 100% {
-    transform: translateY(0px) scale(1);
-  }
-  50% {
-    transform: translateY(-15px) scale(1.02);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -468px 0;
-  }
-  100% {
-    background-position: 468px 0;
-  }
-}
-
 .animate-parallax-float {
   animation: parallaxFloat 20s ease-in-out infinite;
-}
-
-.animate-device-float {
-  animation: deviceFloat 4s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  animation: shimmer 2s linear infinite;
 }
 
 /* Scroll reveal animation */

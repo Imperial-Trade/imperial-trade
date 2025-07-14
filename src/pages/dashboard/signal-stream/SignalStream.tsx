@@ -44,16 +44,19 @@ export default function SignalStream() {
     lastUpdated
   } = useOptimizedTrading('', true); // Empty string = show all signals, true = enable real-time
 
-  // Filter signals by educator/admin status and user filters
+  // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
   const alerts = useMemo(() => {
-    let filteredAlerts = allAlerts.filter(alert => {
-      const creator = alert.creator;
-      return creator && (
-        creator.user_type === 'educator' || 
-        creator.access_level === 'admin' || 
-        creator.role === 'admin'
-      );
-    });
+    console.log('SignalStream - Processing alerts:', allAlerts.length);
+    console.log('SignalStream - All alerts with creators:', allAlerts.map(a => ({
+      id: a.id,
+      asset: a.assetName,
+      creator: a.creator?.display_name,
+      role: a.creator?.role,
+      userType: a.creator?.user_type,
+      accessLevel: a.creator?.access_level
+    })));
+
+    let filteredAlerts = allAlerts;
 
     // Apply user filters
     if (filters.search) {
@@ -175,9 +178,21 @@ export default function SignalStream() {
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
     if (updateInProgress.has(alert.id)) return;
     
-    // Only allow users to modify their own signals
-    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
-      console.warn('User not authorized to update this signal');
+    // Check if user can edit this signal (creator or admin only)
+    const userProfile = user;
+    const isCreator = userProfile?.id === alert.creator?.id;
+    const isAdmin = userProfile?.user_metadata?.role === 'admin' || 
+                   userProfile?.user_metadata?.access_level === 'admin';
+    
+    if (!isCreator && !isAdmin) {
+      console.warn('SignalStream - User not authorized to update this signal:', {
+        userId: userProfile?.id,
+        creatorId: alert.creator?.id,
+        userRole: userProfile?.user_metadata?.role,
+        userAccessLevel: userProfile?.user_metadata?.access_level,
+        isCreator,
+        isAdmin
+      });
       return;
     }
     
@@ -220,7 +235,13 @@ export default function SignalStream() {
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     if (updateInProgress.has(alert.id)) return;
     
-    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
+    // Check if user can edit this signal (creator or admin only)
+    const userProfile = user;
+    const isCreator = userProfile?.id === alert.creator?.id;
+    const isAdmin = userProfile?.user_metadata?.role === 'admin' || 
+                   userProfile?.user_metadata?.access_level === 'admin';
+    
+    if (!isCreator && !isAdmin) {
       return;
     }
     
@@ -282,7 +303,13 @@ export default function SignalStream() {
   const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
     if (updateInProgress.has(alert.id)) return;
     
-    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
+    // Check if user can edit this signal (creator or admin only)
+    const userProfile = user;
+    const isCreator = userProfile?.id === alert.creator?.id;
+    const isAdmin = userProfile?.user_metadata?.role === 'admin' || 
+                   userProfile?.user_metadata?.access_level === 'admin';
+    
+    if (!isCreator && !isAdmin) {
       return;
     }
     
@@ -336,7 +363,13 @@ export default function SignalStream() {
   const handleOrderActivation = useCallback(async (alert: any) => {
     if (updateInProgress.has(alert.id)) return;
     
-    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
+    // Check if user can edit this signal (creator or admin only)
+    const userProfile = user;
+    const isCreator = userProfile?.id === alert.creator?.id;
+    const isAdmin = userProfile?.user_metadata?.role === 'admin' || 
+                   userProfile?.user_metadata?.access_level === 'admin';
+    
+    if (!isCreator && !isAdmin) {
       return;
     }
     
@@ -458,7 +491,7 @@ export default function SignalStream() {
                           onTakeProfitHit={handleTakeProfitHit} 
                           onStopLossHit={handleStopLossHit}
                           onOrderActivation={handleOrderActivation} 
-                          isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
+                          isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin' || user?.user_metadata?.user_type === 'admin'}
                           livePrice={livePrices[alert.finnhubSymbol]} 
                           connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'}
                           priceSource={priceSource}
@@ -503,7 +536,7 @@ export default function SignalStream() {
                           onTakeProfitHit={handleTakeProfitHit} 
                           onStopLossHit={handleStopLossHit}
                           onOrderActivation={handleOrderActivation}
-                          isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
+                          isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin' || user?.user_metadata?.user_type === 'admin'}
                           livePrice={undefined}
                           connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'}
                           priceSource={priceSource}

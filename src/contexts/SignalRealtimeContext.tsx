@@ -30,22 +30,36 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
-  // Helper function to check if user is educator or admin
+  // Enhanced function to check if user is educator or admin
   const isEducatorOrAdmin = (profile: any) => {
-    if (!profile) return false;
+    if (!profile) {
+      console.log('SignalRealtimeContext - No profile provided for role check');
+      return false;
+    }
     
-    const role = profile.role?.toLowerCase();
-    const userType = profile.user_type?.toLowerCase();
-    const accessLevel = profile.access_level?.toLowerCase();
+    const role = profile.role?.toLowerCase() || '';
+    const userType = profile.user_type?.toLowerCase() || '';
+    const accessLevel = profile.access_level?.toLowerCase() || '';
     
-    return (
-      role === 'admin' ||
-      role === 'educator' ||
-      userType === 'admin' ||
-      userType === 'educator' ||
-      accessLevel === 'admin' ||
-      accessLevel === 'moderator'
-    );
+    const isEducator = role === 'educator' || userType === 'educator';
+    const isAdmin = role === 'admin' || userType === 'admin' || accessLevel === 'admin';
+    const isModerator = accessLevel === 'moderator';
+    
+    const result = isEducator || isAdmin || isModerator;
+    
+    console.log('SignalRealtimeContext - Role check:', {
+      profileId: profile.id,
+      displayName: profile.display_name,
+      role,
+      userType,
+      accessLevel,
+      isEducator,
+      isAdmin,
+      isModerator,
+      finalResult: result
+    });
+    
+    return result;
   };
 
   const refreshSignals = useCallback(async () => {
@@ -197,7 +211,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
             id: profile.id,
             display_name: profile.display_name || 'Anonymous User',
             role: profile.role || 'user',
-            avatar_url: profile.avatar_url
+            avatar_url: profile.avatar_url,
+            user_type: profile.user_type,
+            access_level: profile.access_level
           } : undefined
         };
 

@@ -13,6 +13,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
+import EditSignalForm from '@/components/signals/EditSignalForm';
+import SignalCRUDTest from '@/components/testing/SignalCRUDTest';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Plus, 
@@ -96,8 +98,25 @@ export default function EducatorSignalManagement() {
     }
 
     try {
-      console.log('Creating signal with data:', data);
-      const result = await createAlert(data);
+      console.log('Creating signal with form data:', data);
+      
+      // Transform form data to DTO format (camelCase)
+      const createDto = {
+        assetName: data.asset_name,
+        finnhubSymbol: data.finnhub_symbol,
+        tradeType: data.trade_type,
+        entryPrice: data.entry_price,
+        stopLoss: data.stop_loss,
+        tp1: data.tp1,
+        tp2: data.tp2,
+        tp3: data.tp3,
+        tp4: data.tp4,
+        tp5: data.tp5,
+        notes: data.notes || ''
+      };
+      
+      console.log('Creating signal with DTO:', createDto);
+      const result = await createAlert(createDto);
       console.log('Signal creation result:', result);
       
       if (result) {
@@ -123,13 +142,21 @@ export default function EducatorSignalManagement() {
     if (!editingAlert) return;
     
     try {
-      await updateAlert(editingAlert.id, data);
-      setEditingAlert(null);
-      toast({
-        title: "Signal Updated",
-        description: "Your trading signal has been updated successfully.",
-      });
+      console.log('Updating signal with data:', data);
+      const result = await updateAlert(editingAlert.id, data);
+      console.log('Signal update result:', result);
+      
+      if (result) {
+        setEditingAlert(null);
+        toast({
+          title: "Signal Updated",
+          description: "Your trading signal has been updated successfully.",
+        });
+      } else {
+        throw new Error('Failed to update signal');
+      }
     } catch (error) {
+      console.error('Error updating signal:', error);
       toast({
         title: "Error",
         description: "Failed to update signal. Please try again.",
@@ -142,13 +169,21 @@ export default function EducatorSignalManagement() {
     if (!deletingAlert) return;
     
     try {
-      await deleteAlert(deletingAlert.id);
-      setDeletingAlert(null);
-      toast({
-        title: "Signal Deleted",
-        description: "Your trading signal has been deleted successfully.",
-      });
+      console.log('Deleting signal:', deletingAlert.id);
+      const result = await deleteAlert(deletingAlert.id);
+      console.log('Signal deletion result:', result);
+      
+      if (result) {
+        setDeletingAlert(null);
+        toast({
+          title: "Signal Deleted",
+          description: "Your trading signal has been deleted successfully.",
+        });
+      } else {
+        throw new Error('Failed to delete signal');
+      }
     } catch (error) {
+      console.error('Error deleting signal:', error);
       toast({
         title: "Error",
         description: "Failed to delete signal. Please try again.",
@@ -350,6 +385,7 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
           <TabsTrigger value="all">All Signals ({filteredAlerts.length})</TabsTrigger>
           <TabsTrigger value="active">Active ({filteredAlerts.filter(a => a.status === 'active').length})</TabsTrigger>
           <TabsTrigger value="closed">Closed ({filteredAlerts.filter(a => a.status === 'closed').length})</TabsTrigger>
+          <TabsTrigger value="test">CRUD Tests</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
@@ -725,6 +761,10 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
             </Card>
           )}
         </TabsContent>
+
+        <TabsContent value="test" className="space-y-4">
+          <SignalCRUDTest />
+        </TabsContent>
       </Tabs>
 
       {/* Create Signal Modal */}
@@ -747,22 +787,10 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
             <DialogTitle className="text-primary">Edit Trading Signal</DialogTitle>
           </DialogHeader>
           {editingAlert && (
-            <OptimizedNewAlertForm 
+            <EditSignalForm 
+              alert={editingAlert}
               onSubmit={handleEditSignal}
               onCancel={() => setEditingAlert(null)}
-              initialData={{
-                asset_name: editingAlert.assetName,
-                finnhub_symbol: editingAlert.finnhubSymbol,
-                trade_type: editingAlert.tradeType,
-                entry_price: editingAlert.entryPrice,
-                stop_loss: editingAlert.stopLoss,
-                tp1: editingAlert.tp1,
-                tp2: editingAlert.tp2,
-                tp3: editingAlert.tp3,
-                tp4: editingAlert.tp4,
-                tp5: editingAlert.tp5,
-                notes: editingAlert.notes
-              }}
             />
           )}
         </DialogContent>

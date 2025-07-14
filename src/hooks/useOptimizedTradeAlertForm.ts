@@ -50,6 +50,20 @@ export const useOptimizedTradeAlertForm = ({
     
     form.handleSubmit(async (data) => {
       console.log('Form submitting with data:', data);
+      console.log('Form validation status:', form.formState.isValid);
+      console.log('Form errors:', form.formState.errors);
+      
+      // Add debugging for each field
+      console.log('Field values:', {
+        asset_name: data.asset_name,
+        finnhub_symbol: data.finnhub_symbol,
+        trade_type: data.trade_type,
+        entry_price: data.entry_price,
+        stop_loss: data.stop_loss,
+        tp1: data.tp1,
+        notes: data.notes,
+        status: data.status
+      });
       
       try {
         setIsSubmitting(true);

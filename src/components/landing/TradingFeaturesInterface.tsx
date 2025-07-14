@@ -40,6 +40,19 @@ import {
   Percent,
   Headphones,
   Phone,
+  Settings,
+  Database,
+  Monitor,
+  Smartphone,
+  TrendingUpDown,
+  FileText,
+  Lightbulb,
+  Clock,
+  Map,
+  Share2,
+  Lock,
+  Wifi,
+  Network
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,196 +70,238 @@ const TradingFeaturesInterface: React.FC = () => {
     "IB Partnership"
   ];
 
+  const getFeatureAccentColor = (index: number) => {
+    const colors = [
+      "feature-accent-blue",
+      "feature-accent-green", 
+      "feature-accent-orange",
+      "feature-accent-purple",
+      "feature-accent-pink",
+      "feature-accent-red"
+    ];
+    return colors[index % colors.length];
+  };
+
   const featuresData = {
     "Advanced Tools": {
       icon: Calculator,
-      gradient: "from-blue-500 to-cyan-500",
       tagline: "Professional Trading Analytics",
-      description: "Comprehensive suite of advanced trading tools designed for professional traders and institutions.",
+      description: "Institutional-grade tools designed for serious traders who demand precision, speed, and advanced functionality.",
       hero: {
         title: "Advanced Trading Tools",
-        subtitle: "Professional-grade analytics and risk management tools",
-        image: "/api/placeholder/600/400"
+        subtitle: "Professional-grade analytics and risk management",
+        stats: [
+          { value: "500k+", label: "Active Traders" },
+          { value: "99.9%", label: "Uptime" },
+          { value: "50ms", label: "Avg Response" }
+        ]
       },
       features: [
         {
           icon: Calculator,
           title: "Risk Calculator",
-          description: "Advanced position sizing and risk management calculator with real-time portfolio analysis.",
-          features: ["Position Sizing", "Risk/Reward Ratios", "Portfolio Heat Maps", "Correlation Analysis"],
-          preview: "Calculate optimal position sizes based on your risk tolerance and account balance."
+          description: "Advanced position sizing calculator with real-time portfolio heat mapping and correlation analysis.",
+          features: ["Position Sizing", "Risk/Reward Analysis", "Portfolio Heat Maps", "Correlation Matrix"],
+          usage: "Calculate optimal position sizes based on your risk tolerance and account balance with real-time updates.",
+          benefits: ["Reduce losses by 40%", "Optimize position sizing", "Real-time risk monitoring"]
         },
         {
-          icon: BookOpen,
+          icon: FileText,
           title: "Trading Journal",
-          description: "Comprehensive trading journal with AI-powered insights and performance analytics.",
-          features: ["Trade Logging", "Performance Metrics", "AI Analysis", "Tax Reporting"],
-          preview: "Track every trade with detailed analytics and AI-powered performance insights."
+          description: "AI-powered trading journal with performance analytics and automated tax reporting.",
+          features: ["AI Analysis", "Performance Metrics", "Tax Reporting", "Trade Screenshots"],
+          usage: "Automatically track every trade with detailed analytics and receive AI-powered insights on your performance.",
+          benefits: ["Improve win rate by 25%", "Automated reporting", "Performance insights"]
         },
         {
           icon: Search,
           title: "Market Scanner",
-          description: "Real-time market scanning with custom filters and alerts for trading opportunities.",
+          description: "Real-time market scanning with custom filters for identifying trading opportunities.",
           features: ["Custom Filters", "Real-time Scanning", "Opportunity Alerts", "Backtesting"],
-          preview: "Scan thousands of instruments in real-time with customizable criteria."
+          usage: "Scan thousands of instruments in real-time with customizable criteria to find the best trading opportunities.",
+          benefits: ["Find opportunities faster", "Custom alert system", "Backtesting capabilities"]
         },
         {
           icon: BarChart3,
           title: "Portfolio Analytics",
-          description: "Institutional-grade portfolio analysis with risk metrics and performance attribution.",
+          description: "Institutional-grade portfolio analysis with advanced risk metrics and performance attribution.",
           features: ["Risk Metrics", "Performance Attribution", "Stress Testing", "Benchmark Comparison"],
-          preview: "Analyze your portfolio with institutional-grade metrics and risk analysis."
+          usage: "Analyze your portfolio with institutional-grade metrics including VaR, Sharpe ratio, and drawdown analysis.",
+          benefits: ["Professional analytics", "Risk optimization", "Benchmark tracking"]
         },
         {
           icon: Presentation,
           title: "Technical Analysis Suite",
-          description: "Advanced charting tools with 100+ indicators and custom drawing tools.",
-          features: ["100+ Indicators", "Custom Drawings", "Pattern Recognition", "Alert System"],
-          preview: "Professional charting with advanced technical analysis capabilities."
+          description: "Advanced charting platform with 150+ indicators and pattern recognition.",
+          features: ["150+ Indicators", "Pattern Recognition", "Custom Drawings", "Multi-timeframe Analysis"],
+          usage: "Professional charting with advanced technical analysis tools and automated pattern recognition.",
+          benefits: ["Professional charting", "Pattern alerts", "Custom indicators"]
         },
         {
           icon: Shield,
           title: "Risk Management",
-          description: "Comprehensive risk management tools with real-time monitoring and alerts.",
-          features: ["Real-time Monitoring", "Risk Alerts", "Stress Testing", "VaR Calculations"],
-          preview: "Monitor and manage risk across all positions with real-time alerts."
+          description: "Comprehensive risk management with real-time monitoring and automated alerts.",
+          features: ["Real-time Monitoring", "Risk Alerts", "Stop Loss Management", "Exposure Limits"],
+          usage: "Monitor and manage risk across all positions with real-time alerts and automated protection.",
+          benefits: ["Automated protection", "Real-time alerts", "Risk optimization"]
         }
       ],
       cta: {
-        title: "Start Trading Like a Pro",
-        description: "Access professional-grade trading tools used by institutional traders.",
-        buttonText: "Try Advanced Tools"
+        title: "Trade with Professional Tools",
+        description: "Access the same tools used by institutional traders and hedge funds.",
+        buttonText: "Start Free Trial"
       }
     },
     "Signals": {
       icon: Bell,
-      gradient: "from-purple-500 to-pink-500",
       tagline: "AI-Powered Trading Signals",
-      description: "Real-time trading signals powered by AI with proven track records and detailed analytics.",
+      description: "Machine learning algorithms analyze market data 24/7 to deliver high-probability trading opportunities directly to your device.",
       hero: {
         title: "Trading Signals",
         subtitle: "AI-powered signals with proven performance",
-        image: "/api/placeholder/600/400"
+        stats: [
+          { value: "73%", label: "Win Rate" },
+          { value: "2.4:1", label: "Risk/Reward" },
+          { value: "24/7", label: "Monitoring" }
+        ]
       },
       features: [
         {
           icon: Bell,
           title: "Live Trading Alerts",
-          description: "Real-time trading signals with entry, exit, and stop-loss levels.",
+          description: "Real-time trading signals with precise entry, exit, and stop-loss levels.",
           features: ["Real-time Alerts", "Entry/Exit Levels", "Risk Management", "Multi-Asset Coverage"],
-          preview: "Receive instant notifications for high-probability trading opportunities."
+          usage: "Receive instant notifications for high-probability trading opportunities across forex, stocks, and crypto.",
+          benefits: ["73% win rate", "Instant notifications", "Multi-asset coverage"]
         },
         {
           icon: Activity,
           title: "Signal Performance",
-          description: "Detailed performance tracking for all signals with historical data.",
-          features: ["Win Rate Tracking", "Performance Metrics", "Historical Data", "Backtesting Results"],
-          preview: "Track the performance of every signal with detailed analytics."
-        },
-        {
-          icon: Target,
-          title: "Custom Indicators",
-          description: "Proprietary indicators developed by our quantitative research team.",
-          features: ["Proprietary Algorithms", "Custom Indicators", "Market Edge", "Real-time Updates"],
-          preview: "Access exclusive indicators not available on other platforms."
-        },
-        {
-          icon: TrendingUp,
-          title: "Market Analysis",
-          description: "Daily market analysis and commentary from professional traders.",
-          features: ["Daily Analysis", "Market Commentary", "Economic Calendar", "News Integration"],
-          preview: "Get professional market analysis and commentary every trading day."
-        },
-        {
-          icon: LineChart,
-          title: "Signal Categories",
-          description: "Specialized signals for different trading styles and time frames.",
-          features: ["Scalping Signals", "Swing Trading", "Position Trading", "News Trading"],
-          preview: "Choose signals that match your trading style and time frame."
+          description: "Detailed performance tracking with historical data and analytics.",
+          features: ["Win Rate Tracking", "Performance Metrics", "Historical Data", "ROI Analysis"],
+          usage: "Track the performance of every signal with detailed analytics and historical backtesting data.",
+          benefits: ["Transparent results", "Performance tracking", "Historical analysis"]
         },
         {
           icon: Brain,
-          title: "AI-Powered Analysis",
-          description: "Machine learning algorithms analyze market data to generate signals.",
+          title: "AI Analysis",
+          description: "Machine learning algorithms process market data to identify trading opportunities.",
           features: ["Machine Learning", "Pattern Recognition", "Sentiment Analysis", "Big Data Processing"],
-          preview: "Leverage AI to identify trading opportunities before they become obvious."
+          usage: "Advanced AI analyzes millions of data points to identify high-probability trading setups.",
+          benefits: ["AI-powered insights", "Pattern recognition", "Market analysis"]
+        },
+        {
+          icon: Target,
+          title: "Precision Targeting",
+          description: "Highly accurate signals with specific entry and exit points.",
+          features: ["Precise Levels", "Risk Parameters", "Probability Scores", "Market Context"],
+          usage: "Get exact entry and exit levels with probability scores and risk parameters for each signal.",
+          benefits: ["Precise targeting", "Risk management", "High accuracy"]
+        },
+        {
+          icon: LineChart,
+          title: "Market Analysis",
+          description: "Daily market analysis and commentary from professional traders.",
+          features: ["Daily Analysis", "Market Commentary", "Economic Calendar", "News Integration"],
+          usage: "Receive professional market analysis and commentary every trading day with economic calendar integration.",
+          benefits: ["Expert analysis", "Market insights", "Economic awareness"]
+        },
+        {
+          icon: Clock,
+          title: "Multi-Timeframe",
+          description: "Signals for scalping, day trading, and swing trading strategies.",
+          features: ["Scalping Signals", "Day Trading", "Swing Trading", "Position Trading"],
+          usage: "Choose signals that match your trading style and time frame preferences.",
+          benefits: ["Style flexibility", "Time frame options", "Strategy alignment"]
         }
       ],
       cta: {
-        title: "Get High-Probability Signals",
-        description: "Join thousands of traders using our AI-powered signals to improve their trading.",
-        buttonText: "Start Receiving Signals"
+        title: "Start Receiving Profitable Signals",
+        description: "Join thousands of traders using our AI-powered signals to improve their results.",
+        buttonText: "Get Signals Now"
       }
     },
     "Education": {
       icon: BookMarked,
-      gradient: "from-green-500 to-emerald-500",
       tagline: "Comprehensive Trading Education",
-      description: "From beginner to advanced, master trading with our comprehensive education platform.",
+      description: "From complete beginner to advanced professional, our education platform provides structured learning paths with expert instruction.",
       hero: {
         title: "Trading Education",
         subtitle: "Master the markets with expert-led courses",
-        image: "/api/placeholder/600/400"
+        stats: [
+          { value: "100+", label: "Video Lessons" },
+          { value: "10k+", label: "Students" },
+          { value: "95%", label: "Success Rate" }
+        ]
       },
       features: [
         {
           icon: Play,
-          title: "Video Courses",
-          description: "Comprehensive video courses covering all aspects of trading and investing.",
-          features: ["Beginner to Advanced", "50+ Hours Content", "Expert Instructors", "Lifetime Access"],
-          preview: "Learn from professional traders with over 50 hours of premium content."
+          title: "Video Course Library",
+          description: "Comprehensive video courses covering all aspects of trading and market analysis.",
+          features: ["100+ Video Lessons", "Expert Instructors", "Lifetime Access", "Mobile App"],
+          usage: "Learn from professional traders with over 100 hours of premium video content accessible on any device.",
+          benefits: ["Expert instruction", "Lifetime access", "Mobile learning"]
         },
         {
           icon: Video,
           title: "Live Webinars",
-          description: "Weekly live webinars with Q&A sessions and real-time market analysis.",
-          features: ["Weekly Sessions", "Live Q&A", "Market Analysis", "Recording Available"],
-          preview: "Join live educational sessions with expert traders and analysts."
+          description: "Weekly live educational sessions with Q&A and real-time market analysis.",
+          features: ["Weekly Sessions", "Live Q&A", "Market Analysis", "Recording Library"],
+          usage: "Join weekly live educational sessions with expert traders and get your questions answered in real-time.",
+          benefits: ["Live interaction", "Expert access", "Q&A sessions"]
         },
         {
           icon: BookOpen,
           title: "Trading Guides",
-          description: "Comprehensive written guides and eBooks covering trading strategies.",
-          features: ["Strategy Guides", "Market Analysis", "Risk Management", "Psychology"],
-          preview: "Download comprehensive guides covering all aspects of successful trading."
+          description: "Comprehensive written guides and eBooks covering trading strategies and market psychology.",
+          features: ["Strategy Guides", "Psychology Training", "Risk Management", "Market Analysis"],
+          usage: "Download comprehensive guides covering all aspects of successful trading including psychology and risk management.",
+          benefits: ["Comprehensive content", "Strategy focus", "Psychology training"]
         },
         {
-          icon: Calendar,
+          icon: Map,
           title: "Learning Paths",
-          description: "Structured learning paths designed to take you from beginner to expert.",
-          features: ["Structured Curriculum", "Progress Tracking", "Certificates", "Personal Mentor"],
-          preview: "Follow structured learning paths with progress tracking and certification."
+          description: "Structured learning paths designed to take you from beginner to expert trader.",
+          features: ["Structured Curriculum", "Progress Tracking", "Skill Assessments", "Certificates"],
+          usage: "Follow structured learning paths with progress tracking and skill assessments to measure your development.",
+          benefits: ["Structured learning", "Progress tracking", "Skill validation"]
         },
         {
           icon: Users,
           title: "Study Groups",
-          description: "Join study groups with other traders to discuss strategies and share ideas.",
+          description: "Join study groups with other traders to discuss strategies and share experiences.",
           features: ["Peer Learning", "Group Discussions", "Strategy Sharing", "Mentorship"],
-          preview: "Learn with peers in dedicated study groups and discussion forums."
+          usage: "Connect with fellow students in study groups to discuss strategies and learn from each other's experiences.",
+          benefits: ["Peer learning", "Community support", "Strategy sharing"]
         },
         {
           icon: Award,
           title: "Certification Program",
-          description: "Earn professional trading certifications recognized by the industry.",
-          features: ["Professional Certificates", "Industry Recognition", "Career Advancement", "Skill Validation"],
-          preview: "Earn industry-recognized certifications to validate your trading skills."
+          description: "Earn professional trading certifications recognized by the financial industry.",
+          features: ["Industry Certification", "Skill Validation", "Career Advancement", "Professional Recognition"],
+          usage: "Complete certification programs to validate your trading skills and advance your career in finance.",
+          benefits: ["Industry recognition", "Career advancement", "Skill certification"]
         }
       ],
       cta: {
-        title: "Master the Markets",
-        description: "Start your journey from beginner to professional trader with our education platform.",
-        buttonText: "Start Learning Today"
+        title: "Master Professional Trading",
+        description: "Start your journey from beginner to professional trader with our comprehensive education platform.",
+        buttonText: "Start Learning"
       }
     },
     "Live Sessions": {
       icon: Video,
-      gradient: "from-orange-500 to-red-500",
       tagline: "Interactive Live Trading",
-      description: "Join live trading sessions with professional traders and learn in real-time.",
+      description: "Join professional traders in live sessions to see real trading in action and learn decision-making processes in real-time.",
       hero: {
         title: "Live Trading Sessions",
         subtitle: "Learn by watching professionals trade live",
-        image: "/api/placeholder/600/400"
+        stats: [
+          { value: "Daily", label: "Live Sessions" },
+          { value: "5+", label: "Expert Traders" },
+          { value: "1000+", label: "Recorded Sessions" }
+        ]
       },
       features: [
         {
@@ -254,167 +309,191 @@ const TradingFeaturesInterface: React.FC = () => {
           title: "Live Trading Rooms",
           description: "Watch professional traders execute trades in real-time with full transparency.",
           features: ["Live Trading", "Real-time Commentary", "Full Transparency", "Strategy Explanation"],
-          preview: "Join live trading rooms and watch professionals trade with real money."
+          usage: "Join live trading rooms and watch professionals trade with real money while explaining their decision-making process.",
+          benefits: ["Real-time learning", "Professional insight", "Live commentary"]
         },
         {
           icon: Users,
           title: "Interactive Sessions",
           description: "Participate in interactive sessions with Q&A and real-time discussions.",
           features: ["Live Q&A", "Real-time Chat", "Interactive Polls", "Community Engagement"],
-          preview: "Engage directly with professional traders during live sessions."
+          usage: "Engage directly with professional traders during live sessions through chat and Q&A opportunities.",
+          benefits: ["Direct interaction", "Real-time Q&A", "Community engagement"]
         },
         {
           icon: Calendar,
-          title: "Scheduled Events",
-          description: "Regular scheduled events covering market analysis and trading strategies.",
-          features: ["Market Opens", "Economic Events", "Earnings Calls", "Special Sessions"],
-          preview: "Join scheduled events around major market movements and opportunities."
+          title: "Market Event Coverage",
+          description: "Live coverage of major market events including earnings, economic releases, and news.",
+          features: ["Market Events", "Economic Releases", "Earnings Coverage", "News Analysis"],
+          usage: "Join special sessions covering major market events and learn how to trade around important announcements.",
+          benefits: ["Event coverage", "News analysis", "Market insights"]
         },
         {
           icon: Presentation,
-          title: "Market Analysis",
-          description: "Live market analysis sessions covering technical and fundamental analysis.",
-          features: ["Technical Analysis", "Fundamental Analysis", "Market Commentary", "Opportunity Identification"],
-          preview: "Learn market analysis techniques from experienced professionals."
+          title: "Educational Workshops",
+          description: "Deep-dive educational workshops focusing on specific strategies and techniques.",
+          features: ["Strategy Workshops", "Technical Analysis", "Risk Management", "Psychology Training"],
+          usage: "Participate in focused workshops that dive deep into specific trading strategies and techniques.",
+          benefits: ["Focused learning", "Strategy deep-dives", "Skill development"]
         },
         {
           icon: Compass,
-          title: "Strategy Sessions",
-          description: "Deep-dive sessions focusing on specific trading strategies and methodologies.",
-          features: ["Strategy Deep-dives", "Methodology Training", "Risk Management", "Psychology"],
-          preview: "Master specific trading strategies with detailed explanations and examples."
+          title: "Market Analysis Sessions",
+          description: "Daily market analysis sessions covering technical and fundamental analysis.",
+          features: ["Daily Analysis", "Technical Review", "Fundamental Analysis", "Market Outlook"],
+          usage: "Join daily market analysis sessions to understand current market conditions and opportunities.",
+          benefits: ["Daily insights", "Market understanding", "Analysis training"]
         },
         {
-          icon: Timer,
-          title: "Session Recordings",
-          description: "Access recordings of all live sessions for review and continued learning.",
-          features: ["Session Library", "Searchable Content", "Offline Access", "Mobile Friendly"],
-          preview: "Review any session you missed with our comprehensive recording library."
+          icon: Database,
+          title: "Session Library",
+          description: "Access to thousands of recorded sessions for review and continued learning.",
+          features: ["Session Archive", "Searchable Content", "Offline Access", "Mobile Streaming"],
+          usage: "Access our complete library of recorded sessions for review and continued learning at your own pace.",
+          benefits: ["Complete archive", "Flexible learning", "Mobile access"]
         }
       ],
       cta: {
         title: "Join Live Trading Sessions",
-        description: "Learn from the best by watching professional traders in action.",
+        description: "Learn from the best by watching professional traders in action every day.",
         buttonText: "Join Live Sessions"
       }
     },
     "Community Forum": {
       icon: Users,
-      gradient: "from-teal-500 to-cyan-500",
-      tagline: "Trading Community Hub",
-      description: "Connect with traders worldwide, share strategies, and learn from each other.",
+      tagline: "Global Trading Community",
+      description: "Connect with traders worldwide, share strategies, and learn from a vibrant community of professionals and enthusiasts.",
       hero: {
-        title: "Community Forum",
+        title: "Trading Community",
         subtitle: "Connect with traders worldwide",
-        image: "/api/placeholder/600/400"
+        stats: [
+          { value: "50k+", label: "Active Members" },
+          { value: "1k+", label: "Daily Posts" },
+          { value: "24/7", label: "Community Support" }
+        ]
       },
       features: [
         {
           icon: MessageCircle,
-          title: "Discussion Boards",
-          description: "Active discussion boards covering all aspects of trading and investing.",
-          features: ["Topic Categories", "Expert Moderation", "Real-time Discussions", "Knowledge Base"],
-          preview: "Engage in meaningful discussions with traders from around the world."
+          title: "Discussion Forums",
+          description: "Active discussion boards covering all aspects of trading and market analysis.",
+          features: ["Topic Categories", "Expert Moderation", "Real-time Discussions", "Search Function"],
+          usage: "Participate in discussions across multiple categories including strategies, market analysis, and trading psychology.",
+          benefits: ["Active discussions", "Expert moderation", "Knowledge sharing"]
         },
         {
-          icon: TrendingUp,
+          icon: Share2,
           title: "Strategy Sharing",
-          description: "Share and discover trading strategies with detailed performance data.",
-          features: ["Strategy Library", "Performance Tracking", "Peer Review", "Implementation Guides"],
-          preview: "Share your strategies and learn from successful traders in the community."
+          description: "Share and discover trading strategies with detailed performance tracking.",
+          features: ["Strategy Library", "Performance Data", "Peer Review", "Implementation Guides"],
+          usage: "Share your successful strategies and learn from others with verified performance data and peer reviews.",
+          benefits: ["Strategy discovery", "Performance tracking", "Peer validation"]
         },
         {
           icon: Star,
-          title: "Expert Contributors",
-          description: "Learn from verified expert traders and industry professionals.",
-          features: ["Verified Experts", "Professional Insights", "Q&A Sessions", "Direct Access"],
-          preview: "Get insights from verified expert traders and industry professionals."
+          title: "Expert Network",
+          description: "Connect with verified expert traders and industry professionals.",
+          features: ["Verified Experts", "Professional Insights", "Direct Access", "Mentorship Programs"],
+          usage: "Get insights from verified expert traders and participate in mentorship programs.",
+          benefits: ["Expert access", "Professional insights", "Mentorship opportunities"]
         },
         {
           icon: Heart,
           title: "Support Network",
-          description: "Find support and motivation from fellow traders on your journey.",
-          features: ["Peer Support", "Mentorship Programs", "Success Stories", "Challenge Groups"],
-          preview: "Build relationships with fellow traders and find support on your journey."
+          description: "Find support and motivation from fellow traders on your trading journey.",
+          features: ["Peer Support", "Success Stories", "Challenge Groups", "Accountability Partners"],
+          usage: "Connect with fellow traders for support, motivation, and accountability in your trading journey.",
+          benefits: ["Peer support", "Motivation", "Accountability"]
         },
         {
           icon: Layers,
           title: "Resource Library",
-          description: "Access a vast library of trading resources shared by the community.",
-          features: ["Shared Resources", "Tool Reviews", "Book Recommendations", "Video Content"],
-          preview: "Access thousands of trading resources shared by community members."
+          description: "Access thousands of trading resources shared by the community.",
+          features: ["Resource Sharing", "Tool Reviews", "Book Recommendations", "Educational Content"],
+          usage: "Access a vast library of trading resources including tools, books, and educational content shared by members.",
+          benefits: ["Resource access", "Community knowledge", "Learning materials"]
         },
         {
           icon: UserCheck,
           title: "Verified Traders",
-          description: "Connect with verified traders who share their real performance data.",
-          features: ["Performance Verification", "Real Results", "Transparency", "Accountability"],
-          preview: "Follow verified traders who share their real trading performance."
+          description: "Follow verified traders who share their real trading performance.",
+          features: ["Performance Verification", "Real Results", "Transparency", "Copy Trading"],
+          usage: "Follow verified traders who share their real performance data with complete transparency.",
+          benefits: ["Verified performance", "Transparency", "Learning opportunities"]
         }
       ],
       cta: {
         title: "Join Our Trading Community",
-        description: "Connect with thousands of traders and accelerate your learning.",
+        description: "Connect with 50,000+ traders and accelerate your learning through community engagement.",
         buttonText: "Join Community"
       }
     },
     "IB Partnership": {
       icon: Handshake,
-      gradient: "from-indigo-500 to-purple-500",
       tagline: "Institutional Partnerships",
-      description: "Partner with leading brokers and grow your business with our institutional program.",
+      description: "Partner with leading institutional brokers to grow your business through our comprehensive introducing broker program.",
       hero: {
-        title: "IB Partnership",
+        title: "IB Partnership Program",
         subtitle: "Grow your business with institutional partnerships",
-        image: "/api/placeholder/600/400"
+        stats: [
+          { value: "50+", label: "Partner Brokers" },
+          { value: "$2M+", label: "Monthly Commissions" },
+          { value: "24/7", label: "Support" }
+        ]
       },
       features: [
         {
           icon: Building,
-          title: "Broker Network",
-          description: "Access to a network of top-tier brokers with competitive conditions.",
-          features: ["Top-tier Brokers", "Competitive Spreads", "Direct Access", "Institutional Rates"],
-          preview: "Partner with leading brokers offering institutional-grade services."
+          title: "Tier-1 Broker Network",
+          description: "Access to top-tier institutional brokers with competitive spreads and execution.",
+          features: ["Prime Brokers", "Institutional Rates", "Direct Market Access", "Low Latency"],
+          usage: "Partner with tier-1 institutional brokers offering the best execution and competitive spreads for your clients.",
+          benefits: ["Top-tier execution", "Competitive rates", "Institutional access"]
         },
         {
           icon: DollarSign,
           title: "Revenue Sharing",
           description: "Attractive revenue sharing programs with transparent commission structures.",
-          features: ["Revenue Share", "Performance Bonuses", "Transparent Structure", "Monthly Payouts"],
-          preview: "Earn competitive commissions with transparent revenue sharing programs."
+          features: ["Competitive Rates", "Performance Bonuses", "Transparent Structure", "Monthly Payouts"],
+          usage: "Earn attractive commissions with our transparent revenue sharing model and performance-based bonuses.",
+          benefits: ["High commissions", "Performance bonuses", "Transparent payments"]
         },
         {
           icon: Globe,
           title: "Global Reach",
-          description: "Expand your reach with partners in major financial centers worldwide.",
-          features: ["Global Network", "Multi-jurisdiction", "Local Support", "Cultural Expertise"],
-          preview: "Access global markets through our worldwide network of partners."
+          description: "Expand internationally with partners in major financial centers worldwide.",
+          features: ["Global Network", "Multi-jurisdiction", "Local Support", "Regulatory Compliance"],
+          usage: "Access global markets through our worldwide network of regulated partners in major financial centers.",
+          benefits: ["Global expansion", "Local expertise", "Regulatory support"]
         },
         {
           icon: Zap,
           title: "Technology Integration",
-          description: "Seamless technology integration with APIs and white-label solutions.",
-          features: ["API Access", "White Label", "Custom Integration", "Technical Support"],
-          preview: "Integrate our technology with APIs and white-label solutions."
+          description: "Seamless integration with APIs, white-label solutions, and custom platforms.",
+          features: ["API Access", "White Label Solutions", "Custom Integration", "Technical Support"],
+          usage: "Integrate our technology seamlessly with comprehensive APIs and white-label solutions.",
+          benefits: ["Easy integration", "Custom solutions", "Technical support"]
         },
         {
           icon: Briefcase,
           title: "Business Development",
-          description: "Comprehensive business development support and marketing resources.",
-          features: ["Marketing Materials", "Business Support", "Training Programs", "Account Management"],
-          preview: "Get comprehensive support to grow your IB business successfully."
+          description: "Comprehensive business development support with marketing resources and training.",
+          features: ["Marketing Materials", "Business Training", "Lead Generation", "Brand Support"],
+          usage: "Receive comprehensive business development support including marketing materials and lead generation assistance.",
+          benefits: ["Marketing support", "Business training", "Lead generation"]
         },
         {
-          icon: Phone,
+          icon: Headphones,
           title: "Dedicated Support",
-          description: "Dedicated account management and 24/7 technical support.",
-          features: ["Account Manager", "24/7 Support", "Priority Service", "Direct Access"],
-          preview: "Receive dedicated support from experienced account managers."
+          description: "24/7 dedicated account management and technical support for all partners.",
+          features: ["Account Manager", "24/7 Support", "Priority Service", "Technical Assistance"],
+          usage: "Get dedicated support from experienced account managers with 24/7 technical assistance.",
+          benefits: ["Dedicated support", "24/7 availability", "Priority service"]
         }
       ],
       cta: {
         title: "Become an IB Partner",
-        description: "Join our institutional partnership program and grow your business.",
+        description: "Join our institutional partnership program and grow your business with industry-leading support.",
         buttonText: "Apply for Partnership"
       }
     }
@@ -423,27 +502,31 @@ const TradingFeaturesInterface: React.FC = () => {
   const currentData = featuresData[activeSection];
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background min-h-screen font-sans">
       {/* Navigation Header */}
-      <div className="sticky top-20 z-40 bg-background/95 backdrop-blur-xl border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-foreground">Professional Trading Features</h1>
-            <Badge variant="secondary" className="text-xs">6 Feature Categories</Badge>
+      <div className="sticky top-20 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Professional Trading Platform</h1>
+              <p className="text-muted-foreground">Enterprise-grade tools for professional traders</p>
+            </div>
+            <Badge variant="outline" className="text-xs font-medium">6 Feature Categories</Badge>
           </div>
           
-          {/* Apple/Stripe style tab navigation */}
-          <div className="flex items-center gap-2 bg-muted/30 rounded-2xl p-1">
-            {sections.map((section) => (
+          {/* Apple-style tab navigation */}
+          <div className="flex items-center gap-2 bg-muted/50 rounded-xl p-1.5 border border-border">
+            {sections.map((section, index) => (
               <button
                 key={section}
                 onClick={() => setActiveSection(section)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                className={`px-5 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
                   activeSection === section
-                    ? "bg-background text-foreground shadow-sm"
+                    ? "bg-background text-foreground shadow-sm border border-border"
                     : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                 }`}
               >
+                <div className={`w-2 h-2 rounded-full ${getFeatureAccentColor(index)}`} />
                 {section}
               </button>
             ))}
@@ -452,19 +535,19 @@ const TradingFeaturesInterface: React.FC = () => {
       </div>
 
       {/* Hero Section */}
-      <section className="py-20 px-6">
+      <section className="py-16 px-6 monochrome-gradient">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <Badge 
-                  variant="secondary" 
-                  className={`inline-flex items-center gap-2 bg-gradient-to-r ${currentData.gradient} text-white`}
+                  variant="outline" 
+                  className="inline-flex items-center gap-2 border-border text-muted-foreground"
                 >
                   <currentData.icon className="h-4 w-4" />
                   {currentData.tagline}
                 </Badge>
-                <h1 className="text-5xl font-bold text-foreground leading-tight">
+                <h1 className="text-5xl font-bold text-foreground leading-tight tracking-tight">
                   {currentData.hero.title}
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
@@ -472,21 +555,31 @@ const TradingFeaturesInterface: React.FC = () => {
                 </p>
               </div>
               
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-6">
+                {currentData.hero.stats.map((stat, index) => (
+                  <div key={index} className="text-center">
+                    <div className="text-2xl font-bold text-foreground">{stat.value}</div>
+                    <div className="text-sm text-muted-foreground">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+              
               <div className="flex items-center gap-4">
-                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button size="lg" className="apple-button">
                   Get Started
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="lg">
+                <Button variant="outline" size="lg" className="border-border">
                   Learn More
                 </Button>
               </div>
             </div>
             
             <div className="relative">
-              <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-3xl p-8 backdrop-blur-sm border border-border/50">
-                <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl flex items-center justify-center">
-                  <currentData.icon className="h-24 w-24 text-primary" />
+              <div className="apple-card rounded-2xl p-8">
+                <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border border-border">
+                  <currentData.icon className="h-16 w-16 text-muted-foreground" />
                 </div>
               </div>
             </div>
@@ -495,11 +588,11 @@ const TradingFeaturesInterface: React.FC = () => {
       </section>
 
       {/* Features Grid */}
-      <section className="py-20 px-6 bg-muted/20">
+      <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-foreground mb-4">
-              Everything You Need in {activeSection}
+              {activeSection} Features
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Discover the comprehensive features that make our platform the choice of professional traders worldwide.
@@ -508,40 +601,61 @@ const TradingFeaturesInterface: React.FC = () => {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {currentData.features.map((feature, index) => (
-              <Card key={index} className="group hover:shadow-2xl transition-all duration-500 border-border/50 bg-background/50 backdrop-blur-sm">
+              <Card key={index} className="apple-card group h-full">
                 <CardHeader className="space-y-4">
-                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-r ${currentData.gradient} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                    <feature.icon className="h-6 w-6 text-white" />
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center border border-border group-hover:${getFeatureAccentColor(index)} transition-colors duration-300`}>
+                      <feature.icon className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg font-semibold text-foreground">
+                        {feature.title}
+                      </CardTitle>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors duration-300">
-                      {feature.title}
-                    </CardTitle>
-                    <CardDescription className="text-muted-foreground">
-                      {feature.description}
-                    </CardDescription>
-                  </div>
+                  <CardDescription className="text-muted-foreground leading-relaxed">
+                    {feature.description}
+                  </CardDescription>
                 </CardHeader>
                 
                 <CardContent className="space-y-6">
+                  {/* Usage */}
                   <div className="space-y-3">
-                    {feature.features.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        <span className="text-sm text-muted-foreground">{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="p-4 bg-muted/30 rounded-xl border border-border/30">
-                    <p className="text-sm text-muted-foreground italic">
-                      "{feature.preview}"
+                    <h4 className="text-sm font-medium text-foreground">How it works:</h4>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {feature.usage}
                     </p>
                   </div>
+
+                  {/* Features list */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-foreground">Key Features:</h4>
+                    <div className="space-y-2">
+                      {feature.features.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <CheckCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="text-sm text-muted-foreground">{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Benefits */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-foreground">Benefits:</h4>
+                    <div className="space-y-2">
+                      {feature.benefits.map((benefit, idx) => (
+                        <div key={idx} className="flex items-center gap-3">
+                          <div className={`w-1.5 h-1.5 rounded-full ${getFeatureAccentColor(index)}`} />
+                          <span className="text-sm text-muted-foreground">{benefit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                   
-                  <Button className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                  <Button className="w-full apple-button mt-4">
                     Learn More
-                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </CardContent>
               </Card>
@@ -551,10 +665,10 @@ const TradingFeaturesInterface: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-6 monochrome-gradient">
         <div className="max-w-4xl mx-auto text-center">
-          <div className={`inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-r ${currentData.gradient} mb-8`}>
-            <currentData.icon className="h-10 w-10 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/50 border border-border mb-8">
+            <currentData.icon className="h-8 w-8 text-muted-foreground" />
           </div>
           
           <h2 className="text-4xl font-bold text-foreground mb-4">
@@ -565,26 +679,26 @@ const TradingFeaturesInterface: React.FC = () => {
           </p>
           
           <div className="flex items-center justify-center gap-4">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
+            <Button size="lg" className="apple-button px-8">
               {currentData.cta.buttonText}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button variant="outline" size="lg" className="px-8">
+            <Button variant="outline" size="lg" className="px-8 border-border">
               Contact Sales
             </Button>
           </div>
           
           <div className="mt-8 flex items-center justify-center gap-8 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4" />
               Free 14-day trial
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4" />
               No credit card required
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4" />
               24/7 support
             </div>
           </div>

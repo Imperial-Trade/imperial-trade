@@ -2,102 +2,118 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Professional Trading Design System - Dark Theme */
+/* Apple & Stripe Inspired Design System */
 
 @layer base {
   :root {
-    /* Dark background matching the first image */
-    --background: 217 19% 12%;
-    --foreground: 210 40% 98%;
-
-    --card: 217 19% 15%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 217 19% 15%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 45 93% 58%;
-    --primary-foreground: 217 19% 12%;
-
-    --secondary: 217 19% 18%;
-    --secondary-foreground: 210 30% 95%;
-
-    --muted: 217 19% 16%;
-    --muted-foreground: 210 30% 85%;
-
-    --accent: 45 93% 58%;
-    --accent-foreground: 217 19% 12%;
-
-    --destructive: 0 62% 56%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217 19% 20%;
-    --input: 217 19% 18%;
-    --ring: 45 93% 58%;
-
-    --radius: 0.75rem;
-
-    /* Sidebar colors matching the dark theme */
-    --sidebar-background: 217 19% 10%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 45 93% 58%;
-    --sidebar-primary-foreground: 217 19% 12%;
-    --sidebar-accent: 217 19% 15%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 19% 18%;
-    --sidebar-ring: 45 93% 58%;
-
-    /* Additional colors for better visibility */
-    --surface: 217 19% 14%;
-    --accent-gold: 45 93% 58%;
-    --accent-green: 142 76% 36%;
-    --default: 217 19% 18%;
-  }
-
-  .light {
-    /* Light theme colors */
+    /* Apple-inspired clean backgrounds */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 9%;
 
-    --primary: 45 93% 58%;
-    --primary-foreground: 210 40% 98%;
+    /* Stripe-inspired primary colors */
+    --primary: 242 47% 58%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 45 93% 58%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --accent: 242 47% 58%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 45 93% 58%;
+    --border: 0 0% 90%;
+    --input: 0 0% 96%;
+    --ring: 242 47% 58%;
 
-    /* Sidebar colors for light theme */
+    --radius: 1rem;
+
+    /* Sidebar colors */
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-primary: 45 93% 58%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222.2 84% 4.9%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 45 93% 58%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 242 47% 58%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 9%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 242 47% 58%;
 
-    /* Additional colors for light theme */
-    --surface: 210 40% 96%;
-    --accent-gold: 45 93% 58%;
-    --accent-green: 142 76% 36%;
+    /* Gradient colors for Apple/Stripe aesthetics */
+    --gradient-primary: linear-gradient(135deg, hsl(242, 47%, 58%) 0%, hsl(250, 84%, 54%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 98%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(242, 47%, 58%) 0%, hsl(264, 83%, 58%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(0, 0%, 98%) 0%, hsl(242, 47%, 98%) 100%);
+    
+    /* Feature colors */
+    --feature-purple: 250 84% 54%;
+    --feature-blue: 210 100% 56%;
+    --feature-green: 142 76% 36%;
+    --feature-orange: 25 95% 53%;
+    --feature-pink: 330 81% 60%;
+  }
+
+  .dark {
+    /* Dark theme with Apple/Stripe inspiration */
+    --background: 0 0% 3%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 242 47% 58%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 0 0% 9%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 9%;
+    --muted-foreground: 0 0% 63%;
+
+    --accent: 242 47% 58%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 9%;
+    --ring: 242 47% 58%;
+
+    /* Sidebar colors for dark theme */
+    --sidebar-background: 0 0% 2%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 242 47% 58%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 242 47% 58%;
+
+    /* Gradient colors for dark theme */
+    --gradient-primary: linear-gradient(135deg, hsl(242, 47%, 25%) 0%, hsl(250, 84%, 30%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(0, 0%, 6%) 0%, hsl(0, 0%, 9%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(242, 47%, 25%) 0%, hsl(264, 83%, 30%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(0, 0%, 3%) 0%, hsl(242, 47%, 8%) 100%);
+    
+    /* Feature colors for dark theme */
+    --feature-purple: 250 84% 54%;
+    --feature-blue: 210 100% 56%;
+    --feature-green: 142 76% 36%;
+    --feature-orange: 25 95% 53%;
+    --feature-pink: 330 81% 60%;
     --default: 214.3 31.8% 91.4%;
   }
 }
@@ -156,11 +172,11 @@
   }
 }
 
-/* Custom animations for professional feel */
+/* Apple & Stripe Inspired Animations */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(40px);
   }
   to {
     opacity: 1;
@@ -168,47 +184,51 @@
   }
 }
 
-@keyframes pulse-glow {
+@keyframes floatAnimation {
   0%, 100% {
-    box-shadow: 0 0 20px hsla(45, 93%, 58%, 0.3);
+    transform: translateY(0px);
   }
   50% {
-    box-shadow: 0 0 30px hsla(45, 93%, 58%, 0.5);
+    transform: translateY(-10px);
   }
 }
 
-@keyframes glow-gold {
+@keyframes pulseGlow {
   0%, 100% {
-    box-shadow: 0 0 20px hsla(45, 93%, 58%, 0.3);
+    box-shadow: 0 0 40px hsla(242, 47%, 58%, 0.2);
   }
   50% {
-    box-shadow: 0 0 30px hsla(45, 93%, 58%, 0.5);
+    box-shadow: 0 0 60px hsla(242, 47%, 58%, 0.4);
   }
 }
 
-@keyframes glow-green {
-  0%, 100% {
-    box-shadow: 0 0 20px hsla(142, 76%, 36%, 0.3);
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
   }
   50% {
-    box-shadow: 0 0 30px hsla(142, 76%, 36%, 0.5);
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.6s ease-out;
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.glow-effect {
-  animation: pulse-glow 2s ease-in-out infinite;
+.animate-float {
+  animation: floatAnimation 6s ease-in-out infinite;
 }
 
-.glow-effect-gold {
-  animation: glow-gold 2s ease-in-out infinite;
+.animate-pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
 }
 
-.glow-effect-green {
-  animation: glow-green 2s ease-in-out infinite;
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
 }
 
 /* Scroll reveal animation */
@@ -223,19 +243,38 @@
   transform: translateY(0);
 }
 
-/* Glass effect for cards */
+/* Apple/Stripe Inspired Effects */
 .glass-effect {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Gold text gradient */
-.gold-text-gradient {
-  background: linear-gradient(135deg, hsl(45, 93%, 58%) 0%, hsl(45, 93%, 65%) 100%);
+.gradient-text {
+  background: linear-gradient(135deg, hsl(242, 47%, 58%) 0%, hsl(250, 84%, 54%) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.gradient-border {
+  background: linear-gradient(135deg, hsl(242, 47%, 58%), hsl(250, 84%, 54%));
+  padding: 1px;
+  border-radius: 1rem;
+}
+
+.gradient-border-inner {
+  background: hsl(var(--background));
+  border-radius: calc(1rem - 1px);
+}
+
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
 }
 
 /* Professional scrollbar */

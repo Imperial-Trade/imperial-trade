@@ -1,9 +1,8 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, TrendingUp } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import ContentSection from "./ContentSection";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -11,79 +10,86 @@ export default function HeroSection() {
   const { user, loading } = useAuth();
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-x-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+    <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden">
+      {/* Apple-style gradient orbs */}
+      <div className="absolute top-20 left-10 w-96 h-96 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 blur-3xl animate-float" />
+      <div className="absolute bottom-20 right-10 w-80 h-80 bg-gradient-to-r from-blue-400 to-purple-600 rounded-full opacity-20 blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+      
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
         <ContentSection>
-          <div className="mb-6 sm:mb-8">
-            <div className="inline-flex items-center px-3 sm:px-4 py-2 rounded-full bg-accent-green/20 border border-accent-green/30 text-accent-green text-xs sm:text-sm font-medium mb-4 sm:mb-6">
-              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-              Elite Trading Community
+          <div className="space-y-8 max-w-4xl mx-auto">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+              Elite Trading Platform
             </div>
-          </div>
 
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-4 sm:mb-6 drop-shadow-lg px-2">
-            Master the Markets with{" "}
-            <span className="imperial-tech-font">Imperial Trading</span>
-          </h1>
+            {/* Main headline */}
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight">
+              Trading
+              <span className="gradient-text block">
+                Reimagined
+              </span>
+            </h1>
 
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/90 mb-8 sm:mb-10 drop-shadow-md px-2 max-w-4xl mx-auto">
-            Join an exclusive community of professional traders. Access premium tools, live sessions, and expert guidance to accelerate your trading journey.
-          </p>
+            {/* Subtitle */}
+            <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Join thousands of traders using our AI-powered platform to make smarter decisions, 
+              manage risk, and achieve consistent profits.
+            </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-8 sm:mb-12">
-            {!loading && (
-              user ? (
-                <Link to="/dashboard/home">
-                  <Button
-                    size="lg"
-                    className="bg-accent-green hover:bg-green-500 text-white font-semibold px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-105 drop-shadow-lg w-full sm:w-auto"
-                  >
-                    Access Dashboard
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </Link>
-              ) : (
-                <Link to={createPageUrl("account-request")}>
-                  <Button
-                    size="lg"
-                    className="bg-accent-green hover:bg-green-500 text-white font-semibold px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-105 drop-shadow-lg w-full sm:w-auto"
-                  >
-                    Get Started
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </Link>
-              )
-            )}
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              {!loading && (
+                user ? (
+                  <Link to="/dashboard/home">
+                    <Button
+                      size="lg"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-4 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 animate-pulse-glow"
+                    >
+                      Access Dashboard
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link to={createPageUrl("account-request")}>
+                    <Button
+                      size="lg"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-4 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 animate-pulse-glow"
+                    >
+                      Start Trading
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                )
+              )}
 
-            <Link to={createPageUrl("account-request-status")}>
               <Button
                 variant="outline"
                 size="lg"
-                className="border-white/30 text-white hover:bg-white/10 font-semibold px-6 sm:px-10 py-3 sm:py-4 text-sm sm:text-base rounded-lg sm:rounded-xl transition-all duration-300 backdrop-blur-sm w-full sm:w-auto"
+                className="border-2 border-border/50 text-foreground hover:bg-muted/50 font-semibold px-8 py-4 text-lg rounded-2xl transition-all duration-300 backdrop-blur-sm"
               >
-                Check Request Status
+                <Play className="mr-2 h-5 w-5" />
+                Watch Demo
               </Button>
-            </Link>
-          </div>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 text-center max-w-2xl mx-auto">
-            <div className="bg-white/10 backdrop-blur-md rounded-lg sm:rounded-xl p-4 sm:p-6 border border-white/20">
-              <div className="text-xl sm:text-2xl font-bold text-accent-green mb-1 sm:mb-2">
-                500+
+            {/* Social proof */}
+            <div className="flex flex-wrap justify-center items-center gap-8 pt-8 opacity-60">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">10K+</div>
+                <div className="text-sm text-muted-foreground">Active Traders</div>
               </div>
-              <div className="text-xs sm:text-sm text-white/80">Active Traders</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-lg sm:rounded-xl p-4 sm:p-6 border border-white/20">
-              <div className="text-xl sm:text-2xl font-bold text-accent-green mb-1 sm:mb-2">
-                85%
+              <div className="w-px h-8 bg-border" />
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">$2.5B</div>
+                <div className="text-sm text-muted-foreground">Volume Traded</div>
               </div>
-              <div className="text-xs sm:text-sm text-white/80">Success Rate</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-lg sm:rounded-xl p-4 sm:p-6 border border-white/20">
-              <div className="text-xl sm:text-2xl font-bold text-accent-green mb-1 sm:mb-2">
-                24/7
+              <div className="w-px h-8 bg-border" />
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">92%</div>
+                <div className="text-sm text-muted-foreground">Success Rate</div>
               </div>
-              <div className="text-xs sm:text-sm text-white/80">Market Analysis</div>
             </div>
           </div>
         </ContentSection>

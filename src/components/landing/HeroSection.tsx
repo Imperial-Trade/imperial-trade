@@ -10,20 +10,34 @@ export default function HeroSection() {
     user,
     loading
   } = useAuth();
-  return <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden sophisticated-bg-mesh">
-      {/* Elegant white-black-grey gradient background with green hints */}
-      <div className="absolute inset-0 elegant-bg-gradient opacity-90" />
-      
-      {/* Subtle green accent overlays */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-accentGreen-sage/5 via-transparent to-accentGreen-mint/3" />
-      <div className="absolute inset-0 bg-gradient-to-bl from-transparent via-accentGreen-forest/2 to-transparent" />
+  return <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden">
+      {/* Techy Trading Video Background */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover scale-105"
+          style={{ filter: 'brightness(0.3) contrast(1.2)' }}
+        >
+          <source src="https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4" type="video/mp4" />
+          <source src="https://videos.pexels.com/video-files/7578540/7578540-hd_1920_1080_25fps.mp4" type="video/mp4" />
+        </video>
+        {/* Video overlay for better text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/60" />
+        <div className="absolute inset-0 bg-primary/5" />
+      </div>
       
       {/* Elegant floating elements with imperial colors and green accents */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-imperial-gold rounded-full" />
-        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-accentGreen-sage rounded-full" />
-        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-imperial-bronze rounded-full" />
-        <div className="absolute top-1/2 right-1/3 w-1 h-1 bg-accentGreen-mint rounded-full" />
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-imperial-gold rounded-full animate-pulse" />
+        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-accentGreen-sage rounded-full animate-pulse delay-300" />
+        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-imperial-bronze rounded-full animate-pulse delay-700" />
+        <div className="absolute top-1/2 right-1/3 w-1 h-1 bg-accentGreen-mint rounded-full animate-pulse delay-1000" />
+        {/* Additional techy elements */}
+        <div className="absolute top-1/5 right-1/5 w-1 h-8 bg-primary/30 rounded-full animate-pulse delay-500" />
+        <div className="absolute bottom-1/4 right-1/4 w-6 h-1 bg-accentGreen-sage/40 rounded-full animate-pulse delay-150" />
       </div>
       
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">

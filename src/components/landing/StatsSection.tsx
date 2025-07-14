@@ -39,7 +39,7 @@ export default function StatsSection() {
   ];
 
   return (
-    <section className="relative py-24 bg-gradient-to-b from-background to-muted/20">
+    <section className="relative py-32 bg-white">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <ContentSection>
           <div className="text-center mb-16">

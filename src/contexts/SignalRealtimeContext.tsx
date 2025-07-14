@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
@@ -30,48 +31,11 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
-  // Enhanced function to check if user is educator or admin with better error handling
-  const isEducatorOrAdmin = (profile: any) => {
-    if (!profile) {
-      console.log('SignalRealtimeContext - No profile provided for role check');
-      return false;
-    }
-    
-    // Safely get role values with null checks and normalization
-    const role = (profile.role || '').toString().toLowerCase().trim();
-    const userType = (profile.user_type || '').toString().toLowerCase().trim();
-    const accessLevel = (profile.access_level || '').toString().toLowerCase().trim();
-    
-    // Check all possible combinations for educator/admin status
-    const isEducator = role === 'educator' || userType === 'educator';
-    const isAdmin = role === 'admin' || userType === 'admin';
-    const isModeratorLevel = accessLevel === 'admin' || accessLevel === 'moderator';
-    
-    const result = isEducator || isAdmin || isModeratorLevel;
-    
-    console.log('SignalRealtimeContext - Enhanced role check:', {
-      profileId: profile.id,
-      displayName: profile.display_name || 'Unknown',
-      rawRole: profile.role,
-      rawUserType: profile.user_type,
-      rawAccessLevel: profile.access_level,
-      normalizedRole: role,
-      normalizedUserType: userType,
-      normalizedAccessLevel: accessLevel,
-      isEducator,
-      isAdmin,
-      isModeratorLevel,
-      finalResult: result
-    });
-    
-    return result;
-  };
-
   const refreshSignals = useCallback(async () => {
     try {
-      console.log('SignalRealtimeContext - Starting global signal refresh...');
+      console.log('SignalRealtimeContext - Starting signal refresh with new RLS policies...');
       
-      // Fetch ALL alerts without user filtering - this is the key fix
+      // Fetch ALL alerts - RLS policies will handle filtering to only show educator/admin alerts
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
         .select('*')
@@ -82,7 +46,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         throw alertsError;
       }
 
-      console.log('SignalRealtimeContext - Fetched total alerts:', alertsData?.length || 0);
+      console.log('SignalRealtimeContext - Fetched alerts (filtered by RLS):', alertsData?.length || 0);
 
       if (!alertsData || alertsData.length === 0) {
         console.log('SignalRealtimeContext - No alerts found, setting empty array');
@@ -121,7 +85,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         });
       }
 
-      // Map ALL alerts with their profiles first
+      // Map ALL alerts with their profiles - RLS already filtered to educator/admin signals
       const allAlertsWithProfiles: TradeAlertWithProfile[] = alertsData.map(alert => {
         const profile = profilesMap.get(alert.user_id);
         
@@ -163,28 +127,8 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         return mappedAlert;
       });
 
-      console.log('SignalRealtimeContext - All alerts with profiles:', allAlertsWithProfiles.length);
-
-      // Now filter for educator/admin signals with detailed logging
-      const filteredSignals = allAlertsWithProfiles.filter(alert => {
-        const isEligible = isEducatorOrAdmin(alert.creator);
-        
-        console.log('SignalRealtimeContext - Filtering alert:', {
-          alertId: alert.id,
-          assetName: alert.assetName,
-          creatorId: alert.creator?.id,
-          creatorName: alert.creator?.display_name,
-          creatorRole: alert.creator?.role,
-          creatorUserType: alert.creator?.user_type,
-          creatorAccessLevel: alert.creator?.access_level,
-          isEligible
-        });
-        
-        return isEligible;
-      });
-
-      console.log('SignalRealtimeContext - Final filtered signals:', filteredSignals.length);
-      console.log('SignalRealtimeContext - Filtered signals details:', filteredSignals.map(s => ({
+      console.log('SignalRealtimeContext - Final signals from RLS-filtered data:', allAlertsWithProfiles.length);
+      console.log('SignalRealtimeContext - Signal details:', allAlertsWithProfiles.map(s => ({
         id: s.id,
         asset: s.assetName,
         creator: s.creator?.display_name,
@@ -193,11 +137,11 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         accessLevel: s.creator?.access_level
       })));
 
-      setSignals(filteredSignals);
+      setSignals(allAlertsWithProfiles);
       setLastUpdated(new Date());
       setError(null);
       
-      console.log('SignalRealtimeContext - Successfully set signals:', filteredSignals.length);
+      console.log('SignalRealtimeContext - Successfully set signals:', allAlertsWithProfiles.length);
       
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to refresh signals:', err);
@@ -226,12 +170,6 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         }
 
         console.log('SignalRealtimeContext - Profile for new signal:', profile);
-
-        // Only process if user is educator or admin
-        if (!isEducatorOrAdmin(profile)) {
-          console.log('SignalRealtimeContext - New signal creator is not educator/admin, skipping');
-          return;
-        }
 
         const newSignal: TradeAlertWithProfile = {
           id: newRecord.id,
@@ -277,29 +215,16 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       else if (eventType === 'UPDATE' && newRecord) {
         console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
         
-        // Check if the updated signal should remain visible
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', newRecord.user_id)
-          .single();
-
-        if (isEducatorOrAdmin(profile)) {
-          setSignals(prev => prev.map(signal => 
-            signal.id === newRecord.id ? {
-              ...signal,
-              status: newRecord.status,
-              tpHits: newRecord.tp_hits || [],
-              closeReason: newRecord.close_reason,
-              updatedAt: newRecord.updated_at
-            } : signal
-          ));
-          console.log('SignalRealtimeContext - Updated signal in state:', newRecord.id);
-        } else {
-          // Remove signal if user is no longer educator/admin
-          setSignals(prev => prev.filter(signal => signal.id !== newRecord.id));
-          console.log('SignalRealtimeContext - Removed signal (no longer educator/admin):', newRecord.id);
-        }
+        setSignals(prev => prev.map(signal => 
+          signal.id === newRecord.id ? {
+            ...signal,
+            status: newRecord.status,
+            tpHits: newRecord.tp_hits || [],
+            closeReason: newRecord.close_reason,
+            updatedAt: newRecord.updated_at
+          } : signal
+        ));
+        console.log('SignalRealtimeContext - Updated signal in state:', newRecord.id);
       }
       else if (eventType === 'DELETE' && oldRecord) {
         console.log('SignalRealtimeContext - Processing DELETE for alert:', oldRecord.id);
@@ -322,7 +247,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     console.log('SignalRealtimeContext - Subscribing to global signal real-time updates');
     setConnectionStatus('connecting');
 
-    // Subscribe to ALL trade_alerts changes globally (not user-specific)
+    // Subscribe to ALL trade_alerts changes globally - RLS will filter appropriately
     channelRef.current = supabase
       .channel('global-signals-realtime')
       .on(

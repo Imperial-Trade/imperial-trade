@@ -31,57 +31,31 @@ export const useSignalRealtime = (
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter signals based on showAllSignals flag
+  // Since RLS policies now handle filtering, we can return all signals from the context
+  // The database will only return educator/admin signals due to the RLS policy
   const filteredAlerts = useMemo(() => {
-    console.log('useSignalRealtime - Filtering signals:', {
+    console.log('useSignalRealtime - RLS-filtered signals from context:', {
       totalSignals: signals.length,
       showAllSignals,
-      userId: userId || 'empty',
-      userIdProvided: Boolean(userId && userId.trim() !== '')
+      userId: userId || 'empty'
     });
 
-    // If showAllSignals is true, return all signals (this is the primary use case for Signal Stream)
-    if (showAllSignals) {
-      console.log('useSignalRealtime - Returning all signals for global view:', signals.length);
-      return signals;
-    }
-    
-    // If no userId provided and showAllSignals is false, return empty array
-    if (!userId || userId.trim() === '') {
-      console.log('useSignalRealtime - No userId provided and showAllSignals is false, returning empty array');
-      return [];
-    }
-    
-    // Filter by specific user
-    const userSignals = signals.filter(signal => signal.creator?.id === userId);
-    console.log('useSignalRealtime - Filtered signals for user:', {
-      userId,
-      userSignals: userSignals.length,
-      totalSignals: signals.length
-    });
-    
-    return userSignals;
+    // RLS policies handle filtering automatically, so we can return all signals
+    // These are already filtered to only show educator/admin signals
+    console.log('useSignalRealtime - Returning RLS-filtered signals:', signals.length);
+    return signals;
   }, [signals, showAllSignals, userId]);
 
-  // Subscribe to realtime updates on mount - always subscribe for global signals
+  // Subscribe to realtime updates - always subscribe since RLS handles filtering
   useEffect(() => {
-    console.log('useSignalRealtime - Effect triggered:', {
-      showAllSignals,
-      userId: userId || 'empty',
-      shouldSubscribe: showAllSignals || (userId && userId.trim() !== '')
-    });
-
-    // Subscribe if we want all signals OR have a specific user ID
-    if (showAllSignals || (userId && userId.trim() !== '')) {
-      console.log('useSignalRealtime - Subscribing to real-time updates');
-      subscribe();
-      
-      return () => {
-        console.log('useSignalRealtime - Unsubscribing from real-time updates');
-        unsubscribe();
-      };
-    }
-  }, [showAllSignals, userId, subscribe, unsubscribe]);
+    console.log('useSignalRealtime - Subscribing to RLS-filtered real-time updates');
+    subscribe();
+    
+    return () => {
+      console.log('useSignalRealtime - Unsubscribing from real-time updates');
+      unsubscribe();
+    };
+  }, [subscribe, unsubscribe]);
 
   // Sync realtime error with local error state
   useEffect(() => {
@@ -119,7 +93,7 @@ export const useSignalRealtime = (
     try {
       setIsLoading(true);
       setError(null);
-      console.log('useSignalRealtime - Manually refreshing alerts');
+      console.log('useSignalRealtime - Manually refreshing RLS-filtered alerts');
       await refreshSignals();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh alerts';

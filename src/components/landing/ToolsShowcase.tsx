@@ -81,10 +81,10 @@ export default function ToolsShowcase() {
   }, []);
 
   return (
-    <section className="relative py-32 bg-background">
+    <section className="relative py-32 bg-white">
       <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-muted rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-muted rounded-full blur-3xl" />
+        <div className="absolute top-20 left-20 w-96 h-96 bg-gray-100 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-gray-100 rounded-full blur-3xl" />
       </div>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
@@ -92,7 +92,7 @@ export default function ToolsShowcase() {
           <div className="text-center mb-20">
             <h2 className="text-4xl lg:text-6xl font-bold mb-6">
               Professional Trading
-              <span className="gradient-text block">
+              <span className="white-gold-gradient block">
                 Arsenal
               </span>
             </h2>

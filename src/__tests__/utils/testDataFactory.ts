@@ -33,6 +33,7 @@ export class TestDataFactory {
   static createMockTradeAlert(overrides: Partial<TradeAlertResponseDto> = {}): TradeAlertResponseDto {
     return {
       id: '456e7890-f12b-34c5-d678-901234567890',
+      userId: 'user-123e4567-e89b-12d3-a456-426614174000',
       assetName: 'EUR/USD',
       finnhubSymbol: 'OANDA:EUR_USD',
       tradeType: 'buy',
@@ -125,6 +126,7 @@ export class TestDataFactory {
     return Array.from({ length: count }, (_, index) =>
       this.createMockTradeAlert({
         id: `alert-${index + 1}`,
+        userId: `user-${index + 1}`,
         assetName: assets[index % assets.length],
         tradeType: tradeTypes[index % tradeTypes.length],
         status: statuses[index % statuses.length],

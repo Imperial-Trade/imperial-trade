@@ -91,6 +91,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         
         const mappedAlert = {
           id: alert.id,
+          userId: alert.user_id,
           assetName: alert.asset_name,
           finnhubSymbol: alert.finnhub_symbol,
           tradeType: alert.trade_type,
@@ -173,6 +174,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 
         const newSignal: TradeAlertWithProfile = {
           id: newRecord.id,
+          userId: newRecord.user_id,
           assetName: newRecord.asset_name,
           finnhubSymbol: newRecord.finnhub_symbol,
           tradeType: newRecord.trade_type,

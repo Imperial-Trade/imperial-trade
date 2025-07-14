@@ -4,13 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Loader2, Calendar, Clock, User, Video, ExternalLink, Settings, Zap } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, Video, ExternalLink, Settings, Zap, MonitorPlay } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLiveSessionManager, LiveSession } from '@/hooks/useLiveSessionManager';
 import { CreateSessionDialog } from '@/components/live/CreateSessionDialog';
 import { EditSessionDialog } from '@/components/live/EditSessionDialog';
 import { SessionStatusControls } from '@/components/live/SessionStatusControls';
 import { VideoPlayer } from '@/components/live/VideoPlayer';
+import { ZoomSDKPlayer } from '@/components/live/ZoomSDKPlayer';
 
 export default function Live() {
   const { user, profile } = useAuth();
@@ -29,6 +30,7 @@ export default function Live() {
   const [editingSession, setEditingSession] = useState<LiveSession | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [watchingSession, setWatchingSession] = useState<LiveSession | null>(null);
+  const [sdkSession, setSdkSession] = useState<LiveSession | null>(null);
 
   const handleEditSession = (session: LiveSession) => {
     setEditingSession(session);
@@ -78,6 +80,14 @@ export default function Live() {
     window.open(session.zoom_meeting_url, '_blank');
   };
 
+  const joinSessionWithSDK = (session: LiveSession) => {
+    if (session.zoom_sdk_enabled && session.zoom_meeting_number) {
+      setSdkSession(session);
+    } else {
+      joinSession(session);
+    }
+  };
+
   const watchLiveSession = (session: LiveSession) => {
     if (session.stream_embed_url) {
       setWatchingSession(session);
@@ -85,6 +95,10 @@ export default function Live() {
       // Fallback to Zoom for regular users if no embed URL
       joinSession(session);
     }
+  };
+
+  const canUseSDK = (session: LiveSession) => {
+    return session.zoom_sdk_enabled && session.zoom_meeting_number && canManageSessions;
   };
 
   if (isLoading) {
@@ -158,17 +172,27 @@ export default function Live() {
                             {session.description}
                           </CardDescription>
                         </div>
-                        <div className="flex flex-col items-end gap-2">
-                          {getStatusBadge(session.status)}
-                          {session.auto_start_enabled && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Zap className="w-4 h-4 text-yellow-500" />
-                              </TooltipTrigger>
-                              <TooltipContent>Auto-start enabled</TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
+                         <div className="flex flex-col items-end gap-2">
+                           {getStatusBadge(session.status)}
+                           <div className="flex items-center gap-1">
+                             {session.auto_start_enabled && (
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <Zap className="w-4 h-4 text-yellow-500" />
+                                 </TooltipTrigger>
+                                 <TooltipContent>Auto-start enabled</TooltipContent>
+                               </Tooltip>
+                             )}
+                             {canUseSDK(session) && (
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <MonitorPlay className="w-4 h-4 text-green-500" />
+                                 </TooltipTrigger>
+                                 <TooltipContent>In-app viewing available</TooltipContent>
+                               </Tooltip>
+                             )}
+                           </div>
+                         </div>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -188,24 +212,46 @@ export default function Live() {
                           </div>
                         )}
                         
-                        <div className="pt-2">
-                          {canManageSessions ? (
-                            <Button 
-                              onClick={() => joinSession(session)} 
-                              className="w-full bg-red-500 hover:bg-red-600 text-white mb-3"
-                            >
-                              <ExternalLink className="w-4 h-4 mr-2" />
-                              Join Zoom Session
-                            </Button>
-                          ) : (
-                            <Button 
-                              onClick={() => watchLiveSession(session)} 
-                              className="w-full bg-red-500 hover:bg-red-600 text-white mb-3"
-                            >
-                              <Video className="w-4 h-4 mr-2" />
-                              {session.stream_embed_url ? 'Watch Live' : 'Join Session'}
-                            </Button>
-                          )}
+                         <div className="pt-2">
+                           {canManageSessions ? (
+                             <>
+                               {canUseSDK(session) ? (
+                                 <Button 
+                                   onClick={() => joinSessionWithSDK(session)} 
+                                   className="w-full bg-green-500 hover:bg-green-600 text-white mb-2"
+                                 >
+                                   <MonitorPlay className="w-4 h-4 mr-2" />
+                                   Join in App
+                                 </Button>
+                               ) : (
+                                 <Button 
+                                   onClick={() => joinSession(session)} 
+                                   className="w-full bg-red-500 hover:bg-red-600 text-white mb-2"
+                                 >
+                                   <ExternalLink className="w-4 h-4 mr-2" />
+                                   Join Zoom Session
+                                 </Button>
+                               )}
+                               {canUseSDK(session) && (
+                                 <Button 
+                                   onClick={() => joinSession(session)} 
+                                   variant="outline"
+                                   className="w-full mb-3"
+                                 >
+                                   <ExternalLink className="w-4 h-4 mr-2" />
+                                   Join Externally
+                                 </Button>
+                               )}
+                             </>
+                           ) : (
+                             <Button 
+                               onClick={() => watchLiveSession(session)} 
+                               className="w-full bg-red-500 hover:bg-red-600 text-white mb-3"
+                             >
+                               <Video className="w-4 h-4 mr-2" />
+                               {session.stream_embed_url ? 'Watch Live' : 'Join Session'}
+                             </Button>
+                           )}
                           
                           {/* Management Controls for Admins/Educators */}
                           {canManageSessions && (
@@ -417,6 +463,16 @@ export default function Live() {
               embedUrl={watchingSession.stream_embed_url}
               sessionTitle={watchingSession.session_title}
               onClose={() => setWatchingSession(null)}
+            />
+          )}
+
+          {/* Zoom SDK Player Modal */}
+          {sdkSession && (
+            <ZoomSDKPlayer
+              sessionId={sdkSession.id}
+              meetingNumber={sdkSession.zoom_meeting_number!}
+              sessionTitle={sdkSession.session_title}
+              onClose={() => setSdkSession(null)}
             />
           )}
         </div>

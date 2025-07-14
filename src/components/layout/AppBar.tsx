@@ -32,44 +32,64 @@ const AppBar: React.FC = () => {
 
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
+  const handleFeatureNavigation = (section: string) => {
+    // If we're not on the landing page, navigate there first
+    if (window.location.pathname !== '/') {
+      window.location.href = `/#${section.toLowerCase().replace(/\s+/g, '-')}`;
+      return;
+    }
+    
+    // Dispatch custom event to update the TradingFeaturesInterface
+    const event = new CustomEvent('navigateToFeature', { 
+      detail: { section } 
+    });
+    window.dispatchEvent(event);
+    
+    // Smooth scroll to the features section
+    const featuresSection = document.getElementById('trading-features');
+    if (featuresSection) {
+      featuresSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const navigationItems = [
     { 
-      to: "/advanced-tools", 
+      section: "Advanced Tools", 
       icon: TrendingUp, 
       label: "Advanced Tools",
       description: "Professional trading tools and analytics",
       features: ["Risk Calculator", "Portfolio Analysis", "Market Scanner"]
     },
     { 
-      to: "/signals", 
+      section: "Signals", 
       icon: Bell, 
       label: "Signals",
       description: "Real-time trading signals and alerts",
       features: ["Live Alerts", "Custom Indicators", "Signal History"]
     },
     { 
-      to: "/education", 
+      section: "Education", 
       icon: GraduationCap, 
       label: "Education",
       description: "Comprehensive trading education platform",
       features: ["Video Courses", "Live Webinars", "Trading Guides"]
     },
     { 
-      to: "/live-session", 
+      section: "Live Sessions", 
       icon: Video, 
-      label: "Live Session",
+      label: "Live Sessions",
       description: "Interactive live trading sessions",
       features: ["Market Analysis", "Live Q&A", "Trading Psychology"]
     },
     { 
-      to: "/forum", 
+      section: "Community Forum", 
       icon: Users, 
       label: "Community Forum",
       description: "Connect with fellow traders",
       features: ["Discussions", "Strategy Sharing", "Expert Advice"]
     },
     { 
-      to: "/ib-partnership", 
+      section: "IB Partnership", 
       icon: Handshake, 
       label: "IB Partnership",
       description: "Institutional broker partnerships",
@@ -118,21 +138,20 @@ const AppBar: React.FC = () => {
         {/* Desktop Navigation - Wider Container */}
         <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
           {navigationItems.map((item) => (
-            <div 
-              key={item.to}
-              className="relative"
-              onMouseEnter={() => setActiveDropdown(item.label)}
-              onMouseLeave={() => setActiveDropdown(null)}
-            >
-              <Link to={item.to}>
+              <div 
+                key={item.section}
+                className="relative"
+                onMouseEnter={() => setActiveDropdown(item.label)}
+                onMouseLeave={() => setActiveDropdown(null)}
+              >
                 <Button
                   variant="ghost"
+                  onClick={() => handleFeatureNavigation(item.section)}
                   className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-4 py-2 transition-all duration-200"
                 >
                   <item.icon className="h-4 w-4" />
                   {item.label}
                 </Button>
-              </Link>
               
               {/* Apple/Stripe style dropdown */}
               {activeDropdown === item.label && (
@@ -150,8 +169,11 @@ const AppBar: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                    <Link to={item.to}>
-                      <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+                    <Link to="/">
+                      <Button 
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                        onClick={() => handleFeatureNavigation(item.section)}
+                      >
                         Explore {item.label}
                       </Button>
                     </Link>
@@ -194,18 +216,21 @@ const AppBar: React.FC = () => {
 
             <nav className="flex flex-col gap-2 mt-8">
               {navigationItems.map((item) => (
-                <div key={item.to} className="space-y-2">
-                  <Link
-                    to={item.to}
-                    onClick={closeMobileMenu}
-                    className="flex items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50"
+                <div key={item.section} className="space-y-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      handleFeatureNavigation(item.section);
+                      closeMobileMenu();
+                    }}
+                    className="flex items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 w-full justify-start"
                   >
                     <item.icon className="h-5 w-5 text-primary" />
                     <div>
                       <span className="text-base font-medium block">{item.label}</span>
                       <span className="text-sm text-muted-foreground">{item.description}</span>
                     </div>
-                  </Link>
+                  </Button>
                 </div>
               ))}
 

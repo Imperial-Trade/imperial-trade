@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Calculator,
   BarChart3,
@@ -61,6 +61,20 @@ import { Badge } from "@/components/ui/badge";
 const TradingFeaturesInterface: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>("Advanced Tools");
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // Listen for navigation events from AppBar
+  useEffect(() => {
+    const handleNavigateToFeature = (event: CustomEvent) => {
+      const { section } = event.detail;
+      handleSectionChange(section);
+    };
+
+    window.addEventListener('navigateToFeature', handleNavigateToFeature as EventListener);
+    
+    return () => {
+      window.removeEventListener('navigateToFeature', handleNavigateToFeature as EventListener);
+    };
+  }, []);
 
   const handleSectionChange = (section: string) => {
     if (section !== activeSection) {
@@ -513,7 +527,7 @@ const TradingFeaturesInterface: React.FC = () => {
   const currentData = featuresData[activeSection];
 
   return (
-    <div className="bg-background min-h-screen font-sans">
+    <div className="bg-background min-h-screen font-sans" id="trading-features">
       {/* Navigation Header */}
       <div className="sticky top-20 z-40 bg-background/95 backdrop-blur-xl border-b border-border">
         <div className="max-w-7xl mx-auto px-6 py-6">

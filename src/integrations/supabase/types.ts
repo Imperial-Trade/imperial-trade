@@ -355,6 +355,7 @@ export type Database = {
           session_date: string
           session_title: string
           status: Database["public"]["Enums"]["session_status"]
+          stream_embed_url: string | null
           updated_at: string
           zoom_meeting_id: string | null
           zoom_meeting_url: string
@@ -369,6 +370,7 @@ export type Database = {
           session_date: string
           session_title: string
           status?: Database["public"]["Enums"]["session_status"]
+          stream_embed_url?: string | null
           updated_at?: string
           zoom_meeting_id?: string | null
           zoom_meeting_url: string
@@ -383,6 +385,7 @@ export type Database = {
           session_date?: string
           session_title?: string
           status?: Database["public"]["Enums"]["session_status"]
+          stream_embed_url?: string | null
           updated_at?: string
           zoom_meeting_id?: string | null
           zoom_meeting_url?: string

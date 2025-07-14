@@ -13,6 +13,7 @@ export interface LiveSession {
   zoom_meeting_url: string;
   zoom_meeting_id: string | null;
   zoom_passcode: string | null;
+  stream_embed_url?: string;
   status: 'scheduled' | 'live' | 'completed';
   auto_start_enabled: boolean;
   created_at: string;
@@ -72,6 +73,7 @@ export const useLiveSessionManager = () => {
           zoom_passcode: sessionData.zoom_passcode,
           session_date: sessionData.session_date,
           auto_start_enabled: sessionData.auto_start_enabled,
+          stream_embed_url: sessionData.stream_embed_url,
           status: 'scheduled'
         })
         .select()

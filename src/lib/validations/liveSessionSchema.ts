@@ -60,6 +60,7 @@ export const createLiveSessionSchema = z.object({
   zoom_passcode: baseSessionSchemas.zoomPasscode,
   session_date: baseSessionSchemas.sessionDate,
   auto_start_enabled: baseSessionSchemas.autoStartEnabled,
+  stream_embed_url: z.string().url("Valid embed URL is required").optional().or(z.literal("")),
 }).refine((data) => {
   // Ensure session is scheduled at least 5 minutes in the future
   const sessionDate = new Date(data.session_date);
@@ -81,6 +82,7 @@ export const updateLiveSessionSchema = z.object({
   session_date: z.string().optional(),
   status: baseSessionSchemas.status.optional(),
   auto_start_enabled: baseSessionSchemas.autoStartEnabled.optional(),
+  stream_embed_url: z.string().url("Valid embed URL is required").optional().or(z.literal("")),
 }).refine((data) => {
   // If session_date is being updated, ensure it's in the future
   if (data.session_date) {

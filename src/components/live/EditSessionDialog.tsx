@@ -40,6 +40,7 @@ export function EditSessionDialog({
         zoom_passcode: session.zoom_passcode || '',
         session_date: session.session_date,
         auto_start_enabled: session.auto_start_enabled,
+        stream_embed_url: session.stream_embed_url || '',
       });
     }
     setErrors({});
@@ -292,6 +293,32 @@ export function EditSessionDialog({
                 <p className="text-red-400 text-sm mt-1">{errors.zoom_passcode}</p>
               )}
             </div>
+          </div>
+
+          {/* Stream Embed URL */}
+          <div>
+            <Label htmlFor="edit_stream_embed_url" className="text-primary">
+              Stream Embed URL (Optional)
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-3 h-3 ml-1 inline" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Add a YouTube Live, Facebook Live, or Twitch stream URL for in-app viewing
+                </TooltipContent>
+              </Tooltip>
+            </Label>
+            <Input
+              id="edit_stream_embed_url"
+              type="url"
+              value={formData.stream_embed_url || ''}
+              onChange={(e) => handleInputChange('stream_embed_url', e.target.value)}
+              className={`bg-background border-default text-primary ${errors.stream_embed_url ? 'border-red-500' : ''}`}
+              placeholder="e.g., https://www.youtube.com/watch?v=..."
+            />
+            {errors.stream_embed_url && (
+              <p className="text-red-400 text-sm mt-1">{errors.stream_embed_url}</p>
+            )}
           </div>
 
           {/* Auto Start Toggle */}

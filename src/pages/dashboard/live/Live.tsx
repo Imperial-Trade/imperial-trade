@@ -10,6 +10,7 @@ import { useLiveSessionManager, LiveSession } from '@/hooks/useLiveSessionManage
 import { CreateSessionDialog } from '@/components/live/CreateSessionDialog';
 import { EditSessionDialog } from '@/components/live/EditSessionDialog';
 import { SessionStatusControls } from '@/components/live/SessionStatusControls';
+import { VideoPlayer } from '@/components/live/VideoPlayer';
 
 export default function Live() {
   const { user, profile } = useAuth();
@@ -27,6 +28,7 @@ export default function Live() {
   
   const [editingSession, setEditingSession] = useState<LiveSession | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [watchingSession, setWatchingSession] = useState<LiveSession | null>(null);
 
   const handleEditSession = (session: LiveSession) => {
     setEditingSession(session);
@@ -74,6 +76,15 @@ export default function Live() {
 
   const joinSession = (session: LiveSession) => {
     window.open(session.zoom_meeting_url, '_blank');
+  };
+
+  const watchLiveSession = (session: LiveSession) => {
+    if (session.stream_embed_url) {
+      setWatchingSession(session);
+    } else {
+      // Fallback to Zoom for regular users if no embed URL
+      joinSession(session);
+    }
   };
 
   if (isLoading) {
@@ -178,13 +189,23 @@ export default function Live() {
                         )}
                         
                         <div className="pt-2">
-                          <Button 
-                            onClick={() => joinSession(session)} 
-                            className="w-full bg-red-500 hover:bg-red-600 text-white mb-3"
-                          >
-                            <ExternalLink className="w-4 h-4 mr-2" />
-                            Join Live Session
-                          </Button>
+                          {canManageSessions ? (
+                            <Button 
+                              onClick={() => joinSession(session)} 
+                              className="w-full bg-red-500 hover:bg-red-600 text-white mb-3"
+                            >
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              Join Zoom Session
+                            </Button>
+                          ) : (
+                            <Button 
+                              onClick={() => watchLiveSession(session)} 
+                              className="w-full bg-red-500 hover:bg-red-600 text-white mb-3"
+                            >
+                              <Video className="w-4 h-4 mr-2" />
+                              {session.stream_embed_url ? 'Watch Live' : 'Join Session'}
+                            </Button>
+                          )}
                           
                           {/* Management Controls for Admins/Educators */}
                           {canManageSessions && (
@@ -257,14 +278,25 @@ export default function Live() {
                         )}
                         
                         <div className="pt-2">
-                          <Button 
-                            onClick={() => joinSession(session)} 
-                            className="w-full bg-primary hover:bg-primary/80 text-primary-foreground mb-3"
-                            disabled={session.status !== 'live'}
-                          >
-                            <ExternalLink className="w-4 h-4 mr-2" />
-                            {session.status === 'live' ? 'Join Session' : 'Session Not Started'}
-                          </Button>
+                          {canManageSessions ? (
+                            <Button 
+                              onClick={() => joinSession(session)} 
+                              className="w-full bg-primary hover:bg-primary/80 text-primary-foreground mb-3"
+                              disabled={session.status !== 'live'}
+                            >
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              {session.status === 'live' ? 'Join Zoom Session' : 'Session Not Started'}
+                            </Button>
+                          ) : (
+                            <Button 
+                              onClick={() => watchLiveSession(session)} 
+                              className="w-full bg-primary hover:bg-primary/80 text-primary-foreground mb-3"
+                              disabled={session.status !== 'live'}
+                            >
+                              <Video className="w-4 h-4 mr-2" />
+                              {session.status === 'live' ? (session.stream_embed_url ? 'Watch Live' : 'Join Session') : 'Session Not Started'}
+                            </Button>
+                          )}
                           
                           {/* Management Controls for Admins/Educators */}
                           {canManageSessions && (
@@ -378,6 +410,15 @@ export default function Live() {
             onUpdateSession={updateSession}
             updating={updating}
           />
+
+          {/* Video Player Modal */}
+          {watchingSession && watchingSession.stream_embed_url && (
+            <VideoPlayer
+              embedUrl={watchingSession.stream_embed_url}
+              sessionTitle={watchingSession.session_title}
+              onClose={() => setWatchingSession(null)}
+            />
+          )}
         </div>
       </div>
     </TooltipProvider>

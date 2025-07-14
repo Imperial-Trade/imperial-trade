@@ -5,9 +5,9 @@ import AppBar from '@/components/layout/AppBar';
 
 const LandingLayout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <AppBar />
-      <main className="pt-16">
+      <main className="pt-20">
         <Outlet />
       </main>
     </div>

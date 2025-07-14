@@ -11,54 +11,69 @@ export default function HeroSection() {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden">
-      {/* Apple-style gradient orbs */}
-      <div className="absolute top-20 left-10 w-96 h-96 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-20 blur-3xl animate-float" />
-      <div className="absolute bottom-20 right-10 w-80 h-80 bg-gradient-to-r from-blue-400 to-purple-600 rounded-full opacity-20 blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+      {/* Modern floating geometric shapes */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-primary rounded-full animate-pulse" />
+        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 right-1/3 w-1 h-1 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '3s' }} />
+      </div>
       
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
         <ContentSection>
-          <div className="space-y-8 max-w-4xl mx-auto">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-              Elite Trading Platform
+          <div className="space-y-12 max-w-5xl mx-auto">
+            {/* Modern Badge */}
+            <div className="animate-fade-in-up">
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full glass-effect border border-primary/20 text-primary text-sm font-medium backdrop-blur-xl">
+                <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                <span>Elite Trading Platform</span>
+                <div className="w-2 h-2 bg-gradient-to-r from-primary to-blue-500 rounded-full animate-pulse" />
+              </div>
             </div>
 
-            {/* Main headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight">
-              Trading
-              <span className="gradient-text block">
-                Reimagined
-              </span>
-            </h1>
+            {/* Modern Main headline */}
+            <div className="animate-scale-in space-y-4">
+              <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold leading-none tracking-tight">
+                <span className="block">The Future of</span>
+                <span className="gradient-text block bg-gradient-to-r from-primary via-blue-500 to-purple-600 bg-clip-text text-transparent">
+                  Smart Trading
+                </span>
+              </h1>
+              
+              {/* Subtitle with better spacing */}
+              <p className="text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed font-light">
+                Experience next-generation trading with AI-powered analytics, real-time signals, 
+                and professional-grade tools designed for consistent profitability.
+              </p>
+            </div>
 
-            {/* Subtitle */}
-            <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Join thousands of traders using our AI-powered platform to make smarter decisions, 
-              manage risk, and achieve consistent profits.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {/* Enhanced CTA Buttons */}
+            <div className="animate-slide-in-left flex flex-col sm:flex-row gap-6 justify-center items-center pt-4">
               {!loading && (
                 user ? (
                   <Link to="/dashboard/home">
                     <Button
                       size="lg"
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-4 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 animate-pulse-glow"
+                      className="group bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-10 py-5 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl relative overflow-hidden"
                     >
-                      Access Dashboard
-                      <ArrowRight className="ml-2 h-5 w-5" />
+                      <span className="relative z-10 flex items-center">
+                        Access Dashboard
+                        <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary/80 to-blue-600/80 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                     </Button>
                   </Link>
                 ) : (
                   <Link to={createPageUrl("account-request")}>
                     <Button
                       size="lg"
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8 py-4 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 animate-pulse-glow"
+                      className="group bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-10 py-5 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl relative overflow-hidden"
                     >
-                      Start Trading
-                      <ArrowRight className="ml-2 h-5 w-5" />
+                      <span className="relative z-10 flex items-center">
+                        Start Trading
+                        <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary/80 to-blue-600/80 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                     </Button>
                   </Link>
                 )
@@ -67,28 +82,30 @@ export default function HeroSection() {
               <Button
                 variant="outline"
                 size="lg"
-                className="border-2 border-border/50 text-foreground hover:bg-muted/50 font-semibold px-8 py-4 text-lg rounded-2xl transition-all duration-300 backdrop-blur-sm"
+                className="group glass-effect border-2 border-border/30 text-foreground hover:bg-primary/10 font-semibold px-10 py-5 text-lg rounded-2xl transition-all duration-300 backdrop-blur-xl"
               >
-                <Play className="mr-2 h-5 w-5" />
-                Watch Demo
+                <Play className="mr-3 h-5 w-5 transition-transform group-hover:scale-110" />
+                <span>Watch Demo</span>
               </Button>
             </div>
 
-            {/* Social proof */}
-            <div className="flex flex-wrap justify-center items-center gap-8 pt-8 opacity-60">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">10K+</div>
-                <div className="text-sm text-muted-foreground">Active Traders</div>
-              </div>
-              <div className="w-px h-8 bg-border" />
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">$2.5B</div>
-                <div className="text-sm text-muted-foreground">Volume Traded</div>
-              </div>
-              <div className="w-px h-8 bg-border" />
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">92%</div>
-                <div className="text-sm text-muted-foreground">Success Rate</div>
+            {/* Enhanced Social proof with better design */}
+            <div className="animate-slide-in-right pt-12">
+              <div className="flex flex-wrap justify-center items-center gap-12 opacity-80">
+                <div className="text-center group">
+                  <div className="text-3xl font-bold text-primary group-hover:scale-110 transition-transform">15K+</div>
+                  <div className="text-sm text-muted-foreground font-medium">Active Traders</div>
+                </div>
+                <div className="w-px h-10 bg-gradient-to-b from-transparent via-border to-transparent" />
+                <div className="text-center group">
+                  <div className="text-3xl font-bold text-primary group-hover:scale-110 transition-transform">$3.2B</div>
+                  <div className="text-sm text-muted-foreground font-medium">Volume Traded</div>
+                </div>
+                <div className="w-px h-10 bg-gradient-to-b from-transparent via-border to-transparent" />
+                <div className="text-center group">
+                  <div className="text-3xl font-bold text-primary group-hover:scale-110 transition-transform">95%</div>
+                  <div className="text-sm text-muted-foreground font-medium">Success Rate</div>
+                </div>
               </div>
             </div>
           </div>

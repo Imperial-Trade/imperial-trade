@@ -60,6 +60,17 @@ import { Badge } from "@/components/ui/badge";
 
 const TradingFeaturesInterface: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>("Advanced Tools");
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const handleSectionChange = (section: string) => {
+    if (section !== activeSection) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setActiveSection(section);
+        setIsTransitioning(false);
+      }, 150);
+    }
+  };
 
   const sections = [
     "Advanced Tools",
@@ -511,7 +522,12 @@ const TradingFeaturesInterface: React.FC = () => {
               <h1 className="text-3xl font-bold text-foreground mb-2">Professional Trading Platform</h1>
               <p className="text-muted-foreground">Enterprise-grade tools for professional traders</p>
             </div>
-            <Badge variant="outline" className="text-xs font-medium">6 Feature Categories</Badge>
+            <div className="flex items-center gap-4">
+              <Badge variant="outline" className="text-xs font-medium">6 Feature Categories</Badge>
+              <div className="text-sm text-muted-foreground">
+                Current: <span className="font-medium text-foreground">{activeSection}</span>
+              </div>
+            </div>
           </div>
           
           {/* Apple-style tab navigation */}
@@ -519,7 +535,7 @@ const TradingFeaturesInterface: React.FC = () => {
             {sections.map((section, index) => (
               <button
                 key={section}
-                onClick={() => setActiveSection(section)}
+                onClick={() => handleSectionChange(section)}
                 className={`px-5 py-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
                   activeSection === section
                     ? "bg-background text-foreground shadow-sm border border-border"
@@ -535,7 +551,7 @@ const TradingFeaturesInterface: React.FC = () => {
       </div>
 
       {/* Hero Section */}
-      <section className="py-16 px-6 monochrome-gradient">
+      <section className={`py-16 px-6 monochrome-gradient transition-all duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
@@ -543,20 +559,21 @@ const TradingFeaturesInterface: React.FC = () => {
                 <Badge 
                   variant="outline" 
                   className="inline-flex items-center gap-2 border-border text-muted-foreground"
+                  key={activeSection} // Force re-render when section changes
                 >
                   <currentData.icon className="h-4 w-4" />
                   {currentData.tagline}
                 </Badge>
-                <h1 className="text-5xl font-bold text-foreground leading-tight tracking-tight">
+                <h1 className="text-5xl font-bold text-foreground leading-tight tracking-tight" key={`title-${activeSection}`}>
                   {currentData.hero.title}
                 </h1>
-                <p className="text-xl text-muted-foreground leading-relaxed">
+                <p className="text-xl text-muted-foreground leading-relaxed" key={`desc-${activeSection}`}>
                   {currentData.description}
                 </p>
               </div>
               
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-3 gap-6" key={`stats-${activeSection}`}>
                 {currentData.hero.stats.map((stat, index) => (
                   <div key={index} className="text-center">
                     <div className="text-2xl font-bold text-foreground">{stat.value}</div>
@@ -577,7 +594,7 @@ const TradingFeaturesInterface: React.FC = () => {
             </div>
             
             <div className="relative">
-              <div className="apple-card rounded-2xl p-8">
+              <div className="apple-card rounded-2xl p-8" key={`hero-card-${activeSection}`}>
                 <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border border-border">
                   <currentData.icon className="h-16 w-16 text-muted-foreground" />
                 </div>
@@ -588,9 +605,9 @@ const TradingFeaturesInterface: React.FC = () => {
       </section>
 
       {/* Features Grid */}
-      <section className="py-20 px-6">
+      <section className={`py-20 px-6 transition-all duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-16" key={`features-header-${activeSection}`}>
             <h2 className="text-3xl font-bold text-foreground mb-4">
               {activeSection} Features
             </h2>
@@ -599,7 +616,7 @@ const TradingFeaturesInterface: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8" key={`features-grid-${activeSection}`}>
             {currentData.features.map((feature, index) => (
               <Card key={index} className="apple-card group h-full">
                 <CardHeader className="space-y-4">
@@ -665,8 +682,8 @@ const TradingFeaturesInterface: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6 monochrome-gradient">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className={`py-20 px-6 monochrome-gradient transition-all duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
+        <div className="max-w-4xl mx-auto text-center" key={`cta-${activeSection}`}>
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/50 border border-border mb-8">
             <currentData.icon className="h-8 w-8 text-muted-foreground" />
           </div>

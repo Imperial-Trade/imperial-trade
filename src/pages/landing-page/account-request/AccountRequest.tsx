@@ -49,15 +49,15 @@ export default function AccountRequestPage() {
   };
 
   return (
-    <div className="h-screen flex pt-20 overflow-hidden">
-      {/* Left Side - White with Form */}
-      <div className="w-1/2 bg-white flex items-center justify-center px-8 py-6">
-        <div className="w-full max-w-sm">
+    <div className="min-h-screen flex">
+      {/* Left Side - Dark with Form */}
+      <div className="w-1/2 bg-white flex items-center justify-center px-8">
+        <div className="w-full max-w-md">
 
           {/* Form Card */}
-          <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm shadow-lg">
+          <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold text-white text-center">
+              <CardTitle className="text-xl font-semibold text-white text-center">
                 Request Community Access
               </CardTitle>
               <p className="text-gray-300 text-center text-sm">

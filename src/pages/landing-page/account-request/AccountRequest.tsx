@@ -59,14 +59,14 @@ export default function AccountRequestPage() {
           {/* Form Card */}
           <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
             <CardHeader className="bg-slate-50">
-              <CardTitle className="text-xl font-semibold text-white text-center">
+              <CardTitle className="text-xl font-semibold text-center text-green-600">
                 Request Community Access
               </CardTitle>
               <p className="text-center text-sm text-slate-900">
                 Fill out the form below. An admin will review your request shortly.
               </p>
             </CardHeader>
-            <CardContent className="bg-slate-50 rounded-none">
+            <CardContent className="">
               <ErrorBoundary componentName="Status Message">
                 <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
               </ErrorBoundary>

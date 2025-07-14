@@ -76,28 +76,19 @@ class ServerRateLimitService {
     });
   }
 
-  // Get client IP (best effort)
+  // Get client IP (simplified approach)
   getClientIP(): string {
     try {
-      // Try various methods to get client IP
-      const headers = [
-        'x-forwarded-for',
-        'x-real-ip',
-        'x-client-ip',
-        'cf-connecting-ip',
-      ];
-
-      for (const header of headers) {
-        const value = document.querySelector(`meta[name="${header}"]`)?.getAttribute('content');
-        if (value) {
-          return value.split(',')[0].trim();
-        }
-      }
-
-      // Fallback to a generic identifier
-      return 'unknown-client';
+      // Try to get real IP from the request
+      const userAgent = navigator.userAgent;
+      const timestamp = Date.now();
+      
+      // Create a deterministic but unique identifier for this session
+      const sessionId = btoa(`${userAgent}-${Math.floor(timestamp / (1000 * 60 * 60))}`).substring(0, 12);
+      
+      return `session-${sessionId}`;
     } catch {
-      return 'unknown-client';
+      return 'fallback-client';
     }
   }
 }

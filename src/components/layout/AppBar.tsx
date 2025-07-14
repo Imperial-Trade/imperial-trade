@@ -80,7 +80,7 @@ const AppBar: React.FC = () => {
       <div className="w-full max-w-7xl flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <Crown className="h-6 w-6 text-primary" />
-          <span className={`text-xl imperial-tech-font ${isAccountRequestPage ? 'imperial-tech-font-animated' : ''}`}>IMPERIAL</span>
+          <span className="text-xl imperial-tech-font">IMPERIAL</span>
         </Link>
 
         {/* Desktop Navigation - Wider Container */}
@@ -177,28 +177,6 @@ const AppBar: React.FC = () => {
           -webkit-text-fill-color: transparent;
           background-clip: text;
           text-shadow: 0 0 20px rgba(192, 154, 88, 0.4);
-        }
-
-        .imperial-tech-font-animated {
-          position: relative;
-        }
-
-        .imperial-tech-font-animated::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 80px;
-          background: linear-gradient(90deg, transparent, rgba(192, 154, 88, 0.2), transparent);
-          animation: tech-scan-full 4s infinite;
-          pointer-events: none;
-          z-index: 40;
-        }
-
-        @keyframes tech-scan-full {
-          0% { transform: translateX(-100vw); }
-          100% { transform: translateX(100vw); }
         }
 
         /* Load Orbitron font */

@@ -1,12 +1,9 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { accountRequestSchema, type AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
-import { useProgressiveRateLimiting } from "./useProgressiveRateLimiting";
-import { serverRateLimitService } from "@/services/ServerRateLimitService";
 import { useToast } from "@/hooks/use-toast";
 import { AccountRequest } from "@/api/entities";
-import { detectSuspiciousPatterns } from "@/lib/validations/enhancedSecurityRules";
-import { adaptiveRateLimitService } from "@/services/AdaptiveRateLimitService";
+import { useState } from "react";
 
 // Error message mapping for user-friendly error display
 const getErrorMessage = (error: any): string => {
@@ -52,12 +49,8 @@ const getErrorMessage = (error: any): string => {
 
 export const useAccountRequestForm = () => {
   const { toast } = useToast();
-  const progressiveRateLimit = useProgressiveRateLimiting('account-request', {
-    maxAttempts: 5,
-    windowMs: 10 * 60 * 1000, // 10 minutes
-    progressiveDelays: [0, 30000, 120000, 300000, 600000], // 0s, 30s, 2m, 5m, 10m
-    recoveryRate: 2 * 60 * 1000, // Recover 1 attempt every 2 minutes
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmission, setLastSubmission] = useState<number>(0);
 
   const form = useForm<AccountRequestFormData>({
     resolver: zodResolver(accountRequestSchema),
@@ -75,44 +68,37 @@ export const useAccountRequestForm = () => {
   });
 
   const onSubmit = async (data: AccountRequestFormData): Promise<{ success: boolean; error?: string }> => {
-    console.log('🚀 Enhanced form submission started with Phase 4 adaptive limits');
+    console.log('🚀 Simple form submission started');
     
-    // Check client-side progressive rate limiting
-    if (!progressiveRateLimit.canSubmit) {
-      const delay = progressiveRateLimit.nextAttemptDelay;
-      const message = progressiveRateLimit.getDelayMessage(delay);
+    setIsSubmitting(true);
+    
+    // Simple client-side rate limiting (1 submission per 5 minutes)
+    const now = Date.now();
+    const minDelay = 5 * 60 * 1000; // 5 minutes
+    
+    if (lastSubmission && (now - lastSubmission) < minDelay) {
+      const remainingMs = minDelay - (now - lastSubmission);
+      const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
+      const errorMsg = `Please wait ${remainingMinutes} more minutes before submitting another request.`;
+      
       toast({
         variant: "destructive",
-        title: "Rate Limited",
-        description: message || "Too many attempts. Please wait before submitting another request.",
+        title: "Too Many Requests",
+        description: errorMsg,
       });
-      return { success: false, error: message };
+      
+      setIsSubmitting(false);
+      return { success: false, error: errorMsg };
     }
 
-    // Enhanced security validation
-    const securityAnalysis = detectSuspiciousPatterns(data);
-    if (securityAnalysis.isSuspicious) {
-      console.log('🚫 Suspicious patterns detected:', securityAnalysis);
-      
-      // Block high-risk submissions
-      if (securityAnalysis.score >= 80) {
-        console.log('🛑 High-risk submission blocked');
-        return { success: false, error: "Submission blocked due to security concerns" };
-      }
-      
-      // Log medium-risk submissions for monitoring
-      if (securityAnalysis.score >= 50) {
-        console.log('⚠️ Medium-risk submission flagged:', securityAnalysis.reasons);
-      }
-    }
-
-    // Check honeypot - silent fail for bots
+    // Simple honeypot check
     if (data.website && data.website.length > 0) {
-      console.log('🤖 Bot detected via honeypot - silent fail');
+      console.log('🤖 Bot detected via honeypot');
+      setIsSubmitting(false);
       return { success: false, error: "Invalid submission detected" };
     }
 
-    // Enhanced client-side validation for account_type
+    // Basic validation for account_type
     if (!['user', 'educator'].includes(data.account_type)) {
       const errorMsg = "Please select a valid account type: Standard Member or Educator/IB Partner.";
       toast({
@@ -120,106 +106,29 @@ export const useAccountRequestForm = () => {
         title: "Invalid Account Type",
         description: errorMsg,
       });
+      setIsSubmitting(false);
       return { success: false, error: errorMsg };
     }
 
     try {
-      // 🧠 NEW PHASE 4: Adaptive rate limiting with intelligent adjustments
-      console.log('🧠 Phase 4: Applying adaptive rate limiting...');
+      console.log("✅ Submitting account request:", data);
       
-      // Get adaptive rate limits based on user behavior and system conditions
-      const adaptedLimits = await adaptiveRateLimitService.getAdaptiveRateLimit(
-        serverRateLimitService.getClientIP(),
-        data.email,
-        securityAnalysis,
-        { suspiciousScore: 0, reasons: [] } // Placeholder for behavioral analysis
-      );
-
-      console.log('🎯 Adaptive limits applied:', adaptedLimits);
-
-      // Check if adaptive limits allow submission
-      if (adaptedLimits.additionalVerification) {
-        const errorMsg = "Additional verification required. Please contact support.";
-        toast({
-          variant: "destructive",
-          title: "Additional Verification Required",
-          description: errorMsg,
-        });
-        return { success: false, error: errorMsg };
-      }
-
-      // Server-side rate limiting checks (enhanced with adaptive data)
-      console.log('🔍 Performing enhanced server-side rate limit checks...');
-      
-      // Check email rate limit (now with adaptive adjustments)
-      const emailCheck = await serverRateLimitService.checkEmailRateLimit(data.email);
-      if (!emailCheck.allowed) {
-        const errorMsg = `This email has already been used for an account request today. Please try again after ${new Date(emailCheck.resetTime).toLocaleString()}.`;
-        toast({
-          variant: "destructive",
-          title: "Email Rate Limited",
-          description: errorMsg,
-        });
-        return { success: false, error: errorMsg };
-      }
-
-      // Check IP rate limit (now with adaptive adjustments)
-      const clientIP = serverRateLimitService.getClientIP();
-      const ipCheck = await serverRateLimitService.checkIPRateLimit(clientIP);
-      if (!ipCheck.allowed) {
-        const errorMsg = `Too many requests from your network. Please try again after ${new Date(ipCheck.resetTime).toLocaleString()}.`;
-        toast({
-          variant: "destructive",
-          title: "Network Rate Limited",
-          description: errorMsg,
-        });
-        return { success: false, error: errorMsg };
-      }
-
-      // Check system threat level
-      const currentThreatLevel = adaptiveRateLimitService.getCurrentThreatLevel();
-      if (currentThreatLevel.recommendedAction === 'block') {
-        const errorMsg = "System security alert - submissions temporarily restricted.";
-        toast({
-          variant: "destructive",
-          title: "Security Alert",
-          description: errorMsg,
-        });
-        return { success: false, error: errorMsg };
-      }
-
-      // Record client-side attempt (with progressive delay)
-      await progressiveRateLimit.recordAttempt();
-      
-      console.log("✅ Submitting enhanced account request with adaptive security:", {
-        ...data,
-        securityScore: securityAnalysis.score,
-        securityFlags: securityAnalysis.reasons,
-        adaptiveLimits: adaptedLimits,
-        threatLevel: currentThreatLevel.current,
-      });
-      
-      // Use direct Supabase call instead of REST API
+      // Direct Supabase call
       const result = await AccountRequest.create(data);
       
       console.log("🎉 Account request created successfully:", result);
-
-      // Update adaptive service with successful submission
-      await adaptiveRateLimitService.updateSubmissionResult(clientIP, true);
 
       toast({
         title: "Success!",
         description: `Your ${data.account_type === 'educator' ? 'Educator/IB Partner' : 'Standard Member'} request has been submitted successfully. You will receive an email notification once it's reviewed.`,
       });
 
+      setLastSubmission(now);
       form.reset();
+      setIsSubmitting(false);
       return { success: true };
     } catch (error) {
-      console.error("❌ Failed to submit enhanced account request:", error);
-      
-      // Update adaptive service with failed submission
-      const clientIP = serverRateLimitService.getClientIP();
-      await adaptiveRateLimitService.updateSubmissionResult(clientIP, false);
+      console.error("❌ Failed to submit account request:", error);
       
       const userFriendlyError = getErrorMessage(error);
       
@@ -229,6 +138,7 @@ export const useAccountRequestForm = () => {
         description: userFriendlyError,
       });
       
+      setIsSubmitting(false);
       return { success: false, error: userFriendlyError };
     }
   };
@@ -236,11 +146,7 @@ export const useAccountRequestForm = () => {
   return {
     form,
     onSubmit,
-    canSubmit: progressiveRateLimit.canSubmit,
-    isSubmitting: form.formState.isSubmitting,
-    attemptsLeft: progressiveRateLimit.attemptsLeft,
-    nextAttemptDelay: progressiveRateLimit.nextAttemptDelay,
-    getDelayMessage: progressiveRateLimit.getDelayMessage,
-    maxAttempts: progressiveRateLimit.maxAttempts,
+    canSubmit: !isSubmitting,
+    isSubmitting,
   };
 };

@@ -10,6 +10,8 @@ export interface TradeAlertWithProfile extends TradeAlertResponseDto {
     display_name: string;
     role: string;
     avatar_url?: string;
+    user_type?: string;
+    access_level?: string;
   };
 }
 
@@ -27,6 +29,9 @@ export class TradingApiService {
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
+      console.log('TradingApiService - Creating alert with DTO:', dto);
+      console.log('TradingApiService - User ID:', userId);
+      
       const insertData: TableInsert<'trade_alerts'> = {
         asset_name: dto.assetName,
         finnhub_symbol: dto.finnhubSymbol,
@@ -43,7 +48,11 @@ export class TradingApiService {
         status: 'active'
       };
 
+      console.log('TradingApiService - Insert data:', insertData);
+
       const result = await apiClient.insert('trade_alerts', insertData);
+      
+      console.log('TradingApiService - Insert result:', result);
       
       if (!result.success || !result.data) {
         return {
@@ -293,7 +302,9 @@ export class TradingApiService {
               id: profile.id,
               display_name: profile.display_name || 'Anonymous User',
               role: profile.role || 'user',
-              avatar_url: profile.avatar_url
+              avatar_url: profile.avatar_url,
+              user_type: profile.user_type,
+              access_level: profile.access_level
             } : undefined
           };
         });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,17 +30,30 @@ const supportedAssets = [
 interface OptimizedNewAlertFormProps {
   onSubmit: (data: TradeAlertSubmissionData) => Promise<void> | void;
   onCancel?: () => void;
+  initialData?: Partial<TradeAlertSubmissionData>;
 }
 
-export default function OptimizedNewAlertForm({ onSubmit, onCancel }: OptimizedNewAlertFormProps) {
-  const [takeProfitCount, setTakeProfitCount] = useState(1);
-  const [selectedSymbol, setSelectedSymbol] = useState('');
-  const [selectedAssetName, setSelectedAssetName] = useState('');
+export default function OptimizedNewAlertForm({ onSubmit, onCancel, initialData }: OptimizedNewAlertFormProps) {
+  const [takeProfitCount, setTakeProfitCount] = useState(() => {
+    if (initialData) {
+      // Count how many take profit levels are set
+      let count = 1;
+      if (initialData.tp2) count = 2;
+      if (initialData.tp3) count = 3;
+      if (initialData.tp4) count = 4;
+      if (initialData.tp5) count = 5;
+      return count;
+    }
+    return 1;
+  });
+  const [selectedSymbol, setSelectedSymbol] = useState(initialData?.finnhub_symbol || '');
+  const [selectedAssetName, setSelectedAssetName] = useState(initialData?.asset_name || '');
   
   // Use optimized form hook with smart validation
   const { form, handleSubmit, isSubmitting, hasErrors } = useOptimizedTradeAlertForm({
     onSubmit,
-    enableSmartValidation: true
+    enableSmartValidation: true,
+    initialData
   });
 
   // Memoized handlers to prevent unnecessary re-renders
@@ -71,6 +84,20 @@ export default function OptimizedNewAlertForm({ onSubmit, onCancel }: OptimizedN
   const handleUseCurrentPrice = useCallback((price: number) => {
     form.setValue('entry_price', price, { shouldValidate: true });
   }, [form]);
+
+  // Initialize form with initial data if provided
+  useEffect(() => {
+    if (initialData) {
+      // Pre-select the asset if it matches one of our supported assets
+      const matchingAsset = supportedAssets.find(asset => 
+        asset.symbol === initialData.finnhub_symbol || asset.name === initialData.asset_name
+      );
+      if (matchingAsset) {
+        setSelectedSymbol(matchingAsset.symbol);
+        setSelectedAssetName(matchingAsset.name);
+      }
+    }
+  }, [initialData]);
 
   // Memoized take profit fields to prevent re-rendering
   const takeProfitFields = useMemo(() => {
@@ -119,7 +146,7 @@ export default function OptimizedNewAlertForm({ onSubmit, onCancel }: OptimizedN
             <Label htmlFor="asset" className="text-white text-sm font-medium">
               Asset (Optimized Live Data)
             </Label>
-            <Select onValueChange={handleAssetChange} name="asset">
+            <Select onValueChange={handleAssetChange} name="asset" value={selectedSymbol}>
               <SelectTrigger className="bg-gray-700 border-gray-600 text-white h-11">
                 <SelectValue placeholder="Select Gold or Bitcoin..." />
               </SelectTrigger>
@@ -287,7 +314,10 @@ export default function OptimizedNewAlertForm({ onSubmit, onCancel }: OptimizedN
               className="bg-accent-green hover:bg-accent-green/80 text-white min-w-[120px]"
               disabled={isSubmitting || hasErrors}
             >
-              {isSubmitting ? 'Posting...' : 'Post Signal'}
+              {isSubmitting 
+                ? (initialData ? 'Updating...' : 'Posting...') 
+                : (initialData ? 'Update Signal' : 'Post Signal')
+              }
             </Button>
           </div>
         </form>

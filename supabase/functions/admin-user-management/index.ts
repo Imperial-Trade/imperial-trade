@@ -115,23 +115,40 @@ serve(async (req) => {
         })
 
       case 'updateUser':
-        // Update user profile
+        // Get current user profile to preserve existing data
+        const { data: currentProfile } = await supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single()
+
+        // Update user profile with partial data
         const { error: updateError } = await supabaseClient
           .from('profiles')
           .upsert({
             id: userId,
-            ...userData,
+            // Preserve existing data and only update provided fields
+            display_name: userData.display_name ?? currentProfile?.display_name,
+            user_type: userData.user_type ?? currentProfile?.user_type,
+            access_level: userData.access_level ?? currentProfile?.access_level,
+            account_status: userData.account_status ?? currentProfile?.account_status,
+            phone_number: userData.phone_number ?? currentProfile?.phone_number,
+            registration_source: userData.registration_source ?? currentProfile?.registration_source,
+            approved_at: userData.approved_at ?? currentProfile?.approved_at,
+            approved_by: userData.approved_by ?? currentProfile?.approved_by,
+            role: userData.access_level ?? currentProfile?.role,
             updated_at: new Date().toISOString()
           })
 
         if (updateError) throw updateError
 
-        // Update auth metadata if role changes
-        if (userData.role || userData.access_level) {
+        // Update auth metadata if role or access level changes
+        if (userData.role || userData.access_level || userData.user_type) {
           const { error: authUpdateError } = await supabaseClient.auth.admin.updateUserById(userId, {
             user_metadata: { 
-              role: userData.role || userData.access_level,
-              access_level: userData.access_level 
+              role: userData.access_level || userData.role || currentProfile?.role,
+              access_level: userData.access_level || currentProfile?.access_level,
+              user_type: userData.user_type || currentProfile?.user_type
             }
           })
           if (authUpdateError) console.warn('Auth metadata update failed:', authUpdateError)

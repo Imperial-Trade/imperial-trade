@@ -7,6 +7,7 @@ import { tradeAlertSubmissionSchema, type TradeAlertSubmissionData } from '@/lib
 interface UseOptimizedTradeAlertFormProps {
   onSubmit: (data: TradeAlertSubmissionData) => Promise<void> | void;
   enableSmartValidation?: boolean;
+  initialData?: Partial<TradeAlertSubmissionData>;
 }
 
 interface UseOptimizedTradeAlertFormReturn {
@@ -18,26 +19,29 @@ interface UseOptimizedTradeAlertFormReturn {
 
 export const useOptimizedTradeAlertForm = ({
   onSubmit,
-  enableSmartValidation = true
+  enableSmartValidation = true,
+  initialData
 }: UseOptimizedTradeAlertFormProps): UseOptimizedTradeAlertFormReturn => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const defaultValues = {
+    asset_name: '',
+    finnhub_symbol: '',
+    trade_type: 'buy' as const,
+    entry_price: 0,
+    stop_loss: 0,
+    tp1: undefined,
+    tp2: undefined,
+    tp3: undefined,
+    tp4: undefined,
+    tp5: undefined,
+    notes: '',
+    status: 'active' as const
+  };
+
   const form = useForm<TradeAlertSubmissionData>({
     resolver: zodResolver(tradeAlertSubmissionSchema),
-    defaultValues: {
-      asset_name: '',
-      finnhub_symbol: '',
-      trade_type: 'buy',
-      entry_price: 0,
-      stop_loss: 0,
-      tp1: undefined,
-      tp2: undefined,
-      tp3: undefined,
-      tp4: undefined,
-      tp5: undefined,
-      notes: '',
-      status: 'active'
-    },
+    defaultValues: initialData ? { ...defaultValues, ...initialData } : defaultValues,
     mode: enableSmartValidation ? 'onChange' : 'onSubmit'
   });
 

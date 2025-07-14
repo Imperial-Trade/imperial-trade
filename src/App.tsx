@@ -35,7 +35,7 @@ import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
 import DevTests from "@/pages/dashboard/dev-tests/DevTests";
 
 // Educator Pages
-import EducatorTradeSignalsPage from "@/pages/dashboard/educator/EducatorTradeSignalsPage";
+import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
 
 // Other Components
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -105,9 +105,9 @@ function App() {
                         <Route
                           path="signals"
                           element={
-                            <ProtectedRoute requiredUserType={["educator", "ib_partner"]}>
-                              <EducatorTradeSignalsPage />
-                            </ProtectedRoute>
+                          <ProtectedRoute requiredUserType={["educator", "ib_partner"]}>
+                            <EducatorSignalManagement />
+                          </ProtectedRoute>
                           }
                         />
                         <Route

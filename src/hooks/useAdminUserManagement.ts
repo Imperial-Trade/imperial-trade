@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { adminUserUpdateSchema, createUserSchema } from '@/lib/validations/adminUserSchema';
+import { adminUserUpdateSchema, adminUserPartialUpdateSchema, createUserSchema } from '@/lib/validations/adminUserSchema';
 
 export interface AdminUser {
   id: string;
@@ -73,8 +73,8 @@ export const useAdminUserManagement = () => {
 
   const updateUser = useCallback(async (userId: string, userData: Partial<AdminUser>) => {
     try {
-      // Validate data before sending
-      const validatedData = adminUserUpdateSchema.parse(userData);
+      // Use partial schema for single field updates
+      const validatedData = adminUserPartialUpdateSchema.parse(userData);
       console.log('Updating user with validated data:', validatedData);
       
       await callAdminFunction('updateUser', userId, validatedData);

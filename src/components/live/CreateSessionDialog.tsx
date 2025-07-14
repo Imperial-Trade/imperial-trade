@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CreateLiveSessionData, validateCreateSession } from '@/lib/validations/liveSessionSchema';
-import { Calendar, Clock, Video, Save, X, Info, Plus } from 'lucide-react';
+import { Calendar, Clock, Video, Save, X, Info, Plus, Monitor } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 interface CreateSessionDialogProps {
   onCreateSession: (sessionData: CreateLiveSessionData) => Promise<boolean>;
@@ -26,6 +27,8 @@ export function CreateSessionDialog({ onCreateSession, creating }: CreateSession
     session_date: '',
     auto_start_enabled: true,
     stream_embed_url: '',
+    zoom_sdk_enabled: false,
+    zoom_meeting_number: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -64,6 +67,8 @@ export function CreateSessionDialog({ onCreateSession, creating }: CreateSession
         session_date: '',
         auto_start_enabled: true,
         stream_embed_url: '',
+        zoom_sdk_enabled: false,
+        zoom_meeting_number: '',
       });
       setErrors({});
     }
@@ -317,6 +322,62 @@ export function CreateSessionDialog({ onCreateSession, creating }: CreateSession
             />
             {errors.stream_embed_url && (
               <p className="text-red-400 text-sm mt-1">{errors.stream_embed_url}</p>
+            )}
+          </div>
+
+          <Separator />
+          
+          {/* Zoom SDK Integration */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="zoom_sdk_enabled" className="text-primary flex items-center">
+                  <Monitor className="w-4 h-4 mr-2" />
+                  Enable Zoom SDK Integration
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-3 h-3 ml-1 inline" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Use Zoom Web SDK for integrated meeting experience (requires meeting number)
+                    </TooltipContent>
+                  </Tooltip>
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Provide seamless meeting experience within the app
+                </p>
+              </div>
+              <Switch
+                id="zoom_sdk_enabled"
+                checked={formData.zoom_sdk_enabled}
+                onCheckedChange={(checked) => handleInputChange('zoom_sdk_enabled', checked)}
+              />
+            </div>
+
+            {formData.zoom_sdk_enabled && (
+              <div>
+                <Label htmlFor="zoom_meeting_number" className="text-primary">
+                  Zoom Meeting Number
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-3 h-3 ml-1 inline" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      The numerical meeting number for SDK integration
+                    </TooltipContent>
+                  </Tooltip>
+                </Label>
+                <Input
+                  id="zoom_meeting_number"
+                  value={formData.zoom_meeting_number || ''}
+                  onChange={(e) => handleInputChange('zoom_meeting_number', e.target.value)}
+                  className={`bg-background border-default text-primary ${errors.zoom_meeting_number ? 'border-red-500' : ''}`}
+                  placeholder="1234567890"
+                />
+                {errors.zoom_meeting_number && (
+                  <p className="text-red-400 text-sm mt-1">{errors.zoom_meeting_number}</p>
+                )}
+              </div>
             )}
           </div>
 

@@ -16,6 +16,8 @@ export interface LiveSession {
   stream_embed_url?: string;
   status: 'scheduled' | 'live' | 'completed';
   auto_start_enabled: boolean;
+  zoom_sdk_enabled: boolean;
+  zoom_meeting_number: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -74,6 +76,8 @@ export const useLiveSessionManager = () => {
           session_date: sessionData.session_date,
           auto_start_enabled: sessionData.auto_start_enabled,
           stream_embed_url: sessionData.stream_embed_url,
+          zoom_sdk_enabled: sessionData.zoom_sdk_enabled,
+          zoom_meeting_number: sessionData.zoom_meeting_number,
           status: 'scheduled'
         })
         .select()

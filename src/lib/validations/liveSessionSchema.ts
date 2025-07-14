@@ -47,7 +47,15 @@ export const baseSessionSchemas = {
     errorMap: () => ({ message: "Please select a valid session status" })
   }),
   
-  autoStartEnabled: z.boolean().default(true)
+  autoStartEnabled: z.boolean().default(true),
+
+  zoomSdkEnabled: z.boolean().default(false),
+  
+  zoomMeetingNumber: z.string()
+    .min(9, "Meeting number must be at least 9 digits")
+    .max(15, "Meeting number must be at most 15 digits")
+    .regex(/^\d+$/, "Meeting number must contain only numbers")
+    .optional()
 };
 
 // Create live session schema
@@ -61,6 +69,8 @@ export const createLiveSessionSchema = z.object({
   session_date: baseSessionSchemas.sessionDate,
   auto_start_enabled: baseSessionSchemas.autoStartEnabled,
   stream_embed_url: z.string().url("Valid embed URL is required").optional().or(z.literal("")),
+  zoom_sdk_enabled: baseSessionSchemas.zoomSdkEnabled,
+  zoom_meeting_number: baseSessionSchemas.zoomMeetingNumber,
 }).refine((data) => {
   // Ensure session is scheduled at least 5 minutes in the future
   const sessionDate = new Date(data.session_date);
@@ -83,6 +93,8 @@ export const updateLiveSessionSchema = z.object({
   status: baseSessionSchemas.status.optional(),
   auto_start_enabled: baseSessionSchemas.autoStartEnabled.optional(),
   stream_embed_url: z.string().url("Valid embed URL is required").optional().or(z.literal("")),
+  zoom_sdk_enabled: baseSessionSchemas.zoomSdkEnabled.optional(),
+  zoom_meeting_number: baseSessionSchemas.zoomMeetingNumber,
 }).refine((data) => {
   // If session_date is being updated, ensure it's in the future
   if (data.session_date) {

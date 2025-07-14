@@ -105,8 +105,7 @@ export default function ToolsShowcase() {
             {tools.map((tool, index) => (
               <div
                 key={tool.title}
-                className="group relative bg-card/50 backdrop-blur-xl rounded-3xl p-8 border border-border/50 card-hover animate-fade-in-up overflow-hidden"
-                style={{ animationDelay: `${index * 150}ms` }}
+                className="group relative bg-card/50 backdrop-blur-xl rounded-3xl p-8 border border-border/50 overflow-hidden"
               >
                 {/* Gradient Background */}
                 <div 
@@ -115,7 +114,7 @@ export default function ToolsShowcase() {
                 
                 <div className="relative z-10">
                   <div 
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-all duration-300 animate-pulse-glow"
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
                     style={{ backgroundColor: tool.color + '15' }}
                   >
                     <tool.icon 

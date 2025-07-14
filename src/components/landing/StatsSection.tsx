@@ -58,12 +58,11 @@ export default function StatsSection() {
             {stats.map((stat, index) => (
               <div 
                 key={stat.label} 
-                className="text-center group animate-fade-in-up"
-                style={{ animationDelay: stat.delay }}
+                className="text-center group"
               >
                 <div className="relative mb-6">
                   <div 
-                    className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"
+                    className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4"
                     style={{ backgroundColor: stat.color + '20' }}
                   >
                     <stat.icon 

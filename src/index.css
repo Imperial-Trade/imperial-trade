@@ -73,14 +73,14 @@
     --sidebar-border: 0 0% 80%;
     --sidebar-ring: 0 0% 26%;
 
-    /* Imperial White Gold & Bronze Gradient Colors for Feature Fonts */
+    /* Imperial White Gold & Bronze Gradient Colors for Feature Fonts - Updated to match image */
     --imperial-white: 0 0% 98%;
     --imperial-platinum: 0 0% 92%;
-    --imperial-gold-light: 48 85% 85%;
-    --imperial-gold: 45 75% 70%;
-    --imperial-bronze-light: 30 45% 60%;
-    --imperial-bronze: 25 55% 45%;
-    --imperial-bronze-dark: 20 65% 35%;
+    --imperial-gold-light: 43 80% 75%;
+    --imperial-gold: 43 75% 65%;
+    --imperial-bronze-light: 43 70% 55%;
+    --imperial-bronze: 43 65% 45%;
+    --imperial-bronze-dark: 43 60% 35%;
 
     /* Elegant Background Gradient Colors */
     --bg-gradient-white: 0 0% 100%;
@@ -385,17 +385,12 @@
 /* Imperial White Gold & Bronze Gradient Text */
 .imperial-gradient-text {
   background: linear-gradient(135deg, 
-    hsl(var(--imperial-white)) 0%, 
-    hsl(var(--imperial-platinum)) 20%, 
-    hsl(var(--imperial-gold-light)) 40%, 
-    hsl(var(--imperial-gold)) 60%, 
-    hsl(var(--imperial-bronze-light)) 80%, 
+    hsl(var(--imperial-gold-light)) 0%, 
+    hsl(var(--imperial-gold)) 50%, 
     hsl(var(--imperial-bronze)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  background-size: 200% 200%;
-  animation: gradientShift 4s ease-in-out infinite;
 }
 
 .imperial-bronze-gradient {

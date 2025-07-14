@@ -30,7 +30,7 @@ export default function HeroSection() {
         <ContentSection>
           <div className="space-y-12 max-w-5xl mx-auto">
             {/* Elegant Badge with imperial colors and green accent */}
-            <div className="animate-fade-in-up">
+            <div>
               <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-bgGradient-light/80 border border-bgGradient-medium text-gray-darkest text-sm font-medium backdrop-blur-xl">
                 <div className="w-2 h-2 bg-imperial-gold rounded-full" />
                 <span className="text-slate-600">Elite Trading Platform</span>
@@ -39,7 +39,7 @@ export default function HeroSection() {
             </div>
 
             {/* Main headline with imperial white gold & bronze gradient */}
-            <div className="animate-scale-in space-y-4">
+            <div className="space-y-4">
               <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold leading-none tracking-tight text-gray-darkest">
                 <span className="block">The Future of</span>
                 <span className="block imperial-gradient-text">
@@ -55,7 +55,7 @@ export default function HeroSection() {
             </div>
 
             {/* Enhanced CTA Buttons */}
-            <div className="animate-slide-in-left flex flex-col sm:flex-row gap-6 justify-center items-center pt-4">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-4">
               {!loading && (user ? <Link to="/dashboard/home">
                     <Button size="lg" className="group bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-10 py-5 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl relative overflow-hidden">
                       <span className="relative z-10 flex items-center">
@@ -81,20 +81,20 @@ export default function HeroSection() {
             </div>
 
             {/* Enhanced Social proof with imperial gradient numbers and green accents */}
-            <div className="animate-slide-in-right pt-12">
+            <div className="pt-12">
               <div className="flex flex-wrap justify-center items-center gap-12 opacity-80">
                 <div className="text-center group">
-                  <div className="text-3xl font-bold imperial-gradient-text group-hover:scale-110 transition-transform">15K+</div>
+                  <div className="text-3xl font-bold imperial-gradient-text">15K+</div>
                   <div className="text-sm sage-accent font-medium">Active Traders</div>
                 </div>
                 <div className="w-px h-10 bg-gradient-to-b from-transparent via-border to-transparent" />
                 <div className="text-center group">
-                  <div className="text-3xl font-bold imperial-bronze-gradient group-hover:scale-110 transition-transform">$3.2B</div>
+                  <div className="text-3xl font-bold imperial-bronze-gradient">$3.2B</div>
                   <div className="text-sm text-muted-foreground font-medium">Volume Traded</div>
                 </div>
                 <div className="w-px h-10 bg-gradient-to-b from-transparent via-border to-transparent" />
                 <div className="text-center group">
-                  <div className="text-3xl font-bold imperial-gradient-text group-hover:scale-110 transition-transform">95%</div>
+                  <div className="text-3xl font-bold imperial-gradient-text">95%</div>
                   <div className="text-sm mint-accent font-medium">Success Rate</div>
                 </div>
               </div>

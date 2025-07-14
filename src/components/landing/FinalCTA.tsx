@@ -62,8 +62,7 @@ export default function FinalCTA() {
               {benefits.map((benefit, index) => (
                 <div 
                   key={benefit.text}
-                  className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-xl rounded-2xl border border-border/50 animate-fade-in-up"
-                  style={{ animationDelay: `${index * 150}ms` }}
+                  className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-xl rounded-2xl border border-border/50"
                 >
                   <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
                     <benefit.icon className="w-5 h-5 text-primary" />
@@ -80,7 +79,7 @@ export default function FinalCTA() {
                   <Link to="/dashboard/home">
                     <Button
                       size="lg"
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 py-6 text-xl rounded-2xl transition-all duration-300 transform hover:scale-105 animate-pulse-glow shadow-2xl"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 py-6 text-xl rounded-2xl transition-all duration-300 shadow-2xl"
                     >
                       Access Dashboard
                       <ArrowRight className="ml-3 h-6 w-6" />
@@ -90,7 +89,7 @@ export default function FinalCTA() {
                   <Link to={createPageUrl("account-request")}>
                     <Button
                       size="lg"
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 py-6 text-xl rounded-2xl transition-all duration-300 transform hover:scale-105 animate-pulse-glow shadow-2xl"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 py-6 text-xl rounded-2xl transition-all duration-300 shadow-2xl"
                     >
                       Start Trading Now
                       <ArrowRight className="ml-3 h-6 w-6" />

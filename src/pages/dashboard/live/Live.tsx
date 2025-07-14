@@ -472,6 +472,7 @@ export default function Live() {
               sessionId={sdkSession.id}
               meetingNumber={sdkSession.zoom_meeting_number!}
               sessionTitle={sdkSession.session_title}
+              zoomMeetingUrl={sdkSession.zoom_meeting_url}
               onClose={() => setSdkSession(null)}
             />
           )}

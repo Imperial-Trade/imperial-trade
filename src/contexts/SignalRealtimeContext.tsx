@@ -30,32 +30,37 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
 
-  // Enhanced function to check if user is educator or admin
+  // Enhanced function to check if user is educator or admin with better error handling
   const isEducatorOrAdmin = (profile: any) => {
     if (!profile) {
       console.log('SignalRealtimeContext - No profile provided for role check');
       return false;
     }
     
-    const role = profile.role?.toLowerCase() || '';
-    const userType = profile.user_type?.toLowerCase() || '';
-    const accessLevel = profile.access_level?.toLowerCase() || '';
+    // Safely get role values with null checks and normalization
+    const role = (profile.role || '').toString().toLowerCase().trim();
+    const userType = (profile.user_type || '').toString().toLowerCase().trim();
+    const accessLevel = (profile.access_level || '').toString().toLowerCase().trim();
     
+    // Check all possible combinations for educator/admin status
     const isEducator = role === 'educator' || userType === 'educator';
-    const isAdmin = role === 'admin' || userType === 'admin' || accessLevel === 'admin';
-    const isModerator = accessLevel === 'moderator';
+    const isAdmin = role === 'admin' || userType === 'admin';
+    const isModeratorLevel = accessLevel === 'admin' || accessLevel === 'moderator';
     
-    const result = isEducator || isAdmin || isModerator;
+    const result = isEducator || isAdmin || isModeratorLevel;
     
-    console.log('SignalRealtimeContext - Role check:', {
+    console.log('SignalRealtimeContext - Enhanced role check:', {
       profileId: profile.id,
-      displayName: profile.display_name,
-      role,
-      userType,
-      accessLevel,
+      displayName: profile.display_name || 'Unknown',
+      rawRole: profile.role,
+      rawUserType: profile.user_type,
+      rawAccessLevel: profile.access_level,
+      normalizedRole: role,
+      normalizedUserType: userType,
+      normalizedAccessLevel: accessLevel,
       isEducator,
       isAdmin,
-      isModerator,
+      isModeratorLevel,
       finalResult: result
     });
     
@@ -64,9 +69,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 
   const refreshSignals = useCallback(async () => {
     try {
-      console.log('SignalRealtimeContext - Refreshing signals...');
+      console.log('SignalRealtimeContext - Starting global signal refresh...');
       
-      // Fetch alerts and profiles separately for better performance
+      // Fetch ALL alerts without user filtering - this is the key fix
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
         .select('*')
@@ -77,115 +82,154 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         throw alertsError;
       }
 
-      console.log('SignalRealtimeContext - Raw alerts data:', alertsData?.length || 0);
+      console.log('SignalRealtimeContext - Fetched total alerts:', alertsData?.length || 0);
 
-      if (!alertsData) {
-        console.log('SignalRealtimeContext - No alerts data, setting empty array');
+      if (!alertsData || alertsData.length === 0) {
+        console.log('SignalRealtimeContext - No alerts found, setting empty array');
         setSignals([]);
         return;
       }
 
-      // Get unique user IDs
+      // Get ALL unique user IDs from alerts
       const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
+      console.log('SignalRealtimeContext - Unique user IDs from alerts:', userIds);
 
-      // Fetch profiles with role information
-      const { data: profilesData } = await supabase
+      // Fetch ALL profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .in('id', userIds);
 
-      // Create profile map
+      if (profilesError) {
+        console.error('SignalRealtimeContext - Error fetching profiles:', profilesError);
+      }
+
+      console.log('SignalRealtimeContext - Fetched profiles:', profilesData?.length || 0);
+      
+      // Create profile map for quick lookup
       const profilesMap = new Map();
       if (profilesData) {
         profilesData.forEach(profile => {
           profilesMap.set(profile.id, profile);
+          console.log('SignalRealtimeContext - Profile in map:', {
+            id: profile.id,
+            displayName: profile.display_name,
+            role: profile.role,
+            userType: profile.user_type,
+            accessLevel: profile.access_level
+          });
         });
       }
 
-      // Map alerts with profiles and filter for educators/admins only
-      const alertsWithProfiles: TradeAlertWithProfile[] = alertsData
-        .map(alert => {
-          const profile = profilesMap.get(alert.user_id);
-          const mappedAlert = {
-            id: alert.id,
-            assetName: alert.asset_name,
-            finnhubSymbol: alert.finnhub_symbol,
-            tradeType: alert.trade_type,
-            entryPrice: Number(alert.entry_price),
-            stopLoss: Number(alert.stop_loss),
-            status: alert.status,
-            tp1: alert.tp1 ? Number(alert.tp1) : undefined,
-            tp2: alert.tp2 ? Number(alert.tp2) : undefined,
-            tp3: alert.tp3 ? Number(alert.tp3) : undefined,
-            tp4: alert.tp4 ? Number(alert.tp4) : undefined,
-            tp5: alert.tp5 ? Number(alert.tp5) : undefined,
-            tpHits: alert.tp_hits || [],
-            notes: alert.notes,
-            closeReason: alert.close_reason,
-            createdAt: alert.created_at,
-            updatedAt: alert.updated_at,
-            creator: profile ? {
-              id: profile.id,
-              display_name: profile.display_name || 'Anonymous User',
-              role: profile.role || 'user',
-              avatar_url: profile.avatar_url,
-              user_type: profile.user_type,
-              access_level: profile.access_level
-            } : undefined
-          };
-          
-          console.log('SignalRealtimeContext - Mapped alert:', {
-            id: alert.id,
-            asset: alert.asset_name,
-            creator: profile ? {
-              id: profile.id,
-              role: profile.role,
-              user_type: profile.user_type,
-              access_level: profile.access_level,
-              display_name: profile.display_name
-            } : 'No profile',
-            isEducatorOrAdmin: isEducatorOrAdmin(mappedAlert.creator)
-          });
-          
-          return mappedAlert;
-        })
-        .filter(alert => isEducatorOrAdmin(alert.creator)); // Only show educator/admin signals
+      // Map ALL alerts with their profiles first
+      const allAlertsWithProfiles: TradeAlertWithProfile[] = alertsData.map(alert => {
+        const profile = profilesMap.get(alert.user_id);
+        
+        const mappedAlert = {
+          id: alert.id,
+          assetName: alert.asset_name,
+          finnhubSymbol: alert.finnhub_symbol,
+          tradeType: alert.trade_type,
+          entryPrice: Number(alert.entry_price),
+          stopLoss: Number(alert.stop_loss),
+          status: alert.status,
+          tp1: alert.tp1 ? Number(alert.tp1) : undefined,
+          tp2: alert.tp2 ? Number(alert.tp2) : undefined,
+          tp3: alert.tp3 ? Number(alert.tp3) : undefined,
+          tp4: alert.tp4 ? Number(alert.tp4) : undefined,
+          tp5: alert.tp5 ? Number(alert.tp5) : undefined,
+          tpHits: alert.tp_hits || [],
+          notes: alert.notes,
+          closeReason: alert.close_reason,
+          createdAt: alert.created_at,
+          updatedAt: alert.updated_at,
+          creator: profile ? {
+            id: profile.id,
+            display_name: profile.display_name || 'Anonymous User',
+            role: profile.role || 'user',
+            avatar_url: profile.avatar_url,
+            user_type: profile.user_type,
+            access_level: profile.access_level
+          } : {
+            id: alert.user_id,
+            display_name: 'Unknown User',
+            role: 'user',
+            avatar_url: null,
+            user_type: null,
+            access_level: null
+          }
+        };
+        
+        return mappedAlert;
+      });
 
-      console.log('SignalRealtimeContext - Final signals after filtering:', alertsWithProfiles.length);
-      console.log('SignalRealtimeContext - All signals with educator status:', alertsWithProfiles.map(a => ({
-        id: a.id,
-        asset: a.assetName,
-        creator: a.creator?.display_name,
-        role: a.creator?.role,
-        userType: a.creator?.user_type,
-        accessLevel: a.creator?.access_level
+      console.log('SignalRealtimeContext - All alerts with profiles:', allAlertsWithProfiles.length);
+
+      // Now filter for educator/admin signals with detailed logging
+      const filteredSignals = allAlertsWithProfiles.filter(alert => {
+        const isEligible = isEducatorOrAdmin(alert.creator);
+        
+        console.log('SignalRealtimeContext - Filtering alert:', {
+          alertId: alert.id,
+          assetName: alert.assetName,
+          creatorId: alert.creator?.id,
+          creatorName: alert.creator?.display_name,
+          creatorRole: alert.creator?.role,
+          creatorUserType: alert.creator?.user_type,
+          creatorAccessLevel: alert.creator?.access_level,
+          isEligible
+        });
+        
+        return isEligible;
+      });
+
+      console.log('SignalRealtimeContext - Final filtered signals:', filteredSignals.length);
+      console.log('SignalRealtimeContext - Filtered signals details:', filteredSignals.map(s => ({
+        id: s.id,
+        asset: s.assetName,
+        creator: s.creator?.display_name,
+        role: s.creator?.role,
+        userType: s.creator?.user_type,
+        accessLevel: s.creator?.access_level
       })));
 
-      setSignals(alertsWithProfiles);
+      setSignals(filteredSignals);
       setLastUpdated(new Date());
       setError(null);
+      
+      console.log('SignalRealtimeContext - Successfully set signals:', filteredSignals.length);
+      
     } catch (err) {
-      console.error('Failed to refresh signals:', err);
+      console.error('SignalRealtimeContext - Failed to refresh signals:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh signals');
     }
   }, []);
 
   const handleRealtimeUpdate = useCallback(async (payload: any) => {
-    console.log('Signal realtime update:', payload);
+    console.log('SignalRealtimeContext - Real-time update received:', payload);
     
     try {
       const { eventType, new: newRecord, old: oldRecord } = payload;
       
       if (eventType === 'INSERT' && newRecord) {
+        console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
+        
         // Get profile for the new signal
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', newRecord.user_id)
           .single();
 
+        if (profileError) {
+          console.error('SignalRealtimeContext - Error fetching profile for new signal:', profileError);
+        }
+
+        console.log('SignalRealtimeContext - Profile for new signal:', profile);
+
         // Only process if user is educator or admin
         if (!isEducatorOrAdmin(profile)) {
+          console.log('SignalRealtimeContext - New signal creator is not educator/admin, skipping');
           return;
         }
 
@@ -214,16 +258,26 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
             avatar_url: profile.avatar_url,
             user_type: profile.user_type,
             access_level: profile.access_level
-          } : undefined
+          } : {
+            id: newRecord.user_id,
+            display_name: 'Unknown User',
+            role: 'user',
+            avatar_url: null,
+            user_type: null,
+            access_level: null
+          }
         };
 
+        console.log('SignalRealtimeContext - Adding new signal to state:', newSignal);
         setSignals(prev => [newSignal, ...prev]);
         
         // Dispatch custom event for notifications
         window.dispatchEvent(new CustomEvent('signal-posted'));
       } 
       else if (eventType === 'UPDATE' && newRecord) {
-        // Check if the updated signal should remain visible (still from educator/admin)
+        console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
+        
+        // Check if the updated signal should remain visible
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
@@ -240,33 +294,37 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
               updatedAt: newRecord.updated_at
             } : signal
           ));
+          console.log('SignalRealtimeContext - Updated signal in state:', newRecord.id);
         } else {
           // Remove signal if user is no longer educator/admin
           setSignals(prev => prev.filter(signal => signal.id !== newRecord.id));
+          console.log('SignalRealtimeContext - Removed signal (no longer educator/admin):', newRecord.id);
         }
       }
       else if (eventType === 'DELETE' && oldRecord) {
+        console.log('SignalRealtimeContext - Processing DELETE for alert:', oldRecord.id);
         setSignals(prev => prev.filter(signal => signal.id !== oldRecord.id));
       }
 
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
-      console.error('Failed to handle realtime update:', err);
+      console.error('SignalRealtimeContext - Failed to handle realtime update:', err);
     }
   }, []);
 
   const subscribe = useCallback(() => {
     if (channelRef.current) {
-      console.log('Signal realtime already subscribed');
+      console.log('SignalRealtimeContext - Already subscribed to real-time');
       return;
     }
 
-    console.log('Subscribing to signal realtime updates');
+    console.log('SignalRealtimeContext - Subscribing to global signal real-time updates');
     setConnectionStatus('connecting');
 
+    // Subscribe to ALL trade_alerts changes globally (not user-specific)
     channelRef.current = supabase
-      .channel('signal-realtime')
+      .channel('global-signals-realtime')
       .on(
         'postgres_changes',
         {
@@ -277,13 +335,13 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         handleRealtimeUpdate
       )
       .subscribe((status) => {
-        console.log('Signal realtime subscription status:', status);
+        console.log('SignalRealtimeContext - Real-time subscription status:', status);
         
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('connected');
           setError(null);
           reconnectAttempts.current = 0;
-          // Initial data load
+          // Initial data load after successful connection
           refreshSignals();
         } else if (status === 'CHANNEL_ERROR') {
           setConnectionStatus('error');

@@ -10,38 +10,45 @@ export default function HeroSection() {
   const { user, loading } = useAuth();
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden">
-      {/* Modern floating geometric shapes */}
+    <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden bg-background">
+      {/* Sophisticated gradient background using Spanish Gray palette */}
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-gray-lightest/30 to-gray-lighter/20" />
+      
+      {/* Luxury accent overlays */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-gold-light/8 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-bl from-transparent via-orache-light/5 to-transparent" />
+      
+      {/* Elegant floating elements with luxury colors */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-primary rounded-full animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 right-1/3 w-1 h-1 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: '3s' }} />
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-gold-warm rounded-full animate-pulse" />
+        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-orache-warm rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-gold-antique rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 right-1/3 w-1 h-1 bg-orache-dusty rounded-full animate-pulse" style={{ animationDelay: '3s' }} />
       </div>
       
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
         <ContentSection>
           <div className="space-y-12 max-w-5xl mx-auto">
-            {/* Modern Badge */}
+            {/* Elegant Badge with Spanish Gray and gold accent */}
             <div className="animate-fade-in-up">
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full glass-effect border border-primary/20 text-primary text-sm font-medium backdrop-blur-xl">
-                <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gray-lightest/80 border border-gray-lighter text-gray-darkest text-sm font-medium backdrop-blur-xl">
+                <div className="w-2 h-2 bg-gold-warm rounded-full animate-pulse" />
                 <span>Elite Trading Platform</span>
-                <div className="w-2 h-2 bg-gradient-to-r from-primary to-blue-500 rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-orache-warm rounded-full animate-pulse" />
               </div>
             </div>
 
-            {/* Modern Main headline */}
+            {/* Main headline with sophisticated color palette */}
             <div className="animate-scale-in space-y-4">
-              <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold leading-none tracking-tight">
+              <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold leading-none tracking-tight text-gray-darkest">
                 <span className="block">The Future of</span>
-                <span className="gradient-text block bg-gradient-to-r from-primary via-blue-500 to-purple-600 bg-clip-text text-transparent">
+                <span className="block bg-gradient-to-r from-gold-warm via-gold-antique to-orache-warm bg-clip-text text-transparent">
                   Smart Trading
                 </span>
               </h1>
               
-              {/* Subtitle with better spacing */}
-              <p className="text-xl lg:text-2xl text-muted-foreground max-w-4xl mx-auto leading-relaxed font-light">
+              {/* Subtitle with Spanish Gray palette */}
+              <p className="text-xl lg:text-2xl text-gray-medium max-w-4xl mx-auto leading-relaxed font-light">
                 Experience next-generation trading with AI-powered analytics, real-time signals, 
                 and professional-grade tools designed for consistent profitability.
               </p>

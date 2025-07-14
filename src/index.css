@@ -8,8 +8,8 @@
 
 @layer base {
   :root {
-    /* Spanish Gray Monochromatic Palette */
-    --background: 0 0% 96%; /* #F5F5F5 - slightly lighter than E4E4E4 */
+    /* Spanish Gray Monochromatic Palette - Exact from image */
+    --background: 0 0% 100%; /* Pure white background */
     --foreground: 0 0% 26%; /* #434343 */
 
     --card: 0 0% 100%; /* Pure white cards */
@@ -18,14 +18,23 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 26%;
 
-    /* Spanish Gray based theme */
+    /* Spanish Gray Palette - From darkest to lightest */
+    --gray-darkest: 0 0% 26%; /* #434343 */
+    --gray-dark: 0 0% 40%; /* #656565 */
+    --gray-medium: 0 0% 49%; /* #7E7E7E */
+    --gray-medium-light: 0 0% 60%; /* #989898 */
+    --gray-light: 0 0% 70%; /* #B2B2B2 */
+    --gray-lighter: 0 0% 80%; /* #CBCBCB */
+    --gray-lightest: 0 0% 89%; /* #E4E4E4 */
+
+    /* Primary using Spanish Gray */
     --primary: 0 0% 26%; /* #434343 */
-    --primary-foreground: 0 0% 89%; /* #E4E4E4 */
+    --primary-foreground: 0 0% 100%; /* White text on dark */
 
     --secondary: 0 0% 89%; /* #E4E4E4 */
     --secondary-foreground: 0 0% 26%; /* #434343 */
 
-    --muted: 0 0% 80%; /* #CBCBCB */
+    --muted: 0 0% 96%; /* Very light gray background */
     --muted-foreground: 0 0% 49%; /* #7E7E7E */
 
     --accent: 0 0% 89%; /* #E4E4E4 */
@@ -35,10 +44,24 @@
     --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 80%; /* #CBCBCB */
-    --input: 0 0% 89%; /* #E4E4E4 */
+    --input: 0 0% 96%; /* Very light background */
     --ring: 0 0% 26%; /* #434343 */
 
     --radius: 0.75rem;
+
+    /* Gold Palette - Luxury warmth */
+    --gold-bright: 51 100% 50%; /* Bright yellow-gold */
+    --gold-warm: 45 93% 47%; /* Warm golden */
+    --gold-antique: 41 84% 38%; /* Antique gold */
+    --gold-muted: 42 27% 55%; /* Muted gold/warm beige */
+    --gold-light: 48 100% 88%; /* Light cream with golden undertones */
+
+    /* Orache Palette - Warm earthy orange/reddish-orange */
+    --orache-bright: 16 90% 48%; /* Bright orache */
+    --orache-warm: 18 75% 42%; /* Warm orache */
+    --orache-rust: 20 65% 35%; /* Rust/autumn leaves */
+    --orache-dusty: 25 35% 65%; /* Dusty rose from orache spectrum */
+    --orache-light: 15 85% 85%; /* Soft peach hue */
 
     /* Sidebar colors - Spanish Gray */
     --sidebar-background: 0 0% 100%;
@@ -50,7 +73,7 @@
     --sidebar-border: 0 0% 80%;
     --sidebar-ring: 0 0% 26%;
 
-    /* Feature accent colors - only used for product features */
+    /* Feature accent colors - for product features only */
     --feature-blue: 210 100% 56%;
     --feature-green: 142 76% 36%;
     --feature-orange: 25 95% 53%;

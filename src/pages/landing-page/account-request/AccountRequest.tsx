@@ -49,9 +49,9 @@ export default function AccountRequestPage() {
   };
 
   return (
-    <div className="min-h-screen flex pt-20">
+    <div className="min-h-screen flex">
       {/* Left Side - Dark with Form */}
-      <div className="w-1/2 bg-white flex items-start justify-center px-8 pt-8">
+      <div className="w-1/2 bg-white flex items-center justify-center px-8 py-24">
         <div className="w-full max-w-sm">
 
           {/* Form Card */}

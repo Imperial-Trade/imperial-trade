@@ -29,6 +29,9 @@ export class TradingApiService {
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
+      console.log('TradingApiService - Creating alert with DTO:', dto);
+      console.log('TradingApiService - User ID:', userId);
+      
       const insertData: TableInsert<'trade_alerts'> = {
         asset_name: dto.assetName,
         finnhub_symbol: dto.finnhubSymbol,
@@ -45,7 +48,11 @@ export class TradingApiService {
         status: 'active'
       };
 
+      console.log('TradingApiService - Insert data:', insertData);
+
       const result = await apiClient.insert('trade_alerts', insertData);
+      
+      console.log('TradingApiService - Insert result:', result);
       
       if (!result.success || !result.data) {
         return {

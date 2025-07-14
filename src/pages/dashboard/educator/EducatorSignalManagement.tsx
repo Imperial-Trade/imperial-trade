@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Plus, 
   Search, 
@@ -35,7 +36,32 @@ import {
 
 export default function EducatorSignalManagement() {
   const { user } = useAuth();
-  const { alerts, isLoading: tradingLoading, createAlert, updateAlert, deleteAlert, error } = useOptimizedTrading(user?.id || '');
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('EducatorSignalManagement - User state:', {
+      userId: user?.id,
+      isAuthenticated: !!user,
+      userMetadata: user?.user_metadata
+    });
+    
+    // Check user's profile from the database
+    if (user?.id) {
+      const checkProfile = async () => {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        console.log('EducatorSignalManagement - User profile:', { profile, error });
+      };
+      checkProfile();
+    }
+  }, [user]);
+
+  // Only initialize hooks after user is authenticated
+  const { alerts, isLoading: tradingLoading, createAlert, updateAlert, deleteAlert, error, connectionStatus } = useOptimizedTrading(user?.id || '', false);
   const { analytics, loading: analyticsLoading } = useEducatorSignals();
   const { toast } = useToast();
   
@@ -48,16 +74,43 @@ export default function EducatorSignalManagement() {
 
   const loading = tradingLoading || analyticsLoading;
 
+  // Debug logging for alerts
+  useEffect(() => {
+    console.log('EducatorSignalManagement - Alerts state:', {
+      alertsCount: alerts.length,
+      connectionStatus,
+      error,
+      loading
+    });
+  }, [alerts, connectionStatus, error, loading]);
+
   // CRUD Handlers
   const handleCreateSignal = async (data: any) => {
-    try {
-      await createAlert(data);
-      setShowCreateForm(false);
+    if (!user?.id) {
       toast({
-        title: "Signal Created",
-        description: "Your trading signal has been created successfully.",
+        title: "Authentication Error",
+        description: "Please ensure you are logged in to create a signal.",
+        variant: "destructive",
       });
+      return;
+    }
+
+    try {
+      console.log('Creating signal with data:', data);
+      const result = await createAlert(data);
+      console.log('Signal creation result:', result);
+      
+      if (result) {
+        setShowCreateForm(false);
+        toast({
+          title: "Signal Created",
+          description: "Your trading signal has been created successfully.",
+        });
+      } else {
+        throw new Error('Failed to create signal');
+      }
     } catch (error) {
+      console.error('Error creating signal:', error);
       toast({
         title: "Error",
         description: "Failed to create signal. Please try again.",
@@ -158,6 +211,18 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
     );
   };
 
+  // Don't render if user is not authenticated
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-lg text-secondary mb-2">Please log in to access Signal Management</p>
+          <p className="text-sm text-secondary">Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -166,6 +231,10 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full"
         />
+        <div className="ml-4 text-center">
+          <p className="text-secondary">Loading your signals...</p>
+          <p className="text-xs text-secondary">Connection: {connectionStatus || 'connecting'}</p>
+        </div>
       </div>
     );
   }

@@ -177,25 +177,6 @@ const AppBar: React.FC = () => {
           -webkit-text-fill-color: transparent;
           background-clip: text;
           text-shadow: 0 0 20px rgba(192, 154, 88, 0.4);
-          position: relative;
-        }
-
-        .imperial-tech-font::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 80px;
-          background: linear-gradient(90deg, transparent, rgba(192, 154, 88, 0.2), transparent);
-          animation: tech-scan-full 4s infinite;
-          pointer-events: none;
-          z-index: 40;
-        }
-
-        @keyframes tech-scan-full {
-          0% { transform: translateX(-100vw); }
-          100% { transform: translateX(100vw); }
         }
 
         /* Load Orbitron font */

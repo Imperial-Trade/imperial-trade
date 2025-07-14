@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -21,6 +20,7 @@ export default function SignalStream() {
   });
 
   // Use the optimized trading hook with real-time updates for all signals
+  // Pass the actual user ID for proper authorization, even when showing all signals
   const {
     alerts: allAlerts,
     isLoading,
@@ -29,7 +29,7 @@ export default function SignalStream() {
     refreshAlerts,
     connectionStatus,
     lastUpdated
-  } = useOptimizedTrading('', true); // Empty string = show all signals, true = enable real-time
+  } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
 
   // Helper functions for role checking
   const isAdmin = useMemo(() => {
@@ -37,6 +37,11 @@ export default function SignalStream() {
   }, [profile]);
 
   const isCreator = useCallback((alertCreatorId: string) => {
+    console.log('SignalStream - Checking creator:', {
+      profileId: profile?.id,
+      alertCreatorId,
+      isCreator: profile?.id === alertCreatorId
+    });
     return profile?.id === alertCreatorId;
   }, [profile]);
 
@@ -47,6 +52,7 @@ export default function SignalStream() {
       id: a.id,
       asset: a.assetName,
       creator: a.creator?.display_name,
+      creatorId: a.creator?.id,
       role: a.creator?.role,
       userType: a.creator?.user_type,
       accessLevel: a.creator?.access_level
@@ -177,6 +183,15 @@ export default function SignalStream() {
     // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
     
+    console.log('SignalStream - handleStatusUpdate authorization check:', {
+      alertId: alert.id,
+      alertCreatorId: alert.creator?.id,
+      currentUserId: profile?.id,
+      isCreator: alertIsCreator,
+      isAdmin,
+      canUpdate: alertIsCreator || isAdmin
+    });
+    
     if (!alertIsCreator && !isAdmin) {
       console.warn('SignalStream - User not authorized to update this signal:', {
         userId: profile?.id,
@@ -206,6 +221,7 @@ export default function SignalStream() {
       };
       
       const result = await updateAlert(alert.id, updateDto);
+      console.log('SignalStream - Update result:', result);
       
       if (result && newStatus === 'closed' && (window as any).addNotification) {
         (window as any).addNotification({

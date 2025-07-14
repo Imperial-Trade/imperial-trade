@@ -1,4 +1,3 @@
-
 import { apiClient, TableRow, TableInsert, TableUpdate } from '../client/ApiClient';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -26,6 +25,27 @@ export class TradingApiService {
       TradingApiService.instance = new TradingApiService();
     }
     return TradingApiService.instance;
+  }
+
+  // Helper method to check if user is admin
+  private async isUserAdmin(userId: string): Promise<boolean> {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('access_level, role')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error checking user admin status:', error);
+        return false;
+      }
+
+      return profile?.access_level === 'admin' || profile?.role === 'admin';
+    } catch (error) {
+      console.error('Error in isUserAdmin:', error);
+      return false;
+    }
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
@@ -111,6 +131,47 @@ export class TradingApiService {
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
+      console.log('TradingApiService - Updating alert:', { id, dto, userId });
+
+      // First get the alert to check ownership
+      const alertResult = await apiClient.select('trade_alerts', {
+        eq: { column: 'id', value: id }
+      });
+
+      if (!alertResult.success || !alertResult.data || alertResult.data.length === 0) {
+        console.log('TradingApiService - Alert not found:', id);
+        return {
+          success: false,
+          error: 'Alert not found',
+          data: undefined
+        };
+      }
+
+      const alert = alertResult.data[0];
+      console.log('TradingApiService - Found alert:', { 
+        alertId: alert.id, 
+        alertUserId: alert.user_id, 
+        requestUserId: userId 
+      });
+
+      // Check if user can update this alert (owner or admin)
+      const isOwner = alert.user_id === userId;
+      const isAdmin = await this.isUserAdmin(userId);
+
+      console.log('TradingApiService - Authorization check:', { 
+        isOwner, 
+        isAdmin, 
+        canUpdate: isOwner || isAdmin 
+      });
+
+      if (!isOwner && !isAdmin) {
+        return {
+          success: false,
+          error: 'Unauthorized to update this alert',
+          data: undefined
+        };
+      }
+
       const updateData: TableUpdate<'trade_alerts'> = {
         status: dto.status,
         tp_hits: dto.tpHits,
@@ -119,7 +180,11 @@ export class TradingApiService {
         updated_at: new Date().toISOString()
       };
 
+      console.log('TradingApiService - Updating with data:', updateData);
+
       const result = await apiClient.update('trade_alerts', id, updateData);
+      
+      console.log('TradingApiService - Update result:', result);
       
       if (!result.success || !result.data) {
         return {
@@ -133,15 +198,6 @@ export class TradingApiService {
         return {
           success: false,
           error: 'Invalid trade alert data received',
-          data: undefined
-        };
-      }
-
-      // Verify ownership
-      if (result.data.user_id !== userId) {
-        return {
-          success: false,
-          error: 'Unauthorized to update this alert',
           data: undefined
         };
       }
@@ -173,6 +229,7 @@ export class TradingApiService {
         error: undefined
       };
     } catch (error) {
+      console.error('TradingApiService - Update error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -383,7 +440,7 @@ export class TradingApiService {
 
   async deleteAlert(id: string, userId: string): Promise<ApiResponse<void>> {
     try {
-      // First verify ownership
+      // First verify ownership or admin status
       const alertResult = await apiClient.select('trade_alerts', {
         eq: { column: 'id', value: id }
       });
@@ -397,7 +454,10 @@ export class TradingApiService {
       }
 
       const alert = alertResult.data[0];
-      if (alert.user_id !== userId) {
+      const isOwner = alert.user_id === userId;
+      const isAdmin = await this.isUserAdmin(userId);
+
+      if (!isOwner && !isAdmin) {
         return {
           success: false,
           error: 'Unauthorized to delete this alert',

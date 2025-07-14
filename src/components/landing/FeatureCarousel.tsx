@@ -83,29 +83,29 @@ export default function FeatureCarousel() {
 
           <div className="grid lg:grid-cols-5 gap-8 items-center">
             {/* Feature Navigation - Compact */}
-            <div className="lg:col-span-2 space-y-3">
+            <div className="lg:col-span-2 space-y-6">
               {features.map((feature, index) => (
                 <div
                   key={feature.title}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 card-hover ${
+                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-300 card-hover ${
                     activeIndex === index
                       ? 'border-primary bg-primary/5'
                       : 'border-border bg-card hover:border-primary/50'
                   }`}
                   onClick={() => setActiveIndex(index)}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                      className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: feature.color + '20' }}
                     >
                       <feature.icon 
-                        className="w-5 h-5" 
+                        className="w-4 h-4" 
                         style={{ color: feature.color }}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-semibold mb-1 truncate">
+                      <h3 className="text-sm font-semibold mb-0.5 truncate">
                         {feature.title}
                       </h3>
                       <p className="text-muted-foreground text-xs leading-tight line-clamp-2">

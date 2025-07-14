@@ -1,6 +1,7 @@
 import React from "react";
 import HeroSection from "@/components/landing/HeroSection";
 import StatsSection from "@/components/landing/StatsSection";
+import ContainerNavigation from "@/components/landing/ContainerNavigation";
 import FeatureCarousel from "@/components/landing/FeatureCarousel";
 import ToolsShowcase from "@/components/landing/ToolsShowcase";
 import FinalCTA from "@/components/landing/FinalCTA";
@@ -21,6 +22,7 @@ export default function Landing() {
 
       <HeroSection />
       <StatsSection />
+      <ContainerNavigation />
       <FeatureCarousel />
       <ToolsShowcase />
       <FinalCTA />

@@ -7,7 +7,7 @@ const LandingLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <AppBar />
-      <main className="pt-16">
+      <main className="pt-20">
         <Outlet />
       </main>
     </div>

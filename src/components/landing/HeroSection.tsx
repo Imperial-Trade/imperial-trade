@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Play } from "lucide-react";
 import ContentSection from "./ContentSection";
 import { useAuth } from "@/contexts/AuthContext";
-
 export default function HeroSection() {
-  const { user, loading } = useAuth();
-
-  return (
-    <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden sophisticated-bg-mesh">
+  const {
+    user,
+    loading
+  } = useAuth();
+  return <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden sophisticated-bg-mesh">
       {/* Elegant white-black-grey gradient background with green hints */}
       <div className="absolute inset-0 elegant-bg-gradient opacity-90" />
       
@@ -33,7 +33,7 @@ export default function HeroSection() {
             <div className="animate-fade-in-up">
               <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-bgGradient-light/80 border border-bgGradient-medium text-gray-darkest text-sm font-medium backdrop-blur-xl">
                 <div className="w-2 h-2 bg-imperial-gold rounded-full" />
-                <span>Elite Trading Platform</span>
+                <span className="text-slate-600">Elite Trading Platform</span>
                 <div className="w-2 h-2 bg-accentGreen-sage rounded-full" />
               </div>
             </div>
@@ -56,41 +56,25 @@ export default function HeroSection() {
 
             {/* Enhanced CTA Buttons */}
             <div className="animate-slide-in-left flex flex-col sm:flex-row gap-6 justify-center items-center pt-4">
-              {!loading && (
-                user ? (
-                  <Link to="/dashboard/home">
-                    <Button
-                      size="lg"
-                      className="group bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-10 py-5 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl relative overflow-hidden"
-                    >
+              {!loading && (user ? <Link to="/dashboard/home">
+                    <Button size="lg" className="group bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-10 py-5 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl relative overflow-hidden">
                       <span className="relative z-10 flex items-center">
                         Access Dashboard
                         <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1" />
                       </span>
                       <div className="absolute inset-0 bg-gradient-to-r from-primary/80 to-blue-600/80 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                     </Button>
-                  </Link>
-                ) : (
-                  <Link to={createPageUrl("account-request")}>
-                    <Button
-                      size="lg"
-                      className="group bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-10 py-5 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl relative overflow-hidden"
-                    >
+                  </Link> : <Link to={createPageUrl("account-request")}>
+                    <Button size="lg" className="group bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-10 py-5 text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl relative overflow-hidden">
                       <span className="relative z-10 flex items-center">
                         Start Trading
                         <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-1" />
                       </span>
                       <div className="absolute inset-0 bg-gradient-to-r from-primary/80 to-blue-600/80 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                     </Button>
-                  </Link>
-                )
-              )}
+                  </Link>)}
 
-              <Button
-                variant="outline"
-                size="lg"
-                className="group glass-effect border-2 border-border/30 text-foreground hover:bg-primary/10 font-semibold px-10 py-5 text-lg rounded-2xl transition-all duration-300 backdrop-blur-xl"
-              >
+              <Button variant="outline" size="lg" className="group glass-effect border-2 border-border/30 text-foreground hover:bg-primary/10 font-semibold px-10 py-5 text-lg rounded-2xl transition-all duration-300 backdrop-blur-xl">
                 <Play className="mr-3 h-5 w-5 transition-transform group-hover:scale-110" />
                 <span>Watch Demo</span>
               </Button>
@@ -118,6 +102,5 @@ export default function HeroSection() {
           </div>
         </ContentSection>
       </div>
-    </section>
-  );
+    </section>;
 }

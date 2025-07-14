@@ -373,52 +373,6 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* AI Tech Font Styles */
-.imperial-tech-font {
-  font-family: 'Orbitron', 'Courier New', monospace;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  background: linear-gradient(90deg, #ffd700, #ffed4a, #f59e0b, #d97706);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 0 20px rgba(192, 154, 88, 0.4);
-  position: relative;
-}
-
-.imperial-tech-font::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(192, 154, 88, 0.3), transparent);
-  animation: tech-scan 3s infinite;
-  pointer-events: none;
-}
-
-/* Parallax and Layout Styles */
-.parallax-container {
-  position: relative;
-  overflow: hidden;
-}
-
-.parallax-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-}
-
-.content-overlay {
-  position: relative;
-  z-index: 1;
-}
-
 /* Scroll Reveal Animation */
 .scroll-reveal {
   opacity: 0;

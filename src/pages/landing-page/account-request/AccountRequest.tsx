@@ -51,7 +51,7 @@ export default function AccountRequestPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Dark with Form */}
-      <div className="w-1/2 bg-gray-900 flex items-center justify-center px-8">
+      <div className="w-1/2 bg-white flex items-center justify-center px-8">
         <div className="w-full max-w-md">
           {/* Logo and Brand */}
           <div className="flex items-center justify-center mb-12">

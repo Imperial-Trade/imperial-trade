@@ -55,6 +55,11 @@ export const useLiveSessionManager = () => {
     }
   }, []);
 
+  // Helper function to check if session already exists
+  const sessionExists = useCallback((sessionId: string, sessionsList: LiveSession[]) => {
+    return sessionsList.some(session => session.id === sessionId);
+  }, []);
+
   // Create new session
   const createSession = useCallback(async (sessionData: CreateLiveSessionData) => {
     if (!canManageSessions()) {
@@ -85,10 +90,7 @@ export const useLiveSessionManager = () => {
 
       if (error) throw error;
 
-      setSessions(prev => [...prev, data].sort((a, b) => 
-        new Date(a.session_date).getTime() - new Date(b.session_date).getTime()
-      ));
-      
+      // Don't manually update state - let real-time subscription handle it
       toast.success('Live session created successfully');
       return true;
     } catch (error) {
@@ -220,9 +222,17 @@ export const useLiveSessionManager = () => {
           console.log('Live session change detected:', payload);
           
           if (payload.eventType === 'INSERT') {
-            setSessions(prev => [...prev, payload.new as LiveSession].sort((a, b) => 
-              new Date(a.session_date).getTime() - new Date(b.session_date).getTime()
-            ));
+            setSessions(prev => {
+              const newSession = payload.new as LiveSession;
+              // Check if session already exists to prevent duplicates
+              if (sessionExists(newSession.id, prev)) {
+                console.log('Session already exists, skipping duplicate:', newSession.id);
+                return prev;
+              }
+              return [...prev, newSession].sort((a, b) => 
+                new Date(a.session_date).getTime() - new Date(b.session_date).getTime()
+              );
+            });
           } else if (payload.eventType === 'UPDATE') {
             setSessions(prev => prev.map(session => 
               session.id === payload.new.id ? payload.new as LiveSession : session

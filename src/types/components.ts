@@ -51,6 +51,7 @@ export interface TradeAlertCardProps extends BaseComponentProps {
   onStopLossHit: (alert: TradeAlertData, closeReason: string) => Promise<void>;
   onOrderActivation: (alert: TradeAlertData) => Promise<void>;
   isAdmin: boolean;
+  isCreator: boolean;
   livePrice?: number;
   connectionStatus: 'connecting' | 'connected' | 'error';
   priceSource: string;

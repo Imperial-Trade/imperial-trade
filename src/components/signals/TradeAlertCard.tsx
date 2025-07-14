@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +39,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   onStopLossHit, 
   onOrderActivation, 
   isAdmin, 
+  isCreator,
   livePrice, 
   connectionStatus, 
   priceSource, 
@@ -57,6 +57,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const hitTPs = alert.tp_hits || [];
   const isClosed = alert.status === 'closed';
   const isPending = alert.status === 'pending';
+  const canCloseSignal = isAdmin || isCreator;
 
   // Convert alert to TradeSignal format for sharing
   const tradeSignal: TradeSignal = {
@@ -122,6 +123,13 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     return `${diffInDays}d ago`;
   };
 
+  // Get button text based on user role
+  const getCloseButtonText = () => {
+    if (isAdmin && !isCreator) return 'Close Trade';
+    if (isCreator) return 'Close My Signal';
+    return 'Close Trade';
+  };
+
   return (
     <div 
       className={`bg-gray-800/50 rounded-lg border border-gray-700 shadow-lg overflow-hidden transition-all duration-300 hover:shadow-emerald-500/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-amber-400/50 hover:border-amber-400' : 'hover:border-emerald-400/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-red-500/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-emerald-500/30' : 'ring-2 ring-gray-500/30')} ${className || ''}`}
@@ -151,6 +159,11 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               <Badge className={getRoleBadgeClass(creator.role)}>
                 {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
               </Badge>
+              {isCreator && (
+                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">
+                  Your Signal
+                </Badge>
+              )}
             </div>
             <div className="text-xs text-gray-500">
               {formatTimeAgo(alert.created_date)}
@@ -289,7 +302,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </div>
       )}
       
-      {isAdmin && (alert.status === 'active' || alert.status === 'pending') && (
+      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && (
         <div className="bg-gray-900/50 px-4 py-2 flex justify-end">
             <Button 
               size="sm" 
@@ -298,7 +311,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               onClick={() => handleStatusUpdate('closed')}
             >
                 <Lock className="w-4 h-4 mr-2" />
-                {isPending ? 'Cancel Order' : 'Close Trade'}
+                {isPending ? 'Cancel Order' : getCloseButtonText()}
             </Button>
         </div>
       )}

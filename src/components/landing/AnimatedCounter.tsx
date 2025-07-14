@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+
+import React, { useState, useEffect, useRef } from "react";
 
 interface AnimatedCounterProps {
   value: string | number;
@@ -6,38 +7,37 @@ interface AnimatedCounterProps {
   suffix?: string;
 }
 
-const AnimatedCounter = ({ value, duration = 3000, suffix = "" }: AnimatedCounterProps) => {
+export default function AnimatedCounter({ value, duration = 3000, suffix = "" }: AnimatedCounterProps) {
   const [count, setCount] = useState(0);
-  const counterRef = useRef<HTMLDivElement>(null);
+  const counterRef = useRef(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          // Reset count and start animation every time section becomes visible
           setCount(0);
-          
-          // Extract numeric value from string (e.g., "10,000+" -> 10000)
-          const numericValue = parseFloat(value.toString().replace(/[^0-9.]/g, ''));
-          
-          let startTime: number | null = null;
-          const animate = (currentTime: number) => {
+
+          const numericValue = parseFloat(
+            value.toString().replace(/[^0-9.]/g, "")
+          );
+
+          let startTime = null;
+          const animate = (currentTime) => {
             if (!startTime) startTime = currentTime;
             const progress = Math.min((currentTime - startTime) / duration, 1);
-            
-            // Easing function for smooth animation
+
             const easeOut = 1 - Math.pow(1 - progress, 3);
             const currentValue = Math.floor(easeOut * numericValue);
-            
+
             setCount(currentValue);
-            
+
             if (progress < 1) {
               requestAnimationFrame(animate);
             } else {
               setCount(numericValue);
             }
           };
-          
+
           requestAnimationFrame(animate);
         }
       },
@@ -55,7 +55,7 @@ const AnimatedCounter = ({ value, duration = 3000, suffix = "" }: AnimatedCounte
     };
   }, [value, duration]);
 
-  const formatNumber = (num: number) => {
+  const formatNumber = (num) => {
     if (num >= 1000) {
       return num.toLocaleString();
     }
@@ -63,10 +63,9 @@ const AnimatedCounter = ({ value, duration = 3000, suffix = "" }: AnimatedCounte
   };
 
   return (
-    <div ref={counterRef} className="text-3xl font-bold white-gold-gradient mb-1">
-      {formatNumber(count)}{suffix}
+    <div ref={counterRef} className="text-3xl font-bold text-primary mb-1">
+      {formatNumber(count)}
+      {suffix}
     </div>
   );
-};
-
-export default AnimatedCounter;
+}

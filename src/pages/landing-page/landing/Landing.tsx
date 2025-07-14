@@ -8,14 +8,15 @@ import FinalCTA from "@/components/landing/FinalCTA";
 export default function Landing() {
   return (
     <div className="bg-background text-foreground w-full overflow-x-hidden">
-      {/* Apple/Stripe inspired gradient background */}
+      {/* Minimal professional background */}
       <div className="absolute inset-0 w-full h-full overflow-hidden">
         <div 
-          className="absolute inset-0 opacity-30"
+          className="absolute inset-0 opacity-5"
           style={{
-            background: 'radial-gradient(circle at 20% 50%, hsl(242, 47%, 58%) 0%, transparent 50%), radial-gradient(circle at 80% 20%, hsl(250, 84%, 54%) 0%, transparent 50%), radial-gradient(circle at 40% 80%, hsl(264, 83%, 58%) 0%, transparent 50%)'
+            background: 'radial-gradient(circle at 20% 50%, hsl(0, 0%, 50%) 0%, transparent 60%), radial-gradient(circle at 80% 20%, hsl(0, 0%, 30%) 0%, transparent 60%)'
           }}
         />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
       </div>
 
       <HeroSection />

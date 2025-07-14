@@ -17,6 +17,12 @@ import Landing from "@/pages/landing-page/landing/Landing";
 import About from "@/pages/landing-page/about/About";
 import Features from "@/pages/landing-page/features/Features";
 import IBPartnership from "@/pages/landing-page/ib-partnership/IBPartnership";
+import AdvancedToolsPage from "@/pages/landing-page/advanced-tools/AdvancedToolsPage";
+import SignalsPage from "@/pages/landing-page/signals/SignalsPage";
+import EducationPage from "@/pages/landing-page/education/EducationPage";
+import LiveSessionsPage from "@/pages/landing-page/live-sessions/LiveSessionsPage";
+import CommunityForumPage from "@/pages/landing-page/community-forum/CommunityForumPage";
+import IBPartnershipPage from "@/pages/landing-page/ib-partnership-page/IBPartnershipPage";
 import Signin from "@/pages/landing-page/signin/Signin";
 import AccountRequest from "@/pages/landing-page/account-request/AccountRequest";
 import AccountRequestStatus from "@/pages/landing-page/account-request-status/AccountRequestStatus";
@@ -61,7 +67,13 @@ function App() {
                       <Route index element={<Landing />} />
                       <Route path="about" element={<About />} />
                       <Route path="features" element={<Features />} />
+                      <Route path="advanced-tools" element={<AdvancedToolsPage />} />
+                      <Route path="signals" element={<SignalsPage />} />
+                      <Route path="education" element={<EducationPage />} />
+                      <Route path="live-sessions" element={<LiveSessionsPage />} />
+                      <Route path="community-forum" element={<CommunityForumPage />} />
                       <Route path="ib-partnership" element={<IBPartnership />} />
+                      <Route path="ib-partnership-new" element={<IBPartnershipPage />} />
                       <Route path="signin" element={<Signin />} />
                       <Route path="account-request" element={<AccountRequest />} />
                       <Route path="account-request-status" element={<AccountRequestStatus />} />

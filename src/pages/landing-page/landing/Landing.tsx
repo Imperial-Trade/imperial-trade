@@ -4,6 +4,7 @@ import StatsSection from "@/components/landing/StatsSection";
 import FeatureCarousel from "@/components/landing/FeatureCarousel";
 import ToolsShowcase from "@/components/landing/ToolsShowcase";
 import FinalCTA from "@/components/landing/FinalCTA";
+import TradingFeaturesInterface from "@/components/landing/TradingFeaturesInterface";
 
 export default function Landing() {
   return (
@@ -30,6 +31,10 @@ export default function Landing() {
         <div className="py-20">
           <StatsSection />
         </div>
+        
+        {/* Professional Trading Features Interface */}
+        <TradingFeaturesInterface />
+        
         <div className="py-20">
           <FeatureCarousel />
         </div>

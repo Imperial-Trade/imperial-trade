@@ -395,3 +395,80 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(45 93% 65%);
 }
+
+/* Apple/Stripe/Robinhood specific styles */
+.modern-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.feature-tab {
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-tab::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s;
+}
+
+.feature-tab:hover::before {
+  left: 100%;
+}
+
+.gradient-mesh {
+  background: 
+    radial-gradient(at 40% 20%, hsl(242, 47%, 98%) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsl(250, 84%, 98%) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsl(264, 83%, 98%) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, hsl(210, 100%, 98%) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsl(142, 76%, 98%) 0px, transparent 50%),
+    radial-gradient(at 80% 100%, hsl(330, 81%, 98%) 0px, transparent 50%),
+    radial-gradient(at 0% 0%, hsl(25, 95%, 98%) 0px, transparent 50%);
+}
+
+.trading-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+  padding: 2rem 0;
+}
+
+@media (max-width: 768px) {
+  .trading-card-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+.premium-button {
+  background: linear-gradient(135deg, hsl(242, 47%, 58%) 0%, hsl(250, 84%, 54%) 100%);
+  border: none;
+  box-shadow: 0 4px 14px 0 rgba(0, 118, 255, 0.39);
+  transition: all 0.3s ease;
+}
+
+.premium-button:hover {
+  box-shadow: 0 6px 20px rgba(0, 118, 255, 0.23);
+  transform: translateY(-2px);
+}
+
+.feature-icon-container {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}

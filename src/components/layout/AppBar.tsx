@@ -64,6 +64,12 @@ const AppBar: React.FC = () => {
           </Button>
         </Link>;
     }
+    
+    // Don't show Get Started button if already on account request page
+    if (isAccountRequestPage) {
+      return null;
+    }
+    
     return <Link to="/account-request">
         <Button size="sm" className="bg-accent-green hover:bg-green-500 text-white">
           Get Started
@@ -149,7 +155,7 @@ const AppBar: React.FC = () => {
                       <LayoutDashboard className="h-4 w-4" />
                       Dashboard
                     </Button>
-                  </Link> : <Link to="/account-request" onClick={closeMobileMenu}>
+                  </Link> : !isAccountRequestPage && <Link to="/account-request" onClick={closeMobileMenu}>
                     <Button size="lg" className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold">
                       Get Started
                     </Button>

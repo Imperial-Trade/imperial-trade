@@ -8,6 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
+import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { 
   Plus, 
   Search, 
@@ -21,18 +26,98 @@ import {
   Signal,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Share2
 } from 'lucide-react';
 
 export default function EducatorSignalManagement() {
   const { user } = useAuth();
-  const { alerts, isLoading: tradingLoading } = useOptimizedTrading(user?.id || '');
+  const { alerts, isLoading: tradingLoading, createAlert, updateAlert, deleteAlert, error } = useOptimizedTrading(user?.id || '');
   const { analytics, loading: analyticsLoading } = useEducatorSignals();
+  const { toast } = useToast();
+  
+  // UI State
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingAlert, setEditingAlert] = useState<any>(null);
+  const [deletingAlert, setDeletingAlert] = useState<any>(null);
 
   const loading = tradingLoading || analyticsLoading;
+
+  // CRUD Handlers
+  const handleCreateSignal = async (data: any) => {
+    try {
+      await createAlert(data);
+      setShowCreateForm(false);
+      toast({
+        title: "Signal Created",
+        description: "Your trading signal has been created successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create signal. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditSignal = async (data: any) => {
+    if (!editingAlert) return;
+    
+    try {
+      await updateAlert(editingAlert.id, data);
+      setEditingAlert(null);
+      toast({
+        title: "Signal Updated",
+        description: "Your trading signal has been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update signal. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteSignal = async () => {
+    if (!deletingAlert) return;
+    
+    try {
+      await deleteAlert(deletingAlert.id);
+      setDeletingAlert(null);
+      toast({
+        title: "Signal Deleted",
+        description: "Your trading signal has been deleted successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete signal. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopySignal = (alert: any) => {
+    const signalText = `📊 ${alert.assetName} (${alert.finnhubSymbol})
+🔄 ${alert.tradeType.toUpperCase()}
+💰 Entry: $${alert.entryPrice}
+❌ Stop Loss: $${alert.stopLoss}
+${alert.tp1 ? `✅ TP1: $${alert.tp1}` : ''}
+${alert.notes ? `📝 ${alert.notes}` : ''}`;
+    
+    navigator.clipboard.writeText(signalText);
+    toast({
+      title: "Signal Copied",
+      description: "Signal details have been copied to clipboard.",
+    });
+  };
 
   // Filter alerts based on search and status
   const filteredAlerts = useMemo(() => {
@@ -262,14 +347,40 @@ export default function EducatorSignalManagement() {
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
-                          <Eye className="w-4 h-4 mr-1" />
-                          View Details
-                        </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleCopySignal(alert)}
+                        >
                           <Copy className="w-4 h-4 mr-1" />
-                          Share
+                          Copy
                         </Button>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-surface border-default">
+                            <DropdownMenuItem onClick={() => setEditingAlert(alert)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit Signal
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDeletingAlert(alert)}>
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Signal
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Share2 className="w-4 h-4 mr-2" />
+                              Share Signal
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Analytics
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </CardContent>
@@ -302,14 +413,318 @@ export default function EducatorSignalManagement() {
           )}
         </TabsContent>
 
-        <TabsContent value="active">
-          {/* Similar content filtered for active signals */}
+        <TabsContent value="active" className="space-y-4">
+          <AnimatePresence>
+            {filteredAlerts.filter(alert => alert.status === 'active').map((alert, index) => (
+              <motion.div
+                key={alert.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card className="glass-effect border-default hover:border-primary/30 transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-primary">{alert.assetName}</h3>
+                            <Badge variant="outline" className="text-xs">
+                              {alert.finnhubSymbol}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {getStatusBadge(alert.status)}
+                            <Badge className={alert.tradeType.includes('buy') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
+                              {alert.tradeType === 'buy' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                              {alert.tradeType.toUpperCase()}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <p className="text-sm text-secondary">Entry Price</p>
+                          <p className="font-semibold text-primary">${alert.entryPrice}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-secondary">Stop Loss</p>
+                          <p className="font-semibold text-red-400">${alert.stopLoss}</p>
+                        </div>
+                        {alert.tp1 && (
+                          <div className="text-right">
+                            <p className="text-sm text-secondary">TP1</p>
+                            <p className="font-semibold text-green-400">${alert.tp1}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {alert.notes && (
+                      <div className="mt-4 p-3 bg-surface/50 rounded-lg">
+                        <p className="text-sm text-secondary">{alert.notes}</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/20">
+                      <div className="flex items-center gap-4 text-sm text-secondary">
+                        <span>Created {new Date(alert.createdAt).toLocaleDateString()}</span>
+                        <span>•</span>
+                        <span>Updated {new Date(alert.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleCopySignal(alert)}
+                        >
+                          <Copy className="w-4 h-4 mr-1" />
+                          Copy
+                        </Button>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-surface border-default">
+                            <DropdownMenuItem onClick={() => setEditingAlert(alert)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit Signal
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDeletingAlert(alert)}>
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Signal
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Share2 className="w-4 h-4 mr-2" />
+                              Share Signal
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Analytics
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {filteredAlerts.filter(alert => alert.status === 'active').length === 0 && (
+            <Card className="glass-effect border-default">
+              <CardContent className="p-8 text-center">
+                <Clock className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-primary mb-2">
+                  No Active Signals
+                </h3>
+                <p className="text-secondary mb-4">
+                  You don't have any active trading signals at the moment.
+                </p>
+                <Button 
+                  onClick={() => setShowCreateForm(true)}
+                  className="bg-accent-green hover:bg-accent-green/90 text-white"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Active Signal
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
-        <TabsContent value="closed">
-          {/* Similar content filtered for closed signals */}
+        <TabsContent value="closed" className="space-y-4">
+          <AnimatePresence>
+            {filteredAlerts.filter(alert => alert.status === 'closed').map((alert, index) => (
+              <motion.div
+                key={alert.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card className="glass-effect border-default hover:border-primary/30 transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-primary">{alert.assetName}</h3>
+                            <Badge variant="outline" className="text-xs">
+                              {alert.finnhubSymbol}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {getStatusBadge(alert.status)}
+                            {getPerformanceBadge(alert)}
+                            <Badge className={alert.tradeType.includes('buy') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
+                              {alert.tradeType === 'buy' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                              {alert.tradeType.toUpperCase()}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <p className="text-sm text-secondary">Entry Price</p>
+                          <p className="font-semibold text-primary">${alert.entryPrice}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-secondary">Stop Loss</p>
+                          <p className="font-semibold text-red-400">${alert.stopLoss}</p>
+                        </div>
+                        {alert.tp1 && (
+                          <div className="text-right">
+                            <p className="text-sm text-secondary">TP1</p>
+                            <p className="font-semibold text-green-400">${alert.tp1}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {alert.notes && (
+                      <div className="mt-4 p-3 bg-surface/50 rounded-lg">
+                        <p className="text-sm text-secondary">{alert.notes}</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/20">
+                      <div className="flex items-center gap-4 text-sm text-secondary">
+                        <span>Created {new Date(alert.createdAt).toLocaleDateString()}</span>
+                        <span>•</span>
+                        <span>Updated {new Date(alert.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleCopySignal(alert)}
+                        >
+                          <Copy className="w-4 h-4 mr-1" />
+                          Copy
+                        </Button>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-surface border-default">
+                            <DropdownMenuItem>
+                              <Share2 className="w-4 h-4 mr-2" />
+                              Share Performance
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Eye className="w-4 h-4 mr-2" />
+                              View Analytics
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <BarChart3 className="w-4 h-4 mr-2" />
+                              Performance Report
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {filteredAlerts.filter(alert => alert.status === 'closed').length === 0 && (
+            <Card className="glass-effect border-default">
+              <CardContent className="p-8 text-center">
+                <CheckCircle className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-primary mb-2">
+                  No Closed Signals
+                </h3>
+                <p className="text-secondary mb-4">
+                  You don't have any closed trading signals yet.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
+
+      {/* Create Signal Modal */}
+      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-surface border-default">
+          <DialogHeader>
+            <DialogTitle className="text-primary">Create New Trading Signal</DialogTitle>
+          </DialogHeader>
+          <OptimizedNewAlertForm 
+            onSubmit={handleCreateSignal}
+            onCancel={() => setShowCreateForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Signal Modal */}
+      <Dialog open={!!editingAlert} onOpenChange={(open) => !open && setEditingAlert(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-surface border-default">
+          <DialogHeader>
+            <DialogTitle className="text-primary">Edit Trading Signal</DialogTitle>
+          </DialogHeader>
+          {editingAlert && (
+            <OptimizedNewAlertForm 
+              onSubmit={handleEditSignal}
+              onCancel={() => setEditingAlert(null)}
+              initialData={{
+                asset_name: editingAlert.assetName,
+                finnhub_symbol: editingAlert.finnhubSymbol,
+                trade_type: editingAlert.tradeType,
+                entry_price: editingAlert.entryPrice,
+                stop_loss: editingAlert.stopLoss,
+                tp1: editingAlert.tp1,
+                tp2: editingAlert.tp2,
+                tp3: editingAlert.tp3,
+                tp4: editingAlert.tp4,
+                tp5: editingAlert.tp5,
+                notes: editingAlert.notes
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <AlertDialog open={!!deletingAlert} onOpenChange={(open) => !open && setDeletingAlert(null)}>
+        <AlertDialogContent className="bg-surface border-default">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-primary">Delete Trading Signal</AlertDialogTitle>
+            <AlertDialogDescription className="text-secondary">
+              Are you sure you want to delete this trading signal for{" "}
+              <span className="font-semibold text-primary">
+                {deletingAlert?.assetName} ({deletingAlert?.finnhubSymbol})
+              </span>?
+              This action cannot be undone and will remove the signal from all your followers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-surface border-default text-secondary hover:bg-secondary/20">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteSignal}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Delete Signal
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

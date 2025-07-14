@@ -14,7 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import EditSignalForm from '@/components/signals/EditSignalForm';
-import SignalCRUDTest from '@/components/testing/SignalCRUDTest';
+
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Plus, 
@@ -385,7 +385,6 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
           <TabsTrigger value="all">All Signals ({filteredAlerts.length})</TabsTrigger>
           <TabsTrigger value="active">Active ({filteredAlerts.filter(a => a.status === 'active').length})</TabsTrigger>
           <TabsTrigger value="closed">Closed ({filteredAlerts.filter(a => a.status === 'closed').length})</TabsTrigger>
-          <TabsTrigger value="test">CRUD Tests</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
@@ -762,9 +761,6 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
           )}
         </TabsContent>
 
-        <TabsContent value="test" className="space-y-4">
-          <SignalCRUDTest />
-        </TabsContent>
       </Tabs>
 
       {/* Create Signal Modal */}

@@ -29,18 +29,22 @@ export function ZoomSDKPlayer({ sessionId, meetingNumber, sessionTitle, zoomMeet
   const meetingContainerRef = useRef<HTMLDivElement>(null);
   const initializingRef = useRef(false);
 
-  // Enhanced retry logic for SDK loading
+  // Enhanced retry logic for SDK loading - but skip retries for 403 errors
   const sdkRetry = useRetry(
     async () => {
       await loadZoomSDKDependencies();
     },
     {
-      maxAttempts: 3,
+      maxAttempts: 1, // Reduced to 1 since CDN fallbacks are handled internally
       initialDelay: 1000,
       onRetry: (attempt, error) => {
         console.log(`SDK loading retry attempt ${attempt}:`, error);
-        setLoadingStep(`Retrying SDK load (${attempt}/3)...`);
-        toast.info(`Retrying connection... (${attempt}/3)`);
+        // Don't retry 403 errors
+        if (error.message.includes('403') || error.message.includes('access denied')) {
+          throw error; // Stop retrying immediately for 403 errors
+        }
+        setLoadingStep(`Retrying SDK load (${attempt}/1)...`);
+        toast.info(`Retrying connection... (${attempt}/1)`);
       }
     }
   );
@@ -150,6 +154,12 @@ export function ZoomSDKPlayer({ sessionId, meetingNumber, sessionTitle, zoomMeet
         await sdkRetry.execute();
       } catch (err: any) {
         console.error('All SDK loading attempts failed:', err);
+        // Check if it's a 403/domain access error - don't retry these
+        if (err.message.includes('403') || err.message.includes('access denied') || err.message.includes('allowlisted')) {
+          setError(err.message);
+          setLoading(false);
+          return;
+        }
         setError(err.message || 'Failed to load Zoom SDK after multiple attempts');
         setLoading(false);
       }
@@ -420,10 +430,7 @@ export function ZoomSDKPlayer({ sessionId, meetingNumber, sessionTitle, zoomMeet
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
               <p className="text-lg font-medium">{loadingStep}</p>
               <p className="text-sm text-muted-foreground mt-2">
-                {sdkRetry.isRetrying ? 
-                  `Retrying connection... (${sdkRetry.attempt}/${3})` :
-                  'Please wait while we connect you to the session'
-                }
+                Please wait while we connect you to the session
               </p>
               
               {zoomMeetingUrl && (

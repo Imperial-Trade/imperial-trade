@@ -97,25 +97,6 @@ export default {
 					'purple': 'hsl(var(--feature-purple))',
 					'pink': 'hsl(var(--feature-pink))',
 					'red': 'hsl(var(--feature-red))'
-				},
-				// Imperial gradient colors for feature fonts
-				imperial: {
-					'white-gold': 'hsl(var(--imperial-white-gold))',
-					'gold': 'hsl(var(--imperial-gold))',
-					'bronze-light': 'hsl(var(--imperial-bronze-light))',
-					'bronze': 'hsl(var(--imperial-bronze))',
-					'bronze-dark': 'hsl(var(--imperial-bronze-dark))'
-				},
-				// Background gradient colors
-				'bg-gradient': {
-					'start': 'hsl(var(--background-gradient-start))',
-					'mid': 'hsl(var(--background-gradient-mid))',
-					'end': 'hsl(var(--background-gradient-end))'
-				},
-				// Green hint colors
-				'green-hint': {
-					'light': 'hsl(var(--green-hint))',
-					'dark': 'hsl(var(--green-hint-dark))'
 				}
 			},
 			borderRadius: {

@@ -80,20 +80,6 @@
     --feature-purple: 250 84% 54%;
     --feature-pink: 330 81% 60%;
     --feature-red: 0 84% 60%;
-
-    /* Imperial white gold and bronze gradients for feature fonts */
-    --imperial-white-gold: 45 100% 95%; /* Pure white gold */
-    --imperial-gold: 43 90% 85%; /* Elegant gold */
-    --imperial-bronze-light: 30 45% 70%; /* Light bronze */
-    --imperial-bronze: 25 55% 55%; /* Rich bronze */
-    --imperial-bronze-dark: 20 65% 35%; /* Deep bronze */
-
-    /* Background gradients with green hints */
-    --background-gradient-start: 0 0% 100%; /* Pure white */
-    --background-gradient-mid: 0 0% 89%; /* Spanish grey lightest */
-    --background-gradient-end: 0 0% 26%; /* Spanish grey darkest */
-    --green-hint: 142 30% 85%; /* Subtle green hint */
-    --green-hint-dark: 142 25% 75%; /* Darker green hint */
   }
 
   .dark {
@@ -375,29 +361,6 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Imperial white gold and bronze gradients for feature text */
-.imperial-gradient {
-  background: linear-gradient(135deg, 
-    hsl(var(--imperial-white-gold)) 0%, 
-    hsl(var(--imperial-gold)) 30%, 
-    hsl(var(--imperial-bronze-light)) 70%, 
-    hsl(var(--imperial-bronze)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.imperial-gradient-reverse {
-  background: linear-gradient(135deg, 
-    hsl(var(--imperial-bronze-dark)) 0%, 
-    hsl(var(--imperial-bronze)) 30%, 
-    hsl(var(--imperial-gold)) 70%, 
-    hsl(var(--imperial-white-gold)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
 .gradient-text {
   background: linear-gradient(135deg, hsl(var(--feature-blue)) 0%, hsl(var(--feature-purple)) 100%);
   -webkit-background-clip: text;
@@ -483,49 +446,12 @@
   transform: translateY(-2px);
 }
 
-/* Background gradients with Spanish grey, white, black and green hints */
-.elegant-background {
-  background: linear-gradient(135deg, 
-    hsl(var(--background-gradient-start)) 0%, 
-    hsl(var(--green-hint)) 15%, 
-    hsl(var(--background-gradient-mid)) 40%, 
-    hsl(var(--green-hint-dark)) 65%, 
-    hsl(var(--background-gradient-end)) 100%);
-}
-
-.elegant-background-alt {
-  background: linear-gradient(180deg, 
-    hsl(var(--background-gradient-start)) 0%, 
-    hsl(var(--background-gradient-mid)) 30%, 
-    hsl(var(--green-hint)) 50%, 
-    hsl(var(--background-gradient-mid)) 70%, 
-    hsl(var(--background-gradient-start)) 100%);
-}
-
 .monochrome-gradient {
   background: linear-gradient(135deg, hsl(0, 0%, 98%) 0%, hsl(0, 0%, 96%) 100%);
 }
 
 .dark .monochrome-gradient {
   background: linear-gradient(135deg, hsl(0, 0%, 7%) 0%, hsl(0, 0%, 5%) 100%);
-}
-
-.dark .elegant-background {
-  background: linear-gradient(135deg, 
-    hsl(var(--background-gradient-end)) 0%, 
-    hsl(142 15% 25%) 15%, 
-    hsl(var(--background-gradient-mid)) 40%, 
-    hsl(142 20% 30%) 65%, 
-    hsl(var(--background-gradient-start)) 100%);
-}
-
-.dark .elegant-background-alt {
-  background: linear-gradient(180deg, 
-    hsl(var(--background-gradient-end)) 0%, 
-    hsl(var(--background-gradient-mid)) 30%, 
-    hsl(142 15% 25%) 50%, 
-    hsl(var(--background-gradient-mid)) 70%, 
-    hsl(var(--background-gradient-end)) 100%);
 }
 
 .feature-accent-blue { color: hsl(var(--feature-blue)); }

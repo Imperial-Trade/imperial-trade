@@ -10,10 +10,13 @@ export default function HeroSection() {
   const { user, loading } = useAuth();
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden elegant-background">
-      {/* Green hint overlays */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-green-hint-light/10 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-bl from-transparent via-green-hint-dark/8 to-transparent" />
+    <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden bg-background">
+      {/* Sophisticated gradient background using Spanish Gray palette */}
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-gray-lightest/30 to-gray-lighter/20" />
+      
+      {/* Luxury accent overlays */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-gold-light/8 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-bl from-transparent via-orache-light/5 to-transparent" />
       
       {/* Elegant floating elements with luxury colors */}
       <div className="absolute inset-0 overflow-hidden">
@@ -39,7 +42,7 @@ export default function HeroSection() {
             <div className="animate-scale-in space-y-4">
               <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold leading-none tracking-tight text-gray-darkest">
                 <span className="block">The Future of</span>
-                <span className="block imperial-gradient">
+                <span className="block bg-gradient-to-r from-gold-warm via-gold-antique to-orache-warm bg-clip-text text-transparent">
                   Smart Trading
                 </span>
               </h1>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Crown, Info, Briefcase, Star, Menu, LayoutDashboard, TrendingUp, Bell, GraduationCap, Video, Users, Handshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 const AppBar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const location = useLocation();
+  const isAccountRequestPage = location.pathname === '/account-request';
   const {
     user,
     loading
@@ -68,6 +70,16 @@ const AppBar: React.FC = () => {
         </Button>
       </Link>;
   };
+  
+  // If on account request page, show minimal header with only Get Started button
+  if (isAccountRequestPage) {
+    return <header className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-end px-6 backdrop-blur-xl border-b border-border/50 bg-[#2b5069]/[0.49]">
+        <div className="flex items-center">
+          {renderAuthButton()}
+        </div>
+      </header>;
+  }
+  
   return <header className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 backdrop-blur-xl border-b border-border/50 bg-[#2b5069]/[0.49]">
       <div className="w-full max-w-7xl flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">

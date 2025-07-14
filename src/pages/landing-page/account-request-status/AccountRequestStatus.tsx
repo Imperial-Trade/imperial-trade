@@ -124,7 +124,15 @@ export default function AccountRequestStatusPage() {
 
                 {(error && searchEmail) && (
                   <div className="p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
-                    {error}
+                    <div className="flex items-center gap-2">
+                      <XCircle className="w-4 h-4" />
+                      <span>{error}</span>
+                    </div>
+                    {error.includes('WebSocket') && (
+                      <p className="text-xs mt-1 text-gray-400">
+                        Switched to backup connection method automatically.
+                      </p>
+                    )}
                   </div>
                 )}
 

@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AccountStatusUpdate {
   id: string;
@@ -23,6 +24,33 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
+
+  const checkStatusHttp = useCallback(async (emailToCheck: string) => {
+    try {
+      setError('');
+      console.log('Checking status via HTTP API for:', emailToCheck);
+      
+      const { data, error } = await supabase.functions.invoke('account-status-check', {
+        body: { email: emailToCheck }
+      });
+
+      if (error) {
+        console.error('HTTP status check error:', error);
+        setError('Failed to check status');
+        return;
+      }
+
+      if (data.status === 'found') {
+        setStatus(data.data);
+      } else if (data.status === 'not_found') {
+        setStatus(null);
+        setError(data.message);
+      }
+    } catch (error) {
+      console.error('HTTP status check failed:', error);
+      setError('Connection failed. Please try again.');
+    }
+  }, []);
 
   const connect = useCallback(() => {
     if (!enabled || !email || socketRef.current?.readyState === WebSocket.OPEN) {
@@ -88,22 +116,33 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
 
       socketRef.current.onerror = (error) => {
         console.error('Account status WebSocket error:', error);
-        setError('Connection error');
+        setError('WebSocket connection failed, using HTTP fallback');
+        
+        // Try HTTP fallback when WebSocket fails
+        if (email) {
+          checkStatusHttp(email);
+        }
       };
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
       setError('Failed to connect');
     }
-  }, [email, enabled]);
+  }, [email, enabled, checkStatusHttp]);
+
 
   const checkStatus = useCallback((emailToCheck: string) => {
+    // Try WebSocket first, fallback to HTTP if not connected
     if (socketRef.current?.readyState === WebSocket.OPEN) {
+      console.log('Checking status via WebSocket');
       socketRef.current.send(JSON.stringify({
         type: 'check_status',
         email: emailToCheck
       }));
+    } else {
+      console.log('WebSocket not connected, using HTTP fallback');
+      checkStatusHttp(emailToCheck);
     }
-  }, []);
+  }, [checkStatusHttp]);
 
   useEffect(() => {
     if (enabled) {

@@ -20,10 +20,10 @@ export default function HeroSection() {
       
       {/* Elegant floating elements with imperial colors and green accents */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-imperial-gold rounded-full animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-accentGreen-sage rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-imperial-bronze rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 right-1/3 w-1 h-1 bg-accentGreen-mint rounded-full animate-pulse" style={{ animationDelay: '3s' }} />
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-imperial-gold rounded-full" />
+        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-accentGreen-sage rounded-full" />
+        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-imperial-bronze rounded-full" />
+        <div className="absolute top-1/2 right-1/3 w-1 h-1 bg-accentGreen-mint rounded-full" />
       </div>
       
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
@@ -32,9 +32,9 @@ export default function HeroSection() {
             {/* Elegant Badge with imperial colors and green accent */}
             <div className="animate-fade-in-up">
               <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-bgGradient-light/80 border border-bgGradient-medium text-gray-darkest text-sm font-medium backdrop-blur-xl">
-                <div className="w-2 h-2 bg-imperial-gold rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-imperial-gold rounded-full" />
                 <span>Elite Trading Platform</span>
-                <div className="w-2 h-2 bg-accentGreen-sage rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-accentGreen-sage rounded-full" />
               </div>
             </div>
 

@@ -112,7 +112,7 @@ export default function FeatureCarousel() {
             <div className="relative">
               <div className="bg-card rounded-3xl border-2 border-border p-8 lg:p-12">
                 <div 
-                  className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 animate-pulse-glow"
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
                   style={{ backgroundColor: features[activeIndex].color + '20' }}
                 >
                   {React.createElement(features[activeIndex].icon, {

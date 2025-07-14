@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import ParallaxSection from "@/components/landing/ParallaxSection";
 
 const LiveSessionsPage: React.FC = () => {
   const features = [
@@ -74,7 +75,7 @@ const LiveSessionsPage: React.FC = () => {
   return (
     <div className="bg-background min-h-screen font-sans">
       {/* Hero Section */}
-      <section className="py-20 px-6 monochrome-gradient">
+      <ParallaxSection speed={0.2} className="py-20 px-6 monochrome-gradient">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
@@ -103,11 +104,11 @@ const LiveSessionsPage: React.FC = () => {
               
               <div className="flex items-center gap-4">
                 <Button size="lg" className="apple-button">
-                  Get Started
+                  Join Live Session
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <Button variant="outline" size="lg" className="border-border">
-                  Learn More
+                  View Schedule
                 </Button>
               </div>
             </div>
@@ -121,14 +122,14 @@ const LiveSessionsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </section>
+      </ParallaxSection>
 
       {/* Features Grid */}
-      <section className="py-20 px-6">
+      <ParallaxSection speed={0.3} className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">
-              <span className="white-gold-gradient">Live Sessions Features</span>
+              <span className="white-gold-gradient">Live Session Features</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Experience real-time trading education with professional traders and interactive learning.
@@ -198,48 +199,48 @@ const LiveSessionsPage: React.FC = () => {
             ))}
           </div>
         </div>
-      </section>
+      </ParallaxSection>
 
       {/* CTA Section */}
-      <section className="py-20 px-6 monochrome-gradient">
+      <ParallaxSection speed={0.2} className="py-20 px-6 monochrome-gradient">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/50 border border-border mb-8">
             <Video className="h-8 w-8 text-muted-foreground" />
           </div>
           
           <h2 className="text-4xl font-bold text-foreground mb-4">
-            Join Live Trading Sessions
+            Join Your First Live Session
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Learn from the best by watching professional traders in action every day.
+            Experience the power of real-time trading education and community-driven learning.
           </p>
           
           <div className="flex items-center justify-center gap-4">
             <Button size="lg" className="apple-button px-8">
-              Join Live Sessions
+              Join Now
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button variant="outline" size="lg" className="px-8 border-border">
-              Contact Sales
+              View Schedule
             </Button>
           </div>
           
           <div className="mt-8 flex items-center justify-center gap-8 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
-              Free 14-day trial
+              Free first session
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
-              No credit card required
+              Interactive participation
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
-              24/7 support
+              Expert guidance
             </div>
           </div>
         </div>
-      </section>
+      </ParallaxSection>
     </div>
   );
 };

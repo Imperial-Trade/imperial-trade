@@ -45,7 +45,7 @@ export default function StatsSection() {
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
               Trusted by Traders
-              <span className="imperial-gradient-text block">
+              <span className="white-gold-gradient block">
                 Worldwide
               </span>
             </h2>
@@ -72,7 +72,7 @@ export default function StatsSection() {
                   </div>
                 </div>
                 
-                <div className="text-3xl lg:text-4xl font-bold mb-2 imperial-gradient-text">
+                <div className="text-3xl lg:text-4xl font-bold mb-2 white-gold-gradient">
                   {stat.value}
                 </div>
                 

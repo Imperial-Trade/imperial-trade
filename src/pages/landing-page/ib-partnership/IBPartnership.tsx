@@ -31,7 +31,7 @@ const IBPartnership = () => {
           >
             <div className="flex items-center justify-center mb-6">
               <Crown className="h-12 w-12 text-primary mr-4" />
-              <h1 className="text-5xl imperial-tech-font font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
+              <h1 className="text-5xl imperial-tech-font font-bold white-gold-gradient">
                 IMPERIAL IB PARTNERSHIP
               </h1>
             </div>
@@ -61,7 +61,7 @@ const IBPartnership = () => {
         <div className="container mx-auto px-6">
           <ScrollReveal>
             <h2 className="text-4xl font-bold text-center mb-16">
-              <span className="bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
+              <span className="white-gold-gradient">
                 Commission Tiers
               </span>
             </h2>
@@ -107,7 +107,7 @@ const IBPartnership = () => {
               },
             ].map((tier, index) => (
               <ScrollReveal key={index} delay={index * 200}>
-                <Card className="relative overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 transform hover:-translate-y-2">
+                <Card className="relative overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 transform hover:-translate-y-2 white-gold-bg">
                   <div
                     className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${tier.color}`}
                   />

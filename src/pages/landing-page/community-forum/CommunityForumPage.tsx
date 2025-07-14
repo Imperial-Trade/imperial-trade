@@ -84,8 +84,8 @@ const CommunityForumPage: React.FC = () => {
                   <Users className="h-4 w-4" />
                   Global Trading Community
                 </Badge>
-                <h1 className="text-5xl font-bold text-foreground leading-tight tracking-tight">
-                  Trading Community
+                <h1 className="text-5xl font-bold leading-tight tracking-tight">
+                  <span className="white-gold-gradient">Trading Community</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
                   Connect with traders worldwide, share strategies, and learn from a vibrant community of professionals and enthusiasts.
@@ -114,9 +114,9 @@ const CommunityForumPage: React.FC = () => {
             </div>
             
             <div className="relative">
-              <div className="apple-card rounded-2xl p-8">
-                <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border border-border">
-                  <Users className="h-16 w-16 text-muted-foreground" />
+              <div className="apple-card rounded-2xl p-8 white-gold-bg">
+                <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border white-gold-border">
+                  <Users className="h-16 w-16 text-imperial-gold" />
                 </div>
               </div>
             </div>
@@ -128,8 +128,8 @@ const CommunityForumPage: React.FC = () => {
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-foreground mb-4">
-              Community Features
+            <h2 className="text-3xl font-bold mb-4">
+              <span className="white-gold-gradient">Community Features</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Connect, learn, and grow with our vibrant trading community of 50,000+ active members.

@@ -83,8 +83,8 @@ const SignalsPage: React.FC = () => {
                   <Bell className="h-4 w-4" />
                   AI-Powered Trading Signals
                 </Badge>
-                <h1 className="text-5xl font-bold text-foreground leading-tight tracking-tight">
-                  Trading Signals
+                <h1 className="text-5xl font-bold leading-tight tracking-tight">
+                  <span className="white-gold-gradient">Trading Signals</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
                   Machine learning algorithms analyze market data 24/7 to deliver high-probability trading opportunities directly to your device.
@@ -113,9 +113,9 @@ const SignalsPage: React.FC = () => {
             </div>
             
             <div className="relative">
-              <div className="apple-card rounded-2xl p-8">
-                <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border border-border">
-                  <Bell className="h-16 w-16 text-muted-foreground" />
+              <div className="apple-card rounded-2xl p-8 white-gold-bg">
+                <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border white-gold-border">
+                  <Bell className="h-16 w-16 text-imperial-gold" />
                 </div>
               </div>
             </div>
@@ -127,8 +127,8 @@ const SignalsPage: React.FC = () => {
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-foreground mb-4">
-              Signals Features
+            <h2 className="text-3xl font-bold mb-4">
+              <span className="white-gold-gradient">Signals Features</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Discover our comprehensive signal features powered by advanced AI and machine learning.

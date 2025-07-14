@@ -63,7 +63,7 @@ export default function FeatureCarousel() {
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
               Everything You Need
-              <span className="imperial-gradient-text block">
+              <span className="white-gold-gradient block">
                 In One Platform
               </span>
             </h2>
@@ -121,7 +121,7 @@ export default function FeatureCarousel() {
                   })}
                 </div>
                 
-                <h3 className="text-2xl lg:text-3xl font-bold mb-4 imperial-bronze-gradient">
+                <h3 className="text-2xl lg:text-3xl font-bold mb-4 white-gold-gradient">
                   {features[activeIndex].title}
                 </h3>
                 

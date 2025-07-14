@@ -83,8 +83,8 @@ const AdvancedToolsPage: React.FC = () => {
                   <Calculator className="h-4 w-4" />
                   Professional Trading Analytics
                 </Badge>
-                <h1 className="text-5xl font-bold text-foreground leading-tight tracking-tight">
-                  Advanced Trading Tools
+                <h1 className="text-5xl font-bold leading-tight tracking-tight">
+                  <span className="white-gold-gradient">Advanced Trading Tools</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
                   Institutional-grade tools designed for serious traders who demand precision, speed, and advanced functionality.
@@ -113,9 +113,9 @@ const AdvancedToolsPage: React.FC = () => {
             </div>
             
             <div className="relative">
-              <div className="apple-card rounded-2xl p-8">
-                <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border border-border">
-                  <Calculator className="h-16 w-16 text-muted-foreground" />
+              <div className="apple-card rounded-2xl p-8 white-gold-bg">
+                <div className="aspect-video bg-muted/30 rounded-xl flex items-center justify-center border white-gold-border">
+                  <Calculator className="h-16 w-16 text-imperial-gold" />
                 </div>
               </div>
             </div>
@@ -127,8 +127,8 @@ const AdvancedToolsPage: React.FC = () => {
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-foreground mb-4">
-              Advanced Tools Features
+            <h2 className="text-3xl font-bold mb-4">
+              <span className="white-gold-gradient">Advanced Tools Features</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Discover the comprehensive features that make our platform the choice of professional traders worldwide.

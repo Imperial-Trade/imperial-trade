@@ -42,7 +42,7 @@ export default function HeroSection() {
             <div className="space-y-4">
               <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold leading-none tracking-tight text-gray-darkest">
                 <span className="block">The Future of</span>
-                <span className="block imperial-gradient-text">
+                <span className="block white-gold-gradient">
                   Smart Trading
                 </span>
               </h1>
@@ -83,20 +83,20 @@ export default function HeroSection() {
             {/* Enhanced Social proof with imperial gradient numbers and green accents */}
             <div className="pt-12">
               <div className="flex flex-wrap justify-center items-center gap-12 opacity-80">
-                <div className="text-center group">
-                  <div className="text-3xl font-bold imperial-gradient-text">15K+</div>
-                  <div className="text-sm sage-accent font-medium">Active Traders</div>
-                </div>
-                <div className="w-px h-10 bg-gradient-to-b from-transparent via-border to-transparent" />
-                <div className="text-center group">
-                  <div className="text-3xl font-bold imperial-bronze-gradient">$3.2B</div>
-                  <div className="text-sm text-muted-foreground font-medium">Volume Traded</div>
-                </div>
-                <div className="w-px h-10 bg-gradient-to-b from-transparent via-border to-transparent" />
-                <div className="text-center group">
-                  <div className="text-3xl font-bold imperial-gradient-text">95%</div>
-                  <div className="text-sm mint-accent font-medium">Success Rate</div>
-                </div>
+                 <div className="text-center group">
+                   <div className="text-3xl font-bold white-gold-gradient">15K+</div>
+                   <div className="text-sm sage-accent font-medium">Active Traders</div>
+                 </div>
+                 <div className="w-px h-10 bg-gradient-to-b from-transparent via-border to-transparent" />
+                 <div className="text-center group">
+                   <div className="text-3xl font-bold white-gold-gradient">$3.2B</div>
+                   <div className="text-sm text-muted-foreground font-medium">Volume Traded</div>
+                 </div>
+                 <div className="w-px h-10 bg-gradient-to-b from-transparent via-border to-transparent" />
+                 <div className="text-center group">
+                   <div className="text-3xl font-bold white-gold-gradient">95%</div>
+                   <div className="text-sm mint-accent font-medium">Success Rate</div>
+                 </div>
               </div>
             </div>
           </div>

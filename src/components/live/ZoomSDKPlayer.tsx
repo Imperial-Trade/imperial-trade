@@ -45,61 +45,101 @@ export function ZoomSDKPlayer({ sessionId, meetingNumber, sessionTitle, zoomMeet
     }
   );
 
-  // Enhanced SDK loading with better error handling and retry logic
+  // Enhanced SDK loading with multiple CDN fallbacks and better error handling
   const loadZoomSDKDependencies = async (): Promise<void> => {
     if (window.ZoomMtg || sdkLoaded) return;
 
-    console.log('Starting Zoom SDK loading process...');
+    console.log('🚀 Starting Zoom SDK loading process...');
     setLoadingStep('Loading Zoom SDK...');
 
-    // Check network connectivity first
-    try {
-      setLoadingStep('Checking connectivity...');
-      const response = await fetch('https://source.zoom.us/zoom-meeting/latest/lib/ZoomMtg.min.js', {
-        method: 'HEAD',
-        mode: 'no-cors'
-      });
-      console.log('Network connectivity check passed');
-    } catch (err) {
-      console.warn('Network connectivity check failed:', err);
-      throw new Error('Network connectivity issue. Please check your internet connection.');
+    // CDN sources in order of preference with versioned URLs to avoid 403s
+    const cdnSources = [
+      'https://source.zoom.us/2.18.0/lib/ZoomMtg.min.js',
+      'https://jssdk.zoomus.cn/2.18.0/lib/ZoomMtg.min.js',
+      'https://source.zoom.us/zoom-meeting/latest/lib/ZoomMtg.min.js'
+    ];
+
+    // Check basic connectivity
+    if (!navigator.onLine) {
+      throw new Error('No internet connection detected. Please check your network.');
     }
 
-    return new Promise((resolve, reject) => {
-      // Use a more reliable single script loading approach
-      setLoadingStep('Loading core SDK...');
+    // Try loading from each CDN source
+    for (let i = 0; i < cdnSources.length; i++) {
+      const cdnUrl = cdnSources[i];
+      console.log(`📦 Attempting CDN ${i + 1}/${cdnSources.length}: ${cdnUrl}`);
+      setLoadingStep(`Loading SDK (attempt ${i + 1}/${cdnSources.length})...`);
       
-      const sdkScript = document.createElement('script');
-      sdkScript.src = 'https://source.zoom.us/zoom-meeting/latest/lib/ZoomMtg.min.js';
-      sdkScript.async = true;
-      
-      // Set timeout for script loading
-      const timeout = setTimeout(() => {
-        console.error('SDK loading timeout');
-        reject(new Error('SDK loading timeout. Please try again.'));
-      }, 30000); // 30 second timeout
+      try {
+        await loadScriptFromCDN(cdnUrl);
+        console.log(`✅ Successfully loaded SDK from CDN ${i + 1}`);
+        setLoadingStep('SDK loaded successfully');
+        setSdkLoaded(true);
+        return;
+      } catch (error) {
+        console.warn(`❌ CDN ${i + 1} failed:`, error);
+        
+        // If this was the last CDN and it failed, throw a comprehensive error
+        if (i === cdnSources.length - 1) {
+          if (error instanceof Error) {
+            if (error.message.includes('403') || error.message.includes('access denied')) {
+              throw new Error('SDK access denied (403). Your domain may not be allowlisted in Zoom App Marketplace. Please use "Open in Zoom App" instead.');
+            } else if (error.message.includes('blocked')) {
+              throw new Error('SDK loading blocked by security policies. Please use "Open in Zoom App" option.');
+            } else {
+              throw new Error('All CDN sources failed to load the Zoom SDK. Please use "Open in Zoom App" option.');
+            }
+          } else {
+            throw new Error('Failed to load Zoom SDK from all sources.');
+          }
+        }
+      }
+    }
+  };
 
-      sdkScript.onload = () => {
-        clearTimeout(timeout);
-        console.log('Zoom SDK loaded successfully');
+  const loadScriptFromCDN = (cdnUrl: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        console.error(`❌ SDK loading timeout for ${cdnUrl}`);
+        reject(new Error('SDK loading timeout'));
+      }, 10000); // 10 second timeout per CDN
+
+      // Create and load the script
+      const script = document.createElement('script');
+      script.src = cdnUrl;
+      script.async = true;
+      
+      script.onload = () => {
+        clearTimeout(timeoutId);
+        console.log(`✅ Script loaded from ${cdnUrl}`);
         
         // Verify SDK is actually available
         if (window.ZoomMtg) {
-          setLoadingStep('SDK loaded successfully');
-          setSdkLoaded(true);
           resolve();
         } else {
           reject(new Error('SDK loaded but ZoomMtg object not available'));
         }
       };
-
-      sdkScript.onerror = (event) => {
-        clearTimeout(timeout);
-        console.error('Failed to load Zoom SDK:', event);
-        reject(new Error('Failed to load Zoom SDK. Please try again or use external Zoom link.'));
+      
+      script.onerror = (event) => {
+        clearTimeout(timeoutId);
+        console.error(`❌ Failed to load from ${cdnUrl}:`, event);
+        
+        // Detect potential 403 errors or blocked content
+        const errorMessage = `Failed to load SDK from ${cdnUrl}`;
+        if (cdnUrl.includes('source.zoom.us')) {
+          reject(new Error(`${errorMessage} - Possible 403 error (domain not allowlisted)`));
+        } else {
+          reject(new Error(errorMessage));
+        }
       };
 
-      document.head.appendChild(sdkScript);
+      // Remove any existing scripts to avoid conflicts
+      const existingScripts = document.querySelectorAll('script[src*="ZoomMtg"]');
+      existingScripts.forEach(s => s.remove());
+
+      document.head.appendChild(script);
+      console.log(`📦 SDK script added: ${cdnUrl}`);
     });
   };
 
@@ -255,14 +295,54 @@ export function ZoomSDKPlayer({ sessionId, meetingNumber, sessionTitle, zoomMeet
 
   const handleUseExternalZoom = () => {
     if (zoomMeetingUrl) {
+      console.log('🔗 Opening external Zoom meeting:', zoomMeetingUrl);
       window.open(zoomMeetingUrl, '_blank');
       onClose();
     } else {
+      console.error('❌ No Zoom meeting URL available');
       toast.error('External Zoom link not available');
     }
   };
 
+  const getErrorMessage = (error: string): { message: string; isSDKError: boolean; showTroubleshooting: boolean } => {
+    if (error.includes('403') || error.includes('access denied') || error.includes('allowlisted')) {
+      return {
+        message: 'SDK access denied. Your domain may not be configured in Zoom App Marketplace.',
+        isSDKError: true,
+        showTroubleshooting: true
+      };
+    }
+    if (error.includes('timeout')) {
+      return {
+        message: 'Connection timeout. Please check your internet connection and try again.',
+        isSDKError: false,
+        showTroubleshooting: false
+      };
+    }
+    if (error.includes('network') || error.includes('connectivity')) {
+      return {
+        message: 'Network connectivity issues. Please check your internet connection.',
+        isSDKError: false,
+        showTroubleshooting: false
+      };
+    }
+    if (error.includes('CDN') || error.includes('sources failed') || error.includes('blocked')) {
+      return {
+        message: 'Unable to load meeting interface due to security restrictions.',
+        isSDKError: true,
+        showTroubleshooting: true
+      };
+    }
+    return {
+      message: error,
+      isSDKError: false,
+      showTroubleshooting: false
+    };
+  };
+
   if (error) {
+    const errorInfo = getErrorMessage(error);
+    
     return (
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md p-6 text-center">
@@ -270,16 +350,26 @@ export function ZoomSDKPlayer({ sessionId, meetingNumber, sessionTitle, zoomMeet
             <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
           <h3 className="text-lg font-semibold mb-2">Unable to Join Meeting</h3>
-          <p className="text-muted-foreground mb-4">{error}</p>
+          <p className="text-muted-foreground mb-4">{errorInfo.message}</p>
+          
+          {errorInfo.showTroubleshooting && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+              <strong>Domain Configuration Issue:</strong><br />
+              This error typically occurs when your domain isn't allowlisted in the Zoom App Marketplace. 
+              You can still join the meeting using the "Open in Zoom App" button below.
+            </div>
+          )}
           
           <div className="space-y-2">
-            <Button onClick={handleRetry} variant="outline" className="w-full">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Try Again
-            </Button>
+            {!errorInfo.isSDKError && (
+              <Button onClick={handleRetry} variant="outline" className="w-full">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            )}
             
             {zoomMeetingUrl && (
-              <Button onClick={handleUseExternalZoom} variant="default" className="w-full">
+              <Button onClick={handleUseExternalZoom} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Open in Zoom App
               </Button>
@@ -290,15 +380,17 @@ export function ZoomSDKPlayer({ sessionId, meetingNumber, sessionTitle, zoomMeet
             </Button>
           </div>
           
-          <div className="mt-4 p-3 bg-muted rounded-md">
-            <p className="text-xs text-muted-foreground">
-              <strong>Troubleshooting Tips:</strong><br />
-              • Check your internet connection<br />
-              • Disable browser ad blockers<br />
-              • Try refreshing the page<br />
-              • Use the "Open in Zoom App" option above
-            </p>
-          </div>
+          {!errorInfo.showTroubleshooting && (
+            <div className="mt-4 p-3 bg-muted rounded-md">
+              <p className="text-xs text-muted-foreground">
+                <strong>Troubleshooting Tips:</strong><br />
+                • Check your internet connection<br />
+                • Disable browser ad blockers<br />
+                • Try refreshing the page<br />
+                • Use the "Open in Zoom App" option above
+              </p>
+            </div>
+          )}
         </Card>
       </div>
     );

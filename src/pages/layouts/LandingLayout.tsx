@@ -1,13 +1,16 @@
 
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import AppBar from '@/components/layout/AppBar';
 
 const LandingLayout: React.FC = () => {
+  const location = useLocation();
+  const isAccountRequestPage = location.pathname === '/account-request';
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <AppBar />
-      <main className="pt-20">
+      <main className={isAccountRequestPage ? '' : 'pt-20'}>
         <Outlet />
       </main>
     </div>

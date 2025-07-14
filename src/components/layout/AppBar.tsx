@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Crown, Info, Briefcase, Star, Menu, LayoutDashboard } from "lucide-react";
+import {
+  Crown,
+  Info,
+  Briefcase,
+  Star,
+  Menu,
+  LayoutDashboard,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -19,7 +26,7 @@ const AppBar: React.FC = () => {
 
   const navigationItems = [
     { to: "/about", icon: Info, label: "About" },
-    { to: "/partnership", icon: Briefcase, label: "IB Partnership" },
+    { to: "/ib-partnership", icon: Briefcase, label: "IB Partnership" },
     { to: "/features", icon: Star, label: "Features" },
   ];
 
@@ -40,7 +47,7 @@ const AppBar: React.FC = () => {
         </Link>
       );
     }
-    
+
     return (
       <Link to="/account-request">
         <Button
@@ -93,19 +100,22 @@ const AppBar: React.FC = () => {
               <span className="sr-only">Open navigation menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-80 bg-background/95 backdrop-blur-xl">
+          <SheetContent
+            side="left"
+            className="w-80 bg-background/95 backdrop-blur-xl"
+          >
             <SheetHeader className="border-b border-border/50 pb-6">
               <SheetTitle className="flex items-center gap-2 text-left">
                 <Crown className="h-6 w-6 text-primary" />
                 <span className="text-xl imperial-tech-font">IMPERIAL</span>
               </SheetTitle>
             </SheetHeader>
-            
+
             <nav className="flex flex-col gap-4 mt-8">
               {navigationItems.map((item) => (
-                <Link 
-                  key={item.to} 
-                  to={item.to} 
+                <Link
+                  key={item.to}
+                  to={item.to}
                   onClick={closeMobileMenu}
                   className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-secondary/50 text-foreground"
                 >
@@ -113,7 +123,7 @@ const AppBar: React.FC = () => {
                   <span className="text-base font-medium">{item.label}</span>
                 </Link>
               ))}
-              
+
               <div className="mt-6 pt-6 border-t border-border/50">
                 {user ? (
                   <Link to="/dashboard/home" onClick={closeMobileMenu}>

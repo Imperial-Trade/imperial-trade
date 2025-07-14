@@ -405,8 +405,7 @@
 }
 
 .white-gold-gradient {
-  background: linear-gradient(90deg, transparent, rgba(192, 154, 88, 0.3), transparent);
-  animation: tech-scan 3s infinite;
+  background: linear-gradient(90deg, #ffd700, #ffed4a, #f59e0b, #d97706);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

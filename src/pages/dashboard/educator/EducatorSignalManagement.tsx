@@ -79,7 +79,7 @@ export default function EducatorSignalManagement() {
   // Filter alerts to show only the current educator's own signals
   const userAlerts = useMemo(() => {
     if (!user?.id || !allAlerts) return [];
-    return allAlerts.filter(alert => alert.user_id === user.id);
+    return allAlerts.filter(alert => alert.userId === user.id);
   }, [allAlerts, user?.id]);
 
   // Debug logging for alerts

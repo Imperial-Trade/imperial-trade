@@ -44,6 +44,7 @@ export class TradeAlert {
       const alert = result.data[0];
       return {
         id: alert.id,
+        userId: alert.user_id,
         assetName: alert.asset_name,
         finnhubSymbol: alert.finnhub_symbol,
         tradeType: alert.trade_type,

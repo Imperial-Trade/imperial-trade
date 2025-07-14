@@ -1,3 +1,4 @@
+
 import { apiClient, TableRow, TableInsert, TableUpdate } from '../client/ApiClient';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -72,6 +73,7 @@ export class TradingApiService {
 
       const responseDto: TradeAlertResponseDto = {
         id: result.data.id,
+        userId: result.data.user_id,
         assetName: result.data.asset_name,
         finnhubSymbol: result.data.finnhub_symbol,
         tradeType: result.data.trade_type,
@@ -146,6 +148,7 @@ export class TradingApiService {
 
       const responseDto: TradeAlertResponseDto = {
         id: result.data.id,
+        userId: result.data.user_id,
         assetName: result.data.asset_name,
         finnhubSymbol: result.data.finnhub_symbol,
         tradeType: result.data.trade_type,
@@ -197,6 +200,7 @@ export class TradingApiService {
         .filter(isTradeAlert)
         .map(alert => ({
           id: alert.id,
+          userId: alert.user_id,
           assetName: alert.asset_name,
           finnhubSymbol: alert.finnhub_symbol,
           tradeType: alert.trade_type,
@@ -282,6 +286,7 @@ export class TradingApiService {
           const profile = profilesMap.get(alert.user_id);
           return {
             id: alert.id,
+            userId: alert.user_id,
             assetName: alert.asset_name,
             finnhubSymbol: alert.finnhub_symbol,
             tradeType: alert.trade_type,
@@ -343,6 +348,7 @@ export class TradingApiService {
         .filter(alert => alert.status === status)
         .map(alert => ({
           id: alert.id,
+          userId: alert.user_id,
           assetName: alert.asset_name,
           finnhubSymbol: alert.finnhub_symbol,
           tradeType: alert.trade_type,

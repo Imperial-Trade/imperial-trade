@@ -6,17 +6,29 @@ import ToolsShowcase from "@/components/landing/ToolsShowcase";
 import ToolsCarousel from "@/components/landing/ToolsCarousel";
 import ContentSection from "@/components/landing/ContentSection";
 import FinalCTA from "@/components/landing/FinalCTA";
+import ParallaxSection from "@/components/landing/ParallaxSection";
 
 export default function Landing() {
   return (
     <div className="bg-background w-full overflow-x-hidden">
-      <HeroSection />
-      <StatsSection />
-      <FeatureCarousel />
-      <ToolsShowcase />
+      <ParallaxSection speed={0.3}>
+        <HeroSection />
+      </ParallaxSection>
+      
+      <ParallaxSection speed={0.4}>
+        <StatsSection />
+      </ParallaxSection>
+      
+      <ParallaxSection speed={0.5}>
+        <FeatureCarousel />
+      </ParallaxSection>
+      
+      <ParallaxSection speed={0.3}>
+        <ToolsShowcase />
+      </ParallaxSection>
       
       {/* An Arsenal of Professional Tools Section */}
-      <section className="relative py-24 bg-gradient-to-b from-white to-gray-50/50">
+      <ParallaxSection speed={0.4} className="py-24 bg-gradient-to-b from-white to-gray-50/50">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <ContentSection>
             <div className="text-center mb-12">
@@ -30,9 +42,11 @@ export default function Landing() {
           </ContentSection>
           <ToolsCarousel />
         </div>
-      </section>
+      </ParallaxSection>
       
-      <FinalCTA />
+      <ParallaxSection speed={0.3}>
+        <FinalCTA />
+      </ParallaxSection>
     </div>
   );
 }

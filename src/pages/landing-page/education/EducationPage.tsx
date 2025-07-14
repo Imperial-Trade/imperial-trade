@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import ParallaxSection from "@/components/landing/ParallaxSection";
 
 const EducationPage: React.FC = () => {
   const features = [
@@ -75,7 +76,7 @@ const EducationPage: React.FC = () => {
   return (
     <div className="bg-background min-h-screen font-sans">
       {/* Hero Section */}
-      <section className="py-20 px-6 monochrome-gradient">
+      <ParallaxSection speed={0.3} className="py-20 px-6 monochrome-gradient">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
@@ -122,10 +123,10 @@ const EducationPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </section>
+      </ParallaxSection>
 
       {/* Features Grid */}
-      <section className="py-20 px-6">
+      <ParallaxSection speed={0.4} className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">
@@ -199,10 +200,10 @@ const EducationPage: React.FC = () => {
             ))}
           </div>
         </div>
-      </section>
+      </ParallaxSection>
 
       {/* CTA Section */}
-      <section className="py-20 px-6 monochrome-gradient">
+      <ParallaxSection speed={0.3} className="py-20 px-6 monochrome-gradient">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/50 border border-border mb-8">
             <BookMarked className="h-8 w-8 text-muted-foreground" />
@@ -240,7 +241,7 @@ const EducationPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </section>
+      </ParallaxSection>
     </div>
   );
 };

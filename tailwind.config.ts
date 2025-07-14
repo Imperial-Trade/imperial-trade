@@ -89,6 +89,30 @@ export default {
 					'dusty': 'hsl(var(--orache-dusty))',
 					'light': 'hsl(var(--orache-light))'
 				},
+				// Imperial White Gold & Bronze Gradient Colors
+				imperial: {
+					'white': 'hsl(var(--imperial-white))',
+					'platinum': 'hsl(var(--imperial-platinum))',
+					'gold-light': 'hsl(var(--imperial-gold-light))',
+					'gold': 'hsl(var(--imperial-gold))',
+					'bronze-light': 'hsl(var(--imperial-bronze-light))',
+					'bronze': 'hsl(var(--imperial-bronze))',
+					'bronze-dark': 'hsl(var(--imperial-bronze-dark))'
+				},
+				// Elegant Background Gradient Colors
+				bgGradient: {
+					'white': 'hsl(var(--bg-gradient-white))',
+					'light': 'hsl(var(--bg-gradient-light))',
+					'medium': 'hsl(var(--bg-gradient-medium))',
+					'dark': 'hsl(var(--bg-gradient-dark))',
+					'black': 'hsl(var(--bg-gradient-black))'
+				},
+				// Subtle Green Accent Colors
+				accentGreen: {
+					'sage': 'hsl(var(--accent-sage))',
+					'mint': 'hsl(var(--accent-mint))',
+					'forest': 'hsl(var(--accent-forest))'
+				},
 				// Feature colors (for product features only)
 				feature: {
 					'blue': 'hsl(var(--feature-blue))',

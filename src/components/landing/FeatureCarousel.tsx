@@ -57,13 +57,13 @@ export default function FeatureCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
 
   return (
-    <section className="relative py-32 bg-muted/20">
+    <section className="relative py-32 sophisticated-bg-mesh">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <ContentSection>
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
               Everything You Need
-              <span className="gradient-text block">
+              <span className="imperial-gradient-text block">
                 In One Platform
               </span>
             </h2>
@@ -121,7 +121,7 @@ export default function FeatureCarousel() {
                   })}
                 </div>
                 
-                <h3 className="text-2xl lg:text-3xl font-bold mb-4">
+                <h3 className="text-2xl lg:text-3xl font-bold mb-4 imperial-bronze-gradient">
                   {features[activeIndex].title}
                 </h3>
                 

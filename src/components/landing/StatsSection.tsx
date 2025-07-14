@@ -39,13 +39,13 @@ export default function StatsSection() {
   ];
 
   return (
-    <section className="relative py-32 bg-background">
+    <section className="relative py-32 subtle-bg-gradient">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <ContentSection>
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
               Trusted by Traders
-              <span className="gradient-text block">
+              <span className="imperial-gradient-text block">
                 Worldwide
               </span>
             </h2>
@@ -73,7 +73,7 @@ export default function StatsSection() {
                   </div>
                 </div>
                 
-                <div className="text-3xl lg:text-4xl font-bold mb-2 gradient-text">
+                <div className="text-3xl lg:text-4xl font-bold mb-2 imperial-gradient-text">
                   {stat.value}
                 </div>
                 
@@ -81,7 +81,7 @@ export default function StatsSection() {
                   {stat.label}
                 </div>
                 
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs sage-accent">
                   {stat.description}
                 </div>
               </div>

@@ -73,6 +73,27 @@
     --sidebar-border: 0 0% 80%;
     --sidebar-ring: 0 0% 26%;
 
+    /* Imperial White Gold & Bronze Gradient Colors for Feature Fonts */
+    --imperial-white: 0 0% 98%;
+    --imperial-platinum: 0 0% 92%;
+    --imperial-gold-light: 48 85% 85%;
+    --imperial-gold: 45 75% 70%;
+    --imperial-bronze-light: 30 45% 60%;
+    --imperial-bronze: 25 55% 45%;
+    --imperial-bronze-dark: 20 65% 35%;
+
+    /* Elegant Background Gradient Colors */
+    --bg-gradient-white: 0 0% 100%;
+    --bg-gradient-light: 0 0% 96%;
+    --bg-gradient-medium: 0 0% 89%;
+    --bg-gradient-dark: 0 0% 49%;
+    --bg-gradient-black: 0 0% 26%;
+
+    /* Subtle Green Accent Colors */
+    --accent-sage: 140 25% 65%;
+    --accent-mint: 150 30% 75%;
+    --accent-forest: 145 40% 45%;
+
     /* Feature accent colors - for product features only */
     --feature-blue: 210 100% 56%;
     --feature-green: 142 76% 36%;
@@ -360,6 +381,64 @@
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Imperial White Gold & Bronze Gradient Text */
+.imperial-gradient-text {
+  background: linear-gradient(135deg, 
+    hsl(var(--imperial-white)) 0%, 
+    hsl(var(--imperial-platinum)) 20%, 
+    hsl(var(--imperial-gold-light)) 40%, 
+    hsl(var(--imperial-gold)) 60%, 
+    hsl(var(--imperial-bronze-light)) 80%, 
+    hsl(var(--imperial-bronze)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 200%;
+  animation: gradientShift 4s ease-in-out infinite;
+}
+
+.imperial-bronze-gradient {
+  background: linear-gradient(135deg, 
+    hsl(var(--imperial-bronze-light)) 0%, 
+    hsl(var(--imperial-bronze)) 50%, 
+    hsl(var(--imperial-bronze-dark)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Elegant Background Gradients */
+.elegant-bg-gradient {
+  background: linear-gradient(135deg, 
+    hsl(var(--bg-gradient-white)) 0%, 
+    hsl(var(--bg-gradient-light)) 25%, 
+    hsl(var(--bg-gradient-medium)) 50%, 
+    hsl(var(--bg-gradient-dark)) 75%, 
+    hsl(var(--bg-gradient-black)) 100%);
+}
+
+.subtle-bg-gradient {
+  background: linear-gradient(180deg, 
+    hsl(var(--bg-gradient-white)) 0%, 
+    hsl(var(--bg-gradient-light)) 100%);
+}
+
+.sophisticated-bg-mesh {
+  background: 
+    radial-gradient(at 40% 20%, hsl(var(--bg-gradient-light)) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsl(var(--bg-gradient-medium)) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsl(var(--accent-sage) / 0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, hsl(var(--bg-gradient-dark)) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsl(var(--accent-mint) / 0.05) 0px, transparent 50%),
+    radial-gradient(at 80% 100%, hsl(var(--bg-gradient-black)) 0px, transparent 50%),
+    hsl(var(--bg-gradient-white));
+}
+
+/* Green Accent Classes */
+.sage-accent { color: hsl(var(--accent-sage)); }
+.mint-accent { color: hsl(var(--accent-mint)); }
+.forest-accent { color: hsl(var(--accent-forest)); }
 
 .gradient-text {
   background: linear-gradient(135deg, hsl(var(--feature-blue)) 0%, hsl(var(--feature-purple)) 100%);

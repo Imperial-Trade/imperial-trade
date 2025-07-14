@@ -10,39 +10,39 @@ export default function HeroSection() {
   const { user, loading } = useAuth();
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden bg-background">
-      {/* Sophisticated gradient background using Spanish Gray palette */}
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-gray-lightest/30 to-gray-lighter/20" />
+    <section className="relative min-h-screen flex items-center justify-center text-center z-10 overflow-hidden sophisticated-bg-mesh">
+      {/* Elegant white-black-grey gradient background with green hints */}
+      <div className="absolute inset-0 elegant-bg-gradient opacity-90" />
       
-      {/* Luxury accent overlays */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-gold-light/8 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-bl from-transparent via-orache-light/5 to-transparent" />
+      {/* Subtle green accent overlays */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-accentGreen-sage/5 via-transparent to-accentGreen-mint/3" />
+      <div className="absolute inset-0 bg-gradient-to-bl from-transparent via-accentGreen-forest/2 to-transparent" />
       
-      {/* Elegant floating elements with luxury colors */}
+      {/* Elegant floating elements with imperial colors and green accents */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-gold-warm rounded-full animate-pulse" />
-        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-orache-warm rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-gold-antique rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 right-1/3 w-1 h-1 bg-orache-dusty rounded-full animate-pulse" style={{ animationDelay: '3s' }} />
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-imperial-gold rounded-full animate-pulse" />
+        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-accentGreen-sage rounded-full animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-imperial-bronze rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 right-1/3 w-1 h-1 bg-accentGreen-mint rounded-full animate-pulse" style={{ animationDelay: '3s' }} />
       </div>
       
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
         <ContentSection>
           <div className="space-y-12 max-w-5xl mx-auto">
-            {/* Elegant Badge with Spanish Gray and gold accent */}
+            {/* Elegant Badge with imperial colors and green accent */}
             <div className="animate-fade-in-up">
-              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gray-lightest/80 border border-gray-lighter text-gray-darkest text-sm font-medium backdrop-blur-xl">
-                <div className="w-2 h-2 bg-gold-warm rounded-full animate-pulse" />
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-bgGradient-light/80 border border-bgGradient-medium text-gray-darkest text-sm font-medium backdrop-blur-xl">
+                <div className="w-2 h-2 bg-imperial-gold rounded-full animate-pulse" />
                 <span>Elite Trading Platform</span>
-                <div className="w-2 h-2 bg-orache-warm rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-accentGreen-sage rounded-full animate-pulse" />
               </div>
             </div>
 
-            {/* Main headline with sophisticated color palette */}
+            {/* Main headline with imperial white gold & bronze gradient */}
             <div className="animate-scale-in space-y-4">
               <h1 className="text-5xl sm:text-6xl lg:text-8xl font-bold leading-none tracking-tight text-gray-darkest">
                 <span className="block">The Future of</span>
-                <span className="block bg-gradient-to-r from-gold-warm via-gold-antique to-orache-warm bg-clip-text text-transparent">
+                <span className="block imperial-gradient-text">
                   Smart Trading
                 </span>
               </h1>
@@ -96,22 +96,22 @@ export default function HeroSection() {
               </Button>
             </div>
 
-            {/* Enhanced Social proof with better design */}
+            {/* Enhanced Social proof with imperial gradient numbers and green accents */}
             <div className="animate-slide-in-right pt-12">
               <div className="flex flex-wrap justify-center items-center gap-12 opacity-80">
                 <div className="text-center group">
-                  <div className="text-3xl font-bold text-primary group-hover:scale-110 transition-transform">15K+</div>
-                  <div className="text-sm text-muted-foreground font-medium">Active Traders</div>
+                  <div className="text-3xl font-bold imperial-gradient-text group-hover:scale-110 transition-transform">15K+</div>
+                  <div className="text-sm sage-accent font-medium">Active Traders</div>
                 </div>
                 <div className="w-px h-10 bg-gradient-to-b from-transparent via-border to-transparent" />
                 <div className="text-center group">
-                  <div className="text-3xl font-bold text-primary group-hover:scale-110 transition-transform">$3.2B</div>
+                  <div className="text-3xl font-bold imperial-bronze-gradient group-hover:scale-110 transition-transform">$3.2B</div>
                   <div className="text-sm text-muted-foreground font-medium">Volume Traded</div>
                 </div>
                 <div className="w-px h-10 bg-gradient-to-b from-transparent via-border to-transparent" />
                 <div className="text-center group">
-                  <div className="text-3xl font-bold text-primary group-hover:scale-110 transition-transform">95%</div>
-                  <div className="text-sm text-muted-foreground font-medium">Success Rate</div>
+                  <div className="text-3xl font-bold imperial-gradient-text group-hover:scale-110 transition-transform">95%</div>
+                  <div className="text-sm mint-accent font-medium">Success Rate</div>
                 </div>
               </div>
             </div>

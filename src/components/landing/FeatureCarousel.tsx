@@ -57,7 +57,7 @@ export default function FeatureCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
 
   return (
-    <section className="relative py-32 bg-gray-50">
+    <section className="relative py-32 bg-muted/20">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <ContentSection>
           <div className="text-center mb-16">

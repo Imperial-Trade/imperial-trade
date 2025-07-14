@@ -81,10 +81,10 @@ export default function ToolsShowcase() {
   }, []);
 
   return (
-    <section className="relative py-32 bg-white">
+    <section className="relative py-32 bg-background">
       <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-gradient-to-r from-gray-400 to-gray-600 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-gradient-to-r from-gray-500 to-gray-700 rounded-full blur-3xl" />
+        <div className="absolute top-20 left-20 w-96 h-96 bg-muted rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-muted rounded-full blur-3xl" />
       </div>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">

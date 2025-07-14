@@ -7,7 +7,7 @@ import FinalCTA from "@/components/landing/FinalCTA";
 
 export default function Landing() {
   return (
-    <div className="bg-white w-full overflow-x-hidden">
+    <div className="bg-background w-full overflow-x-hidden">
       <HeroSection />
       <StatsSection />
       <FeatureCarousel />

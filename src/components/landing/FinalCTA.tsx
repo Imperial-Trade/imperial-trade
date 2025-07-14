@@ -34,10 +34,10 @@ export default function FinalCTA() {
   ];
 
   return (
-    <section className="relative py-32 bg-gray-900 text-white">
+    <section className="relative py-32 bg-primary text-primary-foreground">
       <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full blur-3xl" />
+        <div className="absolute top-20 left-20 w-96 h-96 bg-primary-foreground rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-primary-foreground rounded-full blur-3xl" />
       </div>
 
       <div className="max-w-5xl mx-auto px-6 lg:px-8 relative z-10">

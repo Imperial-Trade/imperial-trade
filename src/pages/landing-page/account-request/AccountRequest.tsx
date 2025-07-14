@@ -53,22 +53,6 @@ export default function AccountRequestPage() {
       {/* Left Side - Dark with Form */}
       <div className="w-1/2 bg-white flex items-center justify-center px-8">
         <div className="w-full max-w-md">
-          {/* Logo and Brand */}
-          <div className="flex items-center justify-center mb-12">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                <Crown className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">
-                  IMPERIAL
-                </h1>
-                <p className="text-sm text-gray-400">
-                  Trading Community
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* Form Card */}
           <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">

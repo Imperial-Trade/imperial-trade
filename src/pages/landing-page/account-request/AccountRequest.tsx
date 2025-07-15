@@ -77,14 +77,14 @@ export default function AccountRequestPage() {
 
               <div className="pt-4 space-y-3">
                 <Link to="/account-request-status">
-                  <Button variant="outline" className="w-full border-gray-600 text-gray-300 hover:bg-gray-700">
+                  <Button variant="outline" className="w-full border-gray-600 bg-slate-50 text-slate-950">
                     Check Request Status
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
 
                 <Link to="/signin">
-                  <Button variant="outline" className="w-full border-gray-600 text-gray-300 hover:bg-gray-700">
+                  <Button variant="outline" className="w-full border-gray-600 text-gray-950 bg-slate-50">
                     Already Have Access? Sign In
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>

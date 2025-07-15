@@ -18,8 +18,7 @@ export default function HeroSection() {
           loop
           muted
           playsInline
-          style={{ filter: 'brightness(0.4) contrast(1.1)' }}
-          className="w-full h-full object-cover dark:brightness-[0.4] light:brightness-[0.7] transition-all duration-300"
+          className="w-full h-full object-cover dark:brightness-[0.4] light:brightness-[0.8] transition-all duration-300"
         >
           <source src="https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4" type="video/mp4" />
           <source src="https://videos.pexels.com/video-files/7578540/7578540-hd_1920_1080_25fps.mp4" type="video/mp4" />

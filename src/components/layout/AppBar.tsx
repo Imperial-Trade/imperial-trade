@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 const AppBar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -59,36 +58,35 @@ const AppBar: React.FC = () => {
   const renderAuthButton = () => {
     if (user) {
       return <Link to="/dashboard/home">
-          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2">
+          <Button size="sm" className="bg-accent-green hover:bg-green-500 text-white flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
             Dashboard
           </Button>
         </Link>;
     }
-    
+
     // Don't show Get Started button if already on account request page
     if (isAccountRequestPage) {
       return null;
     }
-    
     return <Link to="/account-request">
-        <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+        <Button size="sm" className="bg-accent-green hover:bg-green-500 text-white">
           Get Started
         </Button>
       </Link>;
   };
   return <header className={`fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 ${isAccountRequestPage ? '' : 'backdrop-blur-xl border-b border-border/50 bg-[#2b5069]/[0.49]'}`}>
-      <div className="w-full max-w-7xl flex items-center justify-between">
+      <div className="w-full max-w-7xl flex items-center justify-between bg-zinc-900">
         <Link to="/" className="flex items-center gap-2">
           <Crown className="h-6 w-6 text-primary" />
           <span className="text-xl imperial-tech-font">IMPERIAL</span>
         </Link>
 
-        {/* Desktop Navigation - Compact */}
+        {/* Desktop Navigation - Wider Container */}
         <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
           {navigationItems.map(item => <div key={item.to} className="relative" onMouseEnter={() => setActiveDropdown(item.label)} onMouseLeave={() => setActiveDropdown(null)}>
                 <Link to={item.to}>
-                  <Button variant="ghost" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200">
+                  <Button variant="ghost" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-4 py-2 transition-all duration-200">
                     <item.icon className="h-4 w-4" />
                     {item.label}
                   </Button>
@@ -117,9 +115,8 @@ const AppBar: React.FC = () => {
             </div>)}
         </nav>
 
-        {/* Desktop Auth & Theme Toggle */}
-        <div className="hidden lg:flex items-center gap-2">
-          <ThemeToggle />
+        {/* Desktop Auth Button */}
+        <div className="hidden lg:flex items-center gap-4">
           {renderAuthButton()}
         </div>
       </div>
@@ -151,10 +148,7 @@ const AppBar: React.FC = () => {
                   </Link>
                 </div>)}
 
-              <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
-                <div className="flex justify-center">
-                  <ThemeToggle />
-                </div>
+              <div className="mt-6 pt-6 border-t border-border/50">
                 {user ? <Link to="/dashboard/home" onClick={closeMobileMenu}>
                     <Button size="lg" className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold flex items-center gap-2">
                       <LayoutDashboard className="h-4 w-4" />

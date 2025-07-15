@@ -91,22 +91,22 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const getRoleIcon = (role: string) => {
     switch (role.toLowerCase()) {
       case 'admin':
-        return <Crown className="w-4 h-4 text-yellow-400" />;
+        return <Crown className="w-4 h-4 text-accent-green" />;
       case 'educator':
         return <GraduationCap className="w-4 h-4 text-blue-400" />;
       default:
-        return <User className="w-4 h-4 text-gray-400" />;
+        return <User className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
   const getRoleBadgeClass = (role: string) => {
     switch (role.toLowerCase()) {
       case 'admin':
-        return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
+        return 'bg-accent-green/20 text-accent-green border-accent-green/30';
       case 'educator':
         return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
       default:
-        return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
+        return 'bg-muted/20 text-muted-foreground border-muted/30';
     }
   };
 
@@ -132,7 +132,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   return (
     <div 
-      className={`bg-gray-800/50 rounded-lg border border-gray-700 shadow-lg overflow-hidden transition-all duration-300 hover:shadow-emerald-500/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-amber-400/50 hover:border-amber-400' : 'hover:border-emerald-400/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-red-500/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-emerald-500/30' : 'ring-2 ring-gray-500/30')} ${className || ''}`}
+      className={`bg-card/50 rounded-lg border border-border shadow-lg overflow-hidden transition-all duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-orange-400/50 hover:border-orange-400' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-destructive/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-muted/30')} ${className || ''}`}
       data-testid={testId}
     >
       {/* Glowing top indicator for closed trades */}

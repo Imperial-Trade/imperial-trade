@@ -105,60 +105,70 @@
   }
 
   .dark {
-    /* Elegant dark mode with dark grey, black, white, and gold */
-    --background: 0 0% 8%; /* Dark charcoal background */
+    /* Trading platform dark mode - inspired by professional trading interfaces */
+    --background: 210 24% 9%; /* Dark navy background #121826 */
     --foreground: 0 0% 95%; /* Pure white text */
 
-    --card: 0 0% 12%; /* Dark grey card */
+    --card: 210 20% 12%; /* Darker navy cards #1A1F2E */
     --card-foreground: 0 0% 95%; /* White text */
 
-    --popover: 0 0% 12%; /* Dark grey */
+    --popover: 210 20% 12%; /* Dark navy */
     --popover-foreground: 0 0% 95%; /* White text */
 
-    --primary: 43 75% 65%; /* Gold primary */
-    --primary-foreground: 0 0% 8%; /* Dark text on gold */
+    --primary: 43 74% 60%; /* Gold primary #E6B800 */
+    --primary-foreground: 210 24% 9%; /* Dark text on gold */
 
-    --secondary: 0 0% 20%; /* Medium dark grey */
+    --secondary: 210 16% 16%; /* Medium dark navy #242937 */
     --secondary-foreground: 0 0% 85%; /* Light grey text */
 
-    --muted: 0 0% 15%; /* Dark muted background */
+    --muted: 210 18% 14%; /* Dark muted background #1E232F */
     --muted-foreground: 0 0% 65%; /* Medium grey text */
 
-    --accent: 0 0% 18%; /* Dark accent background */
+    --accent: 210 14% 18%; /* Dark accent background #282F3E */
     --accent-foreground: 0 0% 95%; /* White text */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 25%; /* Dark grey border */
-    --input: 0 0% 15%; /* Dark input background */
-    --ring: 43 75% 65%; /* Gold ring */
+    --border: 210 12% 22%; /* Dark navy border #323849 */
+    --input: 210 18% 14%; /* Dark input background */
+    --ring: 43 74% 60%; /* Gold ring */
 
-    /* Sidebar colors for elegant dark theme */
-    --sidebar-background: 0 0% 8%;
+    /* Sidebar colors for trading dark theme */
+    --sidebar-background: 210 24% 9%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 43 75% 65%;
-    --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 0 0% 18%;
+    --sidebar-primary: 43 74% 60%;
+    --sidebar-primary-foreground: 210 24% 9%;
+    --sidebar-accent: 210 14% 18%;
     --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 25%;
-    --sidebar-ring: 43 75% 65%;
+    --sidebar-border: 210 12% 22%;
+    --sidebar-ring: 43 74% 60%;
 
-    /* Dark mode gradient overrides - elegant blacks and greys */
-    --bg-gradient-white: 0 0% 8%;
-    --bg-gradient-light: 0 0% 12%;
-    --bg-gradient-medium: 0 0% 20%;
-    --bg-gradient-dark: 0 0% 30%;
-    --bg-gradient-black: 0 0% 5%;
+    /* Trading platform gradient colors */
+    --bg-gradient-white: 210 24% 9%;
+    --bg-gradient-light: 210 20% 12%;
+    --bg-gradient-medium: 210 16% 16%;
+    --bg-gradient-dark: 210 12% 22%;
+    --bg-gradient-black: 210 28% 7%;
 
-    /* Imperial colors for elegant dark mode with gold accents */
+    /* Gold accents for trading interface */
     --imperial-white: 0 0% 95%;
     --imperial-platinum: 0 0% 85%;
-    --imperial-gold-light: 43 80% 75%;
-    --imperial-gold: 43 75% 65%;
-    --imperial-bronze-light: 43 70% 55%;
-    --imperial-bronze: 43 65% 45%;
-    --imperial-bronze-dark: 43 60% 35%;
+    --imperial-gold-light: 43 80% 70%;
+    --imperial-gold: 43 74% 60%;
+    --imperial-bronze-light: 43 70% 50%;
+    --imperial-bronze: 43 65% 40%;
+    --imperial-bronze-dark: 43 60% 30%;
+
+    /* Trading accent colors */
+    --accent-green: 142 69% 58%; /* Trading green #00C896 */
+    --accent-blue: 210 100% 60%; /* Trading blue #0080FF */
+    --accent-gold: 43 74% 60%; /* Trading gold #E6B800 */
+    --accent-red: 0 84% 60%; /* Trading red */
+
+    /* Surface colors for components */
+    --surface: 210 20% 12%; /* Component surface */
+    --surface-hover: 210 16% 16%; /* Hover state */
 
     /* Spanish Gray Palette for dark mode */
     --gray-darkest: 0 0% 95%; /* White text in dark mode */
@@ -422,6 +432,37 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Trading platform dark mode effects */
+.dark .glass-effect {
+  background: rgba(26, 31, 46, 0.4); /* Dark navy with transparency */
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Trading accent glow effects */
+.glow-effect-green {
+  box-shadow: 0 0 20px hsla(142, 69%, 58%, 0.3);
+}
+
+.glow-effect-gold {
+  box-shadow: 0 0 20px hsla(43, 74%, 60%, 0.3);
+}
+
+.glow-effect-blue {
+  box-shadow: 0 0 20px hsla(210, 100%, 60%, 0.3);
+}
+
+/* Trading gradient text effects */
+.gold-text-gradient {
+  background: linear-gradient(135deg, 
+    hsl(var(--accent-gold)) 0%, 
+    hsl(var(--imperial-gold-light)) 50%, 
+    hsl(var(--accent-gold)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* Dark mode optimized gradients */
 .dark .elegant-bg-gradient {
   background: linear-gradient(135deg, 
@@ -442,9 +483,9 @@
   background: 
     radial-gradient(at 40% 20%, hsl(var(--bg-gradient-light)) 0px, transparent 50%),
     radial-gradient(at 80% 0%, hsl(var(--bg-gradient-medium)) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsl(var(--accent-sage) / 0.2) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsl(var(--accent-green) / 0.2) 0px, transparent 50%),
     radial-gradient(at 80% 50%, hsl(var(--bg-gradient-dark)) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsl(var(--accent-mint) / 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsl(var(--accent-gold) / 0.1) 0px, transparent 50%),
     radial-gradient(at 80% 100%, hsl(var(--bg-gradient-black)) 0px, transparent 50%),
     hsl(var(--bg-gradient-black));
 }

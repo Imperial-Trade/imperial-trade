@@ -121,7 +121,16 @@ export default {
 					'purple': 'hsl(var(--feature-purple))',
 					'pink': 'hsl(var(--feature-pink))',
 					'red': 'hsl(var(--feature-red))'
-				}
+				},
+				// Trading platform accent colors  
+				accent: {
+					'green': 'hsl(var(--accent-green))',
+					'blue': 'hsl(var(--accent-blue))',
+					'gold': 'hsl(var(--accent-gold))',
+					'red': 'hsl(var(--accent-red))'
+				},
+				// Surface colors for components
+				surface: 'hsl(var(--surface))'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

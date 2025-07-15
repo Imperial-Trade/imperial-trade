@@ -26,14 +26,21 @@ function DashboardHeader() {
 
   const getUserAccessLevel = () => {
     if (!user) return 'free';
+    
+    // Check if user is educator
+    if (user.user_metadata?.role === 'educator' || user.user_metadata?.user_type === 'educator') {
+      return 'educator';
+    }
+    
     return (user.user_metadata?.access_level as string) || 'free';
   };
 
   const getAccessLevelDisplay = (level: string) => {
     const levels = {
-      free: { label: 'Free', color: 'bg-gray-500' },
-      user: { label: 'Member', color: 'bg-blue-500' },
-      admin: { label: 'Admin', color: 'bg-red-500' }
+      free: { label: 'Free', color: 'text-green-500' },
+      user: { label: 'Member', color: 'text-green-500' },
+      educator: { label: 'Educator', color: 'text-blue-500' },
+      admin: { label: 'Admin', color: 'text-red-500' }
     };
     return levels[level as keyof typeof levels] || levels.free;
   };
@@ -158,7 +165,7 @@ function DashboardHeader() {
                     ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
                     : user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'}
                 </span>
-                <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-white text-xs`}>
+                <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-xs font-medium`}>
                   {getAccessLevelDisplay(getUserAccessLevel()).label}
                 </Badge>
               </div>
@@ -276,7 +283,7 @@ function DashboardHeader() {
                         ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
                         : user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'}
                     </p>
-                    <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-white text-xs mt-1`}>
+                    <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-xs font-medium mt-1`}>
                       {getAccessLevelDisplay(getUserAccessLevel()).label}
                     </Badge>
                   </div>

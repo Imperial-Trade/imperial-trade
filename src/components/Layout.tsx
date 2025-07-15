@@ -153,7 +153,9 @@ function DashboardHeader() {
             <div className="flex items-center gap-3">
               <div className="flex flex-col items-end text-sm">
                 <span className="font-medium text-foreground">
-                  {user.email?.split('@')[0] || 'User'}
+                  {user.user_metadata?.first_name && user.user_metadata?.last_name 
+                    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                    : user.user_metadata?.display_name || 'User'}
                 </span>
                 <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-white text-xs`}>
                   {getAccessLevelDisplay(getUserAccessLevel()).label}
@@ -210,7 +212,11 @@ function DashboardHeader() {
                 </div>
                 {user && (
                   <div className="text-center">
-                    <p className="text-sm font-medium text-foreground">{user.email?.split('@')[0] || 'User'}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {user.user_metadata?.first_name && user.user_metadata?.last_name 
+                        ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                        : user.user_metadata?.display_name || 'User'}
+                    </p>
                     <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-white text-xs mt-1`}>
                       {getAccessLevelDisplay(getUserAccessLevel()).label}
                     </Badge>

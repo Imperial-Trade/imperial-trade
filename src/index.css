@@ -102,6 +102,9 @@
     --feature-purple: 250 84% 54%;
     --feature-pink: 330 81% 60%;
     --feature-red: 0 84% 60%;
+    
+    /* Light mode accent colors */
+    --light-green-hover: 142 69% 58%; /* Green for light mode hover borders */
   }
 
   .dark {

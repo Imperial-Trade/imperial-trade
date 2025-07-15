@@ -31,7 +31,7 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon }) => (
-  <Card className="group relative overflow-hidden bg-card/50 backdrop-blur-sm border-border/20 hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1">
+  <Card className="group relative overflow-hidden bg-card/50 backdrop-blur-sm border-border/20 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1">{/* Green border on hover for light mode */}
     {/* Gradient overlay */}
     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
     

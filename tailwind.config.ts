@@ -130,7 +130,9 @@ export default {
 					'red': 'hsl(var(--accent-red))'
 				},
 				// Surface colors for components
-				surface: 'hsl(var(--surface))'
+				surface: 'hsl(var(--surface))',
+				// Light mode specific colors
+				lightGreenHover: 'hsl(var(--light-green-hover))'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

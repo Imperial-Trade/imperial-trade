@@ -3,7 +3,7 @@ import React, { useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton"
-import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp } from "lucide-react"
+import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User } from "lucide-react"
 import { Link, Outlet, useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
@@ -150,7 +150,7 @@ function DashboardHeader() {
 
           {/* User Info */}
           {user && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <div className="flex flex-col items-end text-sm">
                 <span className="font-medium text-foreground">
                   {user.user_metadata?.first_name && user.user_metadata?.last_name 
@@ -162,6 +162,11 @@ function DashboardHeader() {
                 </Badge>
               </div>
               <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
+              
+              {/* Profile Icon */}
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20 ml-2">
+                <User className="h-4 w-4 text-primary" />
+              </div>
             </div>
           )}
         </div>

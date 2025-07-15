@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -69,38 +69,85 @@ const aiTools = [
 
 export default function AdvancedTools() {
   const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [animationIndex, setAnimationIndex] = useState(0);
+  
+  // Animation colors for each tool (matching the reference image)
+  const animationColors = [
+    "hsl(220, 70%, 50%)", // Blue for Analytics
+    "hsl(260, 70%, 50%)", // Purple for AI Assistant  
+    "hsl(150, 70%, 50%)", // Green for Risk Management
+    "hsl(30, 70%, 50%)",  // Orange for Lightning Execution
+    "hsl(330, 70%, 50%)", // Pink for Precision Signals
+    "hsl(200, 70%, 50%)", // Cyan for Mobile Trading
+    "hsl(280, 70%, 50%)", // Purple for Market Scanner
+    "hsl(120, 70%, 50%)", // Green for Profit Tracker
+  ];
+
+  // All tools in animation order (left to right, then down row)
+  const allTools = [...coreTools, ...aiTools];
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAnimationIndex((prev) => (prev + 1) % allTools.length);
+    }, 1000); // 1 second interval
+
+    return () => clearInterval(interval);
+  }, [allTools.length]);
 
   const handleToolSelect = (toolId: string) => {
     setActiveTool(activeTool === toolId ? null : toolId);
   };
 
   const getActiveToolComponent = () => {
-    const allTools = [...coreTools, ...aiTools];
     const tool = allTools.find(t => t.id === activeTool);
     return tool?.component || null;
   };
 
-  const ToolCard = ({ tool, onSelect, isActive }: any) => {
+  const ToolCard = ({ tool, onSelect, isActive, isAnimated, animationColor }: any) => {
     const Icon = tool.icon;
     return (
       <motion.div 
         whileHover={{ scale: 1.02 }} 
         whileTap={{ scale: 0.98 }}
         className="h-full"
+        animate={isAnimated ? { 
+          scale: [1, 1.05, 1],
+          boxShadow: [
+            "0 0 0 0 transparent",
+            `0 0 20px 5px ${animationColor}40`,
+            "0 0 0 0 transparent"
+          ]
+        } : {}}
+        transition={{ duration: 0.8, ease: "easeInOut" }}
       >
         <Card
           className={`cursor-pointer h-full transition-all duration-200 border-2 ${
             isActive
               ? "border-primary bg-primary/5 shadow-lg"
+              : isAnimated
+              ? `bg-card/80 shadow-lg`
               : "border-border hover:border-primary/50 hover:shadow-md"
           }`}
           onClick={() => onSelect(tool.id)}
+          style={isAnimated ? {
+            borderColor: animationColor,
+            backgroundColor: `${animationColor}10`
+          } : {}}
         >
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${
-                isActive ? "bg-primary text-primary-foreground" : "bg-muted"
-              }`}>
+              <div 
+                className={`p-2 rounded-lg transition-all duration-200 ${
+                  isActive 
+                    ? "bg-primary text-primary-foreground" 
+                    : isAnimated
+                    ? "text-white"
+                    : "bg-muted"
+                }`}
+                style={isAnimated ? {
+                  backgroundColor: animationColor
+                } : {}}
+              >
                 <Icon className="w-5 h-5" />
               </div>
               <CardTitle className="text-lg font-semibold">{tool.name}</CardTitle>
@@ -139,12 +186,14 @@ export default function AdvancedTools() {
               <h2 className="text-xl font-semibold text-foreground">Core Trading Tools</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {coreTools.map((tool) => (
+              {coreTools.map((tool, index) => (
                 <ToolCard
                   key={tool.id}
                   tool={tool}
                   onSelect={handleToolSelect}
                   isActive={activeTool === tool.id}
+                  isAnimated={animationIndex === index}
+                  animationColor={animationColors[index]}
                 />
               ))}
             </div>
@@ -157,12 +206,14 @@ export default function AdvancedTools() {
               <h2 className="text-xl font-semibold text-foreground">AI-Powered Intelligence</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {aiTools.map((tool) => (
+              {aiTools.map((tool, index) => (
                 <ToolCard
                   key={tool.id}
                   tool={tool}
                   onSelect={handleToolSelect}
                   isActive={activeTool === tool.id}
+                  isAnimated={animationIndex === (coreTools.length + index)}
+                  animationColor={animationColors[coreTools.length + index]}
                 />
               ))}
             </div>

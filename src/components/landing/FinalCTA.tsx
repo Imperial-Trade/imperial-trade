@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -6,36 +5,38 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle, Star, Shield, Award } from "lucide-react";
 import ContentSection from "./ContentSection";
 import { useAuth } from "@/contexts/AuthContext";
-
 export default function FinalCTA() {
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
   const sectionRef = useRef<HTMLElement>(null);
-
   useEffect(() => {
     const handleScroll = () => {
       if (!sectionRef.current) return;
-      
       const rect = sectionRef.current.getBoundingClientRect();
       const scrolled = window.pageYOffset;
       const parallax = scrolled * -0.3;
-      
       sectionRef.current.style.transform = `translate3d(0, ${parallax}px, 0)`;
     };
-
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const benefits = [
-    { icon: Star, text: "AI-powered trading signals with 92% accuracy" },
-    { icon: Shield, text: "Enterprise-grade security and protection" },
-    { icon: Award, text: "Award-winning trading platform" },
-    { icon: CheckCircle, text: "24/7 professional support" },
-  ];
-
-  return (
-    <section className="relative py-32 bg-primary text-primary-foreground">
-      <div className="absolute inset-0 opacity-10">
+  const benefits = [{
+    icon: Star,
+    text: "AI-powered trading signals with 92% accuracy"
+  }, {
+    icon: Shield,
+    text: "Enterprise-grade security and protection"
+  }, {
+    icon: Award,
+    text: "Award-winning trading platform"
+  }, {
+    icon: CheckCircle,
+    text: "24/7 professional support"
+  }];
+  return <section className="relative py-32 bg-primary text-primary-foreground">
+      <div className="absolute inset-0 opacity-10 bg-[#0e1b2f]">
         <div className="absolute top-20 left-20 w-96 h-96 bg-primary-foreground rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-20 w-80 h-80 bg-primary-foreground rounded-full blur-3xl" />
       </div>
@@ -59,51 +60,30 @@ export default function FinalCTA() {
 
             {/* Benefits Grid */}
             <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-              {benefits.map((benefit, index) => (
-                <div 
-                  key={benefit.text}
-                  className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-xl rounded-2xl border border-border/50"
-                >
+              {benefits.map((benefit, index) => <div key={benefit.text} className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-xl rounded-2xl border border-border/50">
                   <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
                     <benefit.icon className="w-5 h-5 text-primary" />
                   </div>
                   <span className="text-foreground font-medium">{benefit.text}</span>
-                </div>
-              ))}
+                </div>)}
             </div>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              {!loading && (
-                user ? (
-                  <Link to="/dashboard/home">
-                    <Button
-                      size="lg"
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 py-6 text-xl rounded-2xl transition-all duration-300 shadow-2xl"
-                    >
+              {!loading && (user ? <Link to="/dashboard/home">
+                    <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 py-6 text-xl rounded-2xl transition-all duration-300 shadow-2xl">
                       Access Dashboard
                       <ArrowRight className="ml-3 h-6 w-6" />
                     </Button>
-                  </Link>
-                ) : (
-                  <Link to={createPageUrl("account-request")}>
-                    <Button
-                      size="lg"
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 py-6 text-xl rounded-2xl transition-all duration-300 shadow-2xl"
-                    >
+                  </Link> : <Link to={createPageUrl("account-request")}>
+                    <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-12 py-6 text-xl rounded-2xl transition-all duration-300 shadow-2xl">
                       Start Trading Now
                       <ArrowRight className="ml-3 h-6 w-6" />
                     </Button>
-                  </Link>
-                )
-              )}
+                  </Link>)}
 
               <Link to={createPageUrl("account-request-status")}>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-2 border-primary/30 text-foreground hover:bg-primary/10 font-semibold px-12 py-6 text-xl rounded-2xl transition-all duration-300 backdrop-blur-xl"
-                >
+                <Button variant="outline" size="lg" className="border-2 border-primary/30 text-foreground hover:bg-primary/10 font-semibold px-12 py-6 text-xl rounded-2xl transition-all duration-300 backdrop-blur-xl">
                   Check Status
                 </Button>
               </Link>
@@ -135,6 +115,5 @@ export default function FinalCTA() {
           </div>
         </ContentSection>
       </div>
-    </section>
-  );
+    </section>;
 }

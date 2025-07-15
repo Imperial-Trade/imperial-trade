@@ -88,8 +88,8 @@ const AppBar: React.FC = () => {
           </Link>
         )}
 
-        {/* Desktop Navigation - Compact - hide on signin page */}
-        {!isSigninPage && (
+        {/* Desktop Navigation - Compact - show on signin page but simplified */}
+        {!isSigninPage ? (
           <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
             {navigationItems.map(item => <div key={item.to} className="relative" onMouseEnter={() => setActiveDropdown(item.label)} onMouseLeave={() => setActiveDropdown(null)}>
                   <Link to={item.to}>
@@ -120,6 +120,17 @@ const AppBar: React.FC = () => {
                     </div>
                   </div>}
               </div>)}
+          </nav>
+        ) : (
+          <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
+            {navigationItems.map(item => (
+              <Link key={item.to} to={item.to}>
+                <Button variant="ghost" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200">
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </Button>
+              </Link>
+            ))}
           </nav>
         )}
 

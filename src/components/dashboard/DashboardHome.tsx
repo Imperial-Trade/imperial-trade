@@ -88,8 +88,8 @@ export const DashboardHome: React.FC = () => {
               <h1 className="text-5xl lg:text-7xl font-bold text-white mb-4 flex items-center justify-center gap-4 flex-wrap">
                 Welcome to{' '}
                 <div className="flex items-center gap-3">
-                  <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-accent-gold" />
-                  <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                  <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-yellow-400" />
+                  <span className="text-yellow-400">
                     Imperial
                   </span>
                 </div>

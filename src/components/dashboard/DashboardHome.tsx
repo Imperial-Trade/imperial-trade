@@ -80,9 +80,9 @@ export const DashboardHome: React.FC = () => {
       <VideoBackground />
       
       {/* Hero Section with Heartfelt Welcome */}
-      <div className="relative z-20 min-h-[60vh] flex items-center">
+      <div className="relative z-20 min-h-[50vh] flex items-center">
         <div className="container mx-auto px-6 text-center">
-          <div className="max-w-4xl mx-auto space-y-6">
+          <div className="max-w-6xl mx-auto space-y-6">
             {/* Welcome Message */}
             <div className="space-y-4">
               <h1 className="text-5xl lg:text-7xl font-bold text-white mb-4">
@@ -92,12 +92,12 @@ export const DashboardHome: React.FC = () => {
                 </span>
               </h1>
               
-              <p className="text-xl lg:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
+              <p className="text-xl lg:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed">
                 You've taken the brave step into the world of trading. Every expert was once a beginner, 
                 and every champion was once a contender who refused to give up.
               </p>
               
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 max-w-2xl mx-auto">
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 max-w-4xl mx-auto">
                 <p className="text-lg text-white/95 italic leading-relaxed">
                   "Success in trading comes not from being right all the time, but from learning, 
                   adapting, and growing with every trade. Your journey starts here, and we're honored 
@@ -112,25 +112,17 @@ export const DashboardHome: React.FC = () => {
               </div>
             </div>
             
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
+            {/* Action Button */}
+            <div className="flex justify-center pt-6">
               <Button 
-                asChild 
+                onClick={() => {
+                  document.querySelector('.container')?.scrollIntoView({ behavior: 'smooth' });
+                }}
                 size="lg" 
                 className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white shadow-2xl hover:shadow-primary/25 transition-all duration-300 group border-0"
               >
-                <Link to="/dashboard/new-signal">
-                  <Plus className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
-                  Start Your Journey
-                </Link>
-              </Button>
-              <Button 
-                variant="outline" 
-                size="lg"
-                className="border-white/30 text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm transition-all duration-300"
-              >
-                <Activity className="w-5 h-5 mr-2" />
-                Explore Markets
+                <Plus className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                Start Your Journey
               </Button>
             </div>
           </div>

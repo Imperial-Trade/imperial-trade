@@ -203,7 +203,7 @@ export function usePostHogTracking() {
     },
   };
 
-  // Feature flag helpers
+  // Feature flag helpers using the context
   const featureFlags = {
     // UI/UX Feature Flags
     isNewDashboardEnabled: () => getFeatureFlag('new_dashboard_ui'),
@@ -229,7 +229,7 @@ export function usePostHogTracking() {
   };
 
   // Feature flag tracking
-  const trackFeatureFlag = (flagName: string, flagValue: boolean, context?: any) => {
+  const trackFeatureFlag = (flagName: string, flagValue: boolean | string, context?: any) => {
     track('feature_flag_evaluated', {
       flag_name: flagName,
       flag_value: flagValue,

@@ -3,154 +3,182 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { usePostHog } from '@/contexts/PostHogContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useOptimizedDebounce, useThrottle, useEventDeduplication } from '@/hooks/useOptimizedDebounce';
 
-// Performance optimization: Event throttling
-class EventThrottler {
+// Advanced performance optimization: Smart event throttling
+class SmartEventThrottler {
   private lastEvents = new Map<string, number>();
-  private readonly minInterval = 2000; // 2 seconds minimum between same events
+  private readonly minIntervals = {
+    page_view: 3000, // 3 seconds between page views
+    user_identification: 30000, // 30 seconds between identifications
+    click: 1000, // 1 second between clicks
+    performance: 10000, // 10 seconds between performance events
+    default: 2000
+  };
 
   shouldTrack(eventName: string): boolean {
+    const eventType = this.getEventType(eventName);
+    const minInterval = this.minIntervals[eventType] || this.minIntervals.default;
+    
     const now = Date.now();
     const lastTime = this.lastEvents.get(eventName) || 0;
 
-    if (now - lastTime < this.minInterval) {
+    if (now - lastTime < minInterval) {
       return false;
     }
 
     this.lastEvents.set(eventName, now);
     return true;
   }
+
+  private getEventType(eventName: string): string {
+    if (eventName.includes('page_view')) return 'page_view';
+    if (eventName.includes('identification') || eventName.includes('identify')) return 'user_identification';
+    if (eventName.includes('click')) return 'click';
+    if (eventName.includes('performance')) return 'performance';
+    return 'default';
+  }
+
+  cleanup(): void {
+    this.lastEvents.clear();
+  }
 }
 
 export function useOptimizedPostHogTracking() {
-  const { track, identify, reset, isEnabled } = usePostHog();
+  const { track, identify, isEnabled, trackPageView, trackUserJourney } = usePostHog();
   const { user, profile } = useAuth();
   const location = useLocation();
   
-  // Performance optimization: Throttle events
-  const eventThrottler = useRef(new EventThrottler()).current;
+  // Optimized throttling and debouncing
+  const eventThrottler = useRef(new SmartEventThrottler()).current;
   const lastIdentifiedUser = useRef<string | null>(null);
+  const { isDuplicate } = useEventDeduplication();
   
-  // Debounced location for page tracking
-  const debouncedPath = useDebounce(location.pathname, 1000);
+  // Debounced path for page tracking with longer delay
+  const debouncedPath = useOptimizedDebounce(location.pathname, 1000);
+  
+  // Throttled user data to prevent frequent identification updates
+  const throttledUser = useThrottle(user?.id, 30000);
 
-  // Performance optimized page tracking (throttled and debounced)
+  // Optimized page tracking with smart deduplication
   useEffect(() => {
     if (!isEnabled || !eventThrottler.shouldTrack('page_view')) return;
     
-    console.log('📍 Optimized page view:', debouncedPath);
+    const pageEventKey = `page_view_${debouncedPath}`;
+    if (isDuplicate(pageEventKey)) return;
     
-    // Streamlined page properties
-    const pageProperties = {
-      path: debouncedPath,
+    console.log('📍 Optimized page view (debounced):', debouncedPath);
+    
+    // Minimal page properties for performance
+    trackPageView(debouncedPath, {
       user_authenticated: !!user,
-      skip_url: true, // Skip redundant URL in properties
-    };
+      user_type: profile?.user_type || 'anonymous',
+    });
 
-    // Single enhanced page view event
-    track('page_view_enhanced', pageProperties);
-
-    // Track specific funnel entry points (throttled)
-    if (debouncedPath === '/') {
-      track('funnel_landing_page_visit', { skip_url: true });
-    } else if (debouncedPath === '/account-request') {
-      track('funnel_account_request_page_visit', { skip_url: true });
+    // Throttled funnel tracking (only for key pages)
+    const keyPages = ['/', '/account-request', '/dashboard'];
+    if (keyPages.includes(debouncedPath)) {
+      const funnelEventKey = `funnel_${debouncedPath}`;
+      if (!isDuplicate(funnelEventKey)) {
+        trackUserJourney(`funnel_${debouncedPath.replace('/', 'home').replace('/', '_')}_optimized`, {
+          user_segment: profile?.user_type || 'anonymous',
+        });
+      }
     }
-  }, [debouncedPath, track, isEnabled, user, eventThrottler]);
+  }, [debouncedPath, trackPageView, trackUserJourney, isEnabled, user, profile, eventThrottler, isDuplicate]);
 
-  // Performance optimized user identification (only once per user)
+  // Optimized user identification with smart throttling
   useEffect(() => {
-    if (!isEnabled || !user || !profile) return;
+    if (!isEnabled || !throttledUser || !profile) return;
 
     // Prevent repeated identification of the same user
-    if (lastIdentifiedUser.current === user.id) return;
-
-    console.log('👤 Optimized user identification:', user.id);
+    if (lastIdentifiedUser.current === throttledUser) return;
     
-    // Streamlined user properties
-    identify(user.id, {
-      email: user.email,
+    if (!eventThrottler.shouldTrack('user_identification')) return;
+
+    console.log('👤 Optimized user identification (throttled):', throttledUser);
+    
+    // Minimal user properties for performance
+    identify(throttledUser, {
+      email: user?.email,
       user_type: profile.user_type,
       access_level: profile.access_level,
       account_status: profile.account_status,
     });
     
-    lastIdentifiedUser.current = user.id;
-    
-    // Single session start event
-    track('user_session_start', {
-      user_type: profile.user_type,
-      skip_url: true,
-    });
-  }, [user, profile, identify, track, reset, isEnabled]);
+    lastIdentifiedUser.current = throttledUser;
+  }, [throttledUser, profile, identify, isEnabled, eventThrottler]);
 
-  // Performance optimized tracking functions
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      eventThrottler.cleanup();
+    };
+  }, [eventThrottler]);
+
+  // Optimized tracking functions with built-in throttling
   const trackAuth = {
     login: useCallback((method: string = 'email') => {
       if (eventThrottler.shouldTrack('user_login')) {
-        track('user_login', { method, skip_url: true });
+        track('user_login_optimized', { method });
       }
     }, [track, eventThrottler]),
     
     logout: useCallback(() => {
       if (eventThrottler.shouldTrack('user_logout')) {
-        track('user_logout', { skip_url: true });
-        lastIdentifiedUser.current = null; // Reset for next session
+        track('user_logout_optimized', {});
+        lastIdentifiedUser.current = null;
       }
     }, [track, eventThrottler]),
     
     signup: useCallback((method: string = 'email') => {
       if (eventThrottler.shouldTrack('user_signup')) {
-        track('user_signup', { method, skip_url: true });
+        track('user_signup_optimized', { method });
       }
     }, [track, eventThrottler]),
     
     accountRequest: useCallback((accountType: string) => {
-      if (eventThrottler.shouldTrack('account_request_submitted')) {
-        track('account_request_submitted', { account_type: accountType, skip_url: true });
+      if (eventThrottler.shouldTrack('account_request')) {
+        track('account_request_optimized', { account_type: accountType });
       }
     }, [track, eventThrottler]),
   };
 
   const trackTrading = {
     signalCreate: useCallback((signalData: any) => {
-      if (eventThrottler.shouldTrack('trade_signal_created')) {
-        track('trade_signal_created', {
+      if (eventThrottler.shouldTrack('signal_create')) {
+        track('signal_create_optimized', {
           asset_name: signalData.asset_name,
           trade_type: signalData.trade_type,
-          skip_url: true,
         });
       }
     }, [track, eventThrottler]),
     
     signalView: useCallback((signalId: string) => {
-      if (eventThrottler.shouldTrack(`signal_view_${signalId}`)) {
-        track('trade_signal_viewed', { 
-          signal_id: signalId,
-          skip_url: true,
-        });
+      const eventKey = `signal_view_${signalId}`;
+      if (eventThrottler.shouldTrack(eventKey)) {
+        track('signal_view_optimized', { signal_id: signalId });
       }
     }, [track, eventThrottler]),
   };
 
   const trackEducation = {
     videoStart: useCallback((videoId: string, title: string) => {
-      if (eventThrottler.shouldTrack(`video_start_${videoId}`)) {
-        track('education_video_started', { 
+      const eventKey = `video_start_${videoId}`;
+      if (eventThrottler.shouldTrack(eventKey)) {
+        track('video_start_optimized', { 
           video_id: videoId,
-          video_title: title,
-          skip_url: true,
+          video_title: title.slice(0, 50), // Truncate long titles
         });
       }
     }, [track, eventThrottler]),
     
     videoComplete: useCallback((videoId: string, title: string) => {
-      if (eventThrottler.shouldTrack(`video_complete_${videoId}`)) {
-        track('education_video_completed', { 
+      const eventKey = `video_complete_${videoId}`;
+      if (eventThrottler.shouldTrack(eventKey)) {
+        track('video_complete_optimized', { 
           video_id: videoId,
-          video_title: title,
-          skip_url: true,
+          video_title: title.slice(0, 50),
         });
       }
     }, [track, eventThrottler]),
@@ -159,7 +187,7 @@ export function useOptimizedPostHogTracking() {
   return {
     track: useCallback((event: string, properties?: Record<string, any>) => {
       if (eventThrottler.shouldTrack(event)) {
-        track(event, { ...properties, skip_url: true });
+        track(event, properties);
       }
     }, [track, eventThrottler]),
     trackAuth,

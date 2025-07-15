@@ -72,7 +72,7 @@ const DashboardNav: React.FC = () => {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className={`hidden lg:flex items-center gap-1 rounded-2xl p-1 transition-all duration-300 ${
+        <nav className={`hidden lg:flex items-center gap-2 rounded-2xl p-2 transition-all duration-300 ${
           scrolled 
             ? 'bg-muted/50 backdrop-blur-sm border border-border/50' 
             : 'bg-muted/30 backdrop-blur-sm border border-border/30'
@@ -83,10 +83,10 @@ const DashboardNav: React.FC = () => {
               <Link key={item.to} to={item.to}>
                 <Button 
                   variant="ghost" 
-                  className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-2 transition-all duration-200 ${
+                  className={`flex items-center gap-3 text-sm font-medium rounded-xl px-6 py-3 min-w-[140px] justify-start transition-all duration-200 ${
                     isActive 
-                      ? 'bg-primary/10 text-primary border border-primary/20' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
+                      ? 'bg-primary/15 text-primary border border-primary/30 shadow-lg shadow-primary/10' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/80 hover:shadow-md'
                   }`}
                 >
                   <item.icon className="h-4 w-4" />

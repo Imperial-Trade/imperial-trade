@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { TradeJournalEntry } from '@/api/entities';
+import AdvancedTradingJournal from './AdvancedTradingJournal';
 import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BookOpen, Lock, Unlock } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -17,6 +18,7 @@ export default function TradingJournal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [unlockStatus, setUnlockStatus] = useState({ isUnlocked: false, tradingDays: 0, totalEntries: 0 });
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     loadEntries();
@@ -183,6 +185,10 @@ export default function TradingJournal() {
     </Card>
   );
 
+  if (showAdvanced && unlockStatus.isUnlocked) {
+    return <AdvancedTradingJournal onBackToBasic={() => setShowAdvanced(false)} />;
+  }
+
   return (
     <div className="space-y-6">
       <Card className="glass-effect">
@@ -194,12 +200,18 @@ export default function TradingJournal() {
             </div>
             <Button 
               className="bg-zinc-900 text-amber-600 hover:bg-zinc-800 border border-amber-600/20 shadow-lg"
-              onClick={() => alert(unlockStatus.isUnlocked ? 'Feature Unlocked! Advanced analytics available.' : `Progress: ${unlockStatus.tradingDays}/10 trading days, ${unlockStatus.totalEntries}/10 total entries`)}
+              onClick={() => {
+                if (unlockStatus.isUnlocked) {
+                  setShowAdvanced(true);
+                } else {
+                  alert(`Progress: ${unlockStatus.tradingDays}/10 trading days, ${unlockStatus.totalEntries}/10 total entries`);
+                }
+              }}
             >
               {unlockStatus.isUnlocked ? (
                 <>
                   <Unlock className="w-4 h-4 mr-2" />
-                  Unlocked
+                  Open Advanced
                 </>
               ) : (
                 <>

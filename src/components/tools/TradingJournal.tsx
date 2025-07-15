@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { TradeJournalEntry } from '@/api/entities';
-import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BookOpen, Lock, Unlock } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function TradingJournal() {
@@ -16,6 +16,7 @@ export default function TradingJournal() {
   const [screenshotFile, setScreenshotFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [unlockStatus, setUnlockStatus] = useState({ isUnlocked: false, tradingDays: 0, totalEntries: 0 });
 
   useEffect(() => {
     loadEntries();
@@ -26,10 +27,29 @@ export default function TradingJournal() {
     try {
       const fetchedEntries = await TradeJournalEntry.list('-created_date');
       setEntries(fetchedEntries);
+      checkUnlockStatus(fetchedEntries);
     } catch (error) {
       console.error("Error loading journal entries:", error);
     }
     setIsLoading(false);
+  };
+
+  const checkUnlockStatus = (entries) => {
+    // Group entries by trading date
+    const entriesByDate = {};
+    entries.forEach(entry => {
+      const dateKey = format(new Date(entry.trade_date), 'yyyy-MM-dd');
+      if (!entriesByDate[dateKey]) {
+        entriesByDate[dateKey] = [];
+      }
+      entriesByDate[dateKey].push(entry);
+    });
+
+    const tradingDays = Object.keys(entriesByDate).length;
+    const totalEntries = entries.length;
+    const isUnlocked = tradingDays >= 10 && totalEntries >= 10;
+
+    setUnlockStatus({ isUnlocked, tradingDays, totalEntries });
   };
 
   const handleInputChange = (e) => {
@@ -167,11 +187,39 @@ export default function TradingJournal() {
     <div className="space-y-6">
       <Card className="glass-effect">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-accent-green" />
-            Trading Journal
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-6 h-6 text-accent-green" />
+              Trading Journal
+            </div>
+            <Button 
+              className="bg-zinc-900 text-amber-600 hover:bg-zinc-800 border border-amber-600/20 shadow-lg"
+              onClick={() => alert(unlockStatus.isUnlocked ? 'Feature Unlocked! Advanced analytics available.' : `Progress: ${unlockStatus.tradingDays}/10 trading days, ${unlockStatus.totalEntries}/10 total entries`)}
+            >
+              {unlockStatus.isUnlocked ? (
+                <>
+                  <Unlock className="w-4 h-4 mr-2" />
+                  Unlocked
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4 mr-2" />
+                  {unlockStatus.tradingDays}/10 Days
+                </>
+              )}
+            </Button>
           </CardTitle>
           <p className="text-secondary">Log your trades, reflect on your decisions, and get AI-powered encouragement.</p>
+          {!unlockStatus.isUnlocked && (
+            <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                🏆 <strong>Unlock Advanced Features:</strong> Log trades across 10 different trading days (minimum 10 total entries) to unlock advanced analytics and insights.
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                Progress: {unlockStatus.tradingDays}/10 trading days • {unlockStatus.totalEntries}/10 total entries
+              </p>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

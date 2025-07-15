@@ -99,16 +99,6 @@ const DashboardNav: React.FC = () => {
 
         {/* Desktop Actions */}
         <div className="hidden lg:flex items-center gap-3">
-          {/* Live Market Indicator */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-300 ${
-            scrolled 
-              ? 'bg-green-500/10 border-green-500/30' 
-              : 'bg-green-500/5 border-green-500/20'
-          }`}>
-            <BarChart3 className="h-3 w-3 text-green-500" />
-            <span className="text-xs font-medium text-green-700 dark:text-green-400">S&P +0.75%</span>
-          </div>
-
           <Button 
             variant="ghost" 
             size="sm" 
@@ -137,7 +127,7 @@ const DashboardNav: React.FC = () => {
 
           <ThemeToggle />
 
-          {/* User Menu */}
+          {/* Enhanced User Profile Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className={`relative h-8 w-8 rounded-full transition-all duration-200 ${
@@ -151,24 +141,56 @@ const DashboardNav: React.FC = () => {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <div className="flex flex-col space-y-1 p-2">
+            <DropdownMenuContent className="w-64" align="end" forceMount>
+              <div className="flex flex-col space-y-1 p-3 border-b border-border/50">
                 <p className="text-sm font-medium leading-none">{user?.email}</p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {user?.user_metadata?.access_level === 'admin' ? 'Administrator' : 'Member'}
                 </p>
               </div>
+              
+              <div className="p-1">
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/my-progress" className="flex items-center gap-3 p-3 rounded-lg">
+                    <BookOpen className="h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">My Progress</span>
+                      <span className="text-xs text-muted-foreground">Track your learning journey</span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                
+                {user?.user_metadata?.access_level === 'admin' && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/admin" className="flex items-center gap-3 p-3 rounded-lg">
+                      <Settings className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">Administration</span>
+                        <span className="text-xs text-muted-foreground">System management</span>
+                      </div>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/settings" className="flex items-center gap-3 p-3 rounded-lg">
+                    <User className="h-4 w-4" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">Profile Settings</span>
+                      <span className="text-xs text-muted-foreground">Manage your account</span>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              </div>
+              
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/dashboard/settings" className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
-                Sign out
-              </DropdownMenuItem>
+              <div className="p-1">
+                <DropdownMenuItem onClick={handleSignOut} className="text-red-600 p-3 rounded-lg">
+                  <div className="flex items-center gap-3 w-full">
+                    <span className="text-sm font-medium">Sign out</span>
+                  </div>
+                </DropdownMenuItem>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

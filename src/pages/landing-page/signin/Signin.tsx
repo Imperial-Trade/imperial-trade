@@ -67,14 +67,14 @@ export default function SigninPage() {
 
             <div className="pt-4 space-y-3 grid grid-cols">
               <Link to="/account-request">
-                <Button variant="outline" className="w-full border-white/20 text-white hover:bg-white/10">
+                <Button variant="outline" className="w-full border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95">
                   Need an Account? Request Access
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
 
               <Link to="/account-request-status">
-                <Button variant="outline" className="w-full border-white/20 text-white hover:bg-white/10">
+                <Button variant="outline" className="w-full border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95">
                   Check Request Status
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>

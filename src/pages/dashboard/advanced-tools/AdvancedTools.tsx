@@ -145,7 +145,7 @@ export default function AdvancedTools() {
         </div>
 
         {/* Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left Panel: Tool Selectors */}
           <aside className="lg:col-span-1 space-y-4">
@@ -187,7 +187,7 @@ export default function AdvancedTools() {
           </aside>
 
           {/* Right Panel: Active Tool Display */}
-          <main className="lg:col-span-3 min-h-[600px]">
+          <main className="lg:col-span-2 min-h-[600px]">
             <AnimatePresence mode="wait">
               {activeTool ? (
                 <motion.div

@@ -50,36 +50,50 @@
 
     --radius: 0.75rem;
 
-    /* Emerald Green Accent System - Primary accent color */
-    --accent-green: 142 69% 58%; /* Bright emerald green #4ADED6 */
-    --accent-green-hover: 142 76% 48%; /* Darker green for hover */
-    --accent-green-light: 142 50% 75%; /* Light green for backgrounds */
-    --accent-green-dark: 142 85% 35%; /* Dark green for borders */
+    /* Gold Palette - Luxury warmth */
+    --gold-bright: 51 100% 50%; /* Bright yellow-gold */
+    --gold-warm: 45 93% 47%; /* Warm golden */
+    --gold-antique: 41 84% 38%; /* Antique gold */
+    --gold-muted: 42 27% 55%; /* Muted gold/warm beige */
+    --gold-light: 48 100% 88%; /* Light cream with golden undertones */
 
-    /* Blue Accent - Secondary accent */
-    --accent-blue: 210 100% 56%; /* Bright blue */
-    --accent-blue-hover: 210 100% 46%; /* Darker blue for hover */
+    /* Orache Palette - Warm earthy orange/reddish-orange */
+    --orache-bright: 16 90% 48%; /* Bright orache */
+    --orache-warm: 18 75% 42%; /* Warm orache */
+    --orache-rust: 20 65% 35%; /* Rust/autumn leaves */
+    --orache-dusty: 25 35% 65%; /* Dusty rose from orache spectrum */
+    --orache-light: 15 85% 85%; /* Soft peach hue */
 
-    /* Red/Orange Accent - For warnings/destructive actions */
-    --accent-red: 0 84% 60%; /* Red for destructive actions */
-    --accent-orange: 25 95% 53%; /* Orange for warnings */
-
-    /* Sidebar colors - Clean neutral */
+    /* Sidebar colors - Spanish Gray */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 26%;
-    --sidebar-primary: 142 69% 58%; /* Green accent for sidebar */
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 26%;
+    --sidebar-primary-foreground: 0 0% 89%;
     --sidebar-accent: 0 0% 89%;
     --sidebar-accent-foreground: 0 0% 26%;
     --sidebar-border: 0 0% 80%;
-    --sidebar-ring: 142 69% 58%;
+    --sidebar-ring: 0 0% 26%;
 
-    /* Clean Background Gradient Colors */
+    /* Imperial White Gold & Bronze Gradient Colors for Feature Fonts - Updated to match image */
+    --imperial-white: 0 0% 98%;
+    --imperial-platinum: 0 0% 92%;
+    --imperial-gold-light: 43 80% 75%;
+    --imperial-gold: 43 75% 65%;
+    --imperial-bronze-light: 43 70% 55%;
+    --imperial-bronze: 43 65% 45%;
+    --imperial-bronze-dark: 43 60% 35%;
+
+    /* Elegant Background Gradient Colors */
     --bg-gradient-white: 0 0% 100%;
     --bg-gradient-light: 0 0% 96%;
     --bg-gradient-medium: 0 0% 89%;
     --bg-gradient-dark: 0 0% 49%;
     --bg-gradient-black: 0 0% 26%;
+
+    /* Subtle Green Accent Colors */
+    --accent-sage: 140 25% 65%;
+    --accent-mint: 150 30% 75%;
+    --accent-forest: 145 40% 45%;
 
     /* Feature accent colors - for product features only */
     --feature-blue: 210 100% 56%;
@@ -94,67 +108,70 @@
   }
 
   .dark {
-    /* Modern dark theme inspired by professional trading interfaces */
-    --background: 222 25% 9%; /* Dark blue-gray background #0F1419 */
+    /* Trading platform dark mode - inspired by professional trading interfaces */
+    --background: 210 24% 9%; /* Dark navy background #121826 */
     --foreground: 0 0% 95%; /* Pure white text */
 
-    --card: 222 20% 12%; /* Darker blue-gray cards #18202A */
+    --card: 210 20% 12%; /* Darker navy cards #1A1F2E */
     --card-foreground: 0 0% 95%; /* White text */
 
-    --popover: 222 20% 12%; /* Dark blue-gray */
+    --popover: 210 20% 12%; /* Dark navy */
     --popover-foreground: 0 0% 95%; /* White text */
 
-    --primary: 142 69% 58%; /* Emerald green primary #4ADED6 */
-    --primary-foreground: 222 25% 9%; /* Dark text on green */
+    --primary: 43 74% 60%; /* Gold primary #E6B800 */
+    --primary-foreground: 210 24% 9%; /* Dark text on gold */
 
-    --secondary: 222 16% 16%; /* Medium dark blue-gray #2A3441 */
+    --secondary: 210 16% 16%; /* Medium dark navy #242937 */
     --secondary-foreground: 0 0% 85%; /* Light grey text */
 
-    --muted: 222 18% 14%; /* Dark muted background #242B36 */
+    --muted: 210 18% 14%; /* Dark muted background #1E232F */
     --muted-foreground: 0 0% 65%; /* Medium grey text */
 
-    --accent: 222 14% 18%; /* Dark accent background #313947 */
+    --accent: 210 14% 18%; /* Dark accent background #282F3E */
     --accent-foreground: 0 0% 95%; /* White text */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 222 12% 22%; /* Dark blue-gray border #3B4452 */
-    --input: 222 18% 14%; /* Dark input background */
-    --ring: 142 69% 58%; /* Green ring */
+    --border: 210 12% 22%; /* Dark navy border #323849 */
+    --input: 210 18% 14%; /* Dark input background */
+    --ring: 43 74% 60%; /* Gold ring */
 
-    /* Sidebar colors for clean dark theme */
-    --sidebar-background: 222 25% 9%;
+    /* Sidebar colors for trading dark theme */
+    --sidebar-background: 210 24% 9%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 142 69% 58%;
-    --sidebar-primary-foreground: 222 25% 9%;
-    --sidebar-accent: 222 14% 18%;
+    --sidebar-primary: 43 74% 60%;
+    --sidebar-primary-foreground: 210 24% 9%;
+    --sidebar-accent: 210 14% 18%;
     --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 222 12% 22%;
-    --sidebar-ring: 142 69% 58%;
+    --sidebar-border: 210 12% 22%;
+    --sidebar-ring: 43 74% 60%;
 
-    /* Modern gradient colors */
-    --bg-gradient-white: 222 25% 9%;
-    --bg-gradient-light: 222 20% 12%;
-    --bg-gradient-medium: 222 16% 16%;
-    --bg-gradient-dark: 222 12% 22%;
-    --bg-gradient-black: 222 28% 7%;
+    /* Trading platform gradient colors */
+    --bg-gradient-white: 210 24% 9%;
+    --bg-gradient-light: 210 20% 12%;
+    --bg-gradient-medium: 210 16% 16%;
+    --bg-gradient-dark: 210 12% 22%;
+    --bg-gradient-black: 210 28% 7%;
 
-    /* Emerald green accent system for dark mode */
-    --accent-green: 142 69% 58%; /* Bright emerald green #4ADED6 */
-    --accent-green-hover: 142 76% 48%; /* Darker green for hover */
-    --accent-green-light: 142 50% 75%; /* Light green for backgrounds */
-    --accent-green-dark: 142 85% 35%; /* Dark green for borders */
+    /* Gold accents for trading interface */
+    --imperial-white: 0 0% 95%;
+    --imperial-platinum: 0 0% 85%;
+    --imperial-gold-light: 43 80% 70%;
+    --imperial-gold: 43 74% 60%;
+    --imperial-bronze-light: 43 70% 50%;
+    --imperial-bronze: 43 65% 40%;
+    --imperial-bronze-dark: 43 60% 30%;
 
-    --accent-blue: 210 100% 60%; /* Bright blue #0080FF */
-    --accent-blue-hover: 210 100% 50%; /* Darker blue for hover */
-    
-    --accent-red: 0 84% 60%; /* Red for destructive actions */
-    --accent-orange: 25 95% 53%; /* Orange for warnings */
+    /* Trading accent colors */
+    --accent-green: 142 69% 58%; /* Trading green #00C896 */
+    --accent-blue: 210 100% 60%; /* Trading blue #0080FF */
+    --accent-gold: 43 74% 60%; /* Trading gold #E6B800 */
+    --accent-red: 0 84% 60%; /* Trading red */
 
     /* Surface colors for components */
-    --surface: 222 20% 12%; /* Component surface */
-    --surface-hover: 222 16% 16%; /* Hover state */
+    --surface: 210 20% 12%; /* Component surface */
+    --surface-hover: 210 16% 16%; /* Hover state */
 
     /* Spanish Gray Palette for dark mode */
     --gray-darkest: 0 0% 95%; /* White text in dark mode */
@@ -425,25 +442,25 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Modern accent glow effects */
+/* Trading accent glow effects */
 .glow-effect-green {
   box-shadow: 0 0 20px hsla(142, 69%, 58%, 0.3);
+}
+
+.glow-effect-gold {
+  box-shadow: 0 0 20px hsla(43, 74%, 60%, 0.3);
 }
 
 .glow-effect-blue {
   box-shadow: 0 0 20px hsla(210, 100%, 60%, 0.3);
 }
 
-.glow-effect-red {
-  box-shadow: 0 0 20px hsla(0, 84%, 60%, 0.3);
-}
-
-/* Modern gradient text effects */
-.green-text-gradient {
+/* Trading gradient text effects */
+.gold-text-gradient {
   background: linear-gradient(135deg, 
-    hsl(var(--accent-green)) 0%, 
-    hsl(var(--accent-green-light)) 50%, 
-    hsl(var(--accent-green)) 100%);
+    hsl(var(--accent-gold)) 0%, 
+    hsl(var(--imperial-gold-light)) 50%, 
+    hsl(var(--accent-gold)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -471,7 +488,7 @@
     radial-gradient(at 80% 0%, hsl(var(--bg-gradient-medium)) 0px, transparent 50%),
     radial-gradient(at 0% 50%, hsl(var(--accent-green) / 0.2) 0px, transparent 50%),
     radial-gradient(at 80% 50%, hsl(var(--bg-gradient-dark)) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsl(var(--accent-blue) / 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsl(var(--accent-gold) / 0.1) 0px, transparent 50%),
     radial-gradient(at 80% 100%, hsl(var(--bg-gradient-black)) 0px, transparent 50%),
     hsl(var(--bg-gradient-black));
 }

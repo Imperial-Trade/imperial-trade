@@ -73,13 +73,45 @@ export default {
 					'lighter': 'hsl(var(--gray-lighter))',
 					'lightest': 'hsl(var(--gray-lightest))'
 				},
-				// Modern Background Gradient Colors
+				// Gold Palette - Luxury warmth
+				gold: {
+					'bright': 'hsl(var(--gold-bright))',
+					'warm': 'hsl(var(--gold-warm))',
+					'antique': 'hsl(var(--gold-antique))',
+					'muted': 'hsl(var(--gold-muted))',
+					'light': 'hsl(var(--gold-light))'
+				},
+				// Orache Palette - Warm earthy orange
+				orache: {
+					'bright': 'hsl(var(--orache-bright))',
+					'warm': 'hsl(var(--orache-warm))',
+					'rust': 'hsl(var(--orache-rust))',
+					'dusty': 'hsl(var(--orache-dusty))',
+					'light': 'hsl(var(--orache-light))'
+				},
+				// Imperial White Gold & Bronze Gradient Colors
+				imperial: {
+					'white': 'hsl(var(--imperial-white))',
+					'platinum': 'hsl(var(--imperial-platinum))',
+					'gold-light': 'hsl(var(--imperial-gold-light))',
+					'gold': 'hsl(var(--imperial-gold))',
+					'bronze-light': 'hsl(var(--imperial-bronze-light))',
+					'bronze': 'hsl(var(--imperial-bronze))',
+					'bronze-dark': 'hsl(var(--imperial-bronze-dark))'
+				},
+				// Elegant Background Gradient Colors
 				bgGradient: {
 					'white': 'hsl(var(--bg-gradient-white))',
 					'light': 'hsl(var(--bg-gradient-light))',
 					'medium': 'hsl(var(--bg-gradient-medium))',
 					'dark': 'hsl(var(--bg-gradient-dark))',
 					'black': 'hsl(var(--bg-gradient-black))'
+				},
+				// Subtle Green Accent Colors
+				accentGreen: {
+					'sage': 'hsl(var(--accent-sage))',
+					'mint': 'hsl(var(--accent-mint))',
+					'forest': 'hsl(var(--accent-forest))'
 				},
 				// Feature colors (for product features only)
 				feature: {
@@ -90,16 +122,12 @@ export default {
 					'pink': 'hsl(var(--feature-pink))',
 					'red': 'hsl(var(--feature-red))'
 				},
-				// Modern accent colors  
+				// Trading platform accent colors  
 				accent: {
 					'green': 'hsl(var(--accent-green))',
-					'green-hover': 'hsl(var(--accent-green-hover))',
-					'green-light': 'hsl(var(--accent-green-light))',
-					'green-dark': 'hsl(var(--accent-green-dark))',
 					'blue': 'hsl(var(--accent-blue))',
-					'blue-hover': 'hsl(var(--accent-blue-hover))',
-					'red': 'hsl(var(--accent-red))',
-					'orange': 'hsl(var(--accent-orange))'
+					'gold': 'hsl(var(--accent-gold))',
+					'red': 'hsl(var(--accent-red))'
 				},
 				// Surface colors for components
 				surface: 'hsl(var(--surface))',

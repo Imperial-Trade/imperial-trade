@@ -159,7 +159,7 @@ export default function SignalStream() {
         );
       case 'connecting':
         return (
-          <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30">
+          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
             Connecting...
           </Badge>

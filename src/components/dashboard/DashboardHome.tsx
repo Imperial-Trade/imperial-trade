@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { VideoBackground } from '@/components/account-request/VideoBackground';
 
 interface StatCardProps {
   title: string;
@@ -75,53 +76,61 @@ export const DashboardHome: React.FC = () => {
 
   return (
     <div className="relative min-h-screen">
-      {/* Hero Section with Sophisticated Background */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-gradient-to-r from-primary/10 to-transparent rounded-full blur-3xl animate-pulse"></div>
-        
-        <div className="relative container mx-auto px-6 pt-8 pb-12">
-          {/* Premium Welcome Section */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-10">
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-                  <Crown className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent">
-                    Welcome back
-                  </h1>
-                  <p className="text-xl text-primary font-medium">
-                    {user?.user_metadata?.first_name && user?.user_metadata?.last_name 
-                      ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
-                      : user?.user_metadata?.full_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User'}
-                  </p>
+      {/* Video Background */}
+      <VideoBackground />
+      
+      {/* Hero Section with Heartfelt Welcome */}
+      <div className="relative z-20 min-h-[60vh] flex items-center">
+        <div className="container mx-auto px-6 text-center">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Welcome Message */}
+            <div className="space-y-4">
+              <h1 className="text-5xl lg:text-7xl font-bold text-white mb-4">
+                Welcome Home,{' '}
+                <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                  {user?.user_metadata?.first_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Trader'}
+                </span>
+              </h1>
+              
+              <p className="text-xl lg:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
+                You've taken the brave step into the world of trading. Every expert was once a beginner, 
+                and every champion was once a contender who refused to give up.
+              </p>
+              
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 max-w-2xl mx-auto">
+                <p className="text-lg text-white/95 italic leading-relaxed">
+                  "Success in trading comes not from being right all the time, but from learning, 
+                  adapting, and growing with every trade. Your journey starts here, and we're honored 
+                  to be part of it."
+                </p>
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                    <Crown className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="text-white/80 font-medium">The Trading Elite Team</span>
                 </div>
               </div>
-              <p className="text-lg text-muted-foreground max-w-2xl">
-                Your comprehensive trading command center. Monitor markets, analyze signals, and execute trades with institutional-grade precision.
-              </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3">
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
               <Button 
                 asChild 
                 size="lg" 
-                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 group"
+                className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white shadow-2xl hover:shadow-primary/25 transition-all duration-300 group border-0"
               >
                 <Link to="/dashboard/new-signal">
                   <Plus className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
-                  Create Signal
+                  Start Your Journey
                 </Link>
               </Button>
               <Button 
                 variant="outline" 
                 size="lg"
-                className="border-primary/20 hover:bg-primary/10 hover:border-primary/40 transition-all duration-300"
+                className="border-white/30 text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm transition-all duration-300"
               >
                 <Activity className="w-5 h-5 mr-2" />
-                Market Analysis
+                Explore Markets
               </Button>
             </div>
           </div>

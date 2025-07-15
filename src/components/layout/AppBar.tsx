@@ -79,8 +79,15 @@ const AppBar: React.FC = () => {
       </Link>;
   };
   return <header className={`fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 ${isAccountRequestPage ? '' : isSigninPage ? 'bg-transparent' : 'backdrop-blur-xl border-b border-border/50 bg-zinc-900'}`}>
-      <div className={`w-full max-w-7xl flex items-center ${isSigninPage ? 'justify-center' : 'justify-between'}`}>
-        {isSigninPage && <div className="flex-1"></div>} {/* Spacer for centering */}
+      <div className={`w-full max-w-7xl flex items-center ${isSigninPage ? 'justify-between' : 'justify-between'}`}>
+        
+        {/* Go back button for signin page */}
+        {isSigninPage && (
+          <Link to="/" className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
+            <span className="text-lg">←</span>
+            <span className="text-sm font-medium">Go back</span>
+          </Link>
+        )}
         {/* Logo - hide on signin page */}
         {!isSigninPage && (
           <Link to="/" className="flex items-center gap-2">
@@ -136,11 +143,10 @@ const AppBar: React.FC = () => {
         )}
 
         {/* Desktop Auth & Theme Toggle */}
-        <div className={`hidden lg:flex items-center gap-2 ${isSigninPage ? '' : ''}`}>
+        <div className={`hidden lg:flex items-center gap-2 ${isSigninPage ? 'mr-4' : ''}`}>
           <ThemeToggle />
           {renderAuthButton()}
         </div>
-        {isSigninPage && <div className="flex-1"></div>} {/* Spacer for centering */}
       </div>
 
       {/* Mobile & Tablet Navigation */}

@@ -88,8 +88,8 @@ function DashboardHeader() {
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 backdrop-blur-xl border-b border-border/50 bg-background/80 transition-all duration-300`}>
-      <div className="w-full max-w-7xl flex items-center justify-between">
+    <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 backdrop-blur-md bg-background/20 border-b border-border/20 transition-all duration-300`}>
+      <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-between'}`}>
         
         {/* Logo - Hide when collapsed */}
         {!isHeaderCollapsed && (

@@ -5,6 +5,7 @@
 /* Apple Monochrome Design System */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
 @layer base {
   :root {
@@ -818,4 +819,45 @@
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Animation Styles */
+.animate-fade-in {
+  animation: fadeIn 0.7s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* AI Tech Font Styles */
+.imperial-tech-font {
+  font-family: 'Orbitron', 'Courier New', monospace;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #e6d3b3, #c09a58);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 20px rgba(192, 154, 88, 0.4);
+  position: relative;
+}
+
+.imperial-tech-font::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(192, 154, 88, 0.3), transparent);
+  animation: tech-scan 3s infinite;
+  pointer-events: none;
+}
+
+@keyframes tech-scan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }

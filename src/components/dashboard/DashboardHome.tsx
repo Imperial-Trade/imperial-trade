@@ -32,7 +32,7 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon }) => (
-  <Card className="group relative overflow-hidden bg-card/50 backdrop-blur-sm border-border/20 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1">{/* Green border on hover for light mode */}
+  <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1">
     {/* Gradient overlay */}
     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
     
@@ -171,7 +171,7 @@ export const DashboardHome: React.FC = () => {
         </div>
         
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="group relative overflow-hidden bg-card/50 backdrop-blur-sm border-border/20 hover:border-primary/30 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
+          <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <CardHeader className="relative">
               <div className="flex items-center gap-3 mb-3">
@@ -195,7 +195,7 @@ export const DashboardHome: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden bg-card/50 backdrop-blur-sm border-border/20 hover:border-primary/30 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
+          <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
             <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 via-transparent to-green-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <CardHeader className="relative">
               <div className="flex items-center gap-3 mb-3">
@@ -219,7 +219,7 @@ export const DashboardHome: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden bg-card/50 backdrop-blur-sm border-border/20 hover:border-primary/30 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
+          <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:-translate-y-2 cursor-pointer">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <CardHeader className="relative">
               <div className="flex items-center gap-3 mb-3">
@@ -248,7 +248,7 @@ export const DashboardHome: React.FC = () => {
       {/* Admin/Educator Premium Section */}
       {(isAdmin || isEducator) && (
         <div className="container mx-auto px-6 mb-12">
-          <Card className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-card/50 to-accent/5 backdrop-blur-sm border-primary/20">
+          <Card className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-card to-accent/5 border border-primary/30">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-2xl"></div>
             <CardHeader className="relative">
               <div className="flex items-center justify-between">
@@ -331,7 +331,7 @@ export const DashboardHome: React.FC = () => {
 
       {/* Premium Activity Feed */}
       <div className="container mx-auto px-6">
-        <Card className="relative overflow-hidden bg-card/50 backdrop-blur-sm border-border/20">
+        <Card className="relative overflow-hidden bg-card border border-border">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary"></div>
           <CardHeader>
             <div className="flex items-center justify-between">

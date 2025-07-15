@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Radio } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Shield } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
@@ -407,39 +407,31 @@ export default function SignalStream() {
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
 
   return (
-    <div className="min-h-screen w-full relative">
+    <div className="min-h-screen bg-background w-full">
       <NotificationSystem />
       
-      {/* Imperial Header - Matching Landing Page Style */}
-      <div className="glass-effect border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+      {/* Header - Optimized spacing */}
+      <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="w-full px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="animate-fade-in-up">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center shadow-xl">
-                  <Radio className="w-10 h-10 text-black" />
-                </div>
-                <div>
-                  <h1 className="text-5xl font-black imperial-gradient-text tracking-wider">
-                    SIGNAL STREAM
-                  </h1>
-                  <p className="text-lg text-white/80 uppercase tracking-widest font-medium">
-                    Professional Trading Signals
-                  </p>
-                </div>
-                <Badge className="bg-gradient-to-r from-blue-500 to-blue-700 text-white border-0 px-4 py-2">
-                  <Shield className="w-4 h-4 mr-2" />
-                  Verified Educators
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-3xl font-bold text-foreground">
+                  Professional Signal <span className="text-accent-green">Stream</span>
+                </h1>
+                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
+                  <Shield className="w-3 h-3 mr-1" />
+                  Verified Educators & Admins
                 </Badge>
               </div>
-              <p className="text-xl text-white/70 max-w-3xl">
+              <p className="text-muted-foreground">
                 Real-time professional trading signals with live price tracking from verified educators and admins
               </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {getConnectionStatusBadge()}
               {lastUpdated && (
-                <span className="text-sm text-white/60 glass-effect px-3 py-2 rounded-lg">
+                <span className="text-xs text-muted-foreground">
                   Last update: {lastUpdated.toLocaleTimeString()}
                 </span>
               )}
@@ -448,9 +440,9 @@ export default function SignalStream() {
         </div>
       </div>
 
-      {/* Main Content - Enhanced Layout */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+      {/* Main Content - Improved grid layout */}
+      <div className="w-full px-4 py-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           <div className="xl:col-span-3">
             {/* Enhanced Filters */}
             <SignalStreamFilters
@@ -460,42 +452,33 @@ export default function SignalStream() {
               signalCounts={signalCounts}
             />
             {isLoading ? (
-              <div className="flex justify-center items-center h-96 flex-col space-y-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center shadow-xl animate-pulse">
-                  <Loader2 className="w-10 h-10 text-black animate-spin" />
-                </div>
+              <div className="flex justify-center items-center h-64 flex-col space-y-4">
+                <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold imperial-gradient-text mb-2">Loading Signals</h3>
-                  <p className="text-white/70 text-lg">Fetching professional trading signals...</p>
+                  <p className="text-muted-foreground">Loading professional signals...</p>
                   {connectionStatus === 'connecting' && (
-                    <p className="text-sm text-white/50 mt-2">Establishing real-time connection...</p>
+                    <p className="text-xs text-muted-foreground mt-1">Establishing real-time connection...</p>
                   )}
                 </div>
               </div>
             ) : error ? (
-              <div className="glass-effect border border-red-500/30 rounded-2xl p-8 text-center">
-                <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <AlertTriangle className="w-10 h-10 text-red-400" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Connection Error</h3>
-                <p className="text-white/70 mb-8 text-lg">{error}</p>
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
+                <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">Connection Error</h3>
+                <p className="text-muted-foreground mb-6">{error}</p>
                 <div className="flex gap-4 justify-center">
-                  <button onClick={() => refreshAlerts()} className="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-bold px-6 py-3 rounded-xl transition-all">
-                    Try Again
-                  </button>
-                  <button onClick={() => window.location.reload()} className="glass-effect text-white hover:bg-white/10 px-6 py-3 rounded-xl transition-all">
-                    Refresh Page
-                  </button>
+                  <button onClick={() => refreshAlerts()} className="bg-accent-green hover:bg-accent-green/90 text-white px-4 py-2 rounded">Try Again</button>
+                  <button onClick={() => window.location.reload()} className="border border-border text-muted-foreground hover:bg-muted px-4 py-2 rounded">Refresh Page</button>
                 </div>
               </div>
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 <div>
-                  <h2 className="text-3xl font-bold imperial-gradient-text mb-6 border-b border-yellow-500/30 pb-4">
+                  <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
                     Active Professional Signals ({activeAlerts.length})
                   </h2>
                   {activeAlerts.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                       {activeAlerts.map(alert => (
                         <TradeAlertCard
                           key={alert.id} 
@@ -526,22 +509,22 @@ export default function SignalStream() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-16 glass-effect rounded-2xl">
-                      <div className="w-20 h-20 bg-gradient-to-br from-blue-400/20 to-blue-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                        <Shield className="w-10 h-10 text-blue-400" />
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Shield className="w-8 h-8 text-muted-foreground/50" />
                       </div>
-                      <h3 className="text-2xl font-bold text-white mb-3">No Active Professional Signals</h3>
-                      <p className="text-white/70 text-lg">New professional trading signals will appear here when posted by verified educators and admins.</p>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No Active Professional Signals</h3>
+                      <p className="text-muted-foreground">New professional trading signals will appear here when posted by verified educators and admins.</p>
                     </div>
                   )}
                 </div>
                 
                 <div>
-                  <h2 className="text-3xl font-bold imperial-gradient-text mb-6 border-b border-yellow-500/30 pb-4">
+                  <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
                     Recent Closed Professional Trades ({closedAlerts.length})
                   </h2>
                   {sortedClosedAlerts.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                       {sortedClosedAlerts.map(alert => (
                         <TradeAlertCard
                           key={alert.id} 
@@ -572,12 +555,12 @@ export default function SignalStream() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-16 glass-effect rounded-2xl">
-                      <div className="w-20 h-20 bg-gradient-to-br from-gray-400/20 to-gray-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                        <div className="text-4xl">🔒</div>
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
                       </div>
-                      <h3 className="text-2xl font-bold text-white mb-3">No Closed Professional Trades</h3>
-                      <p className="text-white/70 text-lg">Completed professional trades will be shown here for reference.</p>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No Closed Professional Trades</h3>
+                      <p className="text-muted-foreground">Completed professional trades will be shown here for reference.</p>
                     </div>
                   )}
                 </div>
@@ -585,13 +568,10 @@ export default function SignalStream() {
             )}
           </div>
           
-          {/* Economic Sidebar - Enhanced Design */}
+          {/* Economic Sidebar - Optimized positioning and visibility */}
           <div className="xl:col-span-1 hidden xl:block">
-            <div className="sticky top-24 space-y-6">
-              <div className="glass-effect rounded-2xl p-6 border border-white/10">
-                <h3 className="text-lg font-bold imperial-gradient-text mb-4">Market Overview</h3>
-                <EconomicSidebar />
-              </div>
+            <div className="sticky top-20 space-y-4">
+              <EconomicSidebar />
             </div>
           </div>
         </div>

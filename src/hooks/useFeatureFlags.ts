@@ -1,37 +1,48 @@
 
 import { useState, useEffect } from 'react';
-import { usePostHogTracking } from './usePostHogTracking';
+import { usePostHog } from '@/contexts/PostHogContext';
 
 export function useFeatureFlags() {
-  const { featureFlags, trackFeatureFlag, onFeatureFlags } = usePostHogTracking();
+  const { getFeatureFlag, onFeatureFlags, isEnabled } = usePostHog();
   const [flags, setFlags] = useState<Record<string, boolean | string>>({});
 
   useEffect(() => {
+    if (!isEnabled) return;
+    
     onFeatureFlags((newFlags) => {
       setFlags(newFlags);
     });
-  }, [onFeatureFlags]);
+  }, [onFeatureFlags, isEnabled]);
 
   // Helper function to safely get feature flag with tracking
   const getFlag = (flagName: string, defaultValue: boolean = false): boolean => {
-    const flagValue = featureFlags[flagName];
-    const result = typeof flagValue === 'boolean' ? flagValue : defaultValue;
+    if (!isEnabled) return defaultValue;
     
-    // Track flag evaluation
-    trackFeatureFlag(flagName, result, { default_used: flagValue === undefined });
+    const flagValue = getFeatureFlag(flagName);
     
-    return result;
+    // Handle different return types from PostHog
+    if (typeof flagValue === 'boolean') {
+      return flagValue;
+    } else if (typeof flagValue === 'string') {
+      // Convert string to boolean (PostHog sometimes returns strings)
+      return flagValue.toLowerCase() === 'true';
+    }
+    
+    return defaultValue;
   };
 
   // Helper function to get string feature flag
   const getStringFlag = (flagName: string, defaultValue: string = ''): string => {
-    const flagValue = featureFlags[flagName];
-    const result = typeof flagValue === 'string' ? flagValue : defaultValue;
+    if (!isEnabled) return defaultValue;
     
-    // Track flag evaluation
-    trackFeatureFlag(flagName, result, { default_used: flagValue === undefined });
-    
-    return result;
+    const flagValue = getFeatureFlag(flagName);
+    return typeof flagValue === 'string' ? flagValue : defaultValue;
+  };
+
+  // Track flag evaluation function
+  const trackFeatureFlag = (flagName: string, flagValue: boolean | string, context?: any) => {
+    // This will be called by the tracking hook when needed
+    console.log(`Feature flag evaluated: ${flagName} = ${flagValue}`, context);
   };
 
   // Specific feature flag helpers
@@ -72,6 +83,7 @@ export function useFeatureFlags() {
     flags,
     getFlag,
     getStringFlag,
+    trackFeatureFlag,
     ui,
     admin,
     education,

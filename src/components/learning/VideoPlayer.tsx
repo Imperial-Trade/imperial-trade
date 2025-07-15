@@ -7,10 +7,30 @@ import { X } from 'lucide-react';
 interface VideoPlayerProps {
   video: any;
   onClose: () => void;
+  onProgress?: (video: any, percentage: number) => void;
+  onComplete?: (video: any) => void;
 }
 
-export default function VideoPlayer({ video, onClose }: VideoPlayerProps) {
+export default function VideoPlayer({ video, onClose, onProgress, onComplete }: VideoPlayerProps) {
   if (!video) return null;
+
+  const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    if (!onProgress) return;
+    
+    const video = e.currentTarget;
+    const percentage = Math.floor((video.currentTime / video.duration) * 100);
+    
+    // Track progress at 25%, 50%, 75% milestones
+    if (percentage === 25 || percentage === 50 || percentage === 75) {
+      onProgress(video, percentage);
+    }
+  };
+
+  const handleVideoEnd = () => {
+    if (onComplete) {
+      onComplete(video);
+    }
+  };
 
   return (
     <motion.div
@@ -46,6 +66,8 @@ export default function VideoPlayer({ video, onClose }: VideoPlayerProps) {
               autoPlay
               className="w-full h-full"
               poster={video.thumbnail_url}
+              onTimeUpdate={handleTimeUpdate}
+              onEnded={handleVideoEnd}
             >
               Your browser does not support the video tag.
             </video>

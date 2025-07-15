@@ -55,13 +55,10 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
             
             // Load feature flags
             posthog.onFeatureFlags(() => {
-              const flags = posthog.getFeatureFlags();
+              // Get all feature flag keys and their values
               const flagsObject: Record<string, boolean | string> = {};
               
-              flags.forEach(flag => {
-                flagsObject[flag] = posthog.getFeatureFlag(flag);
-              });
-              
+              // Since we can't get all flags at once, we'll track them as they're accessed
               setFeatureFlags(flagsObject);
               console.log('Feature flags loaded:', flagsObject);
             });
@@ -146,15 +143,10 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     
     try {
       posthog.onFeatureFlags(() => {
-        const flags = posthog.getFeatureFlags();
-        const flagsObject: Record<string, boolean | string> = {};
-        
-        flags.forEach(flag => {
-          flagsObject[flag] = posthog.getFeatureFlag(flag);
-        });
-        
-        setFeatureFlags(flagsObject);
-        callback(flagsObject);
+        // We'll update flags as they're accessed through getFeatureFlag
+        const updatedFlags = { ...featureFlags };
+        setFeatureFlags(updatedFlags);
+        callback(updatedFlags);
       });
     } catch (error) {
       console.error('PostHog onFeatureFlags error:', error);

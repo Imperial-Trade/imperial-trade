@@ -196,20 +196,20 @@ const DashboardNav: React.FC = () => {
             </>
           )}
 
-          {/* Header Collapse Toggle Button */}
+          {/* Header Collapse Toggle Button - Always visible */}
           <Button 
             variant="ghost" 
             size="sm"
             onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-            className={`relative hover:bg-primary/10 group transition-all duration-200 ${
+            className={`relative hover:bg-primary/10 group transition-all duration-200 border-2 border-primary/30 ${
               scrolled ? 'bg-background/60' : 'bg-background/30'
             }`}
             title={isHeaderCollapsed ? "Expand header" : "Collapse header"}
           >
             {isHeaderCollapsed ? (
-              <ChevronDown className="h-4 w-4 transition-colors group-hover:text-primary" />
+              <ChevronDown className="h-4 w-4 transition-colors group-hover:text-primary text-primary" />
             ) : (
-              <ChevronUp className="h-4 w-4 transition-colors group-hover:text-primary" />
+              <ChevronUp className="h-4 w-4 transition-colors group-hover:text-primary text-primary" />
             )}
           </Button>
 

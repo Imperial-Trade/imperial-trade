@@ -78,7 +78,7 @@ const AppBar: React.FC = () => {
         </Button>
       </Link>;
   };
-  return <header className={`fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 ${isAccountRequestPage ? '' : 'backdrop-blur-xl border-b border-border/50 bg-zinc-900'}`}>
+  return <header className={`fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 ${isAccountRequestPage ? '' : isSigninPage ? 'bg-transparent' : 'backdrop-blur-xl border-b border-border/50 bg-zinc-900'}`}>
       <div className="w-full max-w-7xl flex items-center justify-between">
         {/* Logo - hide on signin page */}
         {!isSigninPage && (

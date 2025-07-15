@@ -24,6 +24,27 @@ export const adminUserUpdateSchema = z.object({
   approved_by: z.string().optional(),
 });
 
+// Partial update schema for single field updates
+export const adminUserPartialUpdateSchema = z.object({
+  display_name: z.string().min(1, 'Display name is required').max(100, 'Display name is too long').optional(),
+  user_type: z.enum(['member', 'educator', 'admin'], {
+    invalid_type_error: 'Invalid user type'
+  }).optional(),
+  access_level: z.enum(['user', 'moderator', 'admin'], {
+    invalid_type_error: 'Invalid access level'
+  }).optional(),
+  account_status: z.enum(['active', 'suspended', 'pending_verification', 'inactive'], {
+    invalid_type_error: 'Invalid account status'
+  }).optional(),
+  phone_number: z.string().optional().refine(
+    (val) => !val || /^[\+]?[\d\s\-\(\)]+$/.test(val),
+    'Invalid phone number format'
+  ),
+  registration_source: z.enum(['direct', 'account_request', 'social', 'admin_created', 'invitation']).optional(),
+  approved_at: z.string().optional(),
+  approved_by: z.string().optional(),
+});
+
 export const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -34,4 +55,5 @@ export const createUserSchema = z.object({
 });
 
 export type AdminUserUpdate = z.infer<typeof adminUserUpdateSchema>;
+export type AdminUserPartialUpdate = z.infer<typeof adminUserPartialUpdateSchema>;
 export type CreateUserData = z.infer<typeof createUserSchema>;

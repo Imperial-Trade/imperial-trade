@@ -7,6 +7,7 @@ import { tradeAlertSubmissionSchema, type TradeAlertSubmissionData } from '@/lib
 interface UseOptimizedTradeAlertFormProps {
   onSubmit: (data: TradeAlertSubmissionData) => Promise<void> | void;
   enableSmartValidation?: boolean;
+  initialData?: Partial<TradeAlertSubmissionData>;
 }
 
 interface UseOptimizedTradeAlertFormReturn {
@@ -18,26 +19,29 @@ interface UseOptimizedTradeAlertFormReturn {
 
 export const useOptimizedTradeAlertForm = ({
   onSubmit,
-  enableSmartValidation = true
+  enableSmartValidation = true,
+  initialData
 }: UseOptimizedTradeAlertFormProps): UseOptimizedTradeAlertFormReturn => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const defaultValues = {
+    asset_name: '',
+    finnhub_symbol: '',
+    trade_type: 'buy' as const,
+    entry_price: 0,
+    stop_loss: 0,
+    tp1: undefined,
+    tp2: undefined,
+    tp3: undefined,
+    tp4: undefined,
+    tp5: undefined,
+    notes: '',
+    status: 'active' as const
+  };
+
   const form = useForm<TradeAlertSubmissionData>({
     resolver: zodResolver(tradeAlertSubmissionSchema),
-    defaultValues: {
-      asset_name: '',
-      finnhub_symbol: '',
-      trade_type: 'buy',
-      entry_price: 0,
-      stop_loss: 0,
-      tp1: undefined,
-      tp2: undefined,
-      tp3: undefined,
-      tp4: undefined,
-      tp5: undefined,
-      notes: '',
-      status: 'active'
-    },
+    defaultValues: initialData ? { ...defaultValues, ...initialData } : defaultValues,
     mode: enableSmartValidation ? 'onChange' : 'onSubmit'
   });
 
@@ -46,6 +50,20 @@ export const useOptimizedTradeAlertForm = ({
     
     form.handleSubmit(async (data) => {
       console.log('Form submitting with data:', data);
+      console.log('Form validation status:', form.formState.isValid);
+      console.log('Form errors:', form.formState.errors);
+      
+      // Add debugging for each field
+      console.log('Field values:', {
+        asset_name: data.asset_name,
+        finnhub_symbol: data.finnhub_symbol,
+        trade_type: data.trade_type,
+        entry_price: data.entry_price,
+        stop_loss: data.stop_loss,
+        tp1: data.tp1,
+        notes: data.notes,
+        status: data.status
+      });
       
       try {
         setIsSubmitting(true);

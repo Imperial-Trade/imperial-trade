@@ -63,10 +63,65 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				surface: 'hsl(var(--surface))',
-				'accent-gold': 'hsl(var(--accent-gold))',
-				'accent-green': 'hsl(var(--accent-green))',
-				default: 'hsl(var(--default))'
+				// Spanish Gray Monochromatic Palette
+				gray: {
+					'darkest': 'hsl(var(--gray-darkest))',
+					'dark': 'hsl(var(--gray-dark))',
+					'medium': 'hsl(var(--gray-medium))',
+					'medium-light': 'hsl(var(--gray-medium-light))',
+					'light': 'hsl(var(--gray-light))',
+					'lighter': 'hsl(var(--gray-lighter))',
+					'lightest': 'hsl(var(--gray-lightest))'
+				},
+				// Gold Palette - Luxury warmth
+				gold: {
+					'bright': 'hsl(var(--gold-bright))',
+					'warm': 'hsl(var(--gold-warm))',
+					'antique': 'hsl(var(--gold-antique))',
+					'muted': 'hsl(var(--gold-muted))',
+					'light': 'hsl(var(--gold-light))'
+				},
+				// Orache Palette - Warm earthy orange
+				orache: {
+					'bright': 'hsl(var(--orache-bright))',
+					'warm': 'hsl(var(--orache-warm))',
+					'rust': 'hsl(var(--orache-rust))',
+					'dusty': 'hsl(var(--orache-dusty))',
+					'light': 'hsl(var(--orache-light))'
+				},
+				// Imperial White Gold & Bronze Gradient Colors
+				imperial: {
+					'white': 'hsl(var(--imperial-white))',
+					'platinum': 'hsl(var(--imperial-platinum))',
+					'gold-light': 'hsl(var(--imperial-gold-light))',
+					'gold': 'hsl(var(--imperial-gold))',
+					'bronze-light': 'hsl(var(--imperial-bronze-light))',
+					'bronze': 'hsl(var(--imperial-bronze))',
+					'bronze-dark': 'hsl(var(--imperial-bronze-dark))'
+				},
+				// Elegant Background Gradient Colors
+				bgGradient: {
+					'white': 'hsl(var(--bg-gradient-white))',
+					'light': 'hsl(var(--bg-gradient-light))',
+					'medium': 'hsl(var(--bg-gradient-medium))',
+					'dark': 'hsl(var(--bg-gradient-dark))',
+					'black': 'hsl(var(--bg-gradient-black))'
+				},
+				// Subtle Green Accent Colors
+				accentGreen: {
+					'sage': 'hsl(var(--accent-sage))',
+					'mint': 'hsl(var(--accent-mint))',
+					'forest': 'hsl(var(--accent-forest))'
+				},
+				// Feature colors (for product features only)
+				feature: {
+					'blue': 'hsl(var(--feature-blue))',
+					'green': 'hsl(var(--feature-green))',
+					'orange': 'hsl(var(--feature-orange))',
+					'purple': 'hsl(var(--feature-purple))',
+					'pink': 'hsl(var(--feature-pink))',
+					'red': 'hsl(var(--feature-red))'
+				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

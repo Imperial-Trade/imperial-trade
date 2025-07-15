@@ -6,42 +6,122 @@ import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import usePriceFeed from '@/components/hooks/usePriceFeed';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
+import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 
 export default function SignalStream() {
-  const [user, setUser] = useState<any>(null);
+  const { user, profile } = useAuth();
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+    tradeType: '',
+    educator: ''
+  });
 
-  // Get user ID first
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const { data: { user: currentUser }, error } = await supabase.auth.getUser();
-        if (error) throw error;
-        setUser(currentUser);
-      } catch (e) {
-        console.log('User not logged in:', e);
-      }
-    };
-    fetchUser();
-  }, []);
-
-  // Use the optimized trading hook with real-time updates
+  // Use the optimized trading hook with real-time updates for all signals
+  // Pass the actual user ID for proper authorization, even when showing all signals
   const {
-    alerts,
+    alerts: allAlerts,
     isLoading,
     error,
     updateAlert,
     refreshAlerts,
     connectionStatus,
     lastUpdated
-  } = useOptimizedTrading(user?.id || '', true); // TRUE = show all signals from all users (but now filtered to educators/admins)
+  } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
 
-  const { activeAlerts, closedAlerts } = useMemo(() => {
+  // Helper functions for role checking
+  const isAdmin = useMemo(() => {
+    return profile?.access_level === 'admin' || profile?.role === 'admin';
+  }, [profile]);
+
+  const isCreator = useCallback((alertCreatorId: string) => {
+    console.log('SignalStream - Checking creator:', {
+      profileId: profile?.id,
+      alertCreatorId,
+      isCreator: profile?.id === alertCreatorId
+    });
+    return profile?.id === alertCreatorId;
+  }, [profile]);
+
+  // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
+  const alerts = useMemo(() => {
+    console.log('SignalStream - Processing alerts:', allAlerts.length);
+    console.log('SignalStream - All alerts with creators:', allAlerts.map(a => ({
+      id: a.id,
+      asset: a.assetName,
+      creator: a.creator?.display_name,
+      creatorId: a.creator?.id,
+      role: a.creator?.role,
+      userType: a.creator?.user_type,
+      accessLevel: a.creator?.access_level
+    })));
+
+    let filteredAlerts = allAlerts;
+
+    // Apply user filters
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filteredAlerts = filteredAlerts.filter(alert =>
+        alert.assetName.toLowerCase().includes(searchLower) ||
+        alert.finnhubSymbol.toLowerCase().includes(searchLower) ||
+        alert.creator?.display_name?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (filters.status) {
+      filteredAlerts = filteredAlerts.filter(alert => alert.status === filters.status);
+    }
+
+    if (filters.tradeType) {
+      filteredAlerts = filteredAlerts.filter(alert => alert.tradeType.includes(filters.tradeType));
+    }
+
+    if (filters.educator) {
+      filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
+    }
+
+    return filteredAlerts;
+  }, [allAlerts, filters]);
+
+  const { activeAlerts, closedAlerts, educatorOptions, signalCounts } = useMemo(() => {
     const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
     const closed = alerts.filter(a => a.status === 'closed');
-    return { activeAlerts: active, closedAlerts: closed };
-  }, [alerts]);
+    
+    // Get unique educators for filter dropdown
+    const educatorsMap = new Map();
+    allAlerts.forEach(alert => {
+      if (alert.creator && (
+        alert.creator.user_type === 'educator' || 
+        alert.creator.access_level === 'admin' || 
+        alert.creator.role === 'admin'
+      )) {
+        educatorsMap.set(alert.creator.id, {
+          id: alert.creator.id,
+          name: alert.creator.display_name || 'Unknown Educator'
+        });
+      }
+    });
+    
+    const educatorsList = Array.from(educatorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Calculate signal counts for filter badges
+    const counts = {
+      total: alerts.length,
+      active: active.length,
+      closed: closed.length,
+      buy: alerts.filter(a => a.tradeType.includes('buy')).length,
+      sell: alerts.filter(a => a.tradeType.includes('sell')).length
+    };
+    
+    return { 
+      activeAlerts: active, 
+      closedAlerts: closed, 
+      educatorOptions: educatorsList,
+      signalCounts: counts 
+    };
+  }, [alerts, allAlerts]);
 
   const sortedClosedAlerts = useMemo(() => {
     return [...closedAlerts]
@@ -100,9 +180,34 @@ export default function SignalStream() {
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
     if (updateInProgress.has(alert.id)) return;
     
-    // Only allow users to modify their own signals
-    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
-      console.warn('User not authorized to update this signal');
+    // Check if user can edit this signal (creator or admin only)
+    const alertIsCreator = isCreator(alert.creator?.id);
+    
+    console.log('SignalStream - handleStatusUpdate authorization check:', {
+      alertId: alert.id,
+      alertCreatorId: alert.creator?.id,
+      currentUserId: profile?.id,
+      isCreator: alertIsCreator,
+      isAdmin,
+      canUpdate: alertIsCreator || isAdmin
+    });
+    
+    if (!alertIsCreator && !isAdmin) {
+      console.warn('SignalStream - User not authorized to update this signal:', {
+        userId: profile?.id,
+        creatorId: alert.creator?.id,
+        userRole: profile?.role,
+        userAccessLevel: profile?.access_level,
+        isCreator: alertIsCreator,
+        isAdmin
+      });
+      if ((window as any).addNotification) {
+        (window as any).addNotification({
+          type: 'error',
+          title: 'Access Denied',
+          message: 'You can only close your own signals'
+        });
+      }
       return;
     }
     
@@ -116,12 +221,13 @@ export default function SignalStream() {
       };
       
       const result = await updateAlert(alert.id, updateDto);
+      console.log('SignalStream - Update result:', result);
       
       if (result && newStatus === 'closed' && (window as any).addNotification) {
         (window as any).addNotification({
           type: 'trade_closed',
-          title: `🔒 Trade Closed`,
-          message: `${alert.assetName} trade has been manually closed`
+          title: `🔒 Signal Closed`,
+          message: `${alert.assetName} signal has been closed`
         });
       }
     } catch (err) {
@@ -130,7 +236,7 @@ export default function SignalStream() {
         (window as any).addNotification({ 
           type: 'error', 
           title: 'Update Failed', 
-          message: 'Could not update trade status. Please try again.' 
+          message: 'Could not update signal status. Please try again.' 
         });
       }
     } finally {
@@ -140,12 +246,15 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert, user]);
+  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
 
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     if (updateInProgress.has(alert.id)) return;
     
-    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
+    // Check if user can edit this signal (creator or admin only)
+    const alertIsCreator = isCreator(alert.creator?.id);
+    
+    if (!alertIsCreator && !isAdmin) {
       return;
     }
     
@@ -202,12 +311,15 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert, user]);
+  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
 
   const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
     if (updateInProgress.has(alert.id)) return;
     
-    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
+    // Check if user can edit this signal (creator or admin only)
+    const alertIsCreator = isCreator(alert.creator?.id);
+    
+    if (!alertIsCreator && !isAdmin) {
       return;
     }
     
@@ -256,12 +368,15 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert, user]);
+  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
 
   const handleOrderActivation = useCallback(async (alert: any) => {
     if (updateInProgress.has(alert.id)) return;
     
-    if (user?.id !== alert.creator?.id && user?.user_metadata?.role !== 'admin') {
+    // Check if user can edit this signal (creator or admin only)
+    const alertIsCreator = isCreator(alert.creator?.id);
+    
+    if (!alertIsCreator && !isAdmin) {
       return;
     }
     
@@ -289,7 +404,7 @@ export default function SignalStream() {
         return newSet;
       });
     }
-  }, [updateInProgress, updateAlert, user]);
+  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
 
   return (
     <div className="min-h-screen bg-background w-full">
@@ -306,11 +421,11 @@ export default function SignalStream() {
                 </h1>
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
                   <Shield className="w-3 h-3 mr-1" />
-                  Educators Only
+                  Verified Educators & Admins
                 </Badge>
               </div>
               <p className="text-muted-foreground">
-                Real-time trading signals with live price tracking from verified educators and admins
+                Real-time professional trading signals with live price tracking from verified educators and admins
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -329,6 +444,13 @@ export default function SignalStream() {
       <div className="w-full px-4 py-6">
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           <div className="xl:col-span-3">
+            {/* Enhanced Filters */}
+            <SignalStreamFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              educatorOptions={educatorOptions}
+              signalCounts={signalCounts}
+            />
             {isLoading ? (
               <div className="flex justify-center items-center h-64 flex-col space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
@@ -376,7 +498,8 @@ export default function SignalStream() {
                           onTakeProfitHit={handleTakeProfitHit} 
                           onStopLossHit={handleStopLossHit}
                           onOrderActivation={handleOrderActivation} 
-                          isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
+                          isAdmin={isAdmin}
+                          isCreator={isCreator(alert.creator?.id)}
                           livePrice={livePrices[alert.finnhubSymbol]} 
                           connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'}
                           priceSource={priceSource}
@@ -421,7 +544,8 @@ export default function SignalStream() {
                           onTakeProfitHit={handleTakeProfitHit} 
                           onStopLossHit={handleStopLossHit}
                           onOrderActivation={handleOrderActivation}
-                          isAdmin={user?.user_metadata?.access_level === 'admin' || user?.user_metadata?.role === 'admin'}
+                          isAdmin={isAdmin}
+                          isCreator={isCreator(alert.creator?.id)}
                           livePrice={undefined}
                           connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'}
                           priceSource={priceSource}

@@ -31,29 +31,31 @@ export const useSignalRealtime = (
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter signals based on showAllSignals flag
+  // Since RLS policies now handle filtering, we can return all signals from the context
+  // The database will only return educator/admin signals due to the RLS policy
   const filteredAlerts = useMemo(() => {
-    if (showAllSignals) {
-      return signals;
-    }
-    
-    if (!userId || userId.trim() === '') {
-      return [];
-    }
-    
-    return signals.filter(signal => signal.creator?.id === userId);
+    console.log('useSignalRealtime - RLS-filtered signals from context:', {
+      totalSignals: signals.length,
+      showAllSignals,
+      userId: userId || 'empty'
+    });
+
+    // RLS policies handle filtering automatically, so we can return all signals
+    // These are already filtered to only show educator/admin signals
+    console.log('useSignalRealtime - Returning RLS-filtered signals:', signals.length);
+    return signals;
   }, [signals, showAllSignals, userId]);
 
-  // Subscribe to realtime updates on mount
+  // Subscribe to realtime updates - always subscribe since RLS handles filtering
   useEffect(() => {
-    if (showAllSignals || (userId && userId.trim() !== '')) {
-      subscribe();
-      
-      return () => {
-        unsubscribe();
-      };
-    }
-  }, [showAllSignals, userId, subscribe, unsubscribe]);
+    console.log('useSignalRealtime - Subscribing to RLS-filtered real-time updates');
+    subscribe();
+    
+    return () => {
+      console.log('useSignalRealtime - Unsubscribing from real-time updates');
+      unsubscribe();
+    };
+  }, [subscribe, unsubscribe]);
 
   // Sync realtime error with local error state
   useEffect(() => {
@@ -62,7 +64,7 @@ export const useSignalRealtime = (
 
   const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
     if (!userId || !userId.trim()) {
-      console.warn('Cannot update alert: invalid userId');
+      console.warn('useSignalRealtime - Cannot update alert: invalid userId');
       return null;
     }
 
@@ -74,12 +76,12 @@ export const useSignalRealtime = (
         // The realtime context will handle the update automatically
         return result.data;
       } else {
-        console.error('Failed to update alert:', result.error);
+        console.error('useSignalRealtime - Failed to update alert:', result.error);
         setError(result.error || 'Failed to update alert');
         return null;
       }
     } catch (error) {
-      console.error('Error updating alert:', error);
+      console.error('useSignalRealtime - Error updating alert:', error);
       setError(error instanceof Error ? error.message : 'Unknown error');
       return null;
     } finally {
@@ -91,11 +93,12 @@ export const useSignalRealtime = (
     try {
       setIsLoading(true);
       setError(null);
+      console.log('useSignalRealtime - Manually refreshing RLS-filtered alerts');
       await refreshSignals();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh alerts';
       setError(errorMessage);
-      console.error('Failed to refresh alerts:', errorMessage);
+      console.error('useSignalRealtime - Failed to refresh alerts:', errorMessage);
     } finally {
       setIsLoading(false);
     }

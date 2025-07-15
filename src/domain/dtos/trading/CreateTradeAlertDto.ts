@@ -22,6 +22,7 @@ export interface UpdateTradeAlertDto {
 
 export interface TradeAlertResponseDto {
   id: string;
+  userId: string;
   assetName: string;
   finnhubSymbol: string;
   tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';

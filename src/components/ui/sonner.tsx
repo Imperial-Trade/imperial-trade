@@ -5,11 +5,11 @@ import { useTheme } from "@/contexts/ThemeContext"
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { actualTheme } = useTheme()
+  const { theme } = useTheme()
 
   return (
     <Sonner
-      theme={actualTheme}
+      theme={theme}
       className="toaster group"
       toastOptions={{
         classNames: {

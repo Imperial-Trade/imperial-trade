@@ -10,6 +10,8 @@ export interface TradeAlertWithProfile extends TradeAlertResponseDto {
     display_name: string;
     role: string;
     avatar_url?: string;
+    user_type?: string;
+    access_level?: string;
   };
 }
 
@@ -25,8 +27,32 @@ export class TradingApiService {
     return TradingApiService.instance;
   }
 
+  // Helper method to check if user is admin
+  private async isUserAdmin(userId: string): Promise<boolean> {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('access_level, role')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error checking user admin status:', error);
+        return false;
+      }
+
+      return profile?.access_level === 'admin' || profile?.role === 'admin';
+    } catch (error) {
+      console.error('Error in isUserAdmin:', error);
+      return false;
+    }
+  }
+
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
+      console.log('TradingApiService - Creating alert with DTO:', dto);
+      console.log('TradingApiService - User ID:', userId);
+      
       const insertData: TableInsert<'trade_alerts'> = {
         asset_name: dto.assetName,
         finnhub_symbol: dto.finnhubSymbol,
@@ -43,7 +69,11 @@ export class TradingApiService {
         status: 'active'
       };
 
+      console.log('TradingApiService - Insert data:', insertData);
+
       const result = await apiClient.insert('trade_alerts', insertData);
+      
+      console.log('TradingApiService - Insert result:', result);
       
       if (!result.success || !result.data) {
         return {
@@ -63,6 +93,7 @@ export class TradingApiService {
 
       const responseDto: TradeAlertResponseDto = {
         id: result.data.id,
+        userId: result.data.user_id,
         assetName: result.data.asset_name,
         finnhubSymbol: result.data.finnhub_symbol,
         tradeType: result.data.trade_type,
@@ -100,6 +131,47 @@ export class TradingApiService {
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
+      console.log('TradingApiService - Updating alert:', { id, dto, userId });
+
+      // First get the alert to check ownership
+      const alertResult = await apiClient.select('trade_alerts', {
+        eq: { column: 'id', value: id }
+      });
+
+      if (!alertResult.success || !alertResult.data || alertResult.data.length === 0) {
+        console.log('TradingApiService - Alert not found:', id);
+        return {
+          success: false,
+          error: 'Alert not found',
+          data: undefined
+        };
+      }
+
+      const alert = alertResult.data[0];
+      console.log('TradingApiService - Found alert:', { 
+        alertId: alert.id, 
+        alertUserId: alert.user_id, 
+        requestUserId: userId 
+      });
+
+      // Check if user can update this alert (owner or admin)
+      const isOwner = alert.user_id === userId;
+      const isAdmin = await this.isUserAdmin(userId);
+
+      console.log('TradingApiService - Authorization check:', { 
+        isOwner, 
+        isAdmin, 
+        canUpdate: isOwner || isAdmin 
+      });
+
+      if (!isOwner && !isAdmin) {
+        return {
+          success: false,
+          error: 'Unauthorized to update this alert',
+          data: undefined
+        };
+      }
+
       const updateData: TableUpdate<'trade_alerts'> = {
         status: dto.status,
         tp_hits: dto.tpHits,
@@ -108,7 +180,11 @@ export class TradingApiService {
         updated_at: new Date().toISOString()
       };
 
+      console.log('TradingApiService - Updating with data:', updateData);
+
       const result = await apiClient.update('trade_alerts', id, updateData);
+      
+      console.log('TradingApiService - Update result:', result);
       
       if (!result.success || !result.data) {
         return {
@@ -126,17 +202,9 @@ export class TradingApiService {
         };
       }
 
-      // Verify ownership
-      if (result.data.user_id !== userId) {
-        return {
-          success: false,
-          error: 'Unauthorized to update this alert',
-          data: undefined
-        };
-      }
-
       const responseDto: TradeAlertResponseDto = {
         id: result.data.id,
+        userId: result.data.user_id,
         assetName: result.data.asset_name,
         finnhubSymbol: result.data.finnhub_symbol,
         tradeType: result.data.trade_type,
@@ -161,6 +229,7 @@ export class TradingApiService {
         error: undefined
       };
     } catch (error) {
+      console.error('TradingApiService - Update error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -188,6 +257,7 @@ export class TradingApiService {
         .filter(isTradeAlert)
         .map(alert => ({
           id: alert.id,
+          userId: alert.user_id,
           assetName: alert.asset_name,
           finnhubSymbol: alert.finnhub_symbol,
           tradeType: alert.trade_type,
@@ -273,6 +343,7 @@ export class TradingApiService {
           const profile = profilesMap.get(alert.user_id);
           return {
             id: alert.id,
+            userId: alert.user_id,
             assetName: alert.asset_name,
             finnhubSymbol: alert.finnhub_symbol,
             tradeType: alert.trade_type,
@@ -293,7 +364,9 @@ export class TradingApiService {
               id: profile.id,
               display_name: profile.display_name || 'Anonymous User',
               role: profile.role || 'user',
-              avatar_url: profile.avatar_url
+              avatar_url: profile.avatar_url,
+              user_type: profile.user_type,
+              access_level: profile.access_level
             } : undefined
           };
         });
@@ -332,6 +405,7 @@ export class TradingApiService {
         .filter(alert => alert.status === status)
         .map(alert => ({
           id: alert.id,
+          userId: alert.user_id,
           assetName: alert.asset_name,
           finnhubSymbol: alert.finnhub_symbol,
           tradeType: alert.trade_type,
@@ -366,7 +440,7 @@ export class TradingApiService {
 
   async deleteAlert(id: string, userId: string): Promise<ApiResponse<void>> {
     try {
-      // First verify ownership
+      // First verify ownership or admin status
       const alertResult = await apiClient.select('trade_alerts', {
         eq: { column: 'id', value: id }
       });
@@ -380,7 +454,10 @@ export class TradingApiService {
       }
 
       const alert = alertResult.data[0];
-      if (alert.user_id !== userId) {
+      const isOwner = alert.user_id === userId;
+      const isAdmin = await this.isUserAdmin(userId);
+
+      if (!isOwner && !isAdmin) {
         return {
           success: false,
           error: 'Unauthorized to delete this alert',

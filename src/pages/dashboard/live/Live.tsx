@@ -1,271 +1,483 @@
-
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Calendar, 
-  Clock, 
-  Users, 
-  Video, 
-  ExternalLink,
-  Play,
-  Pause,
-  User
-} from 'lucide-react';
-import { format } from 'date-fns';
-
-interface LiveSession {
-  id: string;
-  session_title: string;
-  description: string;
-  session_date: string;
-  host_name: string;
-  zoom_meeting_url: string;
-  zoom_meeting_id: string;
-  zoom_passcode: string;
-  status: 'scheduled' | 'live' | 'completed';
-  auto_start_enabled: boolean;
-}
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Loader2, Calendar, Clock, User, Video, ExternalLink, Settings, Zap, MonitorPlay } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLiveSessionManager, LiveSession } from '@/hooks/useLiveSessionManager';
+import { CreateSessionDialog } from '@/components/live/CreateSessionDialog';
+import { EditSessionDialog } from '@/components/live/EditSessionDialog';
+import { SessionStatusControls } from '@/components/live/SessionStatusControls';
+import { VideoPlayer } from '@/components/live/VideoPlayer';
+import { ZoomSDKPlayer } from '@/components/live/ZoomSDKPlayer';
 
 export default function Live() {
-  const [sessions, setSessions] = useState<LiveSession[]>([]);
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, profile } = useAuth();
+  const {
+    sessions,
+    loading: isLoading,
+    creating,
+    updating,
+    canManageSessions,
+    createSession,
+    updateSession,
+    updateSessionStatus,
+    deleteSession
+  } = useLiveSessionManager();
+  
+  const [editingSession, setEditingSession] = useState<LiveSession | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [watchingSession, setWatchingSession] = useState<LiveSession | null>(null);
+  const [sdkSession, setSdkSession] = useState<LiveSession | null>(null);
 
-  useEffect(() => {
-    fetchUser();
-    fetchLiveSessions();
-  }, []);
-
-  const fetchUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    } catch (error) {
-      console.error('Error fetching user:', error);
-    }
-  };
-
-  const fetchLiveSessions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('live_sessions')
-        .select('*')
-        .order('session_date', { ascending: true });
-
-      if (error) throw error;
-      setSessions(data || []);
-    } catch (error) {
-      console.error('Error fetching live sessions:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleEditSession = (session: LiveSession) => {
+    setEditingSession(session);
+    setEditDialogOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'live':
         return (
-          <Badge className="bg-red-500/20 text-red-400 border-red-500/30 animate-pulse">
-            <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+          <Badge className="bg-red-500 text-white">
+            <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
             LIVE
           </Badge>
         );
       case 'scheduled':
         return (
-          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-            <Clock className="w-3 h-3 mr-1" />
+          <Badge className="bg-blue-500 text-white">
+            <Calendar className="w-3 h-3 mr-1" />
             Scheduled
           </Badge>
         );
       case 'completed':
         return (
-          <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30">
+          <Badge className="bg-gray-500 text-white">
             Completed
           </Badge>
         );
       default:
-        return null;
+        return <Badge variant="outline">Unknown</Badge>;
     }
+  };
+
+  const formatSessionDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
   };
 
   const joinSession = (session: LiveSession) => {
     window.open(session.zoom_meeting_url, '_blank');
   };
 
+  const joinSessionWithSDK = (session: LiveSession) => {
+    if (session.zoom_sdk_enabled && session.zoom_meeting_number) {
+      setSdkSession(session);
+    } else {
+      joinSession(session);
+    }
+  };
+
+  const watchLiveSession = (session: LiveSession) => {
+    if (session.stream_embed_url) {
+      setWatchingSession(session);
+    } else {
+      // Fallback to Zoom for regular users if no embed URL
+      joinSession(session);
+    }
+  };
+
+  const canUseSDK = (session: LiveSession) => {
+    return session.zoom_sdk_enabled && session.zoom_meeting_number && canManageSessions;
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-full flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-green"></div>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="mt-2 text-muted-foreground">Loading live sessions...</p>
+        </div>
       </div>
     );
   }
 
-  const liveSessions = sessions.filter(s => s.status === 'live');
-  const upcomingSessions = sessions.filter(s => s.status === 'scheduled');
-  const completedSessions = sessions.filter(s => s.status === 'completed').slice(0, 5);
+  // Filter sessions by status
+  const liveSessions = sessions.filter(session => session.status === 'live');
+  const upcomingSessions = sessions.filter(session => session.status === 'scheduled');
+  const recentSessions = sessions.filter(session => session.status === 'completed').slice(0, 5);
 
   return (
-    <div className="min-h-full bg-background p-6 w-full">
-      <div className="w-full">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl lg:text-4xl font-bold text-primary mb-2">
-            Live <span className="gold-text-gradient">Trading Sessions</span>
-          </h1>
-          <p className="text-secondary text-lg">
-            Join interactive trading sessions with professional educators and fellow traders.
-          </p>
-        </div>
-
-        {/* Live Sessions */}
-        {liveSessions.length > 0 && (
+    <TooltipProvider>
+      <div className="min-h-screen bg-background p-4 md:p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
           <div className="mb-8">
-            <h2 className="text-2xl font-semibold text-primary mb-6 flex items-center gap-3">
-              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-              Live Now
-            </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {liveSessions.map((session) => (
-                <Card key={session.id} className="glass-effect border-red-500/30 bg-red-500/5">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-xl mb-2">{session.session_title}</CardTitle>
-                        <div className="flex items-center gap-2 text-sm text-secondary mb-2">
-                          <User className="w-4 h-4" />
-                          {session.host_name}
-                        </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-primary mb-2">Live Trading Sessions</h1>
+                <p className="text-muted-foreground">
+                  Join live trading sessions with expert traders and educators
+                </p>
+              </div>
+              
+              {/* Management Controls for Admins/Educators */}
+              {canManageSessions && (
+                <div className="flex items-center gap-3">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Settings className="w-4 h-4 mr-1" />
+                        Session Manager
                       </div>
-                      {getStatusBadge(session.status)}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-secondary text-sm mb-4">
-                      {session.description || 'Live trading session in progress'}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-secondary">
-                        <Calendar className="w-4 h-4" />
-                        {format(new Date(session.session_date), 'MMM dd, yyyy')}
-                      </div>
-                      <Button 
-                        onClick={() => joinSession(session)}
-                        className="bg-red-500 hover:bg-red-600 text-white"
-                      >
-                        <Video className="w-4 h-4 mr-2" />
-                        Join Live
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      You can create and manage live trading sessions
+                    </TooltipContent>
+                  </Tooltip>
+                  <CreateSessionDialog 
+                    onCreateSession={createSession}
+                    creating={creating}
+                  />
+                </div>
+              )}
             </div>
           </div>
-        )}
 
-        {/* Upcoming Sessions */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-primary mb-6 flex items-center gap-3">
-            <Clock className="w-6 h-6 text-accent-blue" />
-            Upcoming Sessions
-          </h2>
-          {upcomingSessions.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-              {upcomingSessions.map((session) => (
-                <Card key={session.id} className="glass-effect hover:border-accent-blue/50 transition-all">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg mb-2">{session.session_title}</CardTitle>
-                        <div className="flex items-center gap-2 text-sm text-secondary mb-2">
-                          <User className="w-4 h-4" />
-                          {session.host_name}
+          {/* Live Sessions */}
+          {liveSessions.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-semibold text-primary mb-4 flex items-center">
+                <div className="w-3 h-3 bg-red-500 rounded-full mr-3 animate-pulse"></div>
+                Currently Live
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {liveSessions.map((session) => (
+                  <Card key={session.id} className="bg-card border-red-200 shadow-lg hover:shadow-xl transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg text-primary mb-2">{session.session_title}</CardTitle>
+                          <CardDescription className="text-muted-foreground">
+                            {session.description}
+                          </CardDescription>
+                        </div>
+                         <div className="flex flex-col items-end gap-2">
+                           {getStatusBadge(session.status)}
+                           <div className="flex items-center gap-1">
+                             {session.auto_start_enabled && (
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <Zap className="w-4 h-4 text-yellow-500" />
+                                 </TooltipTrigger>
+                                 <TooltipContent>Auto-start enabled</TooltipContent>
+                               </Tooltip>
+                             )}
+                             {canUseSDK(session) && (
+                               <Tooltip>
+                                 <TooltipTrigger asChild>
+                                   <MonitorPlay className="w-4 h-4 text-green-500" />
+                                 </TooltipTrigger>
+                                 <TooltipContent>In-app viewing available</TooltipContent>
+                               </Tooltip>
+                             )}
+                           </div>
+                         </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <User className="w-4 h-4 mr-2" />
+                          <span>Host: {session.host_name}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Clock className="w-4 h-4 mr-2" />
+                          <span>{formatSessionDate(session.session_date)}</span>
+                        </div>
+                        {session.zoom_meeting_id && (
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Video className="w-4 h-4 mr-2" />
+                            <span>Meeting ID: {session.zoom_meeting_id}</span>
+                          </div>
+                        )}
+                        
+                         <div className="pt-2">
+                           {canManageSessions ? (
+                             <>
+                               {canUseSDK(session) ? (
+                                 <Button 
+                                   onClick={() => joinSessionWithSDK(session)} 
+                                   className="w-full bg-green-500 hover:bg-green-600 text-white mb-2"
+                                 >
+                                   <MonitorPlay className="w-4 h-4 mr-2" />
+                                   Join in App
+                                 </Button>
+                               ) : (
+                                 <Button 
+                                   onClick={() => joinSession(session)} 
+                                   className="w-full bg-red-500 hover:bg-red-600 text-white mb-2"
+                                 >
+                                   <ExternalLink className="w-4 h-4 mr-2" />
+                                   Join Zoom Session
+                                 </Button>
+                               )}
+                               {canUseSDK(session) && (
+                                 <Button 
+                                   onClick={() => joinSession(session)} 
+                                   variant="outline"
+                                   className="w-full mb-3"
+                                 >
+                                   <ExternalLink className="w-4 h-4 mr-2" />
+                                   Join Externally
+                                 </Button>
+                               )}
+                             </>
+                           ) : (
+                             <Button 
+                               onClick={() => watchLiveSession(session)} 
+                               className="w-full bg-red-500 hover:bg-red-600 text-white mb-3"
+                             >
+                               <Video className="w-4 h-4 mr-2" />
+                               {session.stream_embed_url ? 'Watch Live' : 'Join Session'}
+                             </Button>
+                           )}
+                          
+                          {/* Management Controls for Admins/Educators */}
+                          {canManageSessions && (
+                            <>
+                              <Separator className="my-2" />
+                              <SessionStatusControls
+                                session={session}
+                                onUpdateStatus={updateSessionStatus}
+                                onDeleteSession={deleteSession}
+                                onEditSession={handleEditSession}
+                                updating={updating}
+                              />
+                            </>
+                          )}
                         </div>
                       </div>
-                      {getStatusBadge(session.status)}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-secondary text-sm mb-4">
-                      {session.description || 'Join us for an interactive trading session'}
-                    </p>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="w-4 h-4 text-accent-blue" />
-                        <span>{format(new Date(session.session_date), 'EEEE, MMM dd, yyyy')}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="w-4 h-4 text-accent-blue" />
-                        <span>{format(new Date(session.session_date), 'h:mm a')}</span>
-                      </div>
-                      {session.zoom_meeting_id && (
-                        <div className="text-xs text-secondary">
-                          Meeting ID: {session.zoom_meeting_id}
-                        </div>
-                      )}
-                    </div>
-                    <Button 
-                      onClick={() => joinSession(session)}
-                      variant="outline"
-                      className="w-full mt-4"
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Join Session
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
-          ) : (
-            <Card className="glass-effect">
-              <CardContent className="py-12 text-center">
-                <Calendar className="w-16 h-16 text-secondary mx-auto mb-4 opacity-50" />
-                <h3 className="text-xl font-semibold text-primary mb-2">No Upcoming Sessions</h3>
-                <p className="text-secondary">
-                  New live trading sessions will be scheduled soon. Check back for updates!
-                </p>
-              </CardContent>
-            </Card>
           )}
-        </div>
 
-        {/* Recent Sessions */}
-        {completedSessions.length > 0 && (
+          {/* Upcoming Sessions */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold text-primary mb-4 flex items-center">
+              <Calendar className="w-6 h-6 mr-3 text-blue-500" />
+              Upcoming Sessions
+            </h2>
+            {upcomingSessions.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {upcomingSessions.map((session) => (
+                  <Card key={session.id} className="bg-card border-default shadow-md hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg text-primary mb-2">{session.session_title}</CardTitle>
+                          <CardDescription className="text-muted-foreground">
+                            {session.description}
+                          </CardDescription>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          {getStatusBadge(session.status)}
+                          {session.auto_start_enabled && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Zap className="w-4 h-4 text-yellow-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>Auto-start enabled</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <User className="w-4 h-4 mr-2" />
+                          <span>Host: {session.host_name}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Clock className="w-4 h-4 mr-2" />
+                          <span>{formatSessionDate(session.session_date)}</span>
+                        </div>
+                        {session.zoom_meeting_id && (
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Video className="w-4 h-4 mr-2" />
+                            <span>Meeting ID: {session.zoom_meeting_id}</span>
+                          </div>
+                        )}
+                        
+                        <div className="pt-2">
+                          {canManageSessions ? (
+                            <Button 
+                              onClick={() => joinSession(session)} 
+                              className="w-full bg-primary hover:bg-primary/80 text-primary-foreground mb-3"
+                              disabled={session.status !== 'live'}
+                            >
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              {session.status === 'live' ? 'Join Zoom Session' : 'Session Not Started'}
+                            </Button>
+                          ) : (
+                            <Button 
+                              onClick={() => watchLiveSession(session)} 
+                              className="w-full bg-primary hover:bg-primary/80 text-primary-foreground mb-3"
+                              disabled={session.status !== 'live'}
+                            >
+                              <Video className="w-4 h-4 mr-2" />
+                              {session.status === 'live' ? (session.stream_embed_url ? 'Watch Live' : 'Join Session') : 'Session Not Started'}
+                            </Button>
+                          )}
+                          
+                          {/* Management Controls for Admins/Educators */}
+                          {canManageSessions && (
+                            <>
+                              <Separator className="my-2" />
+                              <SessionStatusControls
+                                session={session}
+                                onUpdateStatus={updateSessionStatus}
+                                onDeleteSession={deleteSession}
+                                onEditSession={handleEditSession}
+                                updating={updating}
+                              />
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="bg-card border-default">
+                <CardContent className="text-center py-8">
+                  <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No upcoming sessions scheduled.</p>
+                  {canManageSessions && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Create your first session using the button above.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Recent Sessions */}
           <div>
-            <h2 className="text-2xl font-semibold text-secondary mb-6 flex items-center gap-3">
-              <Play className="w-6 h-6" />
+            <h2 className="text-2xl font-semibold text-primary mb-4 flex items-center">
+              <Clock className="w-6 h-6 mr-3 text-gray-500" />
               Recent Sessions
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-              {completedSessions.map((session) => (
-                <Card key={session.id} className="glass-effect opacity-75">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg mb-2">{session.session_title}</CardTitle>
-                        <div className="flex items-center gap-2 text-sm text-secondary mb-2">
-                          <User className="w-4 h-4" />
-                          {session.host_name}
+            {recentSessions.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {recentSessions.map((session) => (
+                  <Card key={session.id} className="bg-card border-default shadow-sm hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg text-primary mb-2">{session.session_title}</CardTitle>
+                          <CardDescription className="text-muted-foreground">
+                            {session.description}
+                          </CardDescription>
+                        </div>
+                        {getStatusBadge(session.status)}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <User className="w-4 h-4 mr-2" />
+                          <span>Host: {session.host_name}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Clock className="w-4 h-4 mr-2" />
+                          <span>{formatSessionDate(session.session_date)}</span>
+                        </div>
+                        
+                        <div className="pt-2">
+                          <Button 
+                            variant="outline"
+                            className="w-full mb-3"
+                            disabled
+                          >
+                            Session Completed
+                          </Button>
+                          
+                          {/* Management Controls for Admins/Educators */}
+                          {canManageSessions && (
+                            <>
+                              <Separator className="my-2" />
+                              <SessionStatusControls
+                                session={session}
+                                onUpdateStatus={updateSessionStatus}
+                                onDeleteSession={deleteSession}
+                                onEditSession={handleEditSession}
+                                updating={updating}
+                              />
+                            </>
+                          )}
                         </div>
                       </div>
-                      {getStatusBadge(session.status)}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2 text-sm text-secondary">
-                      <Calendar className="w-4 h-4" />
-                      {format(new Date(session.session_date), 'MMM dd, yyyy')}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="bg-card border-default">
+                <CardContent className="text-center py-8">
+                  <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No recent sessions available.</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
-        )}
+          
+          {/* Edit Session Dialog */}
+          <EditSessionDialog
+            session={editingSession}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            onUpdateSession={updateSession}
+            updating={updating}
+          />
+
+          {/* Video Player Modal */}
+          {watchingSession && watchingSession.stream_embed_url && (
+            <VideoPlayer
+              embedUrl={watchingSession.stream_embed_url}
+              sessionTitle={watchingSession.session_title}
+              onClose={() => setWatchingSession(null)}
+            />
+          )}
+
+          {/* Zoom SDK Player Modal */}
+          {sdkSession && (
+            <ZoomSDKPlayer
+              sessionId={sdkSession.id}
+              meetingNumber={sdkSession.zoom_meeting_number!}
+              sessionTitle={sdkSession.session_title}
+              zoomMeetingUrl={sdkSession.zoom_meeting_url}
+              onClose={() => setSdkSession(null)}
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

@@ -2,210 +2,155 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpen, TrendingUp, Radio, MessageSquare, Briefcase } from "lucide-react";
 import ContentSection from "./ContentSection";
-import { features } from "./constants";
+
+const features = [
+  {
+    icon: BookOpen,
+    title: "AI-Powered Education",
+    description: "Learn from personalized trading courses powered by artificial intelligence.",
+    details: "Master trading with 50+ courses tailored to your skill level and trading style.",
+    link: "Education",
+    color: "hsl(var(--feature-purple))",
+    gradient: "from-purple-500 to-blue-500"
+  },
+  {
+    icon: TrendingUp,
+    title: "Smart Signals",
+    description: "Get real-time trading signals with 92% accuracy powered by machine learning.",
+    details: "Never miss a profitable trade with our AI-driven signal detection system.",
+    link: "SignalStream",
+    color: "hsl(var(--feature-blue))",
+    gradient: "from-blue-500 to-cyan-500"
+  },
+  {
+    icon: Radio,
+    title: "Live Trading",
+    description: "Join live trading sessions with professional traders and learn in real-time.",
+    details: "Watch experts trade live and copy their strategies in real-time.",
+    link: "Live",
+    color: "hsl(var(--feature-green))",
+    gradient: "from-green-500 to-emerald-500"
+  },
+  {
+    icon: MessageSquare,
+    title: "Community",
+    description: "Connect with 10,000+ traders in our exclusive community forum.",
+    details: "Share ideas, get feedback, and learn from successful traders worldwide.",
+    link: "Forum",
+    color: "hsl(var(--feature-orange))",
+    gradient: "from-orange-500 to-red-500"
+  },
+  {
+    icon: Briefcase,
+    title: "Partnership",
+    description: "Earn up to $20 per lot with our exclusive IB partnership program.",
+    details: "Build a profitable business with industry-leading compensation and support.",
+    link: "IBPartnership",
+    color: "hsl(var(--feature-pink))",
+    gradient: "from-pink-500 to-purple-500"
+  },
+];
 
 export default function FeatureCarousel() {
-  const [activeFeatureIndex, setActiveFeatureIndex] = useState(0);
-  const [videoLoadErrors, setVideoLoadErrors] = useState<{
-    [key: number]: boolean;
-  }>({});
-  const [videoLoadStates, setVideoLoadStates] = useState<{
-    [key: number]: "loading" | "loaded" | "error";
-  }>({});
+  const [activeIndex, setActiveIndex] = useState(0);
 
+  // Auto-advance every 5 seconds
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveFeatureIndex((prevIndex) => (prevIndex + 1) % features.length);
-    }, 7000);
-    return () => clearInterval(timer);
+    const interval = setInterval(() => {
+      setActiveIndex((prevIndex) => (prevIndex + 1) % features.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const handleVideoError = (index: number, error: any) => {
-    console.error(`Video ${index} failed to load:`, error);
-    setVideoLoadErrors((prev) => ({ ...prev, [index]: true }));
-    setVideoLoadStates((prev) => ({ ...prev, [index]: "error" }));
-  };
-
-  const handleVideoLoad = (index: number) => {
-    console.log(`Video ${index} loaded successfully`);
-    setVideoLoadStates((prev) => ({ ...prev, [index]: "loaded" }));
-  };
-
-  const handleVideoLoadStart = (index: number) => {
-    console.log(`Video ${index} started loading`);
-    setVideoLoadStates((prev) => ({ ...prev, [index]: "loading" }));
-  };
-
-  const activeFeature = features[activeFeatureIndex];
-
   return (
-    <section className="w-full bg-background py-16 sm:py-20 md:py-24 z-10 relative overflow-x-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
+    <section className="relative py-32 sophisticated-bg-mesh">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <ContentSection>
-          <div className="text-center mb-8 sm:mb-10 md:mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4 drop-shadow-lg px-2">
-              Your Path to{" "}
-              <span className="gold-text-gradient">Trading Mastery</span>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+              Everything You Need
+              <span className="white-gold-gradient block">
+                In One Platform
+              </span>
             </h2>
-            <p className="text-base sm:text-lg md:text-xl text-white/90 max-w-xs sm:max-w-2xl md:max-w-3xl mx-auto drop-shadow-md px-2">
-              A complete ecosystem of tools, education, and community support,
-              seamlessly integrated.
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              A complete trading ecosystem designed to help you succeed in the markets.
             </p>
           </div>
-        </ContentSection>
-        <ContentSection>
-          <div className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden glass-effect">
-            {/* Fallback Background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-surface/80 via-surface/60 to-surface/40 z-[-2]" />
 
-            {/* Background Videos */}
-            {features.map((feature, index) => (
-              <div key={feature.videoSrc} className="absolute inset-0">
-                {!videoLoadErrors[index] && (
-                  <video
-                    src={feature.videoSrc}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    preload="metadata"
-                    onError={(e) => handleVideoError(index, e)}
-                    onLoadedData={() => handleVideoLoad(index)}
-                    onLoadStart={() => handleVideoLoadStart(index)}
-                    className={`w-full h-full object-cover transition-opacity duration-1000 ease-in-out z-[-1] ${
-                      activeFeatureIndex === index &&
-                      videoLoadStates[index] === "loaded"
-                        ? "opacity-100"
-                        : "opacity-0"
-                    }`}
-                  />
-                )}
-                {/* Fallback gradient background for failed videos */}
-                {videoLoadErrors[index] && activeFeatureIndex === index && (
-                  <div className="w-full h-full bg-gradient-to-br from-surface/90 via-accent-green/10 to-surface/70 z-[-1]" />
-                )}
-                {/* Loading indicator */}
-                {videoLoadStates[index] === "loading" &&
-                  activeFeatureIndex === index && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-surface/50 z-0">
-                      <div className="w-8 h-8 border-2 border-accent-green border-t-transparent rounded-full animate-spin"></div>
+          <div className="grid lg:grid-cols-6 gap-8 items-center">
+            {/* Feature Navigation - Compact */}
+            <div className="lg:col-span-2 space-y-6">
+              {features.map((feature, index) => (
+                <div
+                  key={feature.title}
+                  className={`p-3 rounded-lg border cursor-pointer transition-all duration-300 card-hover ${
+                    activeIndex === index
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                  onClick={() => setActiveIndex(index)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: feature.color + '20' }}
+                    >
+                      <feature.icon 
+                        className="w-4 h-4" 
+                        style={{ color: feature.color }}
+                      />
                     </div>
-                  )}
-              </div>
-            ))}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold mb-0.5 truncate">
+                        {feature.title}
+                      </h3>
+                      <p className="text-muted-foreground text-xs leading-tight line-clamp-2">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-            {/* Content Overlay */}
-            <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[400px] sm:min-h-[500px] lg:min-h-[600px]">
-              {/* Mobile/Tablet Navigation */}
-              <div className="w-full bg-surface/30 backdrop-blur-sm p-3 sm:p-4 lg:hidden overflow-x-auto scrollbar-hide">
-                <div className="flex gap-2 sm:gap-3 min-w-max">
-                  {features.map((feature, index) => {
-                    const Icon = feature.icon;
-                    return (
-                      <button
-                        key={feature.title}
-                        ref={(el) => {
-                          if (activeFeatureIndex === index && el) {
-                            el.scrollIntoView({
-                              behavior: "smooth",
-                              inline: "center",
-                              block: "nearest", // Constrain scrolling to the carousel container
-                            });
-                          }
-                        }}
-                        onClick={() => setActiveFeatureIndex(index)}
-                        className={`relative flex-shrink-0 text-left p-2 sm:p-3 rounded-lg transition-all duration-300 flex items-center gap-2 sm:gap-3 ${
-                          activeFeatureIndex === index
-                            ? "bg-accent-green/20"
-                            : "hover:bg-surface/50"
-                        }`}
-                      >
-                        <Icon
-                          className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors duration-300 ${
-                            activeFeatureIndex === index
-                              ? "text-accent-green"
-                              : "text-white/70"
-                          }`}
-                        />
-                        <span
-                          className={`font-semibold text-sm sm:text-base whitespace-nowrap transition-colors duration-300 ${
-                            activeFeatureIndex === index
-                              ? "text-white"
-                              : "text-white/70"
-                          }`}
-                        >
-                          {feature.title}
-                        </span>
-                      </button>
-                    );
+            {/* Feature Display - Larger */}
+            <div className="lg:col-span-4 relative">
+              <div className="bg-card rounded-3xl border-2 border-border p-12 lg:p-20 h-full flex flex-col justify-center">
+                <div 
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
+                  style={{ backgroundColor: features[activeIndex].color + '20' }}
+                >
+                  {React.createElement(features[activeIndex].icon, {
+                    className: "w-10 h-10",
+                    style: { color: features[activeIndex].color }
                   })}
                 </div>
-              </div>
-
-              {/* Desktop Navigation */}
-              <div className="hidden lg:block bg-surface/30 backdrop-blur-sm p-6 lg:p-8 overflow-y-auto">
-                {features.map((feature, index) => {
-                  const Icon = feature.icon;
-                  return (
-                    <button
-                      key={feature.title}
-                      onClick={() => setActiveFeatureIndex(index)}
-                      className={`relative w-full text-left p-4 rounded-lg transition-all duration-300 mb-2 ${
-                        activeFeatureIndex === index
-                          ? ""
-                          : "hover:bg-surface/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <Icon
-                          className={`w-6 h-6 transition-colors duration-300 ${
-                            activeFeatureIndex === index
-                              ? "text-accent-green"
-                              : "text-white/70"
-                          }`}
-                        />
-                        <span
-                          className={`font-semibold transition-colors duration-300 ${
-                            activeFeatureIndex === index
-                              ? "text-white"
-                              : "text-white/70"
-                          }`}
-                        >
-                          {feature.title}
-                        </span>
-                      </div>
-                      {activeFeatureIndex === index && (
-                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-accent-green rounded-t-full"></div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Content Area */}
-              <div className="p-4 sm:p-6 lg:p-8 grid grid-cols-1 gap-6 col-span-2">
-                <div key={activeFeature.title} className="animate-fade-in">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-surface/80 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 lg:mb-6 glow-effect-green">
-                    <activeFeature.icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-accent-green" />
-                  </div>
-                  <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-2 sm:mb-3 lg:mb-4 drop-shadow-lg leading-tight">
-                    {activeFeature.title}
-                  </h3>
-                  <p className="text-sm sm:text-base lg:text-lg text-white/90 mb-3 sm:mb-4 lg:mb-5 drop-shadow-md leading-relaxed">
-                    {activeFeature.description}
-                  </p>
-                  <p className="text-xs sm:text-sm lg:text-base text-white/70 italic mb-4 sm:mb-6 lg:mb-8 drop-shadow-md leading-relaxed">
-                    {activeFeature.detailedContext}
-                  </p>
-                  <Link to={createPageUrl(activeFeature.link)}>
-                    <Button className="bg-accent-green hover:bg-green-500 text-white font-semibold px-4 sm:px-6 lg:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-105 glow-effect-green drop-shadow-lg w-full sm:w-auto">
-                      Explore {activeFeature.title}
-                      <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
-                    </Button>
-                  </Link>
-                </div>
+                
+                <h3 className="text-2xl lg:text-3xl font-bold mb-4 white-gold-gradient">
+                  {features[activeIndex].title}
+                </h3>
+                
+                <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
+                  {features[activeIndex].details}
+                </p>
+                
+                <Link to={createPageUrl(features[activeIndex].link)}>
+                  <Button 
+                    size="lg"
+                    className="border border-border bg-card hover:bg-accent text-foreground font-semibold px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105"
+                    style={{ 
+                      background: `linear-gradient(135deg, ${features[activeIndex].color}20, ${features[activeIndex].color}40)`,
+                      borderColor: features[activeIndex].color
+                    }}
+                  >
+                    Explore {features[activeIndex].title}
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>

@@ -355,10 +355,13 @@ export type Database = {
           session_date: string
           session_title: string
           status: Database["public"]["Enums"]["session_status"]
+          stream_embed_url: string | null
           updated_at: string
           zoom_meeting_id: string | null
+          zoom_meeting_number: string | null
           zoom_meeting_url: string
           zoom_passcode: string | null
+          zoom_sdk_enabled: boolean | null
         }
         Insert: {
           auto_start_enabled?: boolean
@@ -369,10 +372,13 @@ export type Database = {
           session_date: string
           session_title: string
           status?: Database["public"]["Enums"]["session_status"]
+          stream_embed_url?: string | null
           updated_at?: string
           zoom_meeting_id?: string | null
+          zoom_meeting_number?: string | null
           zoom_meeting_url: string
           zoom_passcode?: string | null
+          zoom_sdk_enabled?: boolean | null
         }
         Update: {
           auto_start_enabled?: boolean
@@ -383,10 +389,13 @@ export type Database = {
           session_date?: string
           session_title?: string
           status?: Database["public"]["Enums"]["session_status"]
+          stream_embed_url?: string | null
           updated_at?: string
           zoom_meeting_id?: string | null
+          zoom_meeting_number?: string | null
           zoom_meeting_url?: string
           zoom_passcode?: string | null
+          zoom_sdk_enabled?: boolean | null
         }
         Relationships: []
       }

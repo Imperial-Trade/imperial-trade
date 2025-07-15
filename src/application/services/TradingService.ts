@@ -1,4 +1,3 @@
-
 import { ITradingRepository } from '@/domain/interfaces/repositories/ITradingRepository';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
@@ -9,6 +8,7 @@ export class TradingService {
     const alerts = await this.tradingRepository.findAllAlerts(userId);
     return alerts.map(alert => ({
       id: alert.id,
+      userId: alert.userId,
       assetName: alert.assetName,
       finnhubSymbol: alert.finnhubSymbol,
       tradeType: alert.tradeType,
@@ -32,6 +32,7 @@ export class TradingService {
     const alerts = await this.tradingRepository.findAlertsByStatus(status, userId);
     return alerts.map(alert => ({
       id: alert.id,
+      userId: alert.userId,
       assetName: alert.assetName,
       finnhubSymbol: alert.finnhubSymbol,
       tradeType: alert.tradeType,
@@ -69,6 +70,7 @@ export class TradingService {
     const alert = await this.tradingRepository.createAlert(dto, userId);
     return {
       id: alert.id,
+      userId: alert.userId,
       assetName: alert.assetName,
       finnhubSymbol: alert.finnhubSymbol,
       tradeType: alert.tradeType,
@@ -101,6 +103,7 @@ export class TradingService {
     const alert = await this.tradingRepository.updateAlert(id, dto);
     return {
       id: alert.id,
+      userId: alert.userId,
       assetName: alert.assetName,
       finnhubSymbol: alert.finnhubSymbol,
       tradeType: alert.tradeType,

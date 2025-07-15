@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -353,6 +354,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       onStopLossHit={handleStopLossHit}
                       onOrderActivation={handleOrderActivation}
                       isAdmin={true}
+                      isCreator={true}
                       connectionStatus="connected"
                       priceSource="admin"
                       isRecentClosure={false}
@@ -394,6 +396,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     onStopLossHit={handleStopLossHit}
                     onOrderActivation={handleOrderActivation}
                     isAdmin={true}
+                    isCreator={true}
                     connectionStatus="connected"
                     priceSource="admin"
                     isRecentClosure={false}
@@ -424,6 +427,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     onStopLossHit={handleStopLossHit}
                     onOrderActivation={handleOrderActivation}
                     isAdmin={true}
+                    isCreator={true}
                     connectionStatus="connected"
                     priceSource="admin"
                     isRecentClosure={false}

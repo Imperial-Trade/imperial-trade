@@ -1,4 +1,3 @@
-
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton"
@@ -10,6 +9,7 @@ import { useSidebar } from "@/components/ui/sidebar"
 import { useIsMobile, useIsTablet, useIsDesktop } from "@/hooks/use-mobile"
 import { useAuth } from "@/contexts/AuthContext"
 import { Badge } from "@/components/ui/badge"
+import { PostHogTracker } from "@/components/analytics/PostHogTracker"
 
 function DashboardHeader() {
   const { openMobile } = useSidebar();
@@ -108,6 +108,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   if (isHomePage) {
     return (
       <div className="min-h-screen bg-background">
+        <PostHogTracker />
         <ErrorBoundary componentName="AppBar">
           <AppBar />
         </ErrorBoundary>
@@ -124,6 +125,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background">
+        <PostHogTracker />
         <ErrorBoundary componentName="Header">
           <DashboardHeader />
         </ErrorBoundary>

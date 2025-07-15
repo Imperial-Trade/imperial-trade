@@ -59,7 +59,7 @@ const AppBar: React.FC = () => {
   const renderAuthButton = () => {
     if (user) {
       return <Link to="/dashboard/home">
-          <Button size="sm" className="bg-accent-green hover:bg-green-500 text-white flex items-center gap-2">
+          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
             Dashboard
           </Button>
@@ -72,7 +72,7 @@ const AppBar: React.FC = () => {
     }
     
     return <Link to="/account-request">
-        <Button size="sm" className="bg-accent-green hover:bg-green-500 text-white">
+        <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
           Get Started
         </Button>
       </Link>;
@@ -84,11 +84,11 @@ const AppBar: React.FC = () => {
           <span className="text-xl imperial-tech-font">IMPERIAL</span>
         </Link>
 
-        {/* Desktop Navigation - Wider Container */}
+        {/* Desktop Navigation - Compact */}
         <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
           {navigationItems.map(item => <div key={item.to} className="relative" onMouseEnter={() => setActiveDropdown(item.label)} onMouseLeave={() => setActiveDropdown(null)}>
                 <Link to={item.to}>
-                  <Button variant="ghost" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-4 py-2 transition-all duration-200">
+                  <Button variant="ghost" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200">
                     <item.icon className="h-4 w-4" />
                     {item.label}
                   </Button>
@@ -117,8 +117,8 @@ const AppBar: React.FC = () => {
             </div>)}
         </nav>
 
-        {/* Desktop Auth Button */}
-        <div className="hidden lg:flex items-center gap-4">
+        {/* Desktop Auth & Theme Toggle */}
+        <div className="hidden lg:flex items-center gap-2">
           <ThemeToggle />
           {renderAuthButton()}
         </div>

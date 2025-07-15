@@ -16,33 +16,18 @@ export function ThemeToggle({ isCollapsed = false }: ThemeToggleProps) {
   };
 
   const getThemeLabel = () => {
-    return theme === 'dark' ? 'Light' : 'Dark';
+    return theme === 'dark' ? 'Switch to Light mode' : 'Switch to Dark mode';
   };
-
-  if (isCollapsed) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={toggleTheme}
-        className="w-full justify-center text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent"
-        aria-label={`Switch to ${getThemeLabel()} mode`}
-      >
-        {getThemeIcon()}
-      </Button>
-    );
-  }
 
   return (
     <Button
       variant="ghost"
       size="sm"
       onClick={toggleTheme}
-      className="w-full justify-start text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent"
-      aria-label={`Switch to ${getThemeLabel()} mode`}
+      className="w-8 h-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
+      aria-label={getThemeLabel()}
     >
       {getThemeIcon()}
-      <span className="ml-2 text-sm">{getThemeLabel()} Mode</span>
     </Button>
   );
 }

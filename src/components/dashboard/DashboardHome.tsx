@@ -125,18 +125,8 @@ export const DashboardHome: React.FC = () => {
               </div>
             </div>
             
-            {/* Action Button */}
-            <div className="flex justify-center pt-6">
-              <Button 
-                onClick={() => {
-                  document.querySelector('.container')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                size="lg" 
-                className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white shadow-2xl hover:shadow-primary/25 transition-all duration-300 group border-0"
-              >
-                <Plus className="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
-                Start Your Journey
-              </Button>
+            {/* Spacer to maintain layout */}
+            <div className="pt-6">
             </div>
           </div>
         </div>

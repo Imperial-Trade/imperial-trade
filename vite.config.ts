@@ -43,4 +43,6 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     strictPort: true,
   },
+  // Ensure static files are copied to build output
+  publicDir: 'public',
 }));

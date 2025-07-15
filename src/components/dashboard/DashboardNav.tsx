@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Crown, Bell, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare, ChevronDown, Grid3X3 } from "lucide-react";
+import { Crown, Bell, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare, ChevronDown, Grid3X3, ChevronUp, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 const DashboardNav: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
   const { user, signOut } = useAuth();
@@ -56,9 +57,19 @@ const DashboardNav: React.FC = () => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  // Set CSS variable for dynamic header height
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--header-height', 
+      isHeaderCollapsed ? '3rem' : '4rem'
+    );
+  }, [isHeaderCollapsed]);
+
   return (
     <header 
-      className={`fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-center px-6 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 ${
+        isHeaderCollapsed ? 'h-12' : 'h-16'
+      } flex items-center justify-center px-6 transition-all duration-300 ${
         scrolled 
           ? 'backdrop-blur-xl border-b border-border/50 bg-background/60 shadow-lg' 
           : 'backdrop-blur-md bg-background/40'
@@ -77,105 +88,130 @@ const DashboardNav: React.FC = () => {
         </Link>
 
         {/* Desktop Navigation - Primary Items Only */}
-        <nav className={`hidden lg:flex items-center gap-2 rounded-2xl p-2 transition-all duration-300 ${
-          scrolled 
-            ? 'bg-muted/50 backdrop-blur-sm border border-border/50' 
-            : 'bg-muted/30 backdrop-blur-sm border border-border/30'
-        }`}>
-          {/* Primary navigation items */}
-          {primaryNavItems.map(item => {
-            const isActive = location.pathname === item.to;
-            return (
-              <Link key={item.to} to={item.to}>
-                <Button 
-                  variant="ghost" 
-                  className={`flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-2 transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-primary/15 text-primary border border-primary/30 shadow-lg shadow-primary/10' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-background/80 hover:shadow-md'
-                  }`}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Button>
-              </Link>
-            );
-          })}
-        </nav>
+        {!isHeaderCollapsed && (
+          <nav className={`hidden lg:flex items-center gap-2 rounded-2xl p-2 transition-all duration-300 ${
+            scrolled 
+              ? 'bg-muted/50 backdrop-blur-sm border border-border/50' 
+              : 'bg-muted/30 backdrop-blur-sm border border-border/30'
+          }`}>
+            {/* Primary navigation items */}
+            {primaryNavItems.map(item => {
+              const isActive = location.pathname === item.to;
+              return (
+                <Link key={item.to} to={item.to}>
+                  <Button 
+                    variant="ghost" 
+                    className={`flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-2 transition-all duration-200 ${
+                      isActive 
+                        ? 'bg-primary/15 text-primary border border-primary/30 shadow-lg shadow-primary/10' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-background/80 hover:shadow-md'
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </Button>
+                </Link>
+              );
+            })}
+          </nav>
+        )}
 
         {/* Desktop Actions */}
         <div className="hidden lg:flex items-center gap-3">
-          {/* Live Market Indicator */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-300 ${
-            scrolled 
-              ? 'bg-green-500/10 border-green-500/30' 
-              : 'bg-green-500/5 border-green-500/20'
-          }`}>
-            <BarChart3 className="h-3 w-3 text-green-500" />
-            <span className="text-xs font-medium text-green-700 dark:text-green-400">S&P +0.75%</span>
-          </div>
+          {/* Live Market Indicator - hide when collapsed */}
+          {!isHeaderCollapsed && (
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-300 ${
+              scrolled 
+                ? 'bg-green-500/10 border-green-500/30' 
+                : 'bg-green-500/5 border-green-500/20'
+            }`}>
+              <BarChart3 className="h-3 w-3 text-green-500" />
+              <span className="text-xs font-medium text-green-700 dark:text-green-400">S&P +0.75%</span>
+            </div>
+          )}
 
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={`relative hover:bg-primary/10 group transition-all duration-200 ${
-              scrolled ? 'bg-background/60' : 'bg-background/30'
-            }`}
-          >
-            <Search className="h-4 w-4 transition-colors group-hover:text-primary" />
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={`relative hover:bg-primary/10 group transition-all duration-200 ${
-              scrolled ? 'bg-background/60' : 'bg-background/30'
-            }`}
-          >
-            <Bell className="h-4 w-4 transition-colors group-hover:text-primary" />
-            <Badge 
-              variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs animate-bounce bg-red-500 border-2 border-background"
-            >
-              3
-            </Badge>
-          </Button>
-
-          {/* More menu dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {!isHeaderCollapsed && (
+            <>
               <Button 
                 variant="ghost" 
-                size="sm"
-                className={`relative hover:bg-primary/10 group transition-all duration-200 flex items-center gap-1 px-3 ${
+                size="sm" 
+                className={`relative hover:bg-primary/10 group transition-all duration-200 ${
                   scrolled ? 'bg-background/60' : 'bg-background/30'
                 }`}
               >
-                <Grid3X3 className="h-4 w-4 transition-colors group-hover:text-primary" />
-                <ChevronDown className="h-3 w-3 transition-colors group-hover:text-primary" />
+                <Search className="h-4 w-4 transition-colors group-hover:text-primary" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
-              {secondaryNavItems.map(item => {
-                const isActive = location.pathname === item.to;
-                return (
-                  <DropdownMenuItem key={item.to} asChild>
-                    <Link 
-                      to={item.to} 
-                      className={`flex items-center gap-3 w-full ${
-                        isActive ? 'bg-primary/10 text-primary' : ''
-                      }`}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </Link>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={`relative hover:bg-primary/10 group transition-all duration-200 ${
+                  scrolled ? 'bg-background/60' : 'bg-background/30'
+                }`}
+              >
+                <Bell className="h-4 w-4 transition-colors group-hover:text-primary" />
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs animate-bounce bg-red-500 border-2 border-background"
+                >
+                  3
+                </Badge>
+              </Button>
 
-          <ThemeToggle />
+              {/* More menu dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className={`relative hover:bg-primary/10 group transition-all duration-200 flex items-center gap-1 px-3 ${
+                      scrolled ? 'bg-background/60' : 'bg-background/30'
+                    }`}
+                  >
+                    <Grid3X3 className="h-4 w-4 transition-colors group-hover:text-primary" />
+                    <ChevronDown className="h-3 w-3 transition-colors group-hover:text-primary" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
+                  {secondaryNavItems.map(item => {
+                    const isActive = location.pathname === item.to;
+                    return (
+                      <DropdownMenuItem key={item.to} asChild>
+                        <Link 
+                          to={item.to} 
+                          className={`flex items-center gap-3 w-full ${
+                            isActive ? 'bg-primary/10 text-primary' : ''
+                          }`}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {item.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <ThemeToggle />
+            </>
+          )}
+
+          {/* Header Collapse Toggle Button */}
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+            className={`relative hover:bg-primary/10 group transition-all duration-200 ${
+              scrolled ? 'bg-background/60' : 'bg-background/30'
+            }`}
+            title={isHeaderCollapsed ? "Expand header" : "Collapse header"}
+          >
+            {isHeaderCollapsed ? (
+              <ChevronDown className="h-4 w-4 transition-colors group-hover:text-primary" />
+            ) : (
+              <ChevronUp className="h-4 w-4 transition-colors group-hover:text-primary" />
+            )}
+          </Button>
 
           {/* User Menu */}
           <DropdownMenu>

@@ -18,8 +18,8 @@ export const DashboardLayout: React.FC = () => {
       {/* Top Navigation */}
       <DashboardNav />
       
-      {/* Main Content with Top Padding */}
-      <main className="relative pt-16">
+      {/* Main Content with Dynamic Top Padding */}
+      <main className="relative" style={{ paddingTop: 'var(--header-height, 4rem)' }}>
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-muted/5 to-transparent pointer-events-none"></div>
         <Suspense fallback={<LoadingSpinner />}>
           <Outlet />

@@ -102,15 +102,18 @@ export default function ToolsShowcase() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {tools.map((tool, index) => (
+            {tools.slice(0, 4).map((tool, index) => (
               <div
                 key={tool.title}
-                className="group relative bg-card/50 backdrop-blur-xl rounded-3xl p-8 border border-border/50 overflow-hidden"
+                className={`group relative bg-card/50 backdrop-blur-xl rounded-3xl p-8 border border-border/50 overflow-hidden tool-box-${index}`}
               >
                 {/* Gradient Background */}
                 <div 
                   className={`absolute inset-0 bg-gradient-to-br ${tool.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-3xl`}
                 />
+                
+                {/* Circular Animation Highlight */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/10 opacity-0 rounded-3xl circular-highlight" />
                 
                 <div className="relative z-10">
                   <div 

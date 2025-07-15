@@ -76,23 +76,13 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
           capture_pageview: false,
           capture_pageleave: false,
           
-          // PERFORMANCE: Request batching and timing optimizations
-          request_batching: true,
-          batch_size: 10,
-          flush_at: 10,
-          flush_interval: 5000, // 5 seconds instead of immediate
-          
-          // PERFORMANCE: Reduce network overhead
+          // PERFORMANCE: Optimize network requests
           secure_cookie: true,
           cross_subdomain_cookie: false,
           persistence: 'localStorage',
           
-          // PERFORMANCE: Optimize session recording and heatmaps
-          disable_session_recording: true, // Disable for better performance
-          disable_scroll_properties: true,
-          
-          // PERFORMANCE: Reduce payload sizes
-          property_blacklist: ['$performance_raw'],
+          // PERFORMANCE: Disable session recording for better performance
+          disable_session_recording: true,
           
           loaded: (posthog) => {
             console.log('🎯 PostHog loaded with performance optimizations');
@@ -104,11 +94,6 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
               timestamp: new Date().toISOString(),
               performance_mode: 'optimized',
             });
-          },
-          
-          // PERFORMANCE: Optimize feature flags
-          bootstrap: {
-            featureFlags: {},
           },
         });
 

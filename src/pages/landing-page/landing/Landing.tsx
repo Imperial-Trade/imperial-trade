@@ -4,7 +4,6 @@ import { usePostHogTracking } from '@/hooks/usePostHogTracking';
 import HeroSection from '@/components/landing/HeroSection';
 import StatsSection from '@/components/landing/StatsSection';
 import FeatureCarousel from '@/components/landing/FeatureCarousel';
-import ParallaxSection from '@/components/landing/ParallaxSection';
 import ToolsShowcase from '@/components/landing/ToolsShowcase';
 import FinalCTA from '@/components/landing/FinalCTA';
 
@@ -25,7 +24,6 @@ const Landing = () => {
       <HeroSection />
       <StatsSection />
       <FeatureCarousel />
-      <ParallaxSection />
       <ToolsShowcase />
       <FinalCTA />
     </div>

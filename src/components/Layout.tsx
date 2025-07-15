@@ -171,16 +171,6 @@ function DashboardHeader() {
               </div>
               <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
               
-              {/* New Button next to profile */}
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all duration-200"
-                title="Quick Action"
-              >
-                <Plus className="h-4 w-4 text-primary" />
-              </Button>
-              
               {/* Profile Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -238,6 +228,16 @@ function DashboardHeader() {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+              
+              {/* Menu Button - Rightmost position */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all duration-200 ml-2"
+                title="Menu"
+              >
+                <Menu className="h-4 w-4 text-primary" />
+              </Button>
             </div>
           )}
         </div>

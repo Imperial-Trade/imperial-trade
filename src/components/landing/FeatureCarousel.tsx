@@ -141,9 +141,10 @@ export default function FeatureCarousel() {
                 <Link to={createPageUrl(features[activeIndex].link)}>
                   <Button 
                     size="lg"
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105"
+                    className="border border-border bg-card hover:bg-accent text-foreground font-semibold px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105"
                     style={{ 
-                      background: `linear-gradient(135deg, ${features[activeIndex].color}, ${features[activeIndex].color}dd)`
+                      background: `linear-gradient(135deg, ${features[activeIndex].color}20, ${features[activeIndex].color}40)`,
+                      borderColor: features[activeIndex].color
                     }}
                   >
                     Explore {features[activeIndex].title}

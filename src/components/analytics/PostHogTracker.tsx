@@ -1,9 +1,9 @@
 
-import { usePostHogTracking } from '@/hooks/usePostHogTracking';
+import { useOptimizedPostHogTracking } from '@/hooks/useOptimizedPostHogTracking';
 
 export function PostHogTracker() {
-  // This component initializes PostHog tracking across the app
-  usePostHogTracking();
+  // Use the performance-optimized tracking hook
+  useOptimizedPostHogTracking();
   
   // Return null as this is just a tracking component
   return null;

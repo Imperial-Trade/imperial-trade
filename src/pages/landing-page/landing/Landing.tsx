@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { usePostHogTracking } from '@/hooks/usePostHogTracking';
+import { useOptimizedPostHogTracking } from '@/hooks/useOptimizedPostHogTracking';
 import HeroSection from '@/components/landing/HeroSection';
 import StatsSection from '@/components/landing/StatsSection';
 import FeatureCarousel from '@/components/landing/FeatureCarousel';
@@ -8,14 +8,12 @@ import ToolsShowcase from '@/components/landing/ToolsShowcase';
 import FinalCTA from '@/components/landing/FinalCTA';
 
 const Landing = () => {
-  const { track } = usePostHogTracking();
+  const { track } = useOptimizedPostHogTracking();
 
   useEffect(() => {
-    // Test event to verify PostHog is working
+    // Single optimized landing page event (throttled)
     track('landing_page_loaded', {
       page: 'landing',
-      timestamp: new Date().toISOString(),
-      user_agent: navigator.userAgent,
     });
   }, [track]);
 

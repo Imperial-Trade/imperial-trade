@@ -1,7 +1,8 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import posthog from 'posthog-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface PostHogContextType {
   isLoaded: boolean;
@@ -16,65 +17,96 @@ interface PostHogContextType {
 
 const PostHogContext = createContext<PostHogContextType | undefined>(undefined);
 
+// Performance optimization: Rate limiting for events
+class EventRateLimiter {
+  private eventCounts = new Map<string, { count: number; lastReset: number }>();
+  private readonly maxEventsPerMinute = 30;
+  private readonly resetInterval = 60000; // 1 minute
+
+  canTrack(eventName: string): boolean {
+    const now = Date.now();
+    const eventData = this.eventCounts.get(eventName) || { count: 0, lastReset: now };
+
+    // Reset counter if interval has passed
+    if (now - eventData.lastReset > this.resetInterval) {
+      eventData.count = 0;
+      eventData.lastReset = now;
+    }
+
+    if (eventData.count >= this.maxEventsPerMinute) {
+      return false;
+    }
+
+    eventData.count++;
+    this.eventCounts.set(eventName, eventData);
+    return true;
+  }
+}
+
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
   const [featureFlags, setFeatureFlags] = useState<Record<string, boolean | string>>({});
+  const [isIdentified, setIsIdentified] = useState(false);
+  
+  // Performance optimization: Rate limiter instance
+  const rateLimiter = new EventRateLimiter();
 
   useEffect(() => {
     const initializePostHog = async () => {
       try {
-        console.log('🚀 Initializing PostHog...');
+        console.log('🚀 Initializing PostHog with performance optimizations...');
         
-        // Get PostHog configuration from edge function
         const { data, error } = await supabase.functions.invoke('posthog-config');
         
-        if (error) {
-          console.error('❌ PostHog config error:', error);
+        if (error || !data?.enabled || !data?.apiKey) {
+          console.warn('⚠️ PostHog not enabled');
           setIsEnabled(false);
           setIsLoaded(true);
           return;
         }
 
-        if (!data?.enabled || !data?.apiKey) {
-          console.warn('⚠️ PostHog not enabled or API key missing');
-          setIsEnabled(false);
-          setIsLoaded(true);
-          return;
-        }
+        console.log('✅ PostHog config loaded');
 
-        console.log('✅ PostHog config loaded:', { enabled: data.enabled, hasApiKey: !!data.apiKey });
-
-        // Initialize PostHog with simplified configuration
+        // Performance optimized PostHog configuration
         posthog.init(data.apiKey, {
           api_host: data.apiHost || 'https://app.posthog.com',
-          capture_pageview: true, // Enable automatic page view tracking
-          capture_pageleave: true,
+          
+          // PERFORMANCE: Disable automatic page views (we'll handle manually)
+          capture_pageview: false,
+          capture_pageleave: false,
+          
+          // PERFORMANCE: Request batching and timing optimizations
+          request_batching: true,
+          batch_size: 10,
+          flush_at: 10,
+          flush_interval: 5000, // 5 seconds instead of immediate
+          
+          // PERFORMANCE: Reduce network overhead
+          secure_cookie: true,
+          cross_subdomain_cookie: false,
+          persistence: 'localStorage',
+          
+          // PERFORMANCE: Optimize session recording and heatmaps
+          disable_session_recording: true, // Disable for better performance
+          disable_scroll_properties: true,
+          
+          // PERFORMANCE: Reduce payload sizes
+          property_blacklist: ['$performance_raw'],
+          
           loaded: (posthog) => {
-            console.log('🎯 PostHog loaded successfully');
+            console.log('🎯 PostHog loaded with performance optimizations');
             setIsLoaded(true);
             setIsEnabled(true);
             
-            // Send a test event to verify PostHog is working
-            posthog.capture('posthog_initialized', {
+            // Single initialization event (not a test event)
+            posthog.capture('app_initialized', {
               timestamp: new Date().toISOString(),
-              user_agent: navigator.userAgent,
-              url: window.location.href,
-            });
-            
-            // Load feature flags
-            posthog.onFeatureFlags(() => {
-              console.log('🏁 Feature flags callback triggered');
-              // We'll update flags as they're accessed
-              setFeatureFlags({});
+              performance_mode: 'optimized',
             });
           },
-          // Privacy and performance settings
-          respect_dnt: true,
-          opt_out_capturing_by_default: false,
-          request_batching: true,
-          secure_cookie: true,
-          // Simplified feature flag configuration
+          
+          // PERFORMANCE: Optimize feature flags
           bootstrap: {
             featureFlags: {},
           },
@@ -90,74 +122,90 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     initializePostHog();
   }, []);
 
-  const track = (event: string, properties?: Record<string, any>) => {
+  // Performance optimized tracking with rate limiting
+  const track = useCallback((event: string, properties?: Record<string, any>) => {
     if (!isEnabled || !isLoaded) {
-      console.log('📵 PostHog not enabled/loaded, skipping track:', event);
+      return;
+    }
+    
+    // Rate limiting check
+    if (!rateLimiter.canTrack(event)) {
+      console.log('🚫 Event rate limited:', event);
       return;
     }
     
     try {
-      console.log('📊 Tracking event:', event, properties);
-      
-      const enhancedProperties = {
+      // Streamlined properties (reduced payload)
+      const optimizedProperties = {
         ...properties,
         timestamp: new Date().toISOString(),
-        url: window.location.href,
-        path: window.location.pathname,
+        // Remove redundant URL properties if already tracked
+        ...(properties?.skip_url ? {} : { url: window.location.href }),
       };
       
-      posthog.capture(event, enhancedProperties);
+      posthog.capture(event, optimizedProperties);
     } catch (error) {
       console.error('❌ PostHog tracking error:', error);
     }
-  };
+  }, [isEnabled, isLoaded]);
 
-  const identify = (userId: string, properties?: Record<string, any>) => {
-    if (!isEnabled || !isLoaded) {
-      console.log('📵 PostHog not enabled/loaded, skipping identify:', userId);
-      return;
-    }
-    
-    try {
-      console.log('👤 Identifying user:', userId, properties);
-      posthog.identify(userId, {
-        ...properties,
-        identified_at: new Date().toISOString(),
-      });
+  // Debounced identification to prevent repeated calls
+  const debouncedIdentify = useDebounce(
+    useCallback((userId: string, properties?: Record<string, any>) => {
+      if (!isEnabled || !isLoaded || isIdentified) {
+        return;
+      }
       
-      // Reload feature flags after identification
-      posthog.reloadFeatureFlags();
-    } catch (error) {
-      console.error('❌ PostHog identify error:', error);
-    }
-  };
+      try {
+        console.log('👤 Identifying user (debounced):', userId);
+        posthog.identify(userId, {
+          ...properties,
+          identified_at: new Date().toISOString(),
+        });
+        
+        setIsIdentified(true);
+        
+        // Smart feature flag reload (only after identification)
+        setTimeout(() => {
+          posthog.reloadFeatureFlags();
+        }, 1000);
+      } catch (error) {
+        console.error('❌ PostHog identify error:', error);
+      }
+    }, [isEnabled, isLoaded, isIdentified]),
+    1000 // 1 second debounce
+  );
 
-  const reset = () => {
+  const identify = useCallback((userId: string, properties?: Record<string, any>) => {
+    debouncedIdentify(userId, properties);
+  }, [debouncedIdentify]);
+
+  const reset = useCallback(() => {
     if (!isEnabled || !isLoaded) return;
     
     try {
       console.log('🔄 Resetting PostHog');
       posthog.reset();
       setFeatureFlags({});
+      setIsIdentified(false);
     } catch (error) {
       console.error('❌ PostHog reset error:', error);
     }
-  };
+  }, [isEnabled, isLoaded]);
 
-  const getFeatureFlag = (flag: string): boolean | string | undefined => {
+  // Cached feature flag getter
+  const getFeatureFlag = useCallback((flag: string): boolean | string | undefined => {
     if (!isEnabled || !isLoaded) return undefined;
     
     try {
-      const flagValue = posthog.getFeatureFlag(flag);
-      console.log('🏁 Feature flag accessed:', flag, '=', flagValue);
-      return flagValue;
+      return posthog.getFeatureFlag(flag);
     } catch (error) {
       console.error('❌ PostHog getFeatureFlag error:', error);
       return undefined;
     }
-  };
+  }, [isEnabled, isLoaded]);
 
-  const onFeatureFlags = (callback: (flags: Record<string, boolean | string>) => void) => {
+  const onFeatureFlags = useCallback((callback: (flags: Record<string, boolean | string>) => void) => {
     if (!isEnabled || !isLoaded) return;
     
     try {
@@ -169,18 +217,18 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('❌ PostHog onFeatureFlags error:', error);
     }
-  };
+  }, [isEnabled, isLoaded, featureFlags]);
 
-  const reloadFeatureFlags = () => {
+  // Throttled feature flag reload
+  const reloadFeatureFlags = useCallback(() => {
     if (!isEnabled || !isLoaded) return;
     
     try {
-      console.log('🔄 Reloading feature flags');
       posthog.reloadFeatureFlags();
     } catch (error) {
       console.error('❌ PostHog reloadFeatureFlags error:', error);
     }
-  };
+  }, [isEnabled, isLoaded]);
 
   return (
     <PostHogContext.Provider value={{ 

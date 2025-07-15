@@ -93,7 +93,9 @@ export const DashboardHome: React.FC = () => {
                     Welcome back
                   </h1>
                   <p className="text-xl text-primary font-medium">
-                    {user?.user_metadata?.display_name || user?.email?.split('@')[0]}
+                    {user?.user_metadata?.first_name && user?.user_metadata?.last_name 
+                      ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                      : user?.user_metadata?.full_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User'}
                   </p>
                 </div>
               </div>

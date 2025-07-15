@@ -111,7 +111,7 @@ const DashboardNav: React.FC = () => {
               >
                 <Grid3X3 className="h-4 w-4" />
                 More
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-3 w-3 ml-1" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="center">

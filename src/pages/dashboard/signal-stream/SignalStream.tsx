@@ -453,8 +453,7 @@ export default function SignalStream() {
               {canCreateSignals && (
                 <Button
                   onClick={() => navigate('/dashboard/new-signal')}
-                  className="bg-accent-green hover:bg-accent-green/90 text-white shadow-lg"
-                  size="sm"
+                  className="bg-primary hover:bg-primary/90"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Create Signal

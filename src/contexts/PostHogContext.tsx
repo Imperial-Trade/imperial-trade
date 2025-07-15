@@ -53,7 +53,6 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
           respect_dnt: true,
           opt_out_capturing_by_default: false,
           // Performance settings
-          batch_requests: true,
           request_batching: true,
         });
 

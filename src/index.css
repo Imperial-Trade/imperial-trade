@@ -685,7 +685,6 @@
 .tool-box-2:hover .circular-highlight,
 .tool-box-3:hover .circular-highlight {
   opacity: 0.6 !important;
-  background: linear-gradient(135deg, hsl(var(--primary))/30, hsl(var(--primary))/15);
 }
 
 .feature-accent-blue { color: hsl(var(--feature-blue)); }

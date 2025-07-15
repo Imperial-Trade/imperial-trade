@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -72,6 +72,17 @@ export const DashboardHome: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.user_metadata?.access_level === 'admin';
   const isEducator = user?.user_metadata?.user_type === 'educator';
+  
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [marketStatus, setMarketStatus] = useState('Market Open');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowWelcome(false);
+    }, 6000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="relative min-h-screen">
@@ -90,7 +101,7 @@ export const DashboardHome: React.FC = () => {
                 </div>
                 <div>
                   <h1 className="text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent">
-                    Welcome back
+                    {showWelcome ? 'Welcome back' : marketStatus}
                   </h1>
                   <p className="text-xl text-primary font-medium">
                     {user?.user_metadata?.display_name || user?.email?.split('@')[0]}
@@ -124,13 +135,6 @@ export const DashboardHome: React.FC = () => {
             </div>
           </div>
 
-          {/* Market Status Indicator */}
-          <div className="flex justify-center mb-8">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20 backdrop-blur-sm">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-green-700 dark:text-green-400">Market Open</span>
-            </div>
-          </div>
         </div>
       </div>
 

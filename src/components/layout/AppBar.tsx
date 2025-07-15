@@ -11,6 +11,7 @@ const AppBar: React.FC = () => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const isAccountRequestPage = location.pathname === '/account-request';
+  const isSigninPage = location.pathname === '/signin';
   const {
     user,
     loading
@@ -66,8 +67,8 @@ const AppBar: React.FC = () => {
         </Link>;
     }
     
-    // Don't show Get Started button if already on account request page
-    if (isAccountRequestPage) {
+    // Don't show Get Started button if already on account request page or signin page
+    if (isAccountRequestPage || isSigninPage) {
       return null;
     }
     
@@ -79,46 +80,51 @@ const AppBar: React.FC = () => {
   };
   return <header className={`fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 ${isAccountRequestPage ? '' : 'backdrop-blur-xl border-b border-border/50 bg-zinc-900'}`}>
       <div className="w-full max-w-7xl flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <Crown className="h-6 w-6 text-primary" />
-          <span className="text-xl imperial-tech-font">IMPERIAL</span>
-        </Link>
+        {/* Logo - hide on signin page */}
+        {!isSigninPage && (
+          <Link to="/" className="flex items-center gap-2">
+            <Crown className="h-6 w-6 text-primary" />
+            <span className="text-xl imperial-tech-font">IMPERIAL</span>
+          </Link>
+        )}
 
-        {/* Desktop Navigation - Compact */}
-        <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
-          {navigationItems.map(item => <div key={item.to} className="relative" onMouseEnter={() => setActiveDropdown(item.label)} onMouseLeave={() => setActiveDropdown(null)}>
-                <Link to={item.to}>
-                  <Button variant="ghost" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200">
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Button>
-                </Link>
-              
-              {/* Apple/Stripe style dropdown */}
-              {activeDropdown === item.label && <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-background/95 backdrop-blur-xl rounded-2xl border border-border/50 shadow-2xl p-6 animate-fade-in-up z-50">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-foreground mb-1">{item.label}</h3>
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
+        {/* Desktop Navigation - Compact - hide on signin page */}
+        {!isSigninPage && (
+          <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
+            {navigationItems.map(item => <div key={item.to} className="relative" onMouseEnter={() => setActiveDropdown(item.label)} onMouseLeave={() => setActiveDropdown(null)}>
+                  <Link to={item.to}>
+                    <Button variant="ghost" className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-xl px-3 py-2 transition-all duration-200">
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                
+                {/* Apple/Stripe style dropdown */}
+                {activeDropdown === item.label && <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-background/95 backdrop-blur-xl rounded-2xl border border-border/50 shadow-2xl p-6 animate-fade-in-up z-50">
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold text-foreground mb-1">{item.label}</h3>
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                      </div>
+                      <div className="space-y-2">
+                        {item.features.map((feature, idx) => <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                            {feature}
+                          </div>)}
+                      </div>
+                      <Link to={item.to}>
+                        <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+                          Explore {item.label}
+                        </Button>
+                      </Link>
                     </div>
-                    <div className="space-y-2">
-                      {item.features.map((feature, idx) => <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                          {feature}
-                        </div>)}
-                    </div>
-                    <Link to={item.to}>
-                      <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
-                        Explore {item.label}
-                      </Button>
-                    </Link>
-                  </div>
-                </div>}
-            </div>)}
-        </nav>
+                  </div>}
+              </div>)}
+          </nav>
+        )}
 
         {/* Desktop Auth & Theme Toggle */}
-        <div className="hidden lg:flex items-center gap-2">
+        <div className={`hidden lg:flex items-center gap-2 ${isSigninPage ? 'ml-auto' : ''}`}>
           <ThemeToggle />
           {renderAuthButton()}
         </div>
@@ -141,7 +147,8 @@ const AppBar: React.FC = () => {
             </SheetHeader>
 
             <nav className="flex flex-col gap-2 mt-8">
-              {navigationItems.map(item => <div key={item.to} className="space-y-2">
+              {/* Hide navigation items on signin page */}
+              {!isSigninPage && navigationItems.map(item => <div key={item.to} className="space-y-2">
                   <Link to={item.to} onClick={closeMobileMenu} className="flex items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50">
                     <item.icon className="h-5 w-5 text-primary" />
                     <div>
@@ -160,11 +167,11 @@ const AppBar: React.FC = () => {
                       <LayoutDashboard className="h-4 w-4" />
                       Dashboard
                     </Button>
-                  </Link> : !isAccountRequestPage && <Link to="/account-request" onClick={closeMobileMenu}>
-                    <Button size="lg" className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold">
-                      Get Started
-                    </Button>
-                  </Link>}
+                   </Link> : !isAccountRequestPage && !isSigninPage && <Link to="/account-request" onClick={closeMobileMenu}>
+                     <Button size="lg" className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold">
+                       Get Started
+                     </Button>
+                   </Link>}
               </div>
             </nav>
           </SheetContent>

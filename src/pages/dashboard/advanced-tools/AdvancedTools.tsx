@@ -148,14 +148,14 @@ export default function AdvancedTools() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left Panel: Tool Selectors */}
-          <aside className="lg:col-span-1 space-y-8">
+          <aside className="lg:col-span-1 space-y-4">
             {/* AI Tools */}
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-              <h2 className="text-lg font-semibold tracking-wider uppercase text-accent-gold flex items-center gap-3 mb-4">
+              <h2 className="text-lg font-semibold tracking-wider uppercase text-accent-gold flex items-center gap-3 mb-3">
                 <Sparkles className="w-5 h-5" />
                 AI-Powered Intelligence
               </h2>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {aiTools.map(tool => (
                   <ToolSelector 
                     key={tool.name} 
@@ -169,11 +169,11 @@ export default function AdvancedTools() {
 
             {/* Core Tools */}
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <h2 className="text-lg font-semibold tracking-wider uppercase text-accent-blue flex items-center gap-3 mb-4">
+              <h2 className="text-lg font-semibold tracking-wider uppercase text-accent-blue flex items-center gap-3 mb-3">
                 <Wrench className="w-5 h-5" />
                 Core Trading Tools
               </h2>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {coreTools.map(tool => (
                   <ToolSelector 
                     key={tool.name} 

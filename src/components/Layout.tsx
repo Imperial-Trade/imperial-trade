@@ -139,12 +139,6 @@ function DashboardHeader() {
 
         {/* Desktop Actions & User Info */}
         <div className="hidden lg:flex items-center gap-4">
-          {/* Live Market Indicator */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-xs font-medium text-green-700 dark:text-green-400">Market Open</span>
-          </div>
-
           {/* Theme Toggle */}
           <ThemeToggle />
 

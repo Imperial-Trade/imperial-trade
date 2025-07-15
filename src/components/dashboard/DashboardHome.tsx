@@ -85,10 +85,23 @@ export const DashboardHome: React.FC = () => {
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Welcome Message */}
             <div className="space-y-4">
-              <h1 className="text-5xl lg:text-7xl font-bold text-white mb-4">
-                Welcome Home,{' '}
+              <h1 className="text-5xl lg:text-7xl font-bold text-white mb-4 flex items-center justify-center gap-4 flex-wrap">
+                Welcome to{' '}
+                <div className="flex items-center gap-3">
+                  <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-accent-gold" />
+                  <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+                    Imperial
+                  </span>
+                </div>
+                {' '}
                 <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                  {user?.user_metadata?.first_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Trader'}
+                  {user?.user_metadata?.first_name && user?.user_metadata?.last_name 
+                    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}!`
+                    : user?.user_metadata?.full_name 
+                      ? `${user.user_metadata.full_name}!`
+                      : user?.user_metadata?.display_name 
+                        ? `${user.user_metadata.display_name}!`
+                        : `${user?.email?.split('@')[0] || 'Trader'}!`}
                 </span>
               </h1>
               

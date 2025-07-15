@@ -25,15 +25,15 @@ export function AppSidebar() {
   if (isMobile) {
     return (
       <Sidebar 
-        className="border-r-0 bg-background/95 backdrop-blur-xl"
+        className="border-r-0 glass-effect"
         collapsible="offcanvas"
         variant="floating"
       >
-        <SidebarHeader className="p-4 border-b border-border/20">
+        <SidebarHeader className="p-6 border-b border-white/10">
           <SidebarBrand isCollapsed={false} />
         </SidebarHeader>
 
-        <SidebarContent className="px-3 py-4 flex-1">
+        <SidebarContent className="px-4 py-6 flex-1">
           <SidebarNavigation isCollapsed={false} />
           <SidebarEducatorSection 
             isCollapsed={false} 
@@ -45,7 +45,7 @@ export function AppSidebar() {
           />
         </SidebarContent>
 
-        <SidebarFooter className="p-4 mt-auto">
+        <SidebarFooter className="p-6 mt-auto border-t border-white/10">
           <SidebarUserMenu isCollapsed={false} />
         </SidebarFooter>
       </Sidebar>
@@ -55,15 +55,15 @@ export function AppSidebar() {
   // For tablet and desktop, use proper Sidebar component with no collapsing
   return (
     <Sidebar 
-      className="border-r-0 bg-background/95 backdrop-blur-xl"
+      className="border-r-0 glass-effect"
       collapsible="none"
       variant="sidebar"
     >
-      <SidebarHeader className="p-4 border-b border-border/20">
+      <SidebarHeader className="p-6 border-b border-white/10">
         <SidebarBrand isCollapsed={false} />
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4 flex-1 overflow-auto">
+      <SidebarContent className="px-4 py-6 flex-1 overflow-auto">
         <SidebarNavigation isCollapsed={false} />
         <SidebarEducatorSection 
           isCollapsed={false} 
@@ -75,7 +75,7 @@ export function AppSidebar() {
         />
       </SidebarContent>
 
-      <SidebarFooter className="p-4 mt-auto">
+      <SidebarFooter className="p-6 mt-auto border-t border-white/10">
         <SidebarUserMenu isCollapsed={false} />
       </SidebarFooter>
     </Sidebar>

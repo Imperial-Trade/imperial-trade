@@ -56,31 +56,31 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
+      <SidebarGroupLabel className={`${isCollapsed ? "sr-only" : ""} text-white/60 uppercase tracking-widest text-xs font-bold mb-4`}>
         Navigation
       </SidebarGroupLabel>
       <SidebarGroupContent>
-        <SidebarMenu>
+        <SidebarMenu className="space-y-2">
           {navigationItems.map((item) => (
             <SidebarMenuItem key={item.to}>
               <SidebarMenuButton
                 asChild
                 isActive={isActive(item.to)}
-                className={`w-full justify-start ${
+                className={`w-full justify-start rounded-xl border-0 transition-all duration-300 ${
                   isActive(item.to)
-                    ? "bg-primary/20 text-primary border border-primary/30"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-bold shadow-lg"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
                 }`}
                 tooltip={isCollapsed ? item.label : undefined}
               >
                 <Link
                   to={item.to}
-                  className="flex items-center gap-3 px-3 py-2"
+                  className="flex items-center gap-4 px-4 py-3"
                   onClick={handleNavigationClick}
                 >
-                  <item.icon className="w-4 h-4 shrink-0" />
+                  <item.icon className="w-5 h-5 shrink-0" />
                   {!isCollapsed && (
-                    <span className="text-sm font-medium">{item.label}</span>
+                    <span className="font-medium tracking-wide">{item.label}</span>
                   )}
                 </Link>
               </SidebarMenuButton>

@@ -11,7 +11,8 @@ import {
   Users, 
   Bell,
   Plus,
-  ArrowRight
+  ArrowRight,
+  Crown
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,22 +53,32 @@ export const DashboardHome: React.FC = () => {
   const isEducator = user?.user_metadata?.user_type === 'educator';
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 space-y-8">
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="animate-fade-in-up">
-            <h1 className="text-4xl font-bold tracking-tight mb-3">
-              Welcome back, <span className="imperial-gradient-text">{user?.user_metadata?.display_name || user?.email?.split('@')[0]}</span>
-            </h1>
-            <p className="text-lg text-muted-foreground">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center shadow-xl">
+                <Crown className="w-10 h-10 text-black" />
+              </div>
+              <div>
+                <h1 className="text-5xl font-black imperial-gradient-text tracking-wider">
+                  DASHBOARD
+                </h1>
+                <p className="text-lg text-white/80 uppercase tracking-widest font-medium">
+                  Welcome back, {user?.user_metadata?.display_name || user?.email?.split('@')[0]}
+                </p>
+              </div>
+            </div>
+            <p className="text-xl text-white/70 max-w-3xl">
               Here's what's happening with your trading activity today.
             </p>
           </div>
           <div className="flex gap-3">
-            <Button asChild className="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-medium shadow-lg hover:shadow-xl transition-all">
+            <Button asChild className="bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-bold shadow-lg hover:shadow-xl transition-all px-6 py-3 text-lg">
               <Link to="/dashboard/new-signal">
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-5 h-5 mr-2" />
                 New Signal
               </Link>
             </Button>

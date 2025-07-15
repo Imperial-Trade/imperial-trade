@@ -79,7 +79,8 @@ const AppBar: React.FC = () => {
       </Link>;
   };
   return <header className={`fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 ${isAccountRequestPage ? '' : isSigninPage ? 'bg-transparent' : 'backdrop-blur-xl border-b border-border/50 bg-zinc-900'}`}>
-      <div className="w-full max-w-7xl flex items-center justify-between">
+      <div className={`w-full max-w-7xl flex items-center ${isSigninPage ? 'justify-center' : 'justify-between'}`}>
+        {isSigninPage && <div className="flex-1"></div>} {/* Spacer for centering */}
         {/* Logo - hide on signin page */}
         {!isSigninPage && (
           <Link to="/" className="flex items-center gap-2">
@@ -135,10 +136,11 @@ const AppBar: React.FC = () => {
         )}
 
         {/* Desktop Auth & Theme Toggle */}
-        <div className={`hidden lg:flex items-center gap-2 ${isSigninPage ? 'ml-auto' : ''}`}>
+        <div className={`hidden lg:flex items-center gap-2 ${isSigninPage ? '' : ''}`}>
           <ThemeToggle />
           {renderAuthButton()}
         </div>
+        {isSigninPage && <div className="flex-1"></div>} {/* Spacer for centering */}
       </div>
 
       {/* Mobile & Tablet Navigation */}

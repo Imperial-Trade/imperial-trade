@@ -3,7 +3,7 @@ import React, { useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton"
-import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User, Settings, BarChart3, ChevronDown } from "lucide-react"
+import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User, Settings, BarChart3, Shield } from "lucide-react"
 import { Link, Outlet, useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
@@ -171,16 +171,37 @@ function DashboardHeader() {
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20">
                       <User className="h-4 w-4 text-primary" />
                     </div>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 bg-background/95 backdrop-blur-xl border border-border/50 shadow-2xl">
+                  {/* User Menu Items */}
                   <DropdownMenuItem asChild>
                     <Link to="/dashboard/progress" className="flex items-center gap-2 cursor-pointer">
                       <BarChart3 className="h-4 w-4" />
                       My Progress
                     </Link>
                   </DropdownMenuItem>
+                  
+                  {/* Educator Menu Items */}
+                  {(user.user_metadata?.role === 'educator' || user.user_metadata?.user_type === 'educator') && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to="/live-sessions" className="flex items-center gap-2 cursor-pointer">
+                          <Video className="h-4 w-4" />
+                          Manage Sessions
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/trade-alerts" className="flex items-center gap-2 cursor-pointer">
+                          <TrendingUp className="h-4 w-4" />
+                          Trade Alerts
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  
+                  {/* Admin Menu Items */}
                   {(getUserAccessLevel() === 'admin' || user.user_metadata?.role === 'admin') && (
                     <>
                       <DropdownMenuSeparator />
@@ -188,6 +209,12 @@ function DashboardHeader() {
                         <Link to="/dashboard/administration" className="flex items-center gap-2 cursor-pointer">
                           <Settings className="h-4 w-4" />
                           Administration
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin-panel" className="flex items-center gap-2 cursor-pointer">
+                          <Shield className="h-4 w-4" />
+                          Admin Panel
                         </Link>
                       </DropdownMenuItem>
                     </>

@@ -1,38 +1,73 @@
-import React from "react";
-import HeroSection from "@/components/landing/HeroSection";
-import StatsSection from "@/components/landing/StatsSection";
-import FeatureCarousel from "@/components/landing/FeatureCarousel";
-import ToolsShowcase from "@/components/landing/ToolsShowcase";
-import ToolsCarousel from "@/components/landing/ToolsCarousel";
-import ContentSection from "@/components/landing/ContentSection";
-import FinalCTA from "@/components/landing/FinalCTA";
 
-export default function Landing() {
+import React, { useEffect } from 'react';
+import { useComprehensivePostHogTracking } from '@/hooks/useComprehensivePostHogTracking';
+import { ClickTracker } from '@/components/analytics/ClickTracker';
+import HeroSection from '@/components/landing/HeroSection';
+import StatsSection from '@/components/landing/StatsSection';
+import FeatureCarousel from '@/components/landing/FeatureCarousel';
+import ToolsShowcase from '@/components/landing/ToolsShowcase';
+import FinalCTA from '@/components/landing/FinalCTA';
+
+const Landing = () => {
+  const { track, trackUserJourney } = useComprehensivePostHogTracking();
+
+  useEffect(() => {
+    // Enhanced landing page tracking with comprehensive context
+    track('landing_page_loaded_comprehensive', {
+      page: 'landing',
+      load_timestamp: Date.now(),
+      referrer: document.referrer,
+      entry_method: document.referrer ? 'referral' : 'direct',
+      page_load_time: performance.now(),
+    });
+
+    // Track landing page entry in user journey
+    trackUserJourney('funnel_landing_page_entry', {
+      entry_source: document.referrer || 'direct',
+      landing_timestamp: Date.now(),
+      user_agent: navigator.userAgent,
+      viewport_size: `${window.innerWidth}x${window.innerHeight}`,
+    });
+  }, [track, trackUserJourney]);
+
   return (
-    <div className="bg-background w-full overflow-x-hidden">
-      <HeroSection />
-      <StatsSection />
-      <FeatureCarousel />
-      <ToolsShowcase />
+    <div className="min-h-screen bg-background">
+      <ClickTracker 
+        trackingId="hero_section" 
+        trackingData={{ section: 'hero', page: 'landing' }}
+      >
+        <HeroSection />
+      </ClickTracker>
       
-      {/* An Arsenal of Professional Tools Section */}
-      <section className="relative py-24 bg-gradient-to-b from-background to-muted/30 dark:from-background dark:to-accent/10">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <ContentSection>
-            <div className="text-center mb-12">
-              <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
-                An Arsenal of <span className="imperial-gradient-text">Professional Tools</span>
-              </h2>
-              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                Engineered for performance, powered by AI. Your trading, elevated.
-              </p>
-            </div>
-          </ContentSection>
-          <ToolsCarousel />
-        </div>
-      </section>
+      <ClickTracker 
+        trackingId="stats_section" 
+        trackingData={{ section: 'stats', page: 'landing' }}
+      >
+        <StatsSection />
+      </ClickTracker>
       
-      <FinalCTA />
+      <ClickTracker 
+        trackingId="feature_carousel" 
+        trackingData={{ section: 'features', page: 'landing' }}
+      >
+        <FeatureCarousel />
+      </ClickTracker>
+      
+      <ClickTracker 
+        trackingId="tools_showcase" 
+        trackingData={{ section: 'tools', page: 'landing' }}
+      >
+        <ToolsShowcase />
+      </ClickTracker>
+      
+      <ClickTracker 
+        trackingId="final_cta" 
+        trackingData={{ section: 'cta', page: 'landing' }}
+      >
+        <FinalCTA />
+      </ClickTracker>
     </div>
   );
-}
+};
+
+export default Landing;

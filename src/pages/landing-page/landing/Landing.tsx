@@ -1,38 +1,35 @@
-import React from "react";
-import HeroSection from "@/components/landing/HeroSection";
-import StatsSection from "@/components/landing/StatsSection";
-import FeatureCarousel from "@/components/landing/FeatureCarousel";
-import ToolsShowcase from "@/components/landing/ToolsShowcase";
-import ToolsCarousel from "@/components/landing/ToolsCarousel";
-import ContentSection from "@/components/landing/ContentSection";
-import FinalCTA from "@/components/landing/FinalCTA";
 
-export default function Landing() {
+import React, { useEffect } from 'react';
+import { usePostHogTracking } from '@/hooks/usePostHogTracking';
+import { HeroSection } from '@/components/landing/HeroSection';
+import { StatsSection } from '@/components/landing/StatsSection';
+import { FeatureCarousel } from '@/components/landing/FeatureCarousel';
+import { ParallaxSection } from '@/components/landing/ParallaxSection';
+import { ToolsShowcase } from '@/components/landing/ToolsShowcase';
+import { FinalCTA } from '@/components/landing/FinalCTA';
+
+const Landing = () => {
+  const { track } = usePostHogTracking();
+
+  useEffect(() => {
+    // Test event to verify PostHog is working
+    track('landing_page_loaded', {
+      page: 'landing',
+      timestamp: new Date().toISOString(),
+      user_agent: navigator.userAgent,
+    });
+  }, [track]);
+
   return (
-    <div className="bg-background w-full overflow-x-hidden">
+    <div className="min-h-screen bg-background">
       <HeroSection />
       <StatsSection />
       <FeatureCarousel />
+      <ParallaxSection />
       <ToolsShowcase />
-      
-      {/* An Arsenal of Professional Tools Section */}
-      <section className="relative py-24 bg-gradient-to-b from-background to-muted/30 dark:from-background dark:to-accent/10">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <ContentSection>
-            <div className="text-center mb-12">
-              <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
-                An Arsenal of <span className="imperial-gradient-text">Professional Tools</span>
-              </h2>
-              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                Engineered for performance, powered by AI. Your trading, elevated.
-              </p>
-            </div>
-          </ContentSection>
-          <ToolsCarousel />
-        </div>
-      </section>
-      
       <FinalCTA />
     </div>
   );
-}
+};
+
+export default Landing;

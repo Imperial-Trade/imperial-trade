@@ -24,61 +24,64 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializePostHog = async () => {
       try {
-        console.log('Initializing PostHog...');
+        console.log('🚀 Initializing PostHog...');
         
         // Get PostHog configuration from edge function
         const { data, error } = await supabase.functions.invoke('posthog-config');
         
         if (error) {
-          console.log('PostHog config error:', error);
+          console.error('❌ PostHog config error:', error);
           setIsEnabled(false);
           setIsLoaded(true);
           return;
         }
 
         if (!data?.enabled || !data?.apiKey) {
-          console.log('PostHog not enabled or API key missing');
+          console.warn('⚠️ PostHog not enabled or API key missing');
           setIsEnabled(false);
           setIsLoaded(true);
           return;
         }
 
-        // Initialize PostHog with enhanced configuration
+        console.log('✅ PostHog config loaded:', { enabled: data.enabled, hasApiKey: !!data.apiKey });
+
+        // Initialize PostHog with simplified configuration
         posthog.init(data.apiKey, {
           api_host: data.apiHost || 'https://app.posthog.com',
-          capture_pageview: false, // We'll handle this manually
+          capture_pageview: true, // Enable automatic page view tracking
           capture_pageleave: true,
           loaded: (posthog) => {
-            console.log('PostHog loaded successfully');
+            console.log('🎯 PostHog loaded successfully');
             setIsLoaded(true);
             setIsEnabled(true);
             
+            // Send a test event to verify PostHog is working
+            posthog.capture('posthog_initialized', {
+              timestamp: new Date().toISOString(),
+              user_agent: navigator.userAgent,
+              url: window.location.href,
+            });
+            
             // Load feature flags
             posthog.onFeatureFlags(() => {
-              // Get all feature flag keys and their values
-              const flagsObject: Record<string, boolean | string> = {};
-              
-              // Since we can't get all flags at once, we'll track them as they're accessed
-              setFeatureFlags(flagsObject);
-              console.log('Feature flags loaded:', flagsObject);
+              console.log('🏁 Feature flags callback triggered');
+              // We'll update flags as they're accessed
+              setFeatureFlags({});
             });
           },
-          // Privacy settings
+          // Privacy and performance settings
           respect_dnt: true,
           opt_out_capturing_by_default: false,
-          // Performance settings
           request_batching: true,
-          // Enhanced settings for funnels and feature flags
+          secure_cookie: true,
+          // Simplified feature flag configuration
           bootstrap: {
             featureFlags: {},
           },
-          // Enable advanced features
-          enable_recording_console_log: true,
-          secure_cookie: true,
         });
 
       } catch (error) {
-        console.error('PostHog initialization error:', error);
+        console.error('💥 PostHog initialization error:', error);
         setIsEnabled(false);
         setIsLoaded(true);
       }
@@ -88,31 +91,44 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const track = (event: string, properties?: Record<string, any>) => {
-    if (!isEnabled || !isLoaded) return;
+    if (!isEnabled || !isLoaded) {
+      console.log('📵 PostHog not enabled/loaded, skipping track:', event);
+      return;
+    }
     
     try {
-      // Add feature flag context to all events
+      console.log('📊 Tracking event:', event, properties);
+      
       const enhancedProperties = {
         ...properties,
-        feature_flags: featureFlags,
         timestamp: new Date().toISOString(),
+        url: window.location.href,
+        path: window.location.pathname,
       };
       
       posthog.capture(event, enhancedProperties);
     } catch (error) {
-      console.error('PostHog tracking error:', error);
+      console.error('❌ PostHog tracking error:', error);
     }
   };
 
   const identify = (userId: string, properties?: Record<string, any>) => {
-    if (!isEnabled || !isLoaded) return;
+    if (!isEnabled || !isLoaded) {
+      console.log('📵 PostHog not enabled/loaded, skipping identify:', userId);
+      return;
+    }
     
     try {
-      posthog.identify(userId, properties);
+      console.log('👤 Identifying user:', userId, properties);
+      posthog.identify(userId, {
+        ...properties,
+        identified_at: new Date().toISOString(),
+      });
+      
       // Reload feature flags after identification
       posthog.reloadFeatureFlags();
     } catch (error) {
-      console.error('PostHog identify error:', error);
+      console.error('❌ PostHog identify error:', error);
     }
   };
 
@@ -120,10 +136,11 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     if (!isEnabled || !isLoaded) return;
     
     try {
+      console.log('🔄 Resetting PostHog');
       posthog.reset();
       setFeatureFlags({});
     } catch (error) {
-      console.error('PostHog reset error:', error);
+      console.error('❌ PostHog reset error:', error);
     }
   };
 
@@ -131,9 +148,11 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     if (!isEnabled || !isLoaded) return undefined;
     
     try {
-      return posthog.getFeatureFlag(flag);
+      const flagValue = posthog.getFeatureFlag(flag);
+      console.log('🏁 Feature flag accessed:', flag, '=', flagValue);
+      return flagValue;
     } catch (error) {
-      console.error('PostHog getFeatureFlag error:', error);
+      console.error('❌ PostHog getFeatureFlag error:', error);
       return undefined;
     }
   };
@@ -143,13 +162,12 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     
     try {
       posthog.onFeatureFlags(() => {
-        // We'll update flags as they're accessed through getFeatureFlag
         const updatedFlags = { ...featureFlags };
         setFeatureFlags(updatedFlags);
         callback(updatedFlags);
       });
     } catch (error) {
-      console.error('PostHog onFeatureFlags error:', error);
+      console.error('❌ PostHog onFeatureFlags error:', error);
     }
   };
 
@@ -157,9 +175,10 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     if (!isEnabled || !isLoaded) return;
     
     try {
+      console.log('🔄 Reloading feature flags');
       posthog.reloadFeatureFlags();
     } catch (error) {
-      console.error('PostHog reloadFeatureFlags error:', error);
+      console.error('❌ PostHog reloadFeatureFlags error:', error);
     }
   };
 

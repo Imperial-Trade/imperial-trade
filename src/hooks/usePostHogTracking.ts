@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { usePostHog } from '@/contexts/PostHogContext';
@@ -9,18 +8,22 @@ export function usePostHogTracking() {
   const { user, profile } = useAuth();
   const location = useLocation();
 
-  // Track page views with funnel context
+  // Track page views automatically (PostHog handles this, but we can add custom properties)
   useEffect(() => {
     if (!isEnabled) return;
     
+    console.log('📍 Page view:', location.pathname);
+    
+    // Add custom page view properties
     const pageProperties = {
-      $current_url: window.location.href,
       path: location.pathname,
       user_type: profile?.user_type || 'anonymous',
       access_level: profile?.access_level || 'free',
+      user_authenticated: !!user,
     };
 
-    track('$pageview', pageProperties);
+    // Track custom page view event with additional context
+    track('page_view_enhanced', pageProperties);
 
     // Track specific funnel entry points
     if (location.pathname === '/') {
@@ -31,14 +34,17 @@ export function usePostHogTracking() {
       track('funnel_education_page_visit', pageProperties);
     } else if (location.pathname.startsWith('/dashboard/signals')) {
       track('funnel_signals_page_visit', pageProperties);
+    } else if (location.pathname.startsWith('/dashboard/admin')) {
+      track('funnel_admin_page_visit', pageProperties);
     }
-  }, [location.pathname, track, isEnabled, profile]);
+  }, [location.pathname, track, isEnabled, profile, user]);
 
-  // Handle user identification with enhanced properties
+  // Handle user identification
   useEffect(() => {
     if (!isEnabled) return;
 
     if (user && profile) {
+      console.log('👤 Identifying authenticated user:', user.id);
       identify(user.id, {
         email: user.email,
         display_name: profile.display_name,
@@ -47,15 +53,28 @@ export function usePostHogTracking() {
         account_status: profile.account_status,
         registration_source: profile.registration_source,
         created_at: profile.created_at,
-        // Funnel tracking properties
+        // Enhanced user properties
         is_approved_user: profile.account_status === 'active',
         has_completed_onboarding: profile.last_login !== null,
         user_journey_stage: getUserJourneyStage(profile),
+        last_login: profile.last_login,
+      });
+      
+      // Track user session start
+      track('user_session_start', {
+        user_type: profile.user_type,
+        access_level: profile.access_level,
+        session_start_time: new Date().toISOString(),
       });
     } else {
-      reset();
+      console.log('👤 User not authenticated, tracking as anonymous');
+      // Track anonymous user activity
+      track('anonymous_user_activity', {
+        page: location.pathname,
+        timestamp: new Date().toISOString(),
+      });
     }
-  }, [user, profile, identify, reset, isEnabled]);
+  }, [user, profile, identify, track, reset, isEnabled, location.pathname]);
 
   // Helper function to determine user journey stage
   const getUserJourneyStage = (profile: any) => {
@@ -66,38 +85,38 @@ export function usePostHogTracking() {
     return 'unknown';
   };
 
-  // Enhanced authentication event tracking with funnel context
+  // Enhanced authentication event tracking
   const trackAuth = {
     login: (method: string = 'email') => {
-      track('user_login', { method });
+      track('user_login', { method, timestamp: new Date().toISOString() });
       track('funnel_login_completed', { method, user_type: profile?.user_type });
     },
     logout: () => {
-      track('user_logout');
+      track('user_logout', { timestamp: new Date().toISOString() });
     },
     signup: (method: string = 'email') => {
-      track('user_signup', { method });
+      track('user_signup', { method, timestamp: new Date().toISOString() });
       track('funnel_signup_completed', { method });
     },
     accountRequest: (accountType: string) => {
-      track('account_request_submitted', { account_type: accountType });
+      track('account_request_submitted', { account_type: accountType, timestamp: new Date().toISOString() });
       track('funnel_account_request_submitted', { account_type: accountType });
     },
     accountApproved: (accountType: string) => {
-      track('funnel_account_approved', { account_type: accountType });
+      track('funnel_account_approved', { account_type: accountType, timestamp: new Date().toISOString() });
     },
     firstLogin: () => {
-      track('funnel_first_login', { user_type: profile?.user_type });
+      track('funnel_first_login', { user_type: profile?.user_type, timestamp: new Date().toISOString() });
     },
   };
 
-  // Enhanced trading event tracking with conversion funnels
   const trackTrading = {
     signalCreate: (signalData: any) => {
       track('trade_signal_created', {
         asset_name: signalData.asset_name,
         trade_type: signalData.trade_type,
         entry_price: signalData.entry_price,
+        timestamp: new Date().toISOString(),
       });
       track('funnel_signal_created', {
         asset_name: signalData.asset_name,
@@ -106,7 +125,10 @@ export function usePostHogTracking() {
       });
     },
     signalView: (signalId: string, signalData?: any) => {
-      track('trade_signal_viewed', { signal_id: signalId });
+      track('trade_signal_viewed', { 
+        signal_id: signalId, 
+        timestamp: new Date().toISOString() 
+      });
       track('funnel_signal_viewed', { 
         signal_id: signalId,
         signal_type: signalData?.trade_type,
@@ -114,7 +136,10 @@ export function usePostHogTracking() {
       });
     },
     signalFollow: (signalId: string) => {
-      track('trade_signal_followed', { signal_id: signalId });
+      track('trade_signal_followed', { 
+        signal_id: signalId, 
+        timestamp: new Date().toISOString() 
+      });
       track('funnel_signal_followed', { signal_id: signalId });
     },
     signalShare: (signalId: string) => {
@@ -137,7 +162,8 @@ export function usePostHogTracking() {
     videoStart: (videoId: string, title: string) => {
       track('education_video_started', { 
         video_id: videoId, 
-        video_title: title 
+        video_title: title,
+        timestamp: new Date().toISOString(),
       });
       track('funnel_education_video_started', { 
         video_id: videoId, 
@@ -164,7 +190,8 @@ export function usePostHogTracking() {
     videoComplete: (videoId: string, title: string) => {
       track('education_video_completed', { 
         video_id: videoId, 
-        video_title: title 
+        video_title: title,
+        timestamp: new Date().toISOString(),
       });
       track('funnel_education_video_completed', { 
         video_id: videoId, 
@@ -190,7 +217,10 @@ export function usePostHogTracking() {
   // Enhanced tools tracking
   const trackTools = {
     calculatorUse: (calculatorType: string) => {
-      track('calculator_used', { calculator_type: calculatorType });
+      track('calculator_used', { 
+        calculator_type: calculatorType,
+        timestamp: new Date().toISOString(),
+      });
       track('funnel_advanced_tool_used', { tool_type: calculatorType });
     },
     economicCalendarView: () => {

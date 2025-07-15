@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +8,7 @@ import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { PostHogProvider } from "@/contexts/PostHogContext";
+import { PostHogTracker } from "@/components/analytics/PostHogTracker";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 
@@ -74,6 +74,7 @@ function App() {
             <AuthProvider>
               <NavigationGuard>
                 <PostHogProvider>
+                  <PostHogTracker />
                   <SignalRealtimeProvider>
                     <WebSocketPriceProvider>
                       <Routes>

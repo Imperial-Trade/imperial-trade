@@ -67,106 +67,36 @@ export function SignalStreamFilters({
   ];
 
   return (
-    <Card className="mb-6">
-      <CardContent className="p-4 space-y-4">
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search signals by asset, symbol, or educator..."
-            value={filters.search}
-            onChange={(e) => updateFilter('search', e.target.value)}
-            className="pl-10 pr-10"
-          />
-          {filters.search && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => clearFilter('search')}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-            >
-              <X className="w-3 h-3" />
-            </Button>
-          )}
-        </div>
-
-        {/* Filter Chips */}
-        <div className="flex flex-wrap gap-2">
-          {/* Status Filter */}
-          <div className="flex gap-1">
-            {statusOptions.map(option => {
-              const Icon = option.icon;
-              const isActive = filters.status === option.value;
-              return (
-                <Button
-                  key={option.value}
-                  variant={isActive ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => updateFilter('status', option.value)}
-                  className="h-8"
-                >
-                  <Icon className="w-3 h-3 mr-1" />
-                  {option.label}
-                  <Badge 
-                    variant="secondary" 
-                    className="ml-2 h-4 text-xs"
-                  >
-                    {option.count}
-                  </Badge>
-                </Button>
-              );
-            })}
+    <Card className="mb-6 bg-card/80 backdrop-blur-sm border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300">
+      <CardContent className="p-3 space-y-3">
+        {/* Compact Top Bar with Search and Clear */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search signals..."
+              value={filters.search}
+              onChange={(e) => updateFilter('search', e.target.value)}
+              className="pl-9 pr-8 h-8 text-sm bg-background/50 border-border/60 focus:border-primary/50 transition-colors"
+            />
+            {filters.search && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => clearFilter('search')}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            )}
           </div>
-
-          {/* Trade Type Filter */}
-          <div className="flex gap-1">
-            {tradeTypeOptions.map(option => {
-              const Icon = option.icon;
-              const isActive = filters.tradeType === option.value;
-              return (
-                <Button
-                  key={option.value}
-                  variant={isActive ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => updateFilter('tradeType', option.value)}
-                  className="h-8"
-                >
-                  <Icon className="w-3 h-3 mr-1" />
-                  {option.label}
-                  <Badge 
-                    variant="secondary" 
-                    className="ml-2 h-4 text-xs"
-                  >
-                    {option.count}
-                  </Badge>
-                </Button>
-              );
-            })}
-          </div>
-
-          {/* Educator Filter */}
-          {educatorOptions.length > 1 && (
-            <select
-              value={filters.educator}
-              onChange={(e) => updateFilter('educator', e.target.value)}
-              className="px-3 py-1 text-sm border border-input rounded-md bg-background h-8"
-            >
-              <option value="">All Educators ({educatorOptions.length})</option>
-              {educatorOptions.map(educator => (
-                <option key={educator.id} value={educator.id}>
-                  {educator.name}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Clear All Filters */}
+          
           {hasActiveFilters && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={clearAllFilters}
-              className="h-8 text-muted-foreground"
+              className="h-8 px-3 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/30"
             >
               <X className="w-3 h-3 mr-1" />
               Clear All
@@ -174,58 +104,158 @@ export function SignalStreamFilters({
           )}
         </div>
 
-        {/* Active Filter Summary */}
+        {/* Premium Filter Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          {/* Status Filters */}
+          <div className="space-y-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</span>
+            <div className="flex flex-wrap gap-1.5">
+              {statusOptions.map(option => {
+                const Icon = option.icon;
+                const isActive = filters.status === option.value;
+                return (
+                  <Button
+                    key={option.value}
+                    variant={isActive ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => updateFilter('status', option.value)}
+                    className={`h-7 px-2.5 text-xs transition-all duration-200 group ${
+                      isActive 
+                        ? "bg-primary/90 border-primary/20 shadow-sm shadow-primary/20" 
+                        : "bg-background/50 border-border/60 hover:bg-accent/50 hover:border-lightGreenHover dark:hover:border-primary/30"
+                    }`}
+                  >
+                    <Icon className="w-3 h-3 mr-1.5" />
+                    <span className="hidden sm:inline">{option.label}</span>
+                    <Badge 
+                      variant="secondary" 
+                      className={`ml-1.5 h-4 px-1.5 text-[10px] ${
+                        isActive 
+                          ? "bg-primary-foreground/20 text-primary-foreground" 
+                          : "bg-muted/50"
+                      }`}
+                    >
+                      {option.count}
+                    </Badge>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Trade Type Filters */}
+          <div className="space-y-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</span>
+            <div className="flex flex-wrap gap-1.5">
+              {tradeTypeOptions.map(option => {
+                const Icon = option.icon;
+                const isActive = filters.tradeType === option.value;
+                return (
+                  <Button
+                    key={option.value}
+                    variant={isActive ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => updateFilter('tradeType', option.value)}
+                    className={`h-7 px-2.5 text-xs transition-all duration-200 group ${
+                      isActive 
+                        ? "bg-primary/90 border-primary/20 shadow-sm shadow-primary/20" 
+                        : "bg-background/50 border-border/60 hover:bg-accent/50 hover:border-lightGreenHover dark:hover:border-primary/30"
+                    }`}
+                  >
+                    <Icon className="w-3 h-3 mr-1.5" />
+                    <span className="hidden sm:inline">{option.label}</span>
+                    <Badge 
+                      variant="secondary" 
+                      className={`ml-1.5 h-4 px-1.5 text-[10px] ${
+                        isActive 
+                          ? "bg-primary-foreground/20 text-primary-foreground" 
+                          : "bg-muted/50"
+                      }`}
+                    >
+                      {option.count}
+                    </Badge>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Educator Filter */}
+          {educatorOptions.length > 1 && (
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Educator</span>
+              <select
+                value={filters.educator}
+                onChange={(e) => updateFilter('educator', e.target.value)}
+                className="w-full h-7 px-2.5 text-xs bg-background/50 border border-border/60 rounded-md focus:border-primary/50 focus:outline-none transition-colors"
+              >
+                <option value="">All Educators ({educatorOptions.length})</option>
+                {educatorOptions.map(educator => (
+                  <option key={educator.id} value={educator.id}>
+                    {educator.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Minimal Active Filter Summary */}
         {hasActiveFilters && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t">
+          <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/30">
             {filters.search && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Search: "{filters.search}"
+              <Badge variant="outline" className="h-6 px-2 text-xs bg-background/50 border-border/60 flex items-center gap-1">
+                <Search className="w-3 h-3" />
+                "{filters.search}"
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => clearFilter('search')}
-                  className="h-3 w-3 p-0 ml-1"
+                  className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <X className="w-2 h-2" />
+                  <X className="w-2.5 h-2.5" />
                 </Button>
               </Badge>
             )}
             {filters.status && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Status: {statusOptions.find(o => o.value === filters.status)?.label}
+              <Badge variant="outline" className="h-6 px-2 text-xs bg-background/50 border-border/60 flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {statusOptions.find(o => o.value === filters.status)?.label}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => clearFilter('status')}
-                  className="h-3 w-3 p-0 ml-1"
+                  className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <X className="w-2 h-2" />
+                  <X className="w-2.5 h-2.5" />
                 </Button>
               </Badge>
             )}
             {filters.tradeType && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Type: {tradeTypeOptions.find(o => o.value === filters.tradeType)?.label}
+              <Badge variant="outline" className="h-6 px-2 text-xs bg-background/50 border-border/60 flex items-center gap-1">
+                {filters.tradeType === 'buy' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {tradeTypeOptions.find(o => o.value === filters.tradeType)?.label}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => clearFilter('tradeType')}
-                  className="h-3 w-3 p-0 ml-1"
+                  className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <X className="w-2 h-2" />
+                  <X className="w-2.5 h-2.5" />
                 </Button>
               </Badge>
             )}
             {filters.educator && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Educator: {educatorOptions.find(e => e.id === filters.educator)?.name}
+              <Badge variant="outline" className="h-6 px-2 text-xs bg-background/50 border-border/60 flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                {educatorOptions.find(e => e.id === filters.educator)?.name}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => clearFilter('educator')}
-                  className="h-3 w-3 p-0 ml-1"
+                  className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <X className="w-2 h-2" />
+                  <X className="w-2.5 h-2.5" />
                 </Button>
               </Badge>
             )}

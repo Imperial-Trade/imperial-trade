@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,40 +11,42 @@ import { PageStyles } from "@/components/account-request/PageStyles";
 import { useToast } from "@/hooks/use-toast";
 import { ApprovedAccountFlow } from "@/components/account-request/ApprovedAccountFlow";
 import { useAccountStatusWebSocket } from "@/hooks/useAccountStatusWebSocket";
-
 export default function AccountRequestStatusPage() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [searchEmail, setSearchEmail] = useState(""); // Email being searched via WebSocket
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
 
   // Use WebSocket for real-time status updates
-  const { status, isConnected, error, checkStatus } = useAccountStatusWebSocket({
+  const {
+    status,
+    isConnected,
+    error,
+    checkStatus
+  } = useAccountStatusWebSocket({
     email: searchEmail,
     enabled: !!searchEmail
   });
-
   const handleCheckStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-
     setIsLoading(true);
     setSearchEmail(email.toLowerCase());
-    
+
     // Check status via WebSocket
     checkStatus(email.toLowerCase());
-    
+
     // Show loading for a brief moment for UX
     setTimeout(() => {
       setIsLoading(false);
     }, 1000);
   };
-
   const handleCheckAnother = () => {
     setSearchEmail("");
     setEmail("");
   };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
@@ -56,35 +57,29 @@ export default function AccountRequestStatusPage() {
         return <Clock className="w-8 h-8 text-gray-400" />;
     }
   };
-
   const getStatusMessage = (status: string) => {
     switch (status) {
       case "pending":
         return {
           title: "Request Pending",
-          message:
-            "Your account request is currently being reviewed by our administrators.",
-          instructions:
-            "Please wait 12-48 hours for approval. You will receive an email notification once your request has been processed.",
+          message: "Your account request is currently being reviewed by our administrators.",
+          instructions: "Please wait 12-48 hours for approval. You will receive an email notification once your request has been processed."
         };
       case "rejected":
         return {
           title: "Request Denied",
           message: "We're sorry, but your account request has been denied.",
-          instructions:
-            "We cannot validate your VT Market credentials. Please contact support if you believe this is an error.",
+          instructions: "We cannot validate your VT Market credentials. Please contact support if you believe this is an error."
         };
       default:
         return {
           title: "Unknown Status",
           message: "Unable to determine request status.",
-          instructions: "Please contact support for assistance.",
+          instructions: "Please contact support for assistance."
         };
     }
   };
-
-  return (
-    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
+  return <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
       <VideoBackground />
 
       <div className="relative z-20 max-w-2xl w-full">
@@ -97,61 +92,35 @@ export default function AccountRequestStatusPage() {
             </CardTitle>
             <p className="text-secondary text-center text-white">
               Check the status of your account request
-              {isConnected && (
-                <span className="ml-2 text-green-400 text-sm">● Real-time updates</span>
-              )}
+              {isConnected && <span className="ml-2 text-green-400 text-sm">● Real-time updates</span>}
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!status ? (
-              <form onSubmit={handleCheckStatus} className="space-y-4">
+            {!status ? <form onSubmit={handleCheckStatus} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
                     Email Address
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email address"
-                      className="pl-10 bg-white border-gray-300 text-gray-900"
-                      required
-                    />
+                    <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Enter your email address" className="pl-10 bg-white border-gray-300 text-gray-900" required />
                   </div>
                 </div>
 
-                {(error && searchEmail) && (
-                  <div className="p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+                {error && searchEmail && <div className="p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
                     <div className="flex items-center gap-2">
                       <XCircle className="w-4 h-4" />
                       <span>{error}</span>
                     </div>
-                    {error.includes('WebSocket') && (
-                      <p className="text-xs mt-1 text-gray-400">
+                    {error.includes('WebSocket') && <p className="text-xs mt-1 text-gray-400">
                         Switched to backup connection method automatically.
-                      </p>
-                    )}
-                  </div>
-                )}
+                      </p>}
+                  </div>}
 
-                <Button
-                  type="submit"
-                  disabled={isLoading || !email}
-                  className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
-                >
-                  {isLoading ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                  ) : (
-                    "Check Status"
-                  )}
+                <Button type="submit" disabled={isLoading || !email} className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12">
+                  {isLoading ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> : "Check Status"}
                 </Button>
-              </form>
-            ) : status.status === "approved" ? (
-              <ApprovedAccountFlow accountRequest={status} />
-            ) : (
-              <div className="space-y-6">
+              </form> : status.status === "approved" ? <ApprovedAccountFlow accountRequest={status} /> : <div className="space-y-6">
                 <div className="text-center">
                   {getStatusIcon(status.status)}
                   <h3 className="text-xl font-semibold text-white mt-4">
@@ -177,9 +146,7 @@ export default function AccountRequestStatusPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Account Type:</span>
                     <span className="text-white">
-                      {status.account_type === "user"
-                        ? "Standard Member"
-                        : "Educator / IB Partner"}
+                      {status.account_type === "user" ? "Standard Member" : "Educator / IB Partner"}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -188,32 +155,22 @@ export default function AccountRequestStatusPage() {
                       {new Date(status.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  {status.rejection_reason && (
-                    <div className="flex justify-between text-sm">
+                  {status.rejection_reason && <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Reason:</span>
                       <span className="text-red-300">
                         {status.rejection_reason}
                       </span>
-                    </div>
-                  )}
+                    </div>}
                 </div>
 
-                <Button
-                  variant="outline"
-                  className="w-full border-white/20 text-white/80 hover:bg-white/10"
-                  onClick={handleCheckAnother}
-                >
+                <Button variant="outline" className="w-full border-white/20 text-white/80 hover:bg-white/10" onClick={handleCheckAnother}>
                   Check Another Email
                 </Button>
-              </div>
-            )}
+              </div>}
 
             <div className="pt-4 grid grid-cols">
               <Link to={createPageUrl("account-request")}>
-                <Button
-                  variant="outline"
-                  className="w-full border-white/20 text-white/80 hover:bg-white/10"
-                >
+                <Button variant="outline" className="w-full border-white/20 hover:bg-white/10 text-gray-950">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Request Form
                 </Button>
@@ -224,6 +181,5 @@ export default function AccountRequestStatusPage() {
       </div>
 
       <PageStyles />
-    </div>
-  );
+    </div>;
 }

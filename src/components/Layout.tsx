@@ -3,7 +3,7 @@ import React, { useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton"
-import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User, Settings, BarChart3, Shield } from "lucide-react"
+import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User, Settings, BarChart3, Shield, Plus } from "lucide-react"
 import { Link, Outlet, useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
@@ -170,6 +170,16 @@ function DashboardHeader() {
                 </Badge>
               </div>
               <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
+              
+              {/* New Button next to profile */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all duration-200"
+                title="Quick Action"
+              >
+                <Plus className="h-4 w-4 text-primary" />
+              </Button>
               
               {/* Profile Dropdown */}
               <DropdownMenu>

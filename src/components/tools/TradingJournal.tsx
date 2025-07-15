@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { TradeJournalEntry } from '@/api/entities';
+import { supabase } from '@/integrations/supabase/client';
 import AdvancedTradingJournal from './AdvancedTradingJournal';
 import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BookOpen, Lock, Unlock } from 'lucide-react';
 import { format } from 'date-fns';
@@ -17,12 +18,33 @@ export default function TradingJournal() {
   const [screenshotFile, setScreenshotFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [unlockStatus, setUnlockStatus] = useState({ isUnlocked: false, tradingDays: 0, totalEntries: 0 });
+  const [unlockStatus, setUnlockStatus] = useState({ isUnlocked: false, tradingDays: 0, totalEntries: 0, isAdmin: false });
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
     loadEntries();
+    loadUserProfile();
   }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          setUserProfile(profile);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading user profile:", error);
+    }
+  };
 
   const loadEntries = async () => {
     setIsLoading(true);
@@ -37,6 +59,13 @@ export default function TradingJournal() {
   };
 
   const checkUnlockStatus = (entries) => {
+    // Check if user is admin
+    const isAdmin = userProfile && (
+      userProfile.access_level === 'admin' || 
+      userProfile.role === 'admin' || 
+      userProfile.user_type === 'admin'
+    );
+
     // Group entries by trading date
     const entriesByDate = {};
     entries.forEach(entry => {
@@ -49,10 +78,17 @@ export default function TradingJournal() {
 
     const tradingDays = Object.keys(entriesByDate).length;
     const totalEntries = entries.length;
-    const isUnlocked = tradingDays >= 10 && totalEntries >= 10;
+    const isUnlocked = isAdmin || (tradingDays >= 10 && totalEntries >= 10);
 
-    setUnlockStatus({ isUnlocked, tradingDays, totalEntries });
+    setUnlockStatus({ isUnlocked, tradingDays, totalEntries, isAdmin });
   };
+
+  // Re-check unlock status when user profile changes
+  useEffect(() => {
+    if (entries.length > 0) {
+      checkUnlockStatus(entries);
+    }
+  }, [userProfile]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -125,7 +161,7 @@ export default function TradingJournal() {
 
       setNewEntry({ asset_ticker: '', pnl: '', notes: '' });
       setScreenshotFile(null);
-      loadEntries();
+        loadEntries();
 
     } catch (error) {
       console.error("Error submitting journal entry:", error);
@@ -211,7 +247,7 @@ export default function TradingJournal() {
               {unlockStatus.isUnlocked ? (
                 <>
                   <Unlock className="w-4 h-4 mr-2" />
-                  Open Advanced
+                  {unlockStatus.isAdmin ? 'Admin Access' : 'Open Advanced'}
                 </>
               ) : (
                 <>
@@ -222,13 +258,20 @@ export default function TradingJournal() {
             </Button>
           </CardTitle>
           <p className="text-secondary">Log your trades, reflect on your decisions, and get AI-powered encouragement.</p>
-          {!unlockStatus.isUnlocked && (
+          {!unlockStatus.isUnlocked && !unlockStatus.isAdmin && (
             <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
               <p className="text-sm text-amber-800 dark:text-amber-200">
                 🏆 <strong>Unlock Advanced Features:</strong> Log trades across 10 different trading days (minimum 10 total entries) to unlock advanced analytics and insights.
               </p>
               <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
                 Progress: {unlockStatus.tradingDays}/10 trading days • {unlockStatus.totalEntries}/10 total entries
+              </p>
+            </div>
+          )}
+          {unlockStatus.isAdmin && (
+            <div className="mt-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md">
+              <p className="text-sm text-green-800 dark:text-green-200">
+                👑 <strong>Admin Access:</strong> You have administrative privileges and can access all advanced features.
               </p>
             </div>
           )}

@@ -1,0 +1,48 @@
+
+name: trade-imperial-app
+type: nodejs:18
+
+web:
+  locations:
+    # Static assets
+    "/static":
+      root: "dist/static"
+      expires: 1y
+      allow: true
+    
+    # Root assets (favicon, manifest, etc.)
+    "/":
+      root: "dist"
+      expires: 1y
+      allow: true
+      rules:
+        '\.(ico|png|jpg|jpeg|gif|svg|css|js|json|xml|txt)$':
+          allow: true
+    
+    # SPA fallback - serve index.html for all routes
+    "/":
+      root: "dist"
+      index: ["index.html"]
+      expires: 0
+      scripts: false
+      allow: false
+      rules:
+        # Allow API routes if any
+        '^/api/':
+          allow: false
+        # Fallback to index.html for client-side routing
+        '.*':
+          expires: 0
+          passthru: "/index.html"
+
+build:
+  flavor: none
+
+dependencies:
+  nodejs:
+    yarn: "*"
+
+hooks:
+  build: |
+    yarn install --frozen-lockfile
+    yarn build

@@ -23,7 +23,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!user) {
-    return <Navigate to="/signin" state={{ from: location }} replace />;
+    // Save the attempted location for redirecting after login
+    return <Navigate to="/signin" state={{ from: location.pathname + location.search }} replace />;
   }
 
   // Check access level (admin, moderator, user)

@@ -1,0 +1,24 @@
+
+runtime: nodejs18
+
+handlers:
+  # Serve static files
+  - url: /static
+    static_dir: dist/static
+    secure: always
+
+  # Serve favicon and other root assets
+  - url: /(.*\.(ico|png|jpg|jpeg|gif|svg|css|js|json|xml|txt))$
+    static_files: dist/\1
+    upload: dist/.*\.(ico|png|jpg|jpeg|gif|svg|css|js|json|xml|txt)$
+    secure: always
+
+  # Catch-all rule for SPA routing - serve index.html for all other requests
+  - url: /.*
+    static_files: dist/index.html
+    upload: dist/index.html
+    secure: always
+
+automatic_scaling:
+  min_instances: 1
+  max_instances: 10

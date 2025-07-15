@@ -30,6 +30,7 @@ export default function TradingJournal() {
   const loadUserProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user:', user);
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -37,8 +38,13 @@ export default function TradingJournal() {
           .eq('id', user.id)
           .single();
         
+        console.log('User profile loaded:', profile);
         if (profile) {
           setUserProfile(profile);
+          // Re-check unlock status after profile loads
+          if (entries.length > 0) {
+            checkUnlockStatus(entries, profile);
+          }
         }
       }
     } catch (error) {
@@ -51,20 +57,26 @@ export default function TradingJournal() {
     try {
       const fetchedEntries = await TradeJournalEntry.list('-created_date');
       setEntries(fetchedEntries);
-      checkUnlockStatus(fetchedEntries);
+      // Check unlock status with current user profile
+      checkUnlockStatus(fetchedEntries, userProfile);
     } catch (error) {
       console.error("Error loading journal entries:", error);
     }
     setIsLoading(false);
   };
 
-  const checkUnlockStatus = (entries) => {
+  const checkUnlockStatus = (entries, profile = null) => {
+    const currentProfile = profile || userProfile;
+    console.log('Checking unlock status with profile:', currentProfile);
+    
     // Check if user is admin
-    const isAdmin = userProfile && (
-      userProfile.access_level === 'admin' || 
-      userProfile.role === 'admin' || 
-      userProfile.user_type === 'admin'
+    const isAdmin = currentProfile && (
+      currentProfile.access_level === 'admin' || 
+      currentProfile.role === 'admin' || 
+      currentProfile.user_type === 'admin'
     );
+    
+    console.log('Is admin check:', isAdmin);
 
     // Group entries by trading date
     const entriesByDate = {};
@@ -80,13 +92,14 @@ export default function TradingJournal() {
     const totalEntries = entries.length;
     const isUnlocked = isAdmin || (tradingDays >= 10 && totalEntries >= 10);
 
+    console.log('Unlock status calculated:', { isUnlocked, tradingDays, totalEntries, isAdmin });
     setUnlockStatus({ isUnlocked, tradingDays, totalEntries, isAdmin });
   };
 
   // Re-check unlock status when user profile changes
   useEffect(() => {
-    if (entries.length > 0) {
-      checkUnlockStatus(entries);
+    if (entries.length > 0 && userProfile) {
+      checkUnlockStatus(entries, userProfile);
     }
   }, [userProfile]);
 

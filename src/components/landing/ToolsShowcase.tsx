@@ -105,22 +105,20 @@ export default function ToolsShowcase() {
             {tools.map((tool, index) => (
               <div
                 key={tool.title}
-                className={`group relative bg-card/50 backdrop-blur-xl rounded-3xl p-8 border border-border/50 overflow-hidden ${index < 4 ? `tool-box-${index}` : ''}`}
+                className={`group relative bg-card/50 backdrop-blur-xl rounded-3xl p-8 border border-border/50 overflow-hidden tool-box-${index}`}
               >
                 {/* Gradient Background */}
                 <div 
                   className={`absolute inset-0 bg-gradient-to-br ${tool.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-3xl`}
                 />
                 
-                {/* Circular Animation Highlight - Only for first 4 boxes */}
-                {index < 4 && (
-                  <div 
-                    className="absolute inset-0 opacity-0 rounded-3xl circular-highlight"
-                    style={{ 
-                      background: `linear-gradient(135deg, ${tool.color}20, ${tool.color}10)` 
-                    }}
-                  />
-                )}
+                {/* Circular Animation Highlight - All 8 boxes */}
+                <div 
+                  className="absolute inset-0 opacity-0 rounded-3xl circular-highlight"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${tool.color}20, ${tool.color}10)` 
+                  }}
+                />
                 
                 <div className="relative z-10">
                   <div 

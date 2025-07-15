@@ -41,6 +41,8 @@ import NewSignalPage from "@/pages/dashboard/new-signal/NewSignalPage";
 import Education from "@/pages/dashboard/education/Education";
 import AdvancedTools from "@/pages/dashboard/advanced-tools/AdvancedTools";
 import MyProgress from "@/pages/dashboard/my-progress/MyProgress";
+import Progress from "@/pages/dashboard/progress/Progress";
+import Administration from "@/pages/dashboard/administration/Administration";
 import Settings from "@/pages/dashboard/settings/Settings";
 import AdminPanel from "@/pages/dashboard/admin-panel/AdminPanel";
 import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
@@ -123,9 +125,19 @@ function App() {
                             <Route path="education" element={<Education />} />
                             <Route path="advanced-tools" element={<AdvancedTools />} />
                             <Route path="my-progress" element={<MyProgress />} />
+                            <Route path="progress" element={<Progress />} />
                             <Route path="settings" element={<Settings />} />
                             <Route path="athena" element={<AthenaTest />} />
                             <Route path="dev-tests" element={<DevTests />} />
+                            
+                            <Route
+                              path="administration"
+                              element={
+                                <ProtectedRoute requiredAccessLevel="admin">
+                                  <Administration />
+                                </ProtectedRoute>
+                              }
+                            />
                             
                             <Route
                               path="admin"

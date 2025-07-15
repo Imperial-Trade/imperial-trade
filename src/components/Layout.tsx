@@ -3,7 +3,7 @@ import React, { useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton"
-import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User } from "lucide-react"
+import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User, Settings, BarChart3, ChevronDown } from "lucide-react"
 import { Link, Outlet, useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 
 function DashboardHeader() {
@@ -163,10 +164,36 @@ function DashboardHeader() {
               </div>
               <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
               
-              {/* Profile Icon */}
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20 ml-2">
-                <User className="h-4 w-4 text-primary" />
-              </div>
+              {/* Profile Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="flex items-center gap-1 p-1 h-auto ml-2">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-background/95 backdrop-blur-xl border border-border/50 shadow-2xl">
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/progress" className="flex items-center gap-2 cursor-pointer">
+                      <BarChart3 className="h-4 w-4" />
+                      My Progress
+                    </Link>
+                  </DropdownMenuItem>
+                  {(getUserAccessLevel() === 'admin' || user.user_metadata?.role === 'admin') && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/administration" className="flex items-center gap-2 cursor-pointer">
+                          <Settings className="h-4 w-4" />
+                          Administration
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </div>

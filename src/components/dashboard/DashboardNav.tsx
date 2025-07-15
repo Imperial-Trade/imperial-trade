@@ -76,7 +76,7 @@ const DashboardNav: React.FC = () => {
           <span className="text-xl imperial-tech-font">IMPERIAL</span>
         </Link>
 
-        {/* Desktop Navigation - Collapsed Primary Items */}
+        {/* Desktop Navigation - Primary Items Only */}
         <nav className={`hidden lg:flex items-center gap-2 rounded-2xl p-2 transition-all duration-300 ${
           scrolled 
             ? 'bg-muted/50 backdrop-blur-sm border border-border/50' 
@@ -101,38 +101,6 @@ const DashboardNav: React.FC = () => {
               </Link>
             );
           })}
-
-          {/* More menu dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-background/80 hover:shadow-md transition-all duration-200"
-              >
-                <Grid3X3 className="h-4 w-4" />
-                More
-                <ChevronDown className="h-3 w-3 ml-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="center">
-              {secondaryNavItems.map(item => {
-                const isActive = location.pathname === item.to;
-                return (
-                  <DropdownMenuItem key={item.to} asChild>
-                    <Link 
-                      to={item.to} 
-                      className={`flex items-center gap-3 w-full ${
-                        isActive ? 'bg-primary/10 text-primary' : ''
-                      }`}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </Link>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </nav>
 
         {/* Desktop Actions */}
@@ -172,6 +140,39 @@ const DashboardNav: React.FC = () => {
               3
             </Badge>
           </Button>
+
+          {/* More menu dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className={`relative hover:bg-primary/10 group transition-all duration-200 ${
+                  scrolled ? 'bg-background/60' : 'bg-background/30'
+                }`}
+              >
+                <Grid3X3 className="h-4 w-4 transition-colors group-hover:text-primary" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end">
+              {secondaryNavItems.map(item => {
+                const isActive = location.pathname === item.to;
+                return (
+                  <DropdownMenuItem key={item.to} asChild>
+                    <Link 
+                      to={item.to} 
+                      className={`flex items-center gap-3 w-full ${
+                        isActive ? 'bg-primary/10 text-primary' : ''
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <ThemeToggle />
 

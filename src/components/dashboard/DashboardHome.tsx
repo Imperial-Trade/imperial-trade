@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -72,35 +72,6 @@ export const DashboardHome: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.user_metadata?.access_level === 'admin';
   const isEducator = user?.user_metadata?.user_type === 'educator';
-  
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [isMarketOpen, setIsMarketOpen] = useState(true);
-
-  useEffect(() => {
-    // Check if market is open (simple example: 9 AM - 4 PM EST weekdays)
-    const checkMarketStatus = () => {
-      const now = new Date();
-      const day = now.getDay(); // 0 = Sunday, 6 = Saturday
-      const hour = now.getHours();
-      
-      // Market closed on weekends
-      if (day === 0 || day === 6) {
-        setIsMarketOpen(false);
-        return;
-      }
-      
-      // Market open 9 AM - 4 PM (simplified)
-      setIsMarketOpen(hour >= 9 && hour < 16);
-    };
-
-    checkMarketStatus();
-    
-    const timer = setTimeout(() => {
-      setShowWelcome(false);
-    }, 6000);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <div className="relative min-h-screen">
@@ -118,14 +89,9 @@ export const DashboardHome: React.FC = () => {
                   <Crown className="h-6 w-6 text-primary-foreground" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent">
-                      {showWelcome ? 'Welcome back' : (isMarketOpen ? 'Market Open' : 'Market Close')}
-                    </h1>
-                    {!showWelcome && (
-                      <div className={`w-3 h-3 rounded-full ${isMarketOpen ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    )}
-                  </div>
+                  <h1 className="text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent">
+                    Welcome back
+                  </h1>
                   <p className="text-xl text-primary font-medium">
                     {user?.user_metadata?.display_name || user?.email?.split('@')[0]}
                   </p>
@@ -157,7 +123,6 @@ export const DashboardHome: React.FC = () => {
               </Button>
             </div>
           </div>
-
         </div>
       </div>
 

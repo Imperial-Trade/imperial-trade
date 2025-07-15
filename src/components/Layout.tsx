@@ -274,7 +274,7 @@ function DashboardHeader() {
                     <p className="text-sm font-medium text-foreground">
                       {user.user_metadata?.first_name && user.user_metadata?.last_name 
                         ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
-                        : user.user_metadata?.display_name || 'User'}
+                        : user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'}
                     </p>
                     <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-white text-xs mt-1`}>
                       {getAccessLevelDisplay(getUserAccessLevel()).label}

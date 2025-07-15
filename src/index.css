@@ -104,44 +104,60 @@
   }
 
   .dark {
-    /* Dark Spanish Gray theme */
-    --background: 0 0% 26%; /* #434343 */
-    --foreground: 0 0% 89%; /* #E4E4E4 */
+    /* Dark mode with elegant design */
+    --background: 222 84% 5%; /* Very dark navy */
+    --foreground: 210 40% 98%; /* Almost white */
 
-    --card: 0 0% 40%; /* #656565 */
-    --card-foreground: 0 0% 89%; /* #E4E4E4 */
+    --card: 222 84% 8%; /* Dark navy card */
+    --card-foreground: 210 40% 95%; /* Light text */
 
-    --popover: 0 0% 40%; /* #656565 */
-    --popover-foreground: 0 0% 89%; /* #E4E4E4 */
+    --popover: 222 84% 8%; /* Dark navy */
+    --popover-foreground: 210 40% 95%; /* Light text */
 
-    --primary: 0 0% 89%; /* #E4E4E4 */
-    --primary-foreground: 0 0% 26%; /* #434343 */
+    --primary: 43 75% 65%; /* Gold primary */
+    --primary-foreground: 222 84% 5%; /* Dark text on gold */
 
-    --secondary: 0 0% 40%; /* #656565 */
-    --secondary-foreground: 0 0% 80%; /* #CBCBCB */
+    --secondary: 217 32% 17%; /* Darker gray */
+    --secondary-foreground: 210 40% 85%; /* Light gray text */
 
-    --muted: 0 0% 49%; /* #7E7E7E */
-    --muted-foreground: 0 0% 70%; /* #B2B2B2 */
+    --muted: 217 32% 17%; /* Darker muted */
+    --muted-foreground: 215 20% 65%; /* Medium gray */
 
-    --accent: 0 0% 49%; /* #7E7E7E */
-    --accent-foreground: 0 0% 89%; /* #E4E4E4 */
+    --accent: 217 32% 20%; /* Accent background */
+    --accent-foreground: 210 40% 95%; /* Light text */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 49%; /* #7E7E7E */
-    --input: 0 0% 40%; /* #656565 */
-    --ring: 0 0% 89%; /* #E4E4E4 */
+    --border: 217 32% 17%; /* Dark border */
+    --input: 217 32% 17%; /* Dark input */
+    --ring: 43 75% 65%; /* Gold ring */
 
     /* Sidebar colors for dark theme */
-    --sidebar-background: 0 0% 26%; /* #434343 */
-    --sidebar-foreground: 0 0% 89%; /* #E4E4E4 */
-    --sidebar-primary: 0 0% 89%; /* #E4E4E4 */
-    --sidebar-primary-foreground: 0 0% 26%; /* #434343 */
-    --sidebar-accent: 0 0% 49%; /* #7E7E7E */
-    --sidebar-accent-foreground: 0 0% 89%; /* #E4E4E4 */
-    --sidebar-border: 0 0% 49%; /* #7E7E7E */
-    --sidebar-ring: 0 0% 89%; /* #E4E4E4 */
+    --sidebar-background: 222 84% 5%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 43 75% 65%;
+    --sidebar-primary-foreground: 222 84% 5%;
+    --sidebar-accent: 217 32% 17%;
+    --sidebar-accent-foreground: 210 40% 95%;
+    --sidebar-border: 217 32% 17%;
+    --sidebar-ring: 43 75% 65%;
+
+    /* Dark mode gradient overrides */
+    --bg-gradient-white: 222 84% 5%;
+    --bg-gradient-light: 222 84% 8%;
+    --bg-gradient-medium: 217 32% 17%;
+    --bg-gradient-dark: 217 32% 25%;
+    --bg-gradient-black: 222 84% 3%;
+
+    /* Imperial colors for dark mode */
+    --imperial-white: 210 40% 98%;
+    --imperial-platinum: 210 40% 85%;
+    --imperial-gold-light: 43 80% 75%;
+    --imperial-gold: 43 75% 65%;
+    --imperial-bronze-light: 43 70% 55%;
+    --imperial-bronze: 43 65% 45%;
+    --imperial-bronze-dark: 43 60% 35%;
   }
 }
 
@@ -228,6 +244,11 @@
     color: hsl(var(--foreground));
     font-weight: 500;
   }
+}
+
+/* Theme-aware transitions */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 /* Apple & Stripe Inspired Animations */
@@ -387,8 +408,35 @@
 }
 
 .dark .glass-effect {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Dark mode optimized gradients */
+.dark .elegant-bg-gradient {
+  background: linear-gradient(135deg, 
+    hsl(var(--bg-gradient-black)) 0%, 
+    hsl(var(--bg-gradient-dark)) 25%, 
+    hsl(var(--bg-gradient-medium)) 50%, 
+    hsl(var(--bg-gradient-light)) 75%, 
+    hsl(var(--bg-gradient-white)) 100%);
+}
+
+.dark .subtle-bg-gradient {
+  background: linear-gradient(180deg, 
+    hsl(var(--bg-gradient-black)) 0%, 
+    hsl(var(--bg-gradient-light)) 100%);
+}
+
+.dark .sophisticated-bg-mesh {
+  background: 
+    radial-gradient(at 40% 20%, hsl(var(--bg-gradient-light)) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsl(var(--bg-gradient-medium)) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsl(var(--accent-sage) / 0.2) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, hsl(var(--bg-gradient-dark)) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsl(var(--accent-mint) / 0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 100%, hsl(var(--bg-gradient-black)) 0px, transparent 50%),
+    hsl(var(--bg-gradient-black));
 }
 
 /* Imperial White Gold Gradient Text - Updated to match logo */
@@ -462,6 +510,35 @@
     radial-gradient(at 0% 100%, hsl(var(--accent-mint) / 0.05) 0px, transparent 50%),
     radial-gradient(at 80% 100%, hsl(var(--bg-gradient-black)) 0px, transparent 50%),
     hsl(var(--bg-gradient-white));
+}
+
+/* Enhanced theme-aware components */
+.apple-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  transition: all 0.3s ease;
+}
+
+.apple-card:hover {
+  border-color: hsl(var(--primary) / 0.3);
+  box-shadow: 0 20px 40px -12px hsl(var(--primary) / 0.1);
+}
+
+.dark .apple-card:hover {
+  box-shadow: 0 20px 40px -12px hsl(var(--primary) / 0.2);
+}
+
+.apple-button {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: 1px solid hsl(var(--primary));
+  transition: all 0.3s ease;
+}
+
+.apple-button:hover {
+  background: hsl(var(--primary) / 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px -5px hsl(var(--primary) / 0.3);
 }
 
 /* Green Accent Classes */

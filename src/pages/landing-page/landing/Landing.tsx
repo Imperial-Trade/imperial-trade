@@ -16,12 +16,12 @@ export default function Landing() {
       <ToolsShowcase />
       
       {/* An Arsenal of Professional Tools Section */}
-      <section className="relative py-24 bg-gradient-to-b from-white to-gray-50/50">
+      <section className="relative py-24 bg-gradient-to-b from-background to-muted/30 dark:from-background dark:to-accent/10">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <ContentSection>
             <div className="text-center mb-12">
-              <h2 className="text-4xl lg:text-5xl font-bold text-primary mb-4">
-                An Arsenal of <span className="linear-gold-gradient">Professional Tools</span>
+              <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">
+                An Arsenal of <span className="imperial-gradient-text">Professional Tools</span>
               </h2>
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                 Engineered for performance, powered by AI. Your trading, elevated.

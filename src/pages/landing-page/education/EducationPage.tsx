@@ -75,7 +75,7 @@ const EducationPage: React.FC = () => {
   return (
     <div className="bg-background min-h-screen font-sans">
       {/* Hero Section */}
-      <section className="py-20 px-6 monochrome-gradient">
+      <section className="py-20 px-6 bg-gradient-to-b from-background to-muted/30 dark:from-background dark:to-accent/10">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
@@ -84,8 +84,8 @@ const EducationPage: React.FC = () => {
                   <BookMarked className="h-4 w-4" />
                   Comprehensive Trading Education
                 </Badge>
-                <h1 className="text-5xl font-bold leading-tight tracking-tight">
-                  <span className="white-gold-gradient">Trading Education</span>
+                <h1 className="text-5xl font-bold leading-tight tracking-tight text-foreground">
+                  <span className="imperial-gradient-text">Trading Education</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
                   From complete beginner to advanced professional, our education platform provides structured learning paths with expert instruction.
@@ -128,8 +128,8 @@ const EducationPage: React.FC = () => {
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">
-              <span className="white-gold-gradient">Education Features</span>
+            <h2 className="text-3xl font-bold mb-4 text-foreground">
+              <span className="imperial-gradient-text">Education Features</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Master trading with our comprehensive education platform designed by experts.
@@ -202,7 +202,7 @@ const EducationPage: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6 monochrome-gradient">
+      <section className="py-20 px-6 bg-gradient-to-b from-muted/30 to-background dark:from-accent/10 dark:to-background">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/50 border border-border mb-8">
             <BookMarked className="h-8 w-8 text-muted-foreground" />

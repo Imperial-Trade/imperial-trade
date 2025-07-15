@@ -74,7 +74,7 @@ const LiveSessionsPage: React.FC = () => {
   return (
     <div className="bg-background min-h-screen font-sans">
       {/* Hero Section */}
-      <section className="py-20 px-6 monochrome-gradient">
+      <section className="py-20 px-6 bg-gradient-to-b from-background to-muted/30 dark:from-background dark:to-accent/10">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
@@ -83,8 +83,8 @@ const LiveSessionsPage: React.FC = () => {
                   <Video className="h-4 w-4" />
                   Interactive Live Trading
                 </Badge>
-                <h1 className="text-5xl font-bold leading-tight tracking-tight">
-                  <span className="white-gold-gradient">Live Trading Sessions</span>
+                <h1 className="text-5xl font-bold leading-tight tracking-tight text-foreground">
+                  <span className="imperial-gradient-text">Live Trading Sessions</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
                   Join professional traders in live sessions to see real trading in action and learn decision-making processes in real-time.

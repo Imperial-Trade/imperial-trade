@@ -112,9 +112,6 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
           // Disable session recording initially for performance
           disable_session_recording: true,
           
-          // Optimize network requests - removed invalid batch_size property
-          request_timeout: 30000,
-          
           // Conservative properties capture
           property_blacklist: [
             '$password', '$email', '$phone', 'password', 'email', 'phone',

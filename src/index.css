@@ -105,7 +105,7 @@
   }
 
   .dark {
-    /* Elegant dark mode with dark grey, black, white, and gold */
+    /* Elegant dark mode with dark grey, black, white, and Robinhood green */
     --background: 0 0% 8%; /* Dark charcoal background */
     --foreground: 0 0% 95%; /* Pure white text */
 
@@ -115,8 +115,8 @@
     --popover: 0 0% 12%; /* Dark grey */
     --popover-foreground: 0 0% 95%; /* White text */
 
-    --primary: 43 75% 65%; /* Gold primary */
-    --primary-foreground: 0 0% 8%; /* Dark text on gold */
+    --primary: 122 89% 43%; /* Robinhood green primary */
+    --primary-foreground: 0 0% 8%; /* Dark text on green */
 
     --secondary: 0 0% 20%; /* Medium dark grey */
     --secondary-foreground: 0 0% 85%; /* Light grey text */
@@ -132,17 +132,17 @@
 
     --border: 0 0% 25%; /* Dark grey border */
     --input: 0 0% 15%; /* Dark input background */
-    --ring: 43 75% 65%; /* Gold ring */
+    --ring: 122 89% 43%; /* Robinhood green ring */
 
-    /* Sidebar colors for elegant dark theme */
+    /* Sidebar colors for elegant dark theme with Robinhood green */
     --sidebar-background: 0 0% 8%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 43 75% 65%;
+    --sidebar-primary: 122 89% 43%;
     --sidebar-primary-foreground: 0 0% 8%;
     --sidebar-accent: 0 0% 18%;
     --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 0 0% 25%;
-    --sidebar-ring: 43 75% 65%;
+    --sidebar-ring: 122 89% 43%;
 
     /* Dark mode gradient overrides - elegant blacks and greys */
     --bg-gradient-white: 0 0% 8%;
@@ -151,14 +151,14 @@
     --bg-gradient-dark: 0 0% 30%;
     --bg-gradient-black: 0 0% 5%;
 
-    /* Imperial colors for elegant dark mode with gold accents */
+    /* Imperial colors for elegant dark mode with Robinhood green accents */
     --imperial-white: 0 0% 95%;
     --imperial-platinum: 0 0% 85%;
-    --imperial-gold-light: 43 80% 75%;
-    --imperial-gold: 43 75% 65%;
-    --imperial-bronze-light: 43 70% 55%;
-    --imperial-bronze: 43 65% 45%;
-    --imperial-bronze-dark: 43 60% 35%;
+    --imperial-gold-light: 122 60% 55%; /* Light Robinhood green */
+    --imperial-gold: 122 89% 43%; /* Main Robinhood green */
+    --imperial-bronze-light: 122 70% 35%; /* Darker green */
+    --imperial-bronze: 122 80% 30%; /* Dark green */
+    --imperial-bronze-dark: 122 90% 25%; /* Very dark green */
 
     /* Spanish Gray Palette for dark mode */
     --gray-darkest: 0 0% 95%; /* White text in dark mode */
@@ -449,7 +449,7 @@
     hsl(var(--bg-gradient-black));
 }
 
-/* Imperial White Gold Gradient Text - Updated to match logo */
+/* Imperial Robinhood Green Gradient Text - Updated for dark mode */
 .imperial-gradient-text {
   background: linear-gradient(135deg, 
     hsl(var(--imperial-white)) 0%, 
@@ -462,8 +462,8 @@
   background-clip: text;
 }
 
-.white-gold-gradient {
-  background: linear-gradient(90deg, #ffd700, #ffed4a, #f59e0b, #d97706);
+.robinhood-green-gradient {
+  background: linear-gradient(90deg, #00c896, #00d4aa, #1ae2c4, #2ee6d0);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -223,17 +223,17 @@ function DashboardHeader() {
       </div>
 
       <style>{`
-        /* Imperial Tech Font Styles */
+        /* Imperial Tech Font Styles with Robinhood Green */
         .imperial-tech-font {
           font-family: 'Orbitron', 'Courier New', monospace;
           font-weight: 700;
           letter-spacing: 0.1em;
           text-transform: uppercase;
-          background: linear-gradient(135deg, #e6d3b3, #c09a58);
+          background: linear-gradient(135deg, #00c896, #1ae2c4);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          text-shadow: 0 0 20px rgba(192, 154, 88, 0.4);
+          text-shadow: 0 0 20px rgba(0, 200, 150, 0.4);
         }
 
         /* Load Orbitron font */

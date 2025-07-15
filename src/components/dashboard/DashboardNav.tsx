@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Crown, Bell, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare } from "lucide-react";
+import { Crown, Bell, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare, ChevronDown, Grid3X3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -18,15 +18,20 @@ const DashboardNav: React.FC = () => {
   const { user, signOut } = useAuth();
 
   // Navigation items for dashboard
-  const navigationItems = [
+  const primaryNavItems = [
     { to: "/dashboard/home", icon: LayoutDashboard, label: "Dashboard" },
     { to: "/dashboard/signal-stream", icon: Radio, label: "Signals" },
     { to: "/dashboard/education", icon: GraduationCap, label: "Education" },
+  ];
+
+  const secondaryNavItems = [
     { to: "/dashboard/live", icon: Users, label: "Live Sessions" },
     { to: "/dashboard/forum", icon: MessageSquare, label: "Community" },
     { to: "/dashboard/advanced-tools", icon: Target, label: "Tools" },
     { to: "/dashboard/my-progress", icon: BookOpen, label: "Progress" },
   ];
+
+  const allNavigationItems = [...primaryNavItems, ...secondaryNavItems];
 
   // Handle scroll effect
   useEffect(() => {
@@ -71,19 +76,20 @@ const DashboardNav: React.FC = () => {
           <span className="text-xl imperial-tech-font">IMPERIAL</span>
         </Link>
 
-        {/* Desktop Navigation */}
+        {/* Desktop Navigation - Collapsed Primary Items */}
         <nav className={`hidden lg:flex items-center gap-2 rounded-2xl p-2 transition-all duration-300 ${
           scrolled 
             ? 'bg-muted/50 backdrop-blur-sm border border-border/50' 
             : 'bg-muted/30 backdrop-blur-sm border border-border/30'
         }`}>
-          {navigationItems.map(item => {
+          {/* Primary navigation items */}
+          {primaryNavItems.map(item => {
             const isActive = location.pathname === item.to;
             return (
               <Link key={item.to} to={item.to}>
                 <Button 
                   variant="ghost" 
-                  className={`flex items-center gap-3 text-sm font-medium rounded-xl px-6 py-3 min-w-[140px] justify-start transition-all duration-200 ${
+                  className={`flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-2 transition-all duration-200 ${
                     isActive 
                       ? 'bg-primary/15 text-primary border border-primary/30 shadow-lg shadow-primary/10' 
                       : 'text-muted-foreground hover:text-foreground hover:bg-background/80 hover:shadow-md'
@@ -95,6 +101,38 @@ const DashboardNav: React.FC = () => {
               </Link>
             );
           })}
+
+          {/* More menu dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="flex items-center gap-2 text-sm font-medium rounded-xl px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-background/80 hover:shadow-md transition-all duration-200"
+              >
+                <Grid3X3 className="h-4 w-4" />
+                More
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="center">
+              {secondaryNavItems.map(item => {
+                const isActive = location.pathname === item.to;
+                return (
+                  <DropdownMenuItem key={item.to} asChild>
+                    <Link 
+                      to={item.to} 
+                      className={`flex items-center gap-3 w-full ${
+                        isActive ? 'bg-primary/10 text-primary' : ''
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
 
         {/* Desktop Actions */}
@@ -190,7 +228,7 @@ const DashboardNav: React.FC = () => {
             </SheetHeader>
 
             <nav className="flex flex-col gap-2 mt-8">
-              {navigationItems.map(item => {
+              {allNavigationItems.map(item => {
                 const isActive = location.pathname === item.to;
                 return (
                   <Link 

@@ -45,6 +45,7 @@ import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalM
 
 // Other Components
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
 
@@ -58,6 +59,7 @@ function App() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ScrollToTop />
             <AuthProvider>
               <SignalRealtimeProvider>
                 <WebSocketPriceProvider>

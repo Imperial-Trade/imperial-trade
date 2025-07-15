@@ -1,0 +1,28 @@
+
+name: trade-imperial-app
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: your-username/your-repo-name
+    branch: main
+  run_command: npm start
+  environment_slug: node-js
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  routes:
+  - path: /
+  build_command: npm run build
+  static_sites:
+  - name: frontend
+    source_dir: /
+    github:
+      repo: your-username/your-repo-name
+      branch: main
+    build_command: npm run build
+    output_dir: /dist
+    index_document: index.html
+    error_document: index.html
+    routes:
+    - path: /
+    catchall_document: index.html

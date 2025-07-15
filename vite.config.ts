@@ -9,6 +9,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Add history API fallback for SPA routing
+    historyApiFallback: true,
   },
   plugins: [
     react(),
@@ -24,16 +26,18 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    // Ensure proper SPA build
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
           ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
+          router: ['react-router-dom'],
         },
       },
     },
   },
-  // Preview configuration for production server
+  // Preview configuration for production server with SPA support
   preview: {
     host: "0.0.0.0",
     port: 8080,

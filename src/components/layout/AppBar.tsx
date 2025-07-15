@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 const AppBar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -117,6 +118,7 @@ const AppBar: React.FC = () => {
 
         {/* Desktop Auth Button */}
         <div className="hidden lg:flex items-center gap-4">
+          <ThemeToggle />
           {renderAuthButton()}
         </div>
       </div>
@@ -148,7 +150,10 @@ const AppBar: React.FC = () => {
                   </Link>
                 </div>)}
 
-              <div className="mt-6 pt-6 border-t border-border/50">
+              <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
+                <div className="flex justify-center">
+                  <ThemeToggle />
+                </div>
                 {user ? <Link to="/dashboard/home" onClick={closeMobileMenu}>
                     <Button size="lg" className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold flex items-center gap-2">
                       <LayoutDashboard className="h-4 w-4" />

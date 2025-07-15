@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import posthog from 'posthog-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useDebounce } from '@/hooks/useDebounce';
 
 interface PostHogContextType {
   isLoaded: boolean;
@@ -47,7 +46,6 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
   const [featureFlags, setFeatureFlags] = useState<Record<string, boolean | string>>({});
-  const [isIdentified, setIsIdentified] = useState(false);
   
   // Performance optimization: Rate limiter instance
   const rateLimiter = new EventRateLimiter();
@@ -132,38 +130,29 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('❌ PostHog tracking error:', error);
     }
-  }, [isEnabled, isLoaded]);
+  }, [isEnabled, isLoaded, rateLimiter]);
 
-  // Debounced identification to prevent repeated calls
-  const debouncedIdentify = useDebounce(
-    useCallback((userId: string, properties?: Record<string, any>) => {
-      if (!isEnabled || !isLoaded || isIdentified) {
-        return;
-      }
-      
-      try {
-        console.log('👤 Identifying user (debounced):', userId);
-        posthog.identify(userId, {
-          ...properties,
-          identified_at: new Date().toISOString(),
-        });
-        
-        setIsIdentified(true);
-        
-        // Smart feature flag reload (only after identification)
-        setTimeout(() => {
-          posthog.reloadFeatureFlags();
-        }, 1000);
-      } catch (error) {
-        console.error('❌ PostHog identify error:', error);
-      }
-    }, [isEnabled, isLoaded, isIdentified]),
-    1000 // 1 second debounce
-  );
-
+  // Simplified identification without debouncing
   const identify = useCallback((userId: string, properties?: Record<string, any>) => {
-    debouncedIdentify(userId, properties);
-  }, [debouncedIdentify]);
+    if (!isEnabled || !isLoaded) {
+      return;
+    }
+    
+    try {
+      console.log('👤 Identifying user:', userId);
+      posthog.identify(userId, {
+        ...properties,
+        identified_at: new Date().toISOString(),
+      });
+      
+      // Smart feature flag reload (only after identification)
+      setTimeout(() => {
+        posthog.reloadFeatureFlags();
+      }, 1000);
+    } catch (error) {
+      console.error('❌ PostHog identify error:', error);
+    }
+  }, [isEnabled, isLoaded]);
 
   const reset = useCallback(() => {
     if (!isEnabled || !isLoaded) return;
@@ -172,7 +161,6 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       console.log('🔄 Resetting PostHog');
       posthog.reset();
       setFeatureFlags({});
-      setIsIdentified(false);
     } catch (error) {
       console.error('❌ PostHog reset error:', error);
     }

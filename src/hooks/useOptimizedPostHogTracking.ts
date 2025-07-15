@@ -74,7 +74,6 @@ export function useOptimizedPostHogTracking() {
       user_type: profile.user_type,
       access_level: profile.access_level,
       account_status: profile.account_status,
-      // Remove redundant timestamp properties
     });
     
     lastIdentifiedUser.current = user.id;

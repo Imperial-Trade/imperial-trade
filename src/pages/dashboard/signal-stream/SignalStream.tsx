@@ -44,8 +44,18 @@ export default function SignalStream() {
   }, [profile]);
 
   const canCreateSignals = useMemo(() => {
-    return isAdmin || isEducator;
-  }, [isAdmin, isEducator]);
+    const canCreate = isAdmin || isEducator;
+    console.log('SignalStream - canCreateSignals check:', {
+      profile,
+      isAdmin,
+      isEducator,
+      canCreate,
+      access_level: profile?.access_level,
+      role: profile?.role,
+      user_type: profile?.user_type
+    });
+    return canCreate;
+  }, [isAdmin, isEducator, profile]);
 
   const isCreator = useCallback((alertCreatorId: string) => {
     console.log('SignalStream - Checking creator:', {
@@ -443,7 +453,8 @@ export default function SignalStream() {
               {canCreateSignals && (
                 <Button
                   onClick={() => navigate('/dashboard/new-signal')}
-                  className="bg-accent-green hover:bg-accent-green/90 text-white"
+                  className="bg-accent-green hover:bg-accent-green/90 text-white shadow-lg"
+                  size="sm"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Create Signal

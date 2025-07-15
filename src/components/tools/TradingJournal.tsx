@@ -55,10 +55,17 @@ export default function TradingJournal() {
   const loadEntries = async () => {
     setIsLoading(true);
     try {
-      const fetchedEntries = await TradeJournalEntry.list('-created_date');
-      setEntries(fetchedEntries);
-      // Check unlock status with current user profile
-      checkUnlockStatus(fetchedEntries, userProfile);
+      // Get current user first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const fetchedEntries = await TradeJournalEntry.list(user.id);
+        setEntries(fetchedEntries);
+        // Check unlock status with current user profile
+        checkUnlockStatus(fetchedEntries, userProfile);
+      } else {
+        setEntries([]);
+        checkUnlockStatus([], userProfile);
+      }
     } catch (error) {
       console.error("Error loading journal entries:", error);
     }
@@ -98,7 +105,8 @@ export default function TradingJournal() {
 
   // Re-check unlock status when user profile changes
   useEffect(() => {
-    if (entries.length > 0 && userProfile) {
+    if (userProfile) {
+      // If we have a profile, always check if admin (even without entries)
       checkUnlockStatus(entries, userProfile);
     }
   }, [userProfile]);
@@ -164,13 +172,16 @@ export default function TradingJournal() {
       // The result from InvokeLLM is a string if no schema is provided
       const ai_positive_feedback = aiResult;
 
-      await TradeJournalEntry.create({
-        ...newEntry,
-        pnl: pnlValue,
-        trade_date: new Date().toISOString(),
-        screenshot_url,
-        ai_positive_feedback,
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await TradeJournalEntry.create({
+          ...newEntry,
+          pnl: pnlValue,
+          trade_date: new Date().toISOString(),
+          screenshot_url,
+          ai_positive_feedback,
+        }, user.id);
+      }
 
       setNewEntry({ asset_ticker: '', pnl: '', notes: '' });
       setScreenshotFile(null);

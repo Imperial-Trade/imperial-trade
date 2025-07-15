@@ -46,9 +46,9 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 z-10" />
                     <FormControl>
                       <Input placeholder="Enter your full name" style={{
-                  color: "#1f2937 !important",
+                  color: "#ffffff !important",
                   backgroundColor: "#ffffff !important"
-                }} className="pl-10 border-gray-300 text-gray-900 placeholder:text-gray-500 focus:text-gray-900 font-medium bg-zinc-800" />
+                }} className="pl-10 border-gray-300 text-white placeholder:text-gray-400 focus:text-white font-medium bg-zinc-800" />
                     </FormControl>
                   </div>
                   <FormMessage className="text-red-400" />
@@ -64,9 +64,9 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 z-10" />
                     <FormControl>
                       <Input type="email" placeholder="Enter your VT Market email address" style={{
-                  color: "#1f2937 !important",
+                  color: "#ffffff !important",
                   backgroundColor: "#ffffff !important"
-                }} className="pl-10 border-gray-300 text-gray-900 placeholder:text-gray-500 focus:text-gray-900 font-medium bg-zinc-800" />
+                }} className="pl-10 border-gray-300 text-white placeholder:text-gray-400 focus:text-white font-medium bg-zinc-800" />
                     </FormControl>
                   </div>
                   <FormMessage className="text-red-400" />
@@ -82,9 +82,9 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 z-10" />
                     <FormControl>
                       <Input type="tel" placeholder="Enter your phone number" style={{
-                  color: "#1f2937 !important",
+                  color: "#ffffff !important",
                   backgroundColor: "#ffffff !important"
-                }} className="pl-10 border-gray-300 text-gray-900 placeholder:text-gray-500 focus:text-gray-900 font-medium bg-zinc-800" />
+                }} className="pl-10 border-gray-300 text-white placeholder:text-gray-400 focus:text-white font-medium bg-zinc-800" />
                     </FormControl>
                   </div>
                   <FormMessage className="text-red-400" />
@@ -100,9 +100,9 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                     <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 z-10" />
                     <FormControl>
                       <Input placeholder="Enter your VT Market account number" style={{
-                  color: "#1f2937 !important",
+                  color: "#ffffff !important",
                   backgroundColor: "#ffffff !important"
-                }} className="pl-10 border-gray-300 text-gray-900 placeholder:text-gray-500 focus:text-gray-900 font-medium bg-zinc-800" />
+                }} className="pl-10 border-gray-300 text-white placeholder:text-gray-400 focus:text-white font-medium bg-zinc-800" />
                     </FormControl>
                   </div>
                   <FormMessage className="text-red-400" />
@@ -118,9 +118,9 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 z-10" />
                     <FormControl>
                       <Input placeholder="Who referred you? (Optional)" style={{
-                  color: "#1f2937 !important",
+                  color: "#ffffff !important",
                   backgroundColor: "#ffffff !important"
-                }} className="pl-10 border-gray-300 text-gray-900 placeholder:text-gray-500 focus:text-gray-900 font-medium bg-zinc-400" />
+                }} className="pl-10 border-gray-300 text-white placeholder:text-gray-400 focus:text-white font-medium bg-zinc-400" />
                     </FormControl>
                   </div>
                   <FormMessage className="text-red-400" />
@@ -163,9 +163,9 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                   </FormLabel>
                   <FormControl>
                     <Textarea placeholder="Briefly state why you want to join (e.g., 'Referred by John Doe', 'Interested in IB program', etc.)" rows={3} style={{
-                color: "#1f2937 !important",
+                color: "#ffffff !important",
                 backgroundColor: "#ffffff !important"
-              }} className="border-gray-300 text-gray-900 placeholder:text-gray-500 focus:text-gray-900 font-medium resize-none bg-zinc-800" />
+              }} className="border-gray-300 text-white placeholder:text-gray-400 focus:text-white font-medium resize-none bg-zinc-800" />
                   </FormControl>
                   <div className="flex justify-end">
                     <span className="text-xs text-gray-300 font-medium">

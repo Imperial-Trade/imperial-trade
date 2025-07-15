@@ -80,8 +80,8 @@ export const DashboardHome: React.FC = () => {
       <VideoBackground />
       
       {/* Hero Section with Heartfelt Welcome */}
-      <div className="relative z-20 min-h-[50vh] flex items-center">
-        <div className="container mx-auto px-6 text-center">
+      <div className="relative z-20 min-h-[70vh] flex items-center pt-20">
+        <div className="container mx-auto px-6 text-center mt-16">
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Welcome Message */}
             <div className="space-y-4">

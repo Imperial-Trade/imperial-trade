@@ -147,14 +147,15 @@ const DashboardNav: React.FC = () => {
               <Button 
                 variant="ghost" 
                 size="sm"
-                className={`relative hover:bg-primary/10 group transition-all duration-200 ${
+                className={`relative hover:bg-primary/10 group transition-all duration-200 flex items-center gap-1 px-3 ${
                   scrolled ? 'bg-background/60' : 'bg-background/30'
                 }`}
               >
                 <Grid3X3 className="h-4 w-4 transition-colors group-hover:text-primary" />
+                <ChevronDown className="h-3 w-3 transition-colors group-hover:text-primary" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end">
+            <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
               {secondaryNavItems.map(item => {
                 const isActive = location.pathname === item.to;
                 return (

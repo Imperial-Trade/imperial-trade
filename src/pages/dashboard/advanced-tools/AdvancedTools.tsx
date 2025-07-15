@@ -73,24 +73,24 @@ const ToolSelector = ({ tool, onSelect, isActive }) => {
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ scale: 1.01 }}
     >
       <button
         onClick={() => onSelect(tool)}
-        className={`w-full text-left p-4 rounded-lg transition-all duration-300 flex items-center gap-4 border ${
+        className={`w-full text-left p-3 rounded-lg transition-all duration-300 flex items-center gap-3 border ${
           isActive
             ? 'bg-surface/80 border-accent-green glow-effect-green shadow-lg'
             : 'bg-surface/30 border-transparent hover:bg-surface/50 hover:border-accent-blue/50'
         }`}
       >
-        <div className={`p-3 rounded-lg bg-surface transition-colors duration-300 ${isActive ? 'bg-accent-green/20' : ''}`}>
-          <Icon className={`w-6 h-6 transition-colors duration-300 ${isActive ? 'text-accent-green' : 'text-accent-blue'}`} />
+        <div className={`p-2 rounded-lg bg-surface transition-colors duration-300 ${isActive ? 'bg-accent-green/20' : ''}`}>
+          <Icon className={`w-4 h-4 transition-colors duration-300 ${isActive ? 'text-accent-green' : 'text-muted-foreground'}`} />
         </div>
-        <div>
-          <h3 className="font-semibold text-primary">{tool.name}</h3>
-          <p className="text-sm text-secondary">{tool.description}</p>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-foreground text-sm">{tool.name}</h3>
+          <p className="text-xs text-muted-foreground leading-tight">{tool.description}</p>
         </div>
-        {isActive && <ChevronRight className="w-5 h-5 text-accent-green ml-auto flex-shrink-0" />}
+        {isActive && <ChevronRight className="w-4 h-4 text-accent-green ml-auto flex-shrink-0" />}
       </button>
     </motion.div>
   );
@@ -151,11 +151,11 @@ export default function AdvancedTools() {
           <aside className="lg:col-span-1 space-y-4">
             {/* AI Tools */}
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-              <h2 className="text-lg font-semibold tracking-wider uppercase text-accent-gold flex items-center gap-3 mb-3">
-                <Sparkles className="w-5 h-5" />
+              <h2 className="text-sm font-medium tracking-wide uppercase text-accent-gold flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4" />
                 AI-Powered Intelligence
               </h2>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {aiTools.map(tool => (
                   <ToolSelector 
                     key={tool.name} 
@@ -169,11 +169,11 @@ export default function AdvancedTools() {
 
             {/* Core Tools */}
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <h2 className="text-lg font-semibold tracking-wider uppercase text-accent-blue flex items-center gap-3 mb-3">
-                <Wrench className="w-5 h-5" />
+              <h2 className="text-sm font-medium tracking-wide uppercase text-accent-blue flex items-center gap-2 mb-2">
+                <Wrench className="w-4 h-4" />
                 Core Trading Tools
               </h2>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {coreTools.map(tool => (
                   <ToolSelector 
                     key={tool.name} 

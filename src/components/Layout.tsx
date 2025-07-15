@@ -3,7 +3,7 @@ import React, { useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton"
-import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User, Settings, BarChart3, Shield, Plus } from "lucide-react"
+import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User, Settings, BarChart3, Shield, Plus, ChevronUp, ChevronDown } from "lucide-react"
 import { Link, Outlet, useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
@@ -254,7 +254,11 @@ function DashboardHeader() {
             }`}
             title={isHeaderCollapsed ? "Expand header" : "Collapse header"}
           >
-            <Menu className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            {isHeaderCollapsed ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            ) : (
+              <ChevronUp className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            )}
           </Button>
         </div>
 

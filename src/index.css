@@ -105,60 +105,69 @@
   }
 
   .dark {
-    /* Dark mode with elegant design */
-    --background: 222 84% 5%; /* Very dark navy */
-    --foreground: 210 40% 98%; /* Almost white */
+    /* Elegant dark mode with dark grey, black, white, and gold */
+    --background: 0 0% 8%; /* Dark charcoal background */
+    --foreground: 0 0% 95%; /* Pure white text */
 
-    --card: 222 84% 8%; /* Dark navy card */
-    --card-foreground: 210 40% 95%; /* Light text */
+    --card: 0 0% 12%; /* Dark grey card */
+    --card-foreground: 0 0% 95%; /* White text */
 
-    --popover: 222 84% 8%; /* Dark navy */
-    --popover-foreground: 210 40% 95%; /* Light text */
+    --popover: 0 0% 12%; /* Dark grey */
+    --popover-foreground: 0 0% 95%; /* White text */
 
     --primary: 43 75% 65%; /* Gold primary */
-    --primary-foreground: 222 84% 5%; /* Dark text on gold */
+    --primary-foreground: 0 0% 8%; /* Dark text on gold */
 
-    --secondary: 217 32% 17%; /* Darker gray */
-    --secondary-foreground: 210 40% 85%; /* Light gray text */
+    --secondary: 0 0% 20%; /* Medium dark grey */
+    --secondary-foreground: 0 0% 85%; /* Light grey text */
 
-    --muted: 217 32% 17%; /* Darker muted */
-    --muted-foreground: 215 20% 65%; /* Medium gray */
+    --muted: 0 0% 15%; /* Dark muted background */
+    --muted-foreground: 0 0% 65%; /* Medium grey text */
 
-    --accent: 217 32% 20%; /* Accent background */
-    --accent-foreground: 210 40% 95%; /* Light text */
+    --accent: 0 0% 18%; /* Dark accent background */
+    --accent-foreground: 0 0% 95%; /* White text */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 217 32% 17%; /* Dark border */
-    --input: 217 32% 17%; /* Dark input */
+    --border: 0 0% 25%; /* Dark grey border */
+    --input: 0 0% 15%; /* Dark input background */
     --ring: 43 75% 65%; /* Gold ring */
 
-    /* Sidebar colors for dark theme */
-    --sidebar-background: 222 84% 5%;
-    --sidebar-foreground: 210 40% 98%;
+    /* Sidebar colors for elegant dark theme */
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 95%;
     --sidebar-primary: 43 75% 65%;
-    --sidebar-primary-foreground: 222 84% 5%;
-    --sidebar-accent: 217 32% 17%;
-    --sidebar-accent-foreground: 210 40% 95%;
-    --sidebar-border: 217 32% 17%;
+    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 25%;
     --sidebar-ring: 43 75% 65%;
 
-    /* Dark mode gradient overrides */
-    --bg-gradient-white: 222 84% 5%;
-    --bg-gradient-light: 222 84% 8%;
-    --bg-gradient-medium: 217 32% 17%;
-    --bg-gradient-dark: 217 32% 25%;
-    --bg-gradient-black: 222 84% 3%;
+    /* Dark mode gradient overrides - elegant blacks and greys */
+    --bg-gradient-white: 0 0% 8%;
+    --bg-gradient-light: 0 0% 12%;
+    --bg-gradient-medium: 0 0% 20%;
+    --bg-gradient-dark: 0 0% 30%;
+    --bg-gradient-black: 0 0% 5%;
 
-    /* Imperial colors for dark mode */
-    --imperial-white: 210 40% 98%;
-    --imperial-platinum: 210 40% 85%;
+    /* Imperial colors for elegant dark mode with gold accents */
+    --imperial-white: 0 0% 95%;
+    --imperial-platinum: 0 0% 85%;
     --imperial-gold-light: 43 80% 75%;
     --imperial-gold: 43 75% 65%;
     --imperial-bronze-light: 43 70% 55%;
     --imperial-bronze: 43 65% 45%;
     --imperial-bronze-dark: 43 60% 35%;
+
+    /* Spanish Gray Palette for dark mode */
+    --gray-darkest: 0 0% 95%; /* White text in dark mode */
+    --gray-dark: 0 0% 80%; /* Light grey */
+    --gray-medium: 0 0% 65%; /* Medium grey */
+    --gray-medium-light: 0 0% 50%; /* Darker medium grey */
+    --gray-light: 0 0% 35%; /* Dark grey */
+    --gray-lighter: 0 0% 25%; /* Darker grey */
+    --gray-lightest: 0 0% 15%; /* Very dark grey */
   }
 }
 

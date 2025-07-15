@@ -36,7 +36,7 @@ export default function FinalCTA() {
     text: "24/7 professional support"
   }];
   return <section className="relative py-32 bg-primary text-primary-foreground">
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-50/10 via-gray-100/20 to-slate-200/30 backdrop-blur-sm">
+      <div className="absolute inset-0 bg-gradient-to-br from-white via-gray-100/40 via-black/10 to-primary/20 backdrop-blur-sm">
         <div className="absolute top-20 left-20 w-96 h-96 bg-primary-foreground rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-20 w-80 h-80 bg-primary-foreground rounded-full blur-3xl" />
       </div>

@@ -110,7 +110,7 @@ export const DashboardHome: React.FC = () => {
                 and every champion was once a contender who refused to give up.
               </p>
               
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 max-w-4xl mx-auto">
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 max-w-2xl mx-auto">
                 <p className="text-lg text-white/95 italic leading-relaxed">
                   "Success in trading comes not from being right all the time, but from learning, 
                   adapting, and growing with every trade. Your journey starts here, and we're honored 

@@ -21,6 +21,7 @@ function DashboardHeader() {
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const isMobile = useIsMobile();
   const location = useLocation();
 
@@ -87,7 +88,7 @@ function DashboardHeader() {
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 backdrop-blur-xl border-b border-border/50 bg-background/80">
+    <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 backdrop-blur-xl border-b border-border/50 bg-background/80 transition-all duration-300`}>
       <div className="w-full max-w-7xl flex items-center justify-between">
         
         {/* Logo */}
@@ -97,7 +98,8 @@ function DashboardHeader() {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
+        {!isHeaderCollapsed && (
+          <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
           {navigationItems.map(item => {
             const isActive = location.pathname === item.to;
             return (
@@ -143,7 +145,8 @@ function DashboardHeader() {
               </div>
             );
           })}
-        </nav>
+          </nav>
+        )}
 
         {/* Desktop Actions & User Info */}
         <div className="hidden lg:flex items-center gap-4">
@@ -233,10 +236,11 @@ function DashboardHeader() {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all duration-200 ml-2"
-                title="Menu"
+                onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+                className="h-8 w-8 rounded-full hover:bg-muted/50 transition-all duration-200 ml-2"
+                title={isHeaderCollapsed ? "Expand header" : "Collapse header"}
               >
-                <Menu className="h-4 w-4 text-primary" />
+                <Menu className="h-4 w-4 text-muted-foreground hover:text-foreground" />
               </Button>
             </div>
           )}

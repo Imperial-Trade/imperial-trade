@@ -130,7 +130,7 @@ export const DashboardHome: React.FC = () => {
       </div>
 
       {/* Premium Stats Grid */}
-      <div className="container mx-auto px-6 mb-12">
+      <div className="relative z-20 container mx-auto px-6 mb-12">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Active Signals"
@@ -164,7 +164,7 @@ export const DashboardHome: React.FC = () => {
       </div>
 
       {/* Advanced Trading Hub */}
-      <div className="container mx-auto px-6 mb-12">
+      <div className="relative z-20 container mx-auto px-6 mb-12">
         <div className="mb-8">
           <h2 className="text-2xl font-bold tracking-tight mb-2">Trading Hub</h2>
           <p className="text-muted-foreground">Access your most important trading tools and insights</p>
@@ -246,8 +246,8 @@ export const DashboardHome: React.FC = () => {
       </div>
 
       {/* Admin/Educator Premium Section */}
-      {(isAdmin || isEducator) && (
-        <div className="container mx-auto px-6 mb-12">
+        {(isAdmin || isEducator) && (
+        <div className="relative z-20 container mx-auto px-6 mb-12">
           <Card className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-card to-accent/5 border border-primary/30">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-2xl"></div>
             <CardHeader className="relative">
@@ -330,7 +330,7 @@ export const DashboardHome: React.FC = () => {
       )}
 
       {/* Premium Activity Feed */}
-      <div className="container mx-auto px-6">
+      <div className="relative z-20 container mx-auto px-6">
         <Card className="relative overflow-hidden bg-card border border-border">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary"></div>
           <CardHeader>

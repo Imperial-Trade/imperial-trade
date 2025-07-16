@@ -291,16 +291,16 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
             <div
               key={index}
               className={`
-                relative min-h-[60px] p-3 rounded-lg cursor-pointer transition-all
+                relative min-h-[60px] p-3 rounded-lg cursor-pointer transition-all border border-border/50
                 ${!isCurrentMonth ? 'opacity-40' : ''}
-                ${isSelectedDay ? 'bg-accent-green text-white' : ''}
+                ${isSelectedDay ? 'bg-accent-green text-white border-accent-green' : ''}
                 ${dayTrades.length > 0 && !isSelectedDay
                   ? totalPnl > 0 
-                    ? 'bg-accent-green/20 text-accent-green' 
+                    ? 'bg-accent-green/20 text-accent-green border-accent-green/30' 
                     : totalPnl < 0 
-                      ? 'bg-red-500/20 text-red-400'
-                      : 'bg-yellow-500/20 text-yellow-400'
-                  : !isSelectedDay ? 'bg-muted/20 hover:bg-muted/40 text-muted-foreground' : ''
+                      ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                      : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                  : !isSelectedDay ? 'bg-muted/10 hover:bg-muted/20 text-muted-foreground hover:border-border' : ''
                 }
               `}
               onClick={() => handleDateClick(dateStr)}

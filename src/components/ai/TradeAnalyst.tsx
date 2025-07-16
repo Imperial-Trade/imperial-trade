@@ -127,18 +127,7 @@ export default function TradeAnalyst() {
 
   return (
     <Card className="glass-effect">
-      <CardHeader className="text-center">
-        <div className="flex justify-center mb-4">
-          <div className="p-3 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-full">
-            <Brain className="w-8 h-8 text-purple-400" />
-          </div>
-        </div>
-        <h1 className="font-apple font-bold text-4xl lg:text-5xl gradient-text-visible leading-tight">
-          AI Trade Analyst
-        </h1>
-        <p className="text-secondary text-lg mt-4 max-w-2xl mx-auto leading-relaxed">
-          Upload multiple screenshots of your trading platform for comprehensive AI analysis of your performance
-        </p>
+      <CardHeader>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Mock Mode Warning */}

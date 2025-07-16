@@ -53,18 +53,7 @@ export default function RiskCalculator() {
 
   return (
     <Card className="glass-effect">
-      <CardHeader className="text-center">
-        <div className="flex justify-center mb-4">
-          <div className="p-3 bg-gradient-to-br from-accent-green/20 to-accent-blue/20 rounded-full">
-            <Calculator className="w-8 h-8 text-accent-green" />
-          </div>
-        </div>
-        <CardTitle className="font-apple font-bold text-4xl lg:text-5xl gradient-text-visible leading-tight">
-          Risk Calculator
-        </CardTitle>
-        <p className="text-secondary text-lg mt-4 max-w-2xl mx-auto leading-relaxed">
-          Calculate position size, risk, and potential profit/loss for your trades with precision and confidence
-        </p>
+      <CardHeader>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

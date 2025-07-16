@@ -73,16 +73,12 @@ export default function RiskSimulator() {
 
   return (
     <Card className="glass-effect">
-      <CardHeader className="text-center">
-        <div className="flex justify-center mb-4">
-          <div className="p-3 bg-gradient-to-br from-orange-500/20 to-red-500/20 rounded-full">
-            <Calculator className="w-8 h-8 text-orange-400" />
-          </div>
-        </div>
-        <h1 className="font-apple font-bold text-4xl lg:text-5xl gradient-text-visible leading-tight">
-          AI Risk Simulator
-        </h1>
-        <p className="text-secondary text-lg mt-4 max-w-2xl mx-auto leading-relaxed">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calculator className="w-6 h-6 text-orange-400" />
+          AI Risk Simulator (Mock Mode)
+        </CardTitle>
+        <p className="text-secondary">
           Simulate your trade setup and get AI-powered risk analysis before entering the market
         </p>
       </CardHeader>

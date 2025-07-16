@@ -251,11 +251,14 @@ export default function EconomicCalendar() {
     if (isTomorrow(date)) return 'Tomorrow';
     return format(date, 'E, MMM d');
   };
-  return <div className="space-y-6 bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen p-6">
-      <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div className="flex flex-wrap gap-4">
+  return <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
+      <div className="p-6 space-y-6">
+        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Economic Calendar</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-secondary" />
                 <Select value={selectedDate} onValueChange={setSelectedDate}>
@@ -315,22 +318,29 @@ export default function EconomicCalendar() {
               <Clock className="w-3 h-3" />
               Last updated: {format(lastUpdated, 'HH:mm:ss')}
             </p>}
-        </CardHeader>
-        <CardContent>
+          </CardContent>
 
-          {isLoading ? <div className="flex justify-center items-center h-32">
+          {isLoading ? (
+            <div className="flex justify-center items-center h-32">
               <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-400 border-t-transparent" />
-            </div> : error && events.length === 0 ? <div className="text-center py-8">
+            </div>
+          ) : error && events.length === 0 ? (
+            <div className="text-center py-8">
               <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
               <p className="text-red-400 mb-4">{error}</p>
               <Button onClick={loadEconomicEvents} variant="outline">
                 Try Again
               </Button>
-            </div> : filteredEvents.length === 0 ? <div className="text-center py-8">
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="text-center py-8">
               <Calendar className="w-12 h-12 text-secondary/50 mx-auto mb-4" />
               <p className="text-secondary">No events found for the selected filters.</p>
-            </div> : <div className="space-y-4">
-              {filteredEvents.map(event => <Card key={event.id} className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm hover:border-border dark:hover:border-gray-500/30 transition-colors">
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredEvents.map(event => (
+                <Card key={event.id} className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm hover:border-border dark:hover:border-gray-500/30 transition-colors">
                   <CardContent className="p-4">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex-1">
@@ -372,46 +382,49 @@ export default function EconomicCalendar() {
                       </div>
                     </div>
                   </CardContent>
-                </Card>)}
-            </div>}
-        </CardContent>
-      </Card>
+                </Card>
+              ))}
+            </div>
+          )}
+        </Card>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-          <CardContent className="p-4 text-center">
-            <Zap className="w-8 h-8 text-red-400 mx-auto mb-2" />
-            <p className="text-sm text-secondary">High Impact</p>
-            <p className="text-2xl font-bold text-primary">
-              {filteredEvents.filter(e => e.impact === 'high').length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-          <CardContent className="p-4 text-center">
-            <AlertTriangle className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-            <p className="text-sm text-secondary">Medium Impact</p>
-            <p className="text-2xl font-bold text-primary">
-              {filteredEvents.filter(e => e.impact === 'medium').length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-          <CardContent className="p-4 text-center">
-            <TrendingUp className="w-8 h-8 text-green-400 mx-auto mb-2" />
-            <p className="text-sm text-secondary">Low Impact</p>
-            <p className="text-2xl font-bold text-primary">
-              {filteredEvents.filter(e => e.impact === 'low').length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-          <CardContent className="p-4 text-center">
-            <Calendar className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-            <p className="text-sm text-secondary">Total Events</p>
-            <p className="text-2xl font-bold text-primary">{filteredEvents.length}</p>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+            <CardContent className="p-4 text-center">
+              <Zap className="w-8 h-8 text-red-400 mx-auto mb-2" />
+              <p className="text-sm text-secondary">High Impact</p>
+              <p className="text-2xl font-bold text-primary">
+                {filteredEvents.filter(e => e.impact === 'high').length}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+            <CardContent className="p-4 text-center">
+              <AlertTriangle className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+              <p className="text-sm text-secondary">Medium Impact</p>
+              <p className="text-2xl font-bold text-primary">
+                {filteredEvents.filter(e => e.impact === 'medium').length}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+            <CardContent className="p-4 text-center">
+              <TrendingUp className="w-8 h-8 text-green-400 mx-auto mb-2" />
+              <p className="text-sm text-secondary">Low Impact</p>
+              <p className="text-2xl font-bold text-primary">
+                {filteredEvents.filter(e => e.impact === 'low').length}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+            <CardContent className="p-4 text-center">
+              <Calendar className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+              <p className="text-sm text-secondary">Total Events</p>
+              <p className="text-2xl font-bold text-primary">{filteredEvents.length}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>;
+    </div>
+  );
 }

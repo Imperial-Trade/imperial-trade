@@ -93,13 +93,14 @@ export default function TradeAnalyst() {
     }
     setIsAnalyzing(false);
   };
-  return <div className="bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen p-6">
-    <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50">
-      <CardHeader>
-        <CardTitle>
-          
-        </CardTitle>
-      </CardHeader>
+  return <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
+      <div className="p-6">
+        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>
+              Trade Analyst
+            </CardTitle>
+          </CardHeader>
       <CardContent className="space-y-6">
         {/* Mock Mode Warning */}
         <div className="p-4 bg-accent-red/10 border border-accent-red/20 rounded-lg">
@@ -290,6 +291,8 @@ export default function TradeAnalyst() {
             </Card>
           </div>}
       </CardContent>
+      </CardContent>
     </Card>
-  </div>;
+  </div>
+);
 }

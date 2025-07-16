@@ -250,11 +250,12 @@ export default function TradingJournal() {
   if (showAdvanced && unlockStatus.isUnlocked) {
     return <AdvancedTradingJournal onBackToBasic={() => setShowAdvanced(false)} />;
   }
-  return <div className="space-y-6 bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen p-6">
-      <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            
+  return <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
+      <div className="p-6 space-y-6">
+        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              Trading Journal
             <Button className="bg-zinc-900 text-amber-600 hover:bg-zinc-800 border border-amber-600/20 shadow-lg" onClick={() => {
             if (unlockStatus.isUnlocked) {
               setShowAdvanced(true);
@@ -318,6 +319,7 @@ export default function TradingJournal() {
       <div className="space-y-4">
         <h3 className="text-xl font-semibold text-primary">Past Entries</h3>
         {isLoading ? <p className="text-secondary">Loading journal...</p> : entries.length > 0 ? entries.map(entry => <EntryCard key={entry.id} entry={entry} />) : <p className="text-secondary text-center py-8">Your journal is empty. Add your first trade to get started!</p>}
+      </div>
       </div>
     </div>;
 }

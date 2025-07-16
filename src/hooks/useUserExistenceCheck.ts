@@ -46,10 +46,11 @@ export const useUserExistenceCheck = (): UseUserExistenceCheckReturn => {
       }
 
       // Check if user with this email exists in the auth users list
-      const userExists = data.users.some(user => {
-        // Fix: Properly handle the user type and email property
-        return user.email && user.email.toLowerCase().trim() === email.toLowerCase().trim();
-      });
+      const userExists = data?.users?.some((user: any) => {
+        // Properly handle the user type and email property with type assertion
+        return user?.email && typeof user.email === 'string' && 
+               user.email.toLowerCase().trim() === email.toLowerCase().trim();
+      }) || false;
       
       console.log('User existence check result:', userExists);
       return userExists;

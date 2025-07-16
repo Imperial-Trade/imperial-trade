@@ -501,9 +501,6 @@
     hsl(var(--bg-gradient-light)) 75%, 
     hsl(var(--bg-gradient-black)) 100%);
 }
-    hsl(var(--bg-gradient-light)) 75%, 
-    hsl(var(--bg-gradient-white)) 100%);
-}
 
 .dark .subtle-bg-gradient {
   background: linear-gradient(180deg, 

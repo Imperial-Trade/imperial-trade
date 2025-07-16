@@ -55,16 +55,37 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+  const [assetSuggestions, setAssetSuggestions] = useState([]);
 
-  // Recent assets for suggestions
-
-  // Currency pairs for auto-detection
-  const commonCurrencyPairs = [
-    'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD',
-    'EURGBP', 'EURJPY', 'GBPJPY', 'EURCHF', 'EURAUD', 'EURCAD', 'GBPCHF',
-    'GBPAUD', 'GBPCAD', 'AUDJPY', 'AUDCAD', 'AUDCHF', 'NZDJPY', 'NZDCAD',
-    'CADCHF', 'CADJPY', 'CHFJPY', 'XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD'
+  // Pre-defined lists for stable, offline-first suggestions
+  const FOREX_PAIRS = [
+    'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD',
+    'EUR/GBP', 'EUR/JPY', 'EUR/CHF', 'EUR/AUD', 'EUR/CAD', 'EUR/NZD',
+    'GBP/JPY', 'GBP/CHF', 'GBP/AUD', 'GBP/CAD', 'GBP/NZD',
+    'AUD/JPY', 'AUD/CAD', 'AUD/CHF', 'AUD/NZD',
+    'CAD/JPY', 'CAD/CHF', 'CHF/JPY', 'NZD/JPY', 'NZD/CHF', 'NZD/CAD'
   ];
+  const COMMODITIES = ['XAU/USD', 'XAG/USD', 'WTI/USD', 'BRENT/USD'];
+  const INDICES = ['SPX500', 'US30', 'NAS100', 'UK100', 'DAX30', 'JP225'];
+
+  // Debounce hook for search
+  const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    
+    useEffect(() => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+      
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [value, delay]);
+    
+    return debouncedValue;
+  };
+
+  const debouncedAssetSearch = useDebounce(formData.asset_ticker, 300);
 
   // Get recent asset pairs from localStorage
   const getRecentAssets = (): string[] => {
@@ -90,28 +111,36 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     localStorage.setItem('recent-trading-assets', JSON.stringify(updated));
   };
 
-  // Filter suggestions based on search term
-  const getAssetSuggestions = (): string[] => {
-    const term = formData.asset_ticker.toUpperCase();
-    const recent = getRecentAssets();
-    
-    if (!term) return recent;
-    
-    // Currency pairs that match the search term
-    const matchingPairs = commonCurrencyPairs.filter(pair => 
-      pair.includes(term) || pair.startsWith(term)
-    );
-    
-    // Recent assets that match
-    const matchingRecent = recent.filter(asset => 
-      asset.includes(term) || asset.startsWith(term)
-    );
-    
-    // Combine and deduplicate, prioritizing exact matches
-    const exactMatches = [...matchingPairs, ...matchingRecent].filter(item => item.startsWith(term));
-    const partialMatches = [...matchingPairs, ...matchingRecent].filter(item => item.includes(term) && !item.startsWith(term));
-    
-    return [...new Set([...exactMatches, ...partialMatches])].slice(0, 8);
+  // Main function to get and combine suggestions
+  const getAssetSuggestions = async (query: string) => {
+    const normalizedQuery = query.toUpperCase().trim();
+    if (!normalizedQuery) {
+      return getRecentAssets();
+    }
+
+    // Filter local lists based on the user's query
+    const forexSuggestions = FOREX_PAIRS.filter(pair => pair.includes(normalizedQuery));
+    const commoditySuggestions = COMMODITIES.filter(c => c.includes(normalizedQuery));
+    const indexSuggestions = INDICES.filter(i => i.includes(normalizedQuery));
+
+    // Fetch crypto suggestions from CoinGecko API
+    let cryptoSuggestions: string[] = [];
+    try {
+      const response = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Format the crypto data to match the pair format (e.g., BTC/USDT)
+        cryptoSuggestions = (data.coins || []).slice(0, 5).map((coin: any) => `${coin.symbol.toUpperCase()}/USDT`);
+      }
+    } catch (error) {
+      console.warn("Could not fetch crypto suggestions:", error);
+    }
+
+    // Combine all sources, ensuring no duplicates
+    const combined = [...indexSuggestions, ...forexSuggestions, ...commoditySuggestions, ...cryptoSuggestions];
+    const uniqueSuggestions = [...new Set(combined)];
+
+    return uniqueSuggestions.slice(0, 10);
   };
 
   // Available timezones for selection
@@ -148,6 +177,19 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     setSelectedTimezone(timezone);
     localStorage.setItem('trading-journal-timezone', timezone);
   };
+
+  // Asset suggestions effect
+  useEffect(() => {
+    const searchAssets = async () => {
+      if (debouncedAssetSearch) {
+        const suggestions = await getAssetSuggestions(debouncedAssetSearch);
+        setAssetSuggestions(suggestions);
+      } else {
+        setAssetSuggestions(getRecentAssets());
+      }
+    };
+    searchAssets();
+  }, [debouncedAssetSearch]);
 
   useEffect(() => {
     loadEntries();
@@ -902,14 +944,14 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                               className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-40 overflow-y-auto"
                               onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking dropdown
                             >
-                              {getAssetSuggestions().length > 0 ? (
+                              {assetSuggestions.length > 0 ? (
                                 <div className="p-1">
                                   {!formData.asset_ticker && getRecentAssets().length > 0 && (
                                     <div className="px-2 py-1 text-[8px] text-muted-foreground font-medium border-b border-border/30 mb-1">
                                       Recent Assets
                                     </div>
                                   )}
-                                  {getAssetSuggestions().map((asset, index) => (
+                                  {assetSuggestions.map((asset, index) => (
                                     <button
                                       key={asset}
                                       type="button"
@@ -921,9 +963,24 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                                     >
                                       <div className="flex items-center justify-between">
                                         <span className="font-medium">{asset}</span>
-                                        {commonCurrencyPairs.includes(asset) && (
+                                        {FOREX_PAIRS.includes(asset) && (
                                           <Badge variant="outline" className="text-[7px] h-3 px-1">
                                             FX
+                                          </Badge>
+                                        )}
+                                        {COMMODITIES.includes(asset) && (
+                                          <Badge variant="outline" className="text-[7px] h-3 px-1">
+                                            Gold
+                                          </Badge>
+                                        )}
+                                        {INDICES.includes(asset) && (
+                                          <Badge variant="outline" className="text-[7px] h-3 px-1">
+                                            Index
+                                          </Badge>
+                                        )}
+                                        {asset.includes('/USDT') && (
+                                          <Badge variant="outline" className="text-[7px] h-3 px-1">
+                                            Crypto
                                           </Badge>
                                         )}
                                       </div>

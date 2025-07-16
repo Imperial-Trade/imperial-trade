@@ -32,16 +32,45 @@ export default function TradingJournal() {
   const [userProfile, setUserProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('log');
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+  const [assetSuggestions, setAssetSuggestions] = useState([]);
+  const [showModalAssetDropdown, setShowModalAssetDropdown] = useState(false);
+  const [modalAssetSuggestions, setModalAssetSuggestions] = useState([]);
+  const [newTrade, setNewTrade] = useState({
+    asset_ticker: '',
+    pnl: '',
+    notes: ''
+  });
 
-  // Recent assets for suggestions
-
-  // Currency pairs for auto-detection
-  const commonCurrencyPairs = [
-    'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD',
-    'EURGBP', 'EURJPY', 'GBPJPY', 'EURCHF', 'EURAUD', 'EURCAD', 'GBPCHF',
-    'GBPAUD', 'GBPCAD', 'AUDJPY', 'AUDCAD', 'AUDCHF', 'NZDJPY', 'NZDCAD',
-    'CADCHF', 'CADJPY', 'CHFJPY', 'XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD'
+  // Pre-defined lists for stable, offline-first suggestions
+  const FOREX_PAIRS = [
+    'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD',
+    'EUR/GBP', 'EUR/JPY', 'EUR/CHF', 'EUR/AUD', 'EUR/CAD', 'EUR/NZD',
+    'GBP/JPY', 'GBP/CHF', 'GBP/AUD', 'GBP/CAD', 'GBP/NZD',
+    'AUD/JPY', 'AUD/CAD', 'AUD/CHF', 'AUD/NZD',
+    'CAD/JPY', 'CAD/CHF', 'CHF/JPY', 'NZD/JPY', 'NZD/CHF', 'NZD/CAD'
   ];
+  const COMMODITIES = ['XAU/USD', 'XAG/USD', 'WTI/USD', 'BRENT/USD'];
+  const INDICES = ['SPX500', 'US30', 'NAS100', 'UK100', 'DAX30', 'JP225'];
+
+  // Debounce hook for search
+  const useDebounce = (value, delay) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    
+    useEffect(() => {
+      const handler = setTimeout(() => {
+        setDebouncedValue(value);
+      }, delay);
+      
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [value, delay]);
+    
+    return debouncedValue;
+  };
+
+  const debouncedAssetSearch = useDebounce(newEntry.asset_ticker, 300);
+  const debouncedModalAssetSearch = useDebounce(newTrade.asset_ticker, 300);
 
   // Get recent asset pairs from localStorage
   const getRecentAssets = () => {
@@ -67,38 +96,63 @@ export default function TradingJournal() {
     localStorage.setItem('recent-trading-assets', JSON.stringify(updated));
   };
 
-  // Filter suggestions based on search term
-  const getAssetSuggestions = () => {
-    const term = newEntry.asset_ticker.toUpperCase();
-    const recent = getRecentAssets();
-    
-    console.log('Asset search term:', term);
-    console.log('Recent assets:', recent);
-    
-    if (!term) return recent;
-    
-    // Currency pairs that match the search term
-    const matchingPairs = commonCurrencyPairs.filter(pair => 
-      pair.includes(term) || pair.startsWith(term)
-    );
-    
-    // Recent assets that match
-    const matchingRecent = recent.filter(asset => 
-      asset.includes(term) || asset.startsWith(term)
-    );
-    
-    console.log('Matching pairs:', matchingPairs);
-    console.log('Matching recent:', matchingRecent);
-    
-    // Combine and deduplicate, prioritizing exact matches
-    const exactMatches = [...matchingPairs, ...matchingRecent].filter(item => item.startsWith(term));
-    const partialMatches = [...matchingPairs, ...matchingRecent].filter(item => item.includes(term) && !item.startsWith(term));
-    
-    const suggestions = [...new Set([...exactMatches, ...partialMatches])].slice(0, 8);
-    console.log('Final suggestions:', suggestions);
-    
-    return suggestions;
+  // Main function to get and combine suggestions
+  const getAssetSuggestions = async (query) => {
+    const normalizedQuery = query.toUpperCase().trim();
+    if (!normalizedQuery) {
+      return getRecentAssets();
+    }
+
+    // Filter local lists based on the user's query
+    const forexSuggestions = FOREX_PAIRS.filter(pair => pair.includes(normalizedQuery));
+    const commoditySuggestions = COMMODITIES.filter(c => c.includes(normalizedQuery));
+    const indexSuggestions = INDICES.filter(i => i.includes(normalizedQuery));
+
+    // Fetch crypto suggestions from CoinGecko API
+    let cryptoSuggestions = [];
+    try {
+      const response = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        // Format the crypto data to match the pair format (e.g., BTC/USDT)
+        cryptoSuggestions = (data.coins || []).slice(0, 5).map(coin => `${coin.symbol.toUpperCase()}/USDT`);
+      }
+    } catch (error) {
+      console.warn("Could not fetch crypto suggestions:", error);
+    }
+
+    // Combine all sources, ensuring no duplicates
+    const combined = [...indexSuggestions, ...forexSuggestions, ...commoditySuggestions, ...cryptoSuggestions];
+    const uniqueSuggestions = [...new Set(combined)];
+
+    return uniqueSuggestions.slice(0, 10);
   };
+
+  // Asset suggestions effect for main form
+  useEffect(() => {
+    const searchAssets = async () => {
+      if (debouncedAssetSearch) {
+        const suggestions = await getAssetSuggestions(debouncedAssetSearch);
+        setAssetSuggestions(suggestions);
+      } else {
+        setAssetSuggestions(getRecentAssets());
+      }
+    };
+    searchAssets();
+  }, [debouncedAssetSearch]);
+
+  // Asset suggestions effect for modal form
+  useEffect(() => {
+    const searchAssets = async () => {
+      if (debouncedModalAssetSearch) {
+        const suggestions = await getAssetSuggestions(debouncedModalAssetSearch);
+        setModalAssetSuggestions(suggestions);
+      } else {
+        setModalAssetSuggestions(getRecentAssets());
+      }
+    };
+    searchAssets();
+  }, [debouncedModalAssetSearch]);
 
   // Initialize component
   useEffect(() => {
@@ -278,14 +332,14 @@ export default function TradingJournal() {
                       className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-48 overflow-y-auto"
                       onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking dropdown
                     >
-                      {getAssetSuggestions().length > 0 ? (
+                      {assetSuggestions.length > 0 ? (
                         <div className="p-1">
                           {!newEntry.asset_ticker && getRecentAssets().length > 0 && (
                             <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
                               Recent Assets
                             </div>
                           )}
-                          {getAssetSuggestions().map((asset, index) => (
+                          {assetSuggestions.map((asset, index) => (
                             <button
                               key={asset}
                               type="button"
@@ -297,9 +351,24 @@ export default function TradingJournal() {
                             >
                               <div className="flex items-center justify-between">
                                 <span className="font-medium">{asset}</span>
-                                {commonCurrencyPairs.includes(asset) && (
+                                {FOREX_PAIRS.includes(asset) && (
                                   <Badge variant="outline" className="text-xs h-5 px-2">
                                     FX
+                                  </Badge>
+                                )}
+                                {COMMODITIES.includes(asset) && (
+                                  <Badge variant="outline" className="text-xs h-5 px-2">
+                                    Gold
+                                  </Badge>
+                                )}
+                                {INDICES.includes(asset) && (
+                                  <Badge variant="outline" className="text-xs h-5 px-2">
+                                    Index
+                                  </Badge>
+                                )}
+                                {asset.includes('/USDT') && (
+                                  <Badge variant="outline" className="text-xs h-5 px-2">
+                                    Crypto
                                   </Badge>
                                 )}
                               </div>
@@ -1140,24 +1209,9 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
                         {(() => {
                           const term = newTrade.asset_ticker.toUpperCase();
                           const recent = getRecentAssets();
-                          
-                          let suggestions = [];
-                          if (!term) {
-                            suggestions = recent;
-                          } else {
-                            // Currency pairs that match the search term
-                            const matchingPairs = commonCurrencyPairs.filter(pair => 
-                              pair.includes(term)
-                            );
-                            
-                            // Recent assets that match the search term
-                            const matchingRecent = recent.filter(asset => 
-                              asset.toUpperCase().includes(term)
-                            );
-                            
-                            // Combine and deduplicate
-                            suggestions = [...new Set([...matchingRecent, ...matchingPairs])];
-                          }
+                          const suggestions = recent.filter(asset => 
+                            asset.includes(term) || asset.startsWith(term)
+                          );
                           
                           return suggestions.length > 0 ? (
                             <div className="p-1">
@@ -1167,35 +1221,30 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
                                 </div>
                               )}
                               {suggestions.map((asset, index) => (
-                                <button
-                                  key={asset}
-                                  type="button"
-                                  onClick={() => {
-                                    setNewTrade(prev => ({...prev, asset_ticker: asset}));
-                                    setShowModalAssetDropdown(false);
-                                  }}
-                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-medium">{asset}</span>
-                                    {commonCurrencyPairs.includes(asset) && (
-                                      <Badge variant="outline" className="text-xs h-5 px-2">
-                                        FX
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          ) : newTrade.asset_ticker ? (
-                            <div className="p-3 text-sm text-muted-foreground text-center">
-                              No matches found
-                            </div>
-                          ) : (
-                            <div className="p-3 text-sm text-muted-foreground text-center">
-                              Start typing to see suggestions
-                            </div>
-                          );
+                              <button
+                                key={asset}
+                                type="button"
+                                onClick={() => {
+                                  setNewTrade(prev => ({ ...prev, asset_ticker: asset }));
+                                  setShowModalAssetDropdown(false);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium">{asset}</span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : newTrade.asset_ticker ? (
+                          <div className="p-3 text-sm text-muted-foreground text-center">
+                            No matches found
+                          </div>
+                        ) : (
+                          <div className="p-3 text-sm text-muted-foreground text-center">
+                            Start typing to see suggestions
+                          </div>
+                        );
                         })()}
                       </div>
                     )}

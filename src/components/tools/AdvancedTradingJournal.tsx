@@ -57,8 +57,8 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
 
-  // Enhanced asset search with currency pairs
-  const { searchTerm: assetSearchTerm, handleSearchChange: handleAssetSearchChange } = useOptimizedSearch(formData.asset_ticker, { delay: 100 });
+  // Enhanced asset search with currency pairs - simplified to prevent focus issues
+  const [assetSearchTerm, setAssetSearchTerm] = useState(formData.asset_ticker);
 
   // Currency pairs for auto-detection
   const commonCurrencyPairs = [
@@ -886,7 +886,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                             value={formData.asset_ticker}
                             onChange={(e) => {
                               setFormData(prev => ({ ...prev, asset_ticker: e.target.value }));
-                              handleAssetSearchChange(e.target.value);
+                              setAssetSearchTerm(e.target.value);
                               setShowAssetDropdown(true);
                             }}
                             onFocus={() => setShowAssetDropdown(true)}
@@ -915,7 +915,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                                       type="button"
                                       onClick={() => {
                                         setFormData(prev => ({ ...prev, asset_ticker: asset }));
-                                        handleAssetSearchChange(asset);
+                                        setAssetSearchTerm(asset);
                                         setShowAssetDropdown(false);
                                       }}
                                       className="w-full text-left px-2 py-1.5 text-[10px] hover:bg-muted/50 rounded-sm transition-colors"

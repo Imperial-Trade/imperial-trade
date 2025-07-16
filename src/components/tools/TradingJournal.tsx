@@ -34,8 +34,8 @@ export default function TradingJournal() {
   const [activeTab, setActiveTab] = useState('log');
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
 
-  // Enhanced asset search with currency pairs
-  const { searchTerm: assetSearchTerm, handleSearchChange: handleAssetSearchChange } = useOptimizedSearch(newEntry.asset_ticker, { delay: 100 });
+  // Enhanced asset search with currency pairs - simplified to prevent focus issues
+  const [assetSearchTerm, setAssetSearchTerm] = useState(newEntry.asset_ticker);
 
   // Currency pairs for auto-detection
   const commonCurrencyPairs = [
@@ -151,7 +151,7 @@ export default function TradingJournal() {
     // Handle asset ticker search
     if (name === 'asset_ticker') {
       console.log('Handling asset search change:', value);
-      handleAssetSearchChange(value);
+      setAssetSearchTerm(value);
       setShowAssetDropdown(true);
     }
   };
@@ -291,7 +291,7 @@ export default function TradingJournal() {
                               type="button"
                               onClick={() => {
                                 setNewEntry(prev => ({ ...prev, asset_ticker: asset }));
-                                handleAssetSearchChange(asset);
+                                setAssetSearchTerm(asset);
                                 setShowAssetDropdown(false);
                               }}
                               className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"

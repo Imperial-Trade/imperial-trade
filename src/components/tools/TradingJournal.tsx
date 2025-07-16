@@ -256,20 +256,30 @@ export default function TradingJournal() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Trading Journal
-            <Button className="bg-zinc-900 text-amber-600 hover:bg-zinc-800 border border-amber-600/20 shadow-lg" onClick={() => {
-            if (unlockStatus.isUnlocked) {
-              setShowAdvanced(true);
-            } else {
-              alert(`Progress: ${unlockStatus.tradingDays}/10 trading days, ${unlockStatus.totalEntries}/10 total entries`);
-            }
-          }}>
-              {unlockStatus.isUnlocked ? <>
+            <Button 
+              className={`border shadow-lg transition-all duration-200 ${
+                unlockStatus.isUnlocked 
+                  ? 'bg-zinc-900 text-amber-600 hover:bg-zinc-800 border-amber-600/20 cursor-pointer' 
+                  : 'bg-zinc-800/50 text-zinc-400 border-zinc-600/20 cursor-not-allowed'
+              }`}
+              onClick={() => {
+                if (unlockStatus.isUnlocked) {
+                  setShowAdvanced(true);
+                }
+              }}
+              disabled={!unlockStatus.isUnlocked}
+            >
+              {unlockStatus.isUnlocked ? (
+                <>
                   <Unlock className="w-4 h-4 mr-2" />
                   {unlockStatus.isAdmin ? 'Admin Access' : 'Open Advanced'}
-                </> : <>
+                </>
+              ) : (
+                <>
                   <Lock className="w-4 h-4 mr-2" />
                   {unlockStatus.tradingDays}/10 Days
-                </>}
+                </>
+              )}
             </Button>
           </CardTitle>
           

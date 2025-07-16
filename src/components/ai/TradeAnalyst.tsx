@@ -93,7 +93,8 @@ export default function TradeAnalyst() {
     }
     setIsAnalyzing(false);
   };
-  return <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
+  return (
+    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
       <div className="p-6">
         <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
           <CardHeader>
@@ -101,198 +102,232 @@ export default function TradeAnalyst() {
               Trade Analyst
             </CardTitle>
           </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Mock Mode Warning */}
-        <div className="p-4 bg-accent-red/10 border border-accent-red/20 rounded-lg">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-accent-red mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-accent-red mb-1">Demo Mode Active</h4>
-              <p className="text-sm text-secondary">
-                This is a demonstration version. Analysis results are simulated for testing purposes.
-                <br />
-                <span className="text-accent-red">Upload real screenshots to see the interface in action.</span>
+          <CardContent className="space-y-6">
+            {/* Mock Mode Warning */}
+            <div className="p-4 bg-accent-red/10 border border-accent-red/20 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-accent-red mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-accent-red mb-1">Demo Mode Active</h4>
+                  <p className="text-sm text-secondary">
+                    This is a demonstration version. Analysis results are simulated for testing purposes.
+                    <br />
+                    <span className="text-accent-red">Upload real screenshots to see the interface in action.</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* File Upload */}
+            <div className="border-2 border-dashed border-default rounded-lg p-6 text-center">
+              <Camera className="w-12 h-12 text-secondary mx-auto mb-4" />
+              <p className="text-secondary mb-2">Upload Screenshots of Your Trading Platform</p>
+              <p className="text-sm text-secondary/70 mb-4">
+                MT4, MT5, cTrader, TradingView, or any trading platform screenshots (Max 5 files)
+              </p>
+              <Input type="file" accept="image/*" multiple onChange={handleFileUpload} className="bg-surface border-default text-primary" />
+              <p className="text-xs text-secondary/50 mt-2">
+                {uploadedFiles.length}/5 screenshots uploaded
               </p>
             </div>
-          </div>
-        </div>
 
-        {/* File Upload */}
-        <div className="border-2 border-dashed border-default rounded-lg p-6 text-center">
-          <Camera className="w-12 h-12 text-secondary mx-auto mb-4" />
-          <p className="text-secondary mb-2">Upload Screenshots of Your Trading Platform</p>
-          <p className="text-sm text-secondary/70 mb-4">
-            MT4, MT5, cTrader, TradingView, or any trading platform screenshots (Max 5 files)
-          </p>
-          <Input type="file" accept="image/*" multiple onChange={handleFileUpload} className="bg-surface border-default text-primary" />
-          <p className="text-xs text-secondary/50 mt-2">
-            {uploadedFiles.length}/5 screenshots uploaded
-          </p>
-        </div>
-
-        {/* Uploaded Files Display */}
-        {uploadedFiles.length > 0 && <div className="space-y-4">
-            <h4 className="font-medium text-primary">Uploaded Screenshots ({uploadedFiles.length})</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {uploadedFiles.map((file, index) => <div key={index} className="relative">
-                  <div className="border border-border dark:border-gray-600/30 rounded-lg p-3 bg-background dark:bg-gray-900/30 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-primary truncate">
-                        Screenshot {index + 1}
-                      </span>
-                      <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0 text-accent-red hover:bg-red-500/10">
-                        <X className="w-4 h-4" />
-                      </Button>
+            {/* Uploaded Files Display */}
+            {uploadedFiles.length > 0 && (
+              <div className="space-y-4">
+                <h4 className="font-medium text-primary">Uploaded Screenshots ({uploadedFiles.length})</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {uploadedFiles.map((file, index) => (
+                    <div key={index} className="relative">
+                      <div className="border border-border dark:border-gray-600/30 rounded-lg p-3 bg-background dark:bg-gray-900/30 backdrop-blur-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-primary truncate">
+                            Screenshot {index + 1}
+                          </span>
+                          <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0 text-accent-red hover:bg-red-500/10">
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <img src={file.url} alt={`Trading screenshot ${index + 1}`} className="w-full h-32 object-cover rounded border border-border dark:border-gray-600/30" />
+                        <p className="text-xs text-secondary mt-1 truncate">{file.name}</p>
+                      </div>
                     </div>
-                    <img src={file.url} alt={`Trading screenshot ${index + 1}`} className="w-full h-32 object-cover rounded border border-border dark:border-gray-600/30" />
-                    <p className="text-xs text-secondary mt-1 truncate">{file.name}</p>
-                  </div>
-                </div>)}
-            </div>
-            
-            {uploadedFiles.length < 5 && <div className="text-center">
-                <label className="cursor-pointer">
-                  <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
-                  <Button variant="outline" className="border-border dark:border-gray-600/30 text-primary hover:bg-background dark:hover:bg-gray-900/30">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add More Screenshots
-                  </Button>
-                </label>
-              </div>}
-          </div>}
-
-        {/* Analyze Button */}
-        <Button onClick={analyzeTradeHistory} disabled={uploadedFiles.length === 0 || isAnalyzing} className="w-full bg-purple-600 hover:bg-purple-700 text-white">
-          {isAnalyzing ? <>
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
-              Analyzing {uploadedFiles.length} Screenshot{uploadedFiles.length > 1 ? 's' : ''}...
-            </> : <>
-              <Brain className="w-5 h-5 mr-2" />
-              Analyze My Trading Performance (Mock)
-              {uploadedFiles.length > 0 && ` (${uploadedFiles.length} screenshots)`}
-            </>}
-        </Button>
-
-        {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-accent-red rounded-lg">
-            {error}
-          </div>}
-
-        {/* Analysis Results */}
-        {analysisResult && <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-primary">Comprehensive Analysis Results (Mock Data)</h3>
-            
-            {/* Overall Analysis */}
-            <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-              <CardContent className="p-4">
-                <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
-                  <Camera className="w-4 h-4" />
-                  Overall Analysis ({analysisResult.screenshots_analyzed} Screenshots)
-                </h4>
-                <p className="text-secondary">{analysisResult.overall_analysis}</p>
-                <div className="flex gap-2 mt-2">
-                  {analysisResult.total_trades_identified && <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                      {analysisResult.total_trades_identified} total trades identified
-                    </Badge>}
-                  <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20">
-                    {analysisResult.screenshots_analyzed} screenshots analyzed
-                  </Badge>
-                  <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
-                    Mock Analysis
-                  </Badge>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
+                
+                {uploadedFiles.length < 5 && (
+                  <div className="text-center">
+                    <label className="cursor-pointer">
+                      <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
+                      <Button variant="outline" className="border-border dark:border-gray-600/30 text-primary hover:bg-background dark:hover:bg-gray-900/30">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add More Screenshots
+                      </Button>
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* Performance Overview */}
-            <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-              <CardContent className="p-4">
-                <h4 className="font-semibold text-primary mb-2">Performance Overview</h4>
-                <p className="text-secondary">{analysisResult.overall_performance}</p>
-                {analysisResult.risk_management_score && <div className="mt-2">
-                    <Badge className={`${analysisResult.risk_management_score >= 8 ? 'bg-green-500/10 text-accent-green border-green-500/20' : analysisResult.risk_management_score >= 6 ? 'bg-yellow-500/10 text-accent-gold border-yellow-500/20' : 'bg-red-500/10 text-accent-red border-red-500/20'}`}>
-                      Risk Management Score: {analysisResult.risk_management_score}/10
-                    </Badge>
-                  </div>}
-              </CardContent>
-            </Card>
+            {/* Analyze Button */}
+            <Button onClick={analyzeTradeHistory} disabled={uploadedFiles.length === 0 || isAnalyzing} className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+              {isAnalyzing ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
+                  Analyzing {uploadedFiles.length} Screenshot{uploadedFiles.length > 1 ? 's' : ''}...
+                </>
+              ) : (
+                <>
+                  <Brain className="w-5 h-5 mr-2" />
+                  Analyze My Trading Performance (Mock)
+                  {uploadedFiles.length > 0 && ` (${uploadedFiles.length} screenshots)`}
+                </>
+              )}
+            </Button>
 
-            {/* Consistency Analysis */}
-            {analysisResult.consistency_analysis && <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                <CardContent className="p-4">
-                  <h4 className="font-semibold text-primary mb-2">Consistency Analysis</h4>
-                  <p className="text-secondary">{analysisResult.consistency_analysis}</p>
-                </CardContent>
-              </Card>}
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-accent-red rounded-lg">
+                {error}
+              </div>
+            )}
 
-            {/* Performance Evolution */}
-            {analysisResult.performance_evolution && <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                <CardContent className="p-4">
-                  <h4 className="font-semibold text-primary mb-2">Performance Evolution</h4>
-                  <p className="text-secondary">{analysisResult.performance_evolution}</p>
-                </CardContent>
-              </Card>}
+            {/* Analysis Results */}
+            {analysisResult && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-primary">Comprehensive Analysis Results (Mock Data)</h3>
+                
+                {/* Overall Analysis */}
+                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
+                      <Camera className="w-4 h-4" />
+                      Overall Analysis ({analysisResult.screenshots_analyzed} Screenshots)
+                    </h4>
+                    <p className="text-secondary">{analysisResult.overall_analysis}</p>
+                    <div className="flex gap-2 mt-2">
+                      {analysisResult.total_trades_identified && (
+                        <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+                          {analysisResult.total_trades_identified} total trades identified
+                        </Badge>
+                      )}
+                      <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20">
+                        {analysisResult.screenshots_analyzed} screenshots analyzed
+                      </Badge>
+                      <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
+                        Mock Analysis
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* Strengths */}
-            {analysisResult.strengths && analysisResult.strengths.length > 0 && <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                <CardContent className="p-4">
-                  <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-accent-green" />
-                    What You're Doing Well
-                  </h4>
-                  <ul className="space-y-2">
-                    {analysisResult.strengths.map((strength, index) => <li key={index} className="flex items-start gap-2">
-                        <TrendingUp className="w-4 h-4 text-accent-green mt-1 flex-shrink-0" />
-                        <span className="text-secondary">{strength}</span>
-                      </li>)}
-                  </ul>
-                </CardContent>
-              </Card>}
+                {/* Performance Overview */}
+                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-primary mb-2">Performance Overview</h4>
+                    <p className="text-secondary">{analysisResult.overall_performance}</p>
+                    {analysisResult.risk_management_score && (
+                      <div className="mt-2">
+                        <Badge className={`${analysisResult.risk_management_score >= 8 ? 'bg-green-500/10 text-accent-green border-green-500/20' : analysisResult.risk_management_score >= 6 ? 'bg-yellow-500/10 text-accent-gold border-yellow-500/20' : 'bg-red-500/10 text-accent-red border-red-500/20'}`}>
+                          Risk Management Score: {analysisResult.risk_management_score}/10
+                        </Badge>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            {/* Areas for Improvement */}
-            {analysisResult.areas_for_improvement && analysisResult.areas_for_improvement.length > 0 && <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                <CardContent className="p-4">
-                  <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-accent-gold" />
-                    Areas for Improvement
-                  </h4>
-                  <ul className="space-y-2">
-                    {analysisResult.areas_for_improvement.map((area, index) => <li key={index} className="flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-accent-gold mt-1 flex-shrink-0" />
-                        <span className="text-secondary">{area}</span>
-                      </li>)}
-                  </ul>
-                </CardContent>
-              </Card>}
+                {/* Consistency Analysis */}
+                {analysisResult.consistency_analysis && (
+                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                    <CardContent className="p-4">
+                      <h4 className="font-semibold text-primary mb-2">Consistency Analysis</h4>
+                      <p className="text-secondary">{analysisResult.consistency_analysis}</p>
+                    </CardContent>
+                  </Card>
+                )}
 
-            {/* Key Insights */}
-            <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-              <CardContent className="p-4">
-                <h4 className="font-semibold text-primary mb-2">Key Insights</h4>
-                <ul className="space-y-2">
-                  {analysisResult.key_insights?.map((insight, index) => <li key={index} className="flex items-start gap-2">
-                      <TrendingUp className="w-4 h-4 text-accent-green mt-1 flex-shrink-0" />
-                      <span className="text-secondary">{insight}</span>
-                    </li>)}
-                </ul>
-              </CardContent>
-            </Card>
+                {/* Performance Evolution */}
+                {analysisResult.performance_evolution && (
+                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                    <CardContent className="p-4">
+                      <h4 className="font-semibold text-primary mb-2">Performance Evolution</h4>
+                      <p className="text-secondary">{analysisResult.performance_evolution}</p>
+                    </CardContent>
+                  </Card>
+                )}
 
-            {/* Recommendations */}
-            <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-              <CardContent className="p-4">
-                <h4 className="font-semibold text-primary mb-2">Recommendations</h4>
-                <ul className="space-y-2">
-                  {analysisResult.recommendations?.map((rec, index) => <li key={index} className="flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 text-accent-gold mt-1 flex-shrink-0" />
-                      <span className="text-secondary">{rec}</span>
-                    </li>)}
-                </ul>
-              </CardContent>
-            </Card>
-          </div>}
-      </CardContent>
-      </CardContent>
-    </Card>
-  </div>
-);
+                {/* Strengths */}
+                {analysisResult.strengths && analysisResult.strengths.length > 0 && (
+                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                    <CardContent className="p-4">
+                      <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-accent-green" />
+                        What You're Doing Well
+                      </h4>
+                      <ul className="space-y-2">
+                        {analysisResult.strengths.map((strength, index) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <TrendingUp className="w-4 h-4 text-accent-green mt-1 flex-shrink-0" />
+                            <span className="text-secondary">{strength}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Areas for Improvement */}
+                {analysisResult.areas_for_improvement && analysisResult.areas_for_improvement.length > 0 && (
+                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                    <CardContent className="p-4">
+                      <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-accent-gold" />
+                        Areas for Improvement
+                      </h4>
+                      <ul className="space-y-2">
+                        {analysisResult.areas_for_improvement.map((area, index) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-accent-gold mt-1 flex-shrink-0" />
+                            <span className="text-secondary">{area}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Key Insights */}
+                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-primary mb-2">Key Insights</h4>
+                    <ul className="space-y-2">
+                      {analysisResult.key_insights?.map((insight, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <TrendingUp className="w-4 h-4 text-accent-green mt-1 flex-shrink-0" />
+                          <span className="text-secondary">{insight}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Recommendations */}
+                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-primary mb-2">Recommendations</h4>
+                    <ul className="space-y-2">
+                      {analysisResult.recommendations?.map((rec, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 text-accent-gold mt-1 flex-shrink-0" />
+                          <span className="text-secondary">{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 }

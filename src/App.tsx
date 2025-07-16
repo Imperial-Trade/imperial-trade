@@ -68,7 +68,6 @@ const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
 
 const options = {
   api_host: POSTHOG_HOST,
-  defaults: "2025-05-24",
 };
 
 function App() {

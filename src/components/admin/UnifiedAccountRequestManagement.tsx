@@ -295,7 +295,7 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
       case "rejected":
         return <Badge className="bg-red-500/10 text-red-600 border-red-500/20 font-medium"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
       default:
-        return <Badge className="bg-gray-500/10 text-gray-600 border-gray-500/20 font-medium">Unknown</Badge>;
+        return <Badge className="bg-muted text-muted-foreground border font-medium">Unknown</Badge>;
     }
   };
 
@@ -305,12 +305,12 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Account Request Management</h2>
+          <h2 className="text-2xl font-bold text-foreground">Account Request Management</h2>
         </div>
         <Card>
           <CardContent className="p-6 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Loading account requests...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading account requests...</p>
           </CardContent>
         </Card>
       </div>
@@ -323,8 +323,8 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
         {/* Header with Actions */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Account Request Management</h2>
-            <p className="text-gray-600 mt-1">Review and manage account requests with advanced filtering</p>
+            <h2 className="text-2xl font-bold text-foreground">Account Request Management</h2>
+            <p className="text-muted-foreground mt-1">Review and manage account requests with advanced filtering</p>
           </div>
           
           <div className="flex gap-2">
@@ -332,7 +332,7 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
               variant="outline"
               onClick={handleExportRequests}
               disabled={filteredRequests.length === 0}
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="hover:bg-accent"
             >
               <Download className="w-4 h-4 mr-2" />
               Export CSV
@@ -340,7 +340,7 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
             <Button
               variant="outline"
               onClick={loadRequests}
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="hover:bg-accent"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
@@ -350,23 +350,23 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-gray-200">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total</p>
-                  <p className="text-2xl font-bold text-gray-900">{requests.length}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Total</p>
+                  <p className="text-2xl font-bold text-foreground">{requests.length}</p>
                 </div>
                 <User className="w-8 h-8 text-blue-600" />
               </div>
             </CardContent>
           </Card>
           
-          <Card className="border-gray-200">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
+                  <p className="text-sm font-medium text-muted-foreground">Pending</p>
                   <p className="text-2xl font-bold text-yellow-600">{requests.filter(r => r.status === 'pending').length}</p>
                 </div>
                 <Clock className="w-8 h-8 text-yellow-600" />
@@ -374,11 +374,11 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
             </CardContent>
           </Card>
           
-          <Card className="border-gray-200">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Approved</p>
+                  <p className="text-sm font-medium text-muted-foreground">Approved</p>
                   <p className="text-2xl font-bold text-green-600">{requests.filter(r => r.status === 'approved').length}</p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-600" />
@@ -386,11 +386,11 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
             </CardContent>
           </Card>
           
-          <Card className="border-gray-200">
+          <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Rejected</p>
+                  <p className="text-sm font-medium text-muted-foreground">Rejected</p>
                   <p className="text-2xl font-bold text-red-600">{requests.filter(r => r.status === 'rejected').length}</p>
                 </div>
                 <XCircle className="w-8 h-8 text-red-600" />
@@ -400,9 +400,9 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <Card className="border-gray-200">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-900">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Settings className="w-5 h-5" />
               Filters & Search
             </CardTitle>
@@ -411,19 +411,19 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
               <div className="flex-1 min-w-0">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     placeholder="Search by email, name, or VT account..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    className="pl-10 bg-background border-border focus:border-ring"
                   />
                 </div>
               </div>
               
               <div className="flex gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-32 border-gray-300">
+                  <SelectTrigger className="w-32 bg-background border-border">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -435,7 +435,7 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                 </Select>
 
                 <Select value={resubmissionFilter} onValueChange={setResubmissionFilter}>
-                  <SelectTrigger className="w-40 border-gray-300">
+                  <SelectTrigger className="w-40 bg-background border-border">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -446,7 +446,7 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                 </Select>
 
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-32 border-gray-300">
+                  <SelectTrigger className="w-32 bg-background border-border">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
@@ -460,7 +460,7 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                 <Button
                   variant="outline"
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                  className="hover:bg-accent"
                 >
                   {sortOrder === 'asc' ? '↑' : '↓'}
                 </Button>
@@ -469,13 +469,13 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-600 font-medium">
+                <span className="text-sm text-muted-foreground font-medium">
                   Showing {filteredRequests.length} of {requests.length} requests
                 </span>
                 
                 {hasActiveFilters && (
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                    <Badge variant="secondary" className="text-xs">
                       <Filter className="w-3 h-3 mr-1" />
                       Filtered
                     </Badge>
@@ -483,7 +483,7 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       onClick={handleClearFilters}
-                      className="h-6 px-2 text-xs text-gray-600 hover:text-gray-900"
+                      className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                     >
                       <X className="w-3 h-3 mr-1" />
                       Clear
@@ -497,11 +497,11 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
 
         {/* Request List */}
         {filteredRequests.length === 0 ? (
-          <Card className="border-gray-200">
+          <Card>
             <CardContent className="p-6 text-center">
-              <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Account Requests</h3>
-              <p className="text-gray-600">
+              <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-2">No Account Requests</h3>
+              <p className="text-muted-foreground">
                 {hasActiveFilters 
                   ? "No requests match your current filters. Try adjusting your search criteria."
                   : "There are currently no account requests to review."
@@ -520,11 +520,11 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  <Card className="border-gray-200 hover:shadow-md transition-shadow bg-white">
+                  <Card className="hover:shadow-md transition-shadow">
                     <CardHeader>
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-gray-900 flex items-center gap-2 font-semibold">
-                          <User className="w-5 h-5 text-gray-600" />
+                        <CardTitle className="text-foreground flex items-center gap-2 font-semibold">
+                          <User className="w-5 h-5 text-muted-foreground" />
                           {request.full_name}
                         </CardTitle>
                         {getStatusBadge(request.status)}
@@ -534,40 +534,40 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-sm">
-                            <Mail className="w-4 h-4 text-gray-500" />
-                            <span className="text-gray-600 font-medium">Email:</span>
-                            <span className="text-gray-900">{request.email}</span>
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-muted-foreground font-medium">Email:</span>
+                            <span className="text-foreground">{request.email}</span>
                           </div>
                           <div className="flex items-center gap-2 text-sm">
-                            <Phone className="w-4 h-4 text-gray-500" />
-                            <span className="text-gray-600 font-medium">Phone:</span>
-                            <span className="text-gray-900">{request.phone_number || "Not provided"}</span>
+                            <Phone className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-muted-foreground font-medium">Phone:</span>
+                            <span className="text-foreground">{request.phone_number || "Not provided"}</span>
                           </div>
                           <div className="flex items-center gap-2 text-sm">
-                            <Shield className="w-4 h-4 text-gray-500" />
-                            <span className="text-gray-600 font-medium">VT Account:</span>
-                            <span className="text-gray-900">{request.vt_market_account_number}</span>
+                            <Shield className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-muted-foreground font-medium">VT Account:</span>
+                            <span className="text-foreground">{request.vt_market_account_number}</span>
                           </div>
                         </div>
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-sm">
-                            <User className="w-4 h-4 text-gray-500" />
-                            <span className="text-gray-600 font-medium">Type:</span>
-                            <span className="text-gray-900">
+                            <User className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-muted-foreground font-medium">Type:</span>
+                            <span className="text-foreground">
                               {request.account_type === "user" ? "Standard Member" : "Educator / IB Partner"}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="w-4 h-4 text-gray-500" />
-                            <span className="text-gray-600 font-medium">Submitted:</span>
-                            <span className="text-gray-900">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-muted-foreground font-medium">Submitted:</span>
+                            <span className="text-foreground">
                               {new Date(request.created_at).toLocaleDateString()}
                             </span>
                           </div>
                           {request.resubmission_count > 0 && (
                             <div className="flex items-center gap-2 text-sm">
                               <RefreshCw className="w-4 h-4 text-orange-500" />
-                              <span className="text-gray-600 font-medium">Resubmissions:</span>
+                              <span className="text-muted-foreground font-medium">Resubmissions:</span>
                               <span className="text-orange-600 font-medium">{request.resubmission_count}</span>
                             </div>
                           )}
@@ -575,18 +575,18 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                       </div>
 
                       {request.reason && (
-                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                          <h4 className="font-semibold text-gray-900 mb-2">Reason for Joining:</h4>
-                          <p className="text-gray-700 text-sm leading-relaxed">
+                        <div className="bg-muted p-3 rounded-lg border">
+                          <h4 className="font-semibold text-foreground mb-2">Reason for Joining:</h4>
+                          <p className="text-muted-foreground text-sm leading-relaxed">
                             {request.reason}
                           </p>
                         </div>
                       )}
 
                       {request.rejection_reason && (
-                        <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                          <h4 className="font-semibold text-red-700 mb-2">Rejection Reason:</h4>
-                          <p className="text-red-600 text-sm leading-relaxed">
+                        <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
+                          <h4 className="font-semibold text-red-700 dark:text-red-400 mb-2">Rejection Reason:</h4>
+                          <p className="text-red-600 dark:text-red-300 text-sm leading-relaxed">
                             {request.rejection_reason}
                           </p>
                         </div>
@@ -596,7 +596,7 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="flex gap-3 pt-4 border-t border-gray-200"
+                          className="flex gap-3 pt-4 border-t"
                         >
                           <ProfessionalButton
                             onClick={() => handleApprove(request.id, request.email)}
@@ -613,7 +613,7 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                           <ProfessionalButton
                             onClick={() => setShowRejectForm(request.id)}
                             variant="outline"
-                            className="border-red-300 text-red-600 hover:bg-red-50 font-medium"
+                            className="border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 font-medium"
                           >
                             <XCircle className="w-4 h-4 mr-2" />
                             Reject
@@ -627,13 +627,13 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="border-t border-gray-200 pt-4 space-y-3"
+                            className="border-t pt-4 space-y-3"
                           >
                             <Textarea
                               placeholder="Please provide a reason for rejection..."
                               value={rejectionReason}
                               onChange={(e) => setRejectionReason(e.target.value)}
-                              className="bg-white border-gray-300 text-gray-900 focus:border-red-500 focus:ring-red-500"
+                              className="bg-background border focus:border-ring"
                             />
                             <div className="flex gap-2">
                               <ProfessionalButton
@@ -654,7 +654,7 @@ export const UnifiedAccountRequestManagement: React.FC = () => {
                                   setRejectionReason("");
                                 }}
                                 variant="outline"
-                                className="border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+                                className="hover:bg-accent font-medium"
                               >
                                 Cancel
                               </ProfessionalButton>

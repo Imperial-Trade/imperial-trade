@@ -12,6 +12,7 @@ import {
   ArrowLeft, TrendingUp, Target, PieChart, Activity 
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Trade {
   id: string;
@@ -23,6 +24,12 @@ interface Trade {
   ai_positive_feedback?: string;
   trade_type?: 'Long' | 'Short';
   created_at: string;
+}
+
+interface EquityPoint {
+  date: string;
+  equity: number;
+  tradeNumber?: number;
 }
 
 interface AdvancedTradingJournalProps {
@@ -115,6 +122,37 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
       profitFactor,
       totalTrades: trades.length
     };
+  };
+
+  const calculateEquityCurve = (): EquityPoint[] => {
+    const filteredTrades = getFilteredTrades();
+    
+    // Sort trades by date
+    const sortedTrades = [...filteredTrades].sort((a, b) => 
+      new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime()
+    );
+
+    if (sortedTrades.length === 0) {
+      return [
+        { date: 'Start', equity: 0 },
+        { date: 'Current', equity: 0 }
+      ];
+    }
+
+    // Calculate cumulative equity
+    let cumulativeEquity = 0;
+    const equityData: EquityPoint[] = [{ date: 'Start', equity: 0 }];
+
+    sortedTrades.forEach((trade, index) => {
+      cumulativeEquity += trade.pnl;
+      equityData.push({
+        date: format(new Date(trade.trade_date), 'MMM dd'),
+        equity: cumulativeEquity,
+        tradeNumber: index + 1
+      });
+    });
+
+    return equityData;
   };
 
   const handleDateClick = (dateStr: string) => {
@@ -537,12 +575,40 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
           <CardContent className="p-6">
             <h3 className="text-lg font-medium text-center text-muted-foreground mb-8">Equity Curve</h3>
-            <div className="h-48 flex items-center justify-center relative">
-              <div className="absolute bottom-4 left-4 text-sm text-muted-foreground">$0</div>
-              <div className="absolute top-4 left-4 text-sm text-muted-foreground">$0</div>
-              <div className="w-full h-px bg-accent-green absolute bottom-12"></div>
-              <div className="absolute bottom-2 left-8 text-xs text-muted-foreground">Start</div>
-              <div className="absolute bottom-2 right-8 text-xs text-muted-foreground">Current</div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={calculateEquityCurve()}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={12}
+                  />
+                  <YAxis 
+                    stroke="hsl(var(--muted-foreground))" 
+                    fontSize={12}
+                    tickFormatter={(value) => `$${value.toFixed(0)}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--surface))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      color: 'hsl(var(--foreground))'
+                    }}
+                    formatter={(value, name) => [`$${Number(value).toFixed(2)}`, 'Equity']}
+                    labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="equity" 
+                    stroke="hsl(var(--accent-green))" 
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--accent-green))', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, stroke: 'hsl(var(--accent-green))', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>

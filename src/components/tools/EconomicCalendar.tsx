@@ -212,11 +212,11 @@ export default function EconomicCalendar() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
       <div className="p-6 space-y-6">
-        <Card className="bg-[#1a1a1a] border-[#333]">
+        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-white">Economic Calendar</CardTitle>
+            <CardTitle>Economic Calendar</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex justify-between items-center mb-6">
@@ -300,7 +300,7 @@ export default function EconomicCalendar() {
             ) : (
               <div className="space-y-4">
                 {filteredEvents.map(event => (
-                  <Card key={event.id} className="bg-[#1a1a1a] border-[#333] hover:border-[#444] transition-colors">
+                  <Card key={event.id} className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm hover:border-border dark:hover:border-gray-500/30 transition-colors">
                     <CardContent className="p-4">
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div className="flex-1">

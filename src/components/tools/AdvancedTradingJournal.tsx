@@ -81,9 +81,13 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     const now = new Date();
     
     switch(timeFilter) {
+      case 'daily':
+        const today = format(now, 'yyyy-MM-dd');
+        return entries.filter(t => format(new Date(t.trade_date), 'yyyy-MM-dd') === today);
       case 'weekly':
         const startOfWeek = new Date(now);
         startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
         return entries.filter(t => new Date(t.trade_date) >= startOfWeek);
       case 'monthly':
         return entries.filter(t => 
@@ -95,7 +99,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
       case 'all':
         return entries;
       default:
-        return entries;
+        return entries.filter(t => format(new Date(t.trade_date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd'));
     }
   };
 
@@ -103,17 +107,27 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     const totalPnl = trades.reduce((sum, trade) => sum + trade.pnl, 0);
     const wins = trades.filter(trade => trade.pnl > 0).length;
     const losses = trades.filter(trade => trade.pnl < 0).length;
+    const breakevens = trades.filter(trade => trade.pnl === 0).length;
     const winRate = trades.length > 0 ? (wins / trades.length * 100) : 0;
     
     const totalWinsPnl = trades.filter(t => t.pnl > 0).reduce((sum, t) => sum + t.pnl, 0);
     const totalLossesPnl = Math.abs(trades.filter(t => t.pnl < 0).reduce((sum, t) => sum + t.pnl, 0));
-    const profitFactor = totalLossesPnl > 0 ? (totalWinsPnl / totalLossesPnl) : 0;
+    const profitFactor = totalLossesPnl > 0 ? (totalWinsPnl / totalLossesPnl) : (totalWinsPnl > 0 ? Infinity : 0);
+    
+    // Average win and average loss
+    const avgWin = wins > 0 ? totalWinsPnl / wins : 0;
+    const avgLoss = losses > 0 ? totalLossesPnl / losses : 0;
 
     return {
       totalPnl,
       winRate,
       profitFactor,
-      totalTrades: trades.length
+      totalTrades: trades.length,
+      wins,
+      losses,
+      breakevens,
+      avgWin,
+      avgLoss
     };
   };
 
@@ -285,7 +299,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
           const dayTrades = getTradesForDate(dateStr);
           const totalPnl = dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
           const isCurrentMonth = isSameMonth(day, currentDate);
-          const isSelectedDay = dateStr === format(new Date(2025, 6, 15), 'yyyy-MM-dd'); // Highlight the 15th as in the image
+          const isSelectedDay = selectedDate === dateStr;
           
           return (
             <div
@@ -536,22 +550,33 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                   );
                 }
 
-                // Calculate cumulative P&L for each trade
+                // Calculate cumulative P&L for each trade with starting point
                 const equityData = [];
                 let cumulativePnL = 0;
+                
+                // Add starting point at zero
+                if (filteredTrades.length > 0) {
+                  equityData.push({
+                    date: filteredTrades[0].trade_date,
+                    value: 0,
+                    index: -1,
+                    isStarting: true
+                  });
+                }
                 
                 filteredTrades.forEach((trade, index) => {
                   cumulativePnL += trade.pnl;
                   equityData.push({
                     date: trade.trade_date,
                     value: cumulativePnL,
-                    index: index
+                    index: index,
+                    isStarting: false
                   });
                 });
 
                 const maxValue = Math.max(...equityData.map(d => d.value), 0);
                 const minValue = Math.min(...equityData.map(d => d.value), 0);
-                const range = maxValue - minValue || 100;
+                const range = Math.max(maxValue - minValue, 100); // Ensure minimum range for visibility
                 
                 return (
                   <div className="relative h-full">
@@ -599,12 +624,15 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                               key={index}
                               cx={`${x}%`}
                               cy={`${y}%`}
-                              r="3"
+                              r={point.isStarting ? "2" : "3"}
                               fill={point.value >= 0 ? "#00ff87" : "#ff4757"}
                               className="cursor-pointer"
                             >
                               <title>
-                                {format(new Date(point.date), 'MMM d')}: ${point.value.toFixed(2)}
+                                {point.isStarting 
+                                  ? `Starting Point: $0.00`
+                                  : `${format(new Date(point.date), 'MMM d')}: ${point.value >= 0 ? '+' : ''}$${point.value.toFixed(2)}`
+                                }
                               </title>
                             </circle>
                           );

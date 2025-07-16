@@ -127,12 +127,16 @@ export default function TradeAnalyst() {
 
   return (
     <Card className="glass-effect">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Brain className="w-6 h-6 text-purple-400" />
-          AI Trade Analyst - "The Deconstructor" (Mock Mode)
-        </CardTitle>
-        <p className="text-secondary">
+      <CardHeader className="text-center">
+        <div className="flex justify-center mb-4">
+          <div className="p-3 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-full">
+            <Brain className="w-8 h-8 text-purple-400" />
+          </div>
+        </div>
+        <h1 className="font-apple font-bold text-4xl lg:text-5xl bg-gradient-to-r from-purple-400 via-blue-400 to-accent-gold bg-clip-text text-transparent leading-tight">
+          AI Trade Analyst
+        </h1>
+        <p className="text-secondary text-lg mt-4 max-w-2xl mx-auto leading-relaxed">
           Upload multiple screenshots of your trading platform for comprehensive AI analysis of your performance
         </p>
       </CardHeader>

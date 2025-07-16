@@ -9,9 +9,11 @@ import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   ChevronLeft, ChevronRight, Plus, X, Camera, Trash2, 
-  ArrowLeft, TrendingUp, Target, PieChart, Activity 
+  ArrowLeft, TrendingUp, Target, PieChart, Activity, Globe 
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
+import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Trade {
   id: string;
@@ -38,6 +40,10 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedTimezone, setSelectedTimezone] = useState<string>(() => {
+    // Get timezone from localStorage or default to user's timezone
+    return localStorage.getItem('trading-journal-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  });
   
   // Form state
   const [formData, setFormData] = useState({
@@ -49,6 +55,42 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   });
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+
+  // Available timezones for selection
+  const availableTimezones = [
+    'America/New_York',
+    'America/Chicago', 
+    'America/Denver',
+    'America/Los_Angeles',
+    'Europe/London',
+    'Europe/Berlin',
+    'Europe/Paris',
+    'Asia/Tokyo',
+    'Asia/Shanghai',
+    'Asia/Hong_Kong',
+    'Asia/Singapore',
+    'Australia/Sydney',
+    'UTC'
+  ];
+
+  // Helper function to format dates in selected timezone
+  const formatDateInTimezone = (date: Date | string, formatStr: string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return formatInTimeZone(dateObj, selectedTimezone, formatStr);
+  };
+
+  // Helper function to get current date in selected timezone
+  const getCurrentDateInTimezone = () => {
+    const now = new Date();
+    const zonedTime = toZonedTime(now, selectedTimezone);
+    return formatInTimeZone(zonedTime, selectedTimezone, 'yyyy-MM-dd');
+  };
+
+  // Save timezone preference
+  const handleTimezoneChange = (timezone: string) => {
+    setSelectedTimezone(timezone);
+    localStorage.setItem('trading-journal-timezone', timezone);
+  };
 
   useEffect(() => {
     loadEntries();
@@ -80,27 +122,27 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   };
 
   const getFilteredTrades = (): Trade[] => {
-    const now = new Date();
-    const today = now.toISOString().split('T')[0]; // Get local date as YYYY-MM-DD
+    const todayInTimezone = getCurrentDateInTimezone();
     
     switch(timeFilter) {
       case 'daily':
-        return entries.filter(t => t.trade_date.split('T')[0] === today);
+        return entries.filter(t => t.trade_date.split('T')[0] === todayInTimezone);
       case 'weekly':
+        const now = new Date();
         const weekAgo = new Date(now);
         weekAgo.setDate(now.getDate() - 7);
-        const weekAgoStr = weekAgo.toISOString().split('T')[0];
+        const weekAgoStr = formatDateInTimezone(weekAgo, 'yyyy-MM-dd');
         return entries.filter(t => t.trade_date.split('T')[0] >= weekAgoStr);
       case 'monthly':
-        const currentMonth = today.substring(0, 7); // YYYY-MM
+        const currentMonth = todayInTimezone.substring(0, 7); // YYYY-MM
         return entries.filter(t => t.trade_date.split('T')[0].substring(0, 7) === currentMonth);
       case 'yearly':
-        const currentYear = today.substring(0, 4); // YYYY
+        const currentYear = todayInTimezone.substring(0, 4); // YYYY
         return entries.filter(t => t.trade_date.split('T')[0].substring(0, 4) === currentYear);
       case 'all':
         return entries;
       default:
-        return entries.filter(t => t.trade_date.split('T')[0] === today);
+        return entries.filter(t => t.trade_date.split('T')[0] === todayInTimezone);
     }
   };
 
@@ -216,10 +258,8 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         pnlValue = -Math.abs(pnlValue);
       }
 
-      // Use selectedDate if available, otherwise use today's date in local timezone
-      const today = new Date();
-      const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000);
-      const tradeDate = selectedDate || localDate.toISOString().split('T')[0];
+      // Use selectedDate if available, otherwise use current date in selected timezone
+      const tradeDate = selectedDate || getCurrentDateInTimezone();
 
       const tradeData = {
         asset_ticker: formData.asset_ticker,
@@ -384,12 +424,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                     <div>
                       <h4 className="text-lg font-bold text-foreground">{trade.asset_ticker}</h4>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{(() => {
-                          const dateStr = trade.trade_date.split('T')[0];
-                          const [year, month, day] = dateStr.split('-');
-                          const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-                          return format(date, 'MMM d, yyyy');
-                        })()}</span>
+                        <span>{formatDateInTimezone(trade.trade_date.split('T')[0] + 'T12:00:00', 'MMM d, yyyy')}</span>
                         {trade.trade_type && (
                           <Badge variant={trade.trade_type === 'Long' ? 'default' : 'secondary'} className="text-xs">
                             {trade.trade_type}
@@ -521,7 +556,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
           </Button>
         </div>
 
-        {/* Time filter buttons with header */}
+        {/* Time filter buttons with header and timezone selector */}
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 bg-clip-text text-transparent">Advanced</h1>
           <div className="flex gap-2 justify-center flex-1">
@@ -537,7 +572,21 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
               </Button>
             ))}
           </div>
-          <div className="w-20"></div>
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-muted-foreground" />
+            <Select value={selectedTimezone} onValueChange={handleTimezoneChange}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select timezone" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableTimezones.map((timezone) => (
+                  <SelectItem key={timezone} value={timezone}>
+                    {timezone.replace('_', ' ')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Dashboard Metrics */}

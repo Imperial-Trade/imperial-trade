@@ -1,17 +1,17 @@
 
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Shield, Settings, Database, RefreshCw, Signal } from "lucide-react";
+import { Users, Shield, Settings, RefreshCw, Signal, Bell } from "lucide-react";
 import { EnhancedUserManagementTable } from "@/components/admin/EnhancedUserManagementTable";
-import { AccountRequestManagement } from "@/components/account-request/AccountRequestManagement";
+import { DirectAccountRequestManagement } from "@/components/admin/DirectAccountRequestManagement";
+import { AdminNotificationSystem } from "@/components/admin/AdminNotificationSystem";
 import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
 import { RateLimitManager } from "@/components/admin/RateLimitManager";
 import { AdminSignalManagement } from "@/components/admin/AdminSignalManagement";
 
 const AdminPanel: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState("requests");
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -27,7 +27,11 @@ const AdminPanel: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
+          <TabsTrigger value="requests" className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Requests
+          </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Users
@@ -36,9 +40,9 @@ const AdminPanel: React.FC = () => {
             <Signal className="w-4 h-4" />
             Signals
           </TabsTrigger>
-          <TabsTrigger value="requests" className="flex items-center gap-2">
-            <Database className="w-4 h-4" />
-            Requests
+          <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <Bell className="w-4 h-4" />
+            Notifications
           </TabsTrigger>
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
@@ -54,60 +58,24 @@ const AdminPanel: React.FC = () => {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="requests" className="space-y-4">
+          <DirectAccountRequestManagement />
+        </TabsContent>
+
         <TabsContent value="users" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                User Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <EnhancedUserManagementTable />
-            </CardContent>
-          </Card>
+          <EnhancedUserManagementTable />
         </TabsContent>
 
         <TabsContent value="signals" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Signal className="w-5 h-5" />
-                Signal Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AdminSignalManagement />
-            </CardContent>
-          </Card>
+          <AdminSignalManagement />
         </TabsContent>
 
-        <TabsContent value="requests" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="w-5 h-5" />
-                Account Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AccountRequestManagement />
-            </CardContent>
-          </Card>
+        <TabsContent value="notifications" className="space-y-4">
+          <AdminNotificationSystem />
         </TabsContent>
 
         <TabsContent value="system" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                System Monitoring
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SystemMonitoring />
-            </CardContent>
-          </Card>
+          <SystemMonitoring />
         </TabsContent>
 
         <TabsContent value="rate-limits" className="space-y-4">
@@ -115,17 +83,11 @@ const AdminPanel: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                Admin Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-500">Advanced admin settings coming soon...</p>
-            </CardContent>
-          </Card>
+          <div className="text-center py-12">
+            <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Advanced Settings</h3>
+            <p className="text-gray-600">Additional admin configuration options coming soon...</p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

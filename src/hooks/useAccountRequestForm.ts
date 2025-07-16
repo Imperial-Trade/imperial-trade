@@ -3,16 +3,22 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { accountRequestSchema, type AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
 import { useToast } from "@/hooks/use-toast";
-import { AccountRequest } from "@/api/entities";
+import { AccountRequest, AccountRequestData } from "@/api/entities/AccountRequest";
 import { useState } from "react";
+import { validateAccountRequestData } from "@/lib/validations/accountRequestValidation";
 
 // Error message mapping for user-friendly error display
 const getErrorMessage = (error: any): string => {
   console.log("🔍 Full error object:", error);
   
+  // Check for unique constraint violation (email already exists)
+  if (error?.message?.includes('already exists') || error?.message?.includes('account_requests_email_unique')) {
+    return "An account request with this email already exists. Please use the status checker to view or update your existing request.";
+  }
+  
   // Check for rate limiting errors
-  if (error?.message?.includes('rate limit') || error?.message?.includes('too many')) {
-    return "Too many requests. Please wait before submitting another request.";
+  if (error?.message?.includes('Too many requests') || error?.message?.includes('rate limit')) {
+    return error.message; // Pass through the detailed rate limit message
   }
   
   // Check for specific database constraint errors
@@ -32,10 +38,6 @@ const getErrorMessage = (error: any): string => {
     return "Please enter a valid phone number.";
   }
   
-  if (error?.message?.includes('duplicate key')) {
-    return "An account request with this email already exists. Please use a different email address.";
-  }
-  
   if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
     return "Network error. Please check your internet connection and try again.";
   }
@@ -51,7 +53,6 @@ const getErrorMessage = (error: any): string => {
 export const useAccountRequestForm = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastSubmission, setLastSubmission] = useState<number>(0);
 
   const form = useForm<AccountRequestFormData>({
     resolver: zodResolver(accountRequestSchema),
@@ -73,25 +74,6 @@ export const useAccountRequestForm = () => {
     console.log('📋 Form data:', data);
     
     setIsSubmitting(true);
-    
-    // Reduced rate limiting (1 submission per 2 minutes instead of 5)
-    const now = Date.now();
-    const minDelay = 2 * 60 * 1000; // 2 minutes
-    
-    if (lastSubmission && (now - lastSubmission) < minDelay) {
-      const remainingMs = minDelay - (now - lastSubmission);
-      const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
-      const errorMsg = `Please wait ${remainingMinutes} more minutes before submitting another request.`;
-      
-      toast({
-        variant: "destructive",
-        title: "Too Many Requests",
-        description: errorMsg,
-      });
-      
-      setIsSubmitting(false);
-      return { success: false, error: errorMsg };
-    }
 
     // Honeypot check
     if (data.website && data.website.length > 0) {
@@ -100,24 +82,36 @@ export const useAccountRequestForm = () => {
       return { success: false, error: "Invalid submission detected" };
     }
 
-    // Validation for account_type to ensure admin cannot be selected
-    if (!['user', 'educator'].includes(data.account_type)) {
-      const errorMsg = "Please select a valid account type: Standard Member or Educator.";
-      console.log('❌ Invalid account type:', data.account_type);
+    // Additional validation using shared validator
+    const validation = validateAccountRequestData(data);
+    if (!validation.isValid) {
+      const firstError = validation.errors[0];
       toast({
         variant: "destructive",
-        title: "Invalid Account Type",
-        description: errorMsg,
+        title: "Validation Error",
+        description: firstError.message,
       });
       setIsSubmitting(false);
-      return { success: false, error: errorMsg };
+      return { success: false, error: firstError.message };
     }
 
     try {
       console.log("✅ Submitting account request to database:", data);
       
-      // Direct Supabase call
-      const result = await AccountRequest.create(data);
+      // Convert form data to AccountRequestData format
+      const requestData: AccountRequestData = {
+        email: data.email,
+        full_name: data.full_name,
+        phone_number: data.phone_number,
+        vt_market_account_number: data.vt_market_account_number,
+        referrer: data.referrer,
+        account_type: data.account_type as 'user' | 'educator',
+        reason: data.reason,
+        website: data.website,
+      };
+      
+      // Use the AccountRequest entity with integrated rate limiting
+      const result = await AccountRequest.create(requestData);
       
       console.log("🎉 Account request created successfully:", result);
 
@@ -126,7 +120,6 @@ export const useAccountRequestForm = () => {
         description: `Your ${data.account_type === 'educator' ? 'Educator' : 'Standard Member'} request has been submitted successfully. You will receive an email notification once it's reviewed.`,
       });
 
-      setLastSubmission(now);
       form.reset();
       setIsSubmitting(false);
       return { success: true };

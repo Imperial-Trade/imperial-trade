@@ -13,10 +13,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BarChart3, TrendingUp, Target, Calendar, DollarSign, ChevronLeft, ChevronRight, Save, X, Award, TrendingDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
+import { Line, Doughnut } from 'react-chartjs-2';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
 
 export default function TradingJournal() {
   const [entries, setEntries] = useState([]);
@@ -595,8 +595,8 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
     return days;
   };
 
-  // Equity curve data
-  const equityData = React.useMemo(() => {
+  // Performance chart data
+  const performanceData = React.useMemo(() => {
     const sortedEntries = filteredEntries.slice().sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
     const startingBalance = 10000;
     let runningTotal = startingBalance;
@@ -607,7 +607,7 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
     sortedEntries.forEach(entry => {
       runningTotal += entry.pnl;
       data.push(runningTotal);
-      labels.push(format(new Date(entry.trade_date), 'MMM dd'));
+      labels.push(format(new Date(entry.trade_date), 'MMdd'));
     });
 
     return {
@@ -615,22 +615,62 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
       datasets: [{
         label: 'Account Balance',
         data,
-        borderColor: 'hsl(var(--primary))',
-        backgroundColor: 'hsl(var(--primary) / 0.1)',
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37, 99, 235, 0.1)',
         fill: true,
-        tension: 0.1,
-        pointRadius: 2,
-        pointHoverRadius: 4
+        tension: 0.4,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#2563eb',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        borderWidth: 2
       }]
     };
   }, [filteredEntries]);
 
-  const chartOptions = {
+  // Most traded instruments data
+  const mostTradedData = React.useMemo(() => {
+    const instrumentCounts = filteredEntries.reduce((acc, entry) => {
+      acc[entry.asset_ticker] = (acc[entry.asset_ticker] || 0) + 1;
+      return acc;
+    }, {});
+
+    const sortedInstruments = Object.entries(instrumentCounts)
+      .sort(([,a], [,b]) => (b as number) - (a as number))
+      .slice(0, 4); // Top 4 most traded
+
+    const labels = sortedInstruments.map(([instrument]) => instrument);
+    const data = sortedInstruments.map(([,count]) => count);
+    
+    return {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: [
+          '#3b82f6', // Blue
+          '#1e40af', // Dark blue
+          '#93c5fd', // Light blue
+          '#60a5fa'  // Medium blue
+        ],
+        borderWidth: 0,
+        hoverBorderWidth: 2,
+        hoverBorderColor: '#ffffff'
+      }]
+    };
+  }, [filteredEntries]);
+
+  const performanceChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#3b82f6',
+        borderWidth: 1,
         callbacks: {
           label: function(context) {
             return `Balance: $${context.parsed.y.toLocaleString()}`;
@@ -646,16 +686,65 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
             return '$' + value.toLocaleString();
           }
         },
-        grid: { color: 'hsl(var(--border))' }
+        grid: { 
+          color: 'hsl(var(--border))',
+          drawBorder: false
+        },
+        border: { display: false }
       },
       x: {
         ticks: { 
           color: 'hsl(var(--muted-foreground))',
           maxRotation: 0,
           autoSkip: true,
-          maxTicksLimit: 10
+          maxTicksLimit: 8
         },
-        grid: { display: false }
+        grid: { display: false },
+        border: { display: false }
+      }
+    },
+    elements: {
+      point: {
+        hoverRadius: 6
+      }
+    }
+  };
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          color: 'hsl(var(--muted-foreground))',
+          padding: 15,
+          usePointStyle: true,
+          pointStyle: 'circle',
+          font: {
+            size: 12
+          }
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#3b82f6',
+        borderWidth: 1,
+        callbacks: {
+          label: function(context) {
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = ((context.parsed / total) * 100).toFixed(1);
+            return `${context.label}: ${context.parsed} trades (${percentage}%)`;
+          }
+        }
+      }
+    },
+    cutout: '65%',
+    elements: {
+      arc: {
+        borderWidth: 0
       }
     }
   };
@@ -917,15 +1006,50 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
         </CardContent>
       </Card>
 
-      {/* Equity Curve */}
-      <Card className="bg-card/50 border-border/50">
-        <CardContent className="p-6">
-          <h3 className="font-semibold text-foreground mb-4">Equity Curve</h3>
-          <div style={{ height: '200px' }}>
-            <Line data={equityData} options={chartOptions} />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Performance Chart and Most Traded */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Performance Chart */}
+        <Card className="lg:col-span-2 bg-card/50 border-border/50 shadow-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-semibold text-foreground text-lg">Performance</h3>
+              <Button variant="outline" size="sm" className="text-primary border-primary/30 hover:bg-primary/10">
+                Rebate
+              </Button>
+            </div>
+            <div style={{ height: '250px' }}>
+              <Line data={performanceData} options={performanceChartOptions} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Most Traded Instruments */}
+        <Card className="bg-card/50 border-border/50 shadow-xl">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-foreground text-lg">Most traded instruments</h3>
+              <div className="flex items-center space-x-2">
+                <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Standard Lots
+                </Button>
+                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  Micro Lots
+                </Button>
+              </div>
+            </div>
+            <div style={{ height: '200px' }} className="flex items-center justify-center">
+              {filteredEntries.length > 0 ? (
+                <Doughnut data={mostTradedData} options={doughnutOptions} />
+              ) : (
+                <div className="text-center text-muted-foreground">
+                  <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No trading data available</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Calendar and AI Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

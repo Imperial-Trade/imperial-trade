@@ -47,19 +47,19 @@ const coreTools = [
 
 const aiTools = [
   { 
-    name: 'AI Trade Analyst', 
+    name: 'Trade Analyst', 
     icon: Brain, 
     component: <TradeAnalyst />,
     description: 'Upload screenshots for deep performance analysis.'
   },
   { 
-    name: 'AI Opportunity Scanner', 
+    name: 'Opportunity Scanner', 
     icon: Search, 
     component: <OpportunityScanner />,
     description: 'Scan markets for high-probability trading setups.'
   },
   { 
-    name: 'AI Risk Simulator', 
+    name: 'Risk Simulator', 
     icon: Scale,
     component: <RiskSimulator />,
     description: 'Simulate trade setups to assess risk before you enter.'

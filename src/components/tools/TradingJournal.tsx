@@ -202,7 +202,7 @@ export default function TradingJournal() {
           <div className="flex justify-between items-start">
             <div>
               <h3 className="font-bold text-lg text-primary">{entry.asset_ticker}</h3>
-              <p className="text-xs text-secondary">{format(new Date(entry.created_date), 'MMMM d, yyyy')}</p>
+              <p className="text-xs text-secondary">{format(new Date(entry.created_at), 'MMMM d, yyyy')}</p>
             </div>
             <Badge className={entry.pnl >= 0 ? 'bg-green-500/20 text-accent-green' : 'bg-red-500/20 text-accent-red'}>
               {entry.pnl >= 0 ? `+${entry.pnl.toFixed(2)}` : entry.pnl.toFixed(2)} USD

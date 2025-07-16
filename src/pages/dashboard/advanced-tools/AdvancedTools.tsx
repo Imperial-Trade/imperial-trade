@@ -268,7 +268,7 @@ export default function AdvancedTools() {
                 className="relative h-full"
               >
                 <Card className="glass-effect p-2 rounded-2xl border-accent-green/30 h-full overflow-y-auto">
-                  <div className="absolute top-4 right-4 z-20">
+                  <div className="absolute top-2 right-2 z-30">
                     <Button variant="ghost" size="icon" onClick={() => setActiveTool(null)} className="rounded-full bg-surface/80 hover:bg-surface">
                       <X className="w-5 h-5 text-secondary" />
                     </Button>

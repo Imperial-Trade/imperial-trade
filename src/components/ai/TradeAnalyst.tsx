@@ -94,11 +94,11 @@ export default function TradeAnalyst() {
     setIsAnalyzing(false);
   };
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="p-6">
-        <Card className="bg-card border-border">
+        <Card className="bg-[#1a1a1a] border-[#333]">
           <CardHeader>
-            <CardTitle className="text-foreground">
+            <CardTitle className="text-white">
               Trade Analyst
             </CardTitle>
           </CardHeader>
@@ -196,7 +196,7 @@ export default function TradeAnalyst() {
                 <h3 className="text-xl font-semibold text-primary">Comprehensive Analysis Results (Mock Data)</h3>
                 
                 {/* Overall Analysis */}
-                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                 <Card className="bg-[#1a1a1a] border-[#333]">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
                       <Camera className="w-4 h-4" />

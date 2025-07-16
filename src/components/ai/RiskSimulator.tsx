@@ -61,11 +61,11 @@ export default function RiskSimulator() {
     return 'High Risk';
   };
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
       <div className="p-6">
-        <Card className="bg-[#1a1a1a] border-[#333]">
+        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-white">Risk Simulator</CardTitle>
+            <CardTitle>Risk Simulator</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Trade Parameters Input */}
@@ -119,7 +119,7 @@ export default function RiskSimulator() {
                 
                 {/* Risk Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                   <Card className="bg-[#1a1a1a] border-[#333]">
+                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                     <CardContent className="p-4 text-center">
                       <Target className="w-8 h-8 text-accent-blue mx-auto mb-2" />
                       <p className="text-sm text-secondary">Risk:Reward Ratio</p>
@@ -127,53 +127,53 @@ export default function RiskSimulator() {
                     </CardContent>
                   </Card>
                   
-                   <Card className="bg-[#1a1a1a] border-[#333]">
-                     <CardContent className="p-4 text-center">
-                       <TrendingDown className="w-8 h-8 text-accent-red mx-auto mb-2" />
-                       <p className="text-sm text-gray-400">Stop Loss Probability</p>
-                       <p className="text-2xl font-bold text-accent-red">{simulationResult.stop_loss_probability}%</p>
-                     </CardContent>
-                   </Card>
+                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                    <CardContent className="p-4 text-center">
+                      <TrendingDown className="w-8 h-8 text-accent-red mx-auto mb-2" />
+                      <p className="text-sm text-secondary">Stop Loss Probability</p>
+                      <p className="text-2xl font-bold text-accent-red">{simulationResult.stop_loss_probability}%</p>
+                    </CardContent>
+                  </Card>
                   
-                   <Card className="bg-[#1a1a1a] border-[#333]">
-                     <CardContent className="p-4 text-center">
-                       <AlertTriangle className={`w-8 h-8 mx-auto mb-2 ${getRiskColor(simulationResult.overall_risk_score)}`} />
-                       <p className="text-sm text-gray-400">Overall Risk</p>
-                       <p className={`text-2xl font-bold ${getRiskColor(simulationResult.overall_risk_score)}`}>
-                         {getRiskLabel(simulationResult.overall_risk_score)}
-                       </p>
-                     </CardContent>
-                   </Card>
+                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                    <CardContent className="p-4 text-center">
+                      <AlertTriangle className={`w-8 h-8 mx-auto mb-2 ${getRiskColor(simulationResult.overall_risk_score)}`} />
+                      <p className="text-sm text-secondary">Overall Risk</p>
+                      <p className={`text-2xl font-bold ${getRiskColor(simulationResult.overall_risk_score)}`}>
+                        {getRiskLabel(simulationResult.overall_risk_score)}
+                      </p>
+                    </CardContent>
+                  </Card>
                 </div>
 
                 {/* Detailed Analysis */}
-                 <Card className="bg-[#1a1a1a] border-[#333]">
+                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-primary mb-2">Market Conditions</h4>
                     <p className="text-secondary">{simulationResult.market_conditions}</p>
                   </CardContent>
                 </Card>
 
-                 <Card className="bg-[#1a1a1a] border-[#333]">
-                   <CardContent className="p-4">
-                     <h4 className="font-semibold text-white mb-2">Position Sizing Feedback</h4>
-                     <p className="text-gray-400">{simulationResult.position_sizing_feedback}</p>
-                   </CardContent>
-                 </Card>
+                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-primary mb-2">Position Sizing Feedback</h4>
+                    <p className="text-secondary">{simulationResult.position_sizing_feedback}</p>
+                  </CardContent>
+                </Card>
 
-                 <Card className="bg-[#1a1a1a] border-[#333]">
-                   <CardContent className="p-4">
-                     <h4 className="font-semibold text-white mb-2">Recommendations</h4>
-                     <ul className="space-y-2">
-                       {simulationResult.recommendations?.map((rec, index) => (
-                         <li key={index} className="flex items-start gap-2">
-                           <AlertTriangle className="w-4 h-4 text-accent-gold mt-1 flex-shrink-0" />
-                           <span className="text-gray-400">{rec}</span>
-                         </li>
-                       ))}
-                     </ul>
-                   </CardContent>
-                 </Card>
+                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-primary mb-2">Recommendations</h4>
+                    <ul className="space-y-2">
+                      {simulationResult.recommendations?.map((rec, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 text-accent-gold mt-1 flex-shrink-0" />
+                          <span className="text-secondary">{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
               </div>
             )}
           </CardContent>

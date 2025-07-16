@@ -291,16 +291,16 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
             <div
               key={index}
               className={`
-                relative min-h-[60px] p-3 rounded-lg cursor-pointer transition-all
+                relative min-h-[60px] p-3 rounded-lg cursor-pointer transition-all border border-border/50
                 ${!isCurrentMonth ? 'opacity-40' : ''}
-                ${isSelectedDay ? 'bg-accent-green text-white' : ''}
+                ${isSelectedDay ? 'bg-accent-green text-white border-accent-green' : ''}
                 ${dayTrades.length > 0 && !isSelectedDay
                   ? totalPnl > 0 
-                    ? 'bg-accent-green/20 text-accent-green' 
+                    ? 'bg-accent-green/20 text-accent-green border-accent-green/30' 
                     : totalPnl < 0 
-                      ? 'bg-red-500/20 text-red-400'
-                      : 'bg-yellow-500/20 text-yellow-400'
-                  : !isSelectedDay ? 'bg-muted/20 hover:bg-accent-green/10 text-muted-foreground hover:text-foreground' : ''
+                      ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                      : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                  : !isSelectedDay ? 'bg-muted/10 hover:bg-muted/20 text-muted-foreground hover:border-border' : ''
                 }
               `}
               onClick={() => handleDateClick(dateStr)}
@@ -336,7 +336,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
               variant="ghost"
               size="sm"
               onClick={handleBackToCalendar}
-              className="p-2 text-muted-foreground hover:text-foreground"
+              className="p-2"
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
@@ -346,7 +346,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
           </div>
           <Button
             onClick={() => openModal()}
-            className="bg-accent-green hover:bg-accent-green/90 text-white"
+            className="bg-green-600 hover:bg-green-700"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Trade
@@ -361,7 +361,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
             </div>
           ) : (
             dayTrades.map((trade) => (
-              <Card key={trade.id} className="bg-card border-border hover:bg-accent-green/5 transition-colors">
+              <Card key={trade.id} className="bg-card border">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -378,10 +378,10 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                     <div className="flex items-center gap-2">
                       <Badge 
                         className={`${trade.pnl > 0 
-                          ? 'bg-accent-green/20 text-accent-green' 
+                          ? 'bg-green-500/20 text-green-400' 
                           : trade.pnl < 0 
-                            ? 'bg-destructive/20 text-destructive'
-                            : 'bg-yellow-500/20 text-yellow-600'
+                            ? 'bg-red-500/20 text-red-400'
+                            : 'bg-yellow-500/20 text-yellow-400'
                         }`}
                       >
                         ${trade.pnl.toFixed(2)}
@@ -390,7 +390,6 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                         variant="ghost"
                         size="sm"
                         onClick={() => openModal(trade)}
-                        className="text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-accent-green/10"
                       >
                         Edit
                       </Button>
@@ -398,7 +397,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteTrade(trade.id)}
-                        className="text-destructive hover:text-destructive/80"
+                        className="text-red-500 hover:text-red-600"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -412,8 +411,8 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                   )}
 
                   {trade.ai_positive_feedback && (
-                    <div className="mb-3 p-3 bg-accent-green/10 border border-accent-green/20 rounded-md">
-                      <p className="text-sm text-accent-green">{trade.ai_positive_feedback}</p>
+                    <div className="mb-3 p-3 bg-green-500/10 border border-green-500/20 rounded-md">
+                      <p className="text-sm text-green-400">{trade.ai_positive_feedback}</p>
                     </div>
                   )}
 
@@ -422,7 +421,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                       <img 
                         src={trade.screenshot_url} 
                         alt="Trade screenshot" 
-                        className="max-w-full rounded-md border border-border cursor-pointer"
+                        className="max-w-full rounded-md border border-default cursor-pointer"
                         onClick={() => window.open(trade.screenshot_url, '_blank')}
                       />
                     </div>
@@ -442,23 +441,23 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Card className="bg-card border-border hover:bg-accent-green/5 transition-colors">
+        <Card className="bg-card border">
           <CardContent className="p-6">
             <div className="text-sm text-muted-foreground mb-1">Total P/L</div>
-            <div className={`text-2xl font-bold ${metrics.totalPnl >= 0 ? 'text-accent-green' : 'text-destructive'}`}>
+            <div className={`text-2xl font-bold ${metrics.totalPnl >= 0 ? 'text-green-600' : 'text-red-500'}`}>
               ${metrics.totalPnl.toFixed(2)}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border hover:bg-accent-green/5 transition-colors">
+        <Card className="bg-card border">
           <CardContent className="p-6">
             <div className="text-sm text-muted-foreground mb-1">Win Rate</div>
             <div className="text-2xl font-bold text-foreground">{metrics.winRate.toFixed(1)}%</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border hover:bg-accent-green/5 transition-colors">
+        <Card className="bg-card border">
           <CardContent className="p-6">
             <div className="text-sm text-muted-foreground mb-1">Profit Factor</div>
             <div className="text-2xl font-bold text-foreground">
@@ -467,7 +466,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border hover:bg-accent-green/5 transition-colors">
+        <Card className="bg-card border">
           <CardContent className="p-6">
             <div className="text-sm text-muted-foreground mb-1">Total Trades</div>
             <div className="text-2xl font-bold text-foreground">{metrics.totalTrades}</div>
@@ -486,31 +485,21 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-y-auto">
-      {/* Back to Basic button - outside the main container */}
-      <div className="p-6 pb-0">
-        <Button
-          variant="ghost"
-          onClick={onBackToBasic}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground p-0"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Basic
-        </Button>
-      </div>
-
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-foreground">
-            <span className="text-accent-green">
-              Advanced
-            </span>{" "}
-            Trading Journal
-          </h1>
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            onClick={onBackToBasic}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Basic
+          </Button>
         </div>
 
-        {/* Time filter buttons */}
+        {/* Time filter buttons with header */}
         <div className="flex gap-2 justify-center items-center">
           {(['daily', 'weekly', 'monthly', 'yearly', 'all'] as const).map(filter => (
             <Button
@@ -518,21 +507,19 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
               variant={timeFilter === filter ? 'default' : 'outline'}
               size="sm"
               onClick={() => setTimeFilter(filter)}
-              className={`capitalize ${timeFilter === filter 
-                ? 'bg-accent-green text-white hover:bg-accent-green/90' 
-                : 'bg-card border-border text-muted-foreground hover:bg-accent-green/10 hover:text-accent-green'
-              }`}
+              className="capitalize"
             >
               {filter}
             </Button>
           ))}
+          <h1 className="text-3xl font-bold text-foreground ml-8">Advanced Trading Journal</h1>
         </div>
 
         {/* Dashboard Metrics */}
         {renderDashboard()}
 
         {/* Equity Curve */}
-        <Card className="bg-card border-border">
+        <Card className="bg-card border">
           <CardContent className="p-6">
             <h3 className="text-lg font-medium text-center text-foreground mb-8">Equity Curve</h3>
             <div className="h-64">
@@ -583,7 +570,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                     <div className="ml-12 h-full relative">
                       {/* Zero line */}
                       <div 
-                        className="absolute w-full border-t border-border border-dashed"
+                        className="absolute w-full border-t border-gray-600 border-dashed"
                         style={{ 
                           top: `${((maxValue - 0) / range) * 100}%` 
                         }}
@@ -598,7 +585,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                             return `${x}%,${y}%`;
                           }).join(' ')}
                           fill="none"
-                          stroke={cumulativePnL >= 0 ? "hsl(var(--accent-green))" : "hsl(var(--destructive))"}
+                          stroke={cumulativePnL >= 0 ? "#00ff87" : "#ff4757"}
                           strokeWidth="2"
                           vectorEffect="non-scaling-stroke"
                         />
@@ -613,7 +600,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                               cx={`${x}%`}
                               cy={`${y}%`}
                               r="3"
-                              fill={point.value >= 0 ? "hsl(var(--accent-green))" : "hsl(var(--destructive))"}
+                              fill={point.value >= 0 ? "#00ff87" : "#ff4757"}
                               className="cursor-pointer"
                             >
                               <title>
@@ -648,7 +635,6 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-                className="bg-card border-border text-muted-foreground hover:bg-accent-green/10 hover:text-accent-green"
               >
                 <ChevronLeft className="w-5 h-5" />
               </Button>
@@ -659,14 +645,13 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-                className="bg-card border-border text-muted-foreground hover:bg-accent-green/10 hover:text-accent-green"
               >
                 <ChevronRight className="w-5 h-5" />
               </Button>
             </div>
 
             {/* Calendar Grid */}
-            <Card className="bg-card border-border">
+            <Card className="bg-card border">
               <CardContent className="p-6">
                 {renderCalendar()}
               </CardContent>
@@ -676,147 +661,144 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
           renderDayView()
         )}
 
-        {/* Trade Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-bold text-foreground">
-                    {editingTrade ? 'Edit Trade' : 'Add New Trade'}
-                  </h3>
-                  <Button variant="ghost" size="sm" onClick={closeModal} className="text-muted-foreground hover:text-foreground">
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
+      {/* Trade Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-card border">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-foreground">
+                  {editingTrade ? 'Edit Trade' : 'Add New Trade'}
+                </h3>
+                <Button variant="ghost" size="sm" onClick={closeModal}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-foreground">Asset / Pair</label>
-                    <Input
-                      value={formData.asset_ticker}
-                      onChange={(e) => setFormData(prev => ({ ...prev, asset_ticker: e.target.value }))}
-                      placeholder="e.g., BTC/USDT"
-                      className="bg-background border-border text-foreground"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-foreground">P&L Amount ($)</label>
-                    <Input
-                      type="number"
-                      value={formData.pnl}
-                      onChange={(e) => setFormData(prev => ({ ...prev, pnl: e.target.value }))}
-                      placeholder="e.g., 150.50"
-                      className="bg-background border-border text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-foreground">Direction</label>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant={formData.trade_type === 'Long' ? 'default' : 'outline'}
-                        onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Long' }))}
-                        className="flex-1"
-                      >
-                        Long
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={formData.trade_type === 'Short' ? 'default' : 'outline'}
-                        onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Short' }))}
-                        className="flex-1"
-                      >
-                        Short
-                      </Button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-foreground">Outcome</label>
-                    <div className="flex gap-2">
-                      {(['Win', 'Loss', 'Breakeven'] as const).map((outcome) => (
-                        <Button
-                          key={outcome}
-                          type="button"
-                          variant={formData.outcome === outcome ? 'default' : 'outline'}
-                          onClick={() => setFormData(prev => ({ ...prev, outcome }))}
-                          className="flex-1 text-xs"
-                        >
-                          {outcome === 'Breakeven' ? 'BE' : outcome}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">Trade Notes</label>
-                  <Textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                    rows={4}
-                    placeholder="Your analysis and insights..."
-                    className="bg-background border-border text-foreground"
+                  <label className="block text-sm font-medium mb-2 text-foreground">Asset / Pair</label>
+                  <Input
+                    value={formData.asset_ticker}
+                    onChange={(e) => setFormData(prev => ({ ...prev, asset_ticker: e.target.value }))}
+                    placeholder="e.g., BTC/USDT"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">Chart Screenshot</label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-accent-green transition-colors">
-                    {screenshotPreview ? (
-                      <div className="space-y-2">
-                        <img 
-                          src={screenshotPreview} 
-                          alt="Preview" 
-                          className="max-h-32 mx-auto rounded border border-border"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setScreenshotFile(null);
-                            setScreenshotPreview(null);
-                          }}
-                        >
-                          Remove Image
-                        </Button>
-                      </div>
-                    ) : (
-                      <div>
-                        <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                        <label className="cursor-pointer text-accent-green hover:text-accent-green/80">
-                          <span>Upload screenshot</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={handleFileChange}
-                          />
-                        </label>
-                      </div>
-                    )}
+                  <label className="block text-sm font-medium mb-2 text-foreground">P&L Amount ($)</label>
+                  <Input
+                    type="number"
+                    value={formData.pnl}
+                    onChange={(e) => setFormData(prev => ({ ...prev, pnl: e.target.value }))}
+                    placeholder="e.g., 150.50"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-foreground">Direction</label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={formData.trade_type === 'Long' ? 'default' : 'outline'}
+                      onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Long' }))}
+                      className="flex-1"
+                    >
+                      Long
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={formData.trade_type === 'Short' ? 'default' : 'outline'}
+                      onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Short' }))}
+                      className="flex-1"
+                    >
+                      Short
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={closeModal} className="border-border text-muted-foreground hover:text-foreground">
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleSaveTrade}
-                    disabled={!formData.asset_ticker || !formData.pnl}
-                    className="bg-accent-green hover:bg-accent-green/90 text-white"
-                  >
-                    {editingTrade ? 'Update Trade' : 'Save Trade'}
-                  </Button>
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-foreground">Outcome</label>
+                  <div className="flex gap-2">
+                    {(['Win', 'Loss', 'Breakeven'] as const).map((outcome) => (
+                      <Button
+                        key={outcome}
+                        type="button"
+                        variant={formData.outcome === outcome ? 'default' : 'outline'}
+                        onClick={() => setFormData(prev => ({ ...prev, outcome }))}
+                        className="flex-1 text-xs"
+                      >
+                        {outcome === 'Breakeven' ? 'BE' : outcome}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-foreground">Trade Notes</label>
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={4}
+                  placeholder="Your analysis and insights..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-foreground">Chart Screenshot</label>
+                <div className="border-2 border-dashed border-default rounded-lg p-6 text-center">
+                  {screenshotPreview ? (
+                    <div className="space-y-2">
+                      <img 
+                        src={screenshotPreview} 
+                        alt="Preview" 
+                        className="max-h-32 mx-auto rounded border"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setScreenshotFile(null);
+                          setScreenshotPreview(null);
+                        }}
+                      >
+                        Remove Image
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <Camera className="w-8 h-8 mx-auto mb-2 text-secondary" />
+                      <label className="cursor-pointer text-primary hover:text-primary/80">
+                        <span>Upload screenshot</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleFileChange}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={closeModal}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveTrade}
+                  disabled={!formData.asset_ticker || !formData.pnl}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {editingTrade ? 'Update Trade' : 'Save Trade'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
         )}
       </div>
     </div>

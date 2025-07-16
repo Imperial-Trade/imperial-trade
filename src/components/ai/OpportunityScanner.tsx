@@ -132,11 +132,11 @@ export default function OpportunityScanner() {
   const statusInfo = getDataStatusInfo();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
       <div className="p-6">
-        <Card className="bg-[#1a1a1a] border-[#333]">
+        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-white">Opportunity Scanner</CardTitle>
+            <CardTitle>Opportunity Scanner</CardTitle>
             
             {/* Data Status Indicator */}
             <div className="flex items-center gap-2 mt-3">
@@ -203,7 +203,7 @@ export default function OpportunityScanner() {
             ) : (
               <div className="space-y-4">
                 {signals.map(signal => (
-                  <Card key={signal.id} className="bg-[#1a1a1a] border-[#333] hover:border-[#444] transition-colors">
+                  <Card key={signal.id} className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm hover:border-border dark:hover:border-gray-500/30 transition-colors">
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-3">
                         <div>

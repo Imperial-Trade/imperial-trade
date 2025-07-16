@@ -281,7 +281,7 @@ export default function TradingJournal() {
               )}
             </Button>
           </CardTitle>
-          <p className="text-secondary">Log your trades, reflect on your decisions, and get AI-powered encouragement.</p>
+          
           {!unlockStatus.isUnlocked && !unlockStatus.isAdmin && (
             <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
               <p className="text-sm text-amber-800 dark:text-amber-200">

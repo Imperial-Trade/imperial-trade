@@ -16,8 +16,8 @@ interface RetryState {
   lastError: Error | null;
 }
 
-export function useOptimizedRetry<T>(
-  operation: () => Promise<T>,
+export function useOptimizedRetry<TArgs extends any[], TResult>(
+  operation: (...args: TArgs) => Promise<TResult>,
   config: RetryConfig = {}
 ) {
   const {
@@ -42,7 +42,7 @@ export function useOptimizedRetry<T>(
     return Math.min(delay, maxDelay);
   }, [initialDelay, backoffFactor, maxDelay]);
 
-  const execute = useCallback(async (): Promise<T> => {
+  const execute = useCallback(async (...args: TArgs): Promise<TResult> => {
     // Cancel any existing operation
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -57,51 +57,53 @@ export function useOptimizedRetry<T>(
       attempt: prev.attempt + 1
     }));
 
-    try {
-      if (signal.aborted) throw new Error('Operation cancelled');
-      
-      const result = await operation();
-      
-      if (signal.aborted) throw new Error('Operation cancelled');
-      
-      setState({
-        isRetrying: false,
-        attempt: 0,
-        canRetry: true,
-        lastError: null
-      });
-      
-      return result;
-    } catch (error) {
-      if (signal.aborted) {
-        setState(prev => ({ ...prev, isRetrying: false }));
-        throw new Error('Operation cancelled');
-      }
-
-      const currentAttempt = state.attempt + 1;
-      const canRetryAgain = currentAttempt < maxAttempts;
-
-      setState({
-        isRetrying: false,
-        attempt: currentAttempt,
-        canRetry: canRetryAgain,
-        lastError: error as Error
-      });
-
-      if (canRetryAgain) {
-        onRetry?.(currentAttempt, error as Error);
-        const delay = calculateDelay(currentAttempt);
+    const executeAttempt = async (attemptNumber: number): Promise<TResult> => {
+      try {
+        if (signal.aborted) throw new Error('Operation cancelled');
         
-        await new Promise(resolve => setTimeout(resolve, delay));
+        const result = await operation(...args);
         
         if (signal.aborted) throw new Error('Operation cancelled');
         
-        return execute();
-      }
+        setState({
+          isRetrying: false,
+          attempt: 0,
+          canRetry: true,
+          lastError: null
+        });
+        
+        return result;
+      } catch (error) {
+        if (signal.aborted) {
+          setState(prev => ({ ...prev, isRetrying: false }));
+          throw new Error('Operation cancelled');
+        }
 
-      throw error;
-    }
-  }, [operation, state.attempt, maxAttempts, onRetry, calculateDelay]);
+        const canRetryAgain = attemptNumber < maxAttempts;
+
+        if (canRetryAgain) {
+          onRetry?.(attemptNumber, error as Error);
+          const delay = calculateDelay(attemptNumber);
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          if (signal.aborted) throw new Error('Operation cancelled');
+          
+          return executeAttempt(attemptNumber + 1);
+        } else {
+          setState({
+            isRetrying: false,
+            attempt: attemptNumber,
+            canRetry: false,
+            lastError: error as Error
+          });
+          throw error;
+        }
+      }
+    };
+
+    return executeAttempt(1);
+  }, [operation, maxAttempts, onRetry, calculateDelay]);
 
   const reset = useCallback(() => {
     if (abortControllerRef.current) {

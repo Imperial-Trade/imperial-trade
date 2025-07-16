@@ -611,17 +611,25 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           avatar_url: string | null
+          bio: string | null
+          birthdate: string | null
+          cover_photo_url: string | null
+          cover_position_x: string | null
+          cover_position_y: string | null
           created_at: string | null
           display_name: string | null
           id: string
           last_login: string | null
+          location: string | null
           phone_number: string | null
+          profile_type: string | null
           registration_source:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
           role: string | null
           updated_at: string | null
           user_type: Database["public"]["Enums"]["user_type_enum"] | null
+          work_info: string | null
         }
         Insert: {
           access_level?: Database["public"]["Enums"]["access_level_enum"] | null
@@ -631,17 +639,25 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          birthdate?: string | null
+          cover_photo_url?: string | null
+          cover_position_x?: string | null
+          cover_position_y?: string | null
           created_at?: string | null
           display_name?: string | null
           id: string
           last_login?: string | null
+          location?: string | null
           phone_number?: string | null
+          profile_type?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
           role?: string | null
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+          work_info?: string | null
         }
         Update: {
           access_level?: Database["public"]["Enums"]["access_level_enum"] | null
@@ -651,17 +667,25 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          birthdate?: string | null
+          cover_photo_url?: string | null
+          cover_position_x?: string | null
+          cover_position_y?: string | null
           created_at?: string | null
           display_name?: string | null
           id?: string
           last_login?: string | null
+          location?: string | null
           phone_number?: string | null
+          profile_type?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
           role?: string | null
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+          work_info?: string | null
         }
         Relationships: []
       }

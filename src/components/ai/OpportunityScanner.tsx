@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, TrendingUp, Calendar, Clock, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, TrendingUp, Clock, RefreshCw, AlertCircle, Target, Zap, BarChart3, Filter, SortDesc, Eye, Bell, Play } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function OpportunityScanner() {
   const [signals, setSignals] = useState([]);
@@ -10,44 +12,86 @@ export default function OpportunityScanner() {
   const [lastScan, setLastScan] = useState(null);
   const [marketData, setMarketData] = useState(null);
   const [dataStatus, setDataStatus] = useState('mock');
+  const [filters, setFilters] = useState({
+    market: 'all',
+    strategy: 'all',
+    timeframe: 'all'
+  });
+  const [sortBy, setSortBy] = useState('probability');
 
-  // Mock data
+  // Mock data with enhanced format
   const mockSignals = [{
     id: 1,
-    instrument: 'EUR/USD',
-    current_price: 1.0850,
+    instrument: 'TSLA',
+    asset_name: 'Tesla, Inc.',
+    current_price: 245.67,
     signal_type: 'breakout',
-    description: 'Strong bullish breakout above 1.0830 resistance. Price action showing momentum continuation.',
-    probability: 85,
-    key_levels: [1.0830, 1.0780, 1.0900],
+    description: 'Breaking above key resistance with increasing volume',
+    probability: 88,
+    key_levels: [240.00, 235.50, 255.00],
     time_frame: '4H',
-    entry_trigger: 'Break above 1.0860 with volume',
+    entry_trigger: 'Break above $248 with volume',
     risk_reward: 2.5,
-    status: 'active'
+    status: 'active',
+    market: 'stocks',
+    strategy: 'AI Breakout',
+    confidence_score: 88,
+    mini_chart: '📈',
+    rationale: 'Breaking above key resistance with increasing volume'
   }, {
     id: 2,
-    instrument: 'GBP/USD',
-    current_price: 1.2750,
+    instrument: 'EUR/USD',
+    asset_name: 'Euro/US Dollar',
+    current_price: 1.0850,
     signal_type: 'reversal',
-    description: 'Potential reversal at key support level. RSI showing oversold conditions.',
-    probability: 72,
-    key_levels: [1.2700, 1.2650, 1.2820],
+    description: 'Potential reversal at key support level with bullish divergence',
+    probability: 75,
+    key_levels: [1.0800, 1.0780, 1.0920],
     time_frame: '1H',
-    entry_trigger: 'Bounce from 1.2700 support',
-    risk_reward: 1.8,
-    status: 'active'
+    entry_trigger: 'Bounce from 1.0800 support',
+    risk_reward: 2.1,
+    status: 'active',
+    market: 'forex',
+    strategy: 'AI Reversal',
+    confidence_score: 75,
+    mini_chart: '📊',
+    rationale: 'RSI oversold with bullish divergence forming'
   }, {
     id: 3,
-    instrument: 'Gold',
+    instrument: 'BTC/USD',
+    asset_name: 'Bitcoin',
+    current_price: 43250.0,
+    signal_type: 'momentum',
+    description: 'Strong bullish momentum continuation above $42K resistance',
+    probability: 82,
+    key_levels: [42000, 41500, 45000],
+    time_frame: '4H',
+    entry_trigger: 'Break above $43,500',
+    risk_reward: 3.2,
+    status: 'active',
+    market: 'crypto',
+    strategy: 'AI Momentum',
+    confidence_score: 82,
+    mini_chart: '⚡',
+    rationale: 'Volume surge with institutional buying pressure'
+  }, {
+    id: 4,
+    instrument: 'GOLD',
+    asset_name: 'Gold Spot',
     current_price: 2055.0,
     signal_type: 'pattern',
-    description: 'Ascending triangle pattern completion. Bullish momentum building.',
-    probability: 78,
-    key_levels: [2050.0, 2040.0, 2070.0],
+    description: 'Ascending triangle pattern completion with bullish bias',
+    probability: 79,
+    key_levels: [2050.0, 2040.0, 2080.0],
     time_frame: '4H',
-    entry_trigger: 'Break above 2060 resistance',
-    risk_reward: 3.0,
-    status: 'active'
+    entry_trigger: 'Break above $2060',
+    risk_reward: 2.8,
+    status: 'active',
+    market: 'commodities',
+    strategy: 'AI Pattern',
+    confidence_score: 79,
+    mini_chart: '📐',
+    rationale: 'Triangle breakout with volume confirmation'
   }];
 
   const mockMarketData = {
@@ -70,8 +114,34 @@ export default function OpportunityScanner() {
   };
 
   const loadSignals = async () => {
-    // Use mock data instead of API
-    setSignals(mockSignals.filter(s => s.status === 'active'));
+    // Filter and sort signals based on current filters
+    let filteredSignals = mockSignals.filter(s => s.status === 'active');
+    
+    if (filters.market !== 'all') {
+      filteredSignals = filteredSignals.filter(s => s.market === filters.market);
+    }
+    if (filters.strategy !== 'all') {
+      filteredSignals = filteredSignals.filter(s => s.strategy === filters.strategy);
+    }
+    if (filters.timeframe !== 'all') {
+      filteredSignals = filteredSignals.filter(s => s.time_frame === filters.timeframe);
+    }
+
+    // Sort signals
+    filteredSignals.sort((a, b) => {
+      switch (sortBy) {
+        case 'probability':
+          return b.probability - a.probability;
+        case 'risk_reward':
+          return b.risk_reward - a.risk_reward;
+        case 'recency':
+          return b.id - a.id;
+        default:
+          return 0;
+      }
+    });
+
+    setSignals(filteredSignals);
   };
 
   const scanForOpportunities = async () => {
@@ -79,30 +149,20 @@ export default function OpportunityScanner() {
     try {
       // Simulate scanning delay
       await new Promise(resolve => setTimeout(resolve, 3000));
-
-      // Generate additional mock opportunities
-      const newOpportunities = [{
-        id: Date.now(),
-        instrument: 'USD/JPY',
-        current_price: 148.50,
-        signal_type: 'momentum',
-        description: 'Strong bullish momentum continuation. Breaking key resistance levels.',
-        probability: 82,
-        key_levels: [148.00, 147.50, 149.20],
-        time_frame: '1H',
-        entry_trigger: 'Break above 148.80',
-        risk_reward: 2.2,
-        status: 'active'
-      }];
-
-      // Add new opportunities to existing signals
-      setSignals(prev => [...prev, ...newOpportunities]);
+      
+      // Reload signals with current filters
+      await loadSignals();
       setLastScan(new Date());
     } catch (error) {
       console.error('Error scanning for opportunities:', error);
     }
     setIsScanning(false);
   };
+
+  // Update signals when filters change
+  useEffect(() => {
+    loadSignals();
+  }, [filters, sortBy]);
 
   const getSignalTypeColor = type => {
     const colors = {
@@ -116,152 +176,218 @@ export default function OpportunityScanner() {
   };
 
   const getProbabilityColor = probability => {
-    if (probability >= 80) return 'text-accent-green';
-    if (probability >= 60) return 'text-accent-gold';
-    return 'text-accent-red';
+    if (probability >= 80) return 'text-green-400';
+    if (probability >= 60) return 'text-yellow-400';
+    return 'text-red-400';
   };
 
-  const getDataStatusInfo = () => {
-    return {
-      icon: <AlertCircle className="w-4 h-4 text-accent-red" />,
-      text: 'Using Mock Data',
-      color: 'text-accent-red'
-    };
+  const getConfidenceGauge = (score) => {
+    const percentage = score;
+    const color = score >= 80 ? 'text-green-400' : score >= 60 ? 'text-yellow-400' : 'text-red-400';
+    return { percentage, color };
   };
-
-  const statusInfo = getDataStatusInfo();
 
   return (
-    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
-      <div className="p-6">
-        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle>Opportunity Scanner</CardTitle>
-            
-            {/* Data Status Indicator */}
-            <div className="flex items-center gap-2 mt-3">
-              {statusInfo.icon}
-              <span className={`text-sm ${statusInfo.color}`}>
-                {statusInfo.text}
-              </span>
-              {dataStatus === 'mock' && marketData && (
-                <Badge variant="outline" className="text-xs border-accent-red text-accent-red">
-                  {Object.keys(marketData).length} mock assets
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header with Controls */}
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Market Opportunity Scanner</h1>
+            <p className="text-muted-foreground">Discover high-probability trading setups powered by AI analysis</p>
+          </div>
           
-          <CardContent>
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex flex-col gap-2">
-                <Button onClick={scanForOpportunities} disabled={isScanning} className="bg-blue-600 hover:bg-blue-700 text-white">
-                  {isScanning ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                      Scanning...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Scan Markets (Mock)
-                    </>
-                  )}
-                </Button>
-                <Button onClick={checkMarketDataAvailability} variant="outline" size="sm" className="text-xs border-default text-secondary hover:bg-surface hover:text-primary">
-                  Refresh Data Status
-                </Button>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={scanForOpportunities} 
+              disabled={isScanning} 
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+            >
+              {isScanning ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                  Scanning Markets...
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4 mr-2" />
+                  Scan Markets
+                </>
+              )}
+            </Button>
+            {lastScan && (
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Last: {lastScan.toLocaleTimeString()}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Control Bar with Filters */}
+        <Card className="bg-card/50 border-border/50">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Filters:</span>
               </div>
               
-              {lastScan && (
-                <p className="text-sm text-secondary flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Last scan: {lastScan.toLocaleTimeString()}
-                </p>
-              )}
-            </div>
+              <Select value={filters.market} onValueChange={(value) => setFilters(prev => ({ ...prev, market: value }))}>
+                <SelectTrigger className="w-[140px] bg-background">
+                  <SelectValue placeholder="Market" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Markets</SelectItem>
+                  <SelectItem value="crypto">Crypto</SelectItem>
+                  <SelectItem value="stocks">Stocks</SelectItem>
+                  <SelectItem value="forex">Forex</SelectItem>
+                  <SelectItem value="commodities">Commodities</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <div className="mb-6 p-4 bg-accent-red/10 border border-accent-red/20 rounded-lg">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-accent-red mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-accent-red mb-1">Demo Mode Active</h4>
-                  <p className="text-sm text-secondary">
-                    Currently showing simulated market opportunities. Connect real market data feeds for live analysis.
-                    <br />
-                    <span className="text-accent-red">Note: Do not trade based on demo signals.</span>
-                  </p>
-                </div>
-              </div>
-            </div>
+              <Select value={filters.strategy} onValueChange={(value) => setFilters(prev => ({ ...prev, strategy: value }))}>
+                <SelectTrigger className="w-[150px] bg-background">
+                  <SelectValue placeholder="Strategy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Strategies</SelectItem>
+                  <SelectItem value="AI Breakout">AI Breakout</SelectItem>
+                  <SelectItem value="AI Momentum">AI Momentum</SelectItem>
+                  <SelectItem value="AI Reversal">AI Reversal</SelectItem>
+                  <SelectItem value="AI Pattern">AI Pattern</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {signals.length === 0 ? (
-              <div className="text-center py-8">
-                <Search className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
-                <p className="text-secondary">No active signals found. Click "Scan Markets" to find opportunities.</p>
+              <Select value={filters.timeframe} onValueChange={(value) => setFilters(prev => ({ ...prev, timeframe: value }))}>
+                <SelectTrigger className="w-[130px] bg-background">
+                  <SelectValue placeholder="Timeframe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Timeframes</SelectItem>
+                  <SelectItem value="1H">1 Hour</SelectItem>
+                  <SelectItem value="4H">4 Hours</SelectItem>
+                  <SelectItem value="1D">1 Day</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="flex items-center gap-2 ml-4">
+                <SortDesc className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Sort by:</span>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {signals.map(signal => (
-                  <Card key={signal.id} className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm hover:border-border dark:hover:border-gray-500/30 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="font-semibold text-primary text-lg">{signal.instrument}</h3>
-                          {signal.current_price && <p className="text-sm text-secondary">Current: ${signal.current_price}</p>}
-                          <div className="flex items-center gap-2 mt-1">
+
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[140px] bg-background">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="probability">Probability</SelectItem>
+                  <SelectItem value="risk_reward">Risk/Reward</SelectItem>
+                  <SelectItem value="recency">Recency</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Signals Grid */}
+        <AnimatePresence>
+          {signals.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-16"
+            >
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/30 mb-6">
+                <Search className="w-10 h-10 text-blue-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-2">No Active Signals</h3>
+              <p className="text-muted-foreground">Click "Scan Markets" to discover new trading opportunities</p>
+            </motion.div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {signals.map((signal, index) => {
+                const confidence = getConfidenceGauge(signal.confidence_score);
+                return (
+                  <motion.div
+                    key={signal.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <Card className="bg-card hover:bg-card/80 border-border hover:border-blue-500/50 transition-all duration-300 group">
+                      <CardContent className="p-6">
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-bold text-foreground">{signal.instrument}</h3>
+                            <p className="text-sm text-muted-foreground">{signal.asset_name}</p>
+                          </div>
+                          <div className="text-right">
                             <Badge className={`${getSignalTypeColor(signal.signal_type)} border`}>
                               {signal.signal_type.replace('_', ' ')}
                             </Badge>
-                            <span className={`font-semibold ${getProbabilityColor(signal.probability)}`}>
-                              {signal.probability}% probability
-                            </span>
-                            {signal.risk_reward && (
-                              <Badge variant="outline" className="text-xs">
-                                R:R {signal.risk_reward}:1
-                              </Badge>
-                            )}
+                            <p className="text-xs text-muted-foreground mt-1">{signal.time_frame}</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <Badge variant="outline" className="border-default text-secondary mb-2">
-                            {signal.time_frame}
-                          </Badge>
-                          <div className="flex items-center gap-1 text-xs text-accent-red">
-                            <AlertCircle className="w-3 h-3" />
-                            Mock Data
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <p className="text-secondary mb-3">{signal.description}</p>
 
-                      {signal.entry_trigger && (
-                        <div className="mb-3 p-2 bg-accent-blue/10 rounded text-sm">
-                          <strong className="text-accent-blue">Entry Trigger:</strong> {signal.entry_trigger}
-                        </div>
-                      )}
-                      
-                      {signal.key_levels && signal.key_levels.length > 0 && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <TrendingUp className="w-4 h-4 text-accent-green" />
-                          <span className="text-secondary">Key levels:</span>
-                          <div className="flex gap-2">
-                            {signal.key_levels.map((level, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {level}
-                              </Badge>
-                            ))}
+                        {/* AI Confidence Score */}
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-foreground">AI Confidence</span>
+                            <span className={`text-lg font-bold ${confidence.color}`}>
+                              {confidence.percentage}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2">
+                            <motion.div
+                              className={`h-2 rounded-full ${confidence.percentage >= 80 ? 'bg-green-400' : confidence.percentage >= 60 ? 'bg-yellow-400' : 'bg-red-400'}`}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${confidence.percentage}%` }}
+                              transition={{ duration: 1, delay: index * 0.1 }}
+                            />
                           </div>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+                        {/* Mini Chart */}
+                        <div className="flex items-center gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
+                          <div className="text-2xl">{signal.mini_chart}</div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-foreground">Price: ${signal.current_price}</p>
+                            <p className="text-xs text-muted-foreground">R:R {signal.risk_reward}:1</p>
+                          </div>
+                        </div>
+
+                        {/* AI Rationale */}
+                        <div className="mb-4">
+                          <p className="text-sm text-muted-foreground mb-2">
+                            <strong className="text-blue-400">AI Analysis:</strong> {signal.rationale}
+                          </p>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 pt-4 border-t border-border">
+                          <Button variant="outline" size="sm" className="flex-1">
+                            <Eye className="w-4 h-4 mr-1" />
+                            Analyze
+                          </Button>
+                          <Button variant="outline" size="sm" className="flex-1">
+                            <Bell className="w-4 h-4 mr-1" />
+                            Alert
+                          </Button>
+                          <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700">
+                            <Play className="w-4 h-4 mr-1" />
+                            Trade
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

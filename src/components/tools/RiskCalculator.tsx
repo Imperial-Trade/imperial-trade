@@ -51,8 +51,8 @@ export default function RiskCalculator() {
       pipValue: pipValue.toFixed(5)
     });
   };
-  return <div className="bg-gradient-to-br from-black via-gray-900 to-black min-h-screen p-6">
-    <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm shadow-2xl shadow-gray-900/50">
+  return <div className="bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen p-6">
+    <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50">
       <CardHeader>
         <CardTitle>
           
@@ -91,7 +91,7 @@ export default function RiskCalculator() {
             <h3 className="text-xl font-semibold text-primary">Calculation Results</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+               <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                 <CardContent className="p-4 text-center">
                   <DollarSign className="w-8 h-8 text-accent-red mx-auto mb-2" />
                   <p className="text-sm text-secondary">Risk Amount</p>
@@ -99,7 +99,7 @@ export default function RiskCalculator() {
                 </CardContent>
               </Card>
               
-               <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+               <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                  <CardContent className="p-4 text-center">
                    <TrendingUp className="w-8 h-8 text-accent-blue mx-auto mb-2" />
                    <p className="text-sm text-secondary">Position Size</p>
@@ -108,7 +108,7 @@ export default function RiskCalculator() {
                </Card>
               
               {results.potentialProfit > 0 && <>
-                   <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+                   <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                      <CardContent className="p-4 text-center">
                        <DollarSign className="w-8 h-8 text-accent-green mx-auto mb-2" />
                        <p className="text-sm text-secondary">Potential Profit</p>
@@ -116,7 +116,7 @@ export default function RiskCalculator() {
                      </CardContent>
                    </Card>
                    
-                   <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+                   <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                     <CardContent className="p-4 text-center">
                       <AlertTriangle className="w-8 h-8 text-accent-gold mx-auto mb-2" />
                       <p className="text-sm text-secondary">Risk:Reward Ratio</p>

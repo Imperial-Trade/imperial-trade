@@ -93,8 +93,8 @@ export default function TradeAnalyst() {
     }
     setIsAnalyzing(false);
   };
-  return <div className="bg-gradient-to-br from-black via-gray-900 to-black min-h-screen p-6">
-    <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm shadow-2xl shadow-gray-900/50">
+  return <div className="bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen p-6">
+    <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50">
       <CardHeader>
         <CardTitle>
           
@@ -134,7 +134,7 @@ export default function TradeAnalyst() {
             <h4 className="font-medium text-primary">Uploaded Screenshots ({uploadedFiles.length})</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {uploadedFiles.map((file, index) => <div key={index} className="relative">
-                  <div className="border border-gray-600/30 rounded-lg p-3 bg-gray-900/30 backdrop-blur-sm">
+                  <div className="border border-border dark:border-gray-600/30 rounded-lg p-3 bg-background dark:bg-gray-900/30 backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-primary truncate">
                         Screenshot {index + 1}
@@ -143,7 +143,7 @@ export default function TradeAnalyst() {
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
-                    <img src={file.url} alt={`Trading screenshot ${index + 1}`} className="w-full h-32 object-cover rounded border border-gray-600/30" />
+                    <img src={file.url} alt={`Trading screenshot ${index + 1}`} className="w-full h-32 object-cover rounded border border-border dark:border-gray-600/30" />
                     <p className="text-xs text-secondary mt-1 truncate">{file.name}</p>
                   </div>
                 </div>)}
@@ -152,7 +152,7 @@ export default function TradeAnalyst() {
             {uploadedFiles.length < 5 && <div className="text-center">
                 <label className="cursor-pointer">
                   <input type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
-                  <Button variant="outline" className="border-gray-600/30 text-primary hover:bg-gray-900/30">
+                  <Button variant="outline" className="border-border dark:border-gray-600/30 text-primary hover:bg-background dark:hover:bg-gray-900/30">
                     <Plus className="w-4 h-4 mr-2" />
                     Add More Screenshots
                   </Button>
@@ -181,7 +181,7 @@ export default function TradeAnalyst() {
             <h3 className="text-xl font-semibold text-primary">Comprehensive Analysis Results (Mock Data)</h3>
             
             {/* Overall Analysis */}
-            <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+            <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
               <CardContent className="p-4">
                 <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
                   <Camera className="w-4 h-4" />
@@ -203,7 +203,7 @@ export default function TradeAnalyst() {
             </Card>
 
             {/* Performance Overview */}
-            <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+            <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
               <CardContent className="p-4">
                 <h4 className="font-semibold text-primary mb-2">Performance Overview</h4>
                 <p className="text-secondary">{analysisResult.overall_performance}</p>
@@ -216,7 +216,7 @@ export default function TradeAnalyst() {
             </Card>
 
             {/* Consistency Analysis */}
-            {analysisResult.consistency_analysis && <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+            {analysisResult.consistency_analysis && <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                 <CardContent className="p-4">
                   <h4 className="font-semibold text-primary mb-2">Consistency Analysis</h4>
                   <p className="text-secondary">{analysisResult.consistency_analysis}</p>
@@ -224,7 +224,7 @@ export default function TradeAnalyst() {
               </Card>}
 
             {/* Performance Evolution */}
-            {analysisResult.performance_evolution && <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+            {analysisResult.performance_evolution && <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                 <CardContent className="p-4">
                   <h4 className="font-semibold text-primary mb-2">Performance Evolution</h4>
                   <p className="text-secondary">{analysisResult.performance_evolution}</p>
@@ -232,7 +232,7 @@ export default function TradeAnalyst() {
               </Card>}
 
             {/* Strengths */}
-            {analysisResult.strengths && analysisResult.strengths.length > 0 && <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+            {analysisResult.strengths && analysisResult.strengths.length > 0 && <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                 <CardContent className="p-4">
                   <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-accent-green" />
@@ -248,7 +248,7 @@ export default function TradeAnalyst() {
               </Card>}
 
             {/* Areas for Improvement */}
-            {analysisResult.areas_for_improvement && analysisResult.areas_for_improvement.length > 0 && <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+            {analysisResult.areas_for_improvement && analysisResult.areas_for_improvement.length > 0 && <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                 <CardContent className="p-4">
                   <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-accent-gold" />
@@ -264,7 +264,7 @@ export default function TradeAnalyst() {
               </Card>}
 
             {/* Key Insights */}
-            <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+            <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
               <CardContent className="p-4">
                 <h4 className="font-semibold text-primary mb-2">Key Insights</h4>
                 <ul className="space-y-2">
@@ -277,7 +277,7 @@ export default function TradeAnalyst() {
             </Card>
 
             {/* Recommendations */}
-            <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+            <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
               <CardContent className="p-4">
                 <h4 className="font-semibold text-primary mb-2">Recommendations</h4>
                 <ul className="space-y-2">

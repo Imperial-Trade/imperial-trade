@@ -213,7 +213,7 @@ export default function TradingJournal() {
   };
   const EntryCard = ({
     entry
-  }) => <Card className="bg-gray-900/30 border-gray-700/30 overflow-hidden backdrop-blur-sm">
+  }) => <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-700/30 overflow-hidden backdrop-blur-sm">
       <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-3">
           <div className="flex justify-between items-start">
@@ -250,8 +250,8 @@ export default function TradingJournal() {
   if (showAdvanced && unlockStatus.isUnlocked) {
     return <AdvancedTradingJournal onBackToBasic={() => setShowAdvanced(false)} />;
   }
-  return <div className="space-y-6 bg-gradient-to-br from-black via-gray-900 to-black min-h-screen p-6">
-      <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm shadow-2xl shadow-gray-900/50">
+  return <div className="space-y-6 bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen p-6">
+      <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             

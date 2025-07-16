@@ -251,8 +251,8 @@ export default function EconomicCalendar() {
     if (isTomorrow(date)) return 'Tomorrow';
     return format(date, 'E, MMM d');
   };
-  return <div className="space-y-6 bg-gradient-to-br from-black via-gray-900 to-black min-h-screen p-6">
-      <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm shadow-2xl shadow-gray-900/50">
+  return <div className="space-y-6 bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen p-6">
+      <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50">
         <CardHeader>
           <div className="flex justify-between items-center">
             <div className="flex flex-wrap gap-4">
@@ -330,7 +330,7 @@ export default function EconomicCalendar() {
               <Calendar className="w-12 h-12 text-secondary/50 mx-auto mb-4" />
               <p className="text-secondary">No events found for the selected filters.</p>
             </div> : <div className="space-y-4">
-              {filteredEvents.map(event => <Card key={event.id} className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm hover:border-gray-500/30 transition-colors">
+              {filteredEvents.map(event => <Card key={event.id} className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm hover:border-border dark:hover:border-gray-500/30 transition-colors">
                   <CardContent className="p-4">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex-1">
@@ -378,7 +378,7 @@ export default function EconomicCalendar() {
       </Card>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+        <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
           <CardContent className="p-4 text-center">
             <Zap className="w-8 h-8 text-red-400 mx-auto mb-2" />
             <p className="text-sm text-secondary">High Impact</p>
@@ -387,7 +387,7 @@ export default function EconomicCalendar() {
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+        <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
           <CardContent className="p-4 text-center">
             <AlertTriangle className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
             <p className="text-sm text-secondary">Medium Impact</p>
@@ -396,7 +396,7 @@ export default function EconomicCalendar() {
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+        <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
           <CardContent className="p-4 text-center">
             <TrendingUp className="w-8 h-8 text-green-400 mx-auto mb-2" />
             <p className="text-sm text-secondary">Low Impact</p>
@@ -405,7 +405,7 @@ export default function EconomicCalendar() {
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
+        <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
           <CardContent className="p-4 text-center">
             <Calendar className="w-8 h-8 text-blue-400 mx-auto mb-2" />
             <p className="text-sm text-secondary">Total Events</p>

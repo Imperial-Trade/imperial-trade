@@ -124,8 +124,8 @@ export default function OpportunityScanner() {
     };
   };
   const statusInfo = getDataStatusInfo();
-  return <div className="bg-gradient-to-br from-black via-gray-900 to-black min-h-screen p-6">
-    <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm shadow-2xl shadow-gray-900/50">
+  return <div className="bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen p-6">
+    <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50">
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
@@ -181,7 +181,7 @@ export default function OpportunityScanner() {
             <Search className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
             <p className="text-secondary">No active signals found. Click "Scan Markets" to find opportunities.</p>
           </div> : <div className="space-y-4">
-            {signals.map(signal => <Card key={signal.id} className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm hover:border-gray-500/30 transition-colors">
+            {signals.map(signal => <Card key={signal.id} className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm hover:border-border dark:hover:border-gray-500/30 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>

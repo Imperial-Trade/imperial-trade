@@ -440,36 +440,36 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     const metrics = calculateMetrics(filteredTrades);
 
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Card className="bg-card border">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 p-6">
+        <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333]">
           <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground mb-1">Total P/L</div>
-            <div className={`text-2xl font-bold ${metrics.totalPnl >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total P/L</div>
+            <div className={`text-2xl font-bold ${metrics.totalPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
               ${metrics.totalPnl.toFixed(2)}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card border">
+        <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333]">
           <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground mb-1">Win Rate</div>
-            <div className="text-2xl font-bold text-foreground">{metrics.winRate.toFixed(1)}%</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Win Rate</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{metrics.winRate.toFixed(1)}%</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card border">
+        <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333]">
           <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground mb-1">Profit Factor</div>
-            <div className="text-2xl font-bold text-foreground">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Profit Factor</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {metrics.profitFactor > 0 ? metrics.profitFactor.toFixed(2) : 'N/A'}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card border">
+        <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333]">
           <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground mb-1">Total Trades</div>
-            <div className="text-2xl font-bold text-foreground">{metrics.totalTrades}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Trades</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{metrics.totalTrades}</div>
           </CardContent>
         </Card>
       </div>
@@ -485,8 +485,8 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="space-y-6">{/* Removed max-width and padding for edge-to-edge */}
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a]">
+      <div className="space-y-6 p-6">{/* Added back some padding for content spacing */}
         {/* Header */}
         <div className="flex items-center justify-between">
           <Button

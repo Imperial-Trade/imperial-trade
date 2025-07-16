@@ -94,9 +94,9 @@ export default function TradeAnalyst() {
     setIsAnalyzing(false);
   };
   return (
-    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
+    <div className="bg-white dark:bg-[#0a0a0a] min-h-screen">
       <div className="">{/* Removed padding for edge-to-edge */}
-        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
+        <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
           <CardHeader>
             <CardTitle>
               Trade Analyst
@@ -138,7 +138,7 @@ export default function TradeAnalyst() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {uploadedFiles.map((file, index) => (
                     <div key={index} className="relative">
-                      <div className="border border-border dark:border-gray-600/30 rounded-lg p-3 bg-background dark:bg-gray-900/30 backdrop-blur-sm">
+                      <div className="border border-gray-200 dark:border-[#333] rounded-lg p-3 bg-white dark:bg-[#1a1a1a] backdrop-blur-sm">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium text-primary truncate">
                             Screenshot {index + 1}
@@ -196,7 +196,7 @@ export default function TradeAnalyst() {
                 <h3 className="text-xl font-semibold text-primary">Comprehensive Analysis Results (Mock Data)</h3>
                 
                 {/* Overall Analysis */}
-                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
                       <Camera className="w-4 h-4" />
@@ -220,7 +220,7 @@ export default function TradeAnalyst() {
                 </Card>
 
                 {/* Performance Overview */}
-                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-primary mb-2">Performance Overview</h4>
                     <p className="text-secondary">{analysisResult.overall_performance}</p>
@@ -236,7 +236,7 @@ export default function TradeAnalyst() {
 
                 {/* Consistency Analysis */}
                 {analysisResult.consistency_analysis && (
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                     <CardContent className="p-4">
                       <h4 className="font-semibold text-primary mb-2">Consistency Analysis</h4>
                       <p className="text-secondary">{analysisResult.consistency_analysis}</p>
@@ -246,7 +246,7 @@ export default function TradeAnalyst() {
 
                 {/* Performance Evolution */}
                 {analysisResult.performance_evolution && (
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                     <CardContent className="p-4">
                       <h4 className="font-semibold text-primary mb-2">Performance Evolution</h4>
                       <p className="text-secondary">{analysisResult.performance_evolution}</p>
@@ -256,7 +256,7 @@ export default function TradeAnalyst() {
 
                 {/* Strengths */}
                 {analysisResult.strengths && analysisResult.strengths.length > 0 && (
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                     <CardContent className="p-4">
                       <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
                         <TrendingUp className="w-4 h-4 text-accent-green" />
@@ -276,7 +276,7 @@ export default function TradeAnalyst() {
 
                 {/* Areas for Improvement */}
                 {analysisResult.areas_for_improvement && analysisResult.areas_for_improvement.length > 0 && (
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                     <CardContent className="p-4">
                       <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 text-accent-gold" />
@@ -295,7 +295,7 @@ export default function TradeAnalyst() {
                 )}
 
                 {/* Key Insights */}
-                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-primary mb-2">Key Insights</h4>
                     <ul className="space-y-2">
@@ -310,7 +310,7 @@ export default function TradeAnalyst() {
                 </Card>
 
                 {/* Recommendations */}
-                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-primary mb-2">Recommendations</h4>
                     <ul className="space-y-2">

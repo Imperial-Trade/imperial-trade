@@ -52,9 +52,9 @@ export default function RiskCalculator() {
     });
   };
   return (
-    <div className="bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
+    <div className="bg-white dark:bg-[#0a0a0a] min-h-screen">
       <div className="">{/* Removed padding for edge-to-edge */}
-        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
+        <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
           <CardHeader>
             <CardTitle>
               Risk Calculator
@@ -94,7 +94,7 @@ export default function RiskCalculator() {
                 <h3 className="text-xl font-semibold text-primary">Calculation Results</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                     <CardContent className="p-4 text-center">
                       <DollarSign className="w-8 h-8 text-accent-red mx-auto mb-2" />
                       <p className="text-sm text-secondary">Risk Amount</p>
@@ -102,7 +102,7 @@ export default function RiskCalculator() {
                     </CardContent>
                   </Card>
                   
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                  <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                     <CardContent className="p-4 text-center">
                       <TrendingUp className="w-8 h-8 text-accent-blue mx-auto mb-2" />
                       <p className="text-sm text-secondary">Position Size</p>
@@ -112,7 +112,7 @@ export default function RiskCalculator() {
                   
                   {results.potentialProfit > 0 && (
                     <>
-                      <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                      <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                         <CardContent className="p-4 text-center">
                           <DollarSign className="w-8 h-8 text-accent-green mx-auto mb-2" />
                           <p className="text-sm text-secondary">Potential Profit</p>
@@ -120,7 +120,7 @@ export default function RiskCalculator() {
                         </CardContent>
                       </Card>
                       
-                      <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                      <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
                         <CardContent className="p-4 text-center">
                           <AlertTriangle className="w-8 h-8 text-accent-gold mx-auto mb-2" />
                           <p className="text-sm text-secondary">Risk:Reward Ratio</p>

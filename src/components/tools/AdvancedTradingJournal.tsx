@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { TradeJournalEntry } from '@/api/entities';
 import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { supabase } from '@/integrations/supabase/client';
-import { useOptimizedSearch } from '@/hooks/useOptimizedSearch';
 import { 
   ChevronLeft, ChevronRight, Plus, X, Camera, Trash2, 
   ArrowLeft, TrendingUp, TrendingDown, Target, PieChart, Activity, Globe, Search 
@@ -57,8 +56,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
 
-  // Enhanced asset search with currency pairs - simplified to prevent focus issues
-  const [assetSearchTerm, setAssetSearchTerm] = useState(formData.asset_ticker);
+  // Recent assets for suggestions
 
   // Currency pairs for auto-detection
   const commonCurrencyPairs = [
@@ -94,7 +92,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
   // Filter suggestions based on search term
   const getAssetSuggestions = (): string[] => {
-    const term = assetSearchTerm.toUpperCase();
+    const term = formData.asset_ticker.toUpperCase();
     const recent = getRecentAssets();
     
     if (!term) return recent;
@@ -886,7 +884,6 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                             value={formData.asset_ticker}
                             onChange={(e) => {
                               setFormData(prev => ({ ...prev, asset_ticker: e.target.value }));
-                              setAssetSearchTerm(e.target.value);
                               setShowAssetDropdown(true);
                             }}
                             onFocus={() => setShowAssetDropdown(true)}
@@ -904,7 +901,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                             <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
                               {getAssetSuggestions().length > 0 ? (
                                 <div className="p-1">
-                                  {!assetSearchTerm && getRecentAssets().length > 0 && (
+                                  {!formData.asset_ticker && getRecentAssets().length > 0 && (
                                     <div className="px-2 py-1 text-[8px] text-muted-foreground font-medium border-b border-border/30 mb-1">
                                       Recent Assets
                                     </div>
@@ -915,7 +912,6 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                                       type="button"
                                       onClick={() => {
                                         setFormData(prev => ({ ...prev, asset_ticker: asset }));
-                                        setAssetSearchTerm(asset);
                                         setShowAssetDropdown(false);
                                       }}
                                       className="w-full text-left px-2 py-1.5 text-[10px] hover:bg-muted/50 rounded-sm transition-colors"
@@ -931,7 +927,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                                     </button>
                                   ))}
                                 </div>
-                              ) : assetSearchTerm ? (
+                              ) : formData.asset_ticker ? (
                                 <div className="p-2 text-[9px] text-muted-foreground text-center">
                                   No matches found
                                 </div>

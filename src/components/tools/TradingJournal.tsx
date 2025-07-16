@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { TradeJournalEntry } from '@/api/entities';
 import { supabase } from '@/integrations/supabase/client';
-import { useOptimizedSearch } from '@/hooks/useOptimizedSearch';
 import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BarChart3, TrendingUp, Target, Calendar, DollarSign, ChevronLeft, ChevronRight, Save, X, Award, TrendingDown, Clock, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
@@ -34,8 +33,7 @@ export default function TradingJournal() {
   const [activeTab, setActiveTab] = useState('log');
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
 
-  // Enhanced asset search with currency pairs - simplified to prevent focus issues
-  const [assetSearchTerm, setAssetSearchTerm] = useState(newEntry.asset_ticker);
+  // Recent assets for suggestions
 
   // Currency pairs for auto-detection
   const commonCurrencyPairs = [
@@ -71,7 +69,7 @@ export default function TradingJournal() {
 
   // Filter suggestions based on search term
   const getAssetSuggestions = () => {
-    const term = assetSearchTerm.toUpperCase();
+    const term = newEntry.asset_ticker.toUpperCase();
     const recent = getRecentAssets();
     
     console.log('Asset search term:', term);
@@ -151,7 +149,6 @@ export default function TradingJournal() {
     // Handle asset ticker search
     if (name === 'asset_ticker') {
       console.log('Handling asset search change:', value);
-      setAssetSearchTerm(value);
       setShowAssetDropdown(true);
     }
   };
@@ -280,7 +277,7 @@ export default function TradingJournal() {
                     <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
                       {getAssetSuggestions().length > 0 ? (
                         <div className="p-1">
-                          {!assetSearchTerm && getRecentAssets().length > 0 && (
+                          {!newEntry.asset_ticker && getRecentAssets().length > 0 && (
                             <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
                               Recent Assets
                             </div>
@@ -291,7 +288,6 @@ export default function TradingJournal() {
                               type="button"
                               onClick={() => {
                                 setNewEntry(prev => ({ ...prev, asset_ticker: asset }));
-                                setAssetSearchTerm(asset);
                                 setShowAssetDropdown(false);
                               }}
                               className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"
@@ -307,7 +303,7 @@ export default function TradingJournal() {
                             </button>
                           ))}
                         </div>
-                      ) : assetSearchTerm ? (
+                      ) : newEntry.asset_ticker ? (
                         <div className="p-3 text-sm text-muted-foreground text-center">
                           No matches found
                         </div>

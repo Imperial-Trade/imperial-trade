@@ -889,7 +889,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                             onFocus={() => setShowAssetDropdown(true)}
                             onBlur={() => {
                               // Delay hiding dropdown to allow clicks
-                              setTimeout(() => setShowAssetDropdown(false), 150);
+                              setTimeout(() => setShowAssetDropdown(false), 300);
                             }}
                             placeholder="e.g., EURUSD, AAPL"
                             className="h-7 text-xs pr-8"
@@ -898,7 +898,10 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                           
                           {/* Asset Suggestions Dropdown */}
                           {showAssetDropdown && (
-                            <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
+                            <div 
+                              className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-40 overflow-y-auto"
+                              onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking dropdown
+                            >
                               {getAssetSuggestions().length > 0 ? (
                                 <div className="p-1">
                                   {!formData.asset_ticker && getRecentAssets().length > 0 && (

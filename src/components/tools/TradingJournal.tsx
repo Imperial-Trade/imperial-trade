@@ -265,7 +265,7 @@ export default function TradingJournal() {
                     onFocus={() => setShowAssetDropdown(true)}
                     onBlur={() => {
                       // Delay hiding dropdown to allow clicks
-                      setTimeout(() => setShowAssetDropdown(false), 150);
+                      setTimeout(() => setShowAssetDropdown(false), 300);
                     }}
                     className="bg-background pr-8" 
                     required 
@@ -274,7 +274,10 @@ export default function TradingJournal() {
                   
                   {/* Asset Suggestions Dropdown */}
                   {showAssetDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                    <div 
+                      className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-48 overflow-y-auto"
+                      onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking dropdown
+                    >
                       {getAssetSuggestions().length > 0 ? (
                         <div className="p-1">
                           {!newEntry.asset_ticker && getRecentAssets().length > 0 && (
@@ -1121,7 +1124,7 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
                       onFocus={() => setShowModalAssetDropdown(true)}
                       onBlur={() => {
                         // Delay hiding dropdown to allow clicks
-                        setTimeout(() => setShowModalAssetDropdown(false), 150);
+                        setTimeout(() => setShowModalAssetDropdown(false), 300);
                       }}
                       required
                       className="mt-1 pr-8"
@@ -1130,7 +1133,10 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
                     
                     {/* Modal Asset Suggestions Dropdown */}
                     {showModalAssetDropdown && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                      <div 
+                        className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-48 overflow-y-auto"
+                        onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking dropdown
+                      >
                         {(() => {
                           const term = newTrade.asset_ticker.toUpperCase();
                           const recent = getRecentAssets();

@@ -28,8 +28,8 @@ export default function TradingJournal() {
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
+  // Initialize component by loading profile first, then entries
   useEffect(() => {
-    loadEntries();
     loadUserProfile();
   }, []);
   const loadUserProfile = async () => {
@@ -47,10 +47,8 @@ export default function TradingJournal() {
         console.log('User profile loaded:', profile);
         if (profile) {
           setUserProfile(profile);
-          // Re-check unlock status after profile loads
-          if (entries.length > 0) {
-            checkUnlockStatus(entries, profile);
-          }
+          // Immediately check unlock status for admin users (even with no entries)
+          checkUnlockStatus(entries, profile);
         }
       }
     } catch (error) {
@@ -119,6 +117,13 @@ export default function TradingJournal() {
     if (userProfile) {
       // If we have a profile, always check if admin (even without entries)
       checkUnlockStatus(entries, userProfile);
+    }
+  }, [userProfile, entries]);
+
+  // Load entries after profile is loaded
+  useEffect(() => {
+    if (userProfile) {
+      loadEntries();
     }
   }, [userProfile]);
   const handleInputChange = e => {

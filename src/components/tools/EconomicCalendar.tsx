@@ -331,7 +331,7 @@ export default function EconomicCalendar() {
 
             {isLoading ? (
               <div className="flex justify-center items-center h-32">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-400 border-t-transparent" />
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
               </div>
             ) : error && events.length === 0 ? (
               <div className="text-center py-8">

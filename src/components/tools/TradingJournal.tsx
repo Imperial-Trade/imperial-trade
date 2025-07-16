@@ -162,7 +162,7 @@ export default function TradingJournal() {
       <Card className="bg-card border-border">
         <CardContent className="p-6">
           <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Plus className="w-5 h-5 text-blue-400" />
+            <Plus className="w-5 h-5 text-primary" />
             Add New Trade
           </h3>
           
@@ -204,7 +204,7 @@ export default function TradingJournal() {
                 <input id="screenshot-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
               </label>
               
-              <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white">
+              <Button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-accent-green to-primary hover:from-accent-green/90 hover:to-primary/90 text-white">
                 {isSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
@@ -326,11 +326,11 @@ export default function TradingJournal() {
               </CardContent>
             </Card>
             
-            <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
+            <Card className="bg-gradient-to-br from-primary/10 to-accent/10 border-primary/30">
               <CardContent className="p-4 text-center">
-                <TrendingUp className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+                <TrendingUp className="w-8 h-8 text-primary mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">Avg Win</p>
-                <p className="text-2xl font-bold text-blue-400">${analytics.avgWin}</p>
+                <p className="text-2xl font-bold text-primary">${analytics.avgWin}</p>
               </CardContent>
             </Card>
             
@@ -352,10 +352,10 @@ export default function TradingJournal() {
           </div>
 
           {/* AI Insights */}
-          <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
+          <Card className="bg-gradient-to-r from-secondary/10 to-primary/10 border-secondary/30">
             <CardContent className="p-6">
               <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                <Brain className="w-6 h-6 text-purple-400" />
+                <Brain className="w-6 h-6 text-secondary" />
                 AI Performance Insights
               </h3>
               <div className="space-y-3">
@@ -364,9 +364,9 @@ export default function TradingJournal() {
                     <span className="font-semibold text-green-400">Strong Discipline:</span> Your win rate of {analytics.winRate}% shows consistent execution of your trading plan.
                   </p>
                 </div>
-                <div className="p-4 bg-blue-500/5 rounded-lg border border-blue-500/20">
+                <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                   <p className="text-sm text-muted-foreground">
-                    <span className="font-semibold text-blue-400">Risk Management:</span> Your average loss of ${analytics.avgLoss} indicates good position sizing control.
+                    <span className="font-semibold text-primary">Risk Management:</span> Your average loss of ${analytics.avgLoss} indicates good position sizing control.
                   </p>
                 </div>
                 <div className="p-4 bg-yellow-500/5 rounded-lg border border-yellow-500/20">
@@ -382,7 +382,7 @@ export default function TradingJournal() {
           <Card className="bg-card border-border">
             <CardContent className="p-6">
               <h3 className="text-xl font-bold text-foreground mb-4">Equity Curve</h3>
-              <div className="h-64 bg-gradient-to-r from-green-500/20 via-blue-500/20 to-purple-500/20 rounded-lg flex items-center justify-center">
+              <div className="h-64 bg-gradient-to-r from-accent-green/20 via-primary/20 to-secondary/20 rounded-lg flex items-center justify-center">
                 <div className="text-center">
                   <BarChart3 className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
                   <p className="text-muted-foreground">Account growth visualization</p>

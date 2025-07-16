@@ -487,19 +487,19 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            onClick={onBackToBasic}
-            className="flex items-center gap-2 bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Basic
-          </Button>
-        </div>
+      {/* Back to Basic button - outside the main container */}
+      <div className="p-6 pb-0">
+        <Button
+          variant="outline"
+          onClick={onBackToBasic}
+          className="flex items-center gap-2 bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Basic
+        </Button>
+      </div>
 
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-white">Advanced Trading Journal</h1>

@@ -728,7 +728,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
           {/* Calendar Section */}
           <div className="xl:col-span-3">
             <Card className="h-[400px] border border-border/50">
-              <CardContent className="p-3 h-full">
+              <CardContent className="p-4 h-full overflow-hidden flex flex-col">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-xs font-semibold text-foreground">Trading Calendar</h3>
                   <div className="flex items-center gap-1">

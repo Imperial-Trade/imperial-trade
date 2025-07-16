@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { accountRequestSchema, type AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
@@ -7,7 +8,7 @@ import { useState } from "react";
 
 // Error message mapping for user-friendly error display
 const getErrorMessage = (error: any): string => {
-  console.log("Full error object:", error);
+  console.log("🔍 Full error object:", error);
   
   // Check for rate limiting errors
   if (error?.message?.includes('rate limit') || error?.message?.includes('too many')) {
@@ -20,7 +21,7 @@ const getErrorMessage = (error: any): string => {
   }
   
   if (error?.message?.includes('account_type')) {
-    return "Invalid account type selected. Please choose either Standard Member or Educator/IB Partner.";
+    return "Invalid account type selected. Please choose either Standard Member or Educator.";
   }
   
   if (error?.message?.includes('email')) {
@@ -68,13 +69,14 @@ export const useAccountRequestForm = () => {
   });
 
   const onSubmit = async (data: AccountRequestFormData): Promise<{ success: boolean; error?: string }> => {
-    console.log('🚀 Simple form submission started');
+    console.log('🚀 Account request submission started');
+    console.log('📋 Form data:', data);
     
     setIsSubmitting(true);
     
-    // Simple client-side rate limiting (1 submission per 5 minutes)
+    // Reduced rate limiting (1 submission per 2 minutes instead of 5)
     const now = Date.now();
-    const minDelay = 5 * 60 * 1000; // 5 minutes
+    const minDelay = 2 * 60 * 1000; // 2 minutes
     
     if (lastSubmission && (now - lastSubmission) < minDelay) {
       const remainingMs = minDelay - (now - lastSubmission);
@@ -91,16 +93,17 @@ export const useAccountRequestForm = () => {
       return { success: false, error: errorMsg };
     }
 
-    // Simple honeypot check
+    // Honeypot check
     if (data.website && data.website.length > 0) {
       console.log('🤖 Bot detected via honeypot');
       setIsSubmitting(false);
       return { success: false, error: "Invalid submission detected" };
     }
 
-    // Basic validation for account_type
+    // Validation for account_type to ensure admin cannot be selected
     if (!['user', 'educator'].includes(data.account_type)) {
-      const errorMsg = "Please select a valid account type: Standard Member or Educator/IB Partner.";
+      const errorMsg = "Please select a valid account type: Standard Member or Educator.";
+      console.log('❌ Invalid account type:', data.account_type);
       toast({
         variant: "destructive",
         title: "Invalid Account Type",
@@ -111,7 +114,7 @@ export const useAccountRequestForm = () => {
     }
 
     try {
-      console.log("✅ Submitting account request:", data);
+      console.log("✅ Submitting account request to database:", data);
       
       // Direct Supabase call
       const result = await AccountRequest.create(data);
@@ -120,7 +123,7 @@ export const useAccountRequestForm = () => {
 
       toast({
         title: "Success!",
-        description: `Your ${data.account_type === 'educator' ? 'Educator/IB Partner' : 'Standard Member'} request has been submitted successfully. You will receive an email notification once it's reviewed.`,
+        description: `Your ${data.account_type === 'educator' ? 'Educator' : 'Standard Member'} request has been submitted successfully. You will receive an email notification once it's reviewed.`,
       });
 
       setLastSubmission(now);

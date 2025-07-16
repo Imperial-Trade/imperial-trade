@@ -12,7 +12,7 @@ import { PageStyles } from "@/components/account-request/PageStyles";
 import { ApprovedAccountFlow } from "@/components/account-request/ApprovedAccountFlow";
 import { NoRequestFound } from "@/components/account-request/NoRequestFound";
 import { ErrorDisplay } from "@/components/account-request/ErrorDisplay";
-import { useAccountStatusWebSocket } from "@/hooks/useAccountStatusWebSocket";
+import { useAccountStatus } from "@/hooks/useAccountStatus";
 
 export default function AccountRequestStatusPage() {
   const [email, setEmail] = useState("");
@@ -20,16 +20,12 @@ export default function AccountRequestStatusPage() {
 
   const {
     status,
-    isConnected,
     error,
     isLoading,
     checkStatus,
     retryCheck,
     resetState,
-  } = useAccountStatusWebSocket({
-    email: searchEmail,
-    enabled: !!searchEmail
-  });
+  } = useAccountStatus();
 
   const handleCheckStatus = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,11 +38,17 @@ export default function AccountRequestStatusPage() {
 
   const handleCheckAnother = useCallback(() => {
     console.log('Checking another email - resetting state');
-    // Reset all state and clear the search
     resetState();
     setSearchEmail("");
     setEmail("");
   }, [resetState]);
+
+  const handleRefreshStatus = useCallback(() => {
+    if (searchEmail) {
+      console.log('Refreshing status for:', searchEmail);
+      retryCheck();
+    }
+  }, [searchEmail, retryCheck]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -96,7 +98,6 @@ export default function AccountRequestStatusPage() {
             </CardTitle>
             <p className="text-gray-300 text-center">
               Check the status of your account request
-              {isConnected && <span className="ml-2 text-green-400 text-sm">● Real-time updates</span>}
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -189,14 +190,28 @@ export default function AccountRequestStatusPage() {
                   )}
                 </div>
 
-                <Button
-                  variant="outline"
-                  className="w-full border-white/20 text-white hover:bg-white/10"
-                  onClick={handleCheckAnother}
-                  disabled={isLoading}
-                >
-                  Check Another Email
-                </Button>
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleRefreshStatus}
+                    disabled={isLoading}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-12"
+                  >
+                    {isLoading ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                    ) : (
+                      "Refresh Status"
+                    )}
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="w-full border-white/20 text-white hover:bg-white/10"
+                    onClick={handleCheckAnother}
+                    disabled={isLoading}
+                  >
+                    Check Another Email
+                  </Button>
+                </div>
               </div>
             )}
 

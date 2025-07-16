@@ -60,7 +60,6 @@ export const NoRequestFound: React.FC<NoRequestFoundProps> = ({ email, onCheckAn
         <Link to={createPageUrl("account-request")}>
           <Button 
             className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
-            onClick={() => console.log('Navigating to account request form')}
           >
             <Plus className="w-4 h-4 mr-2" />
             Submit Account Request

@@ -128,6 +128,9 @@ export default function TradeAnalyst() {
   return (
     <Card className="glass-effect">
       <CardHeader>
+        <CardTitle>
+          <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-3">Trade Analyst</h1>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Mock Mode Warning */}

@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,21 +9,22 @@ import { createPageUrl } from "@/utils";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { PageStyles } from "@/components/account-request/PageStyles";
-import { useToast } from "@/hooks/use-toast";
 import { ApprovedAccountFlow } from "@/components/account-request/ApprovedAccountFlow";
+import { NoRequestFound } from "@/components/account-request/NoRequestFound";
+import { ErrorDisplay } from "@/components/account-request/ErrorDisplay";
 import { useAccountStatusWebSocket } from "@/hooks/useAccountStatusWebSocket";
 
 export default function AccountRequestStatusPage() {
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [searchEmail, setSearchEmail] = useState("");
-  const { toast } = useToast();
 
   const {
     status,
     isConnected,
     error,
-    checkStatus
+    isLoading,
+    checkStatus,
+    retryCheck,
   } = useAccountStatusWebSocket({
     email: searchEmail,
     enabled: !!searchEmail
@@ -31,14 +33,10 @@ export default function AccountRequestStatusPage() {
   const handleCheckStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    setIsLoading(true);
-    setSearchEmail(email.toLowerCase());
-
-    checkStatus(email.toLowerCase());
-
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    
+    const emailToCheck = email.toLowerCase();
+    setSearchEmail(emailToCheck);
+    checkStatus(emailToCheck);
   };
 
   const handleCheckAnother = () => {
@@ -89,16 +87,16 @@ export default function AccountRequestStatusPage() {
 
         <Card className="glass-effect border-default">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-primary text-center">
+            <CardTitle className="text-2xl font-bold text-white text-center">
               Account Request Status
             </CardTitle>
-            <p className="text-secondary text-center text-white">
+            <p className="text-gray-300 text-center">
               Check the status of your account request
               {isConnected && <span className="ml-2 text-green-400 text-sm">● Real-time updates</span>}
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!status ? (
+            {!status && !error ? (
               <form onSubmit={handleCheckStatus} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
@@ -117,20 +115,6 @@ export default function AccountRequestStatusPage() {
                   </div>
                 </div>
 
-                {error && searchEmail && (
-                  <div className="p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
-                    <div className="flex items-center gap-2">
-                      <XCircle className="w-4 h-4" />
-                      <span>{error}</span>
-                    </div>
-                    {error.includes('WebSocket') && (
-                      <p className="text-xs mt-1 text-gray-400">
-                        Switched to backup connection method automatically.
-                      </p>
-                    )}
-                  </div>
-                )}
-
                 <Button
                   type="submit"
                   disabled={isLoading || !email}
@@ -143,49 +127,58 @@ export default function AccountRequestStatusPage() {
                   )}
                 </Button>
               </form>
-            ) : status.status === "approved" ? (
+            ) : error && error.type === 'not_found' ? (
+              <NoRequestFound email={searchEmail} onCheckAnother={handleCheckAnother} />
+            ) : error ? (
+              <ErrorDisplay 
+                error={error} 
+                onRetry={retryCheck}
+                onCheckAnother={handleCheckAnother}
+                isRetrying={isLoading}
+              />
+            ) : status?.status === "approved" ? (
               <ApprovedAccountFlow accountRequest={status} />
             ) : (
               <div className="space-y-6">
                 <div className="text-center">
-                  {getStatusIcon(status.status)}
+                  {getStatusIcon(status!.status)}
                   <h3 className="text-xl font-semibold text-white mt-4">
-                    {getStatusMessage(status.status).title}
+                    {getStatusMessage(status!.status).title}
                   </h3>
                   <p className="text-gray-300 mt-2">
-                    {getStatusMessage(status.status).message}
+                    {getStatusMessage(status!.status).message}
                   </p>
                   <p className="text-sm text-gray-400 mt-4">
-                    {getStatusMessage(status.status).instructions}
+                    {getStatusMessage(status!.status).instructions}
                   </p>
                 </div>
 
                 <div className="bg-surface/20 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Name:</span>
-                    <span className="text-white">{status.full_name}</span>
+                    <span className="text-white">{status!.full_name}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Email:</span>
-                    <span className="text-white">{status.email}</span>
+                    <span className="text-white">{status!.email}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Account Type:</span>
                     <span className="text-white">
-                      {status.account_type === "user" ? "Standard Member" : "Educator / IB Partner"}
+                      {status!.account_type === "user" ? "Standard Member" : "Educator / IB Partner"}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Submitted:</span>
                     <span className="text-white">
-                      {new Date(status.created_at).toLocaleDateString()}
+                      {new Date(status!.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  {status.rejection_reason && (
+                  {status!.rejection_reason && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Reason:</span>
                       <span className="text-red-300">
-                        {status.rejection_reason}
+                        {status!.rejection_reason}
                       </span>
                     </div>
                   )}
@@ -193,7 +186,7 @@ export default function AccountRequestStatusPage() {
 
                 <Button
                   variant="outline"
-                  className="w-full border-white/20 text-white/80 hover:bg-white/10"
+                  className="w-full border-white/20 text-white hover:bg-white/10"
                   onClick={handleCheckAnother}
                 >
                   Check Another Email

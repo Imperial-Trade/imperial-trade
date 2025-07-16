@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -55,22 +56,40 @@ Deno.serve(async (req) => {
       if (message.type === 'subscribe_status') {
         const { email } = message;
         
-        // Get current status
-        const { data: accountRequest } = await supabase
-          .from('account_requests')
-          .select('*')
-          .eq('email', email.toLowerCase())
-          .single();
+        try {
+          // Get current status
+          const { data: accountRequest, error } = await supabase
+            .from('account_requests')
+            .select('*')
+            .eq('email', email.toLowerCase())
+            .single();
 
-        if (accountRequest) {
+          if (error && error.code !== 'PGRST116') {
+            // PGRST116 is "not found" error, other errors are system errors
+            console.error('Database error:', error);
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'System error occurred while checking status'
+            }));
+            return;
+          }
+
+          if (accountRequest) {
+            socket.send(JSON.stringify({
+              type: 'status_update',
+              data: accountRequest
+            }));
+          } else {
+            socket.send(JSON.stringify({
+              type: 'status_not_found',
+              message: 'No account request found for this email address'
+            }));
+          }
+        } catch (error) {
+          console.error('Unexpected error:', error);
           socket.send(JSON.stringify({
-            type: 'status_update',
-            data: accountRequest
-          }));
-        } else {
-          socket.send(JSON.stringify({
-            type: 'status_not_found',
-            message: 'No account request found with this email'
+            type: 'error',
+            message: 'System error occurred while checking status'
           }));
         }
       }
@@ -78,15 +97,33 @@ Deno.serve(async (req) => {
       if (message.type === 'check_status') {
         const { email } = message;
         
-        const { data: requests } = await supabase
-          .from('account_requests')
-          .select('*')
-          .eq('email', email.toLowerCase());
+        try {
+          const { data: requests, error } = await supabase
+            .from('account_requests')
+            .select('*')
+            .eq('email', email.toLowerCase())
+            .order('created_at', { ascending: false });
 
-        socket.send(JSON.stringify({
-          type: 'status_result',
-          data: requests || []
-        }));
+          if (error) {
+            console.error('Database error:', error);
+            socket.send(JSON.stringify({
+              type: 'error',
+              message: 'System error occurred while checking status'
+            }));
+            return;
+          }
+
+          socket.send(JSON.stringify({
+            type: 'status_result',
+            data: requests || []
+          }));
+        } catch (error) {
+          console.error('Unexpected error:', error);
+          socket.send(JSON.stringify({
+            type: 'error',
+            message: 'System error occurred while checking status'
+          }));
+        }
       }
 
     } catch (error) {

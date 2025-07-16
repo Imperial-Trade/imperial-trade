@@ -17,17 +17,28 @@ interface UseAccountStatusWebSocketProps {
   enabled?: boolean;
 }
 
+interface StatusError {
+  type: 'not_found' | 'network_error' | 'system_error';
+  message: string;
+}
+
 export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountStatusWebSocketProps) => {
   const [status, setStatus] = useState<AccountStatusUpdate | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<StatusError | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   const checkStatusHttp = useCallback(async (emailToCheck: string) => {
     try {
-      setError('');
+      setError(null);
+      setIsLoading(true);
       console.log('Checking status via HTTP API for:', emailToCheck);
       
       const { data, error } = await supabase.functions.invoke('account-status-check', {
@@ -36,19 +47,31 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
 
       if (error) {
         console.error('HTTP status check error:', error);
-        setError('Failed to check status');
+        setError({
+          type: 'network_error',
+          message: 'Unable to connect to our servers. Please check your internet connection and try again.'
+        });
         return;
       }
 
       if (data.status === 'found') {
         setStatus(data.data);
+        setError(null);
       } else if (data.status === 'not_found') {
         setStatus(null);
-        setError(data.message);
+        setError({
+          type: 'not_found',
+          message: 'No account request found for this email address.'
+        });
       }
     } catch (error) {
       console.error('HTTP status check failed:', error);
-      setError('Connection failed. Please try again.');
+      setError({
+        type: 'network_error',
+        message: 'Connection failed. Please check your internet connection and try again.'
+      });
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -64,7 +87,7 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
       socketRef.current.onopen = () => {
         console.log('Account status WebSocket connected');
         setIsConnected(true);
-        setError('');
+        setError(null);
         reconnectAttemptsRef.current = 0;
 
         // Subscribe to status updates for this email
@@ -82,20 +105,35 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
           
           if (message.type === 'status_update') {
             setStatus(message.data);
+            setError(null);
           } else if (message.type === 'status_result') {
             const requests = message.data;
             if (requests.length > 0) {
-              setStatus(requests[0]); // Get the most recent request
+              setStatus(requests[0]);
+              setError(null);
+            } else {
+              setStatus(null);
+              setError({
+                type: 'not_found',
+                message: 'No account request found for this email address.'
+              });
             }
           } else if (message.type === 'status_not_found') {
             setStatus(null);
-            setError(message.message);
+            setError({
+              type: 'not_found',
+              message: 'No account request found for this email address.'
+            });
           } else if (message.type === 'ping') {
             // Respond to ping
             socketRef.current?.send(JSON.stringify({ type: 'pong' }));
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
+          setError({
+            type: 'system_error',
+            message: 'Error processing server response. Please try again.'
+          });
         }
       };
 
@@ -116,7 +154,10 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
 
       socketRef.current.onerror = (error) => {
         console.error('Account status WebSocket error:', error);
-        setError('WebSocket connection failed, using HTTP fallback');
+        setError({
+          type: 'network_error',
+          message: 'Connection issue detected. Switching to backup connection method.'
+        });
         
         // Try HTTP fallback when WebSocket fails
         if (email) {
@@ -125,12 +166,17 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
       };
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
-      setError('Failed to connect');
+      setError({
+        type: 'network_error',
+        message: 'Unable to establish connection. Please try again.'
+      });
     }
   }, [email, enabled, checkStatusHttp]);
 
-
   const checkStatus = useCallback((emailToCheck: string) => {
+    setIsLoading(true);
+    clearError();
+    
     // Try WebSocket first, fallback to HTTP if not connected
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       console.log('Checking status via WebSocket');
@@ -142,7 +188,13 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
       console.log('WebSocket not connected, using HTTP fallback');
       checkStatusHttp(emailToCheck);
     }
-  }, [checkStatusHttp]);
+  }, [checkStatusHttp, clearError]);
+
+  const retryCheck = useCallback(() => {
+    if (email) {
+      checkStatus(email);
+    }
+  }, [email, checkStatus]);
 
   useEffect(() => {
     if (enabled) {
@@ -163,6 +215,9 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
     status,
     isConnected,
     error,
+    isLoading,
     checkStatus,
+    retryCheck,
+    clearError,
   };
 };

@@ -124,7 +124,8 @@ export default function OpportunityScanner() {
     };
   };
   const statusInfo = getDataStatusInfo();
-  return <Card className="glass-effect">
+  return <div className="bg-gradient-to-br from-black via-gray-900 to-black min-h-screen p-6">
+    <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm shadow-2xl shadow-gray-900/50">
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
@@ -180,7 +181,7 @@ export default function OpportunityScanner() {
             <Search className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
             <p className="text-secondary">No active signals found. Click "Scan Markets" to find opportunities.</p>
           </div> : <div className="space-y-4">
-            {signals.map(signal => <Card key={signal.id} className="bg-surface/50 border-default hover:border-accent-green transition-colors">
+            {signals.map(signal => <Card key={signal.id} className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm hover:border-gray-500/30 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -228,5 +229,6 @@ export default function OpportunityScanner() {
               </Card>)}
           </div>}
       </CardContent>
-    </Card>;
+    </Card>
+  </div>;
 }

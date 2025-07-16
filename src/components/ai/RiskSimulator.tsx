@@ -60,7 +60,8 @@ export default function RiskSimulator() {
     if (score <= 6) return 'Medium Risk';
     return 'High Risk';
   };
-  return <Card className="glass-effect">
+  return <div className="bg-gradient-to-br from-black via-gray-900 to-black min-h-screen p-6">
+    <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm shadow-2xl shadow-gray-900/50">
       <CardHeader>
         
       </CardHeader>
@@ -109,7 +110,7 @@ export default function RiskSimulator() {
             
             {/* Risk Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-surface/50">
+              <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
                 <CardContent className="p-4 text-center">
                   <Target className="w-8 h-8 text-accent-blue mx-auto mb-2" />
                   <p className="text-sm text-secondary">Risk:Reward Ratio</p>
@@ -117,7 +118,7 @@ export default function RiskSimulator() {
                 </CardContent>
               </Card>
               
-              <Card className="bg-surface/50">
+              <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
                 <CardContent className="p-4 text-center">
                   <TrendingDown className="w-8 h-8 text-accent-red mx-auto mb-2" />
                   <p className="text-sm text-secondary">Stop Loss Probability</p>
@@ -125,7 +126,7 @@ export default function RiskSimulator() {
                 </CardContent>
               </Card>
               
-              <Card className="bg-surface/50">
+              <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
                 <CardContent className="p-4 text-center">
                   <AlertTriangle className={`w-8 h-8 mx-auto mb-2 ${getRiskColor(simulationResult.overall_risk_score)}`} />
                   <p className="text-sm text-secondary">Overall Risk</p>
@@ -137,21 +138,21 @@ export default function RiskSimulator() {
             </div>
 
             {/* Detailed Analysis */}
-            <Card className="bg-surface/50">
+            <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
               <CardContent className="p-4">
                 <h4 className="font-semibold text-primary mb-2">Market Conditions</h4>
                 <p className="text-secondary">{simulationResult.market_conditions}</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-surface/50">
+            <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
               <CardContent className="p-4">
                 <h4 className="font-semibold text-primary mb-2">Position Sizing Feedback</h4>
                 <p className="text-secondary">{simulationResult.position_sizing_feedback}</p>
               </CardContent>
             </Card>
 
-            <Card className="bg-surface/50">
+            <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm">
               <CardContent className="p-4">
                 <h4 className="font-semibold text-primary mb-2">Recommendations</h4>
                 <ul className="space-y-2">
@@ -164,5 +165,6 @@ export default function RiskSimulator() {
             </Card>
           </div>}
       </CardContent>
-    </Card>;
+    </Card>
+  </div>;
 }

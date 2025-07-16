@@ -251,7 +251,7 @@ export default function TradingJournal() {
     return <AdvancedTradingJournal onBackToBasic={() => setShowAdvanced(false)} />;
   }
   return <div className="space-y-6 bg-gradient-to-br from-black via-gray-900 to-black min-h-screen p-6">
-      <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
+      <Card className="bg-gray-900/30 border-gray-600/20 backdrop-blur-sm shadow-2xl shadow-gray-900/50">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             

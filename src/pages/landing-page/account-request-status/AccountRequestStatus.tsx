@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,8 @@ import { UpdateAccountRequestForm } from "@/components/account-request/UpdateAcc
 import { useAccountStatus } from "@/hooks/useAccountStatus";
 import { useAccountRequestCheck } from "@/hooks/useAccountRequestCheck";
 import { AccountRequestData } from "@/api/entities/AccountRequest";
+import { ResubmissionConfirmation } from "@/components/account-request/ResubmissionConfirmation";
+import { RequestHistoryTimeline } from "@/components/account-request/RequestHistoryTimeline";
 
 type ViewMode = 'check' | 'status' | 'update' | 'success';
 
@@ -198,6 +199,8 @@ export default function AccountRequestStatusPage() {
               onStartNew={handleBackToCheck}
             />
 
+            <RequestHistoryTimeline request={currentRequest} />
+
             <div className="flex gap-3">
               <Button
                 onClick={handleBackToCheck}
@@ -220,45 +223,10 @@ export default function AccountRequestStatusPage() {
         )}
 
         {viewMode === 'success' && currentRequest && (
-          <Card className="glass-effect border-default">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-white text-center">
-                Request Updated Successfully!
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 text-center">
-              <div className="text-green-400">
-                <Clock className="w-16 h-16 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  Resubmitted for Review
-                </h3>
-                <p className="text-gray-300">
-                  Your updated request has been resubmitted and is now pending review. 
-                  You will receive an email notification once it's processed.
-                </p>
-              </div>
-
-              <div className="bg-surface/20 rounded-lg p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Resubmission Count:</span>
-                  <span className="text-white">{currentRequest.resubmission_count}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Updated:</span>
-                  <span className="text-white">
-                    {new Date().toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleBackToCheck}
-                className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
-              >
-                Done
-              </Button>
-            </CardContent>
-          </Card>
+          <ResubmissionConfirmation
+            updatedRequest={currentRequest}
+            onBackToCheck={handleBackToCheck}
+          />
         )}
 
         {!currentRequest && error && error.type === 'not_found' && (

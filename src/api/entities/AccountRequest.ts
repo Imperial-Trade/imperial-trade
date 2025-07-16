@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ApiResponse } from '@/types/common';
+import { serverRateLimitService } from '@/services/ServerRateLimitService';
 
 export interface AccountRequestData {
   id?: string;
@@ -37,6 +37,31 @@ export class AccountRequest {
   static async create(data: AccountRequestData): Promise<AccountRequestData> {
     console.log('🚀 Creating account request:', data);
     
+    // Check server-side rate limiting before creating
+    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(data.email);
+    if (!rateLimitCheck.allowed) {
+      const retryAfterHours = Math.ceil(
+        (new Date(rateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60 * 60)
+      );
+      throw new Error(`Too many requests for this email. Please try again in ${retryAfterHours} hours.`);
+    }
+
+    // Also check IP-based rate limiting
+    const clientIP = serverRateLimitService.getClientIP();
+    const ipRateLimitCheck = await serverRateLimitService.checkIPRateLimit(clientIP);
+    if (!ipRateLimitCheck.allowed) {
+      const retryAfterMinutes = Math.ceil(
+        (new Date(ipRateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60)
+      );
+      throw new Error(`Too many requests from your location. Please try again in ${retryAfterMinutes} minutes.`);
+    }
+
+    // Check for existing request with same email
+    const existingRequest = await this.getByEmail(data.email);
+    if (existingRequest) {
+      throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
+    }
+
     const { data: result, error } = await supabase
       .from('account_requests')
       .insert({
@@ -54,6 +79,10 @@ export class AccountRequest {
 
     if (error) {
       console.error('❌ Error creating account request:', error);
+      // Handle unique constraint violation with friendly message
+      if (error.message?.includes('account_requests_email_unique')) {
+        throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
+      }
       throw error;
     }
 
@@ -86,7 +115,7 @@ export class AccountRequest {
     // First, verify the request can be updated (must be rejected)
     const { data: existing, error: fetchError } = await supabase
       .from('account_requests')
-      .select('status, rejection_reason, resubmission_count')
+      .select('status, rejection_reason, resubmission_count, email')
       .eq('id', id)
       .single();
 
@@ -97,6 +126,15 @@ export class AccountRequest {
 
     if (existing.status !== 'rejected') {
       throw new Error('Only rejected requests can be updated');
+    }
+
+    // Check rate limiting for resubmissions
+    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(existing.email);
+    if (!rateLimitCheck.allowed) {
+      const retryAfterHours = Math.ceil(
+        (new Date(rateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60 * 60)
+      );
+      throw new Error(`Too many resubmission attempts. Please try again in ${retryAfterHours} hours.`);
     }
 
     // Prepare update data

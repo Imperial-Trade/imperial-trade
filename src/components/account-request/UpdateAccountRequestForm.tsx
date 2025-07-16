@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Save, AlertCircle } from "lucide-react";
 import { AccountRequestData, AccountRequest } from '@/api/entities/AccountRequest';
 import { useToast } from "@/hooks/use-toast";
+import { 
+  validateAccountRequestData, 
+  getFieldError, 
+  getGeneralError,
+  ValidationError 
+} from '@/lib/validations/accountRequestValidation';
 
 interface UpdateAccountRequestFormProps {
   existingRequest: AccountRequestData;
@@ -24,45 +30,20 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     full_name: existingRequest.full_name || '',
+    email: existingRequest.email,
     phone_number: existingRequest.phone_number || '',
     vt_market_account_number: existingRequest.vt_market_account_number || '',
     referrer: existingRequest.referrer || '',
-    account_type: existingRequest.account_type || 'user',
+    account_type: existingRequest.account_type || 'user' as const,
     reason: existingRequest.reason || '',
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.full_name.trim()) {
-      newErrors.full_name = 'Full name is required';
-    }
-
-    if (!formData.vt_market_account_number?.trim()) {
-      newErrors.vt_market_account_number = 'VT Market account number is required';
-    }
-
-    if (formData.account_type === 'educator' && !formData.reason?.trim()) {
-      newErrors.reason = 'Please explain why you need an educator account';
-    }
-
-    // Check if meaningful changes were made
-    const hasChanges = 
-      formData.full_name !== existingRequest.full_name ||
-      formData.phone_number !== (existingRequest.phone_number || '') ||
-      formData.vt_market_account_number !== (existingRequest.vt_market_account_number || '') ||
-      formData.referrer !== (existingRequest.referrer || '') ||
-      formData.account_type !== existingRequest.account_type ||
-      formData.reason !== (existingRequest.reason || '');
-
-    if (!hasChanges) {
-      newErrors.general = 'Please make at least one meaningful change before resubmitting';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const validation = validateAccountRequestData(formData, existingRequest);
+    setValidationErrors(validation.errors);
+    return validation.isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,13 +78,8 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-    if (errors.general) {
-      setErrors(prev => ({ ...prev, general: '' }));
-    }
+    // Clear validation errors when user starts typing
+    setValidationErrors(prev => prev.filter(error => error.field !== field && error.field !== 'general'));
   };
 
   return (
@@ -141,8 +117,8 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
               className="bg-white border-gray-300 text-gray-900"
               disabled={isSubmitting}
             />
-            {errors.full_name && (
-              <p className="text-red-400 text-sm mt-1">{errors.full_name}</p>
+            {getFieldError(validationErrors, 'full_name') && (
+              <p className="text-red-400 text-sm mt-1">{getFieldError(validationErrors, 'full_name')}</p>
             )}
           </div>
 
@@ -152,7 +128,7 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
             </label>
             <Input
               type="email"
-              value={existingRequest.email}
+              value={formData.email}
               disabled
               className="bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed"
             />
@@ -183,8 +159,8 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
               className="bg-white border-gray-300 text-gray-900"
               disabled={isSubmitting}
             />
-            {errors.vt_market_account_number && (
-              <p className="text-red-400 text-sm mt-1">{errors.vt_market_account_number}</p>
+            {getFieldError(validationErrors, 'vt_market_account_number') && (
+              <p className="text-red-400 text-sm mt-1">{getFieldError(validationErrors, 'vt_market_account_number')}</p>
             )}
           </div>
 
@@ -205,6 +181,9 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
                 <SelectItem value="educator">Educator / IB Partner</SelectItem>
               </SelectContent>
             </Select>
+            {getFieldError(validationErrors, 'account_type') && (
+              <p className="text-red-400 text-sm mt-1">{getFieldError(validationErrors, 'account_type')}</p>
+            )}
           </div>
 
           <div>
@@ -224,7 +203,7 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
           {formData.account_type === 'educator' && (
             <div>
               <label className="block text-sm font-medium text-white mb-2">
-                Reason for Educator Account *
+                Reason for Educator Account * (10-500 characters)
               </label>
               <Textarea
                 value={formData.reason}
@@ -233,15 +212,20 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
                 className="bg-white border-gray-300 text-gray-900 min-h-[100px]"
                 disabled={isSubmitting}
               />
-              {errors.reason && (
-                <p className="text-red-400 text-sm mt-1">{errors.reason}</p>
+              <div className="flex justify-end mt-1">
+                <span className="text-xs text-gray-300">
+                  {formData.reason.length}/500
+                </span>
+              </div>
+              {getFieldError(validationErrors, 'reason') && (
+                <p className="text-red-400 text-sm mt-1">{getFieldError(validationErrors, 'reason')}</p>
               )}
             </div>
           )}
 
-          {errors.general && (
+          {getGeneralError(validationErrors) && (
             <div className="bg-yellow-500/10 rounded-lg p-3 border border-yellow-500/20">
-              <p className="text-yellow-400 text-sm">{errors.general}</p>
+              <p className="text-yellow-400 text-sm">{getGeneralError(validationErrors)}</p>
             </div>
           )}
 

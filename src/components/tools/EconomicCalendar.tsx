@@ -212,9 +212,9 @@ export default function EconomicCalendar() {
   };
 
   return (
-    <div className="bg-white dark:bg-[#0a0a0a] min-h-screen">
-      <div className="space-y-6">{/* Removed padding for edge-to-edge */}
-        <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
+      <div className="p-6 space-y-6">
+        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Economic Calendar</CardTitle>
           </CardHeader>
@@ -300,7 +300,7 @@ export default function EconomicCalendar() {
             ) : (
               <div className="space-y-4">
                 {filteredEvents.map(event => (
-                  <Card key={event.id} className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm hover:border-gray-300 dark:hover:border-gray-500 transition-colors">
+                  <Card key={event.id} className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm hover:border-border dark:hover:border-gray-500/30 transition-colors">
                     <CardContent className="p-4">
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div className="flex-1">
@@ -350,7 +350,7 @@ export default function EconomicCalendar() {
         </Card>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
             <CardContent className="p-4 text-center">
               <Zap className="w-8 h-8 text-red-400 mx-auto mb-2" />
               <p className="text-sm text-secondary">High Impact</p>
@@ -359,7 +359,7 @@ export default function EconomicCalendar() {
               </p>
             </CardContent>
           </Card>
-          <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
             <CardContent className="p-4 text-center">
               <AlertTriangle className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
               <p className="text-sm text-secondary">Medium Impact</p>
@@ -368,7 +368,7 @@ export default function EconomicCalendar() {
               </p>
             </CardContent>
           </Card>
-          <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
             <CardContent className="p-4 text-center">
               <TrendingUp className="w-8 h-8 text-green-400 mx-auto mb-2" />
               <p className="text-sm text-secondary">Low Impact</p>
@@ -377,7 +377,7 @@ export default function EconomicCalendar() {
               </p>
             </CardContent>
           </Card>
-          <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
             <CardContent className="p-4 text-center">
               <Calendar className="w-8 h-8 text-blue-400 mx-auto mb-2" />
               <p className="text-sm text-secondary">Total Events</p>

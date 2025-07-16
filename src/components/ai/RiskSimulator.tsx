@@ -61,9 +61,9 @@ export default function RiskSimulator() {
     return 'High Risk';
   };
   return (
-    <div className="bg-white dark:bg-[#0a0a0a] min-h-screen">
-      <div className="">{/* Removed padding for edge-to-edge */}
-        <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
+      <div className="p-6">
+        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Risk Simulator</CardTitle>
           </CardHeader>
@@ -119,7 +119,7 @@ export default function RiskSimulator() {
                 
                 {/* Risk Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                     <CardContent className="p-4 text-center">
                       <Target className="w-8 h-8 text-accent-blue mx-auto mb-2" />
                       <p className="text-sm text-secondary">Risk:Reward Ratio</p>
@@ -127,7 +127,7 @@ export default function RiskSimulator() {
                     </CardContent>
                   </Card>
                   
-                  <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                     <CardContent className="p-4 text-center">
                       <TrendingDown className="w-8 h-8 text-accent-red mx-auto mb-2" />
                       <p className="text-sm text-secondary">Stop Loss Probability</p>
@@ -135,7 +135,7 @@ export default function RiskSimulator() {
                     </CardContent>
                   </Card>
                   
-                  <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                     <CardContent className="p-4 text-center">
                       <AlertTriangle className={`w-8 h-8 mx-auto mb-2 ${getRiskColor(simulationResult.overall_risk_score)}`} />
                       <p className="text-sm text-secondary">Overall Risk</p>
@@ -147,21 +147,21 @@ export default function RiskSimulator() {
                 </div>
 
                 {/* Detailed Analysis */}
-                <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-primary mb-2">Market Conditions</h4>
                     <p className="text-secondary">{simulationResult.market_conditions}</p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-primary mb-2">Position Sizing Feedback</h4>
                     <p className="text-secondary">{simulationResult.position_sizing_feedback}</p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white dark:bg-[#1a1a1a] border-gray-200 dark:border-[#333] backdrop-blur-sm">
+                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
                   <CardContent className="p-4">
                     <h4 className="font-semibold text-primary mb-2">Recommendations</h4>
                     <ul className="space-y-2">

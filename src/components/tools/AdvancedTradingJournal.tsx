@@ -526,7 +526,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
               {filter}
             </Button>
           ))}
-          <h1 className="text-3xl font-bold text-foreground ml-8">Advanced Trading Journal</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 bg-clip-text text-transparent">Advanced</h1>
         </div>
 
         {/* Dashboard Metrics */}

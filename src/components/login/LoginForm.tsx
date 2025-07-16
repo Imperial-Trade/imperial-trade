@@ -1,14 +1,19 @@
-
-import React, { useState } from 'react';
-import { UseFormReturn } from 'react-hook-form';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { LoginFormData } from '@/lib/validations/loginSchema';
-import { HoneypotField } from '@/components/security/HoneypotField';
-import { usePostHogTracking } from '@/hooks/usePostHogTracking';
+import React, { useState } from "react";
+import { UseFormReturn } from "react-hook-form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { LoginFormData } from "@/lib/validations/loginSchema";
+import { HoneypotField } from "@/components/security/HoneypotField";
 
 interface LoginFormProps {
   form: UseFormReturn<LoginFormData>;
@@ -21,70 +26,73 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   form,
   onSubmit,
   isSubmitting,
-  canSubmit
+  canSubmit,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
-  const { trackAuth } = usePostHogTracking();
 
   const handleFormSubmit = async (data: LoginFormData) => {
     try {
       await onSubmit(data);
-      trackAuth.login('email');
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
     }
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+      <form
+        onSubmit={form.handleSubmit(handleFormSubmit)}
+        className="space-y-4"
+      >
         {/* Honeypot Field */}
         <HoneypotField form={form as any} />
 
         {/* Email Field */}
-        <FormField 
-          control={form.control} 
-          name="email" 
+        <FormField
+          control={form.control}
+          name="email"
           render={({ field, fieldState }) => (
             <FormItem>
-              <FormLabel className="text-white bg-transparent">Email Address</FormLabel>
+              <FormLabel className="text-white bg-transparent">
+                Email Address
+              </FormLabel>
               <FormControl>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                  <Input 
-                    {...field} 
-                    type="email" 
-                    placeholder="Enter your email" 
-                    className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-300" 
-                    disabled={isSubmitting} 
+                  <Input
+                    {...field}
+                    type="email"
+                    placeholder="Enter your email"
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-300"
+                    disabled={isSubmitting}
                   />
                 </div>
               </FormControl>
               <FormMessage />
             </FormItem>
-          )} 
+          )}
         />
 
         {/* Password Field */}
-        <FormField 
-          control={form.control} 
-          name="password" 
+        <FormField
+          control={form.control}
+          name="password"
           render={({ field, fieldState }) => (
             <FormItem>
               <FormLabel className="text-white">Password</FormLabel>
               <FormControl>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                  <Input 
-                    {...field} 
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="Enter your password" 
-                    className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder-gray-300" 
-                    disabled={isSubmitting} 
+                  <Input
+                    {...field}
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder-gray-300"
+                    disabled={isSubmitting}
                   />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)} 
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-gray-400 hover:text-white"
                   >
                     {showPassword ? (
@@ -97,13 +105,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               </FormControl>
               <FormMessage />
             </FormItem>
-          )} 
+          )}
         />
 
         {/* Submit Button */}
-        <Button 
-          type="submit" 
-          disabled={isSubmitting || !canSubmit} 
+        <Button
+          type="submit"
+          disabled={isSubmitting || !canSubmit}
           className="w-full bg-accent-green text-white font-semibold py-3 h-12 rounded-sm bg-lime-300 hover:bg-lime-200 text-base"
         >
           {isSubmitting ? (
@@ -112,7 +120,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               Signing In...
             </>
           ) : (
-            'Sign In'
+            "Sign In"
           )}
         </Button>
 

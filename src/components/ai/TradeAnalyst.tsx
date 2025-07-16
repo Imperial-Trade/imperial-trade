@@ -95,7 +95,7 @@ export default function TradeAnalyst() {
   };
   return (
     <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
-      <div className="p-6">
+      <div className="">{/* Removed padding for edge-to-edge */}
         <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>

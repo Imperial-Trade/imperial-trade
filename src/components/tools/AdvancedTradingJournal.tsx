@@ -486,13 +486,13 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-900 to-black overflow-y-auto">
       {/* Back to Basic button - outside the main container */}
       <div className="p-6 pb-0">
         <Button
           variant="ghost"
           onClick={onBackToBasic}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground p-0"
+          className="flex items-center gap-2 text-gray-300 hover:text-white p-0"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Basic
@@ -676,144 +676,144 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
           renderDayView()
         )}
 
-      {/* Trade Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900/95 border-gray-700">
-            <CardContent className="p-6 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold text-white">
-                  {editingTrade ? 'Edit Trade' : 'Add New Trade'}
-                </h3>
-                <Button variant="ghost" size="sm" onClick={closeModal}>
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Asset / Pair</label>
-                  <Input
-                    value={formData.asset_ticker}
-                    onChange={(e) => setFormData(prev => ({ ...prev, asset_ticker: e.target.value }))}
-                    placeholder="e.g., BTC/USDT"
-                  />
+        {/* Trade Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900/95 border-gray-700">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-bold text-white">
+                    {editingTrade ? 'Edit Trade' : 'Add New Trade'}
+                  </h3>
+                  <Button variant="ghost" size="sm" onClick={closeModal}>
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">P&L Amount ($)</label>
-                  <Input
-                    type="number"
-                    value={formData.pnl}
-                    onChange={(e) => setFormData(prev => ({ ...prev, pnl: e.target.value }))}
-                    placeholder="e.g., 150.50"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Direction</label>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant={formData.trade_type === 'Long' ? 'default' : 'outline'}
-                      onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Long' }))}
-                      className="flex-1"
-                    >
-                      Long
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={formData.trade_type === 'Short' ? 'default' : 'outline'}
-                      onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Short' }))}
-                      className="flex-1"
-                    >
-                      Short
-                    </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">Asset / Pair</label>
+                    <Input
+                      value={formData.asset_ticker}
+                      onChange={(e) => setFormData(prev => ({ ...prev, asset_ticker: e.target.value }))}
+                      placeholder="e.g., BTC/USDT"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">P&L Amount ($)</label>
+                    <Input
+                      type="number"
+                      value={formData.pnl}
+                      onChange={(e) => setFormData(prev => ({ ...prev, pnl: e.target.value }))}
+                      placeholder="e.g., 150.50"
+                    />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Outcome</label>
-                  <div className="flex gap-2">
-                    {(['Win', 'Loss', 'Breakeven'] as const).map((outcome) => (
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">Direction</label>
+                    <div className="flex gap-2">
                       <Button
-                        key={outcome}
                         type="button"
-                        variant={formData.outcome === outcome ? 'default' : 'outline'}
-                        onClick={() => setFormData(prev => ({ ...prev, outcome }))}
-                        className="flex-1 text-xs"
+                        variant={formData.trade_type === 'Long' ? 'default' : 'outline'}
+                        onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Long' }))}
+                        className="flex-1"
                       >
-                        {outcome === 'Breakeven' ? 'BE' : outcome}
+                        Long
                       </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-300">Trade Notes</label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={4}
-                  placeholder="Your analysis and insights..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-300">Chart Screenshot</label>
-                <div className="border-2 border-dashed border-default rounded-lg p-6 text-center">
-                  {screenshotPreview ? (
-                    <div className="space-y-2">
-                      <img 
-                        src={screenshotPreview} 
-                        alt="Preview" 
-                        className="max-h-32 mx-auto rounded border"
-                      />
                       <Button
                         type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setScreenshotFile(null);
-                          setScreenshotPreview(null);
-                        }}
+                        variant={formData.trade_type === 'Short' ? 'default' : 'outline'}
+                        onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Short' }))}
+                        className="flex-1"
                       >
-                        Remove Image
+                        Short
                       </Button>
                     </div>
-                  ) : (
-                    <div>
-                      <Camera className="w-8 h-8 mx-auto mb-2 text-secondary" />
-                      <label className="cursor-pointer text-primary hover:text-primary/80">
-                        <span>Upload screenshot</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleFileChange}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">Outcome</label>
+                    <div className="flex gap-2">
+                      {(['Win', 'Loss', 'Breakeven'] as const).map((outcome) => (
+                        <Button
+                          key={outcome}
+                          type="button"
+                          variant={formData.outcome === outcome ? 'default' : 'outline'}
+                          onClick={() => setFormData(prev => ({ ...prev, outcome }))}
+                          className="flex-1 text-xs"
+                        >
+                          {outcome === 'Breakeven' ? 'BE' : outcome}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Trade Notes</label>
+                  <Textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    rows={4}
+                    placeholder="Your analysis and insights..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Chart Screenshot</label>
+                  <div className="border-2 border-dashed border-default rounded-lg p-6 text-center">
+                    {screenshotPreview ? (
+                      <div className="space-y-2">
+                        <img 
+                          src={screenshotPreview} 
+                          alt="Preview" 
+                          className="max-h-32 mx-auto rounded border"
                         />
-                      </label>
-                    </div>
-                  )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setScreenshotFile(null);
+                            setScreenshotPreview(null);
+                          }}
+                        >
+                          Remove Image
+                        </Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <Camera className="w-8 h-8 mx-auto mb-2 text-secondary" />
+                        <label className="cursor-pointer text-primary hover:text-primary/80">
+                          <span>Upload screenshot</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFileChange}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={closeModal}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSaveTrade}
-                  disabled={!formData.asset_ticker || !formData.pnl}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {editingTrade ? 'Update Trade' : 'Save Trade'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button variant="outline" onClick={closeModal}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSaveTrade}
+                    disabled={!formData.asset_ticker || !formData.pnl}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {editingTrade ? 'Update Trade' : 'Save Trade'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>

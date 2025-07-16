@@ -252,11 +252,20 @@ export default function TradingJournal() {
   return (
     <div className="space-y-6">
       <Card className="glass-effect">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-accent-green" />
-              Trading Journal
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="p-3 bg-gradient-to-br from-accent-green/20 to-green-500/20 rounded-full">
+              <BookOpen className="w-8 h-8 text-accent-green" />
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h1 className="font-apple font-bold text-4xl lg:text-5xl bg-gradient-to-r from-accent-green via-green-400 to-accent-blue bg-clip-text text-transparent leading-tight mb-4">
+                Trading Journal
+              </h1>
+              <p className="text-secondary text-lg max-w-2xl mx-auto leading-relaxed">
+                Log your trades, reflect on your decisions, and get AI-powered encouragement.
+              </p>
             </div>
             <Button 
               className="bg-zinc-900 text-amber-600 hover:bg-zinc-800 border border-amber-600/20 shadow-lg"
@@ -280,8 +289,7 @@ export default function TradingJournal() {
                 </>
               )}
             </Button>
-          </CardTitle>
-          <p className="text-secondary">Log your trades, reflect on your decisions, and get AI-powered encouragement.</p>
+          </div>
           {!unlockStatus.isUnlocked && !unlockStatus.isAdmin && (
             <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
               <p className="text-sm text-amber-800 dark:text-amber-200">

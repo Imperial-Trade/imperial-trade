@@ -183,14 +183,18 @@ export default function EconomicCalendar() {
   return (
     <div className="space-y-6">
       <Card className="glass-effect">
-        <CardHeader>
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <div className="p-3 bg-gradient-to-br from-blue-500/20 to-accent-blue/20 rounded-full">
+              <Calendar className="w-8 h-8 text-blue-400" />
+            </div>
+          </div>
           <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-6 h-6 text-blue-400" />
+            <div className="flex-1">
+              <h1 className="font-apple font-bold text-4xl lg:text-5xl bg-gradient-to-r from-blue-400 via-accent-blue to-purple-400 bg-clip-text text-transparent leading-tight mb-4">
                 Economic Calendar
-              </CardTitle>
-              <p className="text-secondary mt-2">
+              </h1>
+              <p className="text-secondary text-lg max-w-2xl mx-auto leading-relaxed">
                 Live economic events from ForexFactory {error && '(using fallback data)'}
               </p>
             </div>

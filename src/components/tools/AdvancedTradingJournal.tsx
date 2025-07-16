@@ -516,7 +516,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         {/* Time filter buttons with header */}
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 bg-clip-text text-transparent">Advanced</h1>
-          <div className="flex gap-2">
+          <div className="flex gap-2 justify-center flex-1">
             {(['daily', 'weekly', 'monthly', 'yearly', 'all'] as const).map(filter => (
               <Button
                 key={filter}
@@ -529,6 +529,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
               </Button>
             ))}
           </div>
+          <div className="w-20"></div>
         </div>
 
         {/* Dashboard Metrics */}

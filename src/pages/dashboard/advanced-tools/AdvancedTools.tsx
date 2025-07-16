@@ -124,7 +124,7 @@ export default function AdvancedTools() {
         <div className={`p-2 rounded-lg bg-surface transition-colors duration-300 ${
           isActive ? 'bg-accent-green/20' : ''
         }`}>
-          <Icon className="w-5 h-5" />
+          <Icon className="w-4 h-4" />
         </div>
         <motion.div
           className="flex-1 text-left overflow-hidden"

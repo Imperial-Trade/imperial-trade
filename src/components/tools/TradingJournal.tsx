@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { TradeJournalEntry } from '@/api/entities';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BarChart3, TrendingUp, Target, Calendar, DollarSign, ChevronLeft, ChevronRight, Save, X, Award, TrendingDown } from 'lucide-react';
+import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BarChart3, TrendingUp, Target, Calendar, DollarSign, ChevronLeft, ChevronRight, Save, X, Award, TrendingDown, Clock } from 'lucide-react';
 import { format } from 'date-fns';
+import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
@@ -451,26 +452,71 @@ export default function TradingJournal() {
   );
 }
 
+// Available timezones
+const availableTimezones = [
+  'America/New_York',
+  'America/Chicago', 
+  'America/Denver',
+  'America/Los_Angeles',
+  'Europe/London',
+  'Europe/Berlin',
+  'Europe/Paris',
+  'Asia/Tokyo',
+  'Asia/Shanghai',
+  'Asia/Kolkata',
+  'Australia/Sydney'
+];
+
 // Advanced Journal Tab Component
 const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [currentFilterRange, setCurrentFilterRange] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTimezone, setSelectedTimezone] = useState(() => {
+    return localStorage.getItem('tradingJournalTimezone') || 'America/New_York';
+  });
   const [newTrade, setNewTrade] = useState({
     asset_ticker: '',
-    trade_date: new Date().toISOString().split('T')[0],
+    trade_date: formatInTimeZone(new Date(), selectedTimezone, 'yyyy-MM-dd'),
     trade_type: 'Long',
     entry_price: '',
+    exit_price: '',
+    position_size: '',
+    lot_size: 'Standard',
     pnl: '',
     strategy: 'Breakout',
     emotion: 'Disciplined',
     notes: ''
   });
 
+  // Timezone functions
+  const formatDateInTimezone = (date, formatStr) => {
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      return formatInTimeZone(dateObj, selectedTimezone, formatStr);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return format(new Date(date), formatStr);
+    }
+  };
+
+  const getCurrentDateInTimezone = () => {
+    return formatInTimeZone(new Date(), selectedTimezone, 'yyyy-MM-dd');
+  };
+
+  const handleTimezoneChange = (timezone) => {
+    setSelectedTimezone(timezone);
+    localStorage.setItem('tradingJournalTimezone', timezone);
+    setNewTrade(prev => ({
+      ...prev,
+      trade_date: formatInTimeZone(new Date(), timezone, 'yyyy-MM-dd')
+    }));
+  };
+
   // Filter entries based on current filter range and selected date
   const getFilteredEntries = () => {
-    const now = new Date();
+    const now = toZonedTime(new Date(), selectedTimezone);
     let startDate = new Date(0);
     let endDate = new Date(now);
     endDate.setHours(23, 59, 59, 999);
@@ -531,13 +577,14 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const today = new Date();
+    const today = toZonedTime(new Date(), selectedTimezone);
     today.setHours(0, 0, 0, 0);
 
     const tradesByDate = entries.reduce((acc, entry) => {
-      const date = new Date(entry.trade_date).toDateString();
-      if (!acc[date]) acc[date] = [];
-      acc[date].push(entry);
+      const entryDate = new Date(entry.trade_date);
+      const dateStr = entryDate.toDateString();
+      if (!acc[dateStr]) acc[dateStr] = [];
+      acc[dateStr].push(entry);
       return acc;
     }, {});
 
@@ -607,7 +654,7 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
     sortedEntries.forEach(entry => {
       runningTotal += entry.pnl;
       data.push(runningTotal);
-      labels.push(format(new Date(entry.trade_date), 'MMdd'));
+      labels.push(formatDateInTimezone(entry.trade_date, 'MM/dd'));
     });
 
     return {
@@ -615,19 +662,19 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
       datasets: [{
         label: 'Account Balance',
         data,
-        borderColor: '#2563eb',
-        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+        borderColor: 'hsl(var(--primary))',
+        backgroundColor: 'hsla(var(--primary), 0.1)',
         fill: true,
         tension: 0.4,
         pointRadius: 3,
         pointHoverRadius: 5,
-        pointBackgroundColor: '#2563eb',
-        pointBorderColor: '#ffffff',
+        pointBackgroundColor: 'hsl(var(--primary))',
+        pointBorderColor: 'hsl(var(--background))',
         pointBorderWidth: 2,
         borderWidth: 2
       }]
     };
-  }, [filteredEntries]);
+  }, [filteredEntries, selectedTimezone]);
 
   // Most traded instruments data
   const mostTradedData = React.useMemo(() => {
@@ -759,17 +806,22 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
         asset_ticker: newTrade.asset_ticker,
         trade_date: newTrade.trade_date,
         trade_type: newTrade.trade_type === 'Long' ? 'Long' : 'Short',
-        entry_price: parseFloat(newTrade.entry_price),
+        entry_price: newTrade.entry_price ? parseFloat(newTrade.entry_price) : null,
+        exit_price: newTrade.exit_price ? parseFloat(newTrade.exit_price) : null,
+        position_size: newTrade.position_size ? parseFloat(newTrade.position_size) : null,
         pnl: parseFloat(newTrade.pnl),
-        notes: `${newTrade.strategy} | ${newTrade.emotion} | ${newTrade.notes}`.trim(),
+        notes: `${newTrade.strategy} | ${newTrade.emotion} | Lot: ${newTrade.lot_size} | ${newTrade.notes}`.trim(),
       }, userProfile.id);
 
       // Reset form
       setNewTrade({
         asset_ticker: '',
-        trade_date: new Date().toISOString().split('T')[0],
+        trade_date: getCurrentDateInTimezone(),
         trade_type: 'Long',
         entry_price: '',
+        exit_price: '',
+        position_size: '',
+        lot_size: 'Standard',
         pnl: '',
         strategy: 'Breakout',
         emotion: 'Disciplined',
@@ -785,13 +837,14 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
 
   const getFilterTitle = () => {
     if (currentFilterRange === 'daily' && selectedDate) {
-      return `Trades for ${format(selectedDate, 'MMMM dd, yyyy')}`;
+      return `Trades for ${formatDateInTimezone(selectedDate, 'MMMM dd, yyyy')} (${selectedTimezone.split('/')[1]})`;
     }
+    const timezoneName = selectedTimezone.split('/')[1];
     switch (currentFilterRange) {
-      case 'daily': return "Today's Trades";
-      case 'weekly': return "This Week's Trades";
-      case 'monthly': return "This Month's Trades";
-      case 'yearly': return "This Year's Trades";
+      case 'daily': return `Today's Trades (${timezoneName})`;
+      case 'weekly': return `This Week's Trades (${timezoneName})`;
+      case 'monthly': return `This Month's Trades (${timezoneName})`;
+      case 'yearly': return `This Year's Trades (${timezoneName})`;
       case 'all': return "All Trades";
       default: return "All Trades";
     }
@@ -839,6 +892,33 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
               <DialogTitle>Log a New Trade</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmitTrade} className="space-y-6">
+              {/* Timezone Selector */}
+              <Card className="bg-muted/10 border-border/50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">Timezone</span>
+                    </div>
+                    <Select value={selectedTimezone} onValueChange={handleTimezoneChange}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableTimezones.map(tz => (
+                          <SelectItem key={tz} value={tz}>
+                            {tz.replace('_', ' ').replace('/', ' / ')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Current time: {formatDateInTimezone(new Date(), 'MMM dd, yyyy HH:mm:ss')}
+                  </p>
+                </CardContent>
+              </Card>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Asset (e.g., BTC/USD)</label>
@@ -850,12 +930,12 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Date</label>
+                  <label className="text-sm font-medium text-muted-foreground">Date ({selectedTimezone})</label>
                   <Input
                     type="date"
                     value={newTrade.trade_date}
                     onChange={(e) => setNewTrade(prev => ({...prev, trade_date: e.target.value}))}
-                    max={new Date().toISOString().split('T')[0]}
+                    max={getCurrentDateInTimezone()}
                     required
                     className="mt-1"
                   />
@@ -900,7 +980,7 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Trade Type</label>
                   <Select value={newTrade.trade_type} onValueChange={(value) => setNewTrade(prev => ({...prev, trade_type: value}))}>
@@ -914,6 +994,22 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
                   </Select>
                 </div>
                 <div>
+                  <label className="text-sm font-medium text-muted-foreground">Lot Size</label>
+                  <Select value={newTrade.lot_size} onValueChange={(value) => setNewTrade(prev => ({...prev, lot_size: value}))}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Micro">Micro (0.01)</SelectItem>
+                      <SelectItem value="Mini">Mini (0.1)</SelectItem>
+                      <SelectItem value="Standard">Standard (1.0)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
                   <label className="text-sm font-medium text-muted-foreground">Entry Price</label>
                   <Input
                     type="number"
@@ -925,16 +1021,38 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">P&L ($)</label>
+                  <label className="text-sm font-medium text-muted-foreground">Exit Price</label>
                   <Input
                     type="number"
                     step="any"
-                    value={newTrade.pnl}
-                    onChange={(e) => setNewTrade(prev => ({...prev, pnl: e.target.value}))}
-                    required
+                    value={newTrade.exit_price}
+                    onChange={(e) => setNewTrade(prev => ({...prev, exit_price: e.target.value}))}
                     className="mt-1"
                   />
                 </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Position Size</label>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={newTrade.position_size}
+                    onChange={(e) => setNewTrade(prev => ({...prev, position_size: e.target.value}))}
+                    placeholder="Units/Shares"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">P&L ($)</label>
+                <Input
+                  type="number"
+                  step="any"
+                  value={newTrade.pnl}
+                  onChange={(e) => setNewTrade(prev => ({...prev, pnl: e.target.value}))}
+                  required
+                  className="mt-1"
+                />
               </div>
 
               <div>
@@ -1115,8 +1233,10 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
               <thead className="bg-muted/20">
                 <tr>
                   <th className="p-4 font-semibold text-sm text-muted-foreground">Asset</th>
-                  <th className="p-4 font-semibold text-sm text-muted-foreground">Date</th>
+                  <th className="p-4 font-semibold text-sm text-muted-foreground">Date ({selectedTimezone.split('/')[1]})</th>
                   <th className="p-4 font-semibold text-sm text-muted-foreground">Type</th>
+                  <th className="p-4 font-semibold text-sm text-muted-foreground">Entry/Exit</th>
+                  <th className="p-4 font-semibold text-sm text-muted-foreground">Size</th>
                   <th className="p-4 font-semibold text-sm text-muted-foreground">P&L ($)</th>
                   <th className="p-4 font-semibold text-sm text-muted-foreground">Notes</th>
                 </tr>
@@ -1125,11 +1245,22 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
                 {filteredEntries.length > 0 ? filteredEntries.map(entry => (
                   <tr key={entry.id} className="border-b border-border/50 hover:bg-muted/10">
                     <td className="p-4 font-semibold text-foreground">{entry.asset_ticker}</td>
-                    <td className="p-4 text-muted-foreground">{format(new Date(entry.trade_date), 'MMM dd, yyyy')}</td>
+                    <td className="p-4 text-muted-foreground">{formatDateInTimezone(entry.trade_date, 'MMM dd, yyyy')}</td>
                     <td className="p-4">
                       <Badge className={entry.trade_type === 'Long' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
                         {entry.trade_type}
                       </Badge>
+                    </td>
+                    <td className="p-4 text-muted-foreground text-sm">
+                      {entry.entry_price && (
+                        <div>Entry: {parseFloat(entry.entry_price).toFixed(4)}</div>
+                      )}
+                      {entry.exit_price && (
+                        <div>Exit: {parseFloat(entry.exit_price).toFixed(4)}</div>
+                      )}
+                    </td>
+                    <td className="p-4 text-muted-foreground text-sm">
+                      {entry.position_size && `${parseFloat(entry.position_size).toLocaleString()} units`}
                     </td>
                     <td className={`p-4 font-semibold ${entry.pnl > 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {entry.pnl.toFixed(2)}
@@ -1140,7 +1271,7 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={5} className="text-center p-8 text-muted-foreground">
+                    <td colSpan={7} className="text-center p-8 text-muted-foreground">
                       No trades found for this period.
                     </td>
                   </tr>

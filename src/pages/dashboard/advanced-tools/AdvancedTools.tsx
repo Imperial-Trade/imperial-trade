@@ -252,7 +252,7 @@ export default function AdvancedTools() {
               <h1 className="font-apple font-bold text-4xl lg:text-5xl leading-tight mb-4 tool-title-two-tone">
                 <span className="first-part">{activeTool.name.split(' ')[0]}</span> <span className="second-part">{activeTool.name.split(' ').slice(1).join(' ')}</span>
               </h1>
-               <p className="text-secondary text-lg max-w-2xl mx-auto leading-relaxed mb-6">
+               <p className="text-foreground text-xl max-w-2xl mx-auto leading-relaxed mb-8 font-medium">
                  {activeTool.description}
                </p>
             </>

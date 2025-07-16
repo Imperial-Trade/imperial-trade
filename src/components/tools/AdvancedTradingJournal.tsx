@@ -9,7 +9,7 @@ import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   ChevronLeft, ChevronRight, Plus, X, Camera, Trash2, 
-  ArrowLeft, TrendingUp, Target, PieChart, Activity, Globe 
+  ArrowLeft, TrendingUp, TrendingDown, Target, PieChart, Activity, Globe 
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
@@ -592,153 +592,291 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         {/* Dashboard Metrics */}
         {renderDashboard()}
 
-        {/* Equity Curve */}
-        <Card className="bg-card border">
+        {/* Enhanced Equity Curve */}
+        <Card className="bg-gradient-to-br from-card/50 to-card border-border/50 backdrop-blur-sm">
           <CardContent className="p-6">
-            <h3 className="text-lg font-medium text-center text-foreground mb-8">Equity Curve</h3>
-            <div className="h-64">
-              {(() => {
-                const filteredTrades = getFilteredTrades().sort((a, b) => {
-                  const dateA = a.trade_date.split('T')[0];
-                  const dateB = b.trade_date.split('T')[0];
-                  return dateA.localeCompare(dateB);
-                });
-                
-                console.log('Filtered trades for equity curve:', filteredTrades);
-                console.log('Total entries:', entries.length);
-                console.log('Time filter:', timeFilter);
-                
-                if (filteredTrades.length === 0) {
-                  return (
-                    <div className="h-full flex items-center justify-center text-muted-foreground">
-                      No trades to display for equity curve
-                    </div>
-                  );
-                }
-
-                // Calculate cumulative P&L for each trade with starting point
-                const equityData = [];
-                let cumulativePnL = 0;
-                
-                console.log('Building equity data...');
-                
-                // Add starting point at zero
-                if (filteredTrades.length > 0) {
-                  equityData.push({
-                    date: filteredTrades[0].trade_date,
-                    value: 0,
-                    index: -1,
-                    isStarting: true
-                  });
-                }
-                
-                filteredTrades.forEach((trade, index) => {
-                  cumulativePnL += trade.pnl;
-                  equityData.push({
-                    date: trade.trade_date,
-                    value: cumulativePnL,
-                    index: index,
-                    isStarting: false
-                  });
-                });
-
-                console.log('Equity data points:', equityData);
-
-                const maxValue = Math.max(...equityData.map(d => d.value), 0);
-                const minValue = Math.min(...equityData.map(d => d.value), 0);
-                const range = Math.max(maxValue - minValue, 100); // Ensure minimum range for visibility
-                
-                console.log('Chart range:', { maxValue, minValue, range });
-                
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-primary" />
+                Equity Curve
+              </h3>
+              <div className="text-sm text-muted-foreground">
+                {timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} Performance
+              </div>
+            </div>
+            
+            {(() => {
+              const filteredTrades = getFilteredTrades().sort((a, b) => {
+                const dateA = a.trade_date.split('T')[0];
+                const dateB = b.trade_date.split('T')[0];
+                return dateA.localeCompare(dateB);
+              });
+              
+              console.log('Filtered trades for equity curve:', filteredTrades);
+              console.log('Total entries:', entries.length);
+              console.log('Time filter:', timeFilter);
+              
+              if (filteredTrades.length === 0) {
                 return (
-                  <div className="relative h-full">
-                    {/* Y-axis labels */}
-                    <div className="absolute left-0 top-0 text-xs text-muted-foreground">
-                      ${maxValue.toFixed(0)}
-                    </div>
-                    <div className="absolute left-0 top-1/2 text-xs text-muted-foreground">
-                      ${((maxValue + minValue) / 2).toFixed(0)}
-                    </div>
-                    <div className="absolute left-0 bottom-0 text-xs text-muted-foreground">
-                      ${minValue.toFixed(0)}
-                    </div>
-                    
-                    {/* Chart area */}
-                    <div className="ml-12 h-full relative">
-                      {/* Zero line */}
-                      <div 
-                        className="absolute w-full border-t border-gray-600 border-dashed"
-                        style={{ 
-                          top: `${((maxValue - 0) / range) * 100}%` 
-                        }}
-                      />
-                      
-                       {/* Equity line */}
-                       <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                         <polyline
-                           points={equityData.map((point, index) => {
-                             const x = (index / (equityData.length - 1 || 1)) * 100;
-                             const y = ((maxValue - point.value) / range) * 100;
-                             console.log(`Point ${index}: x=${x}, y=${y}, value=${point.value}`);
-                             return `${x},${y}`;
-                           }).join(' ')}
-                           fill="none"
-                           stroke={cumulativePnL >= 0 ? "#00ff87" : "#ff4757"}
-                           strokeWidth="0.5"
-                           vectorEffect="non-scaling-stroke"
-                         />
-                         
-                         {/* Data points */}
-                         {equityData.map((point, index) => {
-                           const x = (index / (equityData.length - 1 || 1)) * 100;
-                           const y = ((maxValue - point.value) / range) * 100;
-                           return (
-                             <circle
-                               key={index}
-                               cx={x}
-                               cy={y}
-                               r={point.isStarting ? "0.8" : "1.2"}
-                               fill={point.value >= 0 ? "#00ff87" : "#ff4757"}
-                               className="cursor-pointer"
-                             >
-                                <title>
-                                  {point.isStarting 
-                                    ? `Starting Point: $0.00`
-                                    : (() => {
-                                        const dateStr = point.date.split('T')[0];
-                                        const [year, month, day] = dateStr.split('-');
-                                        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-                                        return `${format(date, 'MMM d')}: ${point.value >= 0 ? '+' : ''}$${point.value.toFixed(2)}`;
-                                      })()
-                                  }
-                                </title>
-                             </circle>
-                           );
-                         })}
-                       </svg>
-                      
-                       {/* X-axis labels */}
-                       <div className="absolute bottom-0 left-0 text-xs text-muted-foreground">
-                         {(() => {
-                           const dateStr = equityData[0].date.split('T')[0];
-                           const [year, month, day] = dateStr.split('-');
-                           const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-                           return format(date, 'MMM d');
-                         })()}
-                       </div>
-                       <div className="absolute bottom-0 right-0 text-xs text-muted-foreground">
-                         {(() => {
-                           const dateStr = equityData[equityData.length - 1].date.split('T')[0];
-                           const [year, month, day] = dateStr.split('-');
-                           const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-                           return format(date, 'MMM d');
-                         })()}
-                       </div>
+                  <div className="h-80 flex items-center justify-center text-muted-foreground bg-gradient-to-br from-muted/10 to-background/30 rounded-xl border border-dashed border-border/50">
+                    <div className="text-center animate-fade-in">
+                      <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p className="text-lg font-medium">No trading data available</p>
+                      <p className="text-sm mt-2">Add some trades to see your equity curve</p>
                     </div>
                   </div>
                 );
-              })()}
-            </div>
+              }
+
+              // Calculate cumulative P&L for each trade with starting point
+              const equityData = [];
+              let cumulativePnL = 0;
+              
+              console.log('Building equity data...');
+              
+              // Add starting point at zero
+              if (filteredTrades.length > 0) {
+                equityData.push({
+                  date: filteredTrades[0].trade_date,
+                  value: 0,
+                  index: -1,
+                  isStarting: true
+                });
+              }
+              
+              filteredTrades.forEach((trade, index) => {
+                cumulativePnL += trade.pnl;
+                equityData.push({
+                  date: trade.trade_date,
+                  value: cumulativePnL,
+                  index: index,
+                  isStarting: false
+                });
+              });
+
+              console.log('Equity data points:', equityData);
+
+              const maxValue = Math.max(...equityData.map(d => d.value), 0);
+              const minValue = Math.min(...equityData.map(d => d.value), 0);
+              const range = Math.max(maxValue - minValue, 100);
+              
+              console.log('Chart range:', { maxValue, minValue, range });
+              
+              // Calculate chart points
+              const startingPoint = { 
+                x: 0, 
+                y: ((maxValue - 0) / range) * 100, 
+                value: 0, 
+                isStarting: true,
+                date: filteredTrades[0].trade_date
+              };
+              const chartPoints = equityData.map((point, index) => ({
+                x: (index / (equityData.length - 1 || 1)) * 100,
+                y: ((maxValue - point.value) / range) * 100,
+                value: point.value,
+                date: point.date,
+                isStarting: point.isStarting
+              }));
+
+              // Calculate performance metrics
+              const totalPnl = cumulativePnL;
+              const winningTrades = filteredTrades.filter(t => t.pnl > 0).length;
+              const winRate = filteredTrades.length > 0 ? (winningTrades / filteredTrades.length) * 100 : 0;
+              const avgTrade = filteredTrades.length > 0 ? totalPnl / filteredTrades.length : 0;
+              
+              return (
+                <div className="relative">
+                  {/* Chart container with enhanced styling */}
+                  <div className="relative h-80 bg-gradient-to-br from-muted/20 to-background/50 rounded-xl border border-border/30 p-6 overflow-hidden">
+                    {/* Background grid */}
+                    <div className="absolute inset-6 opacity-20">
+                      <svg className="w-full h-full">
+                        <defs>
+                          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.3"/>
+                          </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#grid)" />
+                      </svg>
+                    </div>
+
+                    {/* SVG Chart */}
+                    <svg className="w-full h-full relative z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <defs>
+                        {/* Gradients for different states */}
+                        <linearGradient id="lineGradientPositive" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="hsl(var(--accent-green))" stopOpacity="0.8" />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="1" />
+                        </linearGradient>
+                        <linearGradient id="lineGradientNegative" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity="0.8" />
+                          <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity="1" />
+                        </linearGradient>
+                        <linearGradient id="areaGradientPositive" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="hsl(var(--accent-green))" stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="hsl(var(--accent-green))" stopOpacity="0.05" />
+                        </linearGradient>
+                        <linearGradient id="areaGradientNegative" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity="0.1" />
+                          <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity="0.3" />
+                        </linearGradient>
+                        
+                        {/* Glow filter */}
+                        <filter id="glow">
+                          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                          <feMerge> 
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
+
+                      {/* Area fill */}
+                      <path
+                        d={`M 0,${startingPoint.y} ${chartPoints.map((point, index) => `L ${point.x},${point.y}`).join(' ')} L 100,100 L 0,100 Z`}
+                        fill={totalPnl >= 0 ? "url(#areaGradientPositive)" : "url(#areaGradientNegative)"}
+                        className="animate-fade-in"
+                        style={{ animationDelay: "0.2s", animationFillMode: "both" }}
+                      />
+
+                      {/* Main equity line with enhanced styling */}
+                      <path
+                        d={`M 0,${startingPoint.y} ${chartPoints.map((point, index) => `L ${point.x},${point.y}`).join(' ')}`}
+                        fill="none"
+                        stroke={totalPnl >= 0 ? "url(#lineGradientPositive)" : "url(#lineGradientNegative)"}
+                        strokeWidth="2"
+                        className="animate-fade-in hover:drop-shadow-lg transition-all duration-300"
+                        filter="url(#glow)"
+                        style={{ 
+                          animationDelay: "0.4s", 
+                          animationFillMode: "both",
+                          strokeDasharray: "300",
+                          strokeDashoffset: "300",
+                          animation: "fadeIn 0.6s ease-out 0.4s both, drawLine 2s ease-out 0.6s both"
+                        }}
+                      />
+
+                      {/* Enhanced data points */}
+                      {[startingPoint, ...chartPoints].map((point, index) => (
+                        <g key={index} className="animate-scale-in" style={{ animationDelay: `${0.8 + index * 0.1}s`, animationFillMode: "both" }}>
+                          <circle
+                            cx={point.x}
+                            cy={point.y}
+                            r="4"
+                            fill={point.isStarting ? "hsl(var(--muted-foreground))" : point.value >= 0 ? "hsl(var(--accent-green))" : "hsl(var(--destructive))"}
+                            stroke="hsl(var(--background))"
+                            strokeWidth="2"
+                            className="drop-shadow-md hover:scale-125 transition-transform duration-200 cursor-pointer"
+                          />
+                          <circle
+                            cx={point.x}
+                            cy={point.y}
+                            r="8"
+                            fill="transparent"
+                            stroke="transparent"
+                            className="hover:stroke-current hover:stroke-opacity-20 transition-all duration-200 cursor-pointer"
+                          >
+                            <title>
+                              {point.isStarting 
+                                ? `Starting Point: $0.00`
+                                : `${formatDateInTimezone(point.date.split('T')[0] + 'T12:00:00', 'MMM d')}: ${point.value >= 0 ? '+' : ''}$${point.value.toFixed(2)}`
+                              }
+                            </title>
+                          </circle>
+                        </g>
+                      ))}
+
+                      {/* Baseline reference line */}
+                      <line
+                        x1="0"
+                        y1={startingPoint.y}
+                        x2="100"
+                        y2={startingPoint.y}
+                        stroke="hsl(var(--muted-foreground))"
+                        strokeWidth="1"
+                        strokeDasharray="5,5"
+                        opacity="0.5"
+                        className="animate-fade-in"
+                        style={{ animationDelay: "1s", animationFillMode: "both" }}
+                      />
+                    </svg>
+
+                    {/* Enhanced Y-axis labels */}
+                    <div className="absolute left-0 top-6 bottom-6 flex flex-col justify-between text-xs text-muted-foreground font-medium">
+                      <span className="bg-background/80 backdrop-blur-sm px-2 py-1 rounded border border-border/30">
+                        ${Math.max(...chartPoints.map(d => d.value), 0).toFixed(0)}
+                      </span>
+                      <span className="bg-background/80 backdrop-blur-sm px-2 py-1 rounded border border-border/30">
+                        $0
+                      </span>
+                      <span className="bg-background/80 backdrop-blur-sm px-2 py-1 rounded border border-border/30">
+                        ${Math.min(...chartPoints.map(d => d.value), 0).toFixed(0)}
+                      </span>
+                    </div>
+
+                    {/* Enhanced X-axis labels */}
+                    <div className="absolute bottom-0 left-6 right-6 flex justify-between text-xs text-muted-foreground font-medium">
+                      <span className="bg-background/80 backdrop-blur-sm px-2 py-1 rounded border border-border/30">
+                        {formatDateInTimezone(chartPoints[0].date.split('T')[0] + 'T12:00:00', 'MMM d')}
+                      </span>
+                      <span className="bg-background/80 backdrop-blur-sm px-2 py-1 rounded border border-border/30">
+                        {formatDateInTimezone(chartPoints[chartPoints.length - 1].date.split('T')[0] + 'T12:00:00', 'MMM d')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Performance summary with enhanced styling */}
+                  <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { 
+                        label: "Total P&L", 
+                        value: `${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}`,
+                        color: totalPnl >= 0 ? "text-accent-green" : "text-red-400",
+                        bg: totalPnl >= 0 ? "bg-accent-green/10" : "bg-red-500/10",
+                        border: totalPnl >= 0 ? "border-accent-green/20" : "border-red-500/20",
+                        icon: totalPnl >= 0 ? TrendingUp : TrendingDown
+                      },
+                      { 
+                        label: "Total Trades", 
+                        value: filteredTrades.length,
+                        color: "text-primary",
+                        bg: "bg-primary/10",
+                        border: "border-primary/20",
+                        icon: Target
+                      },
+                      { 
+                        label: "Win Rate", 
+                        value: `${winRate.toFixed(1)}%`,
+                        color: winRate >= 60 ? "text-accent-green" : winRate >= 40 ? "text-yellow-400" : "text-red-400",
+                        bg: winRate >= 60 ? "bg-accent-green/10" : winRate >= 40 ? "bg-yellow-500/10" : "bg-red-500/10",
+                        border: winRate >= 60 ? "border-accent-green/20" : winRate >= 40 ? "border-yellow-500/20" : "border-red-500/20",
+                        icon: PieChart
+                      },
+                      { 
+                        label: "Avg Trade", 
+                        value: `${avgTrade >= 0 ? '+' : ''}$${avgTrade.toFixed(2)}`,
+                        color: avgTrade >= 0 ? "text-accent-green" : "text-red-400",
+                        bg: avgTrade >= 0 ? "bg-accent-green/10" : "bg-red-500/10",
+                        border: avgTrade >= 0 ? "border-accent-green/20" : "border-red-500/20",
+                        icon: Activity
+                      }
+                    ].map((stat, index) => (
+                      <div 
+                        key={stat.label} 
+                        className={`p-4 rounded-xl border backdrop-blur-sm hover:scale-105 transition-all duration-200 animate-fade-in ${stat.bg} ${stat.border}`}
+                        style={{ animationDelay: `${1.2 + index * 0.1}s`, animationFillMode: "both" }}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                          <span className="text-xs text-muted-foreground font-medium">{stat.label}</span>
+                        </div>
+                        <div className={`text-lg font-bold ${stat.color}`}>{stat.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
 

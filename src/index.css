@@ -395,6 +395,27 @@
   animation: scaleIn 0.5s ease-out;
 }
 
+/* Equity curve animations */
+@keyframes drawLine {
+  from {
+    stroke-dashoffset: 300;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes parallaxFloat {
   0%, 100% {
     transform: translateY(0px) rotate(0deg);

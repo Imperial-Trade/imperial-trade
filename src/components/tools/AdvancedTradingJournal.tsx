@@ -486,7 +486,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="space-y-6">{/* Removed max-width and padding for edge-to-edge */}
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <Button

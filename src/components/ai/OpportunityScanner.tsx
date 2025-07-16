@@ -128,9 +128,7 @@ export default function OpportunityScanner() {
       <CardHeader>
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-4xl lg:text-5xl font-bold mb-3 tool-title-two-tone">
-              <span className="first-part">Opportunity</span> <span className="second-part">Scanner</span>
-            </h1>
+            
             
             {/* Data Status Indicator */}
             <div className="flex items-center gap-2 mt-3">

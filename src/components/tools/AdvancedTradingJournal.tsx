@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { TradeJournalEntry } from '@/api/entities';
 import { UploadFile, InvokeLLM } from '@/api/integrations';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   ChevronLeft, ChevronRight, Plus, X, Camera, Trash2, 
   ArrowLeft, TrendingUp, Target, PieChart, Activity 
@@ -56,8 +57,14 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   const loadEntries = async () => {
     setIsLoading(true);
     try {
-      const fetchedEntries = await TradeJournalEntry.list('-created_date');
-      setEntries(fetchedEntries);
+      // Get current user first
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const fetchedEntries = await TradeJournalEntry.list(user.id);
+        setEntries(fetchedEntries);
+      } else {
+        setEntries([]);
+      }
     } catch (error) {
       console.error("Error loading journal entries:", error);
     }
@@ -176,6 +183,13 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     if (!formData.asset_ticker || !formData.pnl) return;
 
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error("No user found");
+        return;
+      }
+
       let screenshot_url = screenshotPreview;
       if (screenshotFile) {
         const { file_url } = await UploadFile({ file: screenshotFile });
@@ -187,25 +201,27 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         pnlValue = -Math.abs(pnlValue);
       }
 
+      // Use selectedDate if available, otherwise use today's date
+      const tradeDate = selectedDate || format(new Date(), 'yyyy-MM-dd');
+
       const tradeData = {
         asset_ticker: formData.asset_ticker,
         pnl: pnlValue,
-        trade_date: selectedDate || new Date().toISOString().split('T')[0],
+        trade_date: tradeDate,
         notes: formData.notes,
         screenshot_url,
         trade_type: formData.trade_type
       };
 
+      console.log('Saving trade with date:', tradeDate);
+
       if (editingTrade) {
         await TradeJournalEntry.update(editingTrade.id, tradeData);
       } else {
-        // Generate AI feedback
-        const pnlValue = parseFloat(formData.pnl);
-        const tradeOutcome = pnlValue >= 0 ? 'a winning trade' : 'a losing trade';
-
+        // Generate AI feedback for new trades
         const aiPrompt = `
           You are a supportive and positive trading coach. Your goal is to find something positive or a valuable learning experience in the user's trade, regardless of whether it was a win or a loss.
-          The user has submitted a journal entry for ${tradeOutcome} of ${pnlValue} USD.
+          The user has submitted a journal entry for ${pnlValue >= 0 ? 'a winning trade' : 'a losing trade'} of ${pnlValue} USD.
           Their personal notes are: "${formData.notes}"
           
           Analyze their notes and the trade outcome. If a screenshot is provided, analyze it for good practices (like proper stop loss placement, good entry point relative to indicators, etc.).
@@ -221,7 +237,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         await TradeJournalEntry.create({
           ...tradeData,
           ai_positive_feedback: aiResult
-        });
+        }, user.id);
       }
 
       loadEntries();

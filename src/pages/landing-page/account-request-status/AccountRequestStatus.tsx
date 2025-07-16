@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,45 +9,47 @@ import { createPageUrl } from "@/utils";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { PageStyles } from "@/components/account-request/PageStyles";
-import { useToast } from "@/hooks/use-toast";
 import { ApprovedAccountFlow } from "@/components/account-request/ApprovedAccountFlow";
-import { useAccountStatusWebSocket } from "@/hooks/useAccountStatusWebSocket";
+import { NoRequestFound } from "@/components/account-request/NoRequestFound";
+import { ErrorDisplay } from "@/components/account-request/ErrorDisplay";
+import { useAccountStatus } from "@/hooks/useAccountStatus";
+
 export default function AccountRequestStatusPage() {
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchEmail, setSearchEmail] = useState(""); // Email being searched via WebSocket
-  const {
-    toast
-  } = useToast();
+  const [searchEmail, setSearchEmail] = useState("");
 
-  // Use WebSocket for real-time status updates
   const {
     status,
-    isConnected,
     error,
-    checkStatus
-  } = useAccountStatusWebSocket({
-    email: searchEmail,
-    enabled: !!searchEmail
-  });
-  const handleCheckStatus = async (e: React.FormEvent) => {
+    isLoading,
+    checkStatus,
+    retryCheck,
+    resetState,
+  } = useAccountStatus();
+
+  const handleCheckStatus = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-    setIsLoading(true);
-    setSearchEmail(email.toLowerCase());
+    if (!email.trim() || isLoading) return;
+    
+    const emailToCheck = email.toLowerCase().trim();
+    setSearchEmail(emailToCheck);
+    checkStatus(emailToCheck);
+  }, [email, isLoading, checkStatus]);
 
-    // Check status via WebSocket
-    checkStatus(email.toLowerCase());
-
-    // Show loading for a brief moment for UX
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-  };
-  const handleCheckAnother = () => {
+  const handleCheckAnother = useCallback(() => {
+    console.log('Checking another email - resetting state');
+    resetState();
     setSearchEmail("");
     setEmail("");
-  };
+  }, [resetState]);
+
+  const handleRefreshStatus = useCallback(() => {
+    if (searchEmail) {
+      console.log('Refreshing status for:', searchEmail);
+      retryCheck();
+    }
+  }, [searchEmail, retryCheck]);
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
@@ -57,6 +60,7 @@ export default function AccountRequestStatusPage() {
         return <Clock className="w-8 h-8 text-gray-400" />;
     }
   };
+
   const getStatusMessage = (status: string) => {
     switch (status) {
       case "pending":
@@ -79,7 +83,9 @@ export default function AccountRequestStatusPage() {
         };
     }
   };
-  return <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
+
+  return (
+    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
       <VideoBackground />
 
       <div className="relative z-20 max-w-2xl w-full">
@@ -87,90 +93,134 @@ export default function AccountRequestStatusPage() {
 
         <Card className="glass-effect border-default">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-primary text-center">
+            <CardTitle className="text-2xl font-bold text-white text-center">
               Account Request Status
             </CardTitle>
-            <p className="text-secondary text-center text-white">
+            <p className="text-gray-300 text-center">
               Check the status of your account request
-              {isConnected && <span className="ml-2 text-green-400 text-sm">● Real-time updates</span>}
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!status ? <form onSubmit={handleCheckStatus} className="space-y-4">
+            {!status && !error ? (
+              <form onSubmit={handleCheckStatus} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">
                     Email Address
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Enter your email address" className="pl-10 bg-white border-gray-300 text-gray-900" required />
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      className="pl-10 bg-white border-gray-300 text-gray-900"
+                      required
+                      disabled={isLoading}
+                    />
                   </div>
                 </div>
 
-                {error && searchEmail && <div className="p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
-                    <div className="flex items-center gap-2">
-                      <XCircle className="w-4 h-4" />
-                      <span>{error}</span>
-                    </div>
-                    {error.includes('WebSocket') && <p className="text-xs mt-1 text-gray-400">
-                        Switched to backup connection method automatically.
-                      </p>}
-                  </div>}
-
-                <Button type="submit" disabled={isLoading || !email} className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12">
-                  {isLoading ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> : "Check Status"}
+                <Button
+                  type="submit"
+                  disabled={isLoading || !email.trim()}
+                  className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
+                >
+                  {isLoading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                  ) : (
+                    "Check Status"
+                  )}
                 </Button>
-              </form> : status.status === "approved" ? <ApprovedAccountFlow accountRequest={status} /> : <div className="space-y-6">
+              </form>
+            ) : error && error.type === 'not_found' ? (
+              <NoRequestFound email={searchEmail} onCheckAnother={handleCheckAnother} />
+            ) : error ? (
+              <ErrorDisplay 
+                error={error} 
+                onRetry={retryCheck}
+                onCheckAnother={handleCheckAnother}
+                isRetrying={isLoading}
+              />
+            ) : status?.status === "approved" ? (
+              <ApprovedAccountFlow accountRequest={status} />
+            ) : (
+              <div className="space-y-6">
                 <div className="text-center">
-                  {getStatusIcon(status.status)}
+                  {getStatusIcon(status!.status)}
                   <h3 className="text-xl font-semibold text-white mt-4">
-                    {getStatusMessage(status.status).title}
+                    {getStatusMessage(status!.status).title}
                   </h3>
                   <p className="text-gray-300 mt-2">
-                    {getStatusMessage(status.status).message}
+                    {getStatusMessage(status!.status).message}
                   </p>
                   <p className="text-sm text-gray-400 mt-4">
-                    {getStatusMessage(status.status).instructions}
+                    {getStatusMessage(status!.status).instructions}
                   </p>
                 </div>
 
                 <div className="bg-surface/20 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Name:</span>
-                    <span className="text-white">{status.full_name}</span>
+                    <span className="text-white">{status!.full_name}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Email:</span>
-                    <span className="text-white">{status.email}</span>
+                    <span className="text-white">{status!.email}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Account Type:</span>
                     <span className="text-white">
-                      {status.account_type === "user" ? "Standard Member" : "Educator / IB Partner"}
+                      {status!.account_type === "user" ? "Standard Member" : "Educator / IB Partner"}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Submitted:</span>
                     <span className="text-white">
-                      {new Date(status.created_at).toLocaleDateString()}
+                      {new Date(status!.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  {status.rejection_reason && <div className="flex justify-between text-sm">
+                  {status!.rejection_reason && (
+                    <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Reason:</span>
                       <span className="text-red-300">
-                        {status.rejection_reason}
+                        {status!.rejection_reason}
                       </span>
-                    </div>}
+                    </div>
+                  )}
                 </div>
 
-                <Button variant="outline" className="w-full border-white/20 text-white/80 hover:bg-white/10" onClick={handleCheckAnother}>
-                  Check Another Email
-                </Button>
-              </div>}
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleRefreshStatus}
+                    disabled={isLoading}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 h-12"
+                  >
+                    {isLoading ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                    ) : (
+                      "Refresh Status"
+                    )}
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="w-full border-white/20 text-white hover:bg-white/10"
+                    onClick={handleCheckAnother}
+                    disabled={isLoading}
+                  >
+                    Check Another Email
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="pt-4 grid grid-cols">
               <Link to={createPageUrl("account-request")}>
-                <Button variant="outline" className="w-full border-white/20 hover:bg-white/10 text-gray-950">
+                <Button
+                  variant="outline"
+                  className="w-full border-white/20 hover:bg-white/10 text-white"
+                >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Request Form
                 </Button>
@@ -181,5 +231,6 @@ export default function AccountRequestStatusPage() {
       </div>
 
       <PageStyles />
-    </div>;
+    </div>
+  );
 }

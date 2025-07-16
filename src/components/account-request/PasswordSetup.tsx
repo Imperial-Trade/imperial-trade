@@ -134,30 +134,6 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
       });
 
       if (authError) {
-        if (authError.message?.includes('already registered')) {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: accountRequest.email,
-            password: data.password,
-          });
-
-          if (signInError) {
-            throw new Error("An account already exists with this email. Please contact support if you need assistance.");
-          }
-
-          updateStepStatus(1, 'completed');
-          updateStepStatus(2, 'completed');
-          updateStepStatus(3, 'completed');
-          
-          celebrate(
-            "Welcome Back! 🎉",
-            "Redirecting to your dashboard..."
-          );
-
-          setTimeout(() => {
-            navigate('/dashboard/home', { replace: true });
-          }, 1500);
-          return;
-        }
         throw new Error(authError.message);
       }
 

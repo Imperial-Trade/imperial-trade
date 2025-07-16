@@ -492,7 +492,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         <Button
           variant="ghost"
           onClick={onBackToBasic}
-          className="flex items-center gap-2 text-gray-300 hover:text-white p-0"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground p-0"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Basic

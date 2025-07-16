@@ -63,7 +63,7 @@ export default function AccountRequestPage() {
           {/* Form Card */}
           <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
             <CardHeader className="bg-slate-50">
-              <CardTitle className="text-xl font-semibold text-center text-amber-400">
+              <CardTitle className="text-xl font-semibold text-center text-gray-900">
                 Request Community Access
               </CardTitle>
               <p className="text-center text-sm text-slate-900">

@@ -602,6 +602,7 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [currentFilterRange, setCurrentFilterRange] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showModalAssetDropdown, setShowModalAssetDropdown] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState(() => {
     return localStorage.getItem('tradingJournalTimezone') || 'America/New_York';
   });
@@ -618,6 +619,24 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
     emotion: 'Disciplined',
     notes: ''
   });
+
+  // Currency pairs for auto-detection
+  const commonCurrencyPairs = [
+    'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD',
+    'EURGBP', 'EURJPY', 'GBPJPY', 'EURCHF', 'EURAUD', 'EURCAD', 'GBPCHF',
+    'GBPAUD', 'GBPCAD', 'AUDJPY', 'AUDCAD', 'AUDCHF', 'NZDJPY', 'NZDCAD',
+    'CADCHF', 'CADJPY', 'CHFJPY', 'XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD'
+  ];
+
+  // Get recent asset pairs from localStorage
+  const getRecentAssets = () => {
+    try {
+      const stored = localStorage.getItem('recent-trading-assets');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
 
   // Timezone functions
   const formatDateInTimezone = (date, formatStr) => {
@@ -998,6 +1017,7 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
       });
       
       setIsModalOpen(false);
+      setShowModalAssetDropdown(false);
       loadEntries();
     } catch (error) {
       console.error('Error adding trade:', error);
@@ -1089,14 +1109,91 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
               </Card>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="relative">
                   <label className="text-sm font-medium text-muted-foreground">Asset (e.g., BTC/USD)</label>
-                  <Input
-                    value={newTrade.asset_ticker}
-                    onChange={(e) => setNewTrade(prev => ({...prev, asset_ticker: e.target.value}))}
-                    required
-                    className="mt-1"
-                  />
+                  <div className="relative">
+                    <Input
+                      value={newTrade.asset_ticker}
+                      onChange={(e) => {
+                        setNewTrade(prev => ({...prev, asset_ticker: e.target.value}));
+                        setShowModalAssetDropdown(true);
+                      }}
+                      onFocus={() => setShowModalAssetDropdown(true)}
+                      onBlur={() => {
+                        // Delay hiding dropdown to allow clicks
+                        setTimeout(() => setShowModalAssetDropdown(false), 150);
+                      }}
+                      required
+                      className="mt-1 pr-8"
+                    />
+                    <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    
+                    {/* Modal Asset Suggestions Dropdown */}
+                    {showModalAssetDropdown && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                        {(() => {
+                          const term = newTrade.asset_ticker.toUpperCase();
+                          const recent = getRecentAssets();
+                          
+                          let suggestions = [];
+                          if (!term) {
+                            suggestions = recent;
+                          } else {
+                            // Currency pairs that match the search term
+                            const matchingPairs = commonCurrencyPairs.filter(pair => 
+                              pair.includes(term)
+                            );
+                            
+                            // Recent assets that match the search term
+                            const matchingRecent = recent.filter(asset => 
+                              asset.toUpperCase().includes(term)
+                            );
+                            
+                            // Combine and deduplicate
+                            suggestions = [...new Set([...matchingRecent, ...matchingPairs])];
+                          }
+                          
+                          return suggestions.length > 0 ? (
+                            <div className="p-1">
+                              {!newTrade.asset_ticker && recent.length > 0 && (
+                                <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
+                                  Recent Assets
+                                </div>
+                              )}
+                              {suggestions.map((asset, index) => (
+                                <button
+                                  key={asset}
+                                  type="button"
+                                  onClick={() => {
+                                    setNewTrade(prev => ({...prev, asset_ticker: asset}));
+                                    setShowModalAssetDropdown(false);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium">{asset}</span>
+                                    {commonCurrencyPairs.includes(asset) && (
+                                      <Badge variant="outline" className="text-xs h-5 px-2">
+                                        FX
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          ) : newTrade.asset_ticker ? (
+                            <div className="p-3 text-sm text-muted-foreground text-center">
+                              No matches found
+                            </div>
+                          ) : (
+                            <div className="p-3 text-sm text-muted-foreground text-center">
+                              Start typing to see suggestions
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Date ({selectedTimezone})</label>

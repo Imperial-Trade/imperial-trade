@@ -246,11 +246,7 @@ export default function AdvancedTools() {
       {/* Main Content */}
       <div className="flex-1 ml-20 p-6">
         {/* Page Header */}
-        <div className="mb-6 text-center">
-          <h1 className="text-4xl lg:text-5xl font-bold mb-6 tool-title-two-tone">
-            <span className="first-part">Advanced</span> <span className="second-part">Trading Arsenal</span>
-          </h1>
-        </div>
+        <div className="mb-6">{/* Header removed for cleaner interface */}</div>
 
         {/* Active Tool Container */}
         {activeTool && (

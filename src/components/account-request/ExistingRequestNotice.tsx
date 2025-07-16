@@ -1,10 +1,11 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Clock, CheckCircle, XCircle, Edit3 } from "lucide-react";
+import { AlertTriangle, Clock, CheckCircle, XCircle, Edit3, LogIn } from "lucide-react";
+import { Link } from "react-router-dom";
 import { AccountRequestData } from '@/api/entities/AccountRequest';
+import { createPageUrl } from "@/utils";
 
 interface ExistingRequestNoticeProps {
   request: AccountRequestData;
@@ -50,7 +51,7 @@ export const ExistingRequestNotice: React.FC<ExistingRequestNoticeProps> = ({
       case "pending":
         return "Your request is currently being reviewed. You can check the status or wait for an email notification.";
       case "approved":
-        return "Your request has been approved! You should have received login instructions via email.";
+        return "Your request has been approved! You can now sign in to access your account.";
       case "rejected":
         return "Your request was rejected. You can update and resubmit your request with corrected information.";
       default:
@@ -118,6 +119,15 @@ export const ExistingRequestNotice: React.FC<ExistingRequestNoticeProps> = ({
           </p>
 
           <div className="flex flex-col gap-3">
+            {isApproved && (
+              <Link to={createPageUrl("signin")}>
+                <Button className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12">
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Sign In to Your Account
+                </Button>
+              </Link>
+            )}
+
             {isRejected && onUpdate && (
               <Button
                 onClick={onUpdate}

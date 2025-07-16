@@ -412,10 +412,6 @@ export default function TradingJournal() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Trading Journal</h1>
-          <p className="text-muted-foreground">Track your trades and get AI-powered insights to improve your performance</p>
-        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 bg-card">

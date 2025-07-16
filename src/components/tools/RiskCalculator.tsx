@@ -104,11 +104,6 @@ export default function RiskCalculator() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Risk Calculator</h1>
-          <p className="text-muted-foreground">Optimize your position sizing with AI-powered risk analysis and insights</p>
-        </div>
 
         <Card className="bg-card/50 border-border/50 shadow-2xl backdrop-blur-sm">
           <CardHeader>

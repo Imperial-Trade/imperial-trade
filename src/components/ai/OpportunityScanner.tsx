@@ -192,11 +192,6 @@ export default function OpportunityScanner() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header with Controls */}
         <div className="flex flex-col lg:flex-row gap-4 lg:items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Market Opportunity Scanner</h1>
-            <p className="text-muted-foreground">Discover high-probability trading setups powered by AI analysis</p>
-          </div>
-          
           <div className="flex items-center gap-3">
             <Button 
               onClick={scanForOpportunities} 

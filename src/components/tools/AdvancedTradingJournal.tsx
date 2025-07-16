@@ -72,9 +72,11 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   };
 
   const getTradesForDate = (dateStr: string): Trade[] => {
-    return entries.filter(entry => 
-      format(new Date(entry.trade_date), 'yyyy-MM-dd') === dateStr
-    );
+    return entries.filter(entry => {
+      // Direct string comparison to avoid timezone issues
+      const entryDate = entry.trade_date.split('T')[0]; // Get only YYYY-MM-DD part
+      return entryDate === dateStr;
+    });
   };
 
   const getFilteredTrades = (): Trade[] => {

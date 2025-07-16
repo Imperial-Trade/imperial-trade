@@ -490,21 +490,18 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={onBackToBasic}
-              className="flex items-center gap-2 bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Basic
-            </Button>
-            <h1 className="text-3xl font-bold text-white">Advanced Trading Journal</h1>
-          </div>
+          <Button
+            variant="outline"
+            onClick={onBackToBasic}
+            className="flex items-center gap-2 bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Basic
+          </Button>
         </div>
 
-        {/* Time filter buttons */}
-        <div className="flex gap-2 justify-center">
+        {/* Time filter buttons with header */}
+        <div className="flex gap-2 justify-center items-center">
           {(['daily', 'weekly', 'monthly', 'yearly', 'all'] as const).map(filter => (
             <Button
               key={filter}
@@ -519,6 +516,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
               {filter}
             </Button>
           ))}
+          <h1 className="text-3xl font-bold text-white ml-8">Advanced Trading Journal</h1>
         </div>
 
         {/* Dashboard Metrics */}

@@ -34,7 +34,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'calendar' | 'day'>('calendar');
-  const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'all'>('daily');
+  const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'all'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -542,10 +542,14 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                   new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime()
                 );
                 
+                console.log('Filtered trades for equity curve:', filteredTrades);
+                console.log('Total entries:', entries.length);
+                console.log('Time filter:', timeFilter);
+                
                 if (filteredTrades.length === 0) {
                   return (
                     <div className="h-full flex items-center justify-center text-muted-foreground">
-                      No trades to display
+                      No trades to display for equity curve
                     </div>
                   );
                 }
@@ -553,6 +557,8 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                 // Calculate cumulative P&L for each trade with starting point
                 const equityData = [];
                 let cumulativePnL = 0;
+                
+                console.log('Building equity data...');
                 
                 // Add starting point at zero
                 if (filteredTrades.length > 0) {
@@ -574,9 +580,13 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                   });
                 });
 
+                console.log('Equity data points:', equityData);
+
                 const maxValue = Math.max(...equityData.map(d => d.value), 0);
                 const minValue = Math.min(...equityData.map(d => d.value), 0);
                 const range = Math.max(maxValue - minValue, 100); // Ensure minimum range for visibility
+                
+                console.log('Chart range:', { maxValue, minValue, range });
                 
                 return (
                   <div className="relative h-full">

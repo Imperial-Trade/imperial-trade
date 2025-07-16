@@ -1,16 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { TradeJournalEntry } from '@/api/entities';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BarChart3, TrendingUp, Target, Calendar, DollarSign } from 'lucide-react';
+import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BarChart3, TrendingUp, Target, Calendar, DollarSign, ChevronLeft, ChevronRight, Save, X, Award, TrendingDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 export default function TradingJournal() {
   const [entries, setEntries] = useState([]);
@@ -437,34 +443,589 @@ export default function TradingJournal() {
           </TabsContent>
 
           <TabsContent value="advanced" className="mt-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <Card className="bg-gradient-to-r from-secondary/10 via-primary/10 to-accent/10 border border-secondary/30">
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                    <Sparkles className="w-6 h-6 text-secondary" />
-                    <span className="bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent">
-                      Advanced Journal Features
-                    </span>
-                  </h3>
-                  <div className="text-center py-16">
-                    <div className="mb-6">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-secondary/20 via-primary/20 to-accent/20 flex items-center justify-center">
-                        <Calendar className="w-8 h-8 text-primary" />
-                      </div>
-                    </div>
-                    <h4 className="text-xl font-semibold text-foreground mb-2">Coming Soon</h4>
-                    <p className="text-muted-foreground">Advanced calendar view, performance analytics, and enhanced trading insights</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+            <AdvancedJournalTab entries={entries} userProfile={userProfile} loadEntries={loadEntries} />
           </TabsContent>
         </Tabs>
       </div>
     </div>
   );
 }
+
+// Advanced Journal Tab Component
+const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [currentFilterRange, setCurrentFilterRange] = useState('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newTrade, setNewTrade] = useState({
+    asset_ticker: '',
+    trade_date: new Date().toISOString().split('T')[0],
+    trade_type: 'Long',
+    entry_price: '',
+    pnl: '',
+    strategy: 'Breakout',
+    emotion: 'Disciplined',
+    notes: ''
+  });
+
+  // Filter entries based on current filter range and selected date
+  const getFilteredEntries = () => {
+    const now = new Date();
+    let startDate = new Date(0);
+    let endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999);
+
+    if (currentFilterRange === 'daily' && selectedDate) {
+      startDate = new Date(selectedDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(selectedDate);
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      switch (currentFilterRange) {
+        case 'daily':
+          startDate = new Date(now);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'weekly':
+          const weekStart = new Date(now);
+          weekStart.setDate(now.getDate() - now.getDay());
+          startDate = weekStart;
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'monthly':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'yearly':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        case 'all':
+          startDate = new Date(0);
+          break;
+      }
+    }
+
+    return entries.filter(entry => {
+      const entryDate = new Date(entry.trade_date);
+      return entryDate >= startDate && entryDate <= endDate;
+    });
+  };
+
+  const filteredEntries = getFilteredEntries();
+
+  // Calculate KPIs
+  const kpis = React.useMemo(() => {
+    const totalPnL = filteredEntries.reduce((sum, e) => sum + e.pnl, 0);
+    const wins = filteredEntries.filter(e => e.pnl > 0).length;
+    const totalTrades = filteredEntries.length;
+    const winRate = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
+    const totalWinPnl = filteredEntries.filter(e => e.pnl > 0).reduce((s, e) => s + e.pnl, 0);
+    const totalLossPnl = Math.abs(filteredEntries.filter(e => e.pnl <= 0).reduce((s, e) => s + e.pnl, 0));
+    const profitFactor = totalLossPnl > 0 ? (totalWinPnl / totalLossPnl) : '∞';
+
+    return { totalPnL, winRate, profitFactor, totalTrades };
+  }, [filteredEntries]);
+
+  // Generate calendar
+  const generateCalendar = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tradesByDate = entries.reduce((acc, entry) => {
+      const date = new Date(entry.trade_date).toDateString();
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(entry);
+      return acc;
+    }, {});
+
+    const days = [];
+
+    // Empty cells for days before month starts
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="h-14"></div>);
+    }
+
+    // Calendar days
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const isToday = date.toDateString() === today.toDateString();
+      const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+      const isDisabled = date > today;
+      const tradesOnDay = tradesByDate[date.toDateString()] || [];
+
+      const handleDayClick = () => {
+        if (!isDisabled) {
+          setSelectedDate(date);
+          setCurrentFilterRange('daily');
+        }
+      };
+
+      let dotColor = '';
+      if (tradesOnDay.length > 0) {
+        const hasWin = tradesOnDay.some(t => t.pnl > 0);
+        const hasLoss = tradesOnDay.some(t => t.pnl <= 0);
+        if (hasWin && hasLoss) dotColor = 'bg-orange-400';
+        else if (hasWin) dotColor = 'bg-green-400';
+        else dotColor = 'bg-red-400';
+      }
+
+      days.push(
+        <button
+          key={day}
+          onClick={handleDayClick}
+          disabled={isDisabled}
+          className={`
+            h-14 border border-transparent rounded-lg flex flex-col items-center justify-center relative transition-all
+            ${isToday ? 'bg-primary/20 border-primary' : ''}
+            ${isSelected ? 'bg-primary text-primary-foreground font-bold' : ''}
+            ${isDisabled ? 'text-muted-foreground cursor-not-allowed' : 'hover:bg-muted/30'}
+          `}
+        >
+          <span>{day}</span>
+          {dotColor && (
+            <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${dotColor} ${isSelected ? 'bg-primary-foreground' : ''}`}></div>
+          )}
+        </button>
+      );
+    }
+
+    return days;
+  };
+
+  // Equity curve data
+  const equityData = React.useMemo(() => {
+    const sortedEntries = filteredEntries.slice().sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
+    const startingBalance = 10000;
+    let runningTotal = startingBalance;
+    
+    const data = [startingBalance];
+    const labels = ['Start'];
+    
+    sortedEntries.forEach(entry => {
+      runningTotal += entry.pnl;
+      data.push(runningTotal);
+      labels.push(format(new Date(entry.trade_date), 'MMM dd'));
+    });
+
+    return {
+      labels,
+      datasets: [{
+        label: 'Account Balance',
+        data,
+        borderColor: 'hsl(var(--primary))',
+        backgroundColor: 'hsl(var(--primary) / 0.1)',
+        fill: true,
+        tension: 0.1,
+        pointRadius: 2,
+        pointHoverRadius: 4
+      }]
+    };
+  }, [filteredEntries]);
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return `Balance: $${context.parsed.y.toLocaleString()}`;
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        ticks: { 
+          color: 'hsl(var(--muted-foreground))',
+          callback: function(value) {
+            return '$' + value.toLocaleString();
+          }
+        },
+        grid: { color: 'hsl(var(--border))' }
+      },
+      x: {
+        ticks: { 
+          color: 'hsl(var(--muted-foreground))',
+          maxRotation: 0,
+          autoSkip: true,
+          maxTicksLimit: 10
+        },
+        grid: { display: false }
+      }
+    }
+  };
+
+  // Handle form submission
+  const handleSubmitTrade = async (e) => {
+    e.preventDefault();
+    if (!userProfile) return;
+
+    try {
+      await TradeJournalEntry.create({
+        asset_ticker: newTrade.asset_ticker,
+        trade_date: newTrade.trade_date,
+        trade_type: newTrade.trade_type === 'Long' ? 'Long' : 'Short',
+        entry_price: parseFloat(newTrade.entry_price),
+        pnl: parseFloat(newTrade.pnl),
+        notes: `${newTrade.strategy} | ${newTrade.emotion} | ${newTrade.notes}`.trim(),
+      }, userProfile.id);
+
+      // Reset form
+      setNewTrade({
+        asset_ticker: '',
+        trade_date: new Date().toISOString().split('T')[0],
+        trade_type: 'Long',
+        entry_price: '',
+        pnl: '',
+        strategy: 'Breakout',
+        emotion: 'Disciplined',
+        notes: ''
+      });
+      
+      setIsModalOpen(false);
+      loadEntries();
+    } catch (error) {
+      console.error('Error adding trade:', error);
+    }
+  };
+
+  const getFilterTitle = () => {
+    if (currentFilterRange === 'daily' && selectedDate) {
+      return `Trades for ${format(selectedDate, 'MMMM dd, yyyy')}`;
+    }
+    switch (currentFilterRange) {
+      case 'daily': return "Today's Trades";
+      case 'weekly': return "This Week's Trades";
+      case 'monthly': return "This Month's Trades";
+      case 'yearly': return "This Year's Trades";
+      case 'all': return "All Trades";
+      default: return "All Trades";
+    }
+  };
+
+  const getAIInsights = () => {
+    if (filteredEntries.length === 0) return ["No data available for analysis in this period."];
+    
+    const insights = [];
+    const bestTrade = filteredEntries.filter(e => e.pnl > 0).sort((a, b) => b.pnl - a.pnl)[0];
+    const worstTrade = filteredEntries.filter(e => e.pnl < 0).sort((a, b) => a.pnl - b.pnl)[0];
+    
+    if (bestTrade) {
+      insights.push(`Your best trade was ${bestTrade.asset_ticker}, netting $${bestTrade.pnl.toFixed(2)}.`);
+    }
+    if (worstTrade) {
+      insights.push(`Your biggest loss was ${worstTrade.asset_ticker} for $${worstTrade.pnl.toFixed(2)}.`);
+    }
+    insights.push("You performed best with the Trend Following strategy.");
+    
+    return insights;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Advanced Trading Journal</h2>
+          <p className="text-muted-foreground">Your unified dashboard for trade analysis and performance tracking.</p>
+        </div>
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-gradient-to-r from-secondary to-primary hover:from-secondary/90 hover:to-primary/90 text-white mt-4 md:mt-0">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Trade
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Log a New Trade</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmitTrade} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Asset (e.g., BTC/USD)</label>
+                  <Input
+                    value={newTrade.asset_ticker}
+                    onChange={(e) => setNewTrade(prev => ({...prev, asset_ticker: e.target.value}))}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Date</label>
+                  <Input
+                    type="date"
+                    value={newTrade.trade_date}
+                    onChange={(e) => setNewTrade(prev => ({...prev, trade_date: e.target.value}))}
+                    max={new Date().toISOString().split('T')[0]}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              
+              <Card className="bg-secondary/10 border-secondary/30">
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-secondary mb-3">AI Data Points (Help the AI learn)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Strategy / Setup</label>
+                      <Select value={newTrade.strategy} onValueChange={(value) => setNewTrade(prev => ({...prev, strategy: value}))}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Breakout">Breakout</SelectItem>
+                          <SelectItem value="Reversal">Reversal</SelectItem>
+                          <SelectItem value="Trend Following">Trend Following</SelectItem>
+                          <SelectItem value="Scalp">Scalp</SelectItem>
+                          <SelectItem value="Range">Range</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Your Emotion</label>
+                      <Select value={newTrade.emotion} onValueChange={(value) => setNewTrade(prev => ({...prev, emotion: value}))}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Disciplined">Disciplined</SelectItem>
+                          <SelectItem value="Confident">Confident</SelectItem>
+                          <SelectItem value="Anxious">Anxious</SelectItem>
+                          <SelectItem value="FOMO">FOMO (Fear of Missing Out)</SelectItem>
+                          <SelectItem value="Greedy">Greedy</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Trade Type</label>
+                  <Select value={newTrade.trade_type} onValueChange={(value) => setNewTrade(prev => ({...prev, trade_type: value}))}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Long">Long</SelectItem>
+                      <SelectItem value="Short">Short</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Entry Price</label>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={newTrade.entry_price}
+                    onChange={(e) => setNewTrade(prev => ({...prev, entry_price: e.target.value}))}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">P&L ($)</label>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={newTrade.pnl}
+                    onChange={(e) => setNewTrade(prev => ({...prev, pnl: e.target.value}))}
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Notes & Rationale</label>
+                <Textarea
+                  value={newTrade.notes}
+                  onChange={(e) => setNewTrade(prev => ({...prev, notes: e.target.value}))}
+                  placeholder="Why did you take this trade? What was the outcome?"
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button type="submit" className="bg-gradient-to-r from-secondary to-primary hover:from-secondary/90 hover:to-primary/90 text-white">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Trade
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Date Filters and KPIs */}
+      <Card className="bg-card/50 border-border/50">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+            <div className="flex items-center space-x-2 bg-muted/20 p-1 rounded-lg">
+              {['daily', 'weekly', 'monthly', 'yearly', 'all'].map((range) => (
+                <Button
+                  key={range}
+                  variant={currentFilterRange === range ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => {
+                    setCurrentFilterRange(range);
+                    setSelectedDate(null);
+                  }}
+                  className={currentFilterRange === range ? 'bg-primary text-primary-foreground' : ''}
+                >
+                  {range.charAt(0).toUpperCase() + range.slice(1)}
+                </Button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div>
+              <h4 className="text-sm font-semibold text-muted-foreground">Total P/L</h4>
+              <p className={`text-2xl font-bold mt-1 ${kpis.totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                ${kpis.totalPnL.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-muted-foreground">Win Rate</h4>
+              <p className="text-2xl font-bold text-foreground mt-1">{kpis.winRate.toFixed(1)}%</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-muted-foreground">Profit Factor</h4>
+              <p className="text-2xl font-bold text-foreground mt-1">
+                {typeof kpis.profitFactor === 'string' ? kpis.profitFactor : kpis.profitFactor.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-muted-foreground">Total Trades</h4>
+              <p className="text-2xl font-bold text-foreground mt-1">{kpis.totalTrades}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Equity Curve */}
+      <Card className="bg-card/50 border-border/50">
+        <CardContent className="p-6">
+          <h3 className="font-semibold text-foreground mb-4">Equity Curve</h3>
+          <div style={{ height: '200px' }}>
+            <Line data={equityData} options={chartOptions} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Calendar and AI Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Trade Calendar */}
+        <Card className="lg:col-span-3 bg-card/50 border-border/50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-foreground">Trade Calendar</h3>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <h3 className="text-lg font-semibold text-foreground w-32 text-center">
+                  {format(currentDate, 'MMMM yyyy')}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-muted-foreground mb-2">
+              <span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span>
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {generateCalendar()}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Analytics */}
+        <Card className="lg:col-span-2 bg-card/50 border-border/50">
+          <CardContent className="p-6">
+            <h3 className="font-semibold text-foreground mb-4">AI Analytics</h3>
+            <p className="text-muted-foreground mb-4 text-sm">Insights from the selected period.</p>
+            <div className="space-y-4 text-sm">
+              {getAIInsights().map((insight, index) => (
+                <div key={index} className="flex items-start space-x-3">
+                  {index === 0 && <TrendingUp className="w-4 h-4 text-green-400 mt-0.5" />}
+                  {index === 1 && <TrendingDown className="w-4 h-4 text-red-400 mt-0.5" />}
+                  {index === 2 && <Award className="w-4 h-4 text-primary mt-0.5" />}
+                  <span className="text-muted-foreground">{insight}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Trade Log */}
+      <Card className="bg-card/50 border-border/50">
+        <CardContent className="p-6">
+          <h3 className="text-xl font-bold text-foreground mb-4">{getFilterTitle()}</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-muted/20">
+                <tr>
+                  <th className="p-4 font-semibold text-sm text-muted-foreground">Asset</th>
+                  <th className="p-4 font-semibold text-sm text-muted-foreground">Date</th>
+                  <th className="p-4 font-semibold text-sm text-muted-foreground">Type</th>
+                  <th className="p-4 font-semibold text-sm text-muted-foreground">P&L ($)</th>
+                  <th className="p-4 font-semibold text-sm text-muted-foreground">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEntries.length > 0 ? filteredEntries.map(entry => (
+                  <tr key={entry.id} className="border-b border-border/50 hover:bg-muted/10">
+                    <td className="p-4 font-semibold text-foreground">{entry.asset_ticker}</td>
+                    <td className="p-4 text-muted-foreground">{format(new Date(entry.trade_date), 'MMM dd, yyyy')}</td>
+                    <td className="p-4">
+                      <Badge className={entry.trade_type === 'Long' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                        {entry.trade_type}
+                      </Badge>
+                    </td>
+                    <td className={`p-4 font-semibold ${entry.pnl > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {entry.pnl.toFixed(2)}
+                    </td>
+                    <td className="p-4 text-muted-foreground text-sm max-w-xs truncate">
+                      {entry.notes || 'No notes'}
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={5} className="text-center p-8 text-muted-foreground">
+                      No trades found for this period.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};

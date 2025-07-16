@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import { AccountRequestData } from "@/api/entities/AccountRequest";
 import { ResubmissionConfirmation } from "@/components/account-request/ResubmissionConfirmation";
 import { RequestHistoryTimeline } from "@/components/account-request/RequestHistoryTimeline";
 
-type ViewMode = 'check' | 'status' | 'update' | 'success';
+type ViewMode = 'check' | 'result' | 'status' | 'update' | 'success';
 
 export default function AccountRequestStatusPage() {
   const [email, setEmail] = useState("");
@@ -58,7 +59,8 @@ export default function AccountRequestStatusPage() {
       setViewMode('status');
     } else {
       // Fall back to original status check for legacy requests
-      checkStatus(emailToCheck);
+      await checkStatus(emailToCheck);
+      setViewMode('result');
     }
   }, [email, isLoading, checkStatus, checkForExistingRequest]);
 
@@ -229,11 +231,11 @@ export default function AccountRequestStatusPage() {
           />
         )}
 
-        {!currentRequest && error && error.type === 'not_found' && (
+        {viewMode === 'result' && !currentRequest && error && error.type === 'not_found' && (
           <NoRequestFound email={searchEmail} onCheckAnother={handleCheckAnother} />
         )}
 
-        {!currentRequest && error && error.type !== 'not_found' && (
+        {viewMode === 'result' && !currentRequest && error && error.type !== 'not_found' && (
           <ErrorDisplay 
             error={error} 
             onRetry={retryCheck}
@@ -242,11 +244,11 @@ export default function AccountRequestStatusPage() {
           />
         )}
 
-        {!currentRequest && status?.status === "approved" && (
+        {viewMode === 'result' && !currentRequest && status?.status === "approved" && (
           <ApprovedAccountFlow accountRequest={status} />
         )}
 
-        {!currentRequest && status && status.status !== "approved" && (
+        {viewMode === 'result' && !currentRequest && status && status.status !== "approved" && (
           <div className="space-y-6">
             <div className="text-center">
               {getStatusIcon(status.status)}

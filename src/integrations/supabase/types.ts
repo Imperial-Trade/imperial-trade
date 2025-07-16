@@ -1330,6 +1330,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_account_request_rate_limit: {
+        Args: { p_email: string; p_ip_address?: string }
+        Returns: Json
+      }
       cleanup_old_rate_limits: {
         Args: Record<PropertyKey, never>
         Returns: undefined

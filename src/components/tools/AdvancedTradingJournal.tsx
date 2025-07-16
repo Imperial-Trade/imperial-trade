@@ -81,27 +81,26 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
   const getFilteredTrades = (): Trade[] => {
     const now = new Date();
+    const today = now.toISOString().split('T')[0]; // Get local date as YYYY-MM-DD
     
     switch(timeFilter) {
       case 'daily':
-        const today = format(now, 'yyyy-MM-dd');
-        return entries.filter(t => format(new Date(t.trade_date), 'yyyy-MM-dd') === today);
+        return entries.filter(t => t.trade_date.split('T')[0] === today);
       case 'weekly':
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
-        startOfWeek.setHours(0, 0, 0, 0);
-        return entries.filter(t => new Date(t.trade_date) >= startOfWeek);
+        const weekAgo = new Date(now);
+        weekAgo.setDate(now.getDate() - 7);
+        const weekAgoStr = weekAgo.toISOString().split('T')[0];
+        return entries.filter(t => t.trade_date.split('T')[0] >= weekAgoStr);
       case 'monthly':
-        return entries.filter(t => 
-          new Date(t.trade_date).getMonth() === now.getMonth() && 
-          new Date(t.trade_date).getFullYear() === now.getFullYear()
-        );
+        const currentMonth = today.substring(0, 7); // YYYY-MM
+        return entries.filter(t => t.trade_date.split('T')[0].substring(0, 7) === currentMonth);
       case 'yearly':
-        return entries.filter(t => new Date(t.trade_date).getFullYear() === now.getFullYear());
+        const currentYear = today.substring(0, 4); // YYYY
+        return entries.filter(t => t.trade_date.split('T')[0].substring(0, 4) === currentYear);
       case 'all':
         return entries;
       default:
-        return entries.filter(t => format(new Date(t.trade_date), 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd'));
+        return entries.filter(t => t.trade_date.split('T')[0] === today);
     }
   };
 
@@ -217,8 +216,10 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         pnlValue = -Math.abs(pnlValue);
       }
 
-      // Use selectedDate if available, otherwise use today's date
-      const tradeDate = selectedDate || format(new Date(), 'yyyy-MM-dd');
+      // Use selectedDate if available, otherwise use today's date in local timezone
+      const today = new Date();
+      const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000);
+      const tradeDate = selectedDate || localDate.toISOString().split('T')[0];
 
       const tradeData = {
         asset_ticker: formData.asset_ticker,
@@ -383,7 +384,12 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                     <div>
                       <h4 className="text-lg font-bold text-foreground">{trade.asset_ticker}</h4>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{format(new Date(trade.trade_date), 'MMM d, yyyy')}</span>
+                        <span>{(() => {
+                          const dateStr = trade.trade_date.split('T')[0];
+                          const [year, month, day] = dateStr.split('-');
+                          const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                          return format(date, 'MMM d, yyyy');
+                        })()}</span>
                         {trade.trade_type && (
                           <Badge variant={trade.trade_type === 'Long' ? 'default' : 'secondary'} className="text-xs">
                             {trade.trade_type}
@@ -543,9 +549,11 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
             <h3 className="text-lg font-medium text-center text-foreground mb-8">Equity Curve</h3>
             <div className="h-64">
               {(() => {
-                const filteredTrades = getFilteredTrades().sort((a, b) => 
-                  new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime()
-                );
+                const filteredTrades = getFilteredTrades().sort((a, b) => {
+                  const dateA = a.trade_date.split('T')[0];
+                  const dateB = b.trade_date.split('T')[0];
+                  return dateA.localeCompare(dateB);
+                });
                 
                 console.log('Filtered trades for equity curve:', filteredTrades);
                 console.log('Total entries:', entries.length);
@@ -644,24 +652,39 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                                fill={point.value >= 0 ? "#00ff87" : "#ff4757"}
                                className="cursor-pointer"
                              >
-                               <title>
-                                 {point.isStarting 
-                                   ? `Starting Point: $0.00`
-                                   : `${format(new Date(point.date), 'MMM d')}: ${point.value >= 0 ? '+' : ''}$${point.value.toFixed(2)}`
-                                 }
-                               </title>
+                                <title>
+                                  {point.isStarting 
+                                    ? `Starting Point: $0.00`
+                                    : (() => {
+                                        const dateStr = point.date.split('T')[0];
+                                        const [year, month, day] = dateStr.split('-');
+                                        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                        return `${format(date, 'MMM d')}: ${point.value >= 0 ? '+' : ''}$${point.value.toFixed(2)}`;
+                                      })()
+                                  }
+                                </title>
                              </circle>
                            );
                          })}
                        </svg>
                       
-                      {/* X-axis labels */}
-                      <div className="absolute bottom-0 left-0 text-xs text-muted-foreground">
-                        {format(new Date(equityData[0].date), 'MMM d')}
-                      </div>
-                      <div className="absolute bottom-0 right-0 text-xs text-muted-foreground">
-                        {format(new Date(equityData[equityData.length - 1].date), 'MMM d')}
-                      </div>
+                       {/* X-axis labels */}
+                       <div className="absolute bottom-0 left-0 text-xs text-muted-foreground">
+                         {(() => {
+                           const dateStr = equityData[0].date.split('T')[0];
+                           const [year, month, day] = dateStr.split('-');
+                           const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                           return format(date, 'MMM d');
+                         })()}
+                       </div>
+                       <div className="absolute bottom-0 right-0 text-xs text-muted-foreground">
+                         {(() => {
+                           const dateStr = equityData[equityData.length - 1].date.split('T')[0];
+                           const [year, month, day] = dateStr.split('-');
+                           const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                           return format(date, 'MMM d');
+                         })()}
+                       </div>
                     </div>
                   </div>
                 );

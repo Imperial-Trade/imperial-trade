@@ -676,29 +676,69 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
     };
   }, [filteredEntries, selectedTimezone]);
 
-  // Most traded instruments data
+  // Most traded instruments data with auto-detection of similar currencies
   const mostTradedData = React.useMemo(() => {
-    const instrumentCounts = filteredEntries.reduce((acc, entry) => {
-      acc[entry.asset_ticker] = (acc[entry.asset_ticker] || 0) + 1;
+    // Function to normalize instrument names
+    const normalizeInstrument = (instrument: string): string => {
+      return instrument
+        .toUpperCase()
+        .replace(/[-_\s]/g, '') // Remove separators
+        .replace(/USD$|USDT$/, 'USD') // Normalize USD variants
+        .replace(/BTC$|BITCOIN$/, 'BTC') // Normalize BTC variants
+        .replace(/ETH$|ETHEREUM$/, 'ETH') // Normalize ETH variants
+        .replace(/EUR$|EURO$/, 'EUR'); // Normalize EUR variants
+    };
+
+    // Group instruments by normalized name
+    const instrumentGroups: Record<string, {
+      count: number;
+      originalNames: Set<string>;
+      totalVolume: number;
+      pnl: number;
+    }> = filteredEntries.reduce((acc, entry) => {
+      const normalized = normalizeInstrument(entry.asset_ticker);
+      if (!acc[normalized]) {
+        acc[normalized] = {
+          count: 0,
+          originalNames: new Set(),
+          totalVolume: 0,
+          pnl: 0
+        };
+      }
+      acc[normalized].count += 1;
+      acc[normalized].originalNames.add(entry.asset_ticker);
+      acc[normalized].totalVolume += entry.position_size || 1;
+      acc[normalized].pnl += entry.pnl;
       return acc;
-    }, {});
+    }, {} as Record<string, { count: number; originalNames: Set<string>; totalVolume: number; pnl: number; }>);
 
-    const sortedInstruments = Object.entries(instrumentCounts)
-      .sort(([,a], [,b]) => (b as number) - (a as number))
-      .slice(0, 4); // Top 4 most traded
+    // Sort by count and get top 5
+    const sortedInstruments = Object.entries(instrumentGroups)
+      .sort(([,a], [,b]) => b.count - a.count)
+      .slice(0, 5);
 
-    const labels = sortedInstruments.map(([instrument]) => instrument);
-    const data = sortedInstruments.map(([,count]) => count);
+    if (sortedInstruments.length === 0) {
+      return { labels: [], datasets: [{ data: [], backgroundColor: [], borderWidth: 0 }] };
+    }
+
+    const labels = sortedInstruments.map(([instrument, data]) => {
+      // Use the most common original name
+      const mostCommon = Array.from(data.originalNames)[0];
+      return mostCommon;
+    });
+    
+    const counts = sortedInstruments.map(([, data]) => data.count);
     
     return {
       labels,
       datasets: [{
-        data,
+        data: counts,
         backgroundColor: [
-          '#3b82f6', // Blue
+          '#3b82f6', // Primary blue
           '#1e40af', // Dark blue
-          '#93c5fd', // Light blue
-          '#60a5fa'  // Medium blue
+          '#60a5fa', // Light blue
+          '#93c5fd', // Lighter blue
+          '#bfdbfe'  // Lightest blue
         ],
         borderWidth: 0,
         hoverBorderWidth: 2,
@@ -1142,26 +1182,50 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
         <Card className="bg-card/50 border-border/50 shadow-xl">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground text-lg">Most traded instruments</h3>
-              <div className="flex items-center space-x-2">
-                <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                  Standard Lots
+              <h3 className="font-semibold text-foreground text-lg">Most Traded</h3>
+              <div className="flex items-center space-x-1">
+                <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1">
+                  Count
                 </Button>
-                <Button variant="ghost" size="sm" className="text-muted-foreground">
-                  Micro Lots
+                <Button variant="ghost" size="sm" className="text-muted-foreground text-xs px-2 py-1">
+                  Volume
                 </Button>
               </div>
             </div>
-            <div style={{ height: '200px' }} className="flex items-center justify-center">
-              {filteredEntries.length > 0 ? (
+            
+            <div style={{ height: '180px' }} className="flex items-center justify-center">
+              {mostTradedData.datasets[0].data.length > 0 ? (
                 <Doughnut data={mostTradedData} options={doughnutOptions} />
               ) : (
                 <div className="text-center text-muted-foreground">
                   <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No trading data available</p>
+                  <p className="text-sm">No trading data</p>
                 </div>
               )}
             </div>
+            
+            {/* Trade Statistics */}
+            {mostTradedData.datasets[0].data.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border/30">
+                <div className="text-xs text-muted-foreground mb-2">Top Instruments</div>
+                <div className="space-y-2">
+                  {mostTradedData.labels.slice(0, 3).map((label, index) => (
+                    <div key={label} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: mostTradedData.datasets[0].backgroundColor[index] }}
+                        ></div>
+                        <span className="text-sm font-medium text-foreground">{label}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {mostTradedData.datasets[0].data[index]} trades
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

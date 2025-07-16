@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Bell, Mail, Users, Clock, CheckCircle, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface NotificationSettings {
   newRequests: boolean;
@@ -21,14 +22,90 @@ export const AdminNotificationSystem: React.FC = () => {
     dailyDigest: true,
     weeklyReport: false
   });
-  const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const { toast } = useToast();
+
+  // Load notification settings from database
+  useEffect(() => {
+    loadNotificationSettings();
+  }, []);
+
+  const loadNotificationSettings = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('notification_settings')
+        .select('*')
+        .eq('admin_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading notification settings:', error);
+        return;
+      }
+
+      if (data) {
+        setSettings({
+          newRequests: data.new_requests,
+          resubmissions: data.resubmissions,
+          dailyDigest: data.daily_digest,
+          weeklyReport: data.weekly_report
+        });
+      }
+    } catch (error) {
+      console.error('Error loading notification settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateSetting = async (key: keyof NotificationSettings, value: boolean) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
     
-    // Here you would typically save to database
-    console.log(`Notification setting ${key} set to ${value}`);
+    try {
+      setSaveLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('notification_settings')
+        .upsert({
+          admin_id: user.id,
+          new_requests: newSettings.newRequests,
+          resubmissions: newSettings.resubmissions,
+          daily_digest: newSettings.dailyDigest,
+          weekly_report: newSettings.weeklyReport,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'admin_id'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Settings Updated",
+        description: `Notification preference for ${key} has been updated.`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+      // Revert the setting on error
+      setSettings(prev => ({ ...prev, [key]: !value }));
+      toast({
+        title: "Error",
+        description: "Failed to update notification settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   const sendTestNotification = async () => {
@@ -43,9 +120,18 @@ export const AdminNotificationSystem: React.FC = () => {
 
       if (error) throw error;
       
-      console.log('Test notification sent:', data);
+      toast({
+        title: "Test Notification Sent",
+        description: "Check your email for the test notification.",
+        variant: "default",
+      });
     } catch (error) {
       console.error('Failed to send test notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send test notification. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -65,7 +151,7 @@ export const AdminNotificationSystem: React.FC = () => {
           className="border-gray-300"
         >
           <Bell className="w-4 h-4 mr-2" />
-          Test Notification
+          {loading ? 'Sending...' : 'Test Notification'}
         </Button>
       </div>
 
@@ -87,6 +173,7 @@ export const AdminNotificationSystem: React.FC = () => {
               <Switch
                 checked={settings.newRequests}
                 onCheckedChange={(checked) => updateSetting('newRequests', checked)}
+                disabled={saveLoading}
               />
             </div>
 
@@ -98,6 +185,7 @@ export const AdminNotificationSystem: React.FC = () => {
               <Switch
                 checked={settings.resubmissions}
                 onCheckedChange={(checked) => updateSetting('resubmissions', checked)}
+                disabled={saveLoading}
               />
             </div>
 
@@ -109,6 +197,7 @@ export const AdminNotificationSystem: React.FC = () => {
               <Switch
                 checked={settings.dailyDigest}
                 onCheckedChange={(checked) => updateSetting('dailyDigest', checked)}
+                disabled={saveLoading}
               />
             </div>
 
@@ -120,6 +209,7 @@ export const AdminNotificationSystem: React.FC = () => {
               <Switch
                 checked={settings.weeklyReport}
                 onCheckedChange={(checked) => updateSetting('weeklyReport', checked)}
+                disabled={saveLoading}
               />
             </div>
           </CardContent>

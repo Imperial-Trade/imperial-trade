@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.live-price-stream]
 verify_jwt = false
+
+[functions.account-request-notifications]
+verify_jwt = false

@@ -1,803 +1,421 @@
-import React, { useState, useCallback, useMemo } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Search, 
-  Filter, 
-  X, 
-  Download, 
-  RefreshCw, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  User, 
-  Mail, 
-  Phone,
-  Shield,
-  Calendar,
-  Settings
-} from 'lucide-react';
-import { AuditLog } from '@/api/entities';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Search, Eye, CheckCircle, XCircle, Clock, AlertCircle, Mail, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ProfessionalButton } from '@/components/ui/professional-button';
-import { ProfessionalToast } from '@/components/ui/professional-toast';
-import { useProfessionalToast } from '@/hooks/useProfessionalToast';
-import { useDirectAccountRequests } from '@/hooks/useDirectAccountRequests';
-import { useOptimizedSearch } from '@/hooks/useOptimizedSearch';
+import { useToast } from '@/hooks/use-toast';
+import { useRealTimeRequests } from '@/hooks/useRealTimeRequests';
 
-// Memoized filter component
-const FilterControls = React.memo(({ 
-  statusFilter, 
-  resubmissionFilter, 
-  sortBy, 
-  sortOrder,
-  onStatusFilterChange,
-  onResubmissionFilterChange,
-  onSortByChange,
-  onSortOrderChange
-}: {
-  statusFilter: string;
-  resubmissionFilter: string;
-  sortBy: string;
-  sortOrder: 'asc' | 'desc';
-  onStatusFilterChange: (value: string) => void;
-  onResubmissionFilterChange: (value: string) => void;
-  onSortByChange: (value: string) => void;
-  onSortOrderChange: () => void;
-}) => (
-  <div className="flex gap-2">
-    <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-      <SelectTrigger className="w-32 bg-background border-border">
-        <SelectValue placeholder="Status" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Status</SelectItem>
-        <SelectItem value="pending">Pending</SelectItem>
-        <SelectItem value="approved">Approved</SelectItem>
-        <SelectItem value="rejected">Rejected</SelectItem>
-      </SelectContent>
-    </Select>
+interface AccountRequest {
+  id: string;
+  full_name: string;
+  email: string;
+  phone_number?: string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  account_type: string;
+  vt_market_account_number?: string;
+  website?: string;
+  referrer?: string;
+  created_at: string;
+  updated_at: string;
+  rejection_reason?: string;
+  resubmission_count?: number;
+  last_resubmitted_at?: string;
+}
 
-    <Select value={resubmissionFilter} onValueChange={onResubmissionFilterChange}>
-      <SelectTrigger className="w-40 bg-background border-border">
-        <SelectValue placeholder="Type" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">All Requests</SelectItem>
-        <SelectItem value="original">Original Only</SelectItem>
-        <SelectItem value="resubmitted">Resubmitted Only</SelectItem>
-      </SelectContent>
-    </Select>
-
-    <Select value={sortBy} onValueChange={onSortByChange}>
-      <SelectTrigger className="w-32 bg-background border-border">
-        <SelectValue placeholder="Sort by" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="created_at">Created</SelectItem>
-        <SelectItem value="updated_at">Updated</SelectItem>
-        <SelectItem value="full_name">Name</SelectItem>
-        <SelectItem value="email">Email</SelectItem>
-      </SelectContent>
-    </Select>
-
-    <Button
-      variant="outline"
-      onClick={onSortOrderChange}
-      className="hover:bg-accent"
-    >
-      {sortOrder === 'asc' ? '↑' : '↓'}
-    </Button>
-  </div>
-));
-
-// Less aggressive memoization for request cards to allow updates
-const RequestCard = ({ 
-  request, 
-  index, 
-  actionLoading, 
-  actionSuccess, 
-  showRejectForm, 
-  rejectionReason,
-  onApprove,
-  onShowRejectForm,
-  onReject,
-  onCancelReject,
-  onRejectionReasonChange,
-  getStatusBadge
-}: any) => (
-  <motion.div
-    key={`${request.id}-${request.status}`} // Add status to key to force re-render
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    transition={{ delay: index * 0.05 }}
-  >
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-foreground flex items-center gap-2 font-semibold">
-            <User className="w-5 h-5 text-muted-foreground" />
-            {request.full_name}
-          </CardTitle>
-          {getStatusBadge(request.status)}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Mail className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground font-medium">Email:</span>
-              <span className="text-foreground">{request.email}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Phone className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground font-medium">Phone:</span>
-              <span className="text-foreground">{request.phone_number || "Not provided"}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Shield className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground font-medium">VT Account:</span>
-              <span className="text-foreground">{request.vt_market_account_number}</span>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground font-medium">Type:</span>
-              <span className="text-foreground">
-                {request.account_type === "user" ? "Standard Member" : "Educator / IB Partner"}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground font-medium">Submitted:</span>
-              <span className="text-foreground">
-                {new Date(request.created_at).toLocaleDateString()}
-              </span>
-            </div>
-            {request.resubmission_count > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <RefreshCw className="w-4 h-4 text-orange-500" />
-                <span className="text-muted-foreground font-medium">Resubmissions:</span>
-                <span className="text-orange-600 font-medium">{request.resubmission_count}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {request.reason && (
-          <div className="bg-muted p-3 rounded-lg border">
-            <h4 className="font-semibold text-foreground mb-2">Reason for Joining:</h4>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              {request.reason}
-            </p>
-          </div>
-        )}
-
-        {request.rejection_reason && (
-          <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
-            <h4 className="font-semibold text-red-700 dark:text-red-400 mb-2">Rejection Reason:</h4>
-            <p className="text-red-600 dark:text-red-300 text-sm leading-relaxed">
-              {request.rejection_reason}
-            </p>
-          </div>
-        )}
-
-        {request.status === "pending" && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex gap-3 pt-4 border-t"
-          >
-            <ProfessionalButton
-              onClick={() => onApprove(request.id, request.email)}
-              isLoading={actionLoading === request.id}
-              isSuccess={actionSuccess === request.id}
-              loadingText="Approving..."
-              successText="Approved!"
-              className="bg-green-600 hover:bg-green-700 text-white font-medium"
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Approve
-            </ProfessionalButton>
-            
-            <ProfessionalButton
-              onClick={() => onShowRejectForm(request.id)}
-              variant="outline"
-              className="border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 font-medium"
-            >
-              <XCircle className="w-4 h-4 mr-2" />
-              Reject
-            </ProfessionalButton>
-          </motion.div>
-        )}
-
-        <AnimatePresence>
-          {showRejectForm === request.id && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="border-t pt-4 space-y-3"
-            >
-              <Textarea
-                placeholder="Please provide a reason for rejection..."
-                value={rejectionReason}
-                onChange={(e) => onRejectionReasonChange(e.target.value)}
-                className="bg-background border focus:border-ring"
-              />
-              <div className="flex gap-2">
-                <ProfessionalButton
-                  onClick={() => onReject(request.id, request.email)}
-                  isLoading={actionLoading === request.id}
-                  isSuccess={actionSuccess === request.id}
-                  disabled={!rejectionReason.trim()}
-                  loadingText="Rejecting..."
-                  successText="Rejected!"
-                  className="bg-red-600 hover:bg-red-700 text-white font-medium"
-                >
-                  Confirm Rejection
-                </ProfessionalButton>
-                
-                <ProfessionalButton
-                  onClick={onCancelReject}
-                  variant="outline"
-                  className="hover:bg-accent font-medium"
-                >
-                  Cancel
-                </ProfessionalButton>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </CardContent>
-    </Card>
-  </motion.div>
-);
+const REJECTION_TEMPLATES = [
+  {
+    value: 'incomplete_info',
+    label: 'Incomplete Information',
+    text: 'Your application lacks required information. Please provide complete details about your trading experience and background.'
+  },
+  {
+    value: 'verification_failed',
+    label: 'Verification Failed',
+    text: 'We were unable to verify the information provided in your application. Please ensure all details are accurate and up-to-date.'
+  },
+  {
+    value: 'insufficient_experience',
+    label: 'Insufficient Experience',
+    text: 'Based on your application, you may need more trading experience before joining our community. We encourage you to continue learning and reapply in the future.'
+  },
+  {
+    value: 'invalid_account',
+    label: 'Invalid Account Details',
+    text: 'The VT Markets account information provided could not be verified. Please check your account details and resubmit.'
+  },
+  {
+    value: 'custom',
+    label: 'Custom Reason',
+    text: ''
+  }
+];
 
 export const DirectAccountRequestManagement: React.FC = () => {
-  const { requests, loading, error, newRequestCount, loadRequests, clearNewRequestCount, forceStateUpdate } = useDirectAccountRequests();
-  
+  const { requests, loading, loadRequests, clearNewRequestCount } = useRealTimeRequests();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedRequest, setSelectedRequest] = useState<AccountRequest | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const [rejectionReason, setRejectionReason] = useState<string>("");
-  const [showRejectForm, setShowRejectForm] = useState<string | null>(null);
-  
-  // Filter states
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [resubmissionFilter, setResubmissionFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const { toast } = useToast();
 
-  const { searchTerm, debouncedSearchTerm, handleSearchChange, clearSearch, isSearching } = useOptimizedSearch('', {
-    delay: 300,
-    minLength: 1
+  useEffect(() => {
+    clearNewRequestCount();
+  }, [clearNewRequestCount]);
+
+  const filteredRequests = requests.filter(request => {
+    const matchesSearch = request.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         request.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
-  const { toasts, success, error: showError, celebrate, withProgress, updateToast, removeToast } = useProfessionalToast();
-
-  // Memoized filtered and sorted requests (less aggressive memoization)
-  const filteredRequests = useMemo(() => {
-    let filtered = [...requests];
-
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(request => request.status === statusFilter);
-    }
-
-    // Apply search filter
-    if (debouncedSearchTerm.trim()) {
-      const term = debouncedSearchTerm.toLowerCase();
-      filtered = filtered.filter(request =>
-        request.email.toLowerCase().includes(term) ||
-        request.full_name.toLowerCase().includes(term) ||
-        (request.vt_market_account_number && request.vt_market_account_number.toLowerCase().includes(term))
-      );
-    }
-
-    // Apply resubmission filter
-    if (resubmissionFilter !== 'all') {
-      if (resubmissionFilter === 'original') {
-        filtered = filtered.filter(request => !request.resubmission_count || request.resubmission_count === 0);
-      } else if (resubmissionFilter === 'resubmitted') {
-        filtered = filtered.filter(request => request.resubmission_count && request.resubmission_count > 0);
-      }
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue = a[sortBy];
-      let bValue = b[sortBy];
-
-      if (sortBy === 'created_at' || sortBy === 'updated_at') {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
-      }
-
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-
-    return filtered;
-  }, [requests, statusFilter, debouncedSearchTerm, resubmissionFilter, sortBy, sortOrder]);
-
-  // Stats calculation
-  const stats = useMemo(() => ({
-    total: requests.length,
-    pending: requests.filter(r => r.status === 'pending').length,
-    approved: requests.filter(r => r.status === 'approved').length,
-    rejected: requests.filter(r => r.status === 'rejected').length
-  }), [requests]);
-
-  // Direct approval with immediate state update
-  const handleApprove = useCallback(async (requestId: string, userEmail: string) => {
-    setActionLoading(requestId);
-    
-    // Optimistic update - immediately update UI
-    const optimisticRequests = requests.map(req => 
-      req.id === requestId 
-        ? { ...req, status: 'approved', approved_by: 'admin', updated_at: new Date().toISOString() }
-        : req
-    );
-    forceStateUpdate(optimisticRequests);
-    
-    const progressToastId = withProgress(
-      "Approving Account",
-      "Creating user account and setting up profile..."
-    );
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      updateToast(progressToastId, { progress: 25 });
-      
-      const { data, error } = await supabase.functions.invoke('account-approval', {
-        body: {
-          requestId: requestId,
-          status: 'approved'
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to approve account request');
-      }
-
-      updateToast(progressToastId, { 
-        progress: 75,
-        title: "Almost Done",
-        description: "Finalizing account setup..."
-      });
-
-      await AuditLog.create({
-        action: "approve_account_request",
-        admin_email: user?.email || "admin",
-        target_entity: "account_requests",
-        target_id: requestId,
-        details: { 
-          user_email: userEmail,
-          user_created: true 
-        }
-      });
-
-      updateToast(progressToastId, { progress: 100 });
-      
-      setTimeout(() => {
-        removeToast(progressToastId);
-        celebrate(
-          "Account Approved! 🎉",
-          `${userEmail} has been approved and can now access the platform.`
-        );
-      }, 500);
-
-      setActionSuccess(requestId);
-      setTimeout(() => setActionSuccess(null), 2000);
-
-    } catch (error) {
-      console.error("Error approving request:", error);
-      
-      // Rollback optimistic update on error
-      forceStateUpdate(requests);
-      
-      removeToast(progressToastId);
-      showError(
-        "Approval Failed",
-        error instanceof Error ? error.message : "Failed to approve account request. Please try again."
-      );
-    } finally {
-      setActionLoading(null);
-    }
-  }, [requests, forceStateUpdate, withProgress, updateToast, removeToast, celebrate, showError]);
-
-  // Direct rejection with immediate state update
-  const handleReject = useCallback(async (requestId: string, userEmail: string) => {
-    if (!rejectionReason.trim()) {
-      showError("Rejection Reason Required", "Please provide a reason for rejection before proceeding.");
-      return;
-    }
-
-    setActionLoading(requestId);
-    
-    // Optimistic update - immediately update UI
-    const optimisticRequests = requests.map(req => 
-      req.id === requestId 
-        ? { 
-            ...req, 
-            status: 'rejected', 
-            rejection_reason: rejectionReason,
-            updated_at: new Date().toISOString()
-          }
-        : req
-    );
-    forceStateUpdate(optimisticRequests);
-    
-    const progressToastId = withProgress(
-      "Rejecting Request",
-      "Processing rejection and sending notification..."
-    );
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      updateToast(progressToastId, { progress: 50 });
-      
-      const { data, error } = await supabase.functions.invoke('account-approval', {
-        body: {
-          requestId: requestId,
-          status: 'rejected',
-          rejectionReason: rejectionReason
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to reject account request');
-      }
-
-      updateToast(progressToastId, { progress: 100 });
-
-      await AuditLog.create({
-        action: "reject_account_request",
-        admin_email: user?.email || "admin",
-        target_entity: "account_requests",
-        target_id: requestId,
-        details: { 
-          user_email: userEmail,
-          rejection_reason: rejectionReason
-        }
-      });
-
-      setTimeout(() => {
-        removeToast(progressToastId);
-        success(
-          "Request Rejected",
-          `${userEmail}'s request has been rejected and they have been notified.`
-        );
-      }, 500);
-
-      setActionSuccess(requestId);
-      setTimeout(() => setActionSuccess(null), 2000);
-
-      setRejectionReason("");
-      setShowRejectForm(null);
-    } catch (error) {
-      console.error("Error rejecting request:", error);
-      
-      // Rollback optimistic update on error
-      forceStateUpdate(requests);
-      
-      removeToast(progressToastId);
-      showError(
-        "Rejection Failed",
-        error instanceof Error ? error.message : "Failed to reject account request. Please try again."
-      );
-    } finally {
-      setActionLoading(null);
-    }
-  }, [rejectionReason, requests, forceStateUpdate, withProgress, updateToast, removeToast, success, showError]);
-
-  const handleClearFilters = useCallback(() => {
-    setStatusFilter('all');
-    clearSearch();
-    setResubmissionFilter('all');
-    setSortBy('created_at');
-    setSortOrder('desc');
-  }, [clearSearch]);
-
-  const handleExportRequests = useCallback(() => {
-    const headers = ['Email', 'Full Name', 'Status', 'Account Type', 'VT Account', 'Created At', 'Resubmission Count'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredRequests.map(request => [
-        request.email,
-        `"${request.full_name}"`,
-        request.status,
-        request.account_type,
-        request.vt_market_account_number || '',
-        new Date(request.created_at).toLocaleDateString(),
-        request.resubmission_count || 0
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `account-requests-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  }, [filteredRequests]);
-
-  const getStatusBadge = useCallback((status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending":
-        return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 font-medium"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
-      case "approved":
-        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20 font-medium"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
-      case "rejected":
-        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20 font-medium"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
+      case 'pending':
+        return <Badge variant="outline" className="border-yellow-300 text-yellow-700 bg-yellow-50"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
+      case 'approved':
+        return <Badge variant="outline" className="border-green-300 text-green-700 bg-green-50"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="border-red-300 text-red-700 bg-red-50"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
       default:
-        return <Badge className="bg-muted text-muted-foreground border font-medium">Unknown</Badge>;
+        return <Badge variant="outline">{status}</Badge>;
     }
-  }, []);
+  };
 
-  const hasActiveFilters = statusFilter !== 'all' || debouncedSearchTerm !== '' || resubmissionFilter !== 'all';
+  const handleApprove = async (request: AccountRequest) => {
+    setActionLoading(request.id);
+    try {
+      const { error } = await supabase
+        .from('account_requests')
+        .update({ 
+          status: 'approved',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', request.id);
 
-  if (loading && !requests.length) {
+      if (error) throw error;
+
+      // Send approval email notification
+      try {
+        await supabase.functions.invoke('account-request-notifications', {
+          body: {
+            type: 'request_approved',
+            userEmail: request.email,
+            userName: request.full_name
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send approval email:', emailError);
+        // Don't fail the approval if email fails
+      }
+
+      toast({
+        title: "Request Approved",
+        description: `${request.full_name}'s request has been approved and they've been notified.`,
+        variant: "default",
+      });
+
+      loadRequests();
+    } catch (error) {
+      console.error('Error approving request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to approve request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async (request: AccountRequest, reason: string) => {
+    setActionLoading(request.id);
+    try {
+      const { error } = await supabase
+        .from('account_requests')
+        .update({ 
+          status: 'rejected',
+          rejection_reason: reason,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      // Send rejection email notification
+      try {
+        await supabase.functions.invoke('account-request-notifications', {
+          body: {
+            type: 'request_rejected',
+            userEmail: request.email,
+            userName: request.full_name,
+            reason: reason
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send rejection email:', emailError);
+        // Don't fail the rejection if email fails
+      }
+
+      toast({
+        title: "Request Rejected",
+        description: `${request.full_name}'s request has been rejected and they've been notified.`,
+        variant: "default",
+      });
+
+      loadRequests();
+      setRejectionDialogOpen(false);
+      setRejectionReason('');
+      setSelectedTemplate('');
+      setSelectedRequest(null);
+    } catch (error) {
+      console.error('Error rejecting request:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reject request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleTemplateChange = (templateValue: string) => {
+    setSelectedTemplate(templateValue);
+    const template = REJECTION_TEMPLATES.find(t => t.value === templateValue);
+    if (template && templateValue !== 'custom') {
+      setRejectionReason(template.text);
+    } else if (templateValue === 'custom') {
+      setRejectionReason('');
+    }
+  };
+
+  const openRejectionDialog = (request: AccountRequest) => {
+    setSelectedRequest(request);
+    setRejectionDialogOpen(true);
+    setRejectionReason('');
+    setSelectedTemplate('');
+  };
+
+  if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">Account Request Management</h2>
-        </div>
-        <Card>
-          <CardContent className="p-6 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading account requests...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">Account Request Management</h2>
-        </div>
-        <Card>
-          <CardContent className="p-6 text-center">
-            <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">Error Loading Requests</h3>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => loadRequests(true)} className="gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center p-8">
+        <div className="text-gray-600">Loading requests...</div>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="space-y-6">
-        {/* Header with Actions */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">Account Request Management</h2>
-            <p className="text-muted-foreground mt-1">Review and manage account requests with advanced filtering</p>
-            {newRequestCount > 0 && (
-              <Badge 
-                variant="secondary" 
-                className="mt-2 bg-blue-100 text-blue-800 cursor-pointer" 
-                onClick={clearNewRequestCount}
-              >
-                {newRequestCount} new request{newRequestCount > 1 ? 's' : ''}
-              </Badge>
-            )}
-          </div>
-          
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleExportRequests}
-              disabled={filteredRequests.length === 0}
-              className="hover:bg-accent"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => loadRequests(true)}
-              className="hover:bg-accent"
-              disabled={loading}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Account Request Management</h3>
+          <p className="text-gray-600">Review and manage account access requests</p>
         </div>
+        <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
+          {filteredRequests.length} Request{filteredRequests.length !== 1 ? 's' : ''}
+        </Badge>
+      </div>
 
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total</p>
-                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-                </div>
-                <User className="w-8 h-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-                </div>
-                <Clock className="w-8 h-8 text-yellow-600" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Approved</p>
-                  <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
-                </div>
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Rejected</p>
-                  <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
-                </div>
-                <XCircle className="w-8 h-8 text-red-600" />
-              </div>
-            </CardContent>
-          </Card>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-        {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <Settings className="w-5 h-5" />
-              Filters & Search
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <div className="flex-1 min-w-0">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input
-                    placeholder="Search by email, name, or VT account..."
-                    value={searchTerm}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    className="pl-10 bg-background border-border focus:border-ring"
-                  />
-                  {isSearching && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <FilterControls
-                statusFilter={statusFilter}
-                resubmissionFilter={resubmissionFilter}
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-                onStatusFilterChange={setStatusFilter}
-                onResubmissionFilterChange={setResubmissionFilter}
-                onSortByChange={setSortBy}
-                onSortOrderChange={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground font-medium">
-                  Showing {filteredRequests.length} of {requests.length} requests
-                </span>
-                
-                {hasActiveFilters && (
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs">
-                      <Filter className="w-3 h-3 mr-1" />
-                      Filtered
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearFilters}
-                      className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="w-3 h-3 mr-1" />
-                      Clear
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Request List */}
+      {/* Requests List */}
+      <div className="grid gap-4">
         {filteredRequests.length === 0 ? (
           <Card>
-            <CardContent className="p-6 text-center">
-              <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-foreground mb-2">No Account Requests</h3>
-              <p className="text-muted-foreground">
-                {hasActiveFilters 
-                  ? "No requests match your current filters. Try adjusting your search criteria."
-                  : "There are currently no account requests to review."
-                }
-              </p>
+            <CardContent className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No requests found</h3>
+                <p className="text-gray-600">
+                  {searchTerm || statusFilter !== 'all' 
+                    ? 'Try adjusting your search or filter criteria'
+                    : 'No account requests have been submitted yet'}
+                </p>
+              </div>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
-            <AnimatePresence mode="popLayout">
-              {filteredRequests.map((request, index) => (
-                <RequestCard
-                  key={`${request.id}-${request.status}-${request.updated_at}`}
-                  request={request}
-                  index={index}
-                  actionLoading={actionLoading}
-                  actionSuccess={actionSuccess}
-                  showRejectForm={showRejectForm}
-                  rejectionReason={rejectionReason}
-                  onApprove={handleApprove}
-                  onShowRejectForm={setShowRejectForm}
-                  onReject={handleReject}
-                  onCancelReject={() => {
-                    setShowRejectForm(null);
-                    setRejectionReason("");
-                  }}
-                  onRejectionReasonChange={setRejectionReason}
-                  getStatusBadge={getStatusBadge}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
+          filteredRequests.map((request) => (
+            <Card key={request.id} className="border-gray-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg text-gray-900">{request.full_name}</CardTitle>
+                    <p className="text-gray-600 mt-1">{request.email}</p>
+                    {request.phone_number && (
+                      <p className="text-sm text-gray-500">{request.phone_number}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(request.status)}
+                    {request.resubmission_count && request.resubmission_count > 0 && (
+                      <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-50">
+                        Resubmitted {request.resubmission_count}x
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Account Type</p>
+                    <p className="text-sm text-gray-600 capitalize">{request.account_type}</p>
+                  </div>
+                  {request.vt_market_account_number && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">VT Markets Account</p>
+                      <p className="text-sm text-gray-600">{request.vt_market_account_number}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Submitted</p>
+                    <p className="text-sm text-gray-600">{new Date(request.created_at).toLocaleDateString()}</p>
+                  </div>
+                  {request.website && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Website</p>
+                      <p className="text-sm text-gray-600">{request.website}</p>
+                    </div>
+                  )}
+                </div>
+
+                {request.reason && (
+                  <div className="mb-4">
+                    <p className="text-sm font-medium text-gray-700 mb-1">Reason for Request</p>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded border">{request.reason}</p>
+                  </div>
+                )}
+
+                {request.rejection_reason && (
+                  <div className="mb-4">
+                    <p className="text-sm font-medium text-red-700 mb-1">Rejection Reason</p>
+                    <p className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">{request.rejection_reason}</p>
+                  </div>
+                )}
+
+                {request.status === 'pending' && (
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={() => handleApprove(request)}
+                      disabled={actionLoading === request.id}
+                      className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      {actionLoading === request.id ? 'Approving...' : 'Approve'}
+                    </Button>
+                    <Button
+                      onClick={() => openRejectionDialog(request)}
+                      disabled={actionLoading === request.id}
+                      variant="outline"
+                      className="border-red-300 text-red-700 hover:bg-red-50 flex-1"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Reject
+                    </Button>
+                  </div>
+                )}
+
+                {request.status !== 'pending' && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Mail className="w-4 h-4" />
+                    <span>Email notification sent</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
 
-      {/* Toast notifications */}
-      {toasts.map(toast => (
-        <ProfessionalToast
-          key={toast.id}
-          {...toast}
-          isVisible={true}
-          onClose={() => removeToast(toast.id)}
-        />
-      ))}
-    </>
+      {/* Rejection Dialog */}
+      <Dialog open={rejectionDialogOpen} onOpenChange={setRejectionDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Request</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="template">Rejection Reason Template</Label>
+              <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a template or write custom reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REJECTION_TEMPLATES.map((template) => (
+                    <SelectItem key={template.value} value={template.value}>
+                      {template.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="reason">Rejection Reason</Label>
+              <Textarea
+                id="reason"
+                placeholder="Provide a clear reason for rejection..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => selectedRequest && handleReject(selectedRequest, rejectionReason)}
+                disabled={!rejectionReason.trim() || actionLoading === selectedRequest?.id}
+                className="bg-red-600 hover:bg-red-700 text-white flex-1"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                {actionLoading === selectedRequest?.id ? 'Rejecting...' : 'Send Rejection'}
+              </Button>
+              <Button
+                onClick={() => setRejectionDialogOpen(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };

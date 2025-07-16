@@ -275,6 +275,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          images: string[] | null
           likes: number
           replies_count: number
           tags: string[] | null
@@ -287,6 +288,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          images?: string[] | null
           likes?: number
           replies_count?: number
           tags?: string[] | null
@@ -299,6 +301,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          images?: string[] | null
           likes?: number
           replies_count?: number
           tags?: string[] | null
@@ -482,6 +485,39 @@ export type Database = {
           target_price?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          admin_id: string
+          created_at: string
+          daily_digest: boolean
+          id: string
+          new_requests: boolean
+          resubmissions: boolean
+          updated_at: string
+          weekly_report: boolean
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          daily_digest?: boolean
+          id?: string
+          new_requests?: boolean
+          resubmissions?: boolean
+          updated_at?: string
+          weekly_report?: boolean
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          daily_digest?: boolean
+          id?: string
+          new_requests?: boolean
+          resubmissions?: boolean
+          updated_at?: string
+          weekly_report?: boolean
         }
         Relationships: []
       }

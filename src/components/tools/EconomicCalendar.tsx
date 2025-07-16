@@ -212,7 +212,7 @@ export default function EconomicCalendar() {
   };
 
   return (
-    <div className="bg-white dark:bg-gradient-to-br dark:from-gray-900/80 dark:via-gray-800/60 dark:to-gray-900/80 min-h-screen">
+    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
       <div className="p-6 space-y-6">
         <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
           <CardHeader>

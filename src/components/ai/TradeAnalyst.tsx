@@ -133,7 +133,7 @@ export default function TradeAnalyst() {
             <Brain className="w-8 h-8 text-purple-400" />
           </div>
         </div>
-        <h1 className="font-apple font-bold text-4xl lg:text-5xl bg-gradient-to-r from-purple-400 via-blue-400 to-accent-gold bg-clip-text text-transparent leading-tight">
+        <h1 className="font-apple font-bold text-4xl lg:text-5xl gradient-text-visible leading-tight">
           AI Trade Analyst
         </h1>
         <p className="text-secondary text-lg mt-4 max-w-2xl mx-auto leading-relaxed">

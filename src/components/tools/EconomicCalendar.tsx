@@ -191,7 +191,7 @@ export default function EconomicCalendar() {
           </div>
           <div className="flex justify-between items-center">
             <div className="flex-1">
-              <h1 className="font-apple font-bold text-4xl lg:text-5xl bg-gradient-to-r from-blue-400 via-accent-blue to-purple-400 bg-clip-text text-transparent leading-tight mb-4">
+              <h1 className="font-apple font-bold text-4xl lg:text-5xl gradient-text-visible leading-tight mb-4">
                 Economic Calendar
               </h1>
               <p className="text-secondary text-lg max-w-2xl mx-auto leading-relaxed">

@@ -79,7 +79,7 @@ export default function RiskSimulator() {
             <Calculator className="w-8 h-8 text-orange-400" />
           </div>
         </div>
-        <h1 className="font-apple font-bold text-4xl lg:text-5xl bg-gradient-to-r from-orange-400 via-red-400 to-accent-red bg-clip-text text-transparent leading-tight">
+        <h1 className="font-apple font-bold text-4xl lg:text-5xl gradient-text-visible leading-tight">
           AI Risk Simulator
         </h1>
         <p className="text-secondary text-lg mt-4 max-w-2xl mx-auto leading-relaxed">

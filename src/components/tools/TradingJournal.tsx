@@ -260,7 +260,7 @@ export default function TradingJournal() {
           </div>
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h1 className="font-apple font-bold text-4xl lg:text-5xl bg-gradient-to-r from-accent-green via-green-400 to-accent-blue bg-clip-text text-transparent leading-tight mb-4">
+              <h1 className="font-apple font-bold text-4xl lg:text-5xl gradient-text-visible leading-tight mb-4">
                 Trading Journal
               </h1>
               <p className="text-secondary text-lg max-w-2xl mx-auto leading-relaxed">

@@ -937,3 +937,23 @@
     radial-gradient(at 40% 80%, hsl(var(--primary)/.05) 0px, transparent 50%),
     radial-gradient(at 80% 100%, hsl(var(--accent)/.05) 0px, transparent 50%);
 }
+
+/* Fallback for gradient text that doesn't render */
+@supports not (-webkit-background-clip: text) {
+  .fallback-text-primary {
+    color: hsl(var(--primary)) !important;
+    background: none !important;
+    -webkit-text-fill-color: unset !important;
+    background-clip: unset !important;
+  }
+}
+
+/* For browsers where gradient text becomes invisible */
+.fallback-text-primary {
+  /* Ensure the text has a visible fallback */
+  color: hsl(var(--primary));
+}
+
+.fallback-text-primary.bg-clip-text {
+  color: transparent;
+}

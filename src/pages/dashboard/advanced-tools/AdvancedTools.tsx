@@ -249,12 +249,7 @@ export default function AdvancedTools() {
         <div className="mb-8 text-center">
           {activeTool ? (
             <>
-              <h1 className="font-apple font-bold text-4xl lg:text-5xl leading-tight mb-4" style={{
-                background: 'linear-gradient(to right, hsl(var(--accent-green)), hsl(var(--accent-blue)), hsl(var(--accent-gold)))',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text'
-              }}>
+              <h1 className="font-apple font-bold text-4xl lg:text-5xl bg-gradient-to-r from-accent-green via-accent-blue to-accent-gold bg-clip-text text-transparent leading-tight mb-4 fallback-text-primary">
                 {activeTool.name}
               </h1>
               <p className="text-secondary text-lg max-w-2xl mx-auto leading-relaxed">

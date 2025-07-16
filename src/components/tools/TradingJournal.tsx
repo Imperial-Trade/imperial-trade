@@ -662,14 +662,14 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
       datasets: [{
         label: 'Account Balance',
         data,
-        borderColor: 'hsl(var(--primary))',
-        backgroundColor: 'hsla(var(--primary), 0.1)',
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37, 99, 235, 0.1)',
         fill: true,
         tension: 0.4,
         pointRadius: 3,
         pointHoverRadius: 5,
-        pointBackgroundColor: 'hsl(var(--primary))',
-        pointBorderColor: 'hsl(var(--background))',
+        pointBackgroundColor: '#2563eb',
+        pointBorderColor: '#ffffff',
         pointBorderWidth: 2,
         borderWidth: 2
       }]
@@ -1131,9 +1131,6 @@ const AdvancedJournalTab = ({ entries, userProfile, loadEntries }) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-semibold text-foreground text-lg">Performance</h3>
-              <Button variant="outline" size="sm" className="text-primary border-primary/30 hover:bg-primary/10">
-                Rebate
-              </Button>
             </div>
             <div style={{ height: '250px' }}>
               <Line data={performanceData} options={performanceChartOptions} />

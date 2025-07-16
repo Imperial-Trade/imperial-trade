@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -121,7 +120,22 @@ export default {
 					'purple': 'hsl(var(--feature-purple))',
 					'pink': 'hsl(var(--feature-pink))',
 					'red': 'hsl(var(--feature-red))'
-				}
+				},
+				// Trading platform accent colors  
+				accent: {
+					'green': 'hsl(var(--accent-green))',
+					'blue': 'hsl(var(--accent-blue))',
+					'gold': 'hsl(var(--accent-gold))',
+					'red': 'hsl(var(--accent-red))'
+				},
+				// Surface colors for components
+				surface: 'hsl(var(--surface))',
+				// Light mode specific colors
+				lightGreenHover: 'hsl(var(--light-green-hover))'
+			},
+			fontFamily: {
+				'apple': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+				'display': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'system-ui', 'sans-serif'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

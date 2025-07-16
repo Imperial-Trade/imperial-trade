@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Shield } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import usePriceFeed from '@/components/hooks/usePriceFeed';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 
 export default function SignalStream() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -35,6 +38,24 @@ export default function SignalStream() {
   const isAdmin = useMemo(() => {
     return profile?.access_level === 'admin' || profile?.role === 'admin';
   }, [profile]);
+
+  const isEducator = useMemo(() => {
+    return profile?.user_type === 'educator' || profile?.access_level === 'moderator' || profile?.role === 'educator';
+  }, [profile]);
+
+  const canCreateSignals = useMemo(() => {
+    const canCreate = isAdmin || isEducator;
+    console.log('SignalStream - canCreateSignals check:', {
+      profile,
+      isAdmin,
+      isEducator,
+      canCreate,
+      access_level: profile?.access_level,
+      role: profile?.role,
+      user_type: profile?.user_type
+    });
+    return canCreate;
+  }, [isAdmin, isEducator, profile]);
 
   const isCreator = useCallback((alertCreatorId: string) => {
     console.log('SignalStream - Checking creator:', {
@@ -429,6 +450,15 @@ export default function SignalStream() {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              {canCreateSignals && (
+                <Button
+                  onClick={() => navigate('/dashboard/new-signal')}
+                  className="bg-foreground text-background hover:bg-foreground/90 border border-border"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Signal
+                </Button>
+              )}
               {getConnectionStatusBadge()}
               {lastUpdated && (
                 <span className="text-xs text-muted-foreground">

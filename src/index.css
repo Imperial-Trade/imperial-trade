@@ -102,63 +102,85 @@
     --feature-purple: 250 84% 54%;
     --feature-pink: 330 81% 60%;
     --feature-red: 0 84% 60%;
+    
+    /* Light mode accent colors */
+    --accent-green: 142 76% 36%; /* Trading green for light mode */
+    --accent-blue: 210 100% 46%; /* Trading blue for light mode */
+    --accent-gold: 43 84% 38%; /* Trading gold for light mode */
+    --accent-red: 0 84% 60%; /* Trading red */
+    
+    /* Surface colors for components */
+    --surface: 0 0% 98%; /* Component surface in light mode */
+    --surface-hover: 0 0% 94%; /* Hover state in light mode */
+    
+    --light-green-hover: 142 69% 58%; /* Green for light mode hover borders */
   }
 
   .dark {
-    /* Elegant dark mode with dark grey, black, white, and gold */
-    --background: 0 0% 8%; /* Dark charcoal background */
+    /* Trading platform dark mode - inspired by professional trading interfaces */
+    --background: 210 24% 9%; /* Dark navy background #121826 */
     --foreground: 0 0% 95%; /* Pure white text */
 
-    --card: 0 0% 12%; /* Dark grey card */
+    --card: 210 20% 12%; /* Darker navy cards #1A1F2E */
     --card-foreground: 0 0% 95%; /* White text */
 
-    --popover: 0 0% 12%; /* Dark grey */
+    --popover: 210 20% 12%; /* Dark navy */
     --popover-foreground: 0 0% 95%; /* White text */
 
-    --primary: 43 75% 65%; /* Gold primary */
-    --primary-foreground: 0 0% 8%; /* Dark text on gold */
+    --primary: 43 74% 60%; /* Gold primary #E6B800 */
+    --primary-foreground: 210 24% 9%; /* Dark text on gold */
 
-    --secondary: 0 0% 20%; /* Medium dark grey */
+    --secondary: 210 16% 16%; /* Medium dark navy #242937 */
     --secondary-foreground: 0 0% 85%; /* Light grey text */
 
-    --muted: 0 0% 15%; /* Dark muted background */
+    --muted: 210 18% 14%; /* Dark muted background #1E232F */
     --muted-foreground: 0 0% 65%; /* Medium grey text */
 
-    --accent: 0 0% 18%; /* Dark accent background */
+    --accent: 210 14% 18%; /* Dark accent background #282F3E */
     --accent-foreground: 0 0% 95%; /* White text */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 25%; /* Dark grey border */
-    --input: 0 0% 15%; /* Dark input background */
-    --ring: 43 75% 65%; /* Gold ring */
+    --border: 210 12% 22%; /* Dark navy border #323849 */
+    --input: 210 18% 14%; /* Dark input background */
+    --ring: 43 74% 60%; /* Gold ring */
 
-    /* Sidebar colors for elegant dark theme */
-    --sidebar-background: 0 0% 8%;
+    /* Sidebar colors for trading dark theme */
+    --sidebar-background: 210 24% 9%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 43 75% 65%;
-    --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 0 0% 18%;
+    --sidebar-primary: 43 74% 60%;
+    --sidebar-primary-foreground: 210 24% 9%;
+    --sidebar-accent: 210 14% 18%;
     --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 25%;
-    --sidebar-ring: 43 75% 65%;
+    --sidebar-border: 210 12% 22%;
+    --sidebar-ring: 43 74% 60%;
 
-    /* Dark mode gradient overrides - elegant blacks and greys */
-    --bg-gradient-white: 0 0% 8%;
-    --bg-gradient-light: 0 0% 12%;
-    --bg-gradient-medium: 0 0% 20%;
-    --bg-gradient-dark: 0 0% 30%;
-    --bg-gradient-black: 0 0% 5%;
+    /* Trading platform gradient colors */
+    --bg-gradient-white: 210 24% 9%;
+    --bg-gradient-light: 210 20% 12%;
+    --bg-gradient-medium: 210 16% 16%;
+    --bg-gradient-dark: 210 12% 22%;
+    --bg-gradient-black: 210 28% 7%;
 
-    /* Imperial colors for elegant dark mode with gold accents */
+    /* Gold accents for trading interface */
     --imperial-white: 0 0% 95%;
     --imperial-platinum: 0 0% 85%;
-    --imperial-gold-light: 43 80% 75%;
-    --imperial-gold: 43 75% 65%;
-    --imperial-bronze-light: 43 70% 55%;
-    --imperial-bronze: 43 65% 45%;
-    --imperial-bronze-dark: 43 60% 35%;
+    --imperial-gold-light: 43 80% 70%;
+    --imperial-gold: 43 74% 60%;
+    --imperial-bronze-light: 43 70% 50%;
+    --imperial-bronze: 43 65% 40%;
+    --imperial-bronze-dark: 43 60% 30%;
+
+    /* Trading accent colors */
+    --accent-green: 142 69% 58%; /* Trading green #00C896 */
+    --accent-blue: 210 100% 60%; /* Trading blue #0080FF */
+    --accent-gold: 43 74% 60%; /* Trading gold #E6B800 */
+    --accent-red: 0 84% 60%; /* Trading red */
+
+    /* Surface colors for components */
+    --surface: 210 20% 12%; /* Component surface */
+    --surface-hover: 210 16% 16%; /* Hover state */
 
     /* Spanish Gray Palette for dark mode */
     --gray-darkest: 0 0% 95%; /* White text in dark mode */
@@ -373,6 +395,27 @@
   animation: scaleIn 0.5s ease-out;
 }
 
+/* Equity curve animations */
+@keyframes drawLine {
+  from {
+    stroke-dashoffset: 300;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes parallaxFloat {
   0%, 100% {
     transform: translateY(0px) rotate(0deg);
@@ -422,6 +465,54 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Trading platform dark mode effects */
+.dark .glass-effect {
+  background: rgba(26, 31, 46, 0.4); /* Dark navy with transparency */
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Trading accent glow effects */
+.glow-effect-green {
+  box-shadow: 0 0 20px hsla(142, 69%, 58%, 0.3);
+}
+
+.glow-effect-gold {
+  box-shadow: 0 0 20px hsla(43, 74%, 60%, 0.3);
+}
+
+.glow-effect-blue {
+  box-shadow: 0 0 20px hsla(210, 100%, 60%, 0.3);
+}
+
+/* Trading gradient text effects */
+.gold-text-gradient {
+  background: linear-gradient(135deg, 
+    hsl(var(--accent-gold)) 0%, 
+    hsl(var(--imperial-gold-light)) 50%, 
+    hsl(var(--accent-gold)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: hsl(var(--accent-gold)); /* Fallback color */
+}
+
+/* Two-tone tool title styling */
+.tool-title-two-tone .first-part {
+  color: hsl(var(--foreground)); /* Dark in light mode, light in dark mode */
+}
+
+.tool-title-two-tone .second-part {
+  background: linear-gradient(135deg, 
+    hsl(var(--accent-gold)) 0%, 
+    hsl(var(--imperial-gold-light)) 50%, 
+    hsl(var(--accent-gold)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: hsl(var(--accent-gold)); /* Fallback color */
+}
+
 /* Dark mode optimized gradients */
 .dark .elegant-bg-gradient {
   background: linear-gradient(135deg, 
@@ -442,9 +533,9 @@
   background: 
     radial-gradient(at 40% 20%, hsl(var(--bg-gradient-light)) 0px, transparent 50%),
     radial-gradient(at 80% 0%, hsl(var(--bg-gradient-medium)) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsl(var(--accent-sage) / 0.2) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsl(var(--accent-green) / 0.2) 0px, transparent 50%),
     radial-gradient(at 80% 50%, hsl(var(--bg-gradient-dark)) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsl(var(--accent-mint) / 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsl(var(--accent-gold) / 0.1) 0px, transparent 50%),
     radial-gradient(at 80% 100%, hsl(var(--bg-gradient-black)) 0px, transparent 50%),
     hsl(var(--bg-gradient-black));
 }
@@ -869,4 +960,74 @@
 @keyframes tech-scan {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
+}
+
+/* Premium Financial Dashboard Utilities */
+.glass-button {
+  @apply backdrop-blur-sm bg-background/50 border border-border/20 hover:bg-background/80 hover:border-primary/30 transition-all duration-300;
+}
+
+.premium-card {
+  @apply bg-card/50 backdrop-blur-sm border-border/20 hover:border-primary/30 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20;
+}
+
+.gradient-overlay {
+  background: linear-gradient(135deg, hsl(var(--primary)/.05) 0%, transparent 50%, hsl(var(--accent)/.05) 100%);
+}
+
+.mesh-gradient {
+  background: 
+    radial-gradient(at 40% 20%, hsl(var(--primary)/.1) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsl(var(--accent)/.05) 0px, transparent 50%),
+    radial-gradient(at 40% 50%, hsl(var(--primary)/.05) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, hsl(var(--accent)/.1) 0px, transparent 50%),
+    radial-gradient(at 40% 80%, hsl(var(--primary)/.05) 0px, transparent 50%),
+    radial-gradient(at 80% 100%, hsl(var(--accent)/.05) 0px, transparent 50%);
+}
+
+/* Enhanced gradient text with fallbacks for both light and dark modes */
+.gradient-text-visible {
+  /* First set a visible color as base */
+  color: hsl(var(--foreground));
+  /* Apply gradient */
+  background: linear-gradient(to right, 
+    hsl(var(--accent-green)), 
+    hsl(var(--accent-blue)), 
+    hsl(var(--accent-gold))
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  /* Fallback support */
+  background-size: 100%;
+  background-repeat: no-repeat;
+}
+
+/* Fallback for browsers that don't support gradient text */
+@supports not (-webkit-background-clip: text) {
+  .gradient-text-visible {
+    color: hsl(var(--primary)) !important;
+    background: none !important;
+    -webkit-text-fill-color: unset !important;
+    background-clip: unset !important;
+  }
+}
+
+/* Force visible text in case gradient fails */
+.gradient-text-visible::before {
+  content: attr(data-text);
+  position: absolute;
+  color: hsl(var(--foreground));
+  z-index: -1;
+  opacity: 0;
+}
+
+/* If gradient is invisible, show the fallback */
+@media (-webkit-text-fill-color: transparent) {
+  .gradient-text-visible {
+    position: relative;
+  }
+  .gradient-text-visible::before {
+    opacity: 1;
+  }
 }

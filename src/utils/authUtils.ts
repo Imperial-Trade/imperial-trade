@@ -60,15 +60,19 @@ export const canAccessAdminPanel = (user: User | null): boolean => {
 export const getUserDisplayName = (user: User | null): string => {
   if (!user) return 'Unknown User';
   
-  if (user.user_metadata?.display_name) {
-    return user.user_metadata.display_name;
+  if (user.user_metadata?.first_name && user.user_metadata?.last_name) {
+    return `${user.user_metadata.first_name} ${user.user_metadata.last_name}`;
   }
   
   if (user.user_metadata?.full_name) {
     return user.user_metadata.full_name;
   }
   
-  return user.email || 'Unknown User';
+  if (user.user_metadata?.display_name) {
+    return user.user_metadata.display_name;
+  }
+  
+  return user.email?.split('@')[0] || 'User';
 };
 
 export const formatUserRole = (role: string | null | undefined): string => {

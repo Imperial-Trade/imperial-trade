@@ -514,19 +514,21 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         </div>
 
         {/* Time filter buttons with header */}
-        <div className="flex gap-2 justify-center items-center">
-          {(['daily', 'weekly', 'monthly', 'yearly', 'all'] as const).map(filter => (
-            <Button
-              key={filter}
-              variant={timeFilter === filter ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setTimeFilter(filter)}
-              className="capitalize"
-            >
-              {filter}
-            </Button>
-          ))}
+        <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 bg-clip-text text-transparent">Advanced</h1>
+          <div className="flex gap-2">
+            {(['daily', 'weekly', 'monthly', 'yearly', 'all'] as const).map(filter => (
+              <Button
+                key={filter}
+                variant={timeFilter === filter ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTimeFilter(filter)}
+                className="capitalize"
+              >
+                {filter}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {/* Dashboard Metrics */}

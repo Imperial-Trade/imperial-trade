@@ -55,7 +55,9 @@ export default function RiskCalculator() {
     <Card className="glass-effect">
       <CardHeader>
         <CardTitle>
-          <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-3">Risk Calculator</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold mb-3 tool-title-two-tone">
+            <span className="first-part">Risk</span> <span className="second-part">Calculator</span>
+          </h1>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">

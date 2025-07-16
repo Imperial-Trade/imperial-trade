@@ -256,7 +256,9 @@ export default function EconomicCalendar() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-3">Economic Calendar</h1>
+              <h1 className="text-4xl lg:text-5xl font-bold mb-3 tool-title-two-tone">
+                <span className="first-part">Economic</span> <span className="second-part">Calendar</span>
+              </h1>
             </div>
             <Button onClick={loadEconomicEvents} disabled={isLoading} variant="outline" size="sm" className="border-default text-primary hover:bg-surface">
               {isLoading ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}

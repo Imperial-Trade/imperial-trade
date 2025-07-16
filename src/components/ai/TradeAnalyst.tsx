@@ -129,7 +129,9 @@ export default function TradeAnalyst() {
     <Card className="glass-effect">
       <CardHeader>
         <CardTitle>
-          <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-3">Trade Analyst</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold mb-3 tool-title-two-tone">
+            <span className="first-part">Trade</span> <span className="second-part">Analyst</span>
+          </h1>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">

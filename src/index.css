@@ -473,6 +473,23 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: hsl(var(--accent-gold)); /* Fallback color */
+}
+
+/* Two-tone tool title styling */
+.tool-title-two-tone .first-part {
+  color: hsl(var(--foreground)); /* Dark in light mode, light in dark mode */
+}
+
+.tool-title-two-tone .second-part {
+  background: linear-gradient(135deg, 
+    hsl(var(--accent-gold)) 0%, 
+    hsl(var(--imperial-gold-light)) 50%, 
+    hsl(var(--accent-gold)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: hsl(var(--accent-gold)); /* Fallback color */
 }
 
 /* Dark mode optimized gradients */

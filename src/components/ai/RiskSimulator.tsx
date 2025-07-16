@@ -61,7 +61,13 @@ export default function RiskSimulator() {
     return 'High Risk';
   };
   return <Card className="glass-effect">
-      
+      <CardHeader>
+        <CardTitle>
+          <h1 className="text-4xl lg:text-5xl font-bold mb-3 tool-title-two-tone">
+            <span className="first-part">Risk</span> <span className="second-part">Simulator</span>
+          </h1>
+        </CardTitle>
+      </CardHeader>
       <CardContent className="space-y-6">
         {/* Trade Parameters Input */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

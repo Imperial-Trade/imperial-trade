@@ -249,8 +249,8 @@ export default function AdvancedTools() {
         <div className="mb-8 text-center">
           {activeTool ? (
             <>
-              <h1 className="font-apple font-bold text-4xl lg:text-5xl leading-tight mb-4 gradient-text-visible">
-                {activeTool.name}
+              <h1 className="font-apple font-bold text-4xl lg:text-5xl leading-tight mb-4 tool-title-two-tone">
+                <span className="first-part">{activeTool.name.split(' ')[0]}</span> <span className="second-part">{activeTool.name.split(' ').slice(1).join(' ')}</span>
               </h1>
               <p className="text-secondary text-lg max-w-2xl mx-auto leading-relaxed">
                 {activeTool.description}
@@ -258,8 +258,8 @@ export default function AdvancedTools() {
             </>
           ) : (
             <>
-              <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-3">
-                Advanced <span className="gold-text-gradient">Trading Arsenal</span>
+              <h1 className="text-4xl lg:text-5xl font-bold mb-3 tool-title-two-tone">
+                <span className="first-part">Advanced</span> <span className="second-part">Trading Arsenal</span>
               </h1>
               <p className="text-secondary text-lg max-w-3xl mx-auto">
                 Your centralized hub for professional-grade trading analysis, AI-powered insights, and risk management.

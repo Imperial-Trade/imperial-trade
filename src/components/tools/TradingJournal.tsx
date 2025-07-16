@@ -256,7 +256,9 @@ export default function TradingJournal() {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-accent-green" />
-              <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-3">Trading Journal</h1>
+              <h1 className="text-4xl lg:text-5xl font-bold mb-3 tool-title-two-tone">
+                <span className="first-part">Trading</span> <span className="second-part">Journal</span>
+              </h1>
             </div>
             <Button 
               className="bg-zinc-900 text-amber-600 hover:bg-zinc-800 border border-amber-600/20 shadow-lg"

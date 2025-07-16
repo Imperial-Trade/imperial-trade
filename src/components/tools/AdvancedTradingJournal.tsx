@@ -81,8 +81,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   // Helper function to get current date in selected timezone
   const getCurrentDateInTimezone = () => {
     const now = new Date();
-    const zonedTime = toZonedTime(now, selectedTimezone);
-    return formatInTimeZone(zonedTime, selectedTimezone, 'yyyy-MM-dd');
+    return formatInTimeZone(now, selectedTimezone, 'yyyy-MM-dd');
   };
 
   // Save timezone preference

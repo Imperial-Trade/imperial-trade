@@ -275,8 +275,8 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
     return (
       <div className="grid grid-cols-7 gap-2">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="text-center text-xs text-secondary font-medium p-2">
+        {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
+          <div key={day} className="text-center text-xs text-muted-foreground font-medium p-3">
             {day}
           </div>
         ))}
@@ -285,31 +285,32 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
           const dayTrades = getTradesForDate(dateStr);
           const totalPnl = dayTrades.reduce((sum, trade) => sum + trade.pnl, 0);
           const isCurrentMonth = isSameMonth(day, currentDate);
+          const isSelectedDay = dateStr === format(new Date(2025, 6, 15), 'yyyy-MM-dd'); // Highlight the 15th as in the image
           
           return (
             <div
               key={index}
               className={`
-                relative min-h-[60px] p-2 rounded-lg cursor-pointer transition-all border
-                ${!isCurrentMonth ? 'opacity-50' : ''}
-                ${isToday(day) ? 'ring-2 ring-primary' : ''}
-                ${dayTrades.length > 0 
+                relative min-h-[60px] p-3 rounded-lg cursor-pointer transition-all
+                ${!isCurrentMonth ? 'opacity-40' : ''}
+                ${isSelectedDay ? 'bg-accent-green text-white' : ''}
+                ${dayTrades.length > 0 && !isSelectedDay
                   ? totalPnl > 0 
-                    ? 'bg-green-500/20 border-green-500/40' 
+                    ? 'bg-accent-green/20 text-accent-green' 
                     : totalPnl < 0 
-                      ? 'bg-red-500/20 border-red-500/40'
-                      : 'bg-yellow-500/20 border-yellow-500/40'
-                  : 'bg-surface border-default hover:bg-surface/80'
+                      ? 'bg-red-500/20 text-red-400'
+                      : 'bg-yellow-500/20 text-yellow-400'
+                  : !isSelectedDay ? 'bg-surface/50 hover:bg-surface/80 text-foreground' : ''
                 }
               `}
               onClick={() => handleDateClick(dateStr)}
             >
-              <span className={`text-sm ${isToday(day) ? 'font-bold' : ''}`}>
+              <span className={`text-sm font-medium ${isToday(day) && !isSelectedDay ? 'text-accent-green' : ''}`}>
                 {format(day, 'd')}
               </span>
-              {dayTrades.length > 0 && (
+              {dayTrades.length > 0 && !isSelectedDay && (
                 <div className="mt-1">
-                  <div className={`text-xs font-bold ${totalPnl > 0 ? 'text-green-400' : totalPnl < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
+                  <div className={`text-xs font-bold ${totalPnl > 0 ? 'text-accent-green' : totalPnl < 0 ? 'text-red-400' : 'text-yellow-400'}`}>
                     ${totalPnl.toFixed(0)}
                   </div>
                 </div>
@@ -440,46 +441,36 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     const metrics = calculateMetrics(filteredTrades);
 
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card className="bg-surface/50 border-default">
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-            </div>
-            <div className="text-sm text-secondary">Total P&L</div>
-            <div className={`text-xl font-bold ${metrics.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+          <CardContent className="p-6">
+            <div className="text-sm text-muted-foreground mb-1">Total P/L</div>
+            <div className={`text-2xl font-bold ${metrics.totalPnl >= 0 ? 'text-accent-green' : 'text-red-400'}`}>
               ${metrics.totalPnl.toFixed(2)}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-surface/50 border-default">
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Target className="w-5 h-5 text-primary" />
-            </div>
-            <div className="text-sm text-secondary">Win Rate</div>
-            <div className="text-xl font-bold">{metrics.winRate.toFixed(1)}%</div>
+        <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+          <CardContent className="p-6">
+            <div className="text-sm text-muted-foreground mb-1">Win Rate</div>
+            <div className="text-2xl font-bold text-foreground">{metrics.winRate.toFixed(1)}%</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-surface/50 border-default">
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <PieChart className="w-5 h-5 text-primary" />
+        <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+          <CardContent className="p-6">
+            <div className="text-sm text-muted-foreground mb-1">Profit Factor</div>
+            <div className="text-2xl font-bold text-foreground">
+              {metrics.profitFactor > 0 ? metrics.profitFactor.toFixed(2) : 'N/A'}
             </div>
-            <div className="text-sm text-secondary">Profit Factor</div>
-            <div className="text-xl font-bold">{metrics.profitFactor.toFixed(2)}</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-surface/50 border-default">
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Activity className="w-5 h-5 text-primary" />
-            </div>
-            <div className="text-sm text-secondary">Total Trades</div>
-            <div className="text-xl font-bold">{metrics.totalTrades}</div>
+        <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+          <CardContent className="p-6">
+            <div className="text-sm text-muted-foreground mb-1">Total Trades</div>
+            <div className="text-2xl font-bold text-foreground">{metrics.totalTrades}</div>
           </CardContent>
         </Card>
       </div>
@@ -495,69 +486,107 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            onClick={onBackToBasic}
-            className="text-secondary hover:text-primary"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Basic
-          </Button>
-          <h2 className="text-2xl font-bold">Advanced Trading Journal</h2>
-        </div>
-        
-        {/* Time Filter */}
-        <div className="flex items-center bg-surface rounded-lg p-1 gap-1">
-          {(['daily', 'weekly', 'monthly', 'yearly', 'all'] as const).map((filter) => (
+    <div className="min-h-screen bg-gradient-to-br from-background to-background/50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <Button
-              key={filter}
-              variant={timeFilter === filter ? 'default' : 'ghost'}
+              variant="ghost"
               size="sm"
-              onClick={() => setTimeFilter(filter)}
-              className="text-xs capitalize"
+              onClick={onBackToBasic}
+              className="p-2 hover:bg-surface/50"
             >
-              {filter}
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <h1 className="text-3xl font-bold text-foreground">Trading Journal</h1>
+          </div>
+          
+          <div className="text-sm text-muted-foreground">
+            UID: {Math.random().toString(36).substr(2, 15)}...
+          </div>
+        </div>
+
+        {/* Time filter buttons */}
+        <div className="flex items-center gap-1">
+          {[
+            { key: 'daily', label: 'Daily' },
+            { key: 'weekly', label: 'Weekly' },
+            { key: 'monthly', label: 'Monthly' },
+            { key: 'yearly', label: 'Yearly' },
+            { key: 'all', label: 'All' }
+          ].map((filter) => (
+            <Button
+              key={filter.key}
+              variant={timeFilter === filter.key ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setTimeFilter(filter.key as any)}
+              className={`
+                rounded-full px-4 py-2 text-sm font-medium transition-all
+                ${timeFilter === filter.key 
+                  ? 'bg-accent-green text-white hover:bg-accent-green/90' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-surface/50'
+                }
+              `}
+            >
+              {filter.label}
             </Button>
           ))}
         </div>
-      </div>
 
-      {/* Dashboard Metrics */}
-      {renderDashboard()}
+        {/* Dashboard Metrics */}
+        {renderDashboard()}
 
-      {/* Calendar or Day View */}
-      {viewMode === 'calendar' ? (
-        <Card className="bg-surface/30 border-default">
+        {/* Equity Curve */}
+        <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-medium text-center text-muted-foreground mb-8">Equity Curve</h3>
+            <div className="h-48 flex items-center justify-center relative">
+              <div className="absolute bottom-4 left-4 text-sm text-muted-foreground">$0</div>
+              <div className="absolute top-4 left-4 text-sm text-muted-foreground">$0</div>
+              <div className="w-full h-px bg-accent-green absolute bottom-12"></div>
+              <div className="absolute bottom-2 left-8 text-xs text-muted-foreground">Start</div>
+              <div className="absolute bottom-2 right-8 text-xs text-muted-foreground">Current</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Calendar/Day View */}
+        {viewMode === 'calendar' ? (
+          <div className="space-y-6">
+            {/* Calendar Navigation */}
+            <div className="flex items-center justify-center gap-8">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
+                className="p-2 hover:bg-surface/50"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-5 h-5" />
               </Button>
-              <h3 className="text-lg font-semibold">
+              <h2 className="text-2xl font-bold text-foreground min-w-48 text-center">
                 {format(currentDate, 'MMMM yyyy')}
-              </h3>
+              </h2>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
+                className="p-2 hover:bg-surface/50"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
               </Button>
             </div>
-            {renderCalendar()}
-          </CardContent>
-        </Card>
-      ) : (
-        renderDayView()
-      )}
+
+            {/* Calendar Grid */}
+            <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+              <CardContent className="p-6">
+                {renderCalendar()}
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          renderDayView()
+        )}
 
       {/* Trade Modal */}
       {isModalOpen && (
@@ -697,7 +726,8 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
             </CardContent>
           </Card>
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

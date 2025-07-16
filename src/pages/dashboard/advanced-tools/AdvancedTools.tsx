@@ -248,10 +248,14 @@ export default function AdvancedTools() {
         {/* Page Header */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-3">
-            Advanced <span className="gold-text-gradient">Trading Arsenal</span>
+            {activeTool ? (
+              <span className="gold-text-gradient">{activeTool.name}</span>
+            ) : (
+              <>Advanced <span className="gold-text-gradient">Trading Arsenal</span></>
+            )}
           </h1>
           <p className="text-secondary text-lg max-w-3xl mx-auto">
-            Your centralized hub for professional-grade trading analysis, AI-powered insights, and risk management.
+            {activeTool ? activeTool.description : "Your centralized hub for professional-grade trading analysis, AI-powered insights, and risk management."}
           </p>
         </div>
 

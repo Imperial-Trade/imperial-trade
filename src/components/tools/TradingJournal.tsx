@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { TradeJournalEntry } from '@/api/entities';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BarChart3, TrendingUp, Target, Calendar, DollarSign, ChevronLeft, ChevronRight, Save, X, Award, TrendingDown, Clock } from 'lucide-react';
+import { useOptimizedSearch } from '@/hooks/useOptimizedSearch';
+import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BarChart3, TrendingUp, Target, Calendar, DollarSign, ChevronLeft, ChevronRight, Save, X, Award, TrendingDown, Clock, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,6 +32,75 @@ export default function TradingJournal() {
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('log');
+  const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+
+  // Enhanced asset search with currency pairs
+  const { searchTerm: assetSearchTerm, handleSearchChange: handleAssetSearchChange } = useOptimizedSearch(newEntry.asset_ticker, { delay: 100 });
+
+  // Currency pairs for auto-detection
+  const commonCurrencyPairs = [
+    'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD',
+    'EURGBP', 'EURJPY', 'GBPJPY', 'EURCHF', 'EURAUD', 'EURCAD', 'GBPCHF',
+    'GBPAUD', 'GBPCAD', 'AUDJPY', 'AUDCAD', 'AUDCHF', 'NZDJPY', 'NZDCAD',
+    'CADCHF', 'CADJPY', 'CHFJPY', 'XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD'
+  ];
+
+  // Get recent asset pairs from localStorage
+  const getRecentAssets = () => {
+    try {
+      const stored = localStorage.getItem('recent-trading-assets');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Save asset to recent list
+  const saveRecentAsset = (asset) => {
+    if (!asset.trim()) return;
+    
+    const recent = getRecentAssets();
+    const normalized = asset.toUpperCase().trim();
+    
+    // Remove if already exists and add to front
+    const filtered = recent.filter(item => item !== normalized);
+    const updated = [normalized, ...filtered].slice(0, 5); // Keep only 5 most recent
+    
+    localStorage.setItem('recent-trading-assets', JSON.stringify(updated));
+  };
+
+  // Filter suggestions based on search term
+  const getAssetSuggestions = () => {
+    const term = assetSearchTerm.toUpperCase();
+    const recent = getRecentAssets();
+    
+    console.log('Asset search term:', term);
+    console.log('Recent assets:', recent);
+    
+    if (!term) return recent;
+    
+    // Currency pairs that match the search term
+    const matchingPairs = commonCurrencyPairs.filter(pair => 
+      pair.includes(term) || pair.startsWith(term)
+    );
+    
+    // Recent assets that match
+    const matchingRecent = recent.filter(asset => 
+      asset.includes(term) || asset.startsWith(term)
+    );
+    
+    console.log('Matching pairs:', matchingPairs);
+    console.log('Matching recent:', matchingRecent);
+    
+    // Combine and deduplicate, prioritizing exact matches
+    const exactMatches = [...matchingPairs, ...matchingRecent].filter(item => item.startsWith(term));
+    const partialMatches = [...matchingPairs, ...matchingRecent].filter(item => item.includes(term) && !item.startsWith(term));
+    
+    const suggestions = [...new Set([...exactMatches, ...partialMatches])].slice(0, 8);
+    console.log('Final suggestions:', suggestions);
+    
+    return suggestions;
+  };
 
   // Initialize component
   useEffect(() => {
@@ -75,7 +145,15 @@ export default function TradingJournal() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    console.log('Input change:', name, value);
     setNewEntry(prev => ({ ...prev, [name]: value }));
+    
+    // Handle asset ticker search
+    if (name === 'asset_ticker') {
+      console.log('Handling asset search change:', value);
+      handleAssetSearchChange(value);
+      setShowAssetDropdown(true);
+    }
   };
 
   const handleFileChange = (e) => {
@@ -100,7 +178,11 @@ export default function TradingJournal() {
       return;
     }
     setIsSubmitting(true);
+    
     try {
+      // Save asset to recent list
+      saveRecentAsset(newEntry.asset_ticker);
+      
       let screenshot_url = '';
       if (screenshotFile) {
         const { file_url } = await UploadFile({ file: screenshotFile });
@@ -135,6 +217,7 @@ export default function TradingJournal() {
 
       setNewEntry({ asset_ticker: '', pnl: '', notes: '' });
       setScreenshotFile(null);
+      setShowAssetDropdown(false);
       loadEntries();
     } catch (error) {
       console.error("Error submitting journal entry:", error);
@@ -175,14 +258,68 @@ export default function TradingJournal() {
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input 
-                name="asset_ticker" 
-                placeholder="Asset / Ticker (e.g., EUR/USD)" 
-                value={newEntry.asset_ticker} 
-                onChange={handleInputChange} 
-                className="bg-background" 
-                required 
-              />
+              <div className="relative">
+                <div className="relative">
+                  <Input 
+                    name="asset_ticker" 
+                    placeholder="Asset / Ticker (e.g., EURUSD, AAPL)" 
+                    value={newEntry.asset_ticker} 
+                    onChange={handleInputChange}
+                    onFocus={() => setShowAssetDropdown(true)}
+                    onBlur={() => {
+                      // Delay hiding dropdown to allow clicks
+                      setTimeout(() => setShowAssetDropdown(false), 150);
+                    }}
+                    className="bg-background pr-8" 
+                    required 
+                  />
+                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  
+                  {/* Asset Suggestions Dropdown */}
+                  {showAssetDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-48 overflow-y-auto">
+                      {getAssetSuggestions().length > 0 ? (
+                        <div className="p-1">
+                          {!assetSearchTerm && getRecentAssets().length > 0 && (
+                            <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
+                              Recent Assets
+                            </div>
+                          )}
+                          {getAssetSuggestions().map((asset, index) => (
+                            <button
+                              key={asset}
+                              type="button"
+                              onClick={() => {
+                                setNewEntry(prev => ({ ...prev, asset_ticker: asset }));
+                                handleAssetSearchChange(asset);
+                                setShowAssetDropdown(false);
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium">{asset}</span>
+                                {commonCurrencyPairs.includes(asset) && (
+                                  <Badge variant="outline" className="text-xs h-5 px-2">
+                                    FX
+                                  </Badge>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : assetSearchTerm ? (
+                        <div className="p-3 text-sm text-muted-foreground text-center">
+                          No matches found
+                        </div>
+                      ) : (
+                        <div className="p-3 text-sm text-muted-foreground text-center">
+                          Start typing to see suggestions
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
               <Input 
                 name="pnl" 
                 type="number" 

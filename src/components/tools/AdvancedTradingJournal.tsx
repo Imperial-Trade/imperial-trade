@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { TradeJournalEntry } from '@/api/entities';
 import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { supabase } from '@/integrations/supabase/client';
+import { useOptimizedSearch } from '@/hooks/useOptimizedSearch';
 import { 
   ChevronLeft, ChevronRight, Plus, X, Camera, Trash2, 
-  ArrowLeft, TrendingUp, TrendingDown, Target, PieChart, Activity, Globe 
+  ArrowLeft, TrendingUp, TrendingDown, Target, PieChart, Activity, Globe, Search 
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
@@ -54,6 +55,66 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   });
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+
+  // Enhanced asset search with currency pairs
+  const { searchTerm: assetSearchTerm, handleSearchChange: handleAssetSearchChange } = useOptimizedSearch(formData.asset_ticker, { delay: 100 });
+
+  // Currency pairs for auto-detection
+  const commonCurrencyPairs = [
+    'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD',
+    'EURGBP', 'EURJPY', 'GBPJPY', 'EURCHF', 'EURAUD', 'EURCAD', 'GBPCHF',
+    'GBPAUD', 'GBPCAD', 'AUDJPY', 'AUDCAD', 'AUDCHF', 'NZDJPY', 'NZDCAD',
+    'CADCHF', 'CADJPY', 'CHFJPY', 'XAUUSD', 'XAGUSD', 'USOIL', 'UKOUSD'
+  ];
+
+  // Get recent asset pairs from localStorage
+  const getRecentAssets = (): string[] => {
+    try {
+      const stored = localStorage.getItem('recent-trading-assets');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Save asset to recent list
+  const saveRecentAsset = (asset: string) => {
+    if (!asset.trim()) return;
+    
+    const recent = getRecentAssets();
+    const normalized = asset.toUpperCase().trim();
+    
+    // Remove if already exists and add to front
+    const filtered = recent.filter(item => item !== normalized);
+    const updated = [normalized, ...filtered].slice(0, 5); // Keep only 5 most recent
+    
+    localStorage.setItem('recent-trading-assets', JSON.stringify(updated));
+  };
+
+  // Filter suggestions based on search term
+  const getAssetSuggestions = (): string[] => {
+    const term = assetSearchTerm.toUpperCase();
+    const recent = getRecentAssets();
+    
+    if (!term) return recent;
+    
+    // Currency pairs that match the search term
+    const matchingPairs = commonCurrencyPairs.filter(pair => 
+      pair.includes(term) || pair.startsWith(term)
+    );
+    
+    // Recent assets that match
+    const matchingRecent = recent.filter(asset => 
+      asset.includes(term) || asset.startsWith(term)
+    );
+    
+    // Combine and deduplicate, prioritizing exact matches
+    const exactMatches = [...matchingPairs, ...matchingRecent].filter(item => item.startsWith(term));
+    const partialMatches = [...matchingPairs, ...matchingRecent].filter(item => item.includes(term) && !item.startsWith(term));
+    
+    return [...new Set([...exactMatches, ...partialMatches])].slice(0, 8);
+  };
 
   // Available timezones for selection
   const availableTimezones = [
@@ -240,6 +301,9 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         console.error("No user found");
         return;
       }
+
+      // Save asset to recent list
+      saveRecentAsset(formData.asset_ticker);
 
       let screenshot_url = screenshotPreview;
       if (screenshotFile) {
@@ -815,14 +879,70 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
+                      <div className="relative">
                         <label className="block text-[10px] font-medium mb-1 text-foreground">Asset</label>
-                        <Input
-                          value={formData.asset_ticker}
-                          onChange={(e) => setFormData(prev => ({ ...prev, asset_ticker: e.target.value }))}
-                          placeholder="e.g., AAPL"
-                          className="h-7 text-xs"
-                        />
+                        <div className="relative">
+                          <Input
+                            value={formData.asset_ticker}
+                            onChange={(e) => {
+                              setFormData(prev => ({ ...prev, asset_ticker: e.target.value }));
+                              handleAssetSearchChange(e.target.value);
+                              setShowAssetDropdown(true);
+                            }}
+                            onFocus={() => setShowAssetDropdown(true)}
+                            onBlur={() => {
+                              // Delay hiding dropdown to allow clicks
+                              setTimeout(() => setShowAssetDropdown(false), 150);
+                            }}
+                            placeholder="e.g., EURUSD, AAPL"
+                            className="h-7 text-xs pr-8"
+                          />
+                          <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                          
+                          {/* Asset Suggestions Dropdown */}
+                          {showAssetDropdown && (
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
+                              {getAssetSuggestions().length > 0 ? (
+                                <div className="p-1">
+                                  {!assetSearchTerm && getRecentAssets().length > 0 && (
+                                    <div className="px-2 py-1 text-[8px] text-muted-foreground font-medium border-b border-border/30 mb-1">
+                                      Recent Assets
+                                    </div>
+                                  )}
+                                  {getAssetSuggestions().map((asset, index) => (
+                                    <button
+                                      key={asset}
+                                      type="button"
+                                      onClick={() => {
+                                        setFormData(prev => ({ ...prev, asset_ticker: asset }));
+                                        handleAssetSearchChange(asset);
+                                        setShowAssetDropdown(false);
+                                      }}
+                                      className="w-full text-left px-2 py-1.5 text-[10px] hover:bg-muted/50 rounded-sm transition-colors"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium">{asset}</span>
+                                        {commonCurrencyPairs.includes(asset) && (
+                                          <Badge variant="outline" className="text-[7px] h-3 px-1">
+                                            FX
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : assetSearchTerm ? (
+                                <div className="p-2 text-[9px] text-muted-foreground text-center">
+                                  No matches found
+                                </div>
+                              ) : (
+                                <div className="p-2 text-[9px] text-muted-foreground text-center">
+                                  Start typing to see suggestions
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <label className="block text-[10px] font-medium mb-1 text-foreground">Amount ($)</label>

@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -97,8 +96,8 @@ const FilterControls = React.memo(({
   </div>
 ));
 
-// Memoized request card component
-const RequestCard = React.memo(({ 
+// Less aggressive memoization for request cards to allow updates
+const RequestCard = ({ 
   request, 
   index, 
   actionLoading, 
@@ -113,6 +112,7 @@ const RequestCard = React.memo(({
   getStatusBadge
 }: any) => (
   <motion.div
+    key={`${request.id}-${request.status}`} // Add status to key to force re-render
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -20 }}
@@ -260,10 +260,10 @@ const RequestCard = React.memo(({
       </CardContent>
     </Card>
   </motion.div>
-));
+);
 
 export const DirectAccountRequestManagement: React.FC = () => {
-  const { requests, loading, error, newRequestCount, loadRequests, clearNewRequestCount } = useDirectAccountRequests();
+  const { requests, loading, error, newRequestCount, loadRequests, clearNewRequestCount, forceStateUpdate } = useDirectAccountRequests();
   
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -283,7 +283,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
 
   const { toasts, success, error: showError, celebrate, withProgress, updateToast, removeToast } = useProfessionalToast();
 
-  // Memoized filtered and sorted requests
+  // Memoized filtered and sorted requests (less aggressive memoization)
   const filteredRequests = useMemo(() => {
     let filtered = [...requests];
 
@@ -331,7 +331,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
     return filtered;
   }, [requests, statusFilter, debouncedSearchTerm, resubmissionFilter, sortBy, sortOrder]);
 
-  // Memoized stats
+  // Stats calculation
   const stats = useMemo(() => ({
     total: requests.length,
     pending: requests.filter(r => r.status === 'pending').length,
@@ -339,9 +339,17 @@ export const DirectAccountRequestManagement: React.FC = () => {
     rejected: requests.filter(r => r.status === 'rejected').length
   }), [requests]);
 
-  // Direct approval with optimized API calls
+  // Direct approval with immediate state update
   const handleApprove = useCallback(async (requestId: string, userEmail: string) => {
     setActionLoading(requestId);
+    
+    // Optimistic update - immediately update UI
+    const optimisticRequests = requests.map(req => 
+      req.id === requestId 
+        ? { ...req, status: 'approved', approved_by: 'admin', updated_at: new Date().toISOString() }
+        : req
+    );
+    forceStateUpdate(optimisticRequests);
     
     const progressToastId = withProgress(
       "Approving Account",
@@ -396,6 +404,10 @@ export const DirectAccountRequestManagement: React.FC = () => {
 
     } catch (error) {
       console.error("Error approving request:", error);
+      
+      // Rollback optimistic update on error
+      forceStateUpdate(requests);
+      
       removeToast(progressToastId);
       showError(
         "Approval Failed",
@@ -404,9 +416,9 @@ export const DirectAccountRequestManagement: React.FC = () => {
     } finally {
       setActionLoading(null);
     }
-  }, [withProgress, updateToast, removeToast, celebrate, showError]);
+  }, [requests, forceStateUpdate, withProgress, updateToast, removeToast, celebrate, showError]);
 
-  // Direct rejection with optimized API calls
+  // Direct rejection with immediate state update
   const handleReject = useCallback(async (requestId: string, userEmail: string) => {
     if (!rejectionReason.trim()) {
       showError("Rejection Reason Required", "Please provide a reason for rejection before proceeding.");
@@ -414,6 +426,19 @@ export const DirectAccountRequestManagement: React.FC = () => {
     }
 
     setActionLoading(requestId);
+    
+    // Optimistic update - immediately update UI
+    const optimisticRequests = requests.map(req => 
+      req.id === requestId 
+        ? { 
+            ...req, 
+            status: 'rejected', 
+            rejection_reason: rejectionReason,
+            updated_at: new Date().toISOString()
+          }
+        : req
+    );
+    forceStateUpdate(optimisticRequests);
     
     const progressToastId = withProgress(
       "Rejecting Request",
@@ -465,6 +490,10 @@ export const DirectAccountRequestManagement: React.FC = () => {
       setShowRejectForm(null);
     } catch (error) {
       console.error("Error rejecting request:", error);
+      
+      // Rollback optimistic update on error
+      forceStateUpdate(requests);
+      
       removeToast(progressToastId);
       showError(
         "Rejection Failed",
@@ -473,9 +502,8 @@ export const DirectAccountRequestManagement: React.FC = () => {
     } finally {
       setActionLoading(null);
     }
-  }, [rejectionReason, withProgress, updateToast, removeToast, success, showError]);
+  }, [rejectionReason, requests, forceStateUpdate, withProgress, updateToast, removeToast, success, showError]);
 
-  // Memoized handlers
   const handleClearFilters = useCallback(() => {
     setStatusFilter('all');
     clearSearch();
@@ -735,10 +763,10 @@ export const DirectAccountRequestManagement: React.FC = () => {
           </Card>
         ) : (
           <div className="grid gap-4">
-            <AnimatePresence>
+            <AnimatePresence mode="popLayout">
               {filteredRequests.map((request, index) => (
                 <RequestCard
-                  key={request.id}
+                  key={`${request.id}-${request.status}-${request.updated_at}`}
                   request={request}
                   index={index}
                   actionLoading={actionLoading}

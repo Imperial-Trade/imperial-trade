@@ -54,6 +54,17 @@ export function useDirectAccountRequests() {
     cache.delete(cacheKey);
   }, []);
 
+  // Force immediate state update - this fixes the main issue
+  const forceStateUpdate = useCallback((updatedRequests: any[]) => {
+    setState(prev => ({
+      ...prev,
+      requests: updatedRequests,
+      loading: false,
+      error: null
+    }));
+    setCacheData(updatedRequests);
+  }, [setCacheData]);
+
   // Load requests with request deduplication
   const loadRequests = useCallback(async (forceRefresh = false) => {
     // Check cache first (unless force refresh)
@@ -128,7 +139,7 @@ export function useDirectAccountRequests() {
     }
   }, [getCachedData, setCacheData]);
 
-  // Handle real-time updates with incremental changes
+  // Handle real-time updates with immediate state sync
   const handleRealtimeUpdate = useCallback((payload: any) => {
     console.log('Real-time update received:', payload.eventType, payload.new?.id);
 
@@ -144,10 +155,13 @@ export function useDirectAccountRequests() {
           break;
         
         case 'UPDATE':
-          // Update existing request
+          // Update existing request immediately
           const updateIndex = updatedRequests.findIndex(req => req.id === payload.new.id);
           if (updateIndex !== -1) {
             updatedRequests[updateIndex] = payload.new;
+          } else {
+            // If not found, add it (edge case)
+            updatedRequests.unshift(payload.new);
           }
           break;
         
@@ -157,7 +171,7 @@ export function useDirectAccountRequests() {
           break;
       }
 
-      // Update cache with new data
+      // Update cache immediately
       setCacheData(updatedRequests);
 
       return {
@@ -220,6 +234,7 @@ export function useDirectAccountRequests() {
     newRequestCount: state.newRequestCount,
     loadRequests,
     clearNewRequestCount,
-    clearCache
+    clearCache,
+    forceStateUpdate // Export this for immediate updates after mutations
   };
 }

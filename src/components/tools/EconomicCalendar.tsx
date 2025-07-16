@@ -242,22 +242,12 @@ export default function EconomicCalendar() {
   };
 
   return (
-    <div className="bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
-      <div className="p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/20 via-accent/10 to-secondary/20 border border-border/50 p-8">
-          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 rounded-xl bg-primary/20 backdrop-blur-sm">
-                <Globe className="w-8 h-8 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">AI Economic Calendar</h1>
-                <p className="text-muted-foreground">Real-time events with AI volatility forecasts</p>
-              </div>
-            </div>
-          </div>
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Economic Calendar</h1>
+          <p className="text-muted-foreground">Real-time events with AI volatility forecasts to enhance your trading decisions</p>
         </div>
 
         <Card className="bg-card/50 border-border/50 shadow-2xl backdrop-blur-sm">
@@ -374,7 +364,7 @@ export default function EconomicCalendar() {
                           
                           {/* AI Volatility Forecast */}
                           {event.aiVolatilityForecast && event.impact === 'high' && (
-                            <div className="p-4 rounded-xl bg-gradient-to-r from-primary/5 to-accent/5 border border-primary/20">
+                            <div className="p-4 rounded-xl bg-gradient-to-r from-secondary/10 to-primary/10 border border-secondary/30">
                               <div className="flex items-center gap-2 mb-2">
                                 <Bot className="w-4 h-4 text-primary" />
                                 <span className="text-sm font-medium text-foreground">AI Volatility Forecast</span>

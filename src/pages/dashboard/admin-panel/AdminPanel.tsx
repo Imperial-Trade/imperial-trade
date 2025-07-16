@@ -5,13 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Shield, Settings, Database, RefreshCw, Signal } from "lucide-react";
 import { EnhancedUserManagementTable } from "@/components/admin/EnhancedUserManagementTable";
-import { AccountRequestManagement } from "@/components/account-request/AccountRequestManagement";
+import { EnhancedAccountRequestManagement } from "@/components/admin/EnhancedAccountRequestManagement";
 import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
 import { RateLimitManager } from "@/components/admin/RateLimitManager";
 import { AdminSignalManagement } from "@/components/admin/AdminSignalManagement";
 
 const AdminPanel: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState("requests");
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -28,6 +28,10 @@ const AdminPanel: React.FC = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="requests" className="flex items-center gap-2">
+            <Database className="w-4 h-4" />
+            Requests
+          </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Users
@@ -35,10 +39,6 @@ const AdminPanel: React.FC = () => {
           <TabsTrigger value="signals" className="flex items-center gap-2">
             <Signal className="w-4 h-4" />
             Signals
-          </TabsTrigger>
-          <TabsTrigger value="requests" className="flex items-center gap-2">
-            <Database className="w-4 h-4" />
-            Requests
           </TabsTrigger>
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
@@ -53,6 +53,10 @@ const AdminPanel: React.FC = () => {
             Settings
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="requests" className="space-y-4">
+          <EnhancedAccountRequestManagement />
+        </TabsContent>
 
         <TabsContent value="users" className="space-y-4">
           <Card>
@@ -78,20 +82,6 @@ const AdminPanel: React.FC = () => {
             </CardHeader>
             <CardContent>
               <AdminSignalManagement />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="requests" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="w-5 h-5" />
-                Account Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AccountRequestManagement />
             </CardContent>
           </Card>
         </TabsContent>

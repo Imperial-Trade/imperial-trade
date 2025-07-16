@@ -101,12 +101,9 @@ export default function AdvancedTools() {
   const [isHovered, setIsHovered] = useState(false);
 
   const handleToolSelect = (tool) => {
-    console.log('Tool selected:', tool.name);
     if (activeTool && activeTool.name === tool.name) {
-      console.log('Deselecting tool');
       setActiveTool(null);
     } else {
-      console.log('Setting active tool to:', tool.name);
       setActiveTool(tool);
     }
   };
@@ -251,17 +248,10 @@ export default function AdvancedTools() {
         {/* Page Header */}
         <div className="mb-8 text-center">
           <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-3">
-            {(() => {
-              console.log('activeTool:', activeTool);
-              return activeTool ? (
-                <span className="gold-text-gradient">{activeTool.name}</span>
-              ) : (
-                <>Advanced <span className="gold-text-gradient">Trading Arsenal</span></>
-              );
-            })()}
+            Advanced <span className="gold-text-gradient">Trading Arsenal</span>
           </h1>
           <p className="text-secondary text-lg max-w-3xl mx-auto">
-            {activeTool ? activeTool.description : "Your centralized hub for professional-grade trading analysis, AI-powered insights, and risk management."}
+            Your centralized hub for professional-grade trading analysis, AI-powered insights, and risk management.
           </p>
         </div>
 

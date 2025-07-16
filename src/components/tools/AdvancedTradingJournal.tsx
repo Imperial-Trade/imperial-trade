@@ -485,7 +485,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white dark:bg-gradient-to-br dark:from-gray-900/80 dark:via-gray-800/60 dark:to-gray-900/80">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

@@ -212,7 +212,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-gray-600">Loading requests...</div>
+        <div className="text-foreground">Loading requests...</div>
       </div>
     );
   }
@@ -221,8 +221,8 @@ export const DirectAccountRequestManagement: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Account Request Management</h3>
-          <p className="text-gray-600">Review and manage account access requests</p>
+          <h3 className="text-lg font-semibold text-foreground">Account Request Management</h3>
+          <p className="text-muted-foreground">Review and manage account access requests</p>
         </div>
         <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
           {filteredRequests.length} Request{filteredRequests.length !== 1 ? 's' : ''}
@@ -232,23 +232,23 @@ export const DirectAccountRequestManagement: React.FC = () => {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
             placeholder="Search by name or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 bg-background text-foreground border-border"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-full sm:w-48 bg-background text-foreground border-border">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
+          <SelectContent className="bg-background border-border">
+            <SelectItem value="all" className="text-foreground">All Statuses</SelectItem>
+            <SelectItem value="pending" className="text-foreground">Pending</SelectItem>
+            <SelectItem value="approved" className="text-foreground">Approved</SelectItem>
+            <SelectItem value="rejected" className="text-foreground">Rejected</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -256,12 +256,12 @@ export const DirectAccountRequestManagement: React.FC = () => {
       {/* Requests List */}
       <div className="grid gap-4">
         {filteredRequests.length === 0 ? (
-          <Card>
+          <Card className="bg-card border-border">
             <CardContent className="flex items-center justify-center py-8">
               <div className="text-center">
-                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No requests found</h3>
-                <p className="text-gray-600">
+                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No requests found</h3>
+                <p className="text-muted-foreground">
                   {searchTerm || statusFilter !== 'all' 
                     ? 'Try adjusting your search or filter criteria'
                     : 'No account requests have been submitted yet'}
@@ -271,14 +271,14 @@ export const DirectAccountRequestManagement: React.FC = () => {
           </Card>
         ) : (
           filteredRequests.map((request) => (
-            <Card key={request.id} className="border-gray-200">
+            <Card key={request.id} className="bg-card border-border">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-lg text-gray-900">{request.full_name}</CardTitle>
-                    <p className="text-gray-600 mt-1">{request.email}</p>
+                    <CardTitle className="text-lg text-foreground">{request.full_name}</CardTitle>
+                    <p className="text-muted-foreground mt-1">{request.email}</p>
                     {request.phone_number && (
-                      <p className="text-sm text-gray-500">{request.phone_number}</p>
+                      <p className="text-sm text-muted-foreground">{request.phone_number}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
@@ -294,31 +294,31 @@ export const DirectAccountRequestManagement: React.FC = () => {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Account Type</p>
-                    <p className="text-sm text-gray-600 capitalize">{request.account_type}</p>
+                    <p className="text-sm font-medium text-foreground">Account Type</p>
+                    <p className="text-sm text-muted-foreground capitalize">{request.account_type}</p>
                   </div>
                   {request.vt_market_account_number && (
                     <div>
-                      <p className="text-sm font-medium text-gray-700">VT Markets Account</p>
-                      <p className="text-sm text-gray-600">{request.vt_market_account_number}</p>
+                      <p className="text-sm font-medium text-foreground">VT Markets Account</p>
+                      <p className="text-sm text-muted-foreground">{request.vt_market_account_number}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Submitted</p>
-                    <p className="text-sm text-gray-600">{new Date(request.created_at).toLocaleDateString()}</p>
+                    <p className="text-sm font-medium text-foreground">Submitted</p>
+                    <p className="text-sm text-muted-foreground">{new Date(request.created_at).toLocaleDateString()}</p>
                   </div>
                   {request.website && (
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Website</p>
-                      <p className="text-sm text-gray-600">{request.website}</p>
+                      <p className="text-sm font-medium text-foreground">Website</p>
+                      <p className="text-sm text-muted-foreground">{request.website}</p>
                     </div>
                   )}
                 </div>
 
                 {request.reason && (
                   <div className="mb-4">
-                    <p className="text-sm font-medium text-gray-700 mb-1">Reason for Request</p>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded border">{request.reason}</p>
+                    <p className="text-sm font-medium text-foreground mb-1">Reason for Request</p>
+                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded border">{request.reason}</p>
                   </div>
                 )}
 
@@ -352,7 +352,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
                 )}
 
                 {request.status !== 'pending' && (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Mail className="w-4 h-4" />
                     <span>Email notification sent</span>
                   </div>
@@ -365,20 +365,20 @@ export const DirectAccountRequestManagement: React.FC = () => {
 
       {/* Rejection Dialog */}
       <Dialog open={rejectionDialogOpen} onOpenChange={setRejectionDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-background border-border">
           <DialogHeader>
-            <DialogTitle>Reject Request</DialogTitle>
+            <DialogTitle className="text-foreground">Reject Request</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="template">Rejection Reason Template</Label>
+              <Label htmlFor="template" className="text-foreground">Rejection Reason Template</Label>
               <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-background text-foreground border-border">
                   <SelectValue placeholder="Select a template or write custom reason" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background border-border">
                   {REJECTION_TEMPLATES.map((template) => (
-                    <SelectItem key={template.value} value={template.value}>
+                    <SelectItem key={template.value} value={template.value} className="text-foreground">
                       {template.label}
                     </SelectItem>
                   ))}
@@ -386,14 +386,14 @@ export const DirectAccountRequestManagement: React.FC = () => {
               </Select>
             </div>
             <div>
-              <Label htmlFor="reason">Rejection Reason</Label>
+              <Label htmlFor="reason" className="text-foreground">Rejection Reason</Label>
               <Textarea
                 id="reason"
                 placeholder="Provide a clear reason for rejection..."
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 rows={4}
-                className="resize-none"
+                className="resize-none bg-background text-foreground border-border"
               />
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
@@ -408,7 +408,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
               <Button
                 onClick={() => setRejectionDialogOpen(false)}
                 variant="outline"
-                className="flex-1"
+                className="flex-1 border-border text-foreground hover:bg-muted"
               >
                 Cancel
               </Button>

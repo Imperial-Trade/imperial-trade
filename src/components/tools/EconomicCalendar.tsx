@@ -255,9 +255,57 @@ export default function EconomicCalendar() {
       <Card className="glass-effect">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <div>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-secondary" />
+                <Select value={selectedDate} onValueChange={setSelectedDate}>
+                  <SelectTrigger className="w-40 bg-surface border-default">
+                    <SelectValue placeholder="Date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="this_week">This Week</SelectItem>
+                    <SelectItem value="next_week">Next Week</SelectItem>
+                    <SelectItem value="this_month">This Month</SelectItem>
+                    <SelectItem value="next_month">Next Month</SelectItem>
+                    <SelectItem value="last_month">Last Month</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-40 bg-surface border-default justify-between">
+                          <span>{selectedImpacts.length > 0 ? `${selectedImpacts.length} Impacts` : 'Select Impacts'}</span>
+                          <ChevronDown className="w-4 h-4" />
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-40">
+                      <DropdownMenuLabel>Filter by Impact</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {allImpacts.map(impact => <DropdownMenuCheckboxItem key={impact} checked={selectedImpacts.includes(impact)} onCheckedChange={() => handleMultiSelectChange(setSelectedImpacts, impact)}>
+                              <span className="capitalize">{impact}</span>
+                          </DropdownMenuCheckboxItem>)}
+                  </DropdownMenuContent>
+              </DropdownMenu>
               
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-40 bg-surface border-default justify-between">
+                          <span>{selectedCurrencies.length > 0 ? `${selectedCurrencies.length} Currencies` : 'Select Currencies'}</span>
+                          <ChevronDown className="w-4 h-4" />
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-40">
+                      <DropdownMenuLabel>Filter by Currency</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {allCurrencies.map(currency => <DropdownMenuCheckboxItem key={currency} checked={selectedCurrencies.includes(currency)} onCheckedChange={() => handleMultiSelectChange(setSelectedCurrencies, currency)}>
+                              {currency}
+                          </DropdownMenuCheckboxItem>)}
+                  </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+            
             <Button onClick={loadEconomicEvents} disabled={isLoading} variant="outline" size="sm" className="border-default text-primary hover:bg-surface">
               {isLoading ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
               Refresh
@@ -269,56 +317,6 @@ export default function EconomicCalendar() {
             </p>}
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-secondary" />
-              <Select value={selectedDate} onValueChange={setSelectedDate}>
-                <SelectTrigger className="w-40 bg-surface border-default">
-                  <SelectValue placeholder="Date" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="this_week">This Week</SelectItem>
-                  <SelectItem value="next_week">Next Week</SelectItem>
-                  <SelectItem value="this_month">This Month</SelectItem>
-                  <SelectItem value="next_month">Next Month</SelectItem>
-                  <SelectItem value="last_month">Last Month</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-40 bg-surface border-default justify-between">
-                        <span>{selectedImpacts.length > 0 ? `${selectedImpacts.length} Impacts` : 'Select Impacts'}</span>
-                        <ChevronDown className="w-4 h-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-40">
-                    <DropdownMenuLabel>Filter by Impact</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {allImpacts.map(impact => <DropdownMenuCheckboxItem key={impact} checked={selectedImpacts.includes(impact)} onCheckedChange={() => handleMultiSelectChange(setSelectedImpacts, impact)}>
-                            <span className="capitalize">{impact}</span>
-                        </DropdownMenuCheckboxItem>)}
-                </DropdownMenuContent>
-            </DropdownMenu>
-            
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-40 bg-surface border-default justify-between">
-                        <span>{selectedCurrencies.length > 0 ? `${selectedCurrencies.length} Currencies` : 'Select Currencies'}</span>
-                        <ChevronDown className="w-4 h-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-40">
-                    <DropdownMenuLabel>Filter by Currency</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {allCurrencies.map(currency => <DropdownMenuCheckboxItem key={currency} checked={selectedCurrencies.includes(currency)} onCheckedChange={() => handleMultiSelectChange(setSelectedCurrencies, currency)}>
-                            {currency}
-                        </DropdownMenuCheckboxItem>)}
-                </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
 
           {isLoading ? <div className="flex justify-center items-center h-32">
               <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-400 border-t-transparent" />

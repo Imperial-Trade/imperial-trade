@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -258,41 +259,6 @@ export default function AccountRequestStatusPage() {
               </Button>
             </CardContent>
           </Card>
-        )}
-
-        {/* Legacy status display for old system compatibility */}
-        {!currentRequest && !status && !error && viewMode === 'check' && (
-          <form onSubmit={handleCheckStatus} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-white mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
-                  className="pl-10 bg-white border-gray-300 text-gray-900"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={isLoading || !email.trim()}
-              className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
-            >
-              {isLoading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-              ) : (
-                "Check Status"
-              )}
-            </Button>
-          </form>
         )}
 
         {!currentRequest && error && error.type === 'not_found' && (

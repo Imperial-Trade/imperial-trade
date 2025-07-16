@@ -52,11 +52,11 @@ export default function RiskCalculator() {
     });
   };
   return (
-    <div className="bg-background dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="p-6">
-        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
+        <Card className="bg-[#1a1a1a] border-[#333]">
           <CardHeader>
-            <CardTitle>
+            <CardTitle className="text-white">
               Risk Calculator
             </CardTitle>
           </CardHeader>
@@ -94,7 +94,7 @@ export default function RiskCalculator() {
                 <h3 className="text-xl font-semibold text-primary">Calculation Results</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
+                   <Card className="bg-[#1a1a1a] border-[#333]">
                     <CardContent className="p-4 text-center">
                       <DollarSign className="w-8 h-8 text-accent-red mx-auto mb-2" />
                       <p className="text-sm text-secondary">Risk Amount</p>
@@ -102,31 +102,31 @@ export default function RiskCalculator() {
                     </CardContent>
                   </Card>
                   
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                    <CardContent className="p-4 text-center">
-                      <TrendingUp className="w-8 h-8 text-accent-blue mx-auto mb-2" />
-                      <p className="text-sm text-secondary">Position Size</p>
-                      <p className="text-2xl font-bold text-primary">{results.positionSize}</p>
-                    </CardContent>
-                  </Card>
+                   <Card className="bg-[#1a1a1a] border-[#333]">
+                     <CardContent className="p-4 text-center">
+                       <TrendingUp className="w-8 h-8 text-accent-blue mx-auto mb-2" />
+                       <p className="text-sm text-gray-400">Position Size</p>
+                       <p className="text-2xl font-bold text-white">{results.positionSize}</p>
+                     </CardContent>
+                   </Card>
                   
                   {results.potentialProfit > 0 && (
                     <>
-                      <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                        <CardContent className="p-4 text-center">
-                          <DollarSign className="w-8 h-8 text-accent-green mx-auto mb-2" />
-                          <p className="text-sm text-secondary">Potential Profit</p>
-                          <p className="text-2xl font-bold text-accent-green">${results.potentialProfit}</p>
-                        </CardContent>
-                      </Card>
+                       <Card className="bg-[#1a1a1a] border-[#333]">
+                         <CardContent className="p-4 text-center">
+                           <DollarSign className="w-8 h-8 text-accent-green mx-auto mb-2" />
+                           <p className="text-sm text-gray-400">Potential Profit</p>
+                           <p className="text-2xl font-bold text-accent-green">${results.potentialProfit}</p>
+                         </CardContent>
+                       </Card>
                       
-                      <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                        <CardContent className="p-4 text-center">
-                          <AlertTriangle className="w-8 h-8 text-accent-gold mx-auto mb-2" />
-                          <p className="text-sm text-secondary">Risk:Reward Ratio</p>
-                          <p className="text-2xl font-bold text-accent-gold">1:{results.riskReward}</p>
-                        </CardContent>
-                      </Card>
+                       <Card className="bg-[#1a1a1a] border-[#333]">
+                         <CardContent className="p-4 text-center">
+                           <AlertTriangle className="w-8 h-8 text-accent-gold mx-auto mb-2" />
+                           <p className="text-sm text-gray-400">Risk:Reward Ratio</p>
+                           <p className="text-2xl font-bold text-accent-gold">1:{results.riskReward}</p>
+                         </CardContent>
+                       </Card>
                     </>
                   )}
                 </div>

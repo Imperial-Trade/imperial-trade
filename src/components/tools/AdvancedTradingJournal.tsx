@@ -611,43 +611,44 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                         }}
                       />
                       
-                      {/* Equity line */}
-                      <svg className="w-full h-full">
-                        <polyline
-                          points={equityData.map((point, index) => {
-                            const x = (index / (equityData.length - 1 || 1)) * 100;
-                            const y = ((maxValue - point.value) / range) * 100;
-                            return `${x}%,${y}%`;
-                          }).join(' ')}
-                          fill="none"
-                          stroke={cumulativePnL >= 0 ? "#00ff87" : "#ff4757"}
-                          strokeWidth="2"
-                          vectorEffect="non-scaling-stroke"
-                        />
-                        
-                        {/* Data points */}
-                        {equityData.map((point, index) => {
-                          const x = (index / (equityData.length - 1 || 1)) * 100;
-                          const y = ((maxValue - point.value) / range) * 100;
-                          return (
-                            <circle
-                              key={index}
-                              cx={`${x}%`}
-                              cy={`${y}%`}
-                              r={point.isStarting ? "2" : "3"}
-                              fill={point.value >= 0 ? "#00ff87" : "#ff4757"}
-                              className="cursor-pointer"
-                            >
-                              <title>
-                                {point.isStarting 
-                                  ? `Starting Point: $0.00`
-                                  : `${format(new Date(point.date), 'MMM d')}: ${point.value >= 0 ? '+' : ''}$${point.value.toFixed(2)}`
-                                }
-                              </title>
-                            </circle>
-                          );
-                        })}
-                      </svg>
+                       {/* Equity line */}
+                       <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                         <polyline
+                           points={equityData.map((point, index) => {
+                             const x = (index / (equityData.length - 1 || 1)) * 100;
+                             const y = ((maxValue - point.value) / range) * 100;
+                             console.log(`Point ${index}: x=${x}, y=${y}, value=${point.value}`);
+                             return `${x},${y}`;
+                           }).join(' ')}
+                           fill="none"
+                           stroke={cumulativePnL >= 0 ? "#00ff87" : "#ff4757"}
+                           strokeWidth="0.5"
+                           vectorEffect="non-scaling-stroke"
+                         />
+                         
+                         {/* Data points */}
+                         {equityData.map((point, index) => {
+                           const x = (index / (equityData.length - 1 || 1)) * 100;
+                           const y = ((maxValue - point.value) / range) * 100;
+                           return (
+                             <circle
+                               key={index}
+                               cx={x}
+                               cy={y}
+                               r={point.isStarting ? "0.8" : "1.2"}
+                               fill={point.value >= 0 ? "#00ff87" : "#ff4757"}
+                               className="cursor-pointer"
+                             >
+                               <title>
+                                 {point.isStarting 
+                                   ? `Starting Point: $0.00`
+                                   : `${format(new Date(point.date), 'MMM d')}: ${point.value >= 0 ? '+' : ''}$${point.value.toFixed(2)}`
+                                 }
+                               </title>
+                             </circle>
+                           );
+                         })}
+                       </svg>
                       
                       {/* X-axis labels */}
                       <div className="absolute bottom-0 left-0 text-xs text-muted-foreground">

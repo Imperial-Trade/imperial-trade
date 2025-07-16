@@ -248,6 +248,27 @@ export default function AdvancedTools() {
         {/* Page Header */}
         <div className="mb-6">{/* Header removed for cleaner interface */}</div>
 
+        {/* Active Tool Container */}
+        {activeTool && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="mb-6"
+          >
+            <div className="bg-surface/50 backdrop-blur-sm border border-default rounded-2xl p-4 max-w-md mx-auto">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-surface border border-default">
+                  {React.createElement(activeTool.icon, { className: "w-6 h-6 text-accent-green" })}
+                </div>
+                <div>
+                  <h2 className="font-semibold text-lg text-foreground">{activeTool.name}</h2>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Tool Display */}
         <div className="min-h-[600px]">

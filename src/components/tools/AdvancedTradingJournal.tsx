@@ -276,7 +276,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     return (
       <div className="grid grid-cols-7 gap-2">
         {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
-          <div key={day} className="text-center text-xs text-muted-foreground font-medium p-3">
+          <div key={day} className="text-center text-xs text-gray-400 font-medium p-3">
             {day}
           </div>
         ))}
@@ -300,7 +300,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                     : totalPnl < 0 
                       ? 'bg-red-500/20 text-red-400'
                       : 'bg-yellow-500/20 text-yellow-400'
-                  : !isSelectedDay ? 'bg-surface/50 hover:bg-surface/80 text-foreground' : ''
+                  : !isSelectedDay ? 'bg-gray-800/20 hover:bg-gray-700/30 text-gray-300' : ''
                 }
               `}
               onClick={() => handleDateClick(dateStr)}
@@ -340,7 +340,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h3 className="text-2xl font-bold">
+            <h3 className="text-2xl font-bold text-white">
               {format(selectedDateObj, 'EEEE, MMMM d, yyyy')}
             </h3>
           </div>
@@ -355,18 +355,18 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
         <div className="space-y-4">
           {dayTrades.length === 0 ? (
-            <div className="text-center text-secondary py-12">
+            <div className="text-center text-gray-400 py-12">
               <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No trades logged for this day</p>
             </div>
           ) : (
             dayTrades.map((trade) => (
-              <Card key={trade.id} className="bg-surface/50 border-default">
+              <Card key={trade.id} className="bg-gray-900/30 border-gray-700/30">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h4 className="text-lg font-bold">{trade.asset_ticker}</h4>
-                      <div className="flex items-center gap-2 text-xs text-secondary">
+                      <h4 className="text-lg font-bold text-white">{trade.asset_ticker}</h4>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
                         <span>{format(new Date(trade.trade_date), 'MMM d, yyyy')}</span>
                         {trade.trade_type && (
                           <Badge variant={trade.trade_type === 'Long' ? 'default' : 'secondary'} className="text-xs">
@@ -390,7 +390,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                         variant="ghost"
                         size="sm"
                         onClick={() => openModal(trade)}
-                        className="text-secondary hover:text-primary"
+                        className="text-gray-400 hover:text-white bg-gray-800/50 hover:bg-gray-700"
                       >
                         Edit
                       </Button>
@@ -407,7 +407,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
                   {trade.notes && (
                     <div className="mb-3">
-                      <p className="text-sm text-secondary">{trade.notes}</p>
+                      <p className="text-sm text-gray-300">{trade.notes}</p>
                     </div>
                   )}
 
@@ -442,35 +442,35 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+        <Card className="bg-gray-900/30 backdrop-blur-sm border-gray-700/30">
           <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground mb-1">Total P/L</div>
-            <div className={`text-2xl font-bold ${metrics.totalPnl >= 0 ? 'text-accent-green' : 'text-red-400'}`}>
+            <div className="text-sm text-gray-400 mb-1">Total P/L</div>
+            <div className={`text-2xl font-bold ${metrics.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               ${metrics.totalPnl.toFixed(2)}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+        <Card className="bg-gray-900/30 backdrop-blur-sm border-gray-700/30">
           <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground mb-1">Win Rate</div>
-            <div className="text-2xl font-bold text-foreground">{metrics.winRate.toFixed(1)}%</div>
+            <div className="text-sm text-gray-400 mb-1">Win Rate</div>
+            <div className="text-2xl font-bold text-white">{metrics.winRate.toFixed(1)}%</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+        <Card className="bg-gray-900/30 backdrop-blur-sm border-gray-700/30">
           <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground mb-1">Profit Factor</div>
-            <div className="text-2xl font-bold text-foreground">
+            <div className="text-sm text-gray-400 mb-1">Profit Factor</div>
+            <div className="text-2xl font-bold text-white">
               {metrics.profitFactor > 0 ? metrics.profitFactor.toFixed(2) : 'N/A'}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+        <Card className="bg-gray-900/30 backdrop-blur-sm border-gray-700/30">
           <CardContent className="p-6">
-            <div className="text-sm text-muted-foreground mb-1">Total Trades</div>
-            <div className="text-2xl font-bold text-foreground">{metrics.totalTrades}</div>
+            <div className="text-sm text-gray-400 mb-1">Total Trades</div>
+            <div className="text-2xl font-bold text-white">{metrics.totalTrades}</div>
           </CardContent>
         </Card>
       </div>
@@ -486,50 +486,37 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-background/50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
-              variant="ghost"
-              size="sm"
+              variant="outline"
               onClick={onBackToBasic}
-              className="p-2 hover:bg-surface/50"
+              className="flex items-center gap-2 bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700"
             >
               <ArrowLeft className="w-4 h-4" />
+              Back to Basic
             </Button>
-            <h1 className="text-3xl font-bold text-foreground">Trading Journal</h1>
-          </div>
-          
-          <div className="text-sm text-muted-foreground">
-            UID: {Math.random().toString(36).substr(2, 15)}...
+            <h1 className="text-3xl font-bold text-white">Advanced Trading Journal</h1>
           </div>
         </div>
 
         {/* Time filter buttons */}
-        <div className="flex items-center gap-1">
-          {[
-            { key: 'daily', label: 'Daily' },
-            { key: 'weekly', label: 'Weekly' },
-            { key: 'monthly', label: 'Monthly' },
-            { key: 'yearly', label: 'Yearly' },
-            { key: 'all', label: 'All' }
-          ].map((filter) => (
+        <div className="flex gap-2">
+          {(['daily', 'weekly', 'monthly', 'yearly', 'all'] as const).map(filter => (
             <Button
-              key={filter.key}
-              variant={timeFilter === filter.key ? 'default' : 'ghost'}
+              key={filter}
+              variant={timeFilter === filter ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTimeFilter(filter.key as any)}
-              className={`
-                rounded-full px-4 py-2 text-sm font-medium transition-all
-                ${timeFilter === filter.key 
-                  ? 'bg-accent-green text-white hover:bg-accent-green/90' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-surface/50'
-                }
-              `}
+              onClick={() => setTimeFilter(filter)}
+              className={`capitalize ${timeFilter === filter 
+                ? 'bg-gray-700 text-white' 
+                : 'bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700'
+              }`}
             >
-              {filter.label}
+              {filter}
             </Button>
           ))}
         </div>
@@ -538,15 +525,109 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         {renderDashboard()}
 
         {/* Equity Curve */}
-        <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+        <Card className="bg-gray-900/30 backdrop-blur-sm border-gray-700/30">
           <CardContent className="p-6">
-            <h3 className="text-lg font-medium text-center text-muted-foreground mb-8">Equity Curve</h3>
-            <div className="h-48 flex items-center justify-center relative">
-              <div className="absolute bottom-4 left-4 text-sm text-muted-foreground">$0</div>
-              <div className="absolute top-4 left-4 text-sm text-muted-foreground">$0</div>
-              <div className="w-full h-px bg-accent-green absolute bottom-12"></div>
-              <div className="absolute bottom-2 left-8 text-xs text-muted-foreground">Start</div>
-              <div className="absolute bottom-2 right-8 text-xs text-muted-foreground">Current</div>
+            <h3 className="text-lg font-medium text-center text-white mb-8">Equity Curve</h3>
+            <div className="h-64">
+              {(() => {
+                const filteredTrades = getFilteredTrades().sort((a, b) => 
+                  new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime()
+                );
+                
+                if (filteredTrades.length === 0) {
+                  return (
+                    <div className="h-full flex items-center justify-center text-gray-400">
+                      No trades to display
+                    </div>
+                  );
+                }
+
+                // Calculate cumulative P&L for each trade
+                const equityData = [];
+                let cumulativePnL = 0;
+                
+                filteredTrades.forEach((trade, index) => {
+                  cumulativePnL += trade.pnl;
+                  equityData.push({
+                    date: trade.trade_date,
+                    value: cumulativePnL,
+                    index: index
+                  });
+                });
+
+                const maxValue = Math.max(...equityData.map(d => d.value), 0);
+                const minValue = Math.min(...equityData.map(d => d.value), 0);
+                const range = maxValue - minValue || 100;
+                
+                return (
+                  <div className="relative h-full">
+                    {/* Y-axis labels */}
+                    <div className="absolute left-0 top-0 text-xs text-gray-400">
+                      ${maxValue.toFixed(0)}
+                    </div>
+                    <div className="absolute left-0 top-1/2 text-xs text-gray-400">
+                      ${((maxValue + minValue) / 2).toFixed(0)}
+                    </div>
+                    <div className="absolute left-0 bottom-0 text-xs text-gray-400">
+                      ${minValue.toFixed(0)}
+                    </div>
+                    
+                    {/* Chart area */}
+                    <div className="ml-12 h-full relative">
+                      {/* Zero line */}
+                      <div 
+                        className="absolute w-full border-t border-gray-600 border-dashed"
+                        style={{ 
+                          top: `${((maxValue - 0) / range) * 100}%` 
+                        }}
+                      />
+                      
+                      {/* Equity line */}
+                      <svg className="w-full h-full">
+                        <polyline
+                          points={equityData.map((point, index) => {
+                            const x = (index / (equityData.length - 1 || 1)) * 100;
+                            const y = ((maxValue - point.value) / range) * 100;
+                            return `${x}%,${y}%`;
+                          }).join(' ')}
+                          fill="none"
+                          stroke={cumulativePnL >= 0 ? "#00ff87" : "#ff4757"}
+                          strokeWidth="2"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                        
+                        {/* Data points */}
+                        {equityData.map((point, index) => {
+                          const x = (index / (equityData.length - 1 || 1)) * 100;
+                          const y = ((maxValue - point.value) / range) * 100;
+                          return (
+                            <circle
+                              key={index}
+                              cx={`${x}%`}
+                              cy={`${y}%`}
+                              r="3"
+                              fill={point.value >= 0 ? "#00ff87" : "#ff4757"}
+                              className="cursor-pointer"
+                            >
+                              <title>
+                                {format(new Date(point.date), 'MMM d')}: ${point.value.toFixed(2)}
+                              </title>
+                            </circle>
+                          );
+                        })}
+                      </svg>
+                      
+                      {/* X-axis labels */}
+                      <div className="absolute bottom-0 left-0 text-xs text-gray-400">
+                        {format(new Date(equityData[0].date), 'MMM d')}
+                      </div>
+                      <div className="absolute bottom-0 right-0 text-xs text-gray-400">
+                        {format(new Date(equityData[equityData.length - 1].date), 'MMM d')}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -557,28 +638,28 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
             {/* Calendar Navigation */}
             <div className="flex items-center justify-center gap-8">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-                className="p-2 hover:bg-surface/50"
+                className="bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700"
               >
                 <ChevronLeft className="w-5 h-5" />
               </Button>
-              <h2 className="text-2xl font-bold text-foreground min-w-48 text-center">
+              <h2 className="text-2xl font-bold text-white min-w-48 text-center">
                 {format(currentDate, 'MMMM yyyy')}
               </h2>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-                className="p-2 hover:bg-surface/50"
+                className="bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700"
               >
                 <ChevronRight className="w-5 h-5" />
               </Button>
             </div>
 
             {/* Calendar Grid */}
-            <Card className="bg-surface/30 backdrop-blur-sm border-border/50">
+            <Card className="bg-gray-900/30 backdrop-blur-sm border-gray-700/30">
               <CardContent className="p-6">
                 {renderCalendar()}
               </CardContent>
@@ -591,10 +672,10 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
       {/* Trade Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-900/95 border-gray-700">
             <CardContent className="p-6 space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold">
+                <h3 className="text-xl font-bold text-white">
                   {editingTrade ? 'Edit Trade' : 'Add New Trade'}
                 </h3>
                 <Button variant="ghost" size="sm" onClick={closeModal}>
@@ -604,7 +685,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Asset / Pair</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Asset / Pair</label>
                   <Input
                     value={formData.asset_ticker}
                     onChange={(e) => setFormData(prev => ({ ...prev, asset_ticker: e.target.value }))}
@@ -612,7 +693,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">P&L Amount ($)</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">P&L Amount ($)</label>
                   <Input
                     type="number"
                     value={formData.pnl}
@@ -624,7 +705,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Direction</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Direction</label>
                   <div className="flex gap-2">
                     <Button
                       type="button"
@@ -645,7 +726,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Outcome</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Outcome</label>
                   <div className="flex gap-2">
                     {(['Win', 'Loss', 'Breakeven'] as const).map((outcome) => (
                       <Button
@@ -663,7 +744,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Trade Notes</label>
+                <label className="block text-sm font-medium mb-2 text-gray-300">Trade Notes</label>
                 <Textarea
                   value={formData.notes}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
@@ -673,7 +754,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Chart Screenshot</label>
+                <label className="block text-sm font-medium mb-2 text-gray-300">Chart Screenshot</label>
                 <div className="border-2 border-dashed border-default rounded-lg p-6 text-center">
                   {screenshotPreview ? (
                     <div className="space-y-2">

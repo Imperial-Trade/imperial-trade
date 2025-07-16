@@ -213,7 +213,7 @@ export default function TradingJournal() {
   };
   const EntryCard = ({
     entry
-  }) => <Card className="bg-surface/50 border-default overflow-hidden">
+  }) => <Card className="bg-gray-900/30 border-gray-700/30 overflow-hidden backdrop-blur-sm">
       <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-3">
           <div className="flex justify-between items-start">
@@ -250,8 +250,8 @@ export default function TradingJournal() {
   if (showAdvanced && unlockStatus.isUnlocked) {
     return <AdvancedTradingJournal onBackToBasic={() => setShowAdvanced(false)} />;
   }
-  return <div className="space-y-6">
-      <Card className="glass-effect">
+  return <div className="space-y-6 bg-gradient-to-br from-black via-gray-900 to-black min-h-screen p-6">
+      <Card className="bg-gray-900/50 border-gray-700/50 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             

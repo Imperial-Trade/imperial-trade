@@ -501,10 +501,6 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
             </Button>
             <h1 className="text-3xl font-bold text-foreground">Trading Journal</h1>
           </div>
-          
-          <div className="text-sm text-muted-foreground">
-            UID: {Math.random().toString(36).substr(2, 15)}...
-          </div>
         </div>
 
         {/* Time filter buttons */}

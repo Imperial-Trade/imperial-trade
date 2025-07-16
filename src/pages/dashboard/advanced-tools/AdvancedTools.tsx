@@ -280,7 +280,7 @@ export default function AdvancedTools() {
                 transition={{ duration: 0.4, ease: 'easeInOut' }}
                 className="relative h-full"
               >
-                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50 p-2 rounded-2xl h-full overflow-y-auto">
+                <Card className="bg-white dark:bg-gray-900/30 border-transparent backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50 p-2 rounded-2xl h-full overflow-y-auto">
                   <div className="absolute top-2 right-2 z-30">
                     <Button variant="ghost" size="icon" onClick={() => setActiveTool(null)} className="rounded-full bg-surface/80 hover:bg-surface">
                       <X className="w-5 h-5 text-secondary" />

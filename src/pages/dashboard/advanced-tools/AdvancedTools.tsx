@@ -246,27 +246,33 @@ export default function AdvancedTools() {
       {/* Main Content */}
       <div className="flex-1 ml-20 p-6">
         {/* Page Header */}
-        <div className="mb-8 text-center">
-          {activeTool ? (
-            <>
-              <h1 className="font-apple font-bold text-4xl lg:text-5xl leading-tight mb-4 tool-title-two-tone">
-                <span className="first-part">{activeTool.name.split(' ')[0]}</span> <span className="second-part">{activeTool.name.split(' ').slice(1).join(' ')}</span>
-              </h1>
-               <p className="text-foreground text-xl max-w-2xl mx-auto leading-relaxed mb-8 font-medium">
-                 {activeTool.description}
-               </p>
-            </>
-          ) : (
-            <>
-              <h1 className="text-4xl lg:text-5xl font-bold mb-3 tool-title-two-tone">
-                <span className="first-part">Advanced</span> <span className="second-part">Trading Arsenal</span>
-              </h1>
-              <p className="text-secondary text-lg max-w-3xl mx-auto">
-                Your centralized hub for professional-grade trading analysis, AI-powered insights, and risk management.
-              </p>
-            </>
-          )}
+        <div className="mb-6 text-center">
+          <h1 className="text-4xl lg:text-5xl font-bold mb-6 tool-title-two-tone">
+            <span className="first-part">Advanced</span> <span className="second-part">Trading Arsenal</span>
+          </h1>
         </div>
+
+        {/* Active Tool Container */}
+        {activeTool && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="mb-6"
+          >
+            <div className="bg-surface/50 backdrop-blur-sm border border-default rounded-2xl p-4 max-w-md mx-auto">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-surface border border-default">
+                  {React.createElement(activeTool.icon, { className: "w-6 h-6 text-accent-green" })}
+                </div>
+                <div>
+                  <h2 className="font-semibold text-lg text-foreground">{activeTool.name}</h2>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Tool Display */}
         <div className="min-h-[600px]">

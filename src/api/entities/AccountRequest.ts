@@ -9,7 +9,7 @@ export interface AccountRequestData {
   phone_number?: string;
   vt_market_account_number?: string;
   referrer?: string;
-  account_type: 'user' | 'educator';
+  account_type: 'user' | 'educator' | 'admin'; // Include admin to match database
   reason?: string;
   status?: 'pending' | 'approved' | 'rejected';
   rejection_reason?: string;
@@ -28,7 +28,7 @@ export interface AccountRequestAudit {
   old_values?: any;
   new_values?: any;
   changed_by: string;
-  change_type: 'created' | 'updated' | 'approved' | 'rejected';
+  change_type: string; // Use string instead of strict union to match database
   notes?: string;
   created_at: string;
 }
@@ -58,7 +58,7 @@ export class AccountRequest {
     }
 
     console.log('✅ Account request created successfully:', result);
-    return result;
+    return result as AccountRequestData;
   }
 
   static async getByEmail(email: string): Promise<AccountRequestData | null> {
@@ -77,7 +77,7 @@ export class AccountRequest {
     }
 
     console.log('✅ Account request found:', data);
-    return data;
+    return data as AccountRequestData | null;
   }
 
   static async updateRejectedRequest(id: string, updateData: Partial<AccountRequestData>): Promise<AccountRequestData> {
@@ -123,7 +123,7 @@ export class AccountRequest {
     }
 
     console.log('✅ Account request updated successfully:', result);
-    return result;
+    return result as AccountRequestData;
   }
 
   static async canBeUpdated(id: string): Promise<boolean> {
@@ -149,7 +149,7 @@ export class AccountRequest {
       throw error;
     }
 
-    return data || [];
+    return (data || []) as AccountRequestAudit[];
   }
 
   static async list(): Promise<AccountRequestData[]> {
@@ -163,6 +163,6 @@ export class AccountRequest {
       throw error;
     }
 
-    return data || [];
+    return (data || []) as AccountRequestData[];
   }
 }

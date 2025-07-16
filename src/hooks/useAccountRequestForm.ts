@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { accountRequestSchema, type AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
 import { useToast } from "@/hooks/use-toast";
-import { AccountRequest } from "@/api/entities/AccountRequest";
+import { AccountRequest, AccountRequestData } from "@/api/entities/AccountRequest";
 import { useState } from "react";
 
 // Error message mapping for user-friendly error display
@@ -117,8 +117,20 @@ export const useAccountRequestForm = () => {
     try {
       console.log("✅ Submitting account request to database:", data);
       
+      // Convert form data to AccountRequestData format
+      const requestData: AccountRequestData = {
+        email: data.email,
+        full_name: data.full_name,
+        phone_number: data.phone_number,
+        vt_market_account_number: data.vt_market_account_number,
+        referrer: data.referrer,
+        account_type: data.account_type as 'user' | 'educator',
+        reason: data.reason,
+        website: data.website,
+      };
+      
       // Use the new AccountRequest entity
-      const result = await AccountRequest.create(data);
+      const result = await AccountRequest.create(requestData);
       
       console.log("🎉 Account request created successfully:", result);
 

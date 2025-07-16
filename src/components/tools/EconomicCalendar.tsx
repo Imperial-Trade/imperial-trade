@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,31 +7,25 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import { Calendar, Clock, TrendingUp, AlertTriangle, Zap, RefreshCw, Filter, Globe, ChevronDown } from 'lucide-react';
 import { format, isToday, isTomorrow, parseISO, addDays, subDays, addMonths, subMonths, startOfDay, isThisWeek, startOfWeek, endOfWeek, addWeeks, isThisMonth, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { economicCalendarService, EconomicEvent } from '@/services/EconomicCalendarService';
-
 export default function EconomicCalendar() {
   const [events, setEvents] = useState<EconomicEvent[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<EconomicEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Updated state for new filters
   const [selectedDate, setSelectedDate] = useState('today');
   const [selectedImpacts, setSelectedImpacts] = useState<string[]>([]);
   const [selectedCurrencies, setSelectedCurrencies] = useState<string[]>([]);
-  
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
   const allImpacts: ('high' | 'medium' | 'low')[] = ['high', 'medium', 'low'];
   const allCurrencies = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF'];
-
   useEffect(() => {
     loadEconomicEvents();
   }, []);
-
   useEffect(() => {
     filterEvents();
   }, [events, selectedDate, selectedImpacts, selectedCurrencies]);
-
   const loadEconomicEvents = async () => {
     setIsLoading(true);
     setError(null);
@@ -40,20 +33,18 @@ export default function EconomicCalendar() {
       const today = new Date();
       const dateFrom = format(subMonths(today, 1), 'yyyy-MM-dd');
       const dateTo = format(addMonths(today, 1), 'yyyy-MM-dd');
-      
       const eventsData = await economicCalendarService.getEconomicEvents({
         dateFrom,
         dateTo,
         currencies: allCurrencies,
         impacts: allImpacts
       });
-      
       setEvents(eventsData);
       setLastUpdated(new Date());
     } catch (err) {
       console.error('Failed to load economic events:', err);
       setError(err instanceof Error ? err.message : 'Failed to load economic events. Please try again.');
-      
+
       // Fallback to mock data
       setEvents(generateMockData());
       setLastUpdated(new Date());
@@ -65,18 +56,96 @@ export default function EconomicCalendar() {
   // Keep mock data as fallback
   const generateMockData = (): EconomicEvent[] => {
     const today = new Date();
-    return [
-      { id: '1', time: '08:30', currency: 'USD', impact: 'high', event: 'Non-Farm Payrolls', actual: '273K', forecast: '180K', previous: '150K', date: today.toISOString(), description: 'Change in the number of employed people during the previous month, excluding the farming industry.' },
-      { id: '2', time: '10:00', currency: 'USD', impact: 'medium', event: 'Unemployment Rate', actual: '4.1%', forecast: '4.2%', previous: '4.2%', date: today.toISOString(), description: 'Percentage of the total work force that is unemployed and actively seeking employment.' },
-      { id: '3', time: '09:00', currency: 'EUR', impact: 'high', event: 'ECB Interest Rate Decision', actual: '', forecast: '4.25%', previous: '4.25%', date: addDays(today, 7).toISOString(), description: 'Interest rate charged on the main refinancing operations.' },
-      { id: '4', time: '12:30', currency: 'CAD', impact: 'medium', event: 'GDP Growth Rate', actual: '', forecast: '1.8%', previous: '2.1%', date: addDays(today, 8).toISOString(), description: 'Annualized change in the inflation-adjusted value of all goods and services.' },
-      { id: '5', time: '14:00', currency: 'GBP', impact: 'low', event: 'Manufacturing PMI', actual: '', forecast: '48.5', previous: '48.0', date: addDays(today, 15).toISOString(), description: 'Level of a diffusion index based on surveyed purchasing managers in the manufacturing industry.' },
-      { id: '6', time: '06:00', currency: 'JPY', impact: 'medium', event: 'Core CPI', actual: '', forecast: '2.8%', previous: '2.7%', date: addMonths(today, 1).toISOString(), description: 'Change in the price of goods and services purchased by consumers, excluding food and energy.' },
-      { id: '7', time: '11:00', currency: 'AUD', impact: 'high', event: 'RBA Interest Rate Statement', actual: '', forecast: '3.5%', previous: '3.5%', date: addMonths(today, 1).toISOString(), description: 'Reserve Bank of Australia\'s primary tool for communicating with investors about monetary policy.' },
-      { id: '8', time: '16:00', currency: 'CHF', impact: 'low', event: 'Retail Sales', actual: '0.5%', forecast: '0.3%', previous: '0.1%', date: subMonths(today, 1).toISOString(), description: 'Change in the total value of sales at the retail level.' },
-    ];
+    return [{
+      id: '1',
+      time: '08:30',
+      currency: 'USD',
+      impact: 'high',
+      event: 'Non-Farm Payrolls',
+      actual: '273K',
+      forecast: '180K',
+      previous: '150K',
+      date: today.toISOString(),
+      description: 'Change in the number of employed people during the previous month, excluding the farming industry.'
+    }, {
+      id: '2',
+      time: '10:00',
+      currency: 'USD',
+      impact: 'medium',
+      event: 'Unemployment Rate',
+      actual: '4.1%',
+      forecast: '4.2%',
+      previous: '4.2%',
+      date: today.toISOString(),
+      description: 'Percentage of the total work force that is unemployed and actively seeking employment.'
+    }, {
+      id: '3',
+      time: '09:00',
+      currency: 'EUR',
+      impact: 'high',
+      event: 'ECB Interest Rate Decision',
+      actual: '',
+      forecast: '4.25%',
+      previous: '4.25%',
+      date: addDays(today, 7).toISOString(),
+      description: 'Interest rate charged on the main refinancing operations.'
+    }, {
+      id: '4',
+      time: '12:30',
+      currency: 'CAD',
+      impact: 'medium',
+      event: 'GDP Growth Rate',
+      actual: '',
+      forecast: '1.8%',
+      previous: '2.1%',
+      date: addDays(today, 8).toISOString(),
+      description: 'Annualized change in the inflation-adjusted value of all goods and services.'
+    }, {
+      id: '5',
+      time: '14:00',
+      currency: 'GBP',
+      impact: 'low',
+      event: 'Manufacturing PMI',
+      actual: '',
+      forecast: '48.5',
+      previous: '48.0',
+      date: addDays(today, 15).toISOString(),
+      description: 'Level of a diffusion index based on surveyed purchasing managers in the manufacturing industry.'
+    }, {
+      id: '6',
+      time: '06:00',
+      currency: 'JPY',
+      impact: 'medium',
+      event: 'Core CPI',
+      actual: '',
+      forecast: '2.8%',
+      previous: '2.7%',
+      date: addMonths(today, 1).toISOString(),
+      description: 'Change in the price of goods and services purchased by consumers, excluding food and energy.'
+    }, {
+      id: '7',
+      time: '11:00',
+      currency: 'AUD',
+      impact: 'high',
+      event: 'RBA Interest Rate Statement',
+      actual: '',
+      forecast: '3.5%',
+      previous: '3.5%',
+      date: addMonths(today, 1).toISOString(),
+      description: 'Reserve Bank of Australia\'s primary tool for communicating with investors about monetary policy.'
+    }, {
+      id: '8',
+      time: '16:00',
+      currency: 'CHF',
+      impact: 'low',
+      event: 'Retail Sales',
+      actual: '0.5%',
+      forecast: '0.3%',
+      previous: '0.1%',
+      date: subMonths(today, 1).toISOString(),
+      description: 'Change in the total value of sales at the retail level.'
+    }];
   };
-
   const filterEvents = () => {
     let filtered = [...events];
     const today = startOfDay(new Date());
@@ -87,13 +156,22 @@ export default function EconomicCalendar() {
         filtered = filtered.filter(event => isToday(parseISO(event.date)));
         break;
       case 'this_week':
-        filtered = filtered.filter(event => isThisWeek(parseISO(event.date), { weekStartsOn: 1 }));
+        filtered = filtered.filter(event => isThisWeek(parseISO(event.date), {
+          weekStartsOn: 1
+        }));
         break;
       case 'next_week':
         filtered = filtered.filter(event => {
-            const startOfNextWeek = startOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
-            const endOfNextWeek = endOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
-            return isWithinInterval(parseISO(event.date), { start: startOfNextWeek, end: endOfNextWeek });
+          const startOfNextWeek = startOfWeek(addWeeks(today, 1), {
+            weekStartsOn: 1
+          });
+          const endOfNextWeek = endOfWeek(addWeeks(today, 1), {
+            weekStartsOn: 1
+          });
+          return isWithinInterval(parseISO(event.date), {
+            start: startOfNextWeek,
+            end: endOfNextWeek
+          });
         });
         break;
       case 'this_month':
@@ -101,16 +179,22 @@ export default function EconomicCalendar() {
         break;
       case 'next_month':
         filtered = filtered.filter(event => {
-            const startOfNextMonth = startOfMonth(addMonths(today, 1));
-            const endOfNextMonth = endOfMonth(addMonths(today, 1));
-            return isWithinInterval(parseISO(event.date), { start: startOfNextMonth, end: endOfNextMonth });
+          const startOfNextMonth = startOfMonth(addMonths(today, 1));
+          const endOfNextMonth = endOfMonth(addMonths(today, 1));
+          return isWithinInterval(parseISO(event.date), {
+            start: startOfNextMonth,
+            end: endOfNextMonth
+          });
         });
         break;
       case 'last_month':
         filtered = filtered.filter(event => {
-            const startOfLastMonth = startOfMonth(subMonths(today, 1));
-            const endOfLastMonth = endOfMonth(subMonths(today, 1));
-            return isWithinInterval(parseISO(event.date), { start: startOfLastMonth, end: endOfLastMonth });
+          const startOfLastMonth = startOfMonth(subMonths(today, 1));
+          const endOfLastMonth = endOfMonth(subMonths(today, 1));
+          return isWithinInterval(parseISO(event.date), {
+            start: startOfLastMonth,
+            end: endOfLastMonth
+          });
         });
         break;
     }
@@ -124,18 +208,11 @@ export default function EconomicCalendar() {
     if (selectedCurrencies.length > 0) {
       filtered = filtered.filter(event => selectedCurrencies.includes(event.currency));
     }
-
     setFilteredEvents(filtered);
   };
-  
   const handleMultiSelectChange = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
-    setter(prev => 
-      prev.includes(value) 
-        ? prev.filter(item => item !== value)
-        : [...prev, value]
-    );
+    setter(prev => prev.includes(value) ? prev.filter(item => item !== value) : [...prev, value]);
   };
-  
   const getImpactIcon = (impact: string) => {
     switch (impact) {
       case 'high':
@@ -148,7 +225,6 @@ export default function EconomicCalendar() {
         return <Globe className="w-4 h-4 text-gray-500" />;
     }
   };
-
   const getImpactColor = (impact: string) => {
     switch (impact) {
       case 'high':
@@ -161,60 +237,37 @@ export default function EconomicCalendar() {
         return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
     }
   };
-
   const getActualColor = (actual?: string, forecast?: string, previous?: string) => {
     if (!actual || !forecast) return 'text-secondary';
-    
     const actualNum = parseFloat(actual.replace(/[^0-9.-]/g, ''));
     const forecastNum = parseFloat(forecast.replace(/[^0-9.-]/g, ''));
-    
     if (actualNum > forecastNum) return 'text-accent-green';
     if (actualNum < forecastNum) return 'text-accent-red';
     return 'text-secondary';
   };
-
   const formatEventDate = (dateStr: string) => {
     const date = parseISO(dateStr);
     if (isToday(date)) return 'Today';
     if (isTomorrow(date)) return 'Tomorrow';
     return format(date, 'E, MMM d');
   };
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <Card className="glass-effect">
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-6 h-6 text-blue-400" />
-                Economic Calendar
-              </CardTitle>
-              <p className="text-secondary mt-2">
-                Live economic events from ForexFactory {error && '(using fallback data)'}
-              </p>
+              
+              
             </div>
-            <Button
-              onClick={loadEconomicEvents}
-              disabled={isLoading}
-              variant="outline"
-              size="sm"
-              className="border-default text-primary hover:bg-surface"
-            >
-              {isLoading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent mr-2" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
+            <Button onClick={loadEconomicEvents} disabled={isLoading} variant="outline" size="sm" className="border-default text-primary hover:bg-surface">
+              {isLoading ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
               Refresh
             </Button>
           </div>
-          {lastUpdated && (
-            <p className="text-xs text-secondary flex items-center gap-2">
+          {lastUpdated && <p className="text-xs text-secondary flex items-center gap-2">
               <Clock className="w-3 h-3" />
               Last updated: {format(lastUpdated, 'HH:mm:ss')}
-            </p>
-          )}
+            </p>}
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4 mb-6">
@@ -245,15 +298,9 @@ export default function EconomicCalendar() {
                 <DropdownMenuContent className="w-40">
                     <DropdownMenuLabel>Filter by Impact</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {allImpacts.map(impact => (
-                        <DropdownMenuCheckboxItem
-                            key={impact}
-                            checked={selectedImpacts.includes(impact)}
-                            onCheckedChange={() => handleMultiSelectChange(setSelectedImpacts, impact)}
-                        >
+                    {allImpacts.map(impact => <DropdownMenuCheckboxItem key={impact} checked={selectedImpacts.includes(impact)} onCheckedChange={() => handleMultiSelectChange(setSelectedImpacts, impact)}>
                             <span className="capitalize">{impact}</span>
-                        </DropdownMenuCheckboxItem>
-                    ))}
+                        </DropdownMenuCheckboxItem>)}
                 </DropdownMenuContent>
             </DropdownMenu>
             
@@ -267,40 +314,26 @@ export default function EconomicCalendar() {
                 <DropdownMenuContent className="w-40">
                     <DropdownMenuLabel>Filter by Currency</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {allCurrencies.map(currency => (
-                        <DropdownMenuCheckboxItem
-                            key={currency}
-                            checked={selectedCurrencies.includes(currency)}
-                            onCheckedChange={() => handleMultiSelectChange(setSelectedCurrencies, currency)}
-                        >
+                    {allCurrencies.map(currency => <DropdownMenuCheckboxItem key={currency} checked={selectedCurrencies.includes(currency)} onCheckedChange={() => handleMultiSelectChange(setSelectedCurrencies, currency)}>
                             {currency}
-                        </DropdownMenuCheckboxItem>
-                    ))}
+                        </DropdownMenuCheckboxItem>)}
                 </DropdownMenuContent>
             </DropdownMenu>
           </div>
 
-          {isLoading ? (
-            <div className="flex justify-center items-center h-32">
+          {isLoading ? <div className="flex justify-center items-center h-32">
               <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-400 border-t-transparent" />
-            </div>
-          ) : error && events.length === 0 ? (
-            <div className="text-center py-8">
+            </div> : error && events.length === 0 ? <div className="text-center py-8">
               <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
               <p className="text-red-400 mb-4">{error}</p>
               <Button onClick={loadEconomicEvents} variant="outline">
                 Try Again
               </Button>
-            </div>
-          ) : filteredEvents.length === 0 ? (
-            <div className="text-center py-8">
+            </div> : filteredEvents.length === 0 ? <div className="text-center py-8">
               <Calendar className="w-12 h-12 text-secondary/50 mx-auto mb-4" />
               <p className="text-secondary">No events found for the selected filters.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredEvents.map(event => (
-                <Card key={event.id} className="bg-surface/50 border-default hover:border-accent-green transition-colors">
+            </div> : <div className="space-y-4">
+              {filteredEvents.map(event => <Card key={event.id} className="bg-surface/50 border-default hover:border-accent-green transition-colors">
                   <CardContent className="p-4">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex-1">
@@ -342,10 +375,8 @@ export default function EconomicCalendar() {
                       </div>
                     </div>
                   </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                </Card>)}
+            </div>}
         </CardContent>
       </Card>
 
@@ -385,6 +416,5 @@ export default function EconomicCalendar() {
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
+    </div>;
 }

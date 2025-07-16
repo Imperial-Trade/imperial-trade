@@ -128,20 +128,6 @@ export default function TradeAnalyst() {
       exit={{ opacity: 0, y: -20 }}
       className="space-y-8"
     >
-      {/* Hero Section */}
-      <div className="text-center">
-        <motion.div
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 mb-6"
-        >
-          <Brain className="w-10 h-10 text-purple-400" />
-        </motion.div>
-        <h1 className="text-3xl font-bold text-foreground mb-3">Get Instant AI Feedback on Your Trade</h1>
-        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-          Drag & drop a screenshot of your chart, or click to upload. The AI will analyze your entry, exit, and setup.
-        </p>
-      </div>
 
       {/* Upload Area */}
       <motion.div

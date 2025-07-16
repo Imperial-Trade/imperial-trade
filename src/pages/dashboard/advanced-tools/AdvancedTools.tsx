@@ -101,9 +101,12 @@ export default function AdvancedTools() {
   const [isHovered, setIsHovered] = useState(false);
 
   const handleToolSelect = (tool) => {
+    console.log('Tool selected:', tool.name);
     if (activeTool && activeTool.name === tool.name) {
+      console.log('Deselecting tool');
       setActiveTool(null);
     } else {
+      console.log('Setting active tool to:', tool.name);
       setActiveTool(tool);
     }
   };

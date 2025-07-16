@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_request_audit: {
+        Row: {
+          account_request_id: string
+          change_type: string
+          changed_by: string
+          changed_fields: Json | null
+          created_at: string | null
+          id: string
+          new_values: Json | null
+          notes: string | null
+          old_values: Json | null
+        }
+        Insert: {
+          account_request_id: string
+          change_type: string
+          changed_by: string
+          changed_fields?: Json | null
+          created_at?: string | null
+          id?: string
+          new_values?: Json | null
+          notes?: string | null
+          old_values?: Json | null
+        }
+        Update: {
+          account_request_id?: string
+          change_type?: string
+          changed_by?: string
+          changed_fields?: Json | null
+          created_at?: string | null
+          id?: string
+          new_values?: Json | null
+          notes?: string | null
+          old_values?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_request_audit_account_request_id_fkey"
+            columns: ["account_request_id"]
+            isOneToOne: false
+            referencedRelation: "account_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       account_requests: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -22,10 +66,13 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          last_resubmitted_at: string | null
+          original_rejection_reason: string | null
           phone_number: string | null
           reason: string | null
           referrer: string | null
           rejection_reason: string | null
+          resubmission_count: number | null
           social_id: string | null
           social_provider: Database["public"]["Enums"]["social_provider"] | null
           status: Database["public"]["Enums"]["request_status"]
@@ -41,10 +88,13 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          last_resubmitted_at?: string | null
+          original_rejection_reason?: string | null
           phone_number?: string | null
           reason?: string | null
           referrer?: string | null
           rejection_reason?: string | null
+          resubmission_count?: number | null
           social_id?: string | null
           social_provider?:
             | Database["public"]["Enums"]["social_provider"]
@@ -62,10 +112,13 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          last_resubmitted_at?: string | null
+          original_rejection_reason?: string | null
           phone_number?: string | null
           reason?: string | null
           referrer?: string | null
           rejection_reason?: string | null
+          resubmission_count?: number | null
           social_id?: string | null
           social_provider?:
             | Database["public"]["Enums"]["social_provider"]

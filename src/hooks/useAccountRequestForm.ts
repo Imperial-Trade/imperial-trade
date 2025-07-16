@@ -3,12 +3,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { accountRequestSchema, type AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
 import { useToast } from "@/hooks/use-toast";
-import { AccountRequest } from "@/api/entities";
+import { AccountRequest } from "@/api/entities/AccountRequest";
 import { useState } from "react";
 
 // Error message mapping for user-friendly error display
 const getErrorMessage = (error: any): string => {
   console.log("🔍 Full error object:", error);
+  
+  // Check for unique constraint violation (email already exists)
+  if (error?.message?.includes('duplicate key') || error?.message?.includes('account_requests_email_unique')) {
+    return "An account request with this email already exists. Please use the status checker to view or update your existing request.";
+  }
   
   // Check for rate limiting errors
   if (error?.message?.includes('rate limit') || error?.message?.includes('too many')) {
@@ -30,10 +35,6 @@ const getErrorMessage = (error: any): string => {
   
   if (error?.message?.includes('phone_number')) {
     return "Please enter a valid phone number.";
-  }
-  
-  if (error?.message?.includes('duplicate key')) {
-    return "An account request with this email already exists. Please use a different email address.";
   }
   
   if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
@@ -116,7 +117,7 @@ export const useAccountRequestForm = () => {
     try {
       console.log("✅ Submitting account request to database:", data);
       
-      // Direct Supabase call
+      // Use the new AccountRequest entity
       const result = await AccountRequest.create(data);
       
       console.log("🎉 Account request created successfully:", result);

@@ -132,11 +132,11 @@ export default function OpportunityScanner() {
   const statusInfo = getDataStatusInfo();
 
   return (
-    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="p-6">
-        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
+        <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle>Opportunity Scanner</CardTitle>
+            <CardTitle className="text-foreground">Opportunity Scanner</CardTitle>
             
             {/* Data Status Indicator */}
             <div className="flex items-center gap-2 mt-3">

@@ -14,12 +14,7 @@ import {
   Wrench,
   Sparkles,
   ChevronRight,
-  MousePointerClick,
-  TrendingUp,
-  PieChart,
-  Target,
-  FileText,
-  Shield
+  MousePointerClick
 } from 'lucide-react';
 
 import TradingJournal from '@/components/tools/TradingJournal';
@@ -144,74 +139,6 @@ export default function AdvancedTools() {
           <p className="text-xs text-muted-foreground leading-tight whitespace-nowrap">{tool.description}</p>
         </motion.div>
       </motion.button>
-    );
-  };
-
-  const getToolDescription = (toolName: string) => {
-    const descriptions = {
-      "Trading Journal": {
-        icon: BookOpen,
-        title: "Track Every Trade with Precision",
-        description: "Log your trades with detailed analytics. The AI will analyze your patterns, identify strengths and weaknesses, and provide actionable insights to improve your performance."
-      },
-      "Economic Calendar": {
-        icon: Calendar,
-        title: "Stay Ahead of Market Events",
-        description: "Never miss important economic releases and market-moving events. Get real-time updates and impact analysis for informed trading decisions."
-      },
-      "Risk Calculator": {
-        icon: Calculator,
-        title: "Master Your Risk Management",
-        description: "Calculate optimal position sizes, set precise stop losses, and manage your portfolio risk. Professional tools to protect your capital and maximize returns."
-      },
-      "Trade Analyst": {
-        icon: Brain,
-        title: "Get Instant AI Feedback on Your Trade",
-        description: "Drag & drop a screenshot of your chart, or click to upload. The AI will analyze your entry, exit, and setup with detailed feedback and improvement suggestions."
-      },
-      "Opportunity Scanner": {
-        icon: Search,
-        title: "Discover High-Probability Setups",
-        description: "Scan multiple markets simultaneously for emerging opportunities. AI-powered analysis identifies the best trading setups based on your criteria."
-      },
-      "Risk Simulator": {
-        icon: Scale,
-        title: "Test Your Strategy Before You Trade",
-        description: "Simulate potential trades and assess risk scenarios. Understand the probability of success and optimize your strategy with advanced modeling."
-      }
-    };
-    
-    return descriptions[toolName] || {
-      icon: TrendingUp,
-      title: "Advanced Trading Tool",
-      description: "Professional trading tools to enhance your trading performance."
-    };
-  };
-
-  const ToolDescription = ({ tool }: { tool: any }) => {
-    const desc = getToolDescription(tool.name);
-    const IconComponent = desc.icon;
-    
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col items-center justify-center text-center p-16 max-w-3xl mx-auto"
-      >
-        <div className="relative mb-8">
-          <div className="absolute -inset-3 bg-gradient-to-r from-primary/20 to-primary/10 rounded-full blur-lg"></div>
-          <div className="relative w-24 h-24 bg-gradient-to-br from-primary/10 to-primary/5 rounded-full flex items-center justify-center border border-primary/20 shadow-xl">
-            <IconComponent className="h-12 w-12 text-primary" />
-          </div>
-        </div>
-        <h2 className="text-4xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent leading-tight">
-          {desc.title}
-        </h2>
-        <p className="text-muted-foreground text-lg leading-relaxed max-w-2xl font-medium">
-          {desc.description}
-        </p>
-      </motion.div>
     );
   };
 
@@ -359,12 +286,6 @@ export default function AdvancedTools() {
                       <X className="w-5 h-5 text-secondary" />
                     </Button>
                   </div>
-                  
-                  {/* Tool Description Container */}
-                  <div className="border-b border-border/50">
-                    <ToolDescription tool={activeTool} />
-                  </div>
-                  
                   <div className="p-4">
                     {activeTool.component}
                   </div>

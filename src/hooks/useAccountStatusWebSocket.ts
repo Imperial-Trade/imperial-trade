@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AccountStatusUpdate {
@@ -27,16 +27,31 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<StatusError | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Use refs for stable references
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const lastCheckedEmailRef = useRef<string>('');
+  const isCheckingRef = useRef(false);
+  const connectionStateRef = useRef<'disconnected' | 'connecting' | 'connected'>('disconnected');
 
+  // Memoize the clearError function
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
+  // Stable HTTP check function with deduplication
   const checkStatusHttp = useCallback(async (emailToCheck: string) => {
+    // Prevent duplicate requests
+    if (isCheckingRef.current || lastCheckedEmailRef.current === emailToCheck) {
+      console.log('Skipping duplicate request for:', emailToCheck);
+      return;
+    }
+
     try {
+      isCheckingRef.current = true;
+      lastCheckedEmailRef.current = emailToCheck;
       setError(null);
       setIsLoading(true);
       console.log('Checking status via HTTP API for:', emailToCheck);
@@ -72,27 +87,34 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
       });
     } finally {
       setIsLoading(false);
+      // Clear the checking flag after a short delay to prevent rapid subsequent calls
+      setTimeout(() => {
+        isCheckingRef.current = false;
+      }, 1000);
     }
   }, []);
 
+  // Stable connect function
   const connect = useCallback(() => {
-    if (!enabled || !email || socketRef.current?.readyState === WebSocket.OPEN) {
+    if (!enabled || !email || connectionStateRef.current === 'connecting' || connectionStateRef.current === 'connected') {
       return;
     }
 
     try {
+      connectionStateRef.current = 'connecting';
       const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/account-status-websocket`;
       socketRef.current = new WebSocket(wsUrl);
 
       socketRef.current.onopen = () => {
         console.log('Account status WebSocket connected');
+        connectionStateRef.current = 'connected';
         setIsConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
 
         // Subscribe to status updates for this email
-        if (email) {
-          socketRef.current?.send(JSON.stringify({
+        if (email && socketRef.current?.readyState === WebSocket.OPEN) {
+          socketRef.current.send(JSON.stringify({
             type: 'subscribe_status',
             email: email
           }));
@@ -126,7 +148,9 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
             });
           } else if (message.type === 'ping') {
             // Respond to ping
-            socketRef.current?.send(JSON.stringify({ type: 'pong' }));
+            if (socketRef.current?.readyState === WebSocket.OPEN) {
+              socketRef.current.send(JSON.stringify({ type: 'pong' }));
+            }
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -139,33 +163,38 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
 
       socketRef.current.onclose = () => {
         console.log('Account status WebSocket disconnected');
+        connectionStateRef.current = 'disconnected';
         setIsConnected(false);
         
-        // Implement exponential backoff for reconnection
-        if (enabled && reconnectAttemptsRef.current < 5) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
+        // Only attempt reconnection if still enabled and have email
+        if (enabled && email && reconnectAttemptsRef.current < 3) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000);
           reconnectAttemptsRef.current++;
           
           reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
+            if (enabled && email) {
+              connect();
+            }
           }, delay);
         }
       };
 
       socketRef.current.onerror = (error) => {
         console.error('Account status WebSocket error:', error);
+        connectionStateRef.current = 'disconnected';
         setError({
           type: 'network_error',
           message: 'Connection issue detected. Switching to backup connection method.'
         });
         
-        // Try HTTP fallback when WebSocket fails
-        if (email) {
-          checkStatusHttp(email);
+        // Try HTTP fallback when WebSocket fails, but only if not already checking
+        if (email && !isCheckingRef.current) {
+          setTimeout(() => checkStatusHttp(email), 1000);
         }
       };
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
+      connectionStateRef.current = 'disconnected';
       setError({
         type: 'network_error',
         message: 'Unable to establish connection. Please try again.'
@@ -173,35 +202,86 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
     }
   }, [email, enabled, checkStatusHttp]);
 
+  // Stable check status function with debouncing
   const checkStatus = useCallback((emailToCheck: string) => {
-    setIsLoading(true);
-    clearError();
-    
-    // Try WebSocket first, fallback to HTTP if not connected
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      console.log('Checking status via WebSocket');
-      socketRef.current.send(JSON.stringify({
-        type: 'check_status',
-        email: emailToCheck
-      }));
-    } else {
-      console.log('WebSocket not connected, using HTTP fallback');
-      checkStatusHttp(emailToCheck);
+    // Clear any existing timeout to debounce rapid calls
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
     }
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      setIsLoading(true);
+      clearError();
+      
+      // Try WebSocket first, fallback to HTTP if not connected
+      if (connectionStateRef.current === 'connected' && socketRef.current?.readyState === WebSocket.OPEN) {
+        console.log('Checking status via WebSocket');
+        socketRef.current.send(JSON.stringify({
+          type: 'check_status',
+          email: emailToCheck
+        }));
+      } else {
+        console.log('WebSocket not connected, using HTTP fallback');
+        checkStatusHttp(emailToCheck);
+      }
+    }, 300); // 300ms debounce
   }, [checkStatusHttp, clearError]);
 
+  // Stable retry function
   const retryCheck = useCallback(() => {
     if (email) {
       checkStatus(email);
     }
   }, [email, checkStatus]);
 
+  // Stable reset function for clearing all state
+  const resetState = useCallback(() => {
+    console.log('Resetting account status state');
+    
+    // Clear all timeouts
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    // Close WebSocket connection
+    if (socketRef.current) {
+      socketRef.current.close();
+      socketRef.current = null;
+    }
+    
+    // Reset all state
+    setStatus(null);
+    setError(null);
+    setIsLoading(false);
+    setIsConnected(false);
+    
+    // Reset refs
+    connectionStateRef.current = 'disconnected';
+    reconnectAttemptsRef.current = 0;
+    lastCheckedEmailRef.current = '';
+    isCheckingRef.current = false;
+  }, []);
+
+  // Effect for connection management
   useEffect(() => {
-    if (enabled) {
-      connect();
+    if (enabled && email) {
+      // Reset state when email changes
+      if (lastCheckedEmailRef.current && lastCheckedEmailRef.current !== email) {
+        resetState();
+      }
+      
+      // Only connect if not already connected or connecting
+      if (connectionStateRef.current === 'disconnected') {
+        connect();
+      }
+    } else {
+      // Clean up when disabled or no email
+      resetState();
     }
 
     return () => {
+      // Cleanup on unmount
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -209,9 +289,10 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
         socketRef.current.close();
       }
     };
-  }, [connect, enabled]);
+  }, [email, enabled, connect, resetState]);
 
-  return {
+  // Memoize the return object to prevent unnecessary re-renders
+  return useMemo(() => ({
     status,
     isConnected,
     error,
@@ -219,5 +300,6 @@ export const useAccountStatusWebSocket = ({ email, enabled = true }: UseAccountS
     checkStatus,
     retryCheck,
     clearError,
-  };
+    resetState,
+  }), [status, isConnected, error, isLoading, checkStatus, retryCheck, clearError, resetState]);
 };

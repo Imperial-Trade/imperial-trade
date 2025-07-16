@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,24 +25,28 @@ export default function AccountRequestStatusPage() {
     isLoading,
     checkStatus,
     retryCheck,
+    resetState,
   } = useAccountStatusWebSocket({
     email: searchEmail,
     enabled: !!searchEmail
   });
 
-  const handleCheckStatus = async (e: React.FormEvent) => {
+  const handleCheckStatus = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email.trim() || isLoading) return;
     
-    const emailToCheck = email.toLowerCase();
+    const emailToCheck = email.toLowerCase().trim();
     setSearchEmail(emailToCheck);
     checkStatus(emailToCheck);
-  };
+  }, [email, isLoading, checkStatus]);
 
-  const handleCheckAnother = () => {
+  const handleCheckAnother = useCallback(() => {
+    console.log('Checking another email - resetting state');
+    // Reset all state and clear the search
+    resetState();
     setSearchEmail("");
     setEmail("");
-  };
+  }, [resetState]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -111,13 +115,14 @@ export default function AccountRequestStatusPage() {
                       placeholder="Enter your email address"
                       className="pl-10 bg-white border-gray-300 text-gray-900"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={isLoading || !email}
+                  disabled={isLoading || !email.trim()}
                   className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
                 >
                   {isLoading ? (
@@ -188,6 +193,7 @@ export default function AccountRequestStatusPage() {
                   variant="outline"
                   className="w-full border-white/20 text-white hover:bg-white/10"
                   onClick={handleCheckAnother}
+                  disabled={isLoading}
                 >
                   Check Another Email
                 </Button>

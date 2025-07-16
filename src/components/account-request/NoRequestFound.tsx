@@ -12,6 +12,11 @@ interface NoRequestFoundProps {
 }
 
 export const NoRequestFound: React.FC<NoRequestFoundProps> = ({ email, onCheckAnother }) => {
+  const handleCheckAnother = () => {
+    console.log('NoRequestFound: Checking another email');
+    onCheckAnother();
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -53,7 +58,10 @@ export const NoRequestFound: React.FC<NoRequestFoundProps> = ({ email, onCheckAn
 
       <div className="space-y-3">
         <Link to={createPageUrl("account-request")}>
-          <Button className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12">
+          <Button 
+            className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
+            onClick={() => console.log('Navigating to account request form')}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Submit Account Request
           </Button>
@@ -62,7 +70,7 @@ export const NoRequestFound: React.FC<NoRequestFoundProps> = ({ email, onCheckAn
         <Button
           variant="outline"
           className="w-full border-white/20 text-white/80 hover:bg-white/10"
-          onClick={onCheckAnother}
+          onClick={handleCheckAnother}
         >
           Try Different Email
         </Button>

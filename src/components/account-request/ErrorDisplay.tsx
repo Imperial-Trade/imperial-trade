@@ -2,7 +2,7 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 
 interface ErrorDisplayProps {
   error: {
@@ -20,6 +20,16 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
   onCheckAnother, 
   isRetrying = false 
 }) => {
+  const handleRetry = () => {
+    console.log('ErrorDisplay: Retrying request');
+    onRetry();
+  };
+
+  const handleCheckAnother = () => {
+    console.log('ErrorDisplay: Checking another email');
+    onCheckAnother();
+  };
+
   const getErrorIcon = () => {
     switch (error.type) {
       case 'network_error':
@@ -96,7 +106,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
 
       <div className="space-y-3">
         <Button
-          onClick={onRetry}
+          onClick={handleRetry}
           disabled={isRetrying}
           className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
         >
@@ -111,7 +121,8 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
         <Button
           variant="outline"
           className="w-full border-white/20 text-white/80 hover:bg-white/10"
-          onClick={onCheckAnother}
+          onClick={handleCheckAnother}
+          disabled={isRetrying}
         >
           Check Different Email
         </Button>

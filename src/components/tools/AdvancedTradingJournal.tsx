@@ -490,9 +490,9 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
       {/* Back to Basic button - outside the main container */}
       <div className="p-6 pb-0">
         <Button
-          variant="outline"
+          variant="ghost"
           onClick={onBackToBasic}
-          className="flex items-center gap-2 bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700"
+          className="flex items-center gap-2 text-gray-300 hover:text-white p-0"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Basic

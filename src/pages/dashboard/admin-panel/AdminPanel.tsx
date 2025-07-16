@@ -1,10 +1,9 @@
-
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Users, Shield, Settings, RefreshCw, Signal, Bell } from "lucide-react";
 import { EnhancedUserManagementTable } from "@/components/admin/EnhancedUserManagementTable";
-import { UnifiedAccountRequestManagement } from "@/components/admin/UnifiedAccountRequestManagement";
+import { OptimizedAccountRequestManagement } from "@/components/admin/OptimizedAccountRequestManagement";
 import { AdminNotificationSystem } from "@/components/admin/AdminNotificationSystem";
 import { SystemMonitoring } from "@/components/admin/SystemMonitoring";
 import { RateLimitManager } from "@/components/admin/RateLimitManager";
@@ -59,7 +58,7 @@ const AdminPanel: React.FC = () => {
         </TabsList>
 
         <TabsContent value="requests" className="space-y-4">
-          <UnifiedAccountRequestManagement />
+          <OptimizedAccountRequestManagement />
         </TabsContent>
 
         <TabsContent value="users" className="space-y-4">

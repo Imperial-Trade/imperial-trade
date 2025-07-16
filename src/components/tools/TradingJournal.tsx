@@ -411,7 +411,7 @@ export default function TradingJournal() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 bg-card">
+          <TabsList className="grid w-full grid-cols-3 bg-card">
             <TabsTrigger value="log" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Journal Log
@@ -419,6 +419,12 @@ export default function TradingJournal() {
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               AI Analytics
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              <span className="bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent font-semibold">
+                Advanced Journal
+              </span>
             </TabsTrigger>
           </TabsList>
 
@@ -428,6 +434,34 @@ export default function TradingJournal() {
 
           <TabsContent value="analytics" className="mt-6">
             <AnalyticsTab />
+          </TabsContent>
+
+          <TabsContent value="advanced" className="mt-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              <Card className="bg-gradient-to-r from-secondary/10 via-primary/10 to-accent/10 border border-secondary/30">
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                    <Sparkles className="w-6 h-6 text-secondary" />
+                    <span className="bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent">
+                      Advanced Journal Features
+                    </span>
+                  </h3>
+                  <div className="text-center py-16">
+                    <div className="mb-6">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-secondary/20 via-primary/20 to-accent/20 flex items-center justify-center">
+                        <Calendar className="w-8 h-8 text-primary" />
+                      </div>
+                    </div>
+                    <h4 className="text-xl font-semibold text-foreground mb-2">Coming Soon</h4>
+                    <p className="text-muted-foreground">Advanced calendar view, performance analytics, and enhanced trading insights</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </TabsContent>
         </Tabs>
       </div>

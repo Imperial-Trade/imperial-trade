@@ -10,7 +10,7 @@ import {
   Brain,
   Search,
   Scale,
-  X,
+  ChevronLeft,
   Wrench,
   Sparkles,
   ChevronRight,
@@ -180,6 +180,25 @@ export default function AdvancedTools() {
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="p-4 h-full overflow-hidden">
+          {/* Tools Dashboard Button */}
+          <motion.div
+            className="mb-6"
+            initial={false}
+            animate={{
+              opacity: isHovered ? 1 : 0,
+            }}
+            transition={{ duration: 0.3 }}
+          >
+            <Button
+              variant="ghost"
+              className="w-full flex items-center gap-2 p-3 hover:bg-surface/50 text-muted-foreground hover:text-foreground"
+              onClick={() => setActiveTool(null)}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              {isHovered && <span className="text-sm">Tools Dashboard</span>}
+            </Button>
+          </motion.div>
+
           {/* Sidebar Header */}
           <motion.div
             className="mb-6"
@@ -283,11 +302,6 @@ export default function AdvancedTools() {
                 className="relative h-full"
               >
                 <Card className="bg-white dark:bg-gray-900/30 border-transparent backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50 rounded-2xl h-full overflow-y-auto">
-                  <div className="absolute top-2 right-2 z-30">
-                    <Button variant="ghost" size="icon" onClick={() => setActiveTool(null)} className="rounded-full bg-surface/80 hover:bg-surface">
-                      <X className="w-5 h-5 text-secondary" />
-                    </Button>
-                  </div>
                   <div className="p-4">
                     {activeTool.component}
                   </div>

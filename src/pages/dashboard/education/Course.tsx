@@ -28,9 +28,9 @@ interface Lesson {
 
 interface UserProgress {
   id: string;
-  completed_lessons: number[];
-  progress_percentage: number;
-  current_lesson_index: number;
+  completed_lessons?: number[];
+  progress_percentage?: number;
+  current_lesson_index?: number;
 }
 
 export default function Course() {
@@ -63,7 +63,12 @@ export default function Course() {
           return;
         }
 
-        setCourse(courseData);
+        // Transform the course data to match our interface
+        const transformedCourse: Course = {
+          ...courseData,
+          lessons: Array.isArray(courseData.lessons) ? courseData.lessons : []
+        };
+        setCourse(transformedCourse);
 
         // Fetch user progress if user is logged in
         if (user) {
@@ -74,7 +79,14 @@ export default function Course() {
             .eq('course_id', courseId)
             .single();
 
-          setUserProgress(progressData);
+          if (progressData) {
+            setUserProgress({
+              id: progressData.id,
+              completed_lessons: progressData.completed_lessons || [],
+              progress_percentage: progressData.progress_percentage || 0,
+              current_lesson_index: progressData.current_lesson_index || 0
+            });
+          }
         }
       } catch (error) {
         console.error('Error initializing course:', error);

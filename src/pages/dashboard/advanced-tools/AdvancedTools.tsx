@@ -289,7 +289,7 @@ export default function AdvancedTools() {
         }}
         transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
       >
-        <div className="p-4 h-full">
+        <div className="p-4 h-full pt-20">
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Today</h1>

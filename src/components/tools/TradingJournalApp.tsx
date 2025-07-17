@@ -796,10 +796,11 @@ Please provide a brief analysis focusing on what went well, what could be improv
   // State for analytics toggle
   const [analyticsView, setAnalyticsView] = useState<'ai' | 'most-traded'>('ai');
 
-  // Enhanced Equity Curve Chart Component with Robinhood-style design
+  // Simple Equity Curve Chart Component matching reference design
   const EquityCurveChart: React.FC<{ data: Array<{date: string, pnl: number, tradePnL: number, tradeNumber: number}> }> = ({ data }) => {
     const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
-    const chartRef = useRef<HTMLDivElement>(null);
+    const [mousePosition, setMousePosition] = useState<{ x: number, y: number } | null>(null);
+    const svgRef = useRef<SVGSVGElement>(null);
 
     if (data.length === 0) {
       return (
@@ -815,261 +816,235 @@ Please provide a brief analysis focusing on what went well, what could be improv
 
     const maxPnL = Math.max(...data.map(d => d.pnl));
     const minPnL = Math.min(...data.map(d => d.pnl));
-    const range = maxPnL - minPnL || 100; // Avoid division by zero
-    const padding = range * 0.15; // Increased padding for better visuals
-    const chartHeight = 200;
-    const chartPadding = 20;
-    const chartInnerHeight = chartHeight - (chartPadding * 2);
+    const range = maxPnL - minPnL || 100;
+    const padding = range * 0.1;
+    const chartHeight = 300;
+    const chartWidth = 800;
+    const chartPadding = 40;
 
-    // Enhanced smooth curve generation using Catmull-Rom splines
-    const generateSmoothPath = () => {
-      if (data.length < 2) return '';
+    // Generate points for the line
+    const points = data.map((point, index) => ({
+      x: chartPadding + (index / Math.max(data.length - 1, 1)) * (chartWidth - chartPadding * 2),
+      y: chartPadding + (chartHeight - chartPadding * 2) - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * (chartHeight - chartPadding * 2),
+      ...point
+    }));
 
-      const points = data.map((point, index) => ({
-        x: chartPadding + (index / Math.max(data.length - 1, 1)) * (100 - chartPadding * 2),
-        y: chartPadding + chartInnerHeight - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight
-      }));
-
-      if (points.length === 1) {
-        return `M ${points[0].x} ${points[0].y} L ${points[0].x} ${points[0].y}`;
-      }
+    // Generate smooth path
+    const generatePath = () => {
+      if (points.length < 2) return '';
 
       let path = `M ${points[0].x} ${points[0].y}`;
 
-      // Create smooth curves using cubic bezier
       for (let i = 1; i < points.length; i++) {
         const prevPoint = points[i - 1];
         const currentPoint = points[i];
         
-        // Calculate control points for smooth curve
-        const tension = 0.3;
-        const cp1x = prevPoint.x + (currentPoint.x - prevPoint.x) * tension;
-        const cp1y = prevPoint.y;
-        const cp2x = currentPoint.x - (currentPoint.x - prevPoint.x) * tension;
-        const cp2y = currentPoint.y;
+        // Simple smooth curve using quadratic bezier
+        const midX = (prevPoint.x + currentPoint.x) / 2;
+        const midY = (prevPoint.y + currentPoint.y) / 2;
         
-        path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${currentPoint.x} ${currentPoint.y}`;
+        path += ` Q ${prevPoint.x} ${prevPoint.y} ${midX} ${midY}`;
+        
+        if (i === points.length - 1) {
+          path += ` Q ${currentPoint.x} ${currentPoint.y} ${currentPoint.x} ${currentPoint.y}`;
+        }
       }
 
       return path;
     };
 
-    // Generate area path for gradient fill
-    const generateAreaPath = () => {
-      const curvePath = generateSmoothPath();
-      if (!curvePath) return '';
+    // Handle mouse movement over the SVG
+    const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+      if (!svgRef.current) return;
 
-      const lastPoint = data.length > 0 ? {
-        x: chartPadding + ((data.length - 1) / Math.max(data.length - 1, 1)) * (100 - chartPadding * 2),
-        y: chartPadding + chartInnerHeight - ((data[data.length - 1].pnl - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight
-      } : { x: 0, y: chartHeight };
+      const rect = svgRef.current.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * chartWidth;
+      const y = ((event.clientY - rect.top) / rect.height) * chartHeight;
 
-      const firstPoint = data.length > 0 ? {
-        x: chartPadding,
-        y: chartPadding + chartInnerHeight - ((data[0].pnl - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight
-      } : { x: 0, y: chartHeight };
+      // Find closest point
+      let closestIndex = 0;
+      let closestDistance = Infinity;
 
-      // Create area by going to bottom corners
-      const areaPath = curvePath + 
-        ` L ${lastPoint.x} ${chartHeight - chartPadding}` +
-        ` L ${firstPoint.x} ${chartHeight - chartPadding} Z`;
+      points.forEach((point, index) => {
+        const distance = Math.abs(point.x - x);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIndex = index;
+        }
+      });
 
-      return areaPath;
+      // Only show tooltip if mouse is reasonably close to a point
+      if (closestDistance < 50) {
+        setHoveredPoint(closestIndex);
+        setMousePosition({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+      } else {
+        setHoveredPoint(null);
+        setMousePosition(null);
+      }
     };
 
-    const isPositive = data.length > 0 ? data[data.length - 1].pnl >= 0 : true;
-    const primaryColor = isPositive ? '#10b981' : '#ef4444';
-    const gradientId = `gradient-${isPositive ? 'positive' : 'negative'}`;
+    // Y-axis labels
+    const yAxisLabels = [];
+    const labelCount = 5;
+    for (let i = 0; i <= labelCount; i++) {
+      const value = minPnL + (maxPnL - minPnL) * (i / labelCount);
+      const y = chartPadding + (chartHeight - chartPadding * 2) - ((value - minPnL + padding) / (range + 2 * padding)) * (chartHeight - chartPadding * 2);
+      yAxisLabels.push({ value, y });
+    }
 
     return (
-      <div className="h-64 w-full relative overflow-hidden" ref={chartRef}>
-        {/* Header with current value */}
-        <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-background/80 to-transparent">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className={cn(
-                "text-2xl font-bold",
-                primaryColor === '#10b981' ? "text-green-500" : "text-red-500"
-              )}>
-                ${hoveredPoint !== null ? data[hoveredPoint]?.pnl.toFixed(2) : data[data.length - 1]?.pnl.toFixed(2) || '0.00'}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {hoveredPoint !== null ? `Trade #${data[hoveredPoint]?.tradeNumber}` : 'Current Total'}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className={cn(
-                "text-sm font-medium",
-                primaryColor === '#10b981' ? "text-green-500" : "text-red-500"
-              )}>
-                {isPositive ? '+' : ''}{((data[data.length - 1]?.pnl || 0) / Math.abs(data[0]?.pnl || 1) * 100).toFixed(1)}%
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {data.length} trade{data.length !== 1 ? 's' : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* SVG Chart */}
+      <div className="h-80 w-full relative">
         <svg 
+          ref={svgRef}
           width="100%" 
           height="100%" 
-          viewBox={`0 0 100 ${chartHeight}`} 
-          className="absolute inset-0"
-          preserveAspectRatio="none"
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          className="overflow-visible cursor-crosshair"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => {
+            setHoveredPoint(null);
+            setMousePosition(null);
+          }}
         >
-          {/* Gradient Definitions */}
+          {/* Grid lines */}
           <defs>
-            <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={primaryColor} stopOpacity="0.3" />
-              <stop offset="50%" stopColor={primaryColor} stopOpacity="0.1" />
-              <stop offset="100%" stopColor={primaryColor} stopOpacity="0.05" />
-            </linearGradient>
-            
-            {/* Subtle grid pattern */}
-            <pattern id="grid" width="8" height="8" patternUnits="userSpaceOnUse">
+            <pattern id="grid" width="80" height="40" patternUnits="userSpaceOnUse">
               <path 
-                d="M 8 0 L 0 0 0 8" 
+                d="M 80 0 L 0 0 0 40" 
                 fill="none" 
-                stroke={theme === 'dark' ? '#374151' : '#f1f5f9'} 
-                strokeWidth="0.3" 
-                opacity="0.4"
+                stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} 
+                strokeWidth="0.5"
+                opacity="0.3"
               />
             </pattern>
-
-            {/* Glow effect */}
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-              <feMerge> 
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
           </defs>
-
-          {/* Background grid */}
-          <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3" />
-
-          {/* Zero line */}
-          {minPnL < 0 && maxPnL > 0 && (
-            <line
-              x1={chartPadding}
-              y1={chartPadding + chartInnerHeight - ((0 - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight}
-              x2={100 - chartPadding}
-              y2={chartPadding + chartInnerHeight - ((0 - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight}
-              stroke={theme === 'dark' ? '#4b5563' : '#d1d5db'}
-              strokeWidth="0.5"
-              strokeDasharray="2,2"
-              opacity="0.6"
-            />
-          )}
-
-          {/* Area fill */}
-          <motion.path
-            d={generateAreaPath()}
-            fill={`url(#${gradientId})`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, ease: "easeOut" }}
+          <rect 
+            x={chartPadding} 
+            y={chartPadding} 
+            width={chartWidth - chartPadding * 2} 
+            height={chartHeight - chartPadding * 2} 
+            fill="url(#grid)" 
           />
 
-          {/* Main curve line */}
+          {/* Y-axis labels */}
+          {yAxisLabels.map((label, index) => (
+            <text
+              key={index}
+              x={chartPadding - 10}
+              y={label.y + 4}
+              fontSize="12"
+              fill={theme === 'dark' ? '#9ca3af' : '#6b7280'}
+              textAnchor="end"
+            >
+              ${label.value.toFixed(0)}
+            </text>
+          ))}
+
+          {/* X-axis labels */}
+          {points.map((point, index) => {
+            if (index % Math.ceil(points.length / 5) === 0 || index === points.length - 1) {
+              return (
+                <text
+                  key={index}
+                  x={point.x}
+                  y={chartHeight - 10}
+                  fontSize="12"
+                  fill={theme === 'dark' ? '#9ca3af' : '#6b7280'}
+                  textAnchor="middle"
+                >
+                  {new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </text>
+              );
+            }
+            return null;
+          })}
+
+          {/* Main line */}
           <motion.path
-            d={generateSmoothPath()}
+            d={generatePath()}
             fill="none"
-            stroke={primaryColor}
-            strokeWidth="2.5"
+            stroke="#3b82f6"
+            strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
-            filter="url(#glow)"
             initial={{ pathLength: 0 }}
             animate={{ pathLength: 1 }}
             transition={{ duration: 2, ease: "easeOut" }}
           />
 
-          {/* Interactive data points */}
-          {data.map((point, index) => {
-            const x = chartPadding + (index / Math.max(data.length - 1, 1)) * (100 - chartPadding * 2);
-            const y = chartPadding + chartInnerHeight - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight;
-            const isHovered = hoveredPoint === index;
-            
-            return (
-              <motion.g key={index}>
-                {/* Invisible larger circle for easier hovering */}
-                <circle
-                  cx={x}
-                  cy={y}
-                  r="6"
-                  fill="transparent"
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHoveredPoint(index)}
-                  onMouseLeave={() => setHoveredPoint(null)}
-                />
-                
-                {/* Visible dot */}
-                <motion.circle
-                  cx={x}
-                  cy={y}
-                  r={isHovered ? "3" : "2"}
-                  fill={primaryColor}
-                  stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
-                  strokeWidth={isHovered ? "2" : "1.5"}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.3, delay: index * 0.02 }}
-                  className="transition-all duration-200"
-                  style={{
-                    filter: isHovered ? 'drop-shadow(0 0 4px rgba(16, 185, 129, 0.5))' : 'none'
-                  }}
-                />
+          {/* Data points */}
+          {points.map((point, index) => (
+            <motion.circle
+              key={index}
+              cx={point.x}
+              cy={point.y}
+              r={hoveredPoint === index ? "5" : "4"}
+              fill="#ffffff"
+              stroke="#3b82f6"
+              strokeWidth="2"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+              className="transition-all duration-200"
+            />
+          ))}
 
-                {/* Tooltip for hovered point */}
-                {isHovered && (
-                  <motion.g
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <rect
-                      x={x - 25}
-                      y={y - 35}
-                      width="50"
-                      height="20"
-                      rx="4"
-                      fill={theme === 'dark' ? '#374151' : '#ffffff'}
-                      stroke={theme === 'dark' ? '#4b5563' : '#e5e7eb'}
-                      strokeWidth="1"
-                      filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
-                    />
-                    <text
-                      x={x}
-                      y={y - 22}
-                      textAnchor="middle"
-                      fontSize="8"
-                      fill={theme === 'dark' ? '#ffffff' : '#000000'}
-                      fontWeight="600"
-                    >
-                      ${point.tradePnL > 0 ? '+' : ''}${point.tradePnL.toFixed(0)}
-                    </text>
-                  </motion.g>
-                )}
-              </motion.g>
-            );
-          })}
+          {/* Invisible overlay for better hover detection */}
+          <rect
+            x={chartPadding}
+            y={chartPadding}
+            width={chartWidth - chartPadding * 2}
+            height={chartHeight - chartPadding * 2}
+            fill="transparent"
+            className="cursor-crosshair"
+          />
         </svg>
 
-        {/* Performance indicators */}
-        <div className="absolute bottom-2 left-4 right-4 flex justify-between items-end text-xs text-muted-foreground">
-          <div>
-            <div className="font-medium">
-              Best: <span className="text-green-500">+${Math.max(...data.map(d => d.tradePnL)).toFixed(0)}</span>
+        {/* Tooltip */}
+        {hoveredPoint !== null && mousePosition && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2 }}
+            className="absolute z-10 pointer-events-none"
+            style={{
+              left: mousePosition.x + 10,
+              top: mousePosition.y - 10,
+            }}
+          >
+            <div className={cn(
+              "px-3 py-2 rounded-lg border shadow-lg text-sm",
+              theme === 'dark' 
+                ? "bg-slate-800 border-slate-600 text-white" 
+                : "bg-white border-gray-200 text-gray-900"
+            )}>
+              <div className="font-medium">
+                Trade #{data[hoveredPoint].tradeNumber}
+              </div>
+              <div className={cn(
+                "font-bold",
+                data[hoveredPoint].tradePnL >= 0 ? "text-green-500" : "text-red-500"
+              )}>
+                {data[hoveredPoint].tradePnL >= 0 ? '+' : ''}${data[hoveredPoint].tradePnL.toFixed(2)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Total: ${data[hoveredPoint].pnl.toFixed(2)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {new Date(data[hoveredPoint].date).toLocaleDateString()}
+              </div>
             </div>
-          </div>
-          <div className="text-right">
-            <div className="font-medium">
-              Worst: <span className="text-red-500">${Math.min(...data.map(d => d.tradePnL)).toFixed(0)}</span>
-            </div>
+          </motion.div>
+        )}
+
+        {/* Current value display */}
+        <div className="absolute top-4 left-4">
+          <div className="text-sm text-muted-foreground">Current Total</div>
+          <div className={cn(
+            "text-2xl font-bold",
+            data[data.length - 1]?.pnl >= 0 ? "text-green-500" : "text-red-500"
+          )}>
+            ${data[data.length - 1]?.pnl.toFixed(2) || '0.00'}
           </div>
         </div>
       </div>

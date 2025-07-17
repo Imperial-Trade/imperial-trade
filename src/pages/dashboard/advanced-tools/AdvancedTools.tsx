@@ -132,9 +132,9 @@ export default function AdvancedTools() {
     const isActive = activeTool?.name === tool.name;
     
     const sizeClasses = {
-      small: 'col-span-1 h-28',
-      medium: 'col-span-2 h-28',
-      large: 'col-span-2 h-36'
+      small: 'col-span-1 h-20',
+      medium: 'col-span-2 h-20',
+      large: 'col-span-2 h-24'
     };
 
     const renderWidgetContent = () => {
@@ -250,19 +250,19 @@ export default function AdvancedTools() {
     return (
       <motion.button
         onClick={() => handleToolSelect(tool)}
-        className={`${sizeClasses[size]} bg-black dark:bg-white backdrop-blur-sm rounded-2xl p-3 shadow-sm border border-gray-200/20 dark:border-gray-700/30 transition-all duration-300 hover:shadow-md hover:scale-[1.02] ${
+        className={`${sizeClasses[size]} bg-black dark:bg-white backdrop-blur-sm rounded-xl p-2 shadow-sm border border-gray-200/20 dark:border-gray-700/30 transition-all duration-300 hover:shadow-md hover:scale-[1.02] ${
           isActive ? 'ring-2 ring-primary/50 shadow-lg' : ''
         }`}
         whileHover={{ y: -2 }}
         whileTap={{ scale: 0.98 }}
       >
-        <div className="flex flex-col h-full gap-2">
-          <div className="flex items-start justify-between mb-1">
+        <div className="flex flex-col h-full gap-1">
+          <div className="flex items-start justify-between">
             <h3 className={`font-medium text-xs leading-tight ${isActive ? 'text-primary' : 'text-white dark:text-black'}`}>
               {tool.name}
             </h3>
             {isActive && (
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse flex-shrink-0" />
             )}
           </div>
           <div className="flex-1 min-h-0">
@@ -308,15 +308,15 @@ export default function AdvancedTools() {
         }}
         transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
       >
-        <div className="p-4 h-full pt-20">
+        <div className="p-3 h-full pt-16">
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Today</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Trading Arsenal</p>
+          <div className="mb-4">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Today</h1>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Trading Arsenal</p>
           </div>
 
           {/* Widget Grid */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 mb-4">
             {/* Trading Journal - Large Widget */}
             <WidgetTool tool={coreTools[0]} size="large" />
             
@@ -337,24 +337,24 @@ export default function AdvancedTools() {
           </div>
 
           {/* Profile and Controls Section */}
-          <div className="mt-6">
-            <div className="bg-gray-800 dark:bg-gray-200 rounded-2xl p-4">
+          <div className="mb-3">
+            <div className="bg-gray-800 dark:bg-gray-200 rounded-xl p-3">
               <div className="flex items-center justify-between">
                 {/* Profile Section */}
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <User className="w-3 h-3 text-white" />
                   </div>
                   <div>
-                    <div className="text-white dark:text-black text-sm font-medium">Jacob Estayo</div>
+                    <div className="text-white dark:text-black text-xs font-medium">Jacob Estayo</div>
                     <div className="text-gray-400 dark:text-gray-600 text-xs">Admin</div>
                   </div>
                 </div>
                 
                 {/* Controls */}
-                <div className="flex items-center gap-2">
-                  <button className="p-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors">
-                    <Bell className="w-4 h-4 text-gray-400 dark:text-gray-600" />
+                <div className="flex items-center gap-1">
+                  <button className="p-1.5 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors">
+                    <Bell className="w-3 h-3 text-gray-400 dark:text-gray-600" />
                   </button>
                   <ThemeToggle />
                 </div>
@@ -363,15 +363,15 @@ export default function AdvancedTools() {
           </div>
 
           {/* Navigation Buttons */}
-          <div className="mt-4">
-            <div className="bg-gray-800 dark:bg-gray-200 rounded-2xl p-2 flex flex-wrap gap-1">
+          <div>
+            <div className="bg-gray-800 dark:bg-gray-200 rounded-xl p-1.5 flex flex-wrap gap-0.5">
               {navButtons.map((button) => {
                 const Icon = button.icon;
                 const isActive = button.isActive;
                 return (
                   <motion.button
                     key={button.name}
-                    className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-200 flex-1 min-w-0 ${
+                    className={`flex flex-col items-center gap-0.5 p-2 rounded-lg transition-all duration-200 flex-1 min-w-0 ${
                       isActive 
                         ? 'bg-yellow-500 text-black' 
                         : 'text-white dark:text-black hover:bg-gray-700 dark:hover:bg-gray-300'
@@ -380,7 +380,7 @@ export default function AdvancedTools() {
                     whileTap={{ scale: 0.95 }}
                     onClick={() => window.location.href = button.path}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-3 h-3" />
                     <span className="text-xs font-medium text-center leading-tight">{button.name}</span>
                   </motion.button>
                 );

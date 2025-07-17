@@ -97,7 +97,7 @@ const ToolSelector = ({ tool, onSelect, isActive }) => {
 };
 
 export default function AdvancedTools() {
-  const [activeTool, setActiveTool] = useState(null);
+  const [activeTool, setActiveTool] = useState(coreTools[0]); // Default to Trading Journal
   const [isHovered, setIsHovered] = useState(false);
 
   const handleToolSelect = (tool) => {
@@ -263,7 +263,7 @@ export default function AdvancedTools() {
       </motion.aside>
 
       {/* Main Content */}
-      <div className="flex-1 ml-20 p-6">
+      <div className="flex-1 ml-20 p-2">
         {/* Page Header */}
         <div className="mb-6">{/* Header removed for cleaner interface */}</div>
 
@@ -301,11 +301,9 @@ export default function AdvancedTools() {
                 transition={{ duration: 0.4, ease: 'easeInOut' }}
                 className="relative h-full"
               >
-                <Card className="bg-white dark:bg-gray-900/30 border-transparent backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50 rounded-2xl h-full overflow-y-auto">
-                  <div className="p-4">
-                    {activeTool.component}
-                  </div>
-                </Card>
+                <div className="w-full h-full">
+                  {activeTool.component}
+                </div>
               </motion.div>
             ) : (
               <Placeholder />

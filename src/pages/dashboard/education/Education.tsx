@@ -1,92 +1,80 @@
-
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { useNavigate } from "react-router-dom";
+import { Video } from "@/api/entities/index";
 import AccessDenied from "@/components/AccessDenied";
-import ImperialHeroSection from "@/components/education/ImperialHeroSection";
-import ModuleGrid from "@/components/education/ModuleGrid";
-import LearningStats from "@/components/education/LearningStats";
-import { motion } from "framer-motion";
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  difficulty: string;
-  lessons: any[];
-  thumbnail_url: string;
-  created_at: string;
-}
-
-interface UserProfile {
-  learning_streak: number;
-  trading_points: number;
-  trading_identity_level: string;
-}
+import HeroSection from "@/components/learning/HeroSection";
+import VideoRow from "@/components/learning/VideoRow";
+import VideoPlayer from "@/components/learning/VideoPlayer";
+import { categoryMap } from "@/components/learning/constants";
+import { AnimatePresence } from "framer-motion";
 
 export default function Education() {
   const [user, setUser] = useState<User | null>(null);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [videos, setVideos] = useState([]);
+  const [groupedVideos, setGroupedVideos] = useState([]);
+  const [featuredVideo, setFeaturedVideo] = useState(null);
+  const [selectedVideo, setSelectedVideo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const initialize = async () => {
       setIsLoading(true);
       try {
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
+        // Get current user from Supabase
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         setUser(user);
 
-        if (user) {
-          // Fetch user profile with gamification data
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('learning_streak, trading_points, trading_identity_level')
-            .eq('id', user.id)
-            .single();
+        const fetchedVideos = await Video.list("-created_date");
+        setVideos(fetchedVideos);
 
-          if (profile) {
-            setUserProfile(profile);
-          }
-        }
+        if (fetchedVideos.length > 0) {
+          setFeaturedVideo(fetchedVideos[0]);
 
-        // Fetch Imperial Academy courses
-        const { data: coursesData, error } = await supabase
-          .from('courses')
-          .select('*')
-          .order('created_at', { ascending: true });
+          const groups = fetchedVideos.reduce((acc, video) => {
+            const category = video.category || "uncategorized";
+            if (!acc[category]) {
+              acc[category] = [];
+            }
+            acc[category].push(video);
+            return acc;
+          }, {});
 
-        if (error) {
-          console.error('Error fetching courses:', error);
-        } else {
-          setCourses(coursesData || []);
+          const sortedGroups = Object.keys(groups)
+            .map((key) => ({
+              category: key,
+              title: categoryMap[key] ? categoryMap[key].name : "General",
+              order: categoryMap[key] ? categoryMap[key].order : 99,
+              videos: groups[key],
+            }))
+            .sort((a, b) => a.order - b.order);
+
+          setGroupedVideos(sortedGroups);
         }
       } catch (error) {
-        console.error("Error initializing Imperial Academy:", error);
+        console.error("Error initializing page:", error);
         setUser(null);
       } finally {
         setIsLoading(false);
       }
     };
-
     initialize();
   }, []);
 
-  const handleCourseSelect = (course: Course) => {
-    navigate(`/dashboard/education/course/${course.id}`);
+  const handleVideoPlay = (video: any) => {
+    setSelectedVideo(video);
   };
+
+  const handleVideoProgress = (video: any, percentage: number) => {};
+
+  const handleVideoComplete = (video: any) => {};
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
-          <p className="text-muted-foreground">Loading Imperial Academy...</p>
-        </div>
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent-green"></div>
       </div>
     );
   }
@@ -97,47 +85,30 @@ export default function Education() {
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen bg-background"
-    >
-      {/* Imperial Academy Hero Section */}
-      <ImperialHeroSection 
-        featuredCourse={courses[0]}
-        onCourseSelect={handleCourseSelect}
-      />
+    <div className="flex flex-col bg-background text-primary overflow-hidden">
+      <HeroSection video={featuredVideo} onPlay={handleVideoPlay} />
 
-      {/* Learning Stats Dashboard */}
-      {userProfile && (
-        <div className="px-4 md:px-8 -mt-16 relative z-10">
-          <LearningStats
-            learningStreak={userProfile.learning_streak}
-            tradingPoints={userProfile.trading_points}
-            tradingIdentityLevel={userProfile.trading_identity_level}
+      <div className="relative z-10 -mt-20 overflow-auto flex-1">
+        {groupedVideos.map((group) => (
+          <VideoRow
+            key={group.category}
+            title={group.title}
+            videos={group.videos}
+            onPlay={handleVideoPlay}
           />
-        </div>
-      )}
-
-      {/* Module Grid */}
-      <div className="px-4 md:px-8 py-12">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-foreground mb-2">
-              Imperial Academy Modules
-            </h2>
-            <p className="text-muted-foreground">
-              Master trading with our comprehensive curriculum designed by professionals
-            </p>
-          </div>
-          
-          <ModuleGrid 
-            courses={courses}
-            onCourseSelect={handleCourseSelect}
-          />
-        </div>
+        ))}
       </div>
-    </motion.div>
+
+      <AnimatePresence>
+        {selectedVideo && (
+          <VideoPlayer
+            video={selectedVideo}
+            onClose={() => setSelectedVideo(null)}
+            onProgress={handleVideoProgress}
+            onComplete={handleVideoComplete}
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

@@ -819,8 +819,8 @@ Please provide a brief analysis focusing on what went well, what could be improv
     const range = maxPnL - minPnL || 100;
     const padding = range * 0.1;
     const chartHeight = 300;
-    const chartWidth = 800;
-    const chartPadding = 40;
+    const chartWidth = 1000; // Increased width for better container usage
+    const chartPadding = 20; // Reduced padding for more chart space
 
     // Generate points for the line
     const points = data.map((point, index) => ({
@@ -1037,11 +1037,11 @@ Please provide a brief analysis focusing on what went well, what could be improv
           </motion.div>
         )}
 
-        {/* Current value display */}
-        <div className="absolute top-4 left-4">
-          <div className="text-sm text-muted-foreground">Current Total</div>
+        {/* Current value display - moved to top right */}
+        <div className="absolute top-4 right-4">
+          <div className="text-sm text-muted-foreground text-right">Current Total</div>
           <div className={cn(
-            "text-2xl font-bold",
+            "text-2xl font-bold text-right",
             data[data.length - 1]?.pnl >= 0 ? "text-green-500" : "text-red-500"
           )}>
             ${data[data.length - 1]?.pnl.toFixed(2) || '0.00'}

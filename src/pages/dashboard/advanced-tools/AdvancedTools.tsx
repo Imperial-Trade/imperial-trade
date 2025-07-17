@@ -231,7 +231,7 @@ export default function AdvancedTools() {
     return (
       <motion.button
         onClick={() => handleToolSelect(tool)}
-        className={`${sizeClasses[size]} bg-white dark:bg-gray-900/30 backdrop-blur-sm rounded-2xl p-3 shadow-sm border border-gray-200/20 dark:border-gray-700/30 transition-all duration-300 hover:shadow-md hover:scale-[1.02] ${
+        className={`${sizeClasses[size]} bg-black dark:bg-white backdrop-blur-sm rounded-2xl p-3 shadow-sm border border-gray-200/20 dark:border-gray-700/30 transition-all duration-300 hover:shadow-md hover:scale-[1.02] ${
           isActive ? 'ring-2 ring-primary/50 shadow-lg' : ''
         }`}
         whileHover={{ y: -2 }}
@@ -239,7 +239,7 @@ export default function AdvancedTools() {
       >
         <div className="flex flex-col h-full gap-2">
           <div className="flex items-start justify-between mb-1">
-            <h3 className={`font-medium text-xs leading-tight ${isActive ? 'text-primary' : 'text-foreground'}`}>
+            <h3 className={`font-medium text-xs leading-tight ${isActive ? 'text-primary' : 'text-white dark:text-black'}`}>
               {tool.name}
             </h3>
             {isActive && (

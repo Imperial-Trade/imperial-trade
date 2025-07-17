@@ -22,9 +22,7 @@ import {
   Settings,
   BarChart3,
   Bell,
-  Video,
-  Sun,
-  User
+  Video
 } from 'lucide-react';
 
 import TradingJournal from '@/components/tools/TradingJournal';
@@ -315,7 +313,7 @@ export default function AdvancedTools() {
           </div>
 
           {/* Widget Grid */}
-          <div className="grid grid-cols-2 gap-3 h-fit">
+          <div className="grid grid-cols-2 gap-3">
             {/* Trading Journal - Large Widget */}
             <WidgetTool tool={coreTools[0]} size="large" />
             
@@ -335,27 +333,8 @@ export default function AdvancedTools() {
             <WidgetTool tool={aiTools[2]} size="small" />
           </div>
 
-          {/* Header Section */}
-          <div className="mt-6 bg-gray-800 dark:bg-gray-200 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Sun className="w-5 h-5 text-white dark:text-black" />
-                <div>
-                  <h3 className="text-white dark:text-black font-medium">Jacob Estayo</h3>
-                  <p className="text-red-500 text-sm font-medium">Admin</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-white dark:text-black" />
-                <div className="w-8 h-8 bg-yellow-600 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Navigation Buttons */}
-          <div className="mt-6">
+          <div className="mt-8">
             <div className="bg-gray-800 dark:bg-gray-200 rounded-2xl p-2 flex flex-wrap gap-1">
               {navButtons.map((button) => {
                 const Icon = button.icon;

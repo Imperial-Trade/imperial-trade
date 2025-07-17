@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,11 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { TradeJournalEntry } from '@/api/entities';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BarChart3, TrendingUp, Target, Calendar, DollarSign, ChevronLeft, ChevronRight, Save, X, Award, TrendingDown, Clock, Search } from 'lucide-react';
+import { Plus, Trash2, Camera, Brain, Sparkles, MessageSquare, BarChart3, TrendingUp, Target, Calendar, DollarSign, ChevronLeft, ChevronRight, Save, X, Award, TrendingDown, Clock, Search, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement, InteractionMode } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
@@ -704,7 +704,7 @@ export default function TradingJournal() {
       datasets: [
         {
           label: 'Account Balance',
-          data: equityData.map(item => item.balance),
+          data: equityData.map(item => parseFloat(item.balance)),
           fill: true,
           backgroundColor: 'rgba(34, 211, 238, 0.1)',
           borderColor: 'rgba(34, 211, 238, 0.8)',
@@ -721,13 +721,13 @@ export default function TradingJournal() {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { mode: 'index', intersect: false }
+        tooltip: { mode: 'index' as const, intersect: false }
       },
       scales: {
         x: { grid: { display: false } },
         y: { 
           grid: { color: 'rgba(156, 163, 175, 0.1)' },
-          ticks: { callback: (value) => `$${value}` }
+          ticks: { callback: (value: any) => `$${value}` }
         }
       }
     };
@@ -742,15 +742,15 @@ export default function TradingJournal() {
       const totalPnL = entries.reduce((sum, e) => sum + e.pnl, 0);
       
       const winRate = ((winningTrades.length / entries.length) * 100).toFixed(1);
-      const avgWin = winningTrades.length > 0 ? (winningTrades.reduce((sum, e) => sum + e.pnl, 0) / winningTrades.length).toFixed(2) : 0;
-      const avgLoss = losingTrades.length > 0 ? Math.abs(losingTrades.reduce((sum, e) => sum + e.pnl, 0) / losingTrades.length).toFixed(2) : 0;
+      const avgWin = winningTrades.length > 0 ? (winningTrades.reduce((sum, e) => sum + e.pnl, 0) / winningTrades.length).toFixed(2) : '0';
+      const avgLoss = losingTrades.length > 0 ? Math.abs(losingTrades.reduce((sum, e) => sum + e.pnl, 0) / losingTrades.length).toFixed(2) : '0';
       const profitFactor = losingTrades.length > 0 ? (winningTrades.reduce((sum, e) => sum + e.pnl, 0) / Math.abs(losingTrades.reduce((sum, e) => sum + e.pnl, 0))).toFixed(2) : "∞";
       
       // Additional metrics for advanced view
-      const largestWin = winningTrades.length > 0 ? Math.max(...winningTrades.map(t => t.pnl)).toFixed(2) : 0;
-      const largestLoss = losingTrades.length > 0 ? Math.abs(Math.min(...losingTrades.map(t => t.pnl))).toFixed(2) : 0;
+      const largestWin = winningTrades.length > 0 ? Math.max(...winningTrades.map(t => t.pnl)).toFixed(2) : '0';
+      const largestLoss = losingTrades.length > 0 ? Math.abs(Math.min(...losingTrades.map(t => t.pnl))).toFixed(2) : '0';
       const averageTrade = totalPnL / entries.length;
-      const expectancy = ((winRate / 100) * parseFloat(avgWin)) - ((1 - winRate / 100) * parseFloat(avgLoss));
+      const expectancy = ((parseFloat(winRate) / 100) * parseFloat(avgWin)) - ((1 - parseFloat(winRate) / 100) * parseFloat(avgLoss));
       
       return { 
         winRate, 
@@ -909,7 +909,7 @@ export default function TradingJournal() {
                     <div>
                       <p className="text-sm text-muted-foreground">Total P&L</p>
                       <p className={`text-2xl font-bold ${metrics.totalPnL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                        {metrics.totalPnL >= 0 ? '+' : ''}${parseFloat(metrics.totalPnL).toFixed(2)}
+                        {metrics.totalPnL >= 0 ? '+' : ''}${parseFloat(metrics.totalPnL.toString()).toFixed(2)}
                       </p>
                     </div>
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${metrics.totalPnL >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>

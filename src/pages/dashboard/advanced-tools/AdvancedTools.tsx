@@ -23,7 +23,9 @@ import {
   BarChart3,
   Bell,
   Video,
-  User
+  User,
+  Shield,
+  LogOut
 } from 'lucide-react';
 
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
@@ -118,6 +120,7 @@ const ToolSelector = ({ tool, onSelect, isActive }) => {
 export default function AdvancedTools() {
   const [activeTool, setActiveTool] = useState(coreTools[0]); // Set Trading Journal as default
   const [isHovered, setIsHovered] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   const handleToolSelect = (tool) => {
     if (activeTool && activeTool.name === tool.name) {
@@ -337,13 +340,13 @@ export default function AdvancedTools() {
           </div>
 
           {/* Profile and Controls Section */}
-          <div className="mt-6">
+          <div className="mt-6 relative">
             <div className="bg-gray-800 dark:bg-gray-200 rounded-2xl p-4">
               <div className="flex items-center justify-between">
                 {/* Profile Section */}
                 <button 
                   className="flex items-center gap-3 hover:bg-gray-700 dark:hover:bg-gray-300 rounded-lg p-2 -m-2 transition-colors"
-                  onClick={() => window.location.href = '/dashboard/settings'}
+                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
@@ -363,6 +366,66 @@ export default function AdvancedTools() {
                 </div>
               </div>
             </div>
+
+            {/* Profile Dropdown */}
+            <AnimatePresence>
+              {showProfileDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-gray-800 dark:bg-gray-200 rounded-2xl shadow-lg border border-gray-700 dark:border-gray-300 z-50"
+                >
+                  <div className="p-2">
+                    <button
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        window.location.href = '/dashboard/progress';
+                      }}
+                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-700 dark:hover:bg-gray-300 rounded-lg transition-colors"
+                    >
+                      <BarChart3 className="w-4 h-4 text-white dark:text-black" />
+                      <span className="text-white dark:text-black text-sm">My Progress</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        window.location.href = '/dashboard/administration';
+                      }}
+                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-700 dark:hover:bg-gray-300 rounded-lg transition-colors"
+                    >
+                      <Settings className="w-4 h-4 text-white dark:text-black" />
+                      <span className="text-white dark:text-black text-sm">Administration</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        window.location.href = '/dashboard/admin-panel';
+                      }}
+                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-700 dark:hover:bg-gray-300 rounded-lg transition-colors"
+                    >
+                      <Shield className="w-4 h-4 text-white dark:text-black" />
+                      <span className="text-white dark:text-black text-sm">Admin Panel</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        // Add logout functionality here
+                        console.log('Logout clicked');
+                      }}
+                      className="w-full flex items-center gap-3 p-3 text-left hover:bg-red-600 dark:hover:bg-red-500 rounded-lg transition-colors"
+                    >
+                      <LogOut className="w-4 h-4 text-red-400 dark:text-red-600" />
+                      <span className="text-red-400 dark:text-red-600 text-sm">Logout</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Navigation Buttons */}

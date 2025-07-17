@@ -9,7 +9,7 @@ import { UploadFile, InvokeLLM } from '@/api/integrations';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   ChevronLeft, ChevronRight, Plus, X, Camera, Trash2, 
-  ArrowLeft, TrendingUp, TrendingDown, Target, PieChart, Activity, Globe, Search 
+  ArrowLeft, TrendingUp, TrendingDown, Target, PieChart, Activity, Globe, Search, BarChart3, Eye, EyeOff
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
@@ -25,6 +25,10 @@ interface Trade {
   ai_positive_feedback?: string;
   trade_type?: 'Long' | 'Short';
   created_at: string;
+  strategy?: string;
+  emotion?: string;
+  session?: string;
+  outcome?: 'Win' | 'Loss' | 'Breakeven';
 }
 
 interface AdvancedTradingJournalProps {
@@ -36,13 +40,15 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'calendar' | 'day'>('calendar');
-  const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'all'>('all');
+  const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'all'>('monthly');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTimezone, setSelectedTimezone] = useState<string>(() => {
     return localStorage.getItem('trading-journal-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
   });
+  const [statsVisible, setStatsVisible] = useState(true);
+  const [activeStatsTab, setActiveStatsTab] = useState<'most-traded' | 'ai-analytics'>('most-traded');
   
   // Form state
   const [formData, setFormData] = useState({
@@ -50,7 +56,10 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     pnl: '',
     notes: '',
     trade_type: null as 'Long' | 'Short' | null,
-    outcome: null as 'Win' | 'Loss' | 'Breakeven' | null
+    outcome: null as 'Win' | 'Loss' | 'Breakeven' | null,
+    strategy: '',
+    emotion: '',
+    session: ''
   });
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
@@ -288,7 +297,10 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         pnl: Math.abs(trade.pnl).toString(),
         notes: trade.notes || '',
         trade_type: trade.trade_type || null,
-        outcome: trade.pnl > 0 ? 'Win' : trade.pnl < 0 ? 'Loss' : 'Breakeven'
+        outcome: trade.pnl > 0 ? 'Win' : trade.pnl < 0 ? 'Loss' : 'Breakeven',
+        strategy: trade.strategy || '',
+        emotion: trade.emotion || '',
+        session: trade.session || ''
       });
       if (trade.screenshot_url) {
         setScreenshotPreview(trade.screenshot_url);
@@ -300,7 +312,10 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
         pnl: '',
         notes: '',
         trade_type: null,
-        outcome: null
+        outcome: null,
+        strategy: '',
+        emotion: '',
+        session: ''
       });
     }
     setIsModalOpen(true);
@@ -314,7 +329,10 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
       pnl: '',
       notes: '',
       trade_type: null,
-      outcome: null
+      outcome: null,
+      strategy: '',
+      emotion: '',
+      session: ''
     });
     setScreenshotFile(null);
     setScreenshotPreview(null);
@@ -374,6 +392,9 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
           You are a supportive and positive trading coach. Your goal is to find something positive or a valuable learning experience in the user's trade, regardless of whether it was a win or a loss.
           The user has submitted a journal entry for ${pnlValue >= 0 ? 'a winning trade' : 'a losing trade'} of ${pnlValue} USD.
           Their personal notes are: "${formData.notes}"
+          Strategy: ${formData.strategy || 'Not specified'}
+          Emotion: ${formData.emotion || 'Not specified'}
+          Session: ${formData.session || 'Not specified'}
           
           Analyze their notes and the trade outcome. If a screenshot is provided, analyze it for good practices (like proper stop loss placement, good entry point relative to indicators, etc.).
           
@@ -409,6 +430,50 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     }
   };
 
+  const getMostTradedAssets = (trades: Trade[]) => {
+    const assetCounts = trades.reduce((acc, trade) => {
+      const asset = trade.asset_ticker;
+      acc[asset] = (acc[asset] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(assetCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([asset, count]) => ({ asset, count }));
+  };
+
+  const getAIInsights = (trades: Trade[]) => {
+    if (trades.length === 0) return [];
+
+    const bestTrade = trades.sort((a, b) => b.pnl - a.pnl)[0];
+    const worstTrade = trades.sort((a, b) => a.pnl - b.pnl)[0];
+    
+    const insights = [];
+    
+    if (bestTrade?.pnl > 0) {
+      insights.push(`Best Trade: ${bestTrade.asset_ticker} with $${bestTrade.pnl.toFixed(2)} profit`);
+    }
+    
+    if (worstTrade?.pnl < 0) {
+      insights.push(`Biggest Loss: ${worstTrade.asset_ticker} with $${worstTrade.pnl.toFixed(2)} loss`);
+    }
+
+    const strategies = trades.reduce((acc, trade) => {
+      if (trade.strategy) {
+        acc[trade.strategy] = (acc[trade.strategy] || 0) + trade.pnl;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const bestStrategy = Object.entries(strategies).sort(([,a], [,b]) => b - a)[0];
+    if (bestStrategy) {
+      insights.push(`Best Strategy: ${bestStrategy[0]} with $${bestStrategy[1].toFixed(2)} total P&L`);
+    }
+
+    return insights;
+  };
+
   const renderCalendar = () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
@@ -441,7 +506,7 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
             <div
               key={index}
               className={`
-                relative min-h-[40px] p-1.5 cursor-pointer transition-colors bg-background border-border/20
+                relative min-h-[60px] p-1.5 cursor-pointer transition-colors bg-background border-border/20
                 ${!isCurrentMonth ? 'opacity-25' : ''}
                 ${isSelectedDay ? 'bg-primary text-primary-foreground' : ''}
                 ${dayTrades.length > 0 && !isSelectedDay
@@ -455,15 +520,15 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
               `}
               onClick={() => handleDateClick(dateStr)}
             >
-              <span className={`text-[10px] font-medium ${isToday(day) && !isSelectedDay ? 'text-primary' : ''}`}>
+              <span className={`text-xs font-medium ${isToday(day) && !isSelectedDay ? 'text-primary' : ''}`}>
                 {format(day, 'd')}
               </span>
               {dayTrades.length > 0 && !isSelectedDay && (
-                <div className="mt-0.5">
-                  <div className={`text-[8px] font-semibold ${totalPnl > 0 ? 'text-emerald-600 dark:text-emerald-400' : totalPnl < 0 ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                <div className="mt-1">
+                  <div className={`text-xs font-semibold ${totalPnl > 0 ? 'text-emerald-600 dark:text-emerald-400' : totalPnl < 0 ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
                     ${totalPnl.toFixed(0)}
                   </div>
-                  <div className="text-[7px] text-muted-foreground">{dayTrades.length}</div>
+                  <div className="text-[10px] text-muted-foreground">{dayTrades.length} trades</div>
                 </div>
               )}
             </div>
@@ -480,648 +545,651 @@ export default function AdvancedTradingJournal({ onBackToBasic }: AdvancedTradin
     const selectedDateObj = new Date(selectedDate + 'T00:00:00');
 
     return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between border-b border-border pb-2">
-          <div className="flex items-center gap-2">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleBackToCalendar}
-              className="h-7 w-7 p-0"
+              className="h-8 w-8 p-0"
             >
-              <ArrowLeft className="w-3 h-3" />
+              <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h3 className="text-sm font-semibold text-foreground">
+            <h3 className="text-lg font-semibold">
               {format(selectedDateObj, 'EEEE, MMMM d, yyyy')}
             </h3>
           </div>
-          <Button
-            onClick={() => openModal()}
-            size="sm"
-            className="h-7 px-2 text-xs"
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            Add
+          <Button onClick={() => openModal()} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Trade
           </Button>
         </div>
 
-        <div className="space-y-1.5">
-          {dayTrades.length === 0 ? (
-            <div className="text-center text-muted-foreground py-6">
-              <Activity className="w-6 h-6 mx-auto mb-1 opacity-30" />
-              <p className="text-xs">No trades logged</p>
-            </div>
-          ) : (
-            dayTrades.map((trade) => (
-              <Card key={trade.id} className="bg-card border border-border/40">
-                <CardContent className="p-2.5">
-                  <div className="flex justify-between items-start mb-1.5">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <h4 className="text-xs font-semibold text-foreground">{trade.asset_ticker}</h4>
+        {dayTrades.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No trades recorded for this day
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {dayTrades.map((trade) => (
+              <Card key={trade.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => openModal(trade)}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-semibold">{trade.asset_ticker}</h4>
+                      <div className="flex gap-2 text-xs text-muted-foreground">
                         {trade.trade_type && (
-                          <Badge variant="outline" className="text-[8px] h-3.5 px-1">
+                          <Badge variant={trade.trade_type === 'Long' ? 'default' : 'secondary'} className="text-xs">
                             {trade.trade_type}
                           </Badge>
                         )}
-                      </div>
-                      <div className="text-[8px] text-muted-foreground">
-                        {formatDateInTimezone(trade.trade_date.split('T')[0] + 'T12:00:00', 'MMM d, yyyy')}
+                        {trade.strategy && (
+                          <Badge variant="outline" className="text-xs">
+                            {trade.strategy}
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 ml-2">
-                      <Badge 
-                        variant="outline"
-                        className={`text-[8px] h-4 px-1 font-medium ${trade.pnl > 0 
-                          ? 'text-emerald-600 border-emerald-600/30 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-400/30 dark:bg-emerald-950/20' 
-                          : trade.pnl < 0 
-                            ? 'text-red-600 border-red-600/30 bg-red-50 dark:text-red-400 dark:border-red-400/30 dark:bg-red-950/20'
-                            : 'text-yellow-600 border-yellow-600/30 bg-yellow-50 dark:text-yellow-400 dark:border-yellow-400/30 dark:bg-yellow-950/20'
-                        }`}
-                      >
-                        {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
-                      </Badge>
+                    <div className="text-right">
+                      <div className={`font-semibold ${trade.pnl >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        ${trade.pnl.toFixed(2)}
+                      </div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => openModal(trade)}
-                        className="h-5 w-5 p-0 text-[8px]"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteTrade(trade.id);
+                        }}
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                       >
-                        ✎
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteTrade(trade.id)}
-                        className="h-5 w-5 p-0 text-red-500 hover:text-red-600"
-                      >
-                        <Trash2 className="w-2.5 h-2.5" />
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
                   </div>
-
+                  
                   {trade.notes && (
-                    <div className="mb-1.5">
-                      <p className="text-[9px] text-muted-foreground line-clamp-2">{trade.notes}</p>
-                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">{trade.notes}</p>
                   )}
-
+                  
                   {trade.ai_positive_feedback && (
-                    <div className="mb-1.5 p-1.5 bg-muted/20 border-l border-primary/30 rounded-sm">
-                      <p className="text-[8px] text-muted-foreground line-clamp-2">{trade.ai_positive_feedback}</p>
+                    <div className="bg-emerald-50 dark:bg-emerald-950/20 p-2 rounded text-sm">
+                      <div className="font-medium text-emerald-700 dark:text-emerald-300 mb-1">AI Coach:</div>
+                      <p className="text-emerald-600 dark:text-emerald-400">{trade.ai_positive_feedback}</p>
                     </div>
                   )}
-
+                  
                   {trade.screenshot_url && (
-                    <div className="mt-1.5">
+                    <div className="mt-2">
                       <img 
                         src={trade.screenshot_url} 
                         alt="Trade screenshot" 
-                        className="w-full max-w-[160px] rounded border border-border/30"
+                        className="max-w-full h-32 object-cover rounded border cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(trade.screenshot_url, '_blank');
+                        }}
                       />
                     </div>
                   )}
                 </CardContent>
               </Card>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
 
-  // Chart rendering with minimal design
-  const renderEquityChart = () => {
-    const filteredTrades = getFilteredTrades();
-    
-    if (filteredTrades.length === 0) {
-      return (
-        <div className="text-center text-muted-foreground py-8">
-          <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-30" />
-          <p className="text-xs">No trades to display</p>
-        </div>
-      );
-    }
+  const renderEquityChart = (trades: Trade[]) => {
+    if (trades.length === 0) return <div className="h-40 flex items-center justify-center text-muted-foreground">No data to display</div>;
 
-    const sortedTrades = [...filteredTrades].sort((a, b) => 
-      new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime()
-    );
-
-    let cumulativePnL = 0;
-    const equityData: Array<{ date: string, value: number, index: number, isStarting: boolean }> = [];
+    const sortedTrades = [...trades].sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
+    let cumulativePnl = 0;
+    const equityData = [{ pnl: 0, date: null }];
     
-    if (sortedTrades.length > 0) {
-      equityData.push({
-        date: sortedTrades[0].trade_date,
-        value: 0,
-        index: 0,
-        isStarting: true
-      });
-    }
-    
-    sortedTrades.forEach((trade, index) => {
-      cumulativePnL += trade.pnl;
-      equityData.push({
-        date: trade.trade_date,
-        value: cumulativePnL,
-        index: index,
-        isStarting: false
-      });
+    sortedTrades.forEach(trade => {
+      cumulativePnl += trade.pnl;
+      equityData.push({ pnl: cumulativePnl, date: trade.trade_date });
     });
 
-    const maxValue = Math.max(...equityData.map(d => d.value), 0);
-    const minValue = Math.min(...equityData.map(d => d.value), 0);
-    const range = Math.max(maxValue - minValue, 100);
-    
-    const startingPoint = { 
-      x: 0, 
-      y: ((maxValue - 0) / range) * 100, 
-      value: 0, 
-      isStarting: true,
-      date: sortedTrades[0].trade_date
-    };
-    const chartPoints = equityData.map((point, index) => ({
-      x: (index / (equityData.length - 1 || 1)) * 100,
-      y: ((maxValue - point.value) / range) * 100,
-      value: point.value,
-      date: point.date,
-      isStarting: point.isStarting
-    }));
+    const maxPnl = Math.max(...equityData.map(d => d.pnl));
+    const minPnl = Math.min(...equityData.map(d => d.pnl));
+    const range = maxPnl - minPnl || 1;
 
-    const totalPnl = cumulativePnL;
-    
     return (
-      <div className="relative">
-        <div className="relative h-32 bg-background border border-border/30 rounded p-3 overflow-hidden">
-          <svg className="w-full h-full relative" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor={totalPnl >= 0 ? "hsl(var(--primary))" : "hsl(var(--destructive))"} stopOpacity="0.8" />
-                <stop offset="100%" stopColor={totalPnl >= 0 ? "hsl(var(--primary))" : "hsl(var(--destructive))"} stopOpacity="1" />
-              </linearGradient>
-            </defs>
-
-            <path
-              d={`M 0,${startingPoint.y} ${chartPoints.map((point, index) => `L ${point.x},${point.y}`).join(' ')}`}
-              fill="none"
-              stroke="url(#lineGradient)"
-              strokeWidth="1.5"
-              className="transition-all duration-300"
-            />
-
-            {[startingPoint, ...chartPoints].map((point, index) => (
-              <circle
+      <div className="h-40 w-full relative">
+        <svg viewBox="0 0 500 160" className="w-full h-full">
+          {equityData.map((point, index) => {
+            if (index === 0) return null;
+            const prevPoint = equityData[index - 1];
+            const x1 = ((index - 1) / (equityData.length - 1)) * 480 + 10;
+            const x2 = (index / (equityData.length - 1)) * 480 + 10;
+            const y1 = 150 - ((prevPoint.pnl - minPnl) / range) * 130;
+            const y2 = 150 - ((point.pnl - minPnl) / range) * 130;
+            
+            return (
+              <line
                 key={index}
-                cx={point.x}
-                cy={point.y}
-                r="1.5"
-                fill={point.isStarting ? "hsl(var(--muted-foreground))" : point.value >= 0 ? "hsl(var(--primary))" : "hsl(var(--destructive))"}
-                stroke="hsl(var(--background))"
-                strokeWidth="0.5"
-                className="opacity-60"
-              >
-                <title>
-                  {point.isStarting 
-                    ? `Starting: $0.00`
-                    : `${formatDateInTimezone(point.date.split('T')[0] + 'T12:00:00', 'MMM d')}: ${point.value >= 0 ? '+' : ''}$${point.value.toFixed(2)}`
-                  }
-                </title>
-              </circle>
-            ))}
-
-            <line
-              x1="0"
-              y1={startingPoint.y}
-              x2="100"
-              y2={startingPoint.y}
-              stroke="hsl(var(--border))"
-              strokeWidth="0.5"
-              strokeDasharray="2,2"
-              opacity="0.5"
-            />
-          </svg>
-        </div>
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke={point.pnl >= 0 ? "#10b981" : "#ef4444"}
+                strokeWidth="2"
+              />
+            );
+          })}
+          <line x1="10" y1="10" x2="10" y2="150" stroke="#6b7280" strokeWidth="1" />
+          <line x1="10" y1="150" x2="490" y2="150" stroke="#6b7280" strokeWidth="1" />
+          {maxPnl !== minPnl && (
+            <line x1="10" y1="80" x2="490" y2="80" stroke="#6b7280" strokeWidth="1" strokeDasharray="2,2" />
+          )}
+        </svg>
       </div>
     );
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-32">
-        <div className="animate-spin rounded-full h-6 w-6 border border-primary border-t-transparent" />
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading journal...</p>
+        </div>
       </div>
     );
   }
 
   const filteredTrades = getFilteredTrades();
   const metrics = calculateMetrics(filteredTrades);
+  const mostTradedAssets = getMostTradedAssets(filteredTrades);
+  const aiInsights = getAIInsights(filteredTrades);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-3 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              onClick={onBackToBasic}
-              size="sm"
-              className="h-7 w-7 p-0"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-semibold text-foreground">
-                Advanced Trading Journal
-              </h1>
-              <p className="text-[9px] text-muted-foreground">Professional analytics</p>
+    <div className="h-full bg-background text-foreground relative overflow-hidden">
+      {viewMode === 'calendar' ? (
+        <div className="flex flex-col h-full p-4">
+          <div className="w-full max-w-7xl mx-auto bg-card p-4 md:p-6 rounded-lg shadow-lg flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-bold">Trading Journal</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setStatsVisible(!statsVisible)}
+                  className="h-8 w-8 p-0"
+                >
+                  {statsVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+              </div>
+              <Button variant="outline" onClick={onBackToBasic}>
+                Back to Basic
+              </Button>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Globe className="w-3 h-3 text-muted-foreground" />
-            <Select value={selectedTimezone} onValueChange={handleTimezoneChange}>
-              <SelectTrigger className="w-32 h-6 text-[9px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTimezones.map((tz) => (
-                  <SelectItem key={tz} value={tz} className="text-[9px]">
-                    {tz.replace('_', ' ')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-3">
-          {/* Performance Metrics Cards */}
-          <div className="xl:col-span-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-            <Card className="border border-border/50">
-              <CardContent className="p-2.5">
-                <div className="flex items-center justify-between mb-1">
-                  <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-[8px] text-muted-foreground font-medium">Total P&L</span>
-                </div>
-                <div className="space-y-0.5">
-                  <p className={`text-sm font-semibold ${metrics.totalPnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                    ${metrics.totalPnl.toFixed(2)}
-                  </p>
-                  <p className="text-[8px] text-muted-foreground">
-                    {filteredTrades.length} trades
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-border/50">
-              <CardContent className="p-2.5">
-                <div className="flex items-center justify-between mb-1">
-                  <Target className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-[8px] text-muted-foreground font-medium">Win Rate</span>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-sm font-semibold text-primary">
-                    {metrics.winRate.toFixed(1)}%
-                  </p>
-                  <p className="text-[8px] text-muted-foreground">
-                    {metrics.wins}W / {metrics.losses}L
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-border/50">
-              <CardContent className="p-2.5">
-                <div className="flex items-center justify-between mb-1">
-                  <PieChart className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-[8px] text-muted-foreground font-medium">Profit Factor</span>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-sm font-semibold text-primary">
-                    {metrics.profitFactor === Infinity ? '∞' : metrics.profitFactor.toFixed(2)}
-                  </p>
-                  <p className="text-[8px] text-muted-foreground">
-                    Risk/Reward
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-border/50">
-              <CardContent className="p-2.5">
-                <div className="flex items-center justify-between mb-1">
-                  <Activity className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-[8px] text-muted-foreground font-medium">Avg Trade</span>
-                </div>
-                <div className="space-y-0.5">
-                  <p className={`text-sm font-semibold ${(metrics.totalPnl / Math.max(metrics.totalTrades, 1)) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                    ${(metrics.totalPnl / Math.max(metrics.totalTrades, 1)).toFixed(2)}
-                  </p>
-                  <p className="text-[8px] text-muted-foreground">
-                    Per trade
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Calendar Section */}
-          <div className="xl:col-span-3">
-            <Card className="h-[400px] border border-border/50">
-              <CardContent className="p-4 h-full overflow-hidden flex flex-col">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-xs font-semibold text-foreground">Trading Calendar</h3>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
-                      className="h-5 w-5 p-0"
-                    >
-                      <ChevronLeft className="w-2.5 h-2.5" />
-                    </Button>
-                    <span className="text-[9px] font-medium text-foreground px-2">
-                      {format(currentDate, 'MMMM yyyy')}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
-                      className="h-5 w-5 p-0"
-                    >
-                      <ChevronRight className="w-2.5 h-2.5" />
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="h-[calc(100%-40px)]">
-                  {viewMode === 'calendar' ? renderCalendar() : renderDayView()}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filter and Chart Sidebar */}
-          <div className="xl:col-span-1">
-            <Card className="h-[400px] border border-border/50">
-              <CardContent className="p-3 h-full">
-                <div className="space-y-3">
-                  {/* Time Filter */}
-                  <div>
-                    <h4 className="text-[9px] font-semibold text-foreground mb-1.5">Time Filter</h4>
-                    <Select value={timeFilter} onValueChange={(value: any) => setTimeFilter(value)}>
-                      <SelectTrigger className="w-full h-6 text-[9px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="daily" className="text-[9px]">Today</SelectItem>
-                        <SelectItem value="weekly" className="text-[9px]">This Week</SelectItem>
-                        <SelectItem value="monthly" className="text-[9px]">This Month</SelectItem>
-                        <SelectItem value="yearly" className="text-[9px]">This Year</SelectItem>
-                        <SelectItem value="all" className="text-[9px]">All Time</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Equity Chart */}
-                  <div>
-                    <h4 className="text-[9px] font-semibold text-foreground mb-1.5">Equity Curve</h4>
-                    {renderEquityChart()}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Add Trade Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-            <div className="bg-background border border-border rounded-lg shadow-lg w-[90vw] max-w-md max-h-[90vh] overflow-y-auto">
-              <Card className="m-0 border-0">
+            {/* Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <Card>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-foreground">
-                      {editingTrade ? 'Edit Trade' : 'Add New Trade'}
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={closeModal}
-                      className="h-6 w-6 p-0"
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
+                  <div className="text-sm text-muted-foreground">Total P/L</div>
+                  <div className={`text-2xl font-bold ${metrics.totalPnl >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    ${metrics.totalPnl.toFixed(2)}
                   </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm text-muted-foreground">Win Rate</div>
+                  <div className="text-2xl font-bold">{metrics.winRate.toFixed(1)}%</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm text-muted-foreground">Profit Factor</div>
+                  <div className="text-2xl font-bold">
+                    {metrics.profitFactor === Infinity ? '∞' : metrics.profitFactor.toFixed(2)}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm text-muted-foreground">Total Trades</div>
+                  <div className="text-2xl font-bold">{metrics.totalTrades}</div>
+                </CardContent>
+              </Card>
+            </div>
 
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="relative">
-                        <label className="block text-[10px] font-medium mb-1 text-foreground">Asset</label>
-                        <div className="relative">
-                          <Input
-                            value={formData.asset_ticker}
-                            onChange={(e) => {
-                              setFormData(prev => ({ ...prev, asset_ticker: e.target.value }));
-                              setShowAssetDropdown(true);
-                            }}
-                            onFocus={() => setShowAssetDropdown(true)}
-                            onBlur={() => {
-                              // Delay hiding dropdown to allow clicks
-                              setTimeout(() => setShowAssetDropdown(false), 300);
-                            }}
-                            placeholder="e.g., EURUSD, AAPL"
-                            className="h-7 text-xs pr-8"
-                          />
-                          <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-muted-foreground" />
-                          
-                          {/* Asset Suggestions Dropdown */}
-                          {showAssetDropdown && (
-                            <div 
-                              className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-40 overflow-y-auto"
-                              onMouseDown={(e) => e.preventDefault()} // Prevent input blur when clicking dropdown
-                            >
-                              {assetSuggestions.length > 0 ? (
-                                <div className="p-1">
-                                  {!formData.asset_ticker && getRecentAssets().length > 0 && (
-                                    <div className="px-2 py-1 text-[8px] text-muted-foreground font-medium border-b border-border/30 mb-1">
-                                      Recent Assets
-                                    </div>
-                                  )}
-                                  {assetSuggestions.map((asset, index) => (
-                                    <button
-                                      key={asset}
-                                      type="button"
-                                      onClick={() => {
-                                        setFormData(prev => ({ ...prev, asset_ticker: asset }));
-                                        setShowAssetDropdown(false);
-                                      }}
-                                      className="w-full text-left px-2 py-1.5 text-[10px] hover:bg-muted/50 rounded-sm transition-colors"
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <span className="font-medium">{asset}</span>
-                                        {FOREX_PAIRS.includes(asset) && (
-                                          <Badge variant="outline" className="text-[7px] h-3 px-1">
-                                            FX
-                                          </Badge>
-                                        )}
-                                        {COMMODITIES.includes(asset) && (
-                                          <Badge variant="outline" className="text-[7px] h-3 px-1">
-                                            Gold
-                                          </Badge>
-                                        )}
-                                        {INDICES.includes(asset) && (
-                                          <Badge variant="outline" className="text-[7px] h-3 px-1">
-                                            Index
-                                          </Badge>
-                                        )}
-                                        {asset.includes('/USDT') && (
-                                          <Badge variant="outline" className="text-[7px] h-3 px-1">
-                                            Crypto
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : formData.asset_ticker ? (
-                                <div className="p-2 text-[9px] text-muted-foreground text-center">
-                                  No matches found
-                                </div>
-                              ) : (
-                                <div className="p-2 text-[9px] text-muted-foreground text-center">
-                                  Start typing to see suggestions
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-medium mb-1 text-foreground">Amount ($)</label>
-                        <Input
-                          type="number"
-                          value={formData.pnl}
-                          onChange={(e) => setFormData(prev => ({ ...prev, pnl: e.target.value }))}
-                          placeholder="150.50"
-                          className="h-7 text-xs"
-                        />
-                      </div>
+            {/* Charts and Stats Row */}
+            <div className="flex flex-col md:flex-row gap-6 mb-6">
+              {/* Equity Curve */}
+              <Card className="flex-grow">
+                <CardContent className="p-4">
+                  <h4 className="font-bold mb-2 text-center text-sm text-muted-foreground">Equity Curve</h4>
+                  {renderEquityChart(filteredTrades)}
+                </CardContent>
+              </Card>
+
+              {/* Stats Panel */}
+              {statsVisible && (
+                <Card className="w-full md:w-72">
+                  <CardContent className="p-4">
+                    <div className="flex bg-muted rounded-lg p-1 space-x-1 mb-4">
+                      <Button
+                        variant={activeStatsTab === 'most-traded' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setActiveStatsTab('most-traded')}
+                        className="flex-1 text-xs h-8"
+                      >
+                        Most Traded
+                      </Button>
+                      <Button
+                        variant={activeStatsTab === 'ai-analytics' ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setActiveStatsTab('ai-analytics')}
+                        className="flex-1 text-xs h-8"
+                      >
+                        AI Analytics
+                      </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {activeStatsTab === 'most-traded' ? (
                       <div>
-                        <label className="block text-[10px] font-medium mb-1 text-foreground">Direction</label>
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            variant={formData.trade_type === 'Long' ? 'default' : 'outline'}
-                            onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Long' }))}
-                            className="flex-1 h-6 text-[10px]"
-                          >
-                            Long
-                          </Button>
-                          <Button
-                            type="button"
-                            variant={formData.trade_type === 'Short' ? 'default' : 'outline'}
-                            onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Short' }))}
-                            className="flex-1 h-6 text-[10px]"
-                          >
-                            Short
-                          </Button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-medium mb-1 text-foreground">Outcome</label>
-                        <div className="flex gap-1">
-                          {(['Win', 'Loss', 'Breakeven'] as const).map((outcome) => (
-                            <Button
-                              key={outcome}
-                              type="button"
-                              variant={formData.outcome === outcome ? 'default' : 'outline'}
-                              onClick={() => setFormData(prev => ({ ...prev, outcome }))}
-                              className="flex-1 h-6 text-[9px]"
-                            >
-                              {outcome === 'Breakeven' ? 'BE' : outcome}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-medium mb-1 text-foreground">Notes</label>
-                      <Textarea
-                        value={formData.notes}
-                        onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                        rows={3}
-                        placeholder="Analysis and insights..."
-                        className="text-xs"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-medium mb-1 text-foreground">Screenshot</label>
-                      <div className="border border-dashed border-border rounded p-3 text-center">
-                        {screenshotPreview ? (
+                        <h4 className="font-bold mb-2 text-center text-muted-foreground text-sm">Most Traded Assets</h4>
+                        {mostTradedAssets.length > 0 ? (
                           <div className="space-y-2">
-                            <img 
-                              src={screenshotPreview} 
-                              alt="Preview" 
-                              className="max-h-24 mx-auto rounded border"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setScreenshotFile(null);
-                                setScreenshotPreview(null);
-                              }}
-                              className="h-6 text-[9px]"
-                            >
-                              Remove
-                            </Button>
+                            {mostTradedAssets.map(({ asset, count }) => (
+                              <div key={asset} className="flex items-center justify-between text-sm">
+                                <span className="text-foreground">{asset}</span>
+                                <span className="font-semibold text-muted-foreground">{count}</span>
+                              </div>
+                            ))}
                           </div>
                         ) : (
-                          <div>
-                            <Camera className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
-                            <label className="cursor-pointer text-primary hover:text-primary/80">
-                              <span className="text-[10px]">Upload screenshot</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handleFileChange}
-                              />
-                            </label>
+                          <p className="text-center text-sm text-muted-foreground">No trades to analyze</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <h4 className="font-bold mb-2 text-center text-muted-foreground text-sm">AI Coach Insights</h4>
+                        {aiInsights.length > 0 ? (
+                          <ul className="space-y-3 text-sm text-foreground">
+                            {aiInsights.map((insight, index) => (
+                              <li key={index} className="flex items-start">
+                                <TrendingUp className="w-4 h-4 text-emerald-400 mr-2 mt-0.5 flex-shrink-0" />
+                                <span>{insight}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-center text-sm text-muted-foreground">No trades to analyze</p>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Calendar Container */}
+            <Card className="flex-1 min-h-0">
+              <CardContent className="p-4 h-full flex flex-col">
+                <div className="flex flex-col md:flex-row items-center justify-between mb-4 gap-4">
+                  {/* Time Filter */}
+                  <div className="flex bg-muted rounded-lg p-1 space-x-1">
+                    {['daily', 'weekly', 'monthly', 'yearly', 'all'].map((filter) => (
+                      <Button
+                        key={filter}
+                        variant={timeFilter === filter ? 'default' : 'ghost'}
+                        size="sm"
+                        onClick={() => setTimeFilter(filter as any)}
+                        className="text-xs capitalize h-8"
+                      >
+                        {filter === 'daily' ? 'Today' : filter === 'all' ? 'All' : filter}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {/* Navigation */}
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newDate = new Date(currentDate);
+                        newDate.setMonth(newDate.getMonth() - 1);
+                        setCurrentDate(newDate);
+                      }}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="text-lg font-semibold h-8"
+                    >
+                      {format(currentDate, 'MMMM yyyy')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newDate = new Date(currentDate);
+                        newDate.setMonth(newDate.getMonth() + 1);
+                        setCurrentDate(newDate);
+                      }}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Calendar */}
+                <div className="flex-1 min-h-0">
+                  {timeFilter === 'monthly' ? renderCalendar() : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <p className="mb-4">
+                          {timeFilter === 'daily' && 'Showing today\'s trades below. Select another filter to see calendar view.'}
+                          {timeFilter === 'all' && 'Showing all trades below. Select a different filter to see calendar view.'}
+                          {timeFilter === 'weekly' && 'Weekly view coming soon. Use monthly for now.'}
+                          {timeFilter === 'yearly' && 'Yearly view coming soon. Use monthly for now.'}
+                        </p>
+                        {filteredTrades.length > 0 && (
+                          <div className="space-y-2 max-h-60 overflow-y-auto">
+                            {filteredTrades.map(trade => (
+                              <div key={trade.id} className="flex justify-between items-center p-2 bg-muted rounded text-sm cursor-pointer hover:bg-muted/70" onClick={() => openModal(trade)}>
+                                <span className="font-medium">{trade.asset_ticker}</span>
+                                <span className="text-xs text-muted-foreground">{format(new Date(trade.trade_date), 'MMM d')}</span>
+                                <span className={`font-semibold ${trade.pnl >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                  ${trade.pnl.toFixed(2)}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
                     </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 md:p-8 h-full overflow-y-auto">
+          <div className="max-w-4xl mx-auto">
+            {renderDayView()}
+          </div>
+        </div>
+      )}
 
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="outline" onClick={closeModal} className="h-7 px-3 text-[10px]">
-                        Cancel
-                      </Button>
-                      <Button 
-                        onClick={handleSaveTrade}
-                        disabled={!formData.asset_ticker || !formData.pnl}
-                        className="h-7 px-3 text-[10px]"
-                      >
-                        {editingTrade ? 'Update' : 'Save'}
-                      </Button>
+      {/* Trade Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg shadow-2xl w-full max-w-4xl max-h-full overflow-y-auto p-6 space-y-6">
+            <div className="flex justify-between items-start">
+              <h3 className="text-2xl font-bold">{editingTrade ? 'Edit Trade' : 'Log New Trade'}</h3>
+              <Button variant="ghost" size="sm" onClick={closeModal} className="h-8 w-8 p-0">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Asset Ticker */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Asset / Pair</label>
+                <div className="relative">
+                  <Input
+                    value={formData.asset_ticker}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, asset_ticker: e.target.value }));
+                      setShowAssetDropdown(true);
+                    }}
+                    onFocus={() => setShowAssetDropdown(true)}
+                    onBlur={(e) => {
+                      // Delay hiding to allow clicks on dropdown items
+                      setTimeout(() => setShowAssetDropdown(false), 300);
+                    }}
+                    placeholder="e.g., SPX500, XAU/USD, BTC/USDT"
+                    className="w-full"
+                  />
+                  {showAssetDropdown && assetSuggestions.length > 0 && (
+                    <div className="absolute z-[100] w-full bg-popover border rounded-md mt-1 shadow-lg max-h-60 overflow-y-auto">
+                      {assetSuggestions.map((suggestion, index) => {
+                        const getAssetType = (asset: string) => {
+                          if (FOREX_PAIRS.includes(asset)) return { type: 'Forex', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' };
+                          if (COMMODITIES.includes(asset)) return { type: 'Commodity', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' };
+                          if (INDICES.includes(asset)) return { type: 'Index', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' };
+                          if (asset.includes('/USDT')) return { type: 'Crypto', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' };
+                          return { type: 'Recent', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200' };
+                        };
+
+                        const assetInfo = getAssetType(suggestion);
+
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 hover:bg-muted cursor-pointer"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setFormData(prev => ({ ...prev, asset_ticker: suggestion }));
+                              setShowAssetDropdown(false);
+                            }}
+                          >
+                            <span className="font-medium">{suggestion}</span>
+                            <Badge variant="secondary" className={`text-xs ${assetInfo.color}`}>
+                              {assetInfo.type}
+                            </Badge>
+                          </div>
+                        );
+                      })}
                     </div>
+                  )}
+                </div>
+              </div>
+
+              {/* P&L */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Profit / Loss ($)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.pnl}
+                  onChange={(e) => setFormData(prev => ({ ...prev, pnl: e.target.value }))}
+                  placeholder="e.g., 150.50"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Direction */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Direction</label>
+                <div className="flex space-x-2">
+                  <Button
+                    type="button"
+                    variant={formData.trade_type === 'Long' ? 'default' : 'outline'}
+                    onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Long' }))}
+                    className="flex-1"
+                  >
+                    Long
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.trade_type === 'Short' ? 'default' : 'outline'}
+                    onClick={() => setFormData(prev => ({ ...prev, trade_type: 'Short' }))}
+                    className="flex-1"
+                  >
+                    Short
+                  </Button>
+                </div>
+              </div>
+
+              {/* Outcome */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Outcome</label>
+                <div className="flex space-x-2">
+                  <Button
+                    type="button"
+                    variant={formData.outcome === 'Win' ? 'default' : 'outline'}
+                    onClick={() => setFormData(prev => ({ ...prev, outcome: 'Win' }))}
+                    className="flex-1"
+                  >
+                    Win
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.outcome === 'Loss' ? 'default' : 'outline'}
+                    onClick={() => setFormData(prev => ({ ...prev, outcome: 'Loss' }))}
+                    className="flex-1"
+                  >
+                    Loss
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.outcome === 'Breakeven' ? 'default' : 'outline'}
+                    onClick={() => setFormData(prev => ({ ...prev, outcome: 'Breakeven' }))}
+                    className="flex-1"
+                  >
+                    BE
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Coach Data Points */}
+            <Card className="bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800">
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-emerald-700 dark:text-emerald-300 mb-3">AI Coach Data Points</h3>
+                <p className="text-sm text-muted-foreground mb-4">Help the AI learn your habits by providing more context.</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Strategy / Setup</label>
+                    <Select value={formData.strategy} onValueChange={(value) => setFormData(prev => ({ ...prev, strategy: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select strategy" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Breakout">Breakout</SelectItem>
+                        <SelectItem value="Reversal">Reversal</SelectItem>
+                        <SelectItem value="Trend Following">Trend Following</SelectItem>
+                        <SelectItem value="Scalp">Scalp</SelectItem>
+                        <SelectItem value="Range">Range</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                </CardContent>
-              </Card>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Mindset / Emotion</label>
+                    <Select value={formData.emotion} onValueChange={(value) => setFormData(prev => ({ ...prev, emotion: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select emotion" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Disciplined">Disciplined</SelectItem>
+                        <SelectItem value="Confident">Confident</SelectItem>
+                        <SelectItem value="Anxious">Anxious</SelectItem>
+                        <SelectItem value="Greedy">Greedy</SelectItem>
+                        <SelectItem value="FOMO">FOMO</SelectItem>
+                        <SelectItem value="Hesitant">Hesitant</SelectItem>
+                        <SelectItem value="Fatigued">Fatigued</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Trading Session</label>
+                    <Select value={formData.session} onValueChange={(value) => setFormData(prev => ({ ...prev, session: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select session" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Asian">Asian</SelectItem>
+                        <SelectItem value="London">London</SelectItem>
+                        <SelectItem value="New York">New York</SelectItem>
+                        <SelectItem value="Overlap">Overlap</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Trade Notes & Analysis</label>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                rows={6}
+                placeholder="Describe your trade setup, analysis, and any observations..."
+              />
+            </div>
+
+            {/* Screenshot Upload */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Trade Chart Screenshot</label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-border rounded-md">
+                {screenshotPreview ? (
+                  <div className="space-y-1 text-center">
+                    <img src={screenshotPreview} alt="Screenshot preview" className="max-h-64 mx-auto rounded-md" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setScreenshotFile(null);
+                        setScreenshotPreview(null);
+                      }}
+                      className="mt-2"
+                    >
+                      Remove Image
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-1 text-center">
+                    <Camera className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <div className="flex text-sm text-muted-foreground">
+                      <label
+                        htmlFor="file-upload"
+                        className="relative cursor-pointer rounded-md font-medium text-primary hover:text-primary/80"
+                      >
+                        <span>Upload a file</span>
+                        <input
+                          id="file-upload"
+                          name="file-upload"
+                          type="file"
+                          className="sr-only"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                        />
+                      </label>
+                      <p className="pl-1">or drag and drop</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end space-x-4 pt-4">
+              <Button variant="outline" onClick={closeModal}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveTrade}
+                disabled={!formData.asset_ticker || !formData.pnl}
+              >
+                {editingTrade ? 'Update Trade' : 'Save Trade'}
+              </Button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

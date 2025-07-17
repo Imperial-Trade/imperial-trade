@@ -341,7 +341,10 @@ export default function AdvancedTools() {
             <div className="bg-gray-800 dark:bg-gray-200 rounded-2xl p-4">
               <div className="flex items-center justify-between">
                 {/* Profile Section */}
-                <div className="flex items-center gap-3">
+                <button 
+                  className="flex items-center gap-3 hover:bg-gray-700 dark:hover:bg-gray-300 rounded-lg p-2 -m-2 transition-colors"
+                  onClick={() => window.location.href = '/dashboard/settings'}
+                >
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
                   </div>
@@ -349,7 +352,7 @@ export default function AdvancedTools() {
                     <div className="text-white dark:text-black text-sm font-medium">Jacob Estayo</div>
                     <div className="text-gray-400 dark:text-gray-600 text-xs">Admin</div>
                   </div>
-                </div>
+                </button>
                 
                 {/* Controls */}
                 <div className="flex items-center gap-2">

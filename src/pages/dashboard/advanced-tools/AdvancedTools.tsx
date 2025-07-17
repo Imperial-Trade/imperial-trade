@@ -108,49 +108,43 @@ export default function AdvancedTools() {
     }
   };
 
-  const SidebarToolButton = ({ tool, isActive }) => {
+  const WidgetTool = ({ tool, size = 'small' }) => {
     const Icon = tool.icon;
+    const isActive = activeTool?.name === tool.name;
+    
+    const sizeClasses = {
+      small: 'col-span-1 h-24',
+      medium: 'col-span-2 h-24',
+      large: 'col-span-2 h-32'
+    };
+
     return (
       <motion.button
         onClick={() => handleToolSelect(tool)}
-        className={`group relative w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${
-          isActive
-            ? 'bg-primary/10 text-primary shadow-sm'
-            : 'text-muted-foreground hover:text-foreground hover:bg-surface/60'
+        className={`${sizeClasses[size]} bg-white dark:bg-gray-900/30 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-gray-200/20 dark:border-gray-700/30 transition-all duration-300 hover:shadow-md hover:scale-[1.02] ${
+          isActive ? 'ring-2 ring-primary/50 shadow-lg' : ''
         }`}
-        whileHover={{ scale: 1.01 }}
+        whileHover={{ y: -2 }}
         whileTap={{ scale: 0.98 }}
       >
-        <div className={`relative flex-shrink-0 p-2.5 rounded-lg transition-all duration-300 ${
-          isActive 
-            ? 'bg-primary/15 text-primary' 
-            : 'bg-surface/50 group-hover:bg-surface/80'
-        }`}>
-          <Icon className="w-4 h-4" />
-          {isActive && (
-            <motion.div
-              layoutId="activeIndicator"
-              className="absolute -inset-0.5 rounded-lg border border-primary/20 bg-primary/5"
-              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-            />
-          )}
+        <div className="flex flex-col h-full justify-between">
+          <div className="flex items-start justify-between">
+            <div className={`p-2 rounded-lg ${isActive ? 'bg-primary/15' : 'bg-gray-100 dark:bg-gray-800/50'}`}>
+              <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+            </div>
+            {isActive && (
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            )}
+          </div>
+          <div className="text-left">
+            <h3 className={`font-medium text-sm ${isActive ? 'text-primary' : 'text-foreground'}`}>
+              {tool.name}
+            </h3>
+            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+              {tool.description}
+            </p>
+          </div>
         </div>
-        <motion.div
-          className="flex-1 text-left overflow-hidden"
-          initial={false}
-          animate={{
-            opacity: isHovered ? 1 : 0,
-            width: isHovered ? 'auto' : 0,
-            marginLeft: isHovered ? 8 : 0,
-          }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-        >
-          <h3 className="font-medium text-sm whitespace-nowrap tracking-wide">{tool.name}</h3>
-          <p className="text-xs text-muted-foreground/80 leading-tight whitespace-nowrap mt-0.5">{tool.description}</p>
-        </motion.div>
-        {!isHovered && !isActive && (
-          <div className="absolute left-1/2 transform -translate-x-1/2 bottom-1 w-1 h-1 rounded-full bg-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-        )}
       </motion.button>
     );
   };
@@ -181,96 +175,41 @@ export default function AdvancedTools() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Apple-Style Sidebar */}
+      {/* Apple Today View Style Sidebar */}
       <motion.aside
-        className="fixed left-0 top-0 h-full z-40 bg-background/80 backdrop-blur-xl border-r border-border/40 shadow-xl"
+        className="fixed left-0 top-0 h-full z-40 bg-gray-50 dark:bg-gray-950 overflow-y-auto"
         initial={false}
         animate={{
-          width: isHovered ? 280 : 72,
+          width: 320,
         }}
         transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="p-4 h-full overflow-hidden flex flex-col">
-          {/* Tools Dashboard Button */}
-          <motion.div
-            className="mb-6"
-            initial={false}
-            animate={{
-              opacity: isHovered ? 1 : 0,
-            }}
-            transition={{ duration: 0.3 }}
-          >
-            <Button
-              variant="ghost"
-              className="w-full flex items-center gap-2 p-3 hover:bg-surface/50 text-muted-foreground hover:text-foreground"
-              onClick={() => setActiveTool(null)}
-            >
-              <ChevronLeft className="w-4 h-4" />
-              {isHovered && <span className="text-sm">Tools Dashboard</span>}
-            </Button>
-          </motion.div>
-
-          {/* Sidebar Header */}
-          <motion.div
-            className="mb-6"
-            initial={false}
-            animate={{
-              opacity: isHovered ? 1 : 0,
-            }}
-            transition={{ duration: 0.3 }}
-          >
-            <h1 className="text-lg font-bold text-primary whitespace-nowrap">Trading Arsenal</h1>
-            <p className="text-xs text-muted-foreground whitespace-nowrap">Professional trading tools</p>
-          </motion.div>
-
-          {/* AI Tools Section */}
+        <div className="p-4 h-full">
+          {/* Header */}
           <div className="mb-6">
-            <motion.h2
-              className="text-xs font-medium tracking-wide uppercase text-accent-gold flex items-center gap-2 mb-3"
-              initial={false}
-              animate={{
-                opacity: isHovered ? 1 : 0,
-              }}
-              transition={{ duration: 0.3 }}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span className="whitespace-nowrap">AI-Powered Intelligence</span>
-            </motion.h2>
-            <div className="space-y-2">
-              {aiTools.map(tool => (
-                <SidebarToolButton 
-                  key={tool.name} 
-                  tool={tool} 
-                  isActive={activeTool?.name === tool.name} 
-                />
-              ))}
-            </div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Today</h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Trading Arsenal</p>
           </div>
 
-          {/* Core Tools Section */}
-          <div>
-            <motion.h2
-              className="text-xs font-medium tracking-wide uppercase text-accent-blue flex items-center gap-2 mb-3"
-              initial={false}
-              animate={{
-                opacity: isHovered ? 1 : 0,
-              }}
-              transition={{ duration: 0.3 }}
-            >
-              <Wrench className="w-4 h-4" />
-              <span className="whitespace-nowrap">Core Trading Tools</span>
-            </motion.h2>
-            <div className="space-y-2">
-              {coreTools.map(tool => (
-                <SidebarToolButton 
-                  key={tool.name} 
-                  tool={tool} 
-                  isActive={activeTool?.name === tool.name} 
-                />
-              ))}
-            </div>
+          {/* Widget Grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Trading Journal - Large Widget */}
+            <WidgetTool tool={coreTools[0]} size="large" />
+            
+            {/* Economic Calendar */}
+            <WidgetTool tool={coreTools[1]} size="small" />
+            
+            {/* Risk Calculator */}
+            <WidgetTool tool={coreTools[2]} size="small" />
+            
+            {/* Trade Analyst - Medium Widget */}
+            <WidgetTool tool={aiTools[0]} size="medium" />
+            
+            {/* Opportunity Scanner */}
+            <WidgetTool tool={aiTools[1]} size="small" />
+            
+            {/* Risk Simulator */}
+            <WidgetTool tool={aiTools[2]} size="small" />
           </div>
         </div>
       </motion.aside>
@@ -279,7 +218,7 @@ export default function AdvancedTools() {
       <motion.div 
         className="flex-1 p-6"
         animate={{ 
-          marginLeft: isHovered ? 280 : 72 
+          marginLeft: 320 
         }}
         transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
       >

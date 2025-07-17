@@ -103,7 +103,7 @@ const SESSIONS = [
   { value: 'newyork', label: 'New York (12PM-9PM GMT)' }
 ];
 
-// Sample data for demo
+// Sample data for demo with multiple trades across different time periods
 const sampleTrades: Trade[] = [
   {
     id: '1',
@@ -121,6 +121,101 @@ const sampleTrades: Trade[] = [
     session: 'london',
     notes: 'Clean breakout above resistance level. Textbook setup.',
     ai_feedback: 'Excellent trade execution. Your confidence in breakout setups during London session shows strong pattern recognition.',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '2',
+    user_id: 'demo-user',
+    date: '2024-01-16',
+    asset: 'GBPUSD',
+    direction: 'short',
+    outcome: 'loss',
+    pnl: -120,
+    entry_price: 1.2750,
+    exit_price: 1.2780,
+    position_size: 800,
+    strategy: 'Reversal',
+    emotion: 'Frustrated',
+    session: 'newyork',
+    notes: 'False breakout. Should have waited for confirmation.',
+    ai_feedback: 'Consider using additional confirmation signals for reversal trades. Your frustration might have led to early exit.',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '3',
+    user_id: 'demo-user',
+    date: '2024-01-17',
+    asset: 'USDJPY',
+    direction: 'long',
+    outcome: 'win',
+    pnl: 180,
+    entry_price: 148.50,
+    exit_price: 149.20,
+    position_size: 1200,
+    strategy: 'Trend Following',
+    emotion: 'Confident',
+    session: 'tokyo',
+    notes: 'Perfect trend continuation setup.',
+    ai_feedback: 'Excellent trend following execution. Your confidence in trending markets is a strength.',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '4',
+    user_id: 'demo-user',
+    date: '2024-01-18',
+    asset: 'EURUSD',
+    direction: 'short',
+    outcome: 'win',
+    pnl: 320,
+    entry_price: 1.0890,
+    exit_price: 1.0850,
+    position_size: 1500,
+    strategy: 'Support/Resistance',
+    emotion: 'Disciplined',
+    session: 'london',
+    notes: 'Perfect rejection at resistance level.',
+    ai_feedback: 'Outstanding discipline in waiting for the perfect setup at key resistance.',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '5',
+    user_id: 'demo-user',
+    date: '2024-01-19',
+    asset: 'AUDUSD',
+    direction: 'long',
+    outcome: 'loss',
+    pnl: -95,
+    entry_price: 0.6750,
+    exit_price: 0.6730,
+    position_size: 900,
+    strategy: 'News Trading',
+    emotion: 'Anxious',
+    session: 'sydney',
+    notes: 'News went against expectation.',
+    ai_feedback: 'News trading requires quick decision-making. Consider position sizing for volatile events.',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '6',
+    user_id: 'demo-user',
+    date: '2024-01-22',
+    asset: 'GBPJPY',
+    direction: 'long',
+    outcome: 'win',
+    pnl: 275,
+    entry_price: 188.50,
+    exit_price: 190.00,
+    position_size: 1100,
+    strategy: 'Breakout',
+    emotion: 'Focused',
+    session: 'london',
+    notes: 'Clean breakout with volume confirmation.',
+    ai_feedback: 'Great use of volume confirmation. Your focus during London session shows consistent performance.',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }
@@ -269,7 +364,63 @@ export const TradingJournalApp: React.FC = () => {
     };
   };
 
-  const metrics = calculateMetrics(trades);
+  // Filter trades based on current view
+  const getFilteredTrades = useCallback(() => {
+    const now = new Date();
+    const currentDate = journalState.currentDate;
+    
+    switch (journalState.currentFilter) {
+      case 'today':
+        const today = now.toISOString().split('T')[0];
+        return trades.filter(t => t.date === today);
+      
+      case 'week':
+        const startOfWeek = new Date(currentDate);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        return trades.filter(t => {
+          const tradeDate = new Date(t.date);
+          return tradeDate >= startOfWeek && tradeDate <= endOfWeek;
+        });
+      
+      case 'month':
+        return trades.filter(t => {
+          const tradeDate = new Date(t.date);
+          return tradeDate.getMonth() === currentDate.getMonth() && 
+                 tradeDate.getFullYear() === currentDate.getFullYear();
+        });
+      
+      case 'year':
+        return trades.filter(t => {
+          const tradeDate = new Date(t.date);
+          return tradeDate.getFullYear() === currentDate.getFullYear();
+        });
+      
+      case 'all':
+      default:
+        return trades;
+    }
+  }, [trades, journalState.currentFilter, journalState.currentDate]);
+
+  const filteredTrades = getFilteredTrades();
+  const metrics = calculateMetrics(filteredTrades);
+
+  // Generate equity curve data
+  const getEquityCurveData = useCallback(() => {
+    const sortedTrades = filteredTrades.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    let cumulativePnL = 0;
+    
+    return sortedTrades.map((trade, index) => {
+      cumulativePnL += trade.pnl;
+      return {
+        date: trade.date,
+        pnl: cumulativePnL,
+        tradePnL: trade.pnl,
+        tradeNumber: index + 1
+      };
+    });
+  }, [filteredTrades]);
 
   // Centralized state update function (the "brain" of the app)
   const updateView = useCallback((newFilter?: ViewType, newDate?: Date) => {
@@ -629,83 +780,366 @@ Please provide a brief analysis focusing on what went well, what could be improv
     );
   };
 
-  // Enhanced Stats Panel with AI insights
-  const EnhancedStatsPanel: React.FC = () => (
-    <AnimatePresence>
-      {showStats && (
-        <motion.div
-          initial={{ width: 0, opacity: 0 }}
-          animate={{ width: 320, opacity: 1 }}
-          exit={{ width: 0, opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="overflow-hidden"
-        >
-          <Card className={cn(
-            "h-96 ml-4",
-            theme === 'dark' 
-              ? "bg-slate-900/80 border-slate-700" 
-              : "bg-white border-slate-200"
+  // Get most traded assets
+  const getMostTradedAssets = () => {
+    const assetCounts = trades.reduce((acc, trade) => {
+      acc[trade.asset] = (acc[trade.asset] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(assetCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([asset, count]) => ({ asset, count }));
+  };
+
+  // State for analytics toggle
+  const [analyticsView, setAnalyticsView] = useState<'ai' | 'most-traded'>('ai');
+
+  // Equity Curve Chart Component
+  const EquityCurveChart: React.FC<{ data: Array<{date: string, pnl: number, tradePnL: number, tradeNumber: number}> }> = ({ data }) => {
+    if (data.length === 0) {
+      return (
+        <div className="h-64 flex items-center justify-center text-muted-foreground">
+          <div className="text-center">
+            <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+            <p>No trades found for this period</p>
+            <p className="text-sm">Start trading to see your equity curve</p>
+          </div>
+        </div>
+      );
+    }
+
+    const maxPnL = Math.max(...data.map(d => d.pnl));
+    const minPnL = Math.min(...data.map(d => d.pnl));
+    const range = maxPnL - minPnL;
+    const padding = range * 0.1;
+    const chartHeight = 240;
+    const chartWidth = 600;
+
+    // Generate smooth curve path
+    const generateSmoothPath = () => {
+      if (data.length < 2) return '';
+
+      let path = '';
+      const points = data.map((point, index) => ({
+        x: (index / (data.length - 1)) * chartWidth,
+        y: chartHeight - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * chartHeight
+      }));
+
+      // Start the path
+      path += `M ${points[0].x} ${points[0].y}`;
+
+      // Create smooth curves using cubic bezier
+      for (let i = 1; i < points.length; i++) {
+        const prevPoint = points[i - 1];
+        const currentPoint = points[i];
+        
+        // Control points for smooth curve
+        const cp1x = prevPoint.x + (currentPoint.x - prevPoint.x) * 0.3;
+        const cp1y = prevPoint.y;
+        const cp2x = currentPoint.x - (currentPoint.x - prevPoint.x) * 0.3;
+        const cp2y = currentPoint.y;
+        
+        path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${currentPoint.x} ${currentPoint.y}`;
+      }
+
+      return path;
+    };
+
+    return (
+      <div className="h-64 w-full relative">
+        <svg width="100%" height="100%" viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="overflow-visible">
+          {/* Grid lines */}
+          <defs>
+            <pattern id="grid" width="50" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 50 0 L 0 0 0 40" fill="none" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} strokeWidth="0.5" opacity="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+          
+          {/* Zero line */}
+          {minPnL < 0 && maxPnL > 0 && (
+            <line
+              x1="0"
+              y1={chartHeight - ((0 - minPnL + padding) / (range + 2 * padding)) * chartHeight}
+              x2={chartWidth}
+              y2={chartHeight - ((0 - minPnL + padding) / (range + 2 * padding)) * chartHeight}
+              stroke={theme === 'dark' ? '#6b7280' : '#9ca3af'}
+              strokeWidth="1"
+              strokeDasharray="5,5"
+            />
+          )}
+
+          {/* Area under curve */}
+          <defs>
+            <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={data[data.length - 1]?.pnl >= 0 ? '#10b981' : '#ef4444'} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={data[data.length - 1]?.pnl >= 0 ? '#10b981' : '#ef4444'} stopOpacity="0.05" />
+            </linearGradient>
+          </defs>
+          <path
+            d={`${generateSmoothPath()} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`}
+            fill="url(#areaGradient)"
+          />
+
+          {/* Main curve */}
+          <path
+            d={generateSmoothPath()}
+            fill="none"
+            stroke={data[data.length - 1]?.pnl >= 0 ? '#10b981' : '#ef4444'}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Data points */}
+          {data.map((point, index) => {
+            const x = (index / (data.length - 1)) * chartWidth;
+            const y = chartHeight - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * chartHeight;
+            
+            return (
+              <motion.circle
+                key={index}
+                cx={x}
+                cy={y}
+                r="4"
+                fill={point.tradePnL >= 0 ? '#10b981' : '#ef4444'}
+                stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
+                strokeWidth="2"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+                className="hover:scale-150 transition-transform cursor-pointer"
+              >
+                <title>{`Trade ${point.tradeNumber}: $${point.tradePnL.toFixed(2)} | Total: $${point.pnl.toFixed(2)}`}</title>
+              </motion.circle>
+            );
+          })}
+
+          {/* Y-axis labels */}
+          {[minPnL, (minPnL + maxPnL) / 2, maxPnL].map((value, index) => {
+            const y = chartHeight - ((value - minPnL + padding) / (range + 2 * padding)) * chartHeight;
+            return (
+              <text
+                key={index}
+                x="-10"
+                y={y + 4}
+                fontSize="12"
+                fill={theme === 'dark' ? '#9ca3af' : '#6b7280'}
+                textAnchor="end"
+              >
+                ${value.toFixed(0)}
+              </text>
+            );
+          })}
+        </svg>
+
+        {/* Current total indicator */}
+        <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-lg p-2 border">
+          <div className="text-xs text-muted-foreground">Current Total</div>
+          <div className={cn(
+            "text-lg font-bold",
+            data[data.length - 1]?.pnl >= 0 ? "text-green-500" : "text-red-500"
           )}>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Brain className="h-5 w-5 text-blue-500" />
-                AI Analytics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-3 text-sm">
-                  <motion.div 
-                    className="p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-green-500/20 border border-green-500/20"
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <TrendingUp className="h-4 w-4 text-green-500" />
-                      <p className="font-medium text-green-600">Best Strategy</p>
-                    </div>
-                    <p className="text-muted-foreground">Breakout trades show 80% win rate during London session</p>
-                  </motion.div>
-                  
-                  <motion.div 
-                    className="p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-500/20 border border-blue-500/20"
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="h-4 w-4 text-blue-500" />
-                      <p className="font-medium text-blue-600">Timing Insight</p>
-                    </div>
-                    <p className="text-muted-foreground">Your performance peaks during European overlap hours</p>
-                  </motion.div>
-                  
-                  <motion.div 
-                    className="p-3 rounded-lg bg-gradient-to-r from-orange-500/10 to-orange-500/20 border border-orange-500/20"
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Heart className="h-4 w-4 text-orange-500" />
-                      <p className="font-medium text-orange-600">Psychology Tip</p>
-                    </div>
-                    <p className="text-muted-foreground">Confident entries yield 23% higher profits than anxious ones</p>
-                  </motion.div>
-                  
-                  <motion.div 
-                    className="p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/20 border border-purple-500/20"
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <MapPin className="h-4 w-4 text-purple-500" />
-                      <p className="font-medium text-purple-600">Risk Management</p>
-                    </div>
-                    <p className="text-muted-foreground">Consider 0.5% position sizing for setups below 2:1 R/R</p>
-                  </motion.div>
+            ${data[data.length - 1]?.pnl.toFixed(2) || '0.00'}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Enhanced Stats Panel with AI insights and Most Traded toggle
+  const EnhancedStatsPanel: React.FC = () => {
+    const mostTradedData = getMostTradedAssets();
+    const colors = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+    
+    return (
+      <AnimatePresence>
+        {showStats && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 320, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <Card className={cn(
+              "h-96 ml-4",
+              theme === 'dark' 
+                ? "bg-slate-900/80 border-slate-700" 
+                : "bg-white border-slate-200"
+            )}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    {analyticsView === 'ai' ? (
+                      <>
+                        <Brain className="h-5 w-5 text-blue-500" />
+                        AI Analytics
+                      </>
+                    ) : (
+                      <>
+                        <PieChart className="h-5 w-5 text-orange-500" />
+                        Most Traded
+                      </>
+                    )}
+                  </CardTitle>
+                  <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                    <Button
+                      variant={analyticsView === 'ai' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setAnalyticsView('ai')}
+                      className="h-7 px-2 text-xs"
+                    >
+                      AI
+                    </Button>
+                    <Button
+                      variant={analyticsView === 'most-traded' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setAnalyticsView('most-traded')}
+                      className="h-7 px-2 text-xs"
+                    >
+                      Assets
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+              </CardHeader>
+              <CardContent>
+                {analyticsView === 'ai' ? (
+                  <div className="space-y-4">
+                    <div className="space-y-3 text-sm">
+                      <motion.div 
+                        className="p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-green-500/20 border border-green-500/20"
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <TrendingUp className="h-4 w-4 text-green-500" />
+                          <p className="font-medium text-green-600">Best Strategy</p>
+                        </div>
+                        <p className="text-muted-foreground">Breakout trades show 80% win rate during London session</p>
+                      </motion.div>
+                      
+                      <motion.div 
+                        className="p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-500/20 border border-blue-500/20"
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Clock className="h-4 w-4 text-blue-500" />
+                          <p className="font-medium text-blue-600">Timing Insight</p>
+                        </div>
+                        <p className="text-muted-foreground">Your performance peaks during European overlap hours</p>
+                      </motion.div>
+                      
+                      <motion.div 
+                        className="p-3 rounded-lg bg-gradient-to-r from-orange-500/10 to-orange-500/20 border border-orange-500/20"
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Heart className="h-4 w-4 text-orange-500" />
+                          <p className="font-medium text-orange-600">Psychology Tip</p>
+                        </div>
+                        <p className="text-muted-foreground">Confident entries yield 23% higher profits than anxious ones</p>
+                      </motion.div>
+                      
+                      <motion.div 
+                        className="p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/20 border border-purple-500/20"
+                        whileHover={{ scale: 1.02 }}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <MapPin className="h-4 w-4 text-purple-500" />
+                          <p className="font-medium text-purple-600">Risk Management</p>
+                        </div>
+                        <p className="text-muted-foreground">Consider 0.5% position sizing for setups below 2:1 R/R</p>
+                      </motion.div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Donut Chart */}
+                    <div className="relative h-40 flex items-center justify-center">
+                      <svg width="120" height="120" viewBox="0 0 120 120" className="transform -rotate-90">
+                        <circle
+                          cx="60"
+                          cy="60"
+                          r="35"
+                          fill="none"
+                          stroke={theme === 'dark' ? '#374151' : '#e5e7eb'}
+                          strokeWidth="20"
+                        />
+                        {mostTradedData.map((item, index) => {
+                          const total = mostTradedData.reduce((sum, d) => sum + d.count, 0);
+                          const percentage = (item.count / total) * 100;
+                          const circumference = 2 * Math.PI * 35;
+                          const strokeDasharray = `${(percentage / 100) * circumference} ${circumference}`;
+                          const strokeDashoffset = -mostTradedData.slice(0, index).reduce((sum, d) => {
+                            return sum + ((d.count / total) * circumference);
+                          }, 0);
+                          
+                          return (
+                            <motion.circle
+                              key={item.asset}
+                              cx="60"
+                              cy="60"
+                              r="35"
+                              fill="none"
+                              stroke={colors[index]}
+                              strokeWidth="20"
+                              strokeDasharray={strokeDasharray}
+                              strokeDashoffset={strokeDashoffset}
+                              initial={{ strokeDasharray: `0 ${circumference}` }}
+                              animate={{ strokeDasharray, strokeDashoffset }}
+                              transition={{ duration: 1, delay: index * 0.1 }}
+                            />
+                          );
+                        })}
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground">Total</p>
+                          <p className="text-lg font-bold">{trades.length}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Legend */}
+                    <div className="space-y-2">
+                      {mostTradedData.map((item, index) => {
+                        const total = mostTradedData.reduce((sum, d) => sum + d.count, 0);
+                        const percentage = ((item.count / total) * 100).toFixed(1);
+                        
+                        return (
+                          <motion.div
+                            key={item.asset}
+                            className="flex items-center justify-between"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.1 }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: colors[index] }}
+                              />
+                              <span className="text-sm font-medium">{item.asset}</span>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold">{item.count}</p>
+                              <p className="text-xs text-muted-foreground">{percentage}%</p>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  };
 
   // Enhanced Day View with zoom transition
   const EnhancedDayView: React.FC<{ date: string }> = ({ date }) => {
@@ -1031,17 +1465,11 @@ Please provide a brief analysis focusing on what went well, what could be improv
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                Equity Curve
+                Equity Curve ({journalState.currentFilter.charAt(0).toUpperCase() + journalState.currentFilter.slice(1)})
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Advanced equity curve will render here</p>
-                  <p className="text-sm">Real-time P&L tracking with cumulative performance</p>
-                </div>
-              </div>
+              <EquityCurveChart data={getEquityCurveData()} />
             </CardContent>
           </Card>
 

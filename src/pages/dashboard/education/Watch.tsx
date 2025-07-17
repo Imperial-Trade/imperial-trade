@@ -24,9 +24,9 @@ interface Lesson {
 
 interface UserProgress {
   id: string;
-  completed_lessons?: number[];
-  current_lesson_index?: number;
-  progress_percentage?: number;
+  completed_lessons: number[];
+  current_lesson_index: number;
+  progress_percentage: number;
 }
 
 export default function Watch() {
@@ -55,13 +55,7 @@ export default function Watch() {
           .eq('id', courseId)
           .single();
 
-        if (courseData) {
-          const transformedCourse: Course = {
-            ...courseData,
-            lessons: Array.isArray(courseData.lessons) ? courseData.lessons : []
-          };
-          setCourse(transformedCourse);
-        }
+        setCourse(courseData);
 
         if (user) {
           const { data: progressData } = await supabase
@@ -71,14 +65,7 @@ export default function Watch() {
             .eq('course_id', courseId)
             .single();
 
-          if (progressData) {
-            setUserProgress({
-              id: progressData.id,
-              completed_lessons: progressData.completed_lessons || [],
-              current_lesson_index: progressData.current_lesson_index || 0,
-              progress_percentage: progressData.progress_percentage || 0
-            });
-          }
+          setUserProgress(progressData);
         }
       } catch (error) {
         console.error('Error initializing watch page:', error);
@@ -101,12 +88,15 @@ export default function Watch() {
         const newProgress = Math.round((newCompletedLessons.length / course.lessons.length) * 100);
 
         if (userProgress) {
-          // Update existing progress - only update fields that exist in the table
+          // Update existing progress
           await supabase
             .from('user_progress')
             .update({
-              status: newProgress === 100 ? 'completed' : 'in_progress',
-              updated_at: new Date().toISOString()
+              completed_lessons: newCompletedLessons,
+              progress_percentage: newProgress,
+              current_lesson_index: Math.min(currentLessonIndex + 1, course.lessons.length - 1),
+              last_watched: new Date().toISOString(),
+              completion_date: newProgress === 100 ? new Date().toISOString() : null
             })
             .eq('id', userProgress.id);
         } else {
@@ -115,11 +105,15 @@ export default function Watch() {
             .from('user_progress')
             .insert({
               user_id: user.id,
+              course_id: courseId,
               video_id: course.id, // Required field
               status: 'in_progress',
               user_email: user.email || '',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
+              completed_lessons: newCompletedLessons,
+              progress_percentage: newProgress,
+              current_lesson_index: Math.min(currentLessonIndex + 1, course.lessons.length - 1),
+              last_watched: new Date().toISOString(),
+              completion_date: newProgress === 100 ? new Date().toISOString() : null
             });
         }
 

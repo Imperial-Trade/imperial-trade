@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { useNavigate } from "react-router-dom";
+import AccessDenied from "@/components/AccessDenied";
 import ImperialHeroSection from "@/components/education/ImperialHeroSection";
 import ModuleGrid from "@/components/education/ModuleGrid";
 import LearningStats from "@/components/education/LearningStats";
@@ -20,9 +21,9 @@ interface Course {
 }
 
 interface UserProfile {
-  learning_streak?: number;
-  trading_points?: number;
-  trading_identity_level?: string;
+  learning_streak: number;
+  trading_points: number;
+  trading_identity_level: string;
 }
 
 export default function Education() {
@@ -41,19 +42,15 @@ export default function Education() {
         setUser(user);
 
         if (user) {
-          // Fetch user profile with gamification data (handle missing columns gracefully)
+          // Fetch user profile with gamification data
           const { data: profile } = await supabase
             .from('profiles')
-            .select('*')
+            .select('learning_streak, trading_points, trading_identity_level')
             .eq('id', user.id)
             .single();
 
           if (profile) {
-            setUserProfile({
-              learning_streak: profile.learning_streak || 0,
-              trading_points: profile.trading_points || 0,
-              trading_identity_level: profile.trading_identity_level || 'Aspiring Trader'
-            });
+            setUserProfile(profile);
           }
         }
 
@@ -66,12 +63,7 @@ export default function Education() {
         if (error) {
           console.error('Error fetching courses:', error);
         } else {
-          // Transform the data to match our interface
-          const transformedCourses = (coursesData || []).map(course => ({
-            ...course,
-            lessons: Array.isArray(course.lessons) ? course.lessons : []
-          }));
-          setCourses(transformedCourses);
+          setCourses(coursesData || []);
         }
       } catch (error) {
         console.error("Error initializing Imperial Academy:", error);
@@ -99,6 +91,11 @@ export default function Education() {
     );
   }
 
+  const userAccessLevel = user?.user_metadata?.access_level || "free";
+  if (userAccessLevel === "free") {
+    return <AccessDenied requiredLevel="user" />;
+  }
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -116,9 +113,9 @@ export default function Education() {
       {userProfile && (
         <div className="px-4 md:px-8 -mt-16 relative z-10">
           <LearningStats
-            learningStreak={userProfile.learning_streak || 0}
-            tradingPoints={userProfile.trading_points || 0}
-            tradingIdentityLevel={userProfile.trading_identity_level || 'Aspiring Trader'}
+            learningStreak={userProfile.learning_streak}
+            tradingPoints={userProfile.trading_points}
+            tradingIdentityLevel={userProfile.trading_identity_level}
           />
         </div>
       )}

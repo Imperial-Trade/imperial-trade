@@ -345,7 +345,7 @@ export default function AdvancedTools() {
                     className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-200 flex-1 min-w-0 ${
                       isActive 
                         ? 'bg-yellow-500 text-black' 
-                        : 'text-white dark:text-black hover:bg-gray-700 dark:hover:bg-gray-300'
+                        : 'text-black dark:text-white hover:bg-gray-700 dark:hover:bg-gray-300'
                     }`}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}

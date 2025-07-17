@@ -20,7 +20,9 @@ import {
   GraduationCap,
   Users,
   Settings,
-  BarChart3
+  BarChart3,
+  Bell,
+  Video
 } from 'lucide-react';
 
 import TradingJournal from '@/components/tools/TradingJournal';
@@ -73,12 +75,11 @@ const aiTools = [
 ];
 
 const navButtons = [
-  { name: 'Dashboard', icon: Home, path: '/dashboard' },
-  { name: 'Signals', icon: TrendingUp, path: '/dashboard/signals' },
-  { name: 'Academy', icon: GraduationCap, path: '/dashboard/academy' },
+  { name: 'Signals', icon: Bell, path: '/dashboard/signals' },
+  { name: 'Education', icon: GraduationCap, path: '/dashboard/academy' },
+  { name: 'Live Sessions', icon: Video, path: '/dashboard/live-sessions' },
   { name: 'Community', icon: Users, path: '/dashboard/community' },
-  { name: 'Analytics', icon: BarChart3, path: '/dashboard/analytics' },
-  { name: 'Settings', icon: Settings, path: '/dashboard/settings' },
+  { name: 'Tools', icon: BarChart3, path: '/dashboard/advanced-tools', isActive: true },
 ];
 
 const ToolSelector = ({ tool, onSelect, isActive }) => {
@@ -333,23 +334,29 @@ export default function AdvancedTools() {
           </div>
 
           {/* Navigation Buttons */}
-          <div className="mt-8 space-y-2">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Navigation</h2>
-            {navButtons.map((button) => {
-              const Icon = button.icon;
-              return (
-                <motion.button
-                  key={button.name}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-200"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => window.location.href = button.path}
-                >
-                  <Icon className="w-5 h-5 text-white dark:text-black" />
-                  <span className="font-medium text-white dark:text-black">{button.name}</span>
-                </motion.button>
-              );
-            })}
+          <div className="mt-8">
+            <div className="bg-gray-800 dark:bg-gray-200 rounded-2xl p-2 flex flex-wrap gap-1">
+              {navButtons.map((button) => {
+                const Icon = button.icon;
+                const isActive = button.isActive;
+                return (
+                  <motion.button
+                    key={button.name}
+                    className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-200 flex-1 min-w-0 ${
+                      isActive 
+                        ? 'bg-yellow-500 text-black' 
+                        : 'text-gray-300 dark:text-gray-600 hover:bg-gray-700 dark:hover:bg-gray-300'
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => window.location.href = button.path}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-xs font-medium text-center leading-tight">{button.name}</span>
+                  </motion.button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </motion.aside>

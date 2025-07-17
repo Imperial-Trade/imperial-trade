@@ -1063,45 +1063,54 @@ Please provide a brief analysis focusing on what went well, what could be improv
   // Enhanced Stats Panel with AI insights and Most Traded toggle
   const EnhancedStatsPanel: React.FC = () => {
     const mostTradedData = getMostTradedAssets();
-    const colors = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
     
     return (
       <AnimatePresence>
         {showStats && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 320, opacity: 1 }}
+            animate={{ width: 350, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
             <Card className={cn(
-              "h-96 ml-4",
+              "h-96 ml-4 shadow-sm border-0",
               theme === 'dark' 
-                ? "bg-slate-900/80 border-slate-700" 
-                : "bg-white border-slate-200"
+                ? "bg-slate-900/60 backdrop-blur-sm" 
+                : "bg-white/80 backdrop-blur-sm"
             )}>
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg flex items-center gap-2">
                     {analyticsView === 'ai' ? (
                       <>
-                        <Brain className="h-5 w-5 text-blue-500" />
+                        <div className="p-1.5 rounded-lg bg-blue-500/10">
+                          <Brain className="h-4 w-4 text-blue-500" />
+                        </div>
                         AI Analytics
                       </>
                     ) : (
                       <>
-                        <PieChart className="h-5 w-5 text-orange-500" />
-                        Most Traded
+                        <div className="p-1.5 rounded-lg bg-orange-500/10">
+                          <PieChart className="h-4 w-4 text-orange-500" />
+                        </div>
+                        Assets
                       </>
                     )}
                   </CardTitle>
-                  <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                  <div className="flex gap-0.5 p-0.5 bg-muted/50 rounded-lg">
                     <Button
                       variant={analyticsView === 'ai' ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => setAnalyticsView('ai')}
-                      className="h-7 px-2 text-xs"
+                      className={cn(
+                        "h-7 px-3 text-xs transition-all",
+                        analyticsView === 'ai' 
+                          ? "bg-background shadow-sm" 
+                          : "hover:bg-background/60"
+                      )}
                     >
                       AI
                     </Button>
@@ -1109,79 +1118,110 @@ Please provide a brief analysis focusing on what went well, what could be improv
                       variant={analyticsView === 'most-traded' ? 'default' : 'ghost'}
                       size="sm"
                       onClick={() => setAnalyticsView('most-traded')}
-                      className="h-7 px-2 text-xs"
+                      className={cn(
+                        "h-7 px-3 text-xs transition-all",
+                        analyticsView === 'most-traded' 
+                          ? "bg-background shadow-sm" 
+                          : "hover:bg-background/60"
+                      )}
                     >
                       Assets
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 space-y-3">
                 {analyticsView === 'ai' ? (
-                  <div className="space-y-4">
-                    <div className="space-y-3 text-sm">
-                      <motion.div 
-                        className="p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-green-500/20 border border-green-500/20"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <TrendingUp className="h-4 w-4 text-green-500" />
-                          <p className="font-medium text-green-600">Best Strategy</p>
+                  <div className="space-y-3">
+                    <motion.div 
+                      className="p-4 rounded-xl bg-gradient-to-br from-green-500/5 to-green-500/10 border border-green-500/10"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="p-1.5 rounded-lg bg-green-500/10 mt-0.5">
+                          <TrendingUp className="h-3.5 w-3.5 text-green-600" />
                         </div>
-                        <p className="text-muted-foreground">Breakout trades show 80% win rate during London session</p>
-                      </motion.div>
-                      
-                      <motion.div 
-                        className="p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-500/20 border border-blue-500/20"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <Clock className="h-4 w-4 text-blue-500" />
-                          <p className="font-medium text-blue-600">Timing Insight</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-green-700 dark:text-green-400 text-sm mb-1">Best Strategy</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Breakout trades show 80% win rate during London session
+                          </p>
                         </div>
-                        <p className="text-muted-foreground">Your performance peaks during European overlap hours</p>
-                      </motion.div>
-                      
-                      <motion.div 
-                        className="p-3 rounded-lg bg-gradient-to-r from-orange-500/10 to-orange-500/20 border border-orange-500/20"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <Heart className="h-4 w-4 text-orange-500" />
-                          <p className="font-medium text-orange-600">Psychology Tip</p>
+                      </div>
+                    </motion.div>
+                    
+                    <motion.div 
+                      className="p-4 rounded-xl bg-gradient-to-br from-blue-500/5 to-blue-500/10 border border-blue-500/10"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="p-1.5 rounded-lg bg-blue-500/10 mt-0.5">
+                          <Clock className="h-3.5 w-3.5 text-blue-600" />
                         </div>
-                        <p className="text-muted-foreground">Confident entries yield 23% higher profits than anxious ones</p>
-                      </motion.div>
-                      
-                      <motion.div 
-                        className="p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/20 border border-purple-500/20"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <MapPin className="h-4 w-4 text-purple-500" />
-                          <p className="font-medium text-purple-600">Risk Management</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-blue-700 dark:text-blue-400 text-sm mb-1">Timing Insight</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Your performance peaks during European overlap hours
+                          </p>
                         </div>
-                        <p className="text-muted-foreground">Consider 0.5% position sizing for setups below 2:1 R/R</p>
-                      </motion.div>
-                    </div>
+                      </div>
+                    </motion.div>
+                    
+                    <motion.div 
+                      className="p-4 rounded-xl bg-gradient-to-br from-orange-500/5 to-orange-500/10 border border-orange-500/10"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="p-1.5 rounded-lg bg-orange-500/10 mt-0.5">
+                          <Heart className="h-3.5 w-3.5 text-orange-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-orange-700 dark:text-orange-400 text-sm mb-1">Psychology Tip</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Confident entries yield 23% higher profits than anxious ones
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                    
+                    <motion.div 
+                      className="p-4 rounded-xl bg-gradient-to-br from-purple-500/5 to-purple-500/10 border border-purple-500/10"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="p-1.5 rounded-lg bg-purple-500/10 mt-0.5">
+                          <MapPin className="h-3.5 w-3.5 text-purple-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-purple-700 dark:text-purple-400 text-sm mb-1">Risk Management</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            Consider 0.5% position sizing for setups below 2:1 R/R
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {/* Donut Chart */}
-                    <div className="relative h-40 flex items-center justify-center">
-                      <svg width="120" height="120" viewBox="0 0 120 120" className="transform -rotate-90">
+                    <div className="relative h-32 flex items-center justify-center">
+                      <svg width="100" height="100" viewBox="0 0 100 100" className="transform -rotate-90">
                         <circle
-                          cx="60"
-                          cy="60"
-                          r="35"
+                          cx="50"
+                          cy="50"
+                          r="30"
                           fill="none"
                           stroke={theme === 'dark' ? '#374151' : '#e5e7eb'}
-                          strokeWidth="20"
+                          strokeWidth="12"
                         />
                         {mostTradedData.map((item, index) => {
                           const total = mostTradedData.reduce((sum, d) => sum + d.count, 0);
                           const percentage = (item.count / total) * 100;
-                          const circumference = 2 * Math.PI * 35;
+                          const circumference = 2 * Math.PI * 30;
                           const strokeDasharray = `${(percentage / 100) * circumference} ${circumference}`;
                           const strokeDashoffset = -mostTradedData.slice(0, index).reduce((sum, d) => {
                             return sum + ((d.count / total) * circumference);
@@ -1190,12 +1230,12 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           return (
                             <motion.circle
                               key={item.asset}
-                              cx="60"
-                              cy="60"
-                              r="35"
+                              cx="50"
+                              cy="50"
+                              r="30"
                               fill="none"
                               stroke={colors[index]}
-                              strokeWidth="20"
+                              strokeWidth="12"
                               strokeDasharray={strokeDasharray}
                               strokeDashoffset={strokeDashoffset}
                               initial={{ strokeDasharray: `0 ${circumference}` }}
@@ -1208,7 +1248,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-center">
                           <p className="text-xs text-muted-foreground">Total</p>
-                          <p className="text-lg font-bold">{trades.length}</p>
+                          <p className="text-sm font-bold">{trades.length}</p>
                         </div>
                       </div>
                     </div>
@@ -1222,20 +1262,20 @@ Please provide a brief analysis focusing on what went well, what could be improv
                         return (
                           <motion.div
                             key={item.asset}
-                            className="flex items-center justify-between"
+                            className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors"
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.3, delay: index * 0.1 }}
                           >
                             <div className="flex items-center gap-2">
                               <div 
-                                className="w-3 h-3 rounded-full"
+                                className="w-2.5 h-2.5 rounded-full"
                                 style={{ backgroundColor: colors[index] }}
                               />
-                              <span className="text-sm font-medium">{item.asset}</span>
+                              <span className="text-xs font-medium">{item.asset}</span>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm font-bold">{item.count}</p>
+                              <p className="text-xs font-bold">{item.count}</p>
                               <p className="text-xs text-muted-foreground">{percentage}%</p>
                             </div>
                           </motion.div>

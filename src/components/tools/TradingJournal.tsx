@@ -669,15 +669,484 @@ export default function TradingJournal() {
     </motion.div>
   );
 
-  // Advanced Journal Tab - Simple placeholder
+  // Advanced Trading Journal component
   const AdvancedJournalTab = () => {
+    const [timeFilter, setTimeFilter] = useState('week');
+    const [isStatsVisible, setIsStatsVisible] = useState(true);
+    
+    // For simulation purposes, create some equity data
+    const generateEquityData = () => {
+      const data = [];
+      const today = new Date();
+      let balance = 10000;
+      
+      for (let i = 30; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(today.getDate() - i);
+        
+        // Add some randomness to the balance
+        const change = (Math.random() * 200) - 100;
+        balance += change;
+        
+        data.push({
+          date: format(date, 'MMM dd'),
+          balance: balance.toFixed(2),
+        });
+      }
+      
+      return data;
+    };
+    
+    const equityData = generateEquityData();
+    
+    const chartData = {
+      labels: equityData.map(item => item.date),
+      datasets: [
+        {
+          label: 'Account Balance',
+          data: equityData.map(item => item.balance),
+          fill: true,
+          backgroundColor: 'rgba(34, 211, 238, 0.1)',
+          borderColor: 'rgba(34, 211, 238, 0.8)',
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointBackgroundColor: 'rgba(34, 211, 238, 1)',
+        }
+      ]
+    };
+    
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { 
+          grid: { color: 'rgba(156, 163, 175, 0.1)' },
+          ticks: { callback: (value) => `$${value}` }
+        }
+      }
+    };
+    
+    // Metrics calculation - using the same analytics from the AnalyticsTab 
+    // but with improved formatting for advanced display
+    const metrics = React.useMemo(() => {
+      if (entries.length === 0) return null;
+      
+      const winningTrades = entries.filter(e => e.pnl > 0);
+      const losingTrades = entries.filter(e => e.pnl < 0);
+      const totalPnL = entries.reduce((sum, e) => sum + e.pnl, 0);
+      
+      const winRate = ((winningTrades.length / entries.length) * 100).toFixed(1);
+      const avgWin = winningTrades.length > 0 ? (winningTrades.reduce((sum, e) => sum + e.pnl, 0) / winningTrades.length).toFixed(2) : 0;
+      const avgLoss = losingTrades.length > 0 ? Math.abs(losingTrades.reduce((sum, e) => sum + e.pnl, 0) / losingTrades.length).toFixed(2) : 0;
+      const profitFactor = losingTrades.length > 0 ? (winningTrades.reduce((sum, e) => sum + e.pnl, 0) / Math.abs(losingTrades.reduce((sum, e) => sum + e.pnl, 0))).toFixed(2) : "∞";
+      
+      // Additional metrics for advanced view
+      const largestWin = winningTrades.length > 0 ? Math.max(...winningTrades.map(t => t.pnl)).toFixed(2) : 0;
+      const largestLoss = losingTrades.length > 0 ? Math.abs(Math.min(...losingTrades.map(t => t.pnl))).toFixed(2) : 0;
+      const averageTrade = totalPnL / entries.length;
+      const expectancy = ((winRate / 100) * parseFloat(avgWin)) - ((1 - winRate / 100) * parseFloat(avgLoss));
+      
+      return { 
+        winRate, 
+        avgWin, 
+        avgLoss, 
+        profitFactor, 
+        totalPnL,
+        largestWin,
+        largestLoss,
+        averageTrade: averageTrade.toFixed(2),
+        expectancy: expectancy.toFixed(2),
+        totalTrades: entries.length
+      };
+    }, [entries]);
+    
+    // Calendar data generation for visual P&L calendar
+    const generateCalendarData = () => {
+      const data = [];
+      const today = new Date();
+      const daysInWeek = 7;
+      
+      // Calculate the start date (beginning of current week)
+      const startDate = new Date(today);
+      const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, ...
+      startDate.setDate(today.getDate() - currentDay);
+      
+      for (let i = 0; i < daysInWeek; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        
+        // Find trades on this date
+        const dayFormatted = format(date, 'yyyy-MM-dd');
+        const dayEntries = entries.filter(entry => {
+          const entryDate = new Date(entry.trade_date);
+          return format(entryDate, 'yyyy-MM-dd') === dayFormatted;
+        });
+        
+        const dayPnL = dayEntries.reduce((sum, entry) => sum + entry.pnl, 0);
+        
+        data.push({
+          date,
+          pnl: dayPnL,
+          trades: dayEntries.length
+        });
+      }
+      
+      return data;
+    };
+    
+    const calendarData = generateCalendarData();
+    
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center space-y-4">
-          <h3 className="text-lg font-semibold text-muted-foreground">Advanced Journal</h3>
-          <p className="text-sm text-muted-foreground">Advanced features coming soon...</p>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        {/* Header with title and controls */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-400 flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Advanced Trading Journal</h2>
+              <p className="text-sm text-muted-foreground">Comprehensive analysis and visualization of your trades</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsStatsVisible(!isStatsVisible)}
+            className="flex items-center gap-2"
+          >
+            {isStatsVisible ? (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+                <span>Hide Stats</span>
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span>Show Stats</span>
+              </>
+            )}
+          </Button>
         </div>
-      </div>
+        
+        {/* Time period filter */}
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-sm text-muted-foreground">Time Period:</span>
+          <div className="flex bg-muted/30 rounded-lg p-1">
+            <Button 
+              variant={timeFilter === 'today' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setTimeFilter('today')}
+              className={`text-xs px-3 h-8 ${timeFilter === 'today' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
+            >
+              Today
+            </Button>
+            <Button 
+              variant={timeFilter === 'week' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setTimeFilter('week')}
+              className={`text-xs px-3 h-8 ${timeFilter === 'week' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
+            >
+              Week
+            </Button>
+            <Button 
+              variant={timeFilter === 'month' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setTimeFilter('month')}
+              className={`text-xs px-3 h-8 ${timeFilter === 'month' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
+            >
+              Month
+            </Button>
+            <Button 
+              variant={timeFilter === 'year' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setTimeFilter('year')}
+              className={`text-xs px-3 h-8 ${timeFilter === 'year' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
+            >
+              Year
+            </Button>
+            <Button 
+              variant={timeFilter === 'all' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setTimeFilter('all')}
+              className={`text-xs px-3 h-8 ${timeFilter === 'all' ? 'bg-primary text-white' : 'text-muted-foreground'}`}
+            >
+              All Time
+            </Button>
+          </div>
+        </div>
+
+        {/* KPI Cards */}
+        <AnimatePresence>
+          {isStatsVisible && metrics && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
+            >
+              {/* Total P&L */}
+              <Card className={`border ${metrics.totalPnL >= 0 ? 'border-emerald-200 dark:border-emerald-800' : 'border-red-200 dark:border-red-800'}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total P&L</p>
+                      <p className={`text-2xl font-bold ${metrics.totalPnL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                        {metrics.totalPnL >= 0 ? '+' : ''}${parseFloat(metrics.totalPnL).toFixed(2)}
+                      </p>
+                    </div>
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${metrics.totalPnL >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                      {metrics.totalPnL >= 0 ? (
+                        <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <TrendingDown className="w-6 h-6 text-red-500 dark:text-red-400" />
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Win Rate */}
+              <Card className="border border-blue-200 dark:border-blue-800">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Win Rate</p>
+                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {metrics.winRate}%
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                      <Target className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Profit Factor */}
+              <Card className="border border-amber-200 dark:border-amber-800">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Profit Factor</p>
+                      <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                        {metrics.profitFactor}
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+                      <Award className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Total Trades */}
+              <Card className="border border-purple-200 dark:border-purple-800">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Trades</p>
+                      <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                        {metrics.totalTrades}
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                      <Clock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Main Content Area */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Equity Curve - 2/3 Width */}
+          <Card className="lg:col-span-2 border border-border">
+            <CardHeader className="pb-0">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                Equity Curve
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="h-72">
+                <Line data={chartData} options={chartOptions} />
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* AI Analytics Panel - 1/3 Width */}
+          <Card className="border border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardHeader className="pb-0">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Brain className="w-4 h-4 text-primary" />
+                AI Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              {metrics ? (
+                <>
+                  <div className="p-3 bg-background/50 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 text-primary mt-1 shrink-0" />
+                      <p className="text-sm text-foreground">
+                        Your {parseFloat(metrics.winRate) > 50 ? 'above-average' : 'below-average'} win rate of {metrics.winRate}% 
+                        {parseFloat(metrics.winRate) > 60 ? ' shows excellent trade selection.' : parseFloat(metrics.winRate) < 40 ? ' indicates room for improvement in your entry criteria.' : ' is close to market average.'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 bg-background/50 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <TrendingUp className="w-4 h-4 text-emerald-500 mt-1 shrink-0" />
+                      <p className="text-sm text-foreground">
+                        Average profit per winning trade (${metrics.avgWin}) vs average loss (${metrics.avgLoss}) gives you a risk-reward ratio of {(parseFloat(metrics.avgWin) / parseFloat(metrics.avgLoss)).toFixed(2)}:1.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 bg-background/50 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Target className="w-4 h-4 text-blue-500 mt-1 shrink-0" />
+                      <p className="text-sm text-foreground">
+                        With expectancy of ${metrics.expectancy} per trade, you can expect to make ${(parseFloat(metrics.expectancy) * 100).toFixed(2)} on average for every 100 trades.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No trade data available for AI analysis.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Weekly Calendar */}
+        <Card className="mt-6 border border-border">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-primary" />
+              Weekly P&L Calendar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-7 gap-2">
+              {calendarData.map((day, index) => {
+                // Format the date to just get the day of the month
+                const dayOfMonth = format(day.date, 'd');
+                const dayName = format(day.date, 'EEE');
+                const isToday = format(day.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+                
+                // Determine the styling based on P&L value
+                let pnlColor = 'bg-gray-100 dark:bg-gray-800';
+                if (day.pnl > 0) pnlColor = 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800';
+                if (day.pnl < 0) pnlColor = 'bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800';
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`p-3 rounded-lg border ${pnlColor} ${isToday ? 'ring-2 ring-primary' : ''}`}
+                  >
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs text-muted-foreground">{dayName}</span>
+                      <span className={`text-lg font-bold ${isToday ? 'text-primary' : 'text-foreground'}`}>
+                        {dayOfMonth}
+                      </span>
+                      {day.trades > 0 ? (
+                        <>
+                          <span className={`text-sm font-medium mt-2 ${day.pnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                            {day.pnl >= 0 ? '+' : ''}${day.pnl.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {day.trades} {day.trades === 1 ? 'trade' : 'trades'}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground mt-2">No trades</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Recent Trades */}
+        <Card className="mt-6 border border-border">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-primary" />
+              Recent Trades
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {entries.length > 0 ? (
+              <div className="space-y-3">
+                {entries.slice(0, 5).map(entry => (
+                  <div 
+                    key={entry.id} 
+                    className={`p-3 rounded-lg border ${entry.pnl >= 0 ? 'border-emerald-200 dark:border-emerald-800' : 'border-red-200 dark:border-red-800'}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${entry.pnl >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                          {entry.pnl >= 0 ? (
+                            <TrendingUp className={`w-5 h-5 text-emerald-600 dark:text-emerald-400`} />
+                          ) : (
+                            <TrendingDown className={`w-5 h-5 text-red-500 dark:text-red-400`} />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">{entry.asset_ticker}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(entry.trade_date), 'MMM dd, yyyy')}
+                            </span>
+                          </div>
+                          {entry.notes && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {entry.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className={`font-bold ${entry.pnl >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                        {entry.pnl >= 0 ? '+' : ''}${entry.pnl.toFixed(2)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                No trade data available. Add trades to see your journal entries.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     );
   };
 

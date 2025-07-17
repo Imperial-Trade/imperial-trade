@@ -282,7 +282,7 @@ export default function AdvancedTools() {
     <div className="min-h-screen bg-background flex">
       {/* Apple Today View Style Sidebar */}
       <motion.aside
-        className="fixed left-0 top-0 h-full z-40 bg-gray-50 dark:bg-gray-950 overflow-y-auto"
+        className="fixed left-0 top-0 h-full z-40 bg-transparent overflow-y-auto"
         initial={false}
         animate={{
           width: 320,

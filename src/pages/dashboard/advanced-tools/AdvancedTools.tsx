@@ -113,34 +113,34 @@ export default function AdvancedTools() {
     const isActive = activeTool?.name === tool.name;
     
     const sizeClasses = {
-      small: 'col-span-1 h-24',
-      medium: 'col-span-2 h-24',
-      large: 'col-span-2 h-32'
+      small: 'col-span-1 h-28',
+      medium: 'col-span-2 h-28',
+      large: 'col-span-2 h-36'
     };
 
     return (
       <motion.button
         onClick={() => handleToolSelect(tool)}
-        className={`${sizeClasses[size]} bg-white dark:bg-gray-900/30 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-gray-200/20 dark:border-gray-700/30 transition-all duration-300 hover:shadow-md hover:scale-[1.02] ${
+        className={`${sizeClasses[size]} bg-white dark:bg-gray-900/30 backdrop-blur-sm rounded-2xl p-3 shadow-sm border border-gray-200/20 dark:border-gray-700/30 transition-all duration-300 hover:shadow-md hover:scale-[1.02] ${
           isActive ? 'ring-2 ring-primary/50 shadow-lg' : ''
         }`}
         whileHover={{ y: -2 }}
         whileTap={{ scale: 0.98 }}
       >
-        <div className="flex flex-col h-full justify-between">
+        <div className="flex flex-col h-full justify-between gap-2">
           <div className="flex items-start justify-between">
-            <div className={`p-2 rounded-lg ${isActive ? 'bg-primary/15' : 'bg-gray-100 dark:bg-gray-800/50'}`}>
+            <div className={`p-2 rounded-lg flex-shrink-0 ${isActive ? 'bg-primary/15' : 'bg-gray-100 dark:bg-gray-800/50'}`}>
               <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
             </div>
             {isActive && (
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
             )}
           </div>
-          <div className="text-left">
-            <h3 className={`font-medium text-sm ${isActive ? 'text-primary' : 'text-foreground'}`}>
+          <div className="text-left min-h-0 flex-1 flex flex-col justify-end">
+            <h3 className={`font-medium text-sm leading-tight mb-1 ${isActive ? 'text-primary' : 'text-foreground'}`}>
               {tool.name}
             </h3>
-            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+            <p className="text-xs text-muted-foreground leading-tight line-clamp-2 overflow-hidden">
               {tool.description}
             </p>
           </div>

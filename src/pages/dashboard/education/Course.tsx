@@ -66,7 +66,7 @@ export default function Course() {
         // Transform the course data to match our interface
         const transformedCourse: Course = {
           ...courseData,
-          lessons: Array.isArray(courseData.lessons) ? courseData.lessons as Lesson[] : []
+          lessons: Array.isArray(courseData.lessons) ? courseData.lessons : []
         };
         setCourse(transformedCourse);
 
@@ -82,9 +82,9 @@ export default function Course() {
           if (progressData) {
             setUserProgress({
               id: progressData.id,
-              completed_lessons: (progressData as any).completed_lessons || [],
-              progress_percentage: (progressData as any).progress_percentage || 0,
-              current_lesson_index: (progressData as any).current_lesson_index || 0
+              completed_lessons: progressData.completed_lessons || [],
+              progress_percentage: progressData.progress_percentage || 0,
+              current_lesson_index: progressData.current_lesson_index || 0
             });
           }
         }

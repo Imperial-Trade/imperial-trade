@@ -796,8 +796,11 @@ Please provide a brief analysis focusing on what went well, what could be improv
   // State for analytics toggle
   const [analyticsView, setAnalyticsView] = useState<'ai' | 'most-traded'>('ai');
 
-  // Equity Curve Chart Component
+  // Enhanced Equity Curve Chart Component with Robinhood-style design
   const EquityCurveChart: React.FC<{ data: Array<{date: string, pnl: number, tradePnL: number, tradeNumber: number}> }> = ({ data }) => {
+    const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+    const chartRef = useRef<HTMLDivElement>(null);
+
     if (data.length === 0) {
       return (
         <div className="h-64 flex items-center justify-center text-muted-foreground">
@@ -812,33 +815,37 @@ Please provide a brief analysis focusing on what went well, what could be improv
 
     const maxPnL = Math.max(...data.map(d => d.pnl));
     const minPnL = Math.min(...data.map(d => d.pnl));
-    const range = maxPnL - minPnL;
-    const padding = range * 0.1;
-    const chartHeight = 240;
-    const chartWidth = 600;
+    const range = maxPnL - minPnL || 100; // Avoid division by zero
+    const padding = range * 0.15; // Increased padding for better visuals
+    const chartHeight = 200;
+    const chartPadding = 20;
+    const chartInnerHeight = chartHeight - (chartPadding * 2);
 
-    // Generate smooth curve path
+    // Enhanced smooth curve generation using Catmull-Rom splines
     const generateSmoothPath = () => {
       if (data.length < 2) return '';
 
-      let path = '';
       const points = data.map((point, index) => ({
-        x: (index / (data.length - 1)) * chartWidth,
-        y: chartHeight - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * chartHeight
+        x: chartPadding + (index / Math.max(data.length - 1, 1)) * (100 - chartPadding * 2),
+        y: chartPadding + chartInnerHeight - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight
       }));
 
-      // Start the path
-      path += `M ${points[0].x} ${points[0].y}`;
+      if (points.length === 1) {
+        return `M ${points[0].x} ${points[0].y} L ${points[0].x} ${points[0].y}`;
+      }
+
+      let path = `M ${points[0].x} ${points[0].y}`;
 
       // Create smooth curves using cubic bezier
       for (let i = 1; i < points.length; i++) {
         const prevPoint = points[i - 1];
         const currentPoint = points[i];
         
-        // Control points for smooth curve
-        const cp1x = prevPoint.x + (currentPoint.x - prevPoint.x) * 0.3;
+        // Calculate control points for smooth curve
+        const tension = 0.3;
+        const cp1x = prevPoint.x + (currentPoint.x - prevPoint.x) * tension;
         const cp1y = prevPoint.y;
-        const cp2x = currentPoint.x - (currentPoint.x - prevPoint.x) * 0.3;
+        const cp2x = currentPoint.x - (currentPoint.x - prevPoint.x) * tension;
         const cp2y = currentPoint.y;
         
         path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${currentPoint.x} ${currentPoint.y}`;
@@ -847,102 +854,222 @@ Please provide a brief analysis focusing on what went well, what could be improv
       return path;
     };
 
+    // Generate area path for gradient fill
+    const generateAreaPath = () => {
+      const curvePath = generateSmoothPath();
+      if (!curvePath) return '';
+
+      const lastPoint = data.length > 0 ? {
+        x: chartPadding + ((data.length - 1) / Math.max(data.length - 1, 1)) * (100 - chartPadding * 2),
+        y: chartPadding + chartInnerHeight - ((data[data.length - 1].pnl - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight
+      } : { x: 0, y: chartHeight };
+
+      const firstPoint = data.length > 0 ? {
+        x: chartPadding,
+        y: chartPadding + chartInnerHeight - ((data[0].pnl - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight
+      } : { x: 0, y: chartHeight };
+
+      // Create area by going to bottom corners
+      const areaPath = curvePath + 
+        ` L ${lastPoint.x} ${chartHeight - chartPadding}` +
+        ` L ${firstPoint.x} ${chartHeight - chartPadding} Z`;
+
+      return areaPath;
+    };
+
+    const isPositive = data.length > 0 ? data[data.length - 1].pnl >= 0 : true;
+    const primaryColor = isPositive ? '#10b981' : '#ef4444';
+    const gradientId = `gradient-${isPositive ? 'positive' : 'negative'}`;
+
     return (
-      <div className="h-64 w-full relative">
-        <svg width="100%" height="100%" viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="overflow-visible">
-          {/* Grid lines */}
+      <div className="h-64 w-full relative overflow-hidden" ref={chartRef}>
+        {/* Header with current value */}
+        <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-background/80 to-transparent">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className={cn(
+                "text-2xl font-bold",
+                primaryColor === '#10b981' ? "text-green-500" : "text-red-500"
+              )}>
+                ${hoveredPoint !== null ? data[hoveredPoint]?.pnl.toFixed(2) : data[data.length - 1]?.pnl.toFixed(2) || '0.00'}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {hoveredPoint !== null ? `Trade #${data[hoveredPoint]?.tradeNumber}` : 'Current Total'}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={cn(
+                "text-sm font-medium",
+                primaryColor === '#10b981' ? "text-green-500" : "text-red-500"
+              )}>
+                {isPositive ? '+' : ''}{((data[data.length - 1]?.pnl || 0) / Math.abs(data[0]?.pnl || 1) * 100).toFixed(1)}%
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {data.length} trade{data.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* SVG Chart */}
+        <svg 
+          width="100%" 
+          height="100%" 
+          viewBox={`0 0 100 ${chartHeight}`} 
+          className="absolute inset-0"
+          preserveAspectRatio="none"
+        >
+          {/* Gradient Definitions */}
           <defs>
-            <pattern id="grid" width="50" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 50 0 L 0 0 0 40" fill="none" stroke={theme === 'dark' ? '#374151' : '#e5e7eb'} strokeWidth="0.5" opacity="0.5"/>
+            <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={primaryColor} stopOpacity="0.3" />
+              <stop offset="50%" stopColor={primaryColor} stopOpacity="0.1" />
+              <stop offset="100%" stopColor={primaryColor} stopOpacity="0.05" />
+            </linearGradient>
+            
+            {/* Subtle grid pattern */}
+            <pattern id="grid" width="8" height="8" patternUnits="userSpaceOnUse">
+              <path 
+                d="M 8 0 L 0 0 0 8" 
+                fill="none" 
+                stroke={theme === 'dark' ? '#374151' : '#f1f5f9'} 
+                strokeWidth="0.3" 
+                opacity="0.4"
+              />
             </pattern>
+
+            {/* Glow effect */}
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feMerge> 
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
           </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-          
+
+          {/* Background grid */}
+          <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3" />
+
           {/* Zero line */}
           {minPnL < 0 && maxPnL > 0 && (
             <line
-              x1="0"
-              y1={chartHeight - ((0 - minPnL + padding) / (range + 2 * padding)) * chartHeight}
-              x2={chartWidth}
-              y2={chartHeight - ((0 - minPnL + padding) / (range + 2 * padding)) * chartHeight}
-              stroke={theme === 'dark' ? '#6b7280' : '#9ca3af'}
-              strokeWidth="1"
-              strokeDasharray="5,5"
+              x1={chartPadding}
+              y1={chartPadding + chartInnerHeight - ((0 - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight}
+              x2={100 - chartPadding}
+              y2={chartPadding + chartInnerHeight - ((0 - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight}
+              stroke={theme === 'dark' ? '#4b5563' : '#d1d5db'}
+              strokeWidth="0.5"
+              strokeDasharray="2,2"
+              opacity="0.6"
             />
           )}
 
-          {/* Area under curve */}
-          <defs>
-            <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={data[data.length - 1]?.pnl >= 0 ? '#10b981' : '#ef4444'} stopOpacity="0.3" />
-              <stop offset="100%" stopColor={data[data.length - 1]?.pnl >= 0 ? '#10b981' : '#ef4444'} stopOpacity="0.05" />
-            </linearGradient>
-          </defs>
-          <path
-            d={`${generateSmoothPath()} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`}
-            fill="url(#areaGradient)"
+          {/* Area fill */}
+          <motion.path
+            d={generateAreaPath()}
+            fill={`url(#${gradientId})`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, ease: "easeOut" }}
           />
 
-          {/* Main curve */}
-          <path
+          {/* Main curve line */}
+          <motion.path
             d={generateSmoothPath()}
             fill="none"
-            stroke={data[data.length - 1]?.pnl >= 0 ? '#10b981' : '#ef4444'}
-            strokeWidth="3"
+            stroke={primaryColor}
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
+            filter="url(#glow)"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 2, ease: "easeOut" }}
           />
 
-          {/* Data points */}
+          {/* Interactive data points */}
           {data.map((point, index) => {
-            const x = (index / (data.length - 1)) * chartWidth;
-            const y = chartHeight - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * chartHeight;
+            const x = chartPadding + (index / Math.max(data.length - 1, 1)) * (100 - chartPadding * 2);
+            const y = chartPadding + chartInnerHeight - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * chartInnerHeight;
+            const isHovered = hoveredPoint === index;
             
             return (
-              <motion.circle
-                key={index}
-                cx={x}
-                cy={y}
-                r="4"
-                fill={point.tradePnL >= 0 ? '#10b981' : '#ef4444'}
-                stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
-                strokeWidth="2"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                className="hover:scale-150 transition-transform cursor-pointer"
-              >
-                <title>{`Trade ${point.tradeNumber}: $${point.tradePnL.toFixed(2)} | Total: $${point.pnl.toFixed(2)}`}</title>
-              </motion.circle>
-            );
-          })}
+              <motion.g key={index}>
+                {/* Invisible larger circle for easier hovering */}
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="6"
+                  fill="transparent"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredPoint(index)}
+                  onMouseLeave={() => setHoveredPoint(null)}
+                />
+                
+                {/* Visible dot */}
+                <motion.circle
+                  cx={x}
+                  cy={y}
+                  r={isHovered ? "3" : "2"}
+                  fill={primaryColor}
+                  stroke={theme === 'dark' ? '#1f2937' : '#ffffff'}
+                  strokeWidth={isHovered ? "2" : "1.5"}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3, delay: index * 0.02 }}
+                  className="transition-all duration-200"
+                  style={{
+                    filter: isHovered ? 'drop-shadow(0 0 4px rgba(16, 185, 129, 0.5))' : 'none'
+                  }}
+                />
 
-          {/* Y-axis labels */}
-          {[minPnL, (minPnL + maxPnL) / 2, maxPnL].map((value, index) => {
-            const y = chartHeight - ((value - minPnL + padding) / (range + 2 * padding)) * chartHeight;
-            return (
-              <text
-                key={index}
-                x="-10"
-                y={y + 4}
-                fontSize="12"
-                fill={theme === 'dark' ? '#9ca3af' : '#6b7280'}
-                textAnchor="end"
-              >
-                ${value.toFixed(0)}
-              </text>
+                {/* Tooltip for hovered point */}
+                {isHovered && (
+                  <motion.g
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <rect
+                      x={x - 25}
+                      y={y - 35}
+                      width="50"
+                      height="20"
+                      rx="4"
+                      fill={theme === 'dark' ? '#374151' : '#ffffff'}
+                      stroke={theme === 'dark' ? '#4b5563' : '#e5e7eb'}
+                      strokeWidth="1"
+                      filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
+                    />
+                    <text
+                      x={x}
+                      y={y - 22}
+                      textAnchor="middle"
+                      fontSize="8"
+                      fill={theme === 'dark' ? '#ffffff' : '#000000'}
+                      fontWeight="600"
+                    >
+                      ${point.tradePnL > 0 ? '+' : ''}${point.tradePnL.toFixed(0)}
+                    </text>
+                  </motion.g>
+                )}
+              </motion.g>
             );
           })}
         </svg>
 
-        {/* Current total indicator */}
-        <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-lg p-2 border">
-          <div className="text-xs text-muted-foreground">Current Total</div>
-          <div className={cn(
-            "text-lg font-bold",
-            data[data.length - 1]?.pnl >= 0 ? "text-green-500" : "text-red-500"
-          )}>
-            ${data[data.length - 1]?.pnl.toFixed(2) || '0.00'}
+        {/* Performance indicators */}
+        <div className="absolute bottom-2 left-4 right-4 flex justify-between items-end text-xs text-muted-foreground">
+          <div>
+            <div className="font-medium">
+              Best: <span className="text-green-500">+${Math.max(...data.map(d => d.tradePnL)).toFixed(0)}</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="font-medium">
+              Worst: <span className="text-red-500">${Math.min(...data.map(d => d.tradePnL)).toFixed(0)}</span>
+            </div>
           </div>
         </div>
       </div>

@@ -50,9 +50,9 @@ export default function Education() {
 
           if (profile) {
             setUserProfile({
-              learning_streak: profile.learning_streak || 0,
-              trading_points: profile.trading_points || 0,
-              trading_identity_level: profile.trading_identity_level || 'Aspiring Trader'
+              learning_streak: (profile as any).learning_streak || 0,
+              trading_points: (profile as any).trading_points || 0,
+              trading_identity_level: (profile as any).trading_identity_level || 'Aspiring Trader'
             });
           }
         }

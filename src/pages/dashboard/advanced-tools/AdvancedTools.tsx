@@ -97,7 +97,7 @@ const ToolSelector = ({ tool, onSelect, isActive }) => {
 };
 
 export default function AdvancedTools() {
-  const [activeTool, setActiveTool] = useState(null);
+  const [activeTool, setActiveTool] = useState(coreTools[0]); // Set Trading Journal as default
   const [isHovered, setIsHovered] = useState(false);
 
   const handleToolSelect = (tool) => {
@@ -113,18 +113,27 @@ export default function AdvancedTools() {
     return (
       <motion.button
         onClick={() => handleToolSelect(tool)}
-        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ${
+        className={`group relative w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${
           isActive
-            ? 'bg-surface/80 border-accent-green glow-effect-green shadow-lg text-accent-green'
-            : 'hover:bg-surface/50 hover:border-accent-blue/50 text-muted-foreground hover:text-foreground'
+            ? 'bg-primary/10 text-primary shadow-sm'
+            : 'text-muted-foreground hover:text-foreground hover:bg-surface/60'
         }`}
-        whileHover={{ scale: 1.02 }}
+        whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.98 }}
       >
-        <div className={`p-2 rounded-lg bg-surface transition-colors duration-300 ${
-          isActive ? 'bg-accent-green/20' : ''
+        <div className={`relative flex-shrink-0 p-2.5 rounded-lg transition-all duration-300 ${
+          isActive 
+            ? 'bg-primary/15 text-primary' 
+            : 'bg-surface/50 group-hover:bg-surface/80'
         }`}>
           <Icon className="w-4 h-4" />
+          {isActive && (
+            <motion.div
+              layoutId="activeIndicator"
+              className="absolute -inset-0.5 rounded-lg border border-primary/20 bg-primary/5"
+              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+            />
+          )}
         </div>
         <motion.div
           className="flex-1 text-left overflow-hidden"
@@ -132,12 +141,16 @@ export default function AdvancedTools() {
           animate={{
             opacity: isHovered ? 1 : 0,
             width: isHovered ? 'auto' : 0,
+            marginLeft: isHovered ? 8 : 0,
           }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
         >
-          <h3 className="font-medium text-sm whitespace-nowrap">{tool.name}</h3>
-          <p className="text-xs text-muted-foreground leading-tight whitespace-nowrap">{tool.description}</p>
+          <h3 className="font-medium text-sm whitespace-nowrap tracking-wide">{tool.name}</h3>
+          <p className="text-xs text-muted-foreground/80 leading-tight whitespace-nowrap mt-0.5">{tool.description}</p>
         </motion.div>
+        {!isHovered && !isActive && (
+          <div className="absolute left-1/2 transform -translate-x-1/2 bottom-1 w-1 h-1 rounded-full bg-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+        )}
       </motion.button>
     );
   };
@@ -168,18 +181,18 @@ export default function AdvancedTools() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Collapsible Sidebar */}
+      {/* Apple-Style Sidebar */}
       <motion.aside
-        className="fixed left-0 top-0 h-full z-40 bg-surface/95 backdrop-blur-md border-r border-default shadow-2xl"
+        className="fixed left-0 top-0 h-full z-40 bg-background/80 backdrop-blur-xl border-r border-border/40 shadow-xl"
         initial={false}
         animate={{
-          width: isHovered ? 320 : 80,
+          width: isHovered ? 280 : 72,
         }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="p-4 h-full overflow-hidden">
+        <div className="p-4 h-full overflow-hidden flex flex-col">
           {/* Tools Dashboard Button */}
           <motion.div
             className="mb-6"
@@ -263,10 +276,13 @@ export default function AdvancedTools() {
       </motion.aside>
 
       {/* Main Content */}
-      <div className="flex-1 ml-20 p-6">
-        {/* Page Header */}
-        <div className="mb-6">{/* Header removed for cleaner interface */}</div>
-
+      <motion.div 
+        className="flex-1 p-6"
+        animate={{ 
+          marginLeft: isHovered ? 280 : 72 
+        }}
+        transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+      >
         {/* Active Tool Container */}
         {activeTool && (
           <motion.div
@@ -276,13 +292,14 @@ export default function AdvancedTools() {
             transition={{ duration: 0.3 }}
             className="mb-6"
           >
-            <div className="bg-surface/50 backdrop-blur-sm border border-default rounded-2xl p-4 max-w-md mx-auto">
+            <div className="bg-surface/30 backdrop-blur-sm border border-border/20 rounded-2xl p-4 max-w-md">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-surface border border-default">
-                  {React.createElement(activeTool.icon, { className: "w-6 h-6 text-accent-green" })}
+                <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/10">
+                  {React.createElement(activeTool.icon, { className: "w-5 h-5 text-primary" })}
                 </div>
                 <div>
-                  <h2 className="font-semibold text-lg text-foreground">{activeTool.name}</h2>
+                  <h2 className="font-semibold text-lg text-foreground tracking-tight">{activeTool.name}</h2>
+                  <p className="text-xs text-muted-foreground">{activeTool.description}</p>
                 </div>
               </div>
             </div>
@@ -312,7 +329,7 @@ export default function AdvancedTools() {
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

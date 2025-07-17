@@ -22,8 +22,11 @@ import {
   Settings,
   BarChart3,
   Bell,
-  Video
+  Video,
+  User
 } from 'lucide-react';
+
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
 import TradingJournal from '@/components/tools/TradingJournal';
 import EconomicCalendar from '@/components/tools/EconomicCalendar';
@@ -333,8 +336,34 @@ export default function AdvancedTools() {
             <WidgetTool tool={aiTools[2]} size="small" />
           </div>
 
+          {/* Profile and Controls Section */}
+          <div className="mt-6">
+            <div className="bg-gray-800 dark:bg-gray-200 rounded-2xl p-4">
+              <div className="flex items-center justify-between">
+                {/* Profile Section */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-white dark:text-black text-sm font-medium">Jacob Estayo</div>
+                    <div className="text-gray-400 dark:text-gray-600 text-xs">Admin</div>
+                  </div>
+                </div>
+                
+                {/* Controls */}
+                <div className="flex items-center gap-2">
+                  <button className="p-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors">
+                    <Bell className="w-4 h-4 text-gray-400 dark:text-gray-600" />
+                  </button>
+                  <ThemeToggle />
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Navigation Buttons */}
-          <div className="mt-8">
+          <div className="mt-4">
             <div className="bg-gray-800 dark:bg-gray-200 rounded-2xl p-2 flex flex-wrap gap-1">
               {navButtons.map((button) => {
                 const Icon = button.icon;

@@ -818,14 +818,14 @@ Please provide a brief analysis focusing on what went well, what could be improv
     const minPnL = Math.min(...data.map(d => d.pnl));
     const range = maxPnL - minPnL || 100;
     const padding = range * 0.1;
-    const chartHeight = 300;
-    const chartWidth = 1000; // Increased width for better container usage
-    const chartPadding = 20; // Reduced padding for more chart space
+    const chartHeight = 320; // Increased height to accommodate date labels
+    const chartWidth = 1000;
+    const chartPadding = 30; // Increased bottom padding for date labels
 
     // Generate points for the line
     const points = data.map((point, index) => ({
       x: chartPadding + (index / Math.max(data.length - 1, 1)) * (chartWidth - chartPadding * 2),
-      y: chartPadding + (chartHeight - chartPadding * 2) - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * (chartHeight - chartPadding * 2),
+      y: chartPadding + (chartHeight - chartPadding * 2 - 40) - ((point.pnl - minPnL + padding) / (range + 2 * padding)) * (chartHeight - chartPadding * 2 - 40), // Reserve 40px for date labels
       ...point
     }));
 
@@ -888,12 +888,12 @@ Please provide a brief analysis focusing on what went well, what could be improv
     const labelCount = 5;
     for (let i = 0; i <= labelCount; i++) {
       const value = minPnL + (maxPnL - minPnL) * (i / labelCount);
-      const y = chartPadding + (chartHeight - chartPadding * 2) - ((value - minPnL + padding) / (range + 2 * padding)) * (chartHeight - chartPadding * 2);
+      const y = chartPadding + (chartHeight - chartPadding * 2 - 40) - ((value - minPnL + padding) / (range + 2 * padding)) * (chartHeight - chartPadding * 2 - 40);
       yAxisLabels.push({ value, y });
     }
 
     return (
-      <div className="h-80 w-full relative">
+      <div className="h-80 w-full relative">{/* Increased height */}
         <svg 
           ref={svgRef}
           width="100%" 
@@ -922,7 +922,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
             x={chartPadding} 
             y={chartPadding} 
             width={chartWidth - chartPadding * 2} 
-            height={chartHeight - chartPadding * 2} 
+            height={chartHeight - chartPadding * 2 - 40} 
             fill="url(#grid)" 
           />
 
@@ -940,19 +940,28 @@ Please provide a brief analysis focusing on what went well, what could be improv
             </text>
           ))}
 
-          {/* X-axis labels */}
+          {/* X-axis labels - Enhanced visibility */}
           {points.map((point, index) => {
-            if (index % Math.ceil(points.length / 5) === 0 || index === points.length - 1) {
+            // Show more date labels for better visibility
+            const shouldShowLabel = index === 0 || 
+                                  index === points.length - 1 || 
+                                  index % Math.max(1, Math.floor(points.length / 6)) === 0;
+            
+            if (shouldShowLabel) {
               return (
                 <text
-                  key={index}
+                  key={`date-${index}`}
                   x={point.x}
-                  y={chartHeight - 10}
-                  fontSize="12"
-                  fill={theme === 'dark' ? '#9ca3af' : '#6b7280'}
+                  y={chartHeight - 15}
+                  fontSize="13"
+                  fontWeight="500"
+                  fill={theme === 'dark' ? '#e5e7eb' : '#374151'}
                   textAnchor="middle"
                 >
-                  {new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {new Date(point.date).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
                 </text>
               );
             }
@@ -994,7 +1003,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
             x={chartPadding}
             y={chartPadding}
             width={chartWidth - chartPadding * 2}
-            height={chartHeight - chartPadding * 2}
+            height={chartHeight - chartPadding * 2 - 40}
             fill="transparent"
             className="cursor-crosshair"
           />

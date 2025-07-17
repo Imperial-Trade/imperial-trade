@@ -8,7 +8,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
 @layer base {
-  :root {
+:root {
+  /* Trading Journal specific variables */
+  --accent-sage: 150 30% 60%;
+  --accent-mint: 160 40% 70%; 
+  --accent-forest: 140 50% 30%;
     /* Spanish Gray Monochromatic Palette - Exact from image */
     --background: 0 0% 100%; /* Pure white background */
     --foreground: 0 0% 26%; /* #434343 */

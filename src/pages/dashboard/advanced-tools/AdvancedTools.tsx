@@ -3,6 +3,12 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TradingJournalApp } from '@/components/tools/TradingJournalApp';
+import TradeAnalyst from '@/components/tools/TradeAnalyst';
+import OpportunityScanner from '@/components/tools/OpportunityScanner';
+import RiskSimulator from '@/components/tools/RiskSimulator';
+import BasicTradingJournal from '@/components/tools/BasicTradingJournal';
+import EconomicCalendar from '@/components/tools/EconomicCalendar';
+import RiskCalculator from '@/components/tools/RiskCalculator';
 import { 
   Sparkles, 
   Search, 
@@ -33,8 +39,7 @@ const tools: Tool[] = [
     description: 'Upload screenshots for deep performance analysis and AI-powered insights.',
     icon: Upload,
     category: 'ai',
-    badge: 'AI-POWERED',
-    comingSoon: true
+    badge: 'AI-POWERED'
   },
   {
     id: 'opportunity-scanner',
@@ -42,8 +47,7 @@ const tools: Tool[] = [
     description: 'Scan markets for high-probability trading opportunities using advanced algorithms.',
     icon: Search,
     category: 'ai',
-    badge: 'AI-POWERED',
-    comingSoon: true
+    badge: 'AI-POWERED'
   },
   {
     id: 'risk-simulator',
@@ -51,8 +55,7 @@ const tools: Tool[] = [
     description: 'Simulate trade setups to assess risk before committing capital.',
     icon: Scale,
     category: 'ai',
-    badge: 'AI-POWERED',
-    comingSoon: true
+    badge: 'AI-POWERED'
   },
   {
     id: 'trading-journal',
@@ -66,20 +69,24 @@ const tools: Tool[] = [
     title: 'Economic Calendar',
     description: 'Stay ahead of market-moving events and economic announcements.',
     icon: Calendar,
-    category: 'core',
-    comingSoon: true
+    category: 'core'
   },
   {
     id: 'risk-calculator',
     title: 'Risk Calculator',
     description: 'Calculate position size, risk, and potential returns for optimal trade management.',
     icon: Calculator,
-    category: 'core',
-    comingSoon: true
+    category: 'core'
   }
 ];
 
 const journalTools = [
+  {
+    id: 'basic-journal',
+    title: 'Basic Journal',
+    description: 'Simple trade logging and basic performance tracking.',
+    icon: BookOpen
+  },
   {
     id: 'advanced-journal',
     title: 'Advanced Journal',
@@ -98,7 +105,7 @@ const journalTools = [
 
 const AdvancedTools: React.FC = () => {
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
-  const [selectedJournalTool, setSelectedJournalTool] = useState<string>('advanced-journal');
+  const [selectedJournalTool, setSelectedJournalTool] = useState<string>('basic-journal');
 
   if (selectedTool === 'trading-journal') {
     return (
@@ -163,9 +170,34 @@ const AdvancedTools: React.FC = () => {
             </div>
 
             <div className="lg:col-span-3">
+              {selectedJournalTool === 'basic-journal' && <BasicTradingJournal />}
               {selectedJournalTool === 'advanced-journal' && <TradingJournalApp />}
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle other tool selections
+  if (selectedTool) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <button
+              onClick={() => setSelectedTool(null)}
+              className="mb-4 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ← Back to Tools
+            </button>
+          </div>
+          
+          {selectedTool === 'trade-analyst' && <TradeAnalyst />}
+          {selectedTool === 'opportunity-scanner' && <OpportunityScanner />}
+          {selectedTool === 'risk-simulator' && <RiskSimulator />}
+          {selectedTool === 'economic-calendar' && <EconomicCalendar />}
+          {selectedTool === 'risk-calculator' && <RiskCalculator />}
         </div>
       </div>
     );
@@ -209,10 +241,8 @@ const AdvancedTools: React.FC = () => {
               {tools.filter(tool => tool.category === 'ai').map((tool) => (
                 <Card
                   key={tool.id}
-                  className={`group cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 border-border hover:border-primary/50 hover:-translate-y-1 ${
-                    tool.comingSoon ? 'opacity-60' : ''
-                  }`}
-                  onClick={() => !tool.comingSoon && setSelectedTool(tool.id)}
+                  className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 border-border hover:border-primary/50 hover:-translate-y-1 hover:scale-105"
+                  onClick={() => setSelectedTool(tool.id)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
@@ -228,9 +258,6 @@ const AdvancedTools: React.FC = () => {
                             <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
                               {tool.badge}
                             </Badge>
-                          )}
-                          {tool.comingSoon && (
-                            <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground group-hover:text-foreground/80 transition-colors leading-relaxed">
@@ -254,10 +281,8 @@ const AdvancedTools: React.FC = () => {
               {tools.filter(tool => tool.category === 'core').map((tool) => (
                 <Card
                   key={tool.id}
-                  className={`group cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 border-border hover:border-primary/50 hover:-translate-y-1 ${
-                    tool.comingSoon ? 'opacity-60' : ''
-                  }`}
-                  onClick={() => !tool.comingSoon && setSelectedTool(tool.id)}
+                  className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 border-border hover:border-primary/50 hover:-translate-y-1 hover:scale-105"
+                  onClick={() => setSelectedTool(tool.id)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
@@ -269,9 +294,6 @@ const AdvancedTools: React.FC = () => {
                           <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
                             {tool.title}
                           </h3>
-                          {tool.comingSoon && (
-                            <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
-                          )}
                         </div>
                         <p className="text-sm text-muted-foreground group-hover:text-foreground/80 transition-colors leading-relaxed">
                           {tool.description}

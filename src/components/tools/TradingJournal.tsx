@@ -16,6 +16,7 @@ import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
+import AdvancedTradingJournal from './AdvancedTradingJournal';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
 
@@ -645,11 +646,7 @@ export default function TradingJournal() {
           </TabsContent>
 
           <TabsContent value="advanced" className="mt-6">
-            <div className="text-center py-16">
-              <Sparkles className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-foreground mb-2">Advanced Journal Coming Soon</h3>
-              <p className="text-muted-foreground">Enhanced features will be available here</p>
-            </div>
+            <AdvancedTradingJournal onBackToBasic={() => setActiveTab('log')} />
           </TabsContent>
         </Tabs>
       </div>

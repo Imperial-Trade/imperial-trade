@@ -137,12 +137,9 @@ export default function AdvancedTools() {
             )}
           </div>
           <div className="text-left min-h-0 flex-1 flex flex-col justify-end">
-            <h3 className={`font-medium text-sm leading-tight mb-1 ${isActive ? 'text-primary' : 'text-foreground'}`}>
+            <h3 className={`font-medium text-sm leading-tight ${isActive ? 'text-primary' : 'text-foreground'}`}>
               {tool.name}
             </h3>
-            <p className="text-xs text-muted-foreground leading-tight line-clamp-2 overflow-hidden">
-              {tool.description}
-            </p>
           </div>
         </div>
       </motion.button>

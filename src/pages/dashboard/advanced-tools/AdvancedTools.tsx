@@ -122,17 +122,17 @@ export default function AdvancedTools() {
       switch (tool.name) {
         case 'Trading Journal':
           return (
-            <div className="w-full h-full bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg overflow-hidden">
+            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-gray-900 dark:from-slate-100 dark:to-white rounded-lg overflow-hidden">
               <div className="p-2 h-full flex flex-col">
                 <div className="flex items-center gap-1 mb-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-green-400 dark:bg-green-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-red-400 dark:bg-red-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-yellow-400 dark:bg-yellow-600 rounded-full"></div>
                 </div>
                 <div className="flex-1 space-y-1">
-                  <div className="h-1.5 bg-blue-200 dark:bg-blue-700 rounded w-3/4"></div>
-                  <div className="h-1.5 bg-gray-200 dark:bg-gray-600 rounded w-1/2"></div>
-                  <div className="h-1.5 bg-green-200 dark:bg-green-700 rounded w-2/3"></div>
+                  <div className="h-1.5 bg-blue-300 dark:bg-blue-800 rounded w-3/4"></div>
+                  <div className="h-1.5 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+                  <div className="h-1.5 bg-green-300 dark:bg-green-800 rounded w-2/3"></div>
                 </div>
               </div>
             </div>
@@ -140,11 +140,11 @@ export default function AdvancedTools() {
         
         case 'Economic Calendar':
           return (
-            <div className="w-full h-full bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg overflow-hidden">
+            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-purple-900 dark:from-purple-100 dark:to-pink-50 rounded-lg overflow-hidden">
               <div className="p-2 h-full">
                 <div className="grid grid-cols-7 gap-0.5 h-full">
                   {Array.from({ length: 14 }).map((_, i) => (
-                    <div key={i} className={`rounded-sm ${i === 5 ? 'bg-purple-400' : i === 9 ? 'bg-red-400' : 'bg-gray-200 dark:bg-gray-600'}`}></div>
+                    <div key={i} className={`rounded-sm ${i === 5 ? 'bg-purple-300 dark:bg-purple-700' : i === 9 ? 'bg-red-300 dark:bg-red-700' : 'bg-gray-600 dark:bg-gray-300'}`}></div>
                   ))}
                 </div>
               </div>
@@ -153,15 +153,15 @@ export default function AdvancedTools() {
         
         case 'Risk Calculator':
           return (
-            <div className="w-full h-full bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg overflow-hidden">
+            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-emerald-900 dark:from-green-100 dark:to-emerald-50 rounded-lg overflow-hidden">
               <div className="p-2 h-full flex flex-col justify-center items-center">
-                <div className="w-8 h-8 border-2 border-green-500 rounded-full flex items-center justify-center mb-1">
-                  <span className="text-xs font-bold text-green-600">%</span>
+                <div className="w-8 h-8 border-2 border-green-300 dark:border-green-700 rounded-full flex items-center justify-center mb-1">
+                  <span className="text-xs font-bold text-green-200 dark:text-green-800">%</span>
                 </div>
                 <div className="flex gap-1">
-                  <div className="w-1 h-3 bg-green-400 rounded"></div>
-                  <div className="w-1 h-4 bg-green-500 rounded"></div>
-                  <div className="w-1 h-2 bg-green-300 rounded"></div>
+                  <div className="w-1 h-3 bg-green-300 dark:bg-green-700 rounded"></div>
+                  <div className="w-1 h-4 bg-green-400 dark:bg-green-800 rounded"></div>
+                  <div className="w-1 h-2 bg-green-200 dark:bg-green-600 rounded"></div>
                 </div>
               </div>
             </div>
@@ -169,15 +169,15 @@ export default function AdvancedTools() {
         
         case 'Trade Analyst':
           return (
-            <div className="w-full h-full bg-gradient-to-br from-orange-50 to-amber-100 dark:from-orange-900/20 dark:to-amber-900/20 rounded-lg overflow-hidden">
+            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-amber-900 dark:from-orange-100 dark:to-amber-50 rounded-lg overflow-hidden">
               <div className="p-2 h-full flex flex-col">
                 <div className="flex items-center gap-1 mb-1">
-                  <div className="w-3 h-2 bg-orange-400 rounded"></div>
-                  <div className="w-4 h-1 bg-orange-300 rounded"></div>
+                  <div className="w-3 h-2 bg-orange-300 dark:bg-orange-700 rounded"></div>
+                  <div className="w-4 h-1 bg-orange-200 dark:bg-orange-600 rounded"></div>
                 </div>
                 <div className="flex-1 flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-dashed border-orange-400 rounded flex items-center justify-center">
-                    <Icon className="w-3 h-3 text-orange-500" />
+                  <div className="w-6 h-6 border-2 border-dashed border-orange-300 dark:border-orange-700 rounded flex items-center justify-center">
+                    <Icon className="w-3 h-3 text-orange-200 dark:text-orange-800" />
                   </div>
                 </div>
               </div>
@@ -186,20 +186,20 @@ export default function AdvancedTools() {
         
         case 'Opportunity Scanner':
           return (
-            <div className="w-full h-full bg-gradient-to-br from-cyan-50 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-lg overflow-hidden">
+            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-blue-900 dark:from-cyan-100 dark:to-blue-50 rounded-lg overflow-hidden">
               <div className="p-2 h-full">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1">
-                    <div className="w-1 h-1 bg-cyan-500 rounded-full animate-pulse"></div>
-                    <div className="h-1 bg-cyan-300 rounded flex-1"></div>
+                    <div className="w-1 h-1 bg-cyan-300 dark:bg-cyan-700 rounded-full animate-pulse"></div>
+                    <div className="h-1 bg-cyan-200 dark:bg-cyan-600 rounded flex-1"></div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse delay-100"></div>
-                    <div className="h-1 bg-blue-300 rounded flex-1"></div>
+                    <div className="w-1 h-1 bg-blue-300 dark:bg-blue-700 rounded-full animate-pulse delay-100"></div>
+                    <div className="h-1 bg-blue-200 dark:bg-blue-600 rounded flex-1"></div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-1 h-1 bg-indigo-500 rounded-full animate-pulse delay-200"></div>
-                    <div className="h-1 bg-indigo-300 rounded flex-1"></div>
+                    <div className="w-1 h-1 bg-indigo-300 dark:bg-indigo-700 rounded-full animate-pulse delay-200"></div>
+                    <div className="h-1 bg-indigo-200 dark:bg-indigo-600 rounded flex-1"></div>
                   </div>
                 </div>
               </div>
@@ -208,12 +208,12 @@ export default function AdvancedTools() {
         
         case 'Risk Simulator':
           return (
-            <div className="w-full h-full bg-gradient-to-br from-red-50 to-rose-100 dark:from-red-900/20 dark:to-rose-900/20 rounded-lg overflow-hidden">
+            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-rose-900 dark:from-red-100 dark:to-rose-50 rounded-lg overflow-hidden">
               <div className="p-2 h-full flex items-center justify-center">
                 <div className="relative">
-                  <div className="w-8 h-8 border-2 border-red-400 rounded-full"></div>
-                  <div className="absolute inset-0 border-2 border-red-600 rounded-full animate-ping"></div>
-                  <div className="absolute inset-2 bg-red-500 rounded-full"></div>
+                  <div className="w-8 h-8 border-2 border-red-300 dark:border-red-700 rounded-full"></div>
+                  <div className="absolute inset-0 border-2 border-red-400 dark:border-red-800 rounded-full animate-ping"></div>
+                  <div className="absolute inset-2 bg-red-400 dark:bg-red-800 rounded-full"></div>
                 </div>
               </div>
             </div>
@@ -221,8 +221,8 @@ export default function AdvancedTools() {
         
         default:
           return (
-            <div className="w-full h-full bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-              <Icon className="w-6 h-6 text-gray-400" />
+            <div className="w-full h-full bg-gray-800 dark:bg-gray-100 rounded-lg flex items-center justify-center">
+              <Icon className="w-6 h-6 text-gray-300 dark:text-gray-600" />
             </div>
           );
       }

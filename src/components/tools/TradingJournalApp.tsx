@@ -1677,7 +1677,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                     className={cn(
                       "capitalize",
                       journalState.currentFilter === view &&
-                        "bg-gradient-to-r from-amber-400 via-yellow-400 to-teal-600 text-white border-0 hover:from-amber-500 hover:via-yellow-500 hover:to-teal-700"
+                        "bg-primary text-primary-foreground border-transparent hover:bg-primary/90"
                     )}
                   >
                     {view}
@@ -1778,9 +1778,9 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           }
                           className={cn(
                             trade.outcome === "win" &&
-                              "bg-gradient-to-r from-amber-400 via-yellow-400 to-teal-600 text-white border-0",
+                              "bg-primary text-primary-foreground border-transparent",
                             trade.outcome === "loss" &&
-                              "bg-gradient-to-r from-amber-400 via-yellow-400 to-red-800 text-white border-0"
+                              "bg-destructive text-destructive-foreground border-transparent"
                           )}
                         >
                           {trade.asset}

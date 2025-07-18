@@ -1229,7 +1229,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
               </CardHeader>
               <CardContent className="p-4 space-y-3">
                 {analyticsView === "ai" ? (
-                  <div className="space-y-3">
+                  <div className="space-y-3 p-4 bg-card/50 backdrop-blur-sm rounded-lg border border-border/30">
                     <motion.div
                       className="p-4 rounded-xl bg-gradient-to-br from-green-500/5 to-green-500/10 border border-green-500/10"
                       whileHover={{ scale: 1.02 }}

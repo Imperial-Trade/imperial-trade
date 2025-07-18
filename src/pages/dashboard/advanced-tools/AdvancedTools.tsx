@@ -205,9 +205,9 @@ export default function AdvancedTools() {
                         {React.createElement(tool.icon, {
                           className: "w-3 h-3 flex-shrink-0",
                         })}
-                        <span className="text-xs font-medium truncate">
-                          {tool.name.split(" ")[0]}
-                        </span>
+                    <span className="text-xs font-medium truncate">
+                      {tool.name === "Opportunity Scanner" ? "Scanner" : tool.name.split(" ")[0]}
+                    </span>
                       </div>
                     </button>
                   ))}

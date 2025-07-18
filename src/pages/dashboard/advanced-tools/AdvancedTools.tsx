@@ -174,8 +174,7 @@ export default function AdvancedTools() {
           )}
 
           {/* Tools Selection Panel - Right Side */}
-          <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-3 shadow-lg shadow-primary/5 min-w-fit">
-            <h3 className="text-xs font-medium text-muted-foreground mb-2">Quick Access</h3>
+          <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-2 shadow-lg shadow-primary/5 w-fit">
             
             {/* All Tools in one compact grid */}
             <div className="grid grid-cols-6 gap-1.5">

@@ -345,32 +345,39 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                   <span className="text-white text-xs font-medium">
-                    {user?.email ? getInitials(user.email) : 'U'}
+                    {user?.user_metadata?.first_name && user?.user_metadata?.last_name 
+                      ? `${user.user_metadata.first_name.charAt(0)}${user.user_metadata.last_name.charAt(0)}`
+                      : user?.email ? getInitials(user.email) : 'U'}
                   </span>
                 </div>
                 <div className="text-left">
                   <div className="text-foreground text-sm font-medium">
-                    {user?.email?.split('@')[0] || 'User'}
+                    {user?.user_metadata?.first_name && user?.user_metadata?.last_name 
+                      ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                      : user?.user_metadata?.full_name || user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'User'}
                   </div>
                   <div className="text-foreground/60 text-xs">
-                    {user?.user_metadata?.access_level === 'admin' ? 'Administrator' : 'Member'}
+                    {user?.user_metadata?.access_level === 'admin' ? 'Administrator' : 
+                     user?.user_metadata?.user_type === 'educator' ? 'Educator' : 'Member'}
                   </div>
                 </div>
               </motion.button>
               
-              {/* Controls */}
-              <div className="flex items-center gap-2">
-                <motion.button 
-                  className="p-2 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <Bell className="w-4 h-4 text-foreground/60" />
-                </motion.button>
-                <ThemeToggle />
-              </div>
-            </div>
-          </motion.div>
+               {/* Controls */}
+               <div className="flex items-center gap-1.5">
+                 <motion.button 
+                   className="p-2 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 flex items-center justify-center"
+                   whileHover={{ scale: 1.1 }}
+                   whileTap={{ scale: 0.9 }}
+                 >
+                   <Bell className="w-4 h-4 text-foreground/60" />
+                 </motion.button>
+                 <div className="flex items-center justify-center">
+                   <ThemeToggle />
+                 </div>
+               </div>
+             </div>
+           </motion.div>
 
           {/* Profile Dropdown */}
           {showProfileDropdown && (

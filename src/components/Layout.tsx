@@ -89,11 +89,7 @@ function DashboardHeader() {
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300 ${
-      isHeaderCollapsed 
-        ? 'backdrop-blur-md bg-background/20 border-b border-border/20' 
-        : 'backdrop-blur-xl border-b border-border/50 bg-background/80'
-    }`}>
+    <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300 bg-transparent border-b border-transparent`}>
       <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-between'}`}>
         
         {/* Logo - Hide when collapsed */}
@@ -155,16 +151,6 @@ function DashboardHeader() {
           </nav>
         )}
 
-        {/* Desktop Actions - Simplified */}
-        {!isHeaderCollapsed && (
-          <div className="hidden lg:flex items-center gap-4">
-            {/* Live Market Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-xs font-medium text-green-700 dark:text-green-400">Market Open</span>
-            </div>
-          </div>
-        )}
 
         {/* Menu Button - Always visible, rightmost position when collapsed */}
         <div className="hidden lg:flex">

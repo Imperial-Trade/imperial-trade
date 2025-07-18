@@ -1478,7 +1478,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
               <ArrowLeft className="h-4 w-4" />
               Back to Calendar
             </Button>
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-2xl font-light font-mono tracking-wide">
               {new Date(date + 'T00:00:00').toLocaleDateString()}
             </h2>
           </div>

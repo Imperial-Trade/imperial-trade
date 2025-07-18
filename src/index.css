@@ -498,12 +498,6 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-/* Imperial Welcome styles */
-.imperial-name {
-  color: hsl(var(--imperial-gold));
-  font-weight: 700;
   color: hsl(var(--accent-gold)); /* Fallback color */
 }
 

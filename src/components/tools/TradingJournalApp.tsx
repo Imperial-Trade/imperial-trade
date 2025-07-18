@@ -1471,13 +1471,13 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   isDayViewActive: false,
                   currentFilter: prev.currentFilter,
                 }));
-                // Scroll to calendar container
+                // Scroll to calendar grid section as main focus
                 setTimeout(() => {
                   const calendarElement = document.querySelector('[data-calendar-view]');
                   if (calendarElement) {
                     calendarElement.scrollIntoView({ 
                       behavior: 'smooth', 
-                      block: 'center' 
+                      block: 'start' 
                     });
                   }
                 }, 100);

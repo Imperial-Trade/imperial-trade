@@ -200,86 +200,92 @@ export default function OpportunityScanner() {
           )}
         </div>
 
-        {/* Control Bar with Filters */}
         <Card className="bg-card/50 border-border/50">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap gap-4 items-center">
+          <CardContent className="p-3">
+            <div className="flex flex-wrap gap-2 items-center justify-between">
+              {/* Left side - Filters */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-foreground">Filters:</span>
+                </div>
+                
+                <Select value={filters.market} onValueChange={(value) => setFilters(prev => ({ ...prev, market: value }))}>
+                  <SelectTrigger className="w-[120px] h-8 bg-background text-xs">
+                    <SelectValue placeholder="Market" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Markets</SelectItem>
+                    <SelectItem value="crypto">Crypto</SelectItem>
+                    <SelectItem value="stocks">Stocks</SelectItem>
+                    <SelectItem value="forex">Forex</SelectItem>
+                    <SelectItem value="commodities">Commodities</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filters.strategy} onValueChange={(value) => setFilters(prev => ({ ...prev, strategy: value }))}>
+                  <SelectTrigger className="w-[130px] h-8 bg-background text-xs">
+                    <SelectValue placeholder="Strategy" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Strategies</SelectItem>
+                    <SelectItem value="AI Breakout">AI Breakout</SelectItem>
+                    <SelectItem value="AI Momentum">AI Momentum</SelectItem>
+                    <SelectItem value="AI Reversal">AI Reversal</SelectItem>
+                    <SelectItem value="AI Pattern">AI Pattern</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filters.timeframe} onValueChange={(value) => setFilters(prev => ({ ...prev, timeframe: value }))}>
+                  <SelectTrigger className="w-[110px] h-8 bg-background text-xs">
+                    <SelectValue placeholder="Timeframe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Timeframes</SelectItem>
+                    <SelectItem value="1H">1 Hour</SelectItem>
+                    <SelectItem value="4H">4 Hours</SelectItem>
+                    <SelectItem value="1D">1 Day</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Right side - Sort and Scan */}
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">Filters:</span>
+                <div className="flex items-center gap-2">
+                  <SortDesc className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-foreground">Sort:</span>
+                </div>
+
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[120px] h-8 bg-background text-xs">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="probability">Probability</SelectItem>
+                    <SelectItem value="risk_reward">Risk/Reward</SelectItem>
+                    <SelectItem value="recency">Recency</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button 
+                  onClick={scanForOpportunities} 
+                  disabled={isScanning} 
+                  size="sm"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-8 px-3 text-xs"
+                >
+                  {isScanning ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent mr-1" />
+                      Scanning...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-3 h-3 mr-1" />
+                      Scan
+                    </>
+                  )}
+                </Button>
               </div>
-              
-              <Select value={filters.market} onValueChange={(value) => setFilters(prev => ({ ...prev, market: value }))}>
-                <SelectTrigger className="w-[140px] bg-background">
-                  <SelectValue placeholder="Market" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Markets</SelectItem>
-                  <SelectItem value="crypto">Crypto</SelectItem>
-                  <SelectItem value="stocks">Stocks</SelectItem>
-                  <SelectItem value="forex">Forex</SelectItem>
-                  <SelectItem value="commodities">Commodities</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.strategy} onValueChange={(value) => setFilters(prev => ({ ...prev, strategy: value }))}>
-                <SelectTrigger className="w-[150px] bg-background">
-                  <SelectValue placeholder="Strategy" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Strategies</SelectItem>
-                  <SelectItem value="AI Breakout">AI Breakout</SelectItem>
-                  <SelectItem value="AI Momentum">AI Momentum</SelectItem>
-                  <SelectItem value="AI Reversal">AI Reversal</SelectItem>
-                  <SelectItem value="AI Pattern">AI Pattern</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filters.timeframe} onValueChange={(value) => setFilters(prev => ({ ...prev, timeframe: value }))}>
-                <SelectTrigger className="w-[130px] bg-background">
-                  <SelectValue placeholder="Timeframe" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Timeframes</SelectItem>
-                  <SelectItem value="1H">1 Hour</SelectItem>
-                  <SelectItem value="4H">4 Hours</SelectItem>
-                  <SelectItem value="1D">1 Day</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <div className="flex items-center gap-2 ml-4">
-                <SortDesc className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">Sort by:</span>
-              </div>
-
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[140px] bg-background">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="probability">Probability</SelectItem>
-                  <SelectItem value="risk_reward">Risk/Reward</SelectItem>
-                  <SelectItem value="recency">Recency</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button 
-                onClick={scanForOpportunities} 
-                disabled={isScanning} 
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white ml-4"
-              >
-                {isScanning ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                    Scanning Markets...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-4 h-4 mr-2" />
-                    Scan Markets
-                  </>
-                )}
-              </Button>
             </div>
           </CardContent>
         </Card>

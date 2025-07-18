@@ -192,31 +192,12 @@ export default function OpportunityScanner() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header with Controls */}
         <div className="flex flex-col lg:flex-row gap-4 lg:items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button 
-              onClick={scanForOpportunities} 
-              disabled={isScanning} 
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
-            >
-              {isScanning ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                  Scanning Markets...
-                </>
-              ) : (
-                <>
-                  <Search className="w-4 h-4 mr-2" />
-                  Scan Markets
-                </>
-              )}
-            </Button>
-            {lastScan && (
-              <div className="text-sm text-muted-foreground flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Last: {lastScan.toLocaleTimeString()}
-              </div>
-            )}
-          </div>
+          {lastScan && (
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Last: {lastScan.toLocaleTimeString()}
+            </div>
+          )}
         </div>
 
         {/* Control Bar with Filters */}
@@ -281,6 +262,24 @@ export default function OpportunityScanner() {
                   <SelectItem value="recency">Recency</SelectItem>
                 </SelectContent>
               </Select>
+
+              <Button 
+                onClick={scanForOpportunities} 
+                disabled={isScanning} 
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white ml-4"
+              >
+                {isScanning ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                    Scanning Markets...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4 mr-2" />
+                    Scan Markets
+                  </>
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>

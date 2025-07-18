@@ -164,54 +164,57 @@ export default function AdvancedTools() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="mb-4 flex items-center justify-between"
+          className="mb-4 flex items-center justify-center"
         >
-          {/* Active Tool Info - Left Side */}
+          {/* Combined Tool Info and Selection Panel */}
           {activeTool && (
             <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-2 shadow-lg shadow-primary/5 w-fit">
-              <div className="flex items-center gap-3">
-                <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
-                  {React.createElement(activeTool.icon, {
-                    className: "w-4 h-4 text-primary",
-                  })}
+              <div className="flex items-center gap-4">
+                {/* Active Tool Info */}
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                    {React.createElement(activeTool.icon, {
+                      className: "w-4 h-4 text-primary",
+                    })}
+                  </div>
+                  <h2 className="font-semibold text-base text-foreground tracking-tight">
+                    {activeTool.name}
+                  </h2>
+                  <span className="text-sm text-muted-foreground">•</span>
+                  <p className="text-sm text-muted-foreground">
+                    {activeTool.description}
+                  </p>
                 </div>
-                <h2 className="font-semibold text-base text-foreground tracking-tight">
-                  {activeTool.name}
-                </h2>
-                <span className="text-sm text-muted-foreground">•</span>
-                <p className="text-sm text-muted-foreground">
-                  {activeTool.description}
-                </p>
+
+                {/* Separator */}
+                <div className="w-px h-6 bg-border/20"></div>
+
+                {/* Tools Selection Grid */}
+                <div className="grid grid-cols-6 gap-1.5">
+                  {[...coreTools, ...aiTools].map((tool) => (
+                    <button
+                      key={tool.name}
+                      onClick={() => setActiveTool(tool)}
+                      className={`p-2 rounded-lg border transition-all text-left ${
+                        activeTool?.name === tool.name
+                          ? "bg-primary/10 border-primary/20 text-primary"
+                          : "bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {React.createElement(tool.icon, {
+                          className: "w-3 h-3 flex-shrink-0",
+                        })}
+                        <span className="text-xs font-medium truncate">
+                          {tool.name.split(" ")[0]}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
-
-          {/* Tools Selection Panel - Right Side */}
-          <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-2 shadow-lg shadow-primary/5 w-fit">
-            {/* All Tools in one compact grid */}
-            <div className="grid grid-cols-6 gap-1.5">
-              {[...coreTools, ...aiTools].map((tool) => (
-                <button
-                  key={tool.name}
-                  onClick={() => setActiveTool(tool)}
-                  className={`p-2 rounded-lg border transition-all text-left ${
-                    activeTool?.name === tool.name
-                      ? "bg-primary/10 border-primary/20 text-primary"
-                      : "bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    {React.createElement(tool.icon, {
-                      className: "w-3 h-3 flex-shrink-0",
-                    })}
-                    <span className="text-xs font-medium truncate">
-                      {tool.name.split(" ")[0]}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
         </motion.div>
 
         {/* Tool Display */}

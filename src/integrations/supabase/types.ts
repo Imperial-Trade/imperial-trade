@@ -203,38 +203,109 @@ export type Database = {
         }
         Relationships: []
       }
+      course_modules: {
+        Row: {
+          course_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          is_published: boolean | null
+          module_number: number
+          order_index: number
+          prerequisites: Json | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_published?: boolean | null
+          module_number: number
+          order_index?: number
+          prerequisites?: Json | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_published?: boolean | null
+          module_number?: number
+          order_index?: number
+          prerequisites?: Json | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_modules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           category: string | null
           created_at: string
+          created_by: string | null
           description: string
           difficulty: Database["public"]["Enums"]["course_difficulty"] | null
+          enrollment_count: number | null
           id: string
+          is_published: boolean | null
           lessons: Json | null
+          order_index: number | null
+          prerequisites: Json | null
           thumbnail_url: string | null
           title: string
+          total_duration_minutes: number | null
           updated_at: string
         }
         Insert: {
           category?: string | null
           created_at?: string
+          created_by?: string | null
           description: string
           difficulty?: Database["public"]["Enums"]["course_difficulty"] | null
+          enrollment_count?: number | null
           id?: string
+          is_published?: boolean | null
           lessons?: Json | null
+          order_index?: number | null
+          prerequisites?: Json | null
           thumbnail_url?: string | null
           title: string
+          total_duration_minutes?: number | null
           updated_at?: string
         }
         Update: {
           category?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string
           difficulty?: Database["public"]["Enums"]["course_difficulty"] | null
+          enrollment_count?: number | null
           id?: string
+          is_published?: boolean | null
           lessons?: Json | null
+          order_index?: number | null
+          prerequisites?: Json | null
           thumbnail_url?: string | null
           title?: string
+          total_duration_minutes?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -487,6 +558,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      module_videos: {
+        Row: {
+          created_at: string
+          id: string
+          is_required: boolean | null
+          module_id: string
+          order_index: number
+          updated_at: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_required?: boolean | null
+          module_id: string
+          order_index?: number
+          updated_at?: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_required?: boolean | null
+          module_id?: string
+          order_index?: number
+          updated_at?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_videos_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_videos_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_settings: {
         Row: {
@@ -1430,39 +1546,66 @@ export type Database = {
       }
       videos: {
         Row: {
+          access_settings: Json | null
           category: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           difficulty: string | null
           duration: number | null
+          embed_code: string | null
           id: string
+          is_active: boolean | null
+          source_type: Database["public"]["Enums"]["video_source_type"]
+          source_url: string | null
+          storage_bucket: string | null
+          storage_path: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string
+          video_metadata: Json | null
           video_url: string
         }
         Insert: {
+          access_settings?: Json | null
           category?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           difficulty?: string | null
           duration?: number | null
+          embed_code?: string | null
           id?: string
+          is_active?: boolean | null
+          source_type?: Database["public"]["Enums"]["video_source_type"]
+          source_url?: string | null
+          storage_bucket?: string | null
+          storage_path?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string
+          video_metadata?: Json | null
           video_url: string
         }
         Update: {
+          access_settings?: Json | null
           category?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           difficulty?: string | null
           duration?: number | null
+          embed_code?: string | null
           id?: string
+          is_active?: boolean | null
+          source_type?: Database["public"]["Enums"]["video_source_type"]
+          source_url?: string | null
+          storage_bucket?: string | null
+          storage_path?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
+          video_metadata?: Json | null
           video_url?: string
         }
         Relationships: []
@@ -1533,6 +1676,11 @@ export type Database = {
       upload_status: "pending" | "analyzed" | "error"
       user_type_enum: "member" | "educator" | "admin"
       verification_status: "pending" | "verified" | "rejected"
+      video_source_type:
+        | "youtube"
+        | "vimeo"
+        | "supabase_storage"
+        | "digitalocean_storage"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1705,6 +1853,12 @@ export const Constants = {
       upload_status: ["pending", "analyzed", "error"],
       user_type_enum: ["member", "educator", "admin"],
       verification_status: ["pending", "verified", "rejected"],
+      video_source_type: [
+        "youtube",
+        "vimeo",
+        "supabase_storage",
+        "digitalocean_storage",
+      ],
     },
   },
 } as const

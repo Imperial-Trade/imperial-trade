@@ -9,6 +9,8 @@ import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
+import Forum from "@/pages/dashboard/forum/Forum";
+import { RouteRedirectHandler } from "@/components/routing/RouteRedirectHandler";
 
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
@@ -143,7 +145,22 @@ function App() {
                           element={<SignalStream />}
                         />
                         <Route path="new-signal" element={<NewSignalPage />} />
-                        <Route path="education" element={<Education />} />
+                        <Route 
+                          path="education" 
+                          element={
+                            <RouteRedirectHandler route="education">
+                              <Education />
+                            </RouteRedirectHandler>
+                          } 
+                        />
+                        <Route 
+                          path="forum" 
+                          element={
+                            <RouteRedirectHandler route="forum">
+                              <Forum />
+                            </RouteRedirectHandler>
+                          } 
+                        />
                         <Route
                           path="advanced-tools"
                           element={<AdvancedTools />}

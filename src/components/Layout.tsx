@@ -3,7 +3,8 @@ import React, { useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton"
-import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User, Settings, BarChart3, Shield, Plus, ChevronUp, ChevronDown } from "lucide-react"
+import { WidgetSidebar } from "@/components/navigation/WidgetSidebar"
+import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User, Settings, BarChart3, Shield, Plus, ChevronUp, ChevronDown, LogOut } from "lucide-react"
 import { Link, Outlet, useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary"
@@ -18,7 +19,7 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle"
 
 function DashboardHeader() {
   const { openMobile } = useSidebar();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
@@ -88,21 +89,16 @@ function DashboardHeader() {
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300 ${
-      isHeaderCollapsed 
-        ? 'backdrop-blur-md bg-background/20 border-b border-border/20' 
-        : 'backdrop-blur-xl border-b border-border/50 bg-background/80'
-    }`}>
-      <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-between'}`}>
-        
-        {/* Logo - Hide when collapsed */}
-        {!isHeaderCollapsed && (
-          <Link to="/dashboard/home" className="flex items-center gap-2">
-            <Crown className="h-6 w-6 text-primary" />
-            <span className="text-xl imperial-tech-font">IMPERIAL</span>
-          </Link>
-        )}
+    <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300 bg-transparent border-b border-transparent`}>
+      {/* Logo - Fixed to leftmost position */}
+      <div className="fixed top-4 left-6 z-60">
+        <Link to="/dashboard/home" className="flex items-center gap-2">
+          <Crown className="h-6 w-6 text-primary" />
+          <span className="text-xl imperial-tech-font">IMPERIAL</span>
+        </Link>
+      </div>
 
+      <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-center'}`}>
         {/* Desktop Navigation */}
         {!isHeaderCollapsed && (
           <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
@@ -154,103 +150,16 @@ function DashboardHeader() {
           </nav>
         )}
 
-        {/* Desktop Actions & User Info - Hide when collapsed */}
-        {!isHeaderCollapsed && (
-          <div className="hidden lg:flex items-center gap-4">
-            {/* Live Market Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-xs font-medium text-green-700 dark:text-green-400">Market Open</span>
-            </div>
 
-            {/* Theme Toggle */}
-            <ThemeToggle />
-
-            {/* User Info */}
-            {user && (
-              <div className="flex items-center gap-2">
-                <div className="flex flex-col items-end text-sm">
-                  <span className="font-medium text-foreground">
-                    {user.user_metadata?.first_name && user.user_metadata?.last_name 
-                      ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
-                      : user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'}
-                  </span>
-                  <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-xs font-medium border-0 bg-transparent px-0`}>
-                    {getAccessLevelDisplay(getUserAccessLevel()).label}
-                  </Badge>
-                </div>
-                <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
-                
-                {/* Profile Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="flex items-center gap-1 p-1 h-auto ml-2">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20">
-                        <User className="h-4 w-4 text-primary" />
-                      </div>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-background/95 backdrop-blur-xl border border-border/50 shadow-2xl">
-                    {/* User Menu Items */}
-                    <DropdownMenuItem asChild>
-                      <Link to="/dashboard/progress" className="flex items-center gap-2 cursor-pointer">
-                        <BarChart3 className="h-4 w-4" />
-                        My Progress
-                      </Link>
-                    </DropdownMenuItem>
-                    
-                    {/* Educator Menu Items */}
-                    {(user.user_metadata?.role === 'educator' || user.user_metadata?.user_type === 'educator') && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link to="/live-sessions" className="flex items-center gap-2 cursor-pointer">
-                            <Video className="h-4 w-4" />
-                            Manage Sessions
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/trade-alerts" className="flex items-center gap-2 cursor-pointer">
-                            <TrendingUp className="h-4 w-4" />
-                            Trade Alerts
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    
-                    {/* Admin Menu Items */}
-                    {(getUserAccessLevel() === 'admin' || user.user_metadata?.role === 'admin') && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link to="/dashboard/administration" className="flex items-center gap-2 cursor-pointer">
-                            <Settings className="h-4 w-4" />
-                            Administration
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/dashboard/admin" className="flex items-center gap-2 cursor-pointer">
-                            <Shield className="h-4 w-4" />
-                            Admin Panel
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Menu Button - Always visible, rightmost position when collapsed */}
-        <div className="hidden lg:flex">
+        {/* Theme Toggle and Menu Button - Always visible, rightmost position when collapsed */}
+        <div className="hidden lg:flex items-center gap-2">
+          <ThemeToggle />
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
             className={`h-8 w-8 rounded-full hover:bg-muted/50 transition-all duration-200 ${
-              isHeaderCollapsed ? 'ml-auto' : 'ml-2'
+              isHeaderCollapsed ? 'ml-auto' : ''
             }`}
             title={isHeaderCollapsed ? "Expand header" : "Collapse header"}
           >
@@ -432,13 +341,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <ErrorBoundary componentName="Sidebar Overlay">
           <SidebarOverlay />
         </ErrorBoundary>
-        
-        {/* Main content - always full width, independent of sidebar */}
+
+        {/* Main content - centered, no left margin */}
         <main className="w-full min-h-screen pt-20 bg-background">
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>
         </main>
+        
+        {/* Trading Arsenal Sidebar - Floating overlay */}
+        <ErrorBoundary componentName="Trading Arsenal Sidebar">
+          <WidgetSidebar />
+        </ErrorBoundary>
       </div>
     </SidebarProvider>
   )

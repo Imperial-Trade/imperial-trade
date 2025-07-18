@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, TrendingDown, AlertTriangle, Target } from 'lucide-react';
+import { Calculator, TrendingDown, AlertTriangle, Target, BarChart3, DollarSign } from 'lucide-react';
+import { motion } from 'framer-motion';
 export default function RiskSimulator() {
   const [tradeParams, setTradeParams] = useState({
     instrument: '',
@@ -61,123 +62,191 @@ export default function RiskSimulator() {
     return 'High Risk';
   };
   return (
-    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
-      <div className="p-6">
-        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle>Risk Simulator</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Trade Parameters Input */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-primary mb-2">Instrument</label>
-                <Input placeholder="e.g., EUR/USD, GOLD, AAPL" value={tradeParams.instrument} onChange={e => handleInputChange('instrument', e.target.value)} className="bg-surface border-default text-primary" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-primary mb-2">Position Size</label>
-                <Input type="number" placeholder="e.g., 1000" value={tradeParams.position_size} onChange={e => handleInputChange('position_size', e.target.value)} className="bg-surface border-default text-primary" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-primary mb-2">Entry Price</label>
-                <Input type="number" step="0.00001" placeholder="e.g., 1.1500" value={tradeParams.entry_price} onChange={e => handleInputChange('entry_price', e.target.value)} className="bg-surface border-default text-primary" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-primary mb-2">Stop Loss</label>
-                <Input type="number" step="0.00001" placeholder="e.g., 1.1450" value={tradeParams.stop_loss} onChange={e => handleInputChange('stop_loss', e.target.value)} className="bg-surface border-default text-primary" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-primary mb-2">Take Profit</label>
-                <Input type="number" step="0.00001" placeholder="e.g., 1.1600" value={tradeParams.take_profit} onChange={e => handleInputChange('take_profit', e.target.value)} className="bg-surface border-default text-primary" />
-              </div>
-            </div>
-
-            <Button onClick={simulateRisk} disabled={isSimulating} className="w-full bg-orange-600 hover:bg-orange-700 text-white">
-              {isSimulating ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
-                  Running Risk Simulation...
-                </>
-              ) : (
-                <>
-                  <Calculator className="w-5 h-5 mr-2" />
-                  Simulate Risk (Mock)
-                </>
-              )}
-            </Button>
-
-            {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 text-accent-red rounded-lg">
-                {error}
-              </div>
-            )}
-
-            {/* Simulation Results */}
-            {simulationResult && (
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-primary">Risk Analysis Results (Mock Data)</h3>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Pane - Trade Setup */}
+          <div className="space-y-6">
+            <Card className="bg-card border-border">
+              <CardContent className="p-6">
+                <h2 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
+                  <Calculator className="w-6 h-6 text-blue-400" />
+                  Trade Setup
+                </h2>
                 
-                {/* Risk Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                    <CardContent className="p-4 text-center">
-                      <Target className="w-8 h-8 text-accent-blue mx-auto mb-2" />
-                      <p className="text-sm text-secondary">Risk:Reward Ratio</p>
-                      <p className="text-2xl font-bold text-primary">1:{simulationResult.risk_reward_ratio?.toFixed(2)}</p>
-                    </CardContent>
-                  </Card>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">Asset</label>
+                      <Input 
+                        placeholder="EUR/USD, TSLA, BTC" 
+                        value={tradeParams.instrument} 
+                        onChange={e => handleInputChange('instrument', e.target.value)} 
+                        className="bg-background" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">Position Size</label>
+                      <Input 
+                        type="number" 
+                        placeholder="1000" 
+                        value={tradeParams.position_size} 
+                        onChange={e => handleInputChange('position_size', e.target.value)} 
+                        className="bg-background" 
+                      />
+                    </div>
+                  </div>
                   
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                    <CardContent className="p-4 text-center">
-                      <TrendingDown className="w-8 h-8 text-accent-red mx-auto mb-2" />
-                      <p className="text-sm text-secondary">Stop Loss Probability</p>
-                      <p className="text-2xl font-bold text-accent-red">{simulationResult.stop_loss_probability}%</p>
-                    </CardContent>
-                  </Card>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Entry Price</label>
+                    <Input 
+                      type="number" 
+                      step="0.00001" 
+                      placeholder="1.0850" 
+                      value={tradeParams.entry_price} 
+                      onChange={e => handleInputChange('entry_price', e.target.value)} 
+                      className="bg-background" 
+                    />
+                  </div>
                   
-                  <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                    <CardContent className="p-4 text-center">
-                      <AlertTriangle className={`w-8 h-8 mx-auto mb-2 ${getRiskColor(simulationResult.overall_risk_score)}`} />
-                      <p className="text-sm text-secondary">Overall Risk</p>
-                      <p className={`text-2xl font-bold ${getRiskColor(simulationResult.overall_risk_score)}`}>
-                        {getRiskLabel(simulationResult.overall_risk_score)}
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Stop Loss</label>
+                    <Input 
+                      type="number" 
+                      step="0.00001" 
+                      placeholder="1.0800" 
+                      value={tradeParams.stop_loss} 
+                      onChange={e => handleInputChange('stop_loss', e.target.value)} 
+                      className="bg-background" 
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Take Profit</label>
+                    <Input 
+                      type="number" 
+                      step="0.00001" 
+                      placeholder="1.0950" 
+                      value={tradeParams.take_profit} 
+                      onChange={e => handleInputChange('take_profit', e.target.value)} 
+                      className="bg-background" 
+                    />
+                  </div>
                 </div>
 
-                {/* Detailed Analysis */}
-                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                  <CardContent className="p-4">
-                    <h4 className="font-semibold text-primary mb-2">Market Conditions</h4>
-                    <p className="text-secondary">{simulationResult.market_conditions}</p>
+                <Button 
+                  onClick={simulateRisk} 
+                  disabled={isSimulating} 
+                  className="w-full mt-6 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white py-3"
+                >
+                  {isSimulating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
+                      Running Simulation...
+                    </>
+                  ) : (
+                    <>
+                      <Target className="w-5 h-5 mr-2" />
+                      Simulate Risk
+                    </>
+                  )}
+                </Button>
+
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg"
+                  >
+                    {error}
+                  </motion.div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Pane - Simulation Results */}
+          <div className="space-y-6">
+            {simulationResult ? (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="space-y-6"
+              >
+                {/* Core Numbers */}
+                <Card className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border-green-500/30">
+                  <CardContent className="p-6">
+                    <h3 className="text-xl font-bold text-foreground mb-4">Core Numbers</h3>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <DollarSign className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">Potential Profit</p>
+                        <p className="text-xl font-bold text-green-400">$245</p>
+                      </div>
+                      <div>
+                        <TrendingDown className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">Potential Loss</p>
+                        <p className="text-xl font-bold text-red-400">$120</p>
+                      </div>
+                      <div>
+                        <Target className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">Risk/Reward</p>
+                        <p className="text-xl font-bold text-blue-400">{simulationResult.risk_reward_ratio?.toFixed(1)}:1</p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                  <CardContent className="p-4">
-                    <h4 className="font-semibold text-primary mb-2">Position Sizing Feedback</h4>
-                    <p className="text-secondary">{simulationResult.position_sizing_feedback}</p>
+                {/* Probability Cone */}
+                <Card className="bg-card border-border">
+                  <CardContent className="p-6">
+                    <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-purple-400" />
+                      Probability Analysis
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Take Profit Hit:</span>
+                        <span className="text-green-400 font-bold">65%</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Stop Loss Hit:</span>
+                        <span className="text-red-400 font-bold">{simulationResult.stop_loss_probability}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-3 mt-4">
+                        <div className="bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 h-3 rounded-full w-full"></div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-                  <CardContent className="p-4">
-                    <h4 className="font-semibold text-primary mb-2">Recommendations</h4>
-                    <ul className="space-y-2">
-                      {simulationResult.recommendations?.map((rec, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <AlertTriangle className="w-4 h-4 text-accent-gold mt-1 flex-shrink-0" />
-                          <span className="text-secondary">{rec}</span>
-                        </li>
+                {/* AI Risk Assessment */}
+                <Card className="bg-card border-border">
+                  <CardContent className="p-6">
+                    <h3 className="text-xl font-bold text-foreground mb-4">AI Risk Assessment</h3>
+                    <p className="text-muted-foreground mb-4">{simulationResult.market_conditions}</p>
+                    <div className="space-y-2">
+                      {simulationResult.recommendations?.slice(0, 2).map((rec, index) => (
+                        <div key={index} className="flex items-start gap-2 p-3 bg-yellow-500/5 rounded-lg border border-yellow-500/20">
+                          <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm text-muted-foreground">{rec}</span>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </CardContent>
                 </Card>
-              </div>
+              </motion.div>
+            ) : (
+              <Card className="bg-card/50 border-border/50">
+                <CardContent className="p-8 text-center">
+                  <BarChart3 className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-foreground mb-2">Ready to Simulate</h3>
+                  <p className="text-muted-foreground">Enter your trade parameters and click "Simulate Risk" to analyze your setup</p>
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

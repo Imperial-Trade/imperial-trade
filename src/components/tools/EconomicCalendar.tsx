@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, Filter, AlertTriangle, Zap, TrendingUp, RefreshCw } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Calendar, Clock, Filter, AlertTriangle, Zap, TrendingUp, RefreshCw, Bot, Brain, Activity, Globe } from 'lucide-react';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isToday, isTomorrow, parseISO } from 'date-fns';
 
 interface EconomicEvent {
@@ -17,6 +18,11 @@ interface EconomicEvent {
   previous: string;
   actual?: string;
   description: string;
+  aiVolatilityForecast?: {
+    range: string;
+    confidence: number;
+    affectedPairs: string[];
+  };
 }
 
 export default function EconomicCalendar() {
@@ -41,7 +47,12 @@ export default function EconomicCalendar() {
       forecast: '185K',
       previous: '175K',
       actual: '190K',
-      description: 'Monthly change in the number of employed people during the previous month, excluding farm workers, government employees, private household employees and non-profit employees.'
+      description: 'Monthly change in the number of employed people during the previous month, excluding farm workers, government employees, private household employees and non-profit employees.',
+      aiVolatilityForecast: {
+        range: '±1.2%',
+        confidence: 88,
+        affectedPairs: ['EURUSD', 'GBPUSD', 'USDJPY']
+      }
     },
     {
       id: '2',
@@ -52,7 +63,12 @@ export default function EconomicCalendar() {
       impact: 'high',
       forecast: '0.1%',
       previous: '0.2%',
-      description: 'Quarterly gross domestic product growth rate for the Eurozone.'
+      description: 'Quarterly gross domestic product growth rate for the Eurozone.',
+      aiVolatilityForecast: {
+        range: '±0.8%',
+        confidence: 75,
+        affectedPairs: ['EURUSD', 'EURGBP', 'EURJPY']
+      }
     },
     {
       id: '3',
@@ -63,7 +79,12 @@ export default function EconomicCalendar() {
       impact: 'high',
       forecast: '5.25%',
       previous: '5.25%',
-      description: 'Interest rate decision by the Bank of England Monetary Policy Committee.'
+      description: 'Interest rate decision by the Bank of England Monetary Policy Committee.',
+      aiVolatilityForecast: {
+        range: '±1.5%',
+        confidence: 92,
+        affectedPairs: ['GBPUSD', 'EURGBP', 'GBPJPY']
+      }
     },
     {
       id: '4',
@@ -174,10 +195,19 @@ export default function EconomicCalendar() {
 
   const getImpactColor = (impact: string) => {
     switch (impact) {
-      case 'high': return 'bg-red-500/10 text-accent-red border-red-500/20';
-      case 'medium': return 'bg-yellow-500/10 text-accent-gold border-yellow-500/20';
-      case 'low': return 'bg-green-500/10 text-accent-green border-green-500/20';
-      default: return 'bg-gray-500/10 text-secondary border-gray-500/20';
+      case 'high': return 'bg-accent-red/10 text-accent-red border-accent-red/20';
+      case 'medium': return 'bg-accent-gold/10 text-accent-gold border-accent-gold/20';
+      case 'low': return 'bg-accent-green/10 text-accent-green border-accent-green/20';
+      default: return 'bg-muted/10 text-muted-foreground border-border';
+    }
+  };
+
+  const getImpactEmoji = (impact: string) => {
+    switch (impact) {
+      case 'high': return '🌶️🌶️🌶️';
+      case 'medium': return '🌶️🌶️';
+      case 'low': return '🌶️';
+      default: return '';
     }
   };
 
@@ -212,19 +242,23 @@ export default function EconomicCalendar() {
   };
 
   return (
-    <div className="bg-white dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-black min-h-screen">
-      <div className="p-6 space-y-6">
-        <Card className="bg-white dark:bg-gray-900/30 border-transparent dark:shadow-2xl dark:shadow-gray-900/50 backdrop-blur-sm">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+
+        <Card className="bg-card/50 border-border/50 shadow-2xl backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Economic Calendar</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Market Events Timeline
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex justify-between items-center mb-6">
               <div className="flex flex-wrap gap-4">
                 <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-secondary" />
+                  <Filter className="w-4 h-4 text-muted-foreground" />
                   <Select value={selectedDate} onValueChange={setSelectedDate}>
-                    <SelectTrigger className="w-40 bg-surface border-default">
+                    <SelectTrigger className="w-40 bg-background border-border">
                       <SelectValue placeholder="Date" />
                     </SelectTrigger>
                     <SelectContent>
@@ -238,35 +272,35 @@ export default function EconomicCalendar() {
                 </div>
                 
                 <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-                  <SelectTrigger className="w-32 bg-surface border-default">
+                  <SelectTrigger className="w-32 bg-background border-border">
                     <SelectValue placeholder="Currency" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Currencies</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                    <SelectItem value="JPY">JPY</SelectItem>
-                    <SelectItem value="CAD">CAD</SelectItem>
-                    <SelectItem value="AUD">AUD</SelectItem>
+                    <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                    <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+                    <SelectItem value="GBP">🇬🇧 GBP</SelectItem>
+                    <SelectItem value="JPY">🇯🇵 JPY</SelectItem>
+                    <SelectItem value="CAD">🇨🇦 CAD</SelectItem>
+                    <SelectItem value="AUD">🇦🇺 AUD</SelectItem>
                   </SelectContent>
                 </Select>
                 
                 <Select value={selectedImpact} onValueChange={setSelectedImpact}>
-                  <SelectTrigger className="w-32 bg-surface border-default">
-                    <SelectValue placeholder="Impact" />
+                  <SelectTrigger className="w-40 bg-background border-border">
+                    <SelectValue placeholder="Impact Level" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Impact</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="high">🌶️🌶️🌶️ High</SelectItem>
+                    <SelectItem value="medium">🌶️🌶️ Medium</SelectItem>
+                    <SelectItem value="low">🌶️ Low</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="flex items-center gap-2">
-                <Button onClick={loadEconomicEvents} disabled={isLoading} variant="outline" size="sm" className="border-default text-secondary hover:bg-surface hover:text-primary">
+                <Button onClick={loadEconomicEvents} disabled={isLoading} variant="outline" size="sm" className="border-border text-muted-foreground hover:bg-muted hover:text-foreground">
                   <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
@@ -274,7 +308,7 @@ export default function EconomicCalendar() {
             </div>
             
             {lastUpdated && (
-              <p className="text-xs text-secondary flex items-center gap-2 mb-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-2 mb-4">
                 <Clock className="w-3 h-3" />
                 Last updated: {format(lastUpdated, 'HH:mm:ss')}
               </p>
@@ -282,59 +316,82 @@ export default function EconomicCalendar() {
 
             {isLoading ? (
               <div className="flex justify-center items-center h-32">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-400 border-t-transparent" />
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
               </div>
             ) : error && events.length === 0 ? (
               <div className="text-center py-8">
-                <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-                <p className="text-red-400 mb-4">{error}</p>
+                <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                <p className="text-destructive mb-4">{error}</p>
                 <Button onClick={loadEconomicEvents} variant="outline">
                   Try Again
                 </Button>
               </div>
             ) : filteredEvents.length === 0 ? (
               <div className="text-center py-8">
-                <Calendar className="w-12 h-12 text-secondary/50 mx-auto mb-4" />
-                <p className="text-secondary">No events found for the selected filters.</p>
+                <Calendar className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+                <p className="text-muted-foreground">No events found for the selected filters.</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {filteredEvents.map(event => (
-                  <Card key={event.id} className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm hover:border-border dark:hover:border-gray-500/30 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <Card key={event.id} className="bg-card/50 border-border/50 backdrop-blur-sm hover:border-border transition-all duration-300 hover:shadow-lg">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2 flex-wrap">
-                            <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+                          <div className="flex items-center gap-3 mb-3 flex-wrap">
+                            <Badge className="bg-primary/10 text-primary border-primary/20">
                               {event.currency}
                             </Badge>
                             <Badge className={`${getImpactColor(event.impact)} border flex items-center gap-1`}>
                               {getImpactIcon(event.impact)}
-                              {event.impact.toUpperCase()}
+                              {getImpactEmoji(event.impact)} {event.impact.toUpperCase()}
                             </Badge>
-                            <span className="text-sm text-secondary flex items-center gap-1">
+                            <span className="text-sm text-muted-foreground flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               {event.time}
                             </span>
-                            <span className="text-sm text-secondary">
+                            <span className="text-sm text-muted-foreground">
                               {formatEventDate(event.date)}
                             </span>
                           </div>
-                          <h3 className="font-semibold text-primary text-lg mb-1">{event.event}</h3>
-                          <p className="text-sm text-secondary">{event.description}</p>
+                          <h3 className="font-semibold text-foreground text-lg mb-2">{event.event}</h3>
+                          <p className="text-sm text-muted-foreground mb-4">{event.description}</p>
+                          
+                          {/* AI Volatility Forecast */}
+                          {event.aiVolatilityForecast && event.impact === 'high' && (
+                            <div className="p-4 rounded-xl bg-gradient-to-r from-secondary/10 to-primary/10 border border-secondary/30">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Bot className="w-4 h-4 text-primary" />
+                                <span className="text-sm font-medium text-foreground">AI Volatility Forecast</span>
+                                <Badge className="bg-primary/10 text-primary text-xs">
+                                  {event.aiVolatilityForecast.confidence}% confidence
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                Expected price swing: <span className="font-semibold text-foreground">{event.aiVolatilityForecast.range}</span> on major USD pairs
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {event.aiVolatilityForecast.affectedPairs.map(pair => (
+                                  <Badge key={pair} variant="outline" className="text-xs">
+                                    {pair}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-3 gap-4 text-center lg:text-right">
-                          <div>
-                            <p className="text-xs text-secondary uppercase tracking-wide">Previous</p>
-                            <p className="font-semibold text-primary">{event.previous || 'N/A'}</p>
+                          <div className="p-3 rounded-lg bg-muted/30">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Previous</p>
+                            <p className="font-semibold text-foreground">{event.previous || 'N/A'}</p>
                           </div>
-                          <div>
-                            <p className="text-xs text-secondary uppercase tracking-wide">Forecast</p>
-                            <p className="font-semibold text-primary">{event.forecast || 'N/A'}</p>
+                          <div className="p-3 rounded-lg bg-muted/30">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Forecast</p>
+                            <p className="font-semibold text-foreground">{event.forecast || 'N/A'}</p>
                           </div>
-                          <div>
-                            <p className="text-xs text-secondary uppercase tracking-wide">Actual</p>
+                          <div className="p-3 rounded-lg bg-muted/30">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Actual</p>
                             <p className={`font-bold ${getActualColor(event.actual, event.forecast, event.previous)}`}>
                               {event.actual || 'Pending'}
                             </p>
@@ -350,38 +407,46 @@ export default function EconomicCalendar() {
         </Card>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-            <CardContent className="p-4 text-center">
-              <Zap className="w-8 h-8 text-red-400 mx-auto mb-2" />
-              <p className="text-sm text-secondary">High Impact</p>
-              <p className="text-2xl font-bold text-primary">
+          <Card className="bg-card/50 border-border/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+            <CardContent className="p-6 text-center">
+              <div className="p-3 rounded-xl bg-accent-red/10 w-fit mx-auto mb-3">
+                <Zap className="w-6 h-6 text-accent-red" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-1">🌶️🌶️🌶️ High Impact</p>
+              <p className="text-3xl font-bold text-foreground">
                 {filteredEvents.filter(e => e.impact === 'high').length}
               </p>
             </CardContent>
           </Card>
-          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-            <CardContent className="p-4 text-center">
-              <AlertTriangle className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-              <p className="text-sm text-secondary">Medium Impact</p>
-              <p className="text-2xl font-bold text-primary">
+          <Card className="bg-card/50 border-border/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+            <CardContent className="p-6 text-center">
+              <div className="p-3 rounded-xl bg-accent-gold/10 w-fit mx-auto mb-3">
+                <AlertTriangle className="w-6 h-6 text-accent-gold" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-1">🌶️🌶️ Medium Impact</p>
+              <p className="text-3xl font-bold text-foreground">
                 {filteredEvents.filter(e => e.impact === 'medium').length}
               </p>
             </CardContent>
           </Card>
-          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="w-8 h-8 text-green-400 mx-auto mb-2" />
-              <p className="text-sm text-secondary">Low Impact</p>
-              <p className="text-2xl font-bold text-primary">
+          <Card className="bg-card/50 border-border/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+            <CardContent className="p-6 text-center">
+              <div className="p-3 rounded-xl bg-accent-green/10 w-fit mx-auto mb-3">
+                <TrendingUp className="w-6 h-6 text-accent-green" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-1">🌶️ Low Impact</p>
+              <p className="text-3xl font-bold text-foreground">
                 {filteredEvents.filter(e => e.impact === 'low').length}
               </p>
             </CardContent>
           </Card>
-          <Card className="bg-background dark:bg-gray-900/30 border-border dark:border-gray-600/20 backdrop-blur-sm">
-            <CardContent className="p-4 text-center">
-              <Calendar className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-              <p className="text-sm text-secondary">Total Events</p>
-              <p className="text-2xl font-bold text-primary">{filteredEvents.length}</p>
+          <Card className="bg-card/50 border-border/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
+            <CardContent className="p-6 text-center">
+              <div className="p-3 rounded-xl bg-primary/10 w-fit mx-auto mb-3">
+                <Activity className="w-6 h-6 text-primary" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-1">Total Events</p>
+              <p className="text-3xl font-bold text-foreground">{filteredEvents.length}</p>
             </CardContent>
           </Card>
         </div>

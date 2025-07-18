@@ -602,6 +602,38 @@ export type Database = {
         }
         Relationships: []
       }
+      post_likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          post_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          post_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           access_level: Database["public"]["Enums"]["access_level_enum"] | null
@@ -611,17 +643,30 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           avatar_url: string | null
+          bio: string | null
+          birthdate: string | null
+          comments_count: number | null
+          community_tier: number | null
+          cover_photo_url: string | null
+          cover_position_x: string | null
+          cover_position_y: string | null
           created_at: string | null
           display_name: string | null
+          engagement_score: number | null
           id: string
           last_login: string | null
+          location: string | null
           phone_number: string | null
+          profile_type: string | null
           registration_source:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
           role: string | null
+          trader_level: string | null
+          unique_posts_commented: number | null
           updated_at: string | null
           user_type: Database["public"]["Enums"]["user_type_enum"] | null
+          work_info: string | null
         }
         Insert: {
           access_level?: Database["public"]["Enums"]["access_level_enum"] | null
@@ -631,17 +676,30 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          birthdate?: string | null
+          comments_count?: number | null
+          community_tier?: number | null
+          cover_photo_url?: string | null
+          cover_position_x?: string | null
+          cover_position_y?: string | null
           created_at?: string | null
           display_name?: string | null
+          engagement_score?: number | null
           id: string
           last_login?: string | null
+          location?: string | null
           phone_number?: string | null
+          profile_type?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
           role?: string | null
+          trader_level?: string | null
+          unique_posts_commented?: number | null
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+          work_info?: string | null
         }
         Update: {
           access_level?: Database["public"]["Enums"]["access_level_enum"] | null
@@ -651,17 +709,30 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           avatar_url?: string | null
+          bio?: string | null
+          birthdate?: string | null
+          comments_count?: number | null
+          community_tier?: number | null
+          cover_photo_url?: string | null
+          cover_position_x?: string | null
+          cover_position_y?: string | null
           created_at?: string | null
           display_name?: string | null
+          engagement_score?: number | null
           id?: string
           last_login?: string | null
+          location?: string | null
           phone_number?: string | null
+          profile_type?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
           role?: string | null
+          trader_level?: string | null
+          unique_posts_commented?: number | null
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+          work_info?: string | null
         }
         Relationships: []
       }
@@ -1116,6 +1187,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_engagement: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          id: string
+          target_post_id: string | null
+          target_user_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          id?: string
+          target_post_id?: string | null
+          target_user_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          id?: string
+          target_post_id?: string | null
+          target_user_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_engagement_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_follows: {
         Row: {
           created_at: string
@@ -1373,6 +1479,10 @@ export type Database = {
       cleanup_old_rate_limits: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_community_tier_info: {
+        Args: { tier_level: number }
+        Returns: Json
       }
     }
     Enums: {

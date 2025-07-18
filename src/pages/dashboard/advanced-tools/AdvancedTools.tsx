@@ -1,8 +1,8 @@
-
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
   Calendar,
@@ -10,137 +10,123 @@ import {
   Brain,
   Search,
   Scale,
-  X,
+  ChevronLeft,
   Wrench,
   Sparkles,
   ChevronRight,
-  MousePointerClick
-} from 'lucide-react';
+  MousePointerClick,
+  Home,
+  TrendingUp,
+  GraduationCap,
+  Users,
+  Settings,
+  BarChart3,
+  Bell,
+  Video,
+  User,
+  Shield,
+  LogOut,
+} from "lucide-react";
 
-import TradingJournal from '@/components/tools/TradingJournal';
-import EconomicCalendar from '@/components/tools/EconomicCalendar';
-import RiskCalculator from '@/components/tools/RiskCalculator';
-import TradeAnalyst from '@/components/ai/TradeAnalyst';
-import OpportunityScanner from '@/components/ai/OpportunityScanner';
-import RiskSimulator from '@/components/ai/RiskSimulator';
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+
+import EconomicCalendar from "@/components/tools/EconomicCalendar";
+import RiskCalculator from "@/components/tools/RiskCalculator";
+import TradeAnalyst from "@/components/ai/TradeAnalyst";
+import OpportunityScanner from "@/components/ai/OpportunityScanner";
+import RiskSimulator from "@/components/ai/RiskSimulator";
+import TradingJournal from "@/components/tools/TradingJournal";
 
 const coreTools = [
-  { 
-    name: 'Trading Journal', 
-    icon: BookOpen, 
-    component: <TradingJournal />, 
-    description: 'Log and analyze your trades with AI-powered feedback.'
+  {
+    name: "Trading Journal",
+    icon: BookOpen,
+    component: <TradingJournal />,
+    description: "Log and analyze your trades with AI-powered feedback.",
   },
-  { 
-    name: 'Economic Calendar', 
-    icon: Calendar, 
+  {
+    name: "Economic Calendar",
+    icon: Calendar,
     component: <EconomicCalendar />,
-    description: 'Stay ahead of market-moving events and news releases.'
+    description: "Stay ahead of market-moving events and news releases.",
   },
-  { 
-    name: 'Risk Calculator', 
-    icon: Calculator, 
+  {
+    name: "Risk Calculator",
+    icon: Calculator,
     component: <RiskCalculator />,
-    description: 'Calculate position size, risk, and potential profit.'
+    description: "Calculate position size, risk, and potential profit.",
   },
 ];
 
 const aiTools = [
-  { 
-    name: 'Trade Analyst', 
-    icon: Brain, 
+  {
+    name: "Trade Analyst",
+    icon: Brain,
     component: <TradeAnalyst />,
-    description: 'Upload screenshots for deep performance analysis.'
+    description: "Upload screenshots for deep performance analysis.",
   },
-  { 
-    name: 'Opportunity Scanner', 
-    icon: Search, 
+  {
+    name: "Opportunity Scanner",
+    icon: Search,
     component: <OpportunityScanner />,
-    description: 'Scan markets for high-probability trading setups.'
+    description: "Scan markets for high-probability trading setups.",
   },
-  { 
-    name: 'Risk Simulator', 
+  {
+    name: "Risk Simulator",
     icon: Scale,
     component: <RiskSimulator />,
-    description: 'Simulate trade setups to assess risk before you enter.'
+    description: "Simulate trade setups to assess risk before you enter.",
   },
 ];
 
-const ToolSelector = ({ tool, onSelect, isActive }) => {
-  const Icon = tool.icon;
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.3 }}
-      whileHover={{ scale: 1.01 }}
-    >
-      <button
-        onClick={() => onSelect(tool)}
-        className={`w-full text-left p-3 rounded-lg transition-all duration-300 flex items-center gap-3 border ${
-          isActive
-            ? 'bg-surface/80 border-accent-green glow-effect-green shadow-lg'
-            : 'bg-surface/30 border-transparent hover:bg-surface/50 hover:border-accent-blue/50'
-        }`}
-      >
-        <div className={`p-2 rounded-lg bg-surface transition-colors duration-300 ${isActive ? 'bg-accent-green/20' : ''}`}>
-          <Icon className={`w-4 h-4 transition-colors duration-300 ${isActive ? 'text-accent-green' : 'text-muted-foreground'}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-foreground text-sm">{tool.name}</h3>
-          <p className="text-xs text-muted-foreground leading-tight">{tool.description}</p>
-        </div>
-        {isActive && <ChevronRight className="w-4 h-4 text-accent-green ml-auto flex-shrink-0" />}
-      </button>
-    </motion.div>
-  );
-};
+const navButtons = [
+  { name: "Signals", icon: Bell, path: "/dashboard/signals" },
+  { name: "Education", icon: GraduationCap, path: "/dashboard/academy" },
+  { name: "Live Sessions", icon: Video, path: "/dashboard/live-sessions" },
+  { name: "Community", icon: Users, path: "/dashboard/community" },
+  {
+    name: "Tools",
+    icon: BarChart3,
+    path: "/dashboard/advanced-tools",
+    isActive: true,
+  },
+];
 
 export default function AdvancedTools() {
+  const location = useLocation();
   const [activeTool, setActiveTool] = useState(null);
-  const [isHovered, setIsHovered] = useState(false);
 
-  const handleToolSelect = (tool) => {
-    if (activeTool && activeTool.name === tool.name) {
-      setActiveTool(null);
+  // Get all tools in one array for easier lookup
+  const allTools = [...coreTools, ...aiTools];
+
+  // Function to get tool by query parameter
+  const getToolFromQuery = () => {
+    const params = new URLSearchParams(location.search);
+    const toolParam = params.get("tool");
+
+    const toolMap = {
+      journal: "Trading Journal",
+      calendar: "Economic Calendar",
+      calculator: "Risk Calculator",
+      analyst: "Trade Analyst",
+      scanner: "Opportunity Scanner",
+      simulator: "Risk Simulator",
+    };
+
+    const toolName = toolMap[toolParam];
+    return allTools.find((tool) => tool.name === toolName) || null;
+  };
+
+  // Set active tool based on URL parameter on component mount and URL changes
+  useEffect(() => {
+    const toolFromQuery = getToolFromQuery();
+    if (toolFromQuery) {
+      setActiveTool(toolFromQuery);
     } else {
-      setActiveTool(tool);
+      // Default to Trading Journal if no query parameter
+      setActiveTool(coreTools[0]);
     }
-  };
-
-  const SidebarToolButton = ({ tool, isActive }) => {
-    const Icon = tool.icon;
-    return (
-      <motion.button
-        onClick={() => handleToolSelect(tool)}
-        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ${
-          isActive
-            ? 'bg-surface/80 border-accent-green glow-effect-green shadow-lg text-accent-green'
-            : 'hover:bg-surface/50 hover:border-accent-blue/50 text-muted-foreground hover:text-foreground'
-        }`}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <div className={`p-2 rounded-lg bg-surface transition-colors duration-300 ${
-          isActive ? 'bg-accent-green/20' : ''
-        }`}>
-          <Icon className="w-4 h-4" />
-        </div>
-        <motion.div
-          className="flex-1 text-left overflow-hidden"
-          initial={false}
-          animate={{
-            opacity: isHovered ? 1 : 0,
-            width: isHovered ? 'auto' : 0,
-          }}
-          transition={{ duration: 0.3 }}
-        >
-          <h3 className="font-medium text-sm whitespace-nowrap">{tool.name}</h3>
-          <p className="text-xs text-muted-foreground leading-tight whitespace-nowrap">{tool.description}</p>
-        </motion.div>
-      </motion.button>
-    );
-  };
+  }, [location.search]);
 
   const Placeholder = () => (
     <motion.div
@@ -155,118 +141,81 @@ export default function AdvancedTools() {
           <Sparkles className="w-12 h-12 text-accent-gold" />
         </div>
       </div>
-      <h2 className="text-2xl font-bold text-primary mb-2">Welcome to the Trading Arsenal</h2>
+      <h2 className="text-2xl font-bold text-primary mb-2">
+        Welcome to the Trading Arsenal
+      </h2>
       <p className="text-secondary max-w-md">
-        Select a tool from the sidebar to begin your analysis. Harness the power of AI and professional-grade utilities to elevate your trading strategy.
+        Select a tool from the auto-hiding sidebar to begin your analysis. Hover
+        near the left edge to reveal the trading arsenal.
       </p>
-       <div className="flex items-center gap-2 mt-6 text-secondary/80">
+      <div className="flex items-center gap-2 mt-6 text-secondary/80">
         <MousePointerClick className="w-5 h-5" />
-        <span>Hover over the sidebar and click a tool to get started</span>
-       </div>
+        <span>Hover near the left edge to reveal the trading arsenal</span>
+      </div>
     </motion.div>
   );
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Collapsible Sidebar */}
-      <motion.aside
-        className="fixed left-0 top-0 h-full z-40 bg-surface/95 backdrop-blur-md border-r border-default shadow-2xl"
-        initial={false}
-        animate={{
-          width: isHovered ? 320 : 80,
-        }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <div className="p-4 h-full overflow-hidden">
-          {/* Sidebar Header */}
-          <motion.div
-            className="mb-6"
-            initial={false}
-            animate={{
-              opacity: isHovered ? 1 : 0,
-            }}
-            transition={{ duration: 0.3 }}
-          >
-            <h1 className="text-lg font-bold text-primary whitespace-nowrap">Trading Arsenal</h1>
-            <p className="text-xs text-muted-foreground whitespace-nowrap">Professional trading tools</p>
-          </motion.div>
+    <div className="min-h-screen bg-background">
+      {/* Main Content Area - Full Width */}
+      <div className="w-full min-h-screen p-6">
+        {/* Header with Tool Info and Selection Panel */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-4 flex items-center justify-center"
+        >
+          {/* Combined Tool Info and Selection Panel */}
+          {activeTool && (
+            <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-2 shadow-lg shadow-primary/5 w-fit">
+              <div className="flex items-center gap-4">
+                {/* Active Tool Info */}
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                    {React.createElement(activeTool.icon, {
+                      className: "w-4 h-4 text-primary",
+                    })}
+                  </div>
+                  <h2 className="font-semibold text-base text-foreground tracking-tight">
+                    {activeTool.name}
+                  </h2>
+                  <span className="text-sm text-muted-foreground">•</span>
+                  <p className="text-sm text-muted-foreground">
+                    {activeTool.description}
+                  </p>
+                </div>
 
-          {/* AI Tools Section */}
-          <div className="mb-6">
-            <motion.h2
-              className="text-xs font-medium tracking-wide uppercase text-accent-gold flex items-center gap-2 mb-3"
-              initial={false}
-              animate={{
-                opacity: isHovered ? 1 : 0,
-              }}
-              transition={{ duration: 0.3 }}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span className="whitespace-nowrap">AI-Powered Intelligence</span>
-            </motion.h2>
-            <div className="space-y-2">
-              {aiTools.map(tool => (
-                <SidebarToolButton 
-                  key={tool.name} 
-                  tool={tool} 
-                  isActive={activeTool?.name === tool.name} 
-                />
-              ))}
+                {/* Separator */}
+                <div className="w-px h-6 bg-border/20"></div>
+
+                {/* Tools Selection Grid */}
+                <div className="grid grid-cols-6 gap-1.5">
+                  {[...coreTools, ...aiTools].map((tool) => (
+                    <button
+                      key={tool.name}
+                      onClick={() => setActiveTool(tool)}
+                      className={`p-2 rounded-lg border transition-all text-left ${
+                        activeTool?.name === tool.name
+                          ? "bg-primary/10 border-primary/20 text-primary"
+                          : "bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {React.createElement(tool.icon, {
+                          className: "w-3 h-3 flex-shrink-0",
+                        })}
+                    <span className="text-xs font-medium truncate">
+                      {tool.name === "Trading Journal" ? "Journal" : tool.name === "Economic Calendar" ? "Calendar" : tool.name === "Risk Calculator" ? "Calculator" : tool.name === "Trade Analyst" ? "Analyst" : tool.name === "Opportunity Scanner" ? "Scanner" : tool.name === "Risk Simulator" ? "Simulator" : tool.name.split(" ")[0]}
+                    </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-
-          {/* Core Tools Section */}
-          <div>
-            <motion.h2
-              className="text-xs font-medium tracking-wide uppercase text-accent-blue flex items-center gap-2 mb-3"
-              initial={false}
-              animate={{
-                opacity: isHovered ? 1 : 0,
-              }}
-              transition={{ duration: 0.3 }}
-            >
-              <Wrench className="w-4 h-4" />
-              <span className="whitespace-nowrap">Core Trading Tools</span>
-            </motion.h2>
-            <div className="space-y-2">
-              {coreTools.map(tool => (
-                <SidebarToolButton 
-                  key={tool.name} 
-                  tool={tool} 
-                  isActive={activeTool?.name === tool.name} 
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </motion.aside>
-
-      {/* Main Content */}
-      <div className="flex-1 ml-20 p-6">
-        {/* Page Header */}
-        <div className="mb-8 text-center">
-          {activeTool ? (
-            <>
-              <h1 className="font-apple font-bold text-4xl lg:text-5xl leading-tight mb-4 tool-title-two-tone">
-                <span className="first-part">{activeTool.name.split(' ')[0]}</span> <span className="second-part">{activeTool.name.split(' ').slice(1).join(' ')}</span>
-              </h1>
-               <p className="text-foreground text-xl max-w-2xl mx-auto leading-relaxed mb-8 font-medium">
-                 {activeTool.description}
-               </p>
-            </>
-          ) : (
-            <>
-              <h1 className="text-4xl lg:text-5xl font-bold mb-3 tool-title-two-tone">
-                <span className="first-part">Advanced</span> <span className="second-part">Trading Arsenal</span>
-              </h1>
-              <p className="text-secondary text-lg max-w-3xl mx-auto">
-                Your centralized hub for professional-grade trading analysis, AI-powered insights, and risk management.
-              </p>
-            </>
           )}
-        </div>
+        </motion.div>
 
         {/* Tool Display */}
         <div className="min-h-[600px]">
@@ -277,18 +226,11 @@ export default function AdvancedTools() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -30 }}
-                transition={{ duration: 0.4, ease: 'easeInOut' }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
                 className="relative h-full"
               >
                 <Card className="bg-white dark:bg-gray-900/30 border-transparent backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50 rounded-2xl h-full overflow-y-auto">
-                  <div className="absolute top-2 right-2 z-30">
-                    <Button variant="ghost" size="icon" onClick={() => setActiveTool(null)} className="rounded-full bg-surface/80 hover:bg-surface">
-                      <X className="w-5 h-5 text-secondary" />
-                    </Button>
-                  </div>
-                  <div className="p-4">
-                    {activeTool.component}
-                  </div>
+                  <div className="p-4">{activeTool.component}</div>
                 </Card>
               </motion.div>
             ) : (

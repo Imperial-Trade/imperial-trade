@@ -533,10 +533,16 @@ Please provide a brief analysis focusing on what went well, what could be improv
     }
   }, [user, toast]);
 
-  // Get most traded assets
+  // Get most traded assets with currency normalization
   const getMostTradedAssets = () => {
     const assetCounts = trades.reduce((acc, trade) => {
-      acc[trade.asset] = (acc[trade.asset] || 0) + 1;
+      // Normalize currency pairs (e.g., EURUSD, EUR/USD, EUR-USD all become EURUSD)
+      const normalizedAsset = trade.asset
+        .replace(/[\/\-\s]/g, '')
+        .toUpperCase()
+        .trim();
+      
+      acc[normalizedAsset] = (acc[normalizedAsset] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
@@ -1156,7 +1162,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
   // Enhanced Stats Panel with AI insights and Most Traded toggle
   const EnhancedStatsPanel: React.FC = () => {
     const mostTradedData = getMostTradedAssets();
-    const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+    const colors = ["#ffffff", "#1a1a1a", "#cd7f32", "#2d2d2d", "#8b7355"];
 
     return (
       <AnimatePresence>
@@ -1315,20 +1321,20 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="relative h-32 flex items-center justify-center">
+                    <div className="relative h-48 flex items-center justify-center">
                       <svg
-                        width="100"
-                        height="100"
-                        viewBox="0 0 100 100"
+                        width="160"
+                        height="160"
+                        viewBox="0 0 160 160"
                         className="transform -rotate-90"
                       >
                         <circle
-                          cx="50"
-                          cy="50"
-                          r="30"
+                          cx="80"
+                          cy="80"
+                          r="50"
                           fill="none"
-                          stroke={theme === "dark" ? "#374151" : "#e5e7eb"}
-                          strokeWidth="12"
+                          stroke={theme === "dark" ? "#1a1a1a" : "#e5e7eb"}
+                          strokeWidth="18"
                         />
                         {mostTradedData.map((item, index) => {
                           const total = mostTradedData.reduce(
@@ -1336,7 +1342,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                             0
                           );
                           const percentage = (item.count / total) * 100;
-                          const circumference = 2 * Math.PI * 30;
+                          const circumference = 2 * Math.PI * 50;
                           const strokeDasharray = `${
                             (percentage / 100) * circumference
                           } ${circumference}`;
@@ -1349,12 +1355,12 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           return (
                             <motion.circle
                               key={item.asset}
-                              cx="50"
-                              cy="50"
-                              r="30"
+                              cx="80"
+                              cy="80"
+                              r="50"
                               fill="none"
                               stroke={colors[index]}
-                              strokeWidth="12"
+                              strokeWidth="18"
                               strokeDasharray={strokeDasharray}
                               strokeDashoffset={strokeDashoffset}
                               initial={{

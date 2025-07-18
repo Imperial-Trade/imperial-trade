@@ -1722,71 +1722,87 @@ Please provide a brief analysis focusing on what went well, what could be improv
             </div>
           </div>
 
-          <Card
-            className={cn(
-              theme === "dark"
-                ? "bg-slate-900/80 border-slate-700"
-                : "bg-white border-slate-200"
-            )}
+          <motion.div
+            key={`calendar-${journalState.currentFilter}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
           >
-            <CardContent className="p-6">
-              <DynamicCalendarView />
-            </CardContent>
-          </Card>
+            <Card
+              className={cn(
+                theme === "dark"
+                  ? "bg-slate-900/80 border-slate-700"
+                  : "bg-white border-slate-200"
+              )}
+            >
+              <CardContent className="p-6">
+                <DynamicCalendarView />
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <Card
-            className={cn(
-              theme === "dark"
-                ? "bg-slate-900/80 border-slate-700"
-                : "bg-white border-slate-200"
-            )}
+          <motion.div
+            key={`recent-trades-${journalState.currentFilter}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
           >
-            <CardHeader>
-              <CardTitle>Recent Trades</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {trades.slice(0, 5).map((trade) => (
-                  <div
-                    key={trade.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Badge
-                        variant={
-                          trade.outcome === "win" ? "default" : "destructive"
-                        }
+            <Card
+              className={cn(
+                theme === "dark"
+                  ? "bg-slate-900/80 border-slate-700"
+                  : "bg-white border-slate-200"
+              )}
+            >
+              <CardHeader>
+                <CardTitle>Recent Trades</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {trades.slice(0, 5).map((trade) => (
+                    <div
+                      key={trade.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Badge
+                          variant={
+                            trade.outcome === "win" ? "default" : "destructive"
+                          }
+                          className={cn(
+                            trade.outcome === "win" &&
+                              "bg-gradient-to-r from-amber-400 via-yellow-400 to-teal-600 text-white border-0",
+                            trade.outcome === "loss" &&
+                              "bg-gradient-to-r from-amber-400 via-yellow-400 to-red-800 text-white border-0"
+                          )}
+                        >
+                          {trade.asset}
+                        </Badge>
+                        <span className="text-sm">
+                          {trade.direction.toUpperCase()}
+                        </span>
+                        {trade.strategy && (
+                          <span className="text-xs text-muted-foreground">
+                            {trade.strategy}
+                          </span>
+                        )}
+                      </div>
+                      <span
                         className={cn(
-                          trade.outcome === "win" &&
-                            "bg-gradient-to-r from-amber-400 via-yellow-400 to-teal-600 text-white border-0",
-                          trade.outcome === "loss" &&
-                            "bg-gradient-to-r from-amber-400 via-yellow-400 to-red-800 text-white border-0"
+                          "font-bold",
+                          trade.pnl >= 0 ? "text-green-500" : "text-red-500"
                         )}
                       >
-                        {trade.asset}
-                      </Badge>
-                      <span className="text-sm">
-                        {trade.direction.toUpperCase()}
+                        ${trade.pnl.toFixed(2)}
                       </span>
-                      {trade.strategy && (
-                        <span className="text-xs text-muted-foreground">
-                          {trade.strategy}
-                        </span>
-                      )}
                     </div>
-                    <span
-                      className={cn(
-                        "font-bold",
-                        trade.pnl >= 0 ? "text-green-500" : "text-red-500"
-                      )}
-                    >
-                      ${trade.pnl.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
         <EnhancedStatsPanel />

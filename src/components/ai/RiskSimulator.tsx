@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, TrendingDown, AlertTriangle, Target, BarChart3, DollarSign } from 'lucide-react';
+import { Calculator, TrendingDown, AlertTriangle, Target, BarChart3, DollarSign, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAssetSearch } from '@/hooks/useAssetSearch';
 export default function RiskSimulator() {
   const [tradeParams, setTradeParams] = useState({
     instrument: '',
@@ -16,6 +17,52 @@ export default function RiskSimulator() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationResult, setSimulationResult] = useState(null);
   const [error, setError] = useState('');
+  
+  // Asset selection states
+  const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+  const dropdownTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  // Use asset search hook with automatic currency detection
+  const { suggestions, saveRecentAsset } = useAssetSearch({ 
+    query: tradeParams.instrument,
+    delay: 300 
+  });
+  // Asset selection handlers
+  const handleAssetSelect = useCallback((asset: string) => {
+    handleInputChange('instrument', asset);
+    saveRecentAsset(asset);
+    setShowAssetDropdown(false);
+  }, [saveRecentAsset]);
+
+  const handleAssetFocus = useCallback(() => {
+    setShowAssetDropdown(true);
+  }, []);
+
+  const handleAssetBlur = useCallback(() => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setShowAssetDropdown(false);
+    }, 300);
+  }, []);
+
+  const handleDropdownMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+    }
+  }, []);
+
+  // Get asset badge for visual categorization
+  const getAssetBadge = useCallback((asset: string) => {
+    if (['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'].some(pair => asset.includes(pair.replace('/', '')))) 
+      return { label: "FX", variant: "outline" as const };
+    if (['XAU/USD', 'XAG/USD', 'WTI/USD', 'BRENT/USD'].some(comm => asset.includes(comm.replace('/', '')))) 
+      return { label: "Gold", variant: "outline" as const };
+    if (['SPX500', 'US30', 'NAS100', 'UK100', 'DAX30', 'JP225'].includes(asset)) 
+      return { label: "Index", variant: "outline" as const };
+    if (asset.includes("USDT")) return { label: "Crypto", variant: "outline" as const };
+    return null;
+  }, []);
+
   const handleInputChange = (field, value) => {
     setTradeParams(prev => ({
       ...prev,
@@ -78,12 +125,62 @@ export default function RiskSimulator() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Asset</label>
-                      <Input 
-                        placeholder="EUR/USD, TSLA, BTC" 
-                        value={tradeParams.instrument} 
-                        onChange={e => handleInputChange('instrument', e.target.value)} 
-                        className="bg-background" 
-                      />
+                      <div className="relative">
+                        <Input 
+                          placeholder="Asset / Ticker (e.g., EURUSD, XAUUSD, BTCUSDT)" 
+                          value={tradeParams.instrument} 
+                          onChange={e => handleInputChange('instrument', e.target.value)} 
+                          onFocus={handleAssetFocus}
+                          onBlur={handleAssetBlur}
+                          className="bg-background pr-8" 
+                        />
+                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+
+                        {showAssetDropdown && (
+                          <div
+                            className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-48 overflow-y-auto"
+                            onMouseDown={handleDropdownMouseDown}
+                          >
+                            {suggestions && suggestions.length > 0 ? (
+                              <div className="p-1">
+                                {!tradeParams.instrument && (
+                                  <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
+                                    Recent Assets
+                                  </div>
+                                )}
+                                {suggestions.map((asset) => {
+                                  const badge = getAssetBadge(asset);
+                                  return (
+                                    <button
+                                      key={asset}
+                                      type="button"
+                                      onClick={() => handleAssetSelect(asset)}
+                                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium">{asset}</span>
+                                        {badge && (
+                                          <Badge variant={badge.variant} className="text-xs h-5 px-2">
+                                            {badge.label}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : tradeParams.instrument ? (
+                              <div className="p-3 text-sm text-muted-foreground text-center">
+                                No matches found
+                              </div>
+                            ) : (
+                              <div className="p-3 text-sm text-muted-foreground text-center">
+                                Start typing to see suggestions
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Position Size</label>

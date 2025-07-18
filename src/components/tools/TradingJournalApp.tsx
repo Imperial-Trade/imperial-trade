@@ -1615,7 +1615,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 via-orange-500 to-amber-800 bg-clip-text text-transparent">Journal XX</h1>
+          <h1 className="text-3xl font-bold text-foreground">Journal XX</h1>
           <p className="text-muted-foreground">
             Your intelligent trading companion
           </p>
@@ -1689,6 +1689,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
               <Button
                 variant="ghost"
                 size="sm"
+                className="text-stone-900 hover:text-stone-800 hover:bg-stone-100 dark:text-stone-100 dark:hover:text-stone-200 dark:hover:bg-stone-800 border-transparent"
                 onClick={() =>
                   updateView(
                     undefined,
@@ -1711,6 +1712,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
               <Button
                 variant="ghost"
                 size="sm"
+                className="text-stone-900 hover:text-stone-800 hover:bg-stone-100 dark:text-stone-100 dark:hover:text-stone-200 dark:hover:bg-stone-800 border-transparent"
                 onClick={() =>
                   updateView(
                     undefined,
@@ -1816,7 +1818,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
   );
 
   return (
-    <div className="min-h-screen p-6 transition-colors duration-300 bg-transparent border-border"
+    <div className="min-h-screen p-6 transition-colors duration-300 bg-transparent border-transparent focus:border-transparent active:border-transparent focus:outline-none"
     >
       <AnimatePresence mode="wait">
         {journalState.selectedDate ? (

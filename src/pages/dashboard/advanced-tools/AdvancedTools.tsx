@@ -157,18 +157,18 @@ export default function AdvancedTools() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="mb-4 flex items-center justify-between"
+          className="mb-4 flex items-center justify-between max-w-full"
         >
           {/* Active Tool Info - Left Side */}
           {activeTool && (
-            <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-2 shadow-lg shadow-primary/5 w-fit">
-              <div className="flex items-center gap-3">
-                <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
-                  {React.createElement(activeTool.icon, { className: "w-4 h-4 text-primary" })}
+            <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-1.5 shadow-lg shadow-primary/5 w-fit max-w-md">
+              <div className="flex items-center gap-2">
+                <div className="p-1 rounded-lg bg-primary/10 border border-primary/20">
+                  {React.createElement(activeTool.icon, { className: "w-3 h-3 text-primary" })}
                 </div>
-                <h2 className="font-semibold text-base text-foreground tracking-tight">{activeTool.name}</h2>
-                <span className="text-sm text-muted-foreground">•</span>
-                <p className="text-sm text-muted-foreground">{activeTool.description}</p>
+                <h2 className="font-semibold text-sm text-foreground tracking-tight">{activeTool.name}</h2>
+                <span className="text-xs text-muted-foreground">•</span>
+                <p className="text-xs text-muted-foreground truncate">{activeTool.description}</p>
               </div>
             </div>
           )}

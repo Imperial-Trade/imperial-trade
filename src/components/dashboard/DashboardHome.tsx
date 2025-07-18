@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TypewriterText } from '@/components/ui/typewriter-text';
+import { ImperialWelcomeAnimation } from '@/components/ui/imperial-welcome-animation';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -74,6 +75,7 @@ export const DashboardHome: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.user_metadata?.access_level === 'admin';
   const isEducator = user?.user_metadata?.user_type === 'educator';
+  const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(true);
 
   // Get user's full name for the typewriter effect
   const getUserFullName = () => {
@@ -93,6 +95,13 @@ export const DashboardHome: React.FC = () => {
 
   return (
     <div className="relative min-h-screen">
+      {/* Welcome Animation */}
+      {showWelcomeAnimation && (
+        <ImperialWelcomeAnimation 
+          onComplete={() => setShowWelcomeAnimation(false)} 
+        />
+      )}
+      
       {/* Video Background */}
       <VideoBackground />
       

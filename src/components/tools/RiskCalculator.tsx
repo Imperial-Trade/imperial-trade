@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Calculator, DollarSign, TrendingUp, AlertTriangle, Bot, Shield, Target, Brain, Search } from 'lucide-react';
 import { useAssetSearch } from '@/hooks/useAssetSearch';
+import { calculatePositionSize, calculateRiskAmount, calculatePnL, formatLotSize, getLotSizeSpec } from '@/utils/lotSizing';
 export default function RiskCalculator() {
   const [formData, setFormData] = useState({
     accountBalance: '',
@@ -83,10 +84,11 @@ export default function RiskCalculator() {
       riskPercentage,
       entryPrice,
       stopLoss,
-      takeProfit
+      takeProfit,
+      assetTicker
     } = formData;
     
-    if (!accountBalance || !riskPercentage || !entryPrice || !stopLoss) {
+    if (!accountBalance || !riskPercentage || !entryPrice || !stopLoss || !assetTicker) {
       return;
     }
     
@@ -97,19 +99,25 @@ export default function RiskCalculator() {
     const tp = takeProfit ? parseFloat(takeProfit) : null;
     
     const riskAmount = balance * risk / 100;
+    
+    // Use proper lot sizing mechanics
+    const positionSize = calculatePositionSize(riskAmount, entry, stop, assetTicker);
+    const potentialLoss = calculateRiskAmount(entry, stop, positionSize, assetTicker);
+    const potentialProfit = tp ? Math.abs(calculatePnL(entry, tp, positionSize, assetTicker)) : 0;
+    const riskReward = potentialLoss > 0 ? potentialProfit / potentialLoss : 0;
+    
+    const spec = getLotSizeSpec(assetTicker);
     const pipValue = Math.abs(entry - stop);
-    const positionSize = riskAmount / pipValue;
-    const potentialLoss = riskAmount;
-    const potentialProfit = tp ? Math.abs(tp - entry) * positionSize : 0;
-    const riskReward = tp ? Math.abs(tp - entry) / Math.abs(entry - stop) : 0;
     
     setResults({
       riskAmount: riskAmount.toFixed(2),
-      positionSize: positionSize.toFixed(2),
+      positionSize: positionSize.toFixed(4),
       potentialLoss: potentialLoss.toFixed(2),
       potentialProfit: potentialProfit.toFixed(2),
       riskReward: riskReward.toFixed(2),
-      pipValue: pipValue.toFixed(5)
+      pipValue: pipValue.toFixed(5),
+      assetType: spec.assetType,
+      formattedLotSize: formatLotSize(positionSize, assetTicker)
     });
 
     // AI Sanity Check
@@ -312,8 +320,9 @@ export default function RiskCalculator() {
                       <div className="p-3 rounded-xl bg-primary/10 w-fit mx-auto mb-3">
                         <TrendingUp className="w-6 h-6 text-primary" />
                       </div>
-                      <p className="text-sm text-muted-foreground mb-1">Optimal Position Size</p>
-                      <p className="text-2xl font-bold text-foreground">{results.positionSize}</p>
+                          <p className="text-sm text-muted-foreground mb-1">Optimal Position Size</p>
+                          <p className="text-2xl font-bold text-foreground">{results.positionSize}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{results.formattedLotSize}</p>
                     </CardContent>
                   </Card>
                   

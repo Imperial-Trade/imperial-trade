@@ -46,7 +46,7 @@ interface AdminSignalAnalytics {
 export function AdminSignalManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { alerts: allAlerts, isLoading, refreshAlerts } = useOptimizedTrading(user?.id || '', true); // Enable admin view for all signals
+  const { alerts: allAlerts, isLoading, refreshAlerts } = useOptimizedTrading(user?.id || '', false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [analytics, setAnalytics] = useState<AdminSignalAnalytics | null>(null);
@@ -54,28 +54,28 @@ export function AdminSignalManagement() {
   const [viewingAlert, setViewingAlert] = useState<any>(null);
   const [editingAlert, setEditingAlert] = useState<any>(null);
 
-  // Show all alerts from all educators and admins for admin oversight
+  // Filter alerts to show only the current admin's own signals
   const userAlerts = useMemo(() => {
-    return allAlerts || [];
-  }, [allAlerts]);
+    if (!user?.id || !allAlerts) return [];
+    return allAlerts.filter(alert => alert.userId === user.id);
+  }, [allAlerts, user?.id]);
 
-  // Fetch admin analytics - for all signals across the platform
+  // Fetch admin analytics - now based on user's own signals
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setLoadingAnalytics(true);
         
-        // Get signal statistics for ALL educators and admins
+        if (!user?.id) {
+          setLoadingAnalytics(false);
+          return;
+        }
+        
+        // Get signal statistics for current admin only
         const { data: signalStats, error: signalError } = await supabase
           .from('trade_alerts')
-          .select(`
-            status, 
-            user_id, 
-            tp_hits, 
-            created_at,
-            profiles!inner(user_type, access_level)
-          `)
-          .or('profiles.user_type.eq.educator,profiles.user_type.eq.admin,profiles.access_level.eq.admin,profiles.access_level.eq.moderator')
+          .select('status, user_id, tp_hits, created_at')
+          .eq('user_id', user.id) // Filter by current admin's ID
           .order('created_at', { ascending: false });
 
         if (signalError) throw signalError;
@@ -95,7 +95,7 @@ export function AdminSignalManagement() {
         const successRate = closedSignals > 0 ? (successfulSignals / closedSignals) : 0;
         const totalEducators = profiles?.length || 0;
 
-        // Recent activity (last 24 hours) - for all educators/admins
+        // Recent activity (last 24 hours) - for current admin only
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const recentActivity = signalStats?.filter(s => 
@@ -351,9 +351,9 @@ export function AdminSignalManagement() {
           <div>
             <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Shield className="w-6 h-6 text-primary" />
-              Signal Management (Admin)
+              My Signal Management
             </h2>
-            <p className="text-muted-foreground">Manage all trading signals from educators and admins</p>
+            <p className="text-muted-foreground">Manage your own trading signals</p>
           </div>
           <Button
             onClick={() => window.open('/dashboard/new-signal', '_blank')}
@@ -371,7 +371,7 @@ export function AdminSignalManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Signals</p>
+                    <p className="text-sm text-muted-foreground">My Signals</p>
                     <p className="text-2xl font-bold">{analytics.total_signals}</p>
                   </div>
                   <Signal className="w-8 h-8 text-primary" />
@@ -407,7 +407,7 @@ export function AdminSignalManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Platform Success Rate</p>
+                    <p className="text-sm text-muted-foreground">My Success Rate</p>
                     <p className="text-2xl font-bold text-green-400">{(analytics.success_rate * 100).toFixed(1)}%</p>
                   </div>
                   <BarChart3 className="w-8 h-8 text-green-400" />
@@ -431,7 +431,7 @@ export function AdminSignalManagement() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">24h Platform Activity</p>
+                    <p className="text-sm text-muted-foreground">My 24h Activity</p>
                     <p className="text-2xl font-bold text-orange-400">{analytics.recent_activity}</p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-orange-400" />
@@ -449,7 +449,7 @@ export function AdminSignalManagement() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                placeholder="Search all signals by asset, symbol, or creator..."
+                placeholder="Search your signals by asset or symbol..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -481,7 +481,7 @@ export function AdminSignalManagement() {
       {/* Signals Tabs */}
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="all">All Signals ({filteredAlerts.length})</TabsTrigger>
+          <TabsTrigger value="all">My Signals ({filteredAlerts.length})</TabsTrigger>
           <TabsTrigger value="active">Active ({filteredAlerts.filter(a => a.status === 'active').length})</TabsTrigger>
           <TabsTrigger value="closed">Closed ({filteredAlerts.filter(a => a.status === 'closed').length})</TabsTrigger>
         </TabsList>
@@ -499,7 +499,7 @@ export function AdminSignalManagement() {
                 <p className="text-muted-foreground mb-4">
                   {searchTerm || filterStatus !== 'all' 
                     ? 'No signals match your search criteria.' 
-                    : 'No trading signals found in the system.'}
+                    : 'You haven\'t created any trading signals yet.'}
                 </p>
                 <Button
                   onClick={() => window.open('/dashboard/new-signal', '_blank')}

@@ -1763,7 +1763,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
   );
 
   return (
-    <div className="min-h-screen p-6 transition-colors duration-300 bg-background border-border"
+    <div className="min-h-screen p-6 transition-colors duration-300 bg-transparent border-border"
     >
       <AnimatePresence mode="wait">
         {journalState.selectedDate ? (

@@ -158,11 +158,7 @@ export default function AdvancedTools() {
   return (
     <div className="min-h-screen bg-background">
       {/* Main Content Area - Full Width */}
-      <div className={`w-full min-h-screen p-6 ${
-        activeTool?.name === "Trading Journal" 
-          ? "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 before:absolute before:inset-0 before:bg-gradient-to-br before:from-transparent before:via-blue-400/20 before:to-transparent before:pointer-events-none relative" 
-          : ""
-      }`}>
+        <div className="w-full min-h-screen p-6">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}

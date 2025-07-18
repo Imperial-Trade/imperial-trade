@@ -428,31 +428,6 @@ export default function AdvancedTools() {
             </AnimatePresence>
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="mt-4">
-            <div className="bg-gray-800 dark:bg-gray-200 rounded-2xl p-2 flex flex-wrap gap-1">
-              {navButtons.map((button) => {
-                const Icon = button.icon;
-                const isActive = button.isActive;
-                return (
-                  <motion.button
-                    key={button.name}
-                    className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-200 flex-1 min-w-0 ${
-                      isActive 
-                        ? 'bg-yellow-500 text-black' 
-                        : 'text-white dark:text-black hover:bg-gray-700 dark:hover:bg-gray-300'
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => window.location.href = button.path}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-xs font-medium text-center leading-tight">{button.name}</span>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </motion.aside>
 

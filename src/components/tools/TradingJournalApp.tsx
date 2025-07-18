@@ -1474,7 +1474,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
               Back to Calendar
             </Button>
             <h2 className="text-2xl font-bold">
-              {new Date(date).toLocaleDateString()}
+              {new Date(date + 'T00:00:00').toLocaleDateString()}
             </h2>
           </div>
           <Button

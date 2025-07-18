@@ -1763,13 +1763,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
   );
 
   return (
-    <div
-      className={cn(
-        "min-h-screen p-6 transition-colors duration-300",
-        theme === "dark"
-          ? "bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
-          : "bg-gradient-to-br from-slate-50 via-white to-slate-100"
-      )}
+    <div className="min-h-screen p-6 transition-colors duration-300 bg-background border-border"
     >
       <AnimatePresence mode="wait">
         {journalState.selectedDate ? (

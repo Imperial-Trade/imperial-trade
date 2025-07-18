@@ -104,7 +104,7 @@ export default function AccountRequestPage() {
                 <Link to="/signin">
                   <Button
                     variant="outline"
-                    className="w-full border-gray-600 text-gray-950 bg-slate-50"
+                    className="w-full border-gray-600 text-gray-950 bg-slate-50 mt-4"
                   >
                     Already Have Access? Sign In
                     <ArrowRight className="w-4 h-4 ml-2" />

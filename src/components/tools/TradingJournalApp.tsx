@@ -1418,7 +1418,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                             <div className="text-right">
                               <p className="text-xs font-bold">{item.count}</p>
                               <p className="text-xs text-muted-foreground">
-                                {percentage}%
+                                {percentage}
                               </p>
                             </div>
                           </motion.div>

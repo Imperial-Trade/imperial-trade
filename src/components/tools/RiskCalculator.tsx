@@ -129,11 +129,11 @@ export default function RiskCalculator() {
     
     setResults({
       riskAmount: riskAmount.toFixed(2),
-      positionSize: positionSize.toFixed(4),
+      positionSize: positionSize.toFixed(2),
       potentialLoss: potentialLoss.toFixed(2),
       potentialProfit: potentialProfit.toFixed(2),
       riskReward: riskReward.toFixed(2),
-      pipValue: pipValue.toFixed(5),
+      pipValue: pipValue.toFixed(2),
       assetType: spec.assetType,
       formattedLotSize: formatLotSize(positionSize, assetTicker)
     });

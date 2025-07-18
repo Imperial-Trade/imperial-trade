@@ -435,6 +435,18 @@ export const TradingJournalApp: React.FC = () => {
   // Handle date click with smooth transition animation
   const handleDateClick = useCallback(
     (dateStr: string, event: React.MouseEvent, openModal?: boolean) => {
+      // Check if the date is in the future (using precise current time)
+      const clickedDate = new Date(dateStr);
+      const now = new Date();
+      
+      // Set clicked date to end of day for comparison
+      clickedDate.setHours(23, 59, 59, 999);
+      
+      // Don't allow future dates
+      if (clickedDate > now) {
+        return;
+      }
+
       const rect = (event.target as HTMLElement).getBoundingClientRect();
 
       if (dayViewRef.current) {
@@ -724,9 +736,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   ? "bg-green-500/10 border-green-500/30"
                   : "bg-red-500/10 border-red-500/30")
             )}
-            onClick={(e) =>
-              !isFuture && dayTrades.length > 0 && handleDateClick(dateStr, e)
-            }
+            onClick={(e) => !isFuture && handleDateClick(dateStr, e)}
           >
             <div className="text-sm font-medium">{date.getDate()}</div>
             <div className="text-xs text-muted-foreground">
@@ -835,9 +845,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                 ? "bg-green-500/10 border-green-500/30"
                 : "bg-red-500/10 border-red-500/30")
           )}
-          onClick={(e) =>
-            !isFuture && dayTrades.length > 0 && handleDateClick(dateStr, e)
-          }
+          onClick={(e) => !isFuture && handleDateClick(dateStr, e)}
         >
           <div className="text-sm font-medium">{day}</div>
           {dayTrades.length > 0 && (

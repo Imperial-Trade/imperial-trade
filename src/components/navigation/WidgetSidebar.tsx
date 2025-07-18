@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   BookOpen,
   Calendar,
@@ -19,43 +20,43 @@ import {
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Define the 6 trading arsenal tools
+// Define the 6 trading arsenal tools with their dedicated routes
 const tradingTools = [
   { 
     name: 'Trading Journal', 
     icon: BookOpen, 
     description: 'Log and analyze your trades with AI-powered feedback.',
-    route: '/dashboard/advanced-tools?tool=journal'
+    route: '/dashboard/trade-journal'
   },
   { 
     name: 'Economic Calendar', 
     icon: Calendar, 
     description: 'Stay ahead of market-moving events and news releases.',
-    route: '/dashboard/advanced-tools?tool=calendar'
+    route: '/dashboard/economic-calendar'
   },
   { 
     name: 'Risk Calculator', 
     icon: Calculator, 
     description: 'Calculate position size, risk, and potential profit.',
-    route: '/dashboard/advanced-tools?tool=calculator'
+    route: '/dashboard/risk-calculator'
   },
   { 
     name: 'Trade Analyst', 
     icon: Brain, 
     description: 'Upload screenshots for deep performance analysis.',
-    route: '/dashboard/advanced-tools?tool=analyst'
+    route: '/dashboard/trade-analyst'
   },
   { 
     name: 'Opportunity Scanner', 
     icon: Search, 
     description: 'Scan markets for high-probability trading setups.',
-    route: '/dashboard/advanced-tools?tool=scanner'
+    route: '/dashboard/opportunity-scanner'
   },
   { 
     name: 'Risk Simulator', 
     icon: Scale,
     description: 'Simulate trade setups to assess risk before you enter.',
-    route: '/dashboard/advanced-tools?tool=simulator'
+    route: '/dashboard/risk-simulator'
   },
 ];
 
@@ -67,11 +68,12 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const handleToolClick = (tool: typeof tradingTools[0]) => {
     setActiveTool(tool.name);
-    // Navigate to the tool
-    window.location.href = tool.route;
+    // Navigate using React Router
+    navigate(tool.route);
   };
 
   const WidgetTool = ({ tool, size = 'small' }: { tool: typeof tradingTools[0], size?: 'small' | 'medium' | 'large' }) => {
@@ -341,7 +343,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                 <motion.button
                   onClick={() => {
                     setShowProfileDropdown(false);
-                    window.location.href = '/dashboard/my-progress';
+                    navigate('/dashboard/my-progress');
                   }}
                   className="w-full flex items-center gap-3 p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
                   whileHover={{ scale: 1.02, x: 4 }}
@@ -354,7 +356,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                 <motion.button
                   onClick={() => {
                     setShowProfileDropdown(false);
-                    window.location.href = '/dashboard/administration';
+                    navigate('/dashboard/administration');
                   }}
                   className="w-full flex items-center gap-3 p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
                   whileHover={{ scale: 1.02, x: 4 }}
@@ -368,7 +370,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                   <motion.button
                     onClick={() => {
                       setShowProfileDropdown(false);
-                      window.location.href = '/dashboard/admin-panel';
+                      navigate('/dashboard/admin-panel');
                     }}
                     className="w-full flex items-center gap-3 p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
                     whileHover={{ scale: 1.02, x: 4 }}

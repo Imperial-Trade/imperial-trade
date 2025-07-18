@@ -8,45 +8,45 @@ import ContentSection from "./ContentSection";
 const features = [
   {
     icon: BookOpen,
-    title: "AI-Powered Education",
-    description: "Learn from personalized trading courses powered by artificial intelligence.",
-    details: "Master trading with 50+ courses tailored to your skill level and trading style.",
+    title: "Master's Curriculum",
+    description: "Systematic installation of professional trading framework into your mind.",
+    details: "50+ Professional HD Video Lessons with structured learning pathways. Foundation Pathway covers Market Mechanics and Risk Management. Specialist Pathway includes Institutional Concepts and Advanced Market Structure.",
     link: "Education",
     color: "hsl(var(--feature-purple))",
     gradient: "from-purple-500 to-blue-500"
   },
   {
     icon: TrendingUp,
-    title: "Smart Signals",
-    description: "Get real-time trading signals with 92% accuracy powered by machine learning.",
-    details: "Never miss a profitable trade with our AI-driven signal detection system.",
+    title: "Professional Trade Blueprint",
+    description: "Over-the-shoulder view of professional analysts with precision parameters.",
+    details: "Exact Entry Prices, Hard Stop Loss, Up to 5 Take Profit levels. Live price integration with automated TP tracking and risk calculator integration for one-click position sizing.",
     link: "SignalStream",
     color: "hsl(var(--feature-blue))",
     gradient: "from-blue-500 to-cyan-500"
   },
   {
     icon: Radio,
-    title: "Live Trading",
-    description: "Join live trading sessions with professional traders and learn in real-time.",
-    details: "Watch experts trade live and copy their strategies in real-time.",
+    title: "Virtual Trading Floor",
+    description: "Direct access to professional trader minds during critical market hours.",
+    details: "Live Analysis & Execution with real-time top-down analysis. Interactive Q&A throughout sessions. Professional Zoom integration with searchable archived sessions.",
     link: "Live",
     color: "hsl(var(--feature-green))",
     gradient: "from-green-500 to-emerald-500"
   },
   {
     icon: MessageSquare,
-    title: "Community",
-    description: "Connect with 10,000+ traders in our exclusive community forum.",
-    details: "Share ideas, get feedback, and learn from successful traders worldwide.",
+    title: "Collective Intelligence",
+    description: "Curated professional ecosystem with 500+ serious traders.",
+    details: "Market-specific channels for focused discussion. The 'Second Opinion' advantage for trade validation. Professional analysts providing daily market outlooks and strategy refinement.",
     link: "Forum",
     color: "hsl(var(--feature-orange))",
     gradient: "from-orange-500 to-red-500"
   },
   {
     icon: Briefcase,
-    title: "Partnership",
-    description: "Earn up to $20 per lot with our exclusive IB partnership program.",
-    details: "Build a profitable business with industry-leading compensation and support.",
+    title: "Trading Business Empire",
+    description: "6-tier progression system earning $6-$20 per lot with luxury rewards.",
+    details: "IB Dashboard Mission Control with real-time tracking. Imperial Gold Club access to luxury retreats and cruises. Volume-based transparent metrics for career progression.",
     link: "IBPartnership",
     color: "hsl(var(--feature-pink))",
     gradient: "from-pink-500 to-purple-500"

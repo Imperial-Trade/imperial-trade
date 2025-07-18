@@ -282,12 +282,6 @@
   }
 }
 
-/* Imperial Welcome Component Styles */
-.imperial-name {
-  color: hsl(var(--imperial-gold));
-  font-weight: 700;
-}
-
 /* Theme-aware transitions */
 * {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;

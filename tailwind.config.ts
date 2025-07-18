@@ -1,163 +1,176 @@
-
 import type { Config } from "tailwindcss";
 
-const config: Config = {
-  darkMode: ["class"],
-  content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
-  ],
-  prefix: "",
-  theme: {
-    container: {
-      center: true,
-      padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
-    extend: {
-      fontFamily: {
-        'playfair': ['Playfair Display', 'serif'],
-        'montserrat': ['Montserrat', 'sans-serif'],
-        sans: ['Montserrat', 'ui-sans-serif', 'system-ui'],
-      },
+export default {
+	darkMode: ["class"],
+	content: [
+		"./pages/**/*.{ts,tsx}",
+		"./components/**/*.{ts,tsx}",
+		"./app/**/*.{ts,tsx}",
+		"./src/**/*.{ts,tsx}",
+	],
+	prefix: "",
+	theme: {
+		container: {
+			center: true,
+			padding: '2rem',
+			screens: {
+				'2xl': '1400px'
+			}
+		},
+		extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))'
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))'
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))'
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))'
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))'
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))'
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))'
         },
-        // Imperial color palette
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar-background))',
+          foreground: 'hsl(var(--sidebar-foreground))',
+          primary: 'hsl(var(--sidebar-primary))',
+          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+          accent: 'hsl(var(--sidebar-accent))',
+          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
+          border: 'hsl(var(--sidebar-border))',
+          ring: 'hsl(var(--sidebar-ring))'
+        },
+        // Spanish Gray Monochromatic Palette
+        gray: {
+          'darkest': 'hsl(var(--gray-darkest))',
+          'dark': 'hsl(var(--gray-dark))',
+          'medium': 'hsl(var(--gray-medium))',
+          'medium-light': 'hsl(var(--gray-medium-light))',
+          'light': 'hsl(var(--gray-light))',
+          'lighter': 'hsl(var(--gray-lighter))',
+          'lightest': 'hsl(var(--gray-lightest))'
+        },
+        // Gold Palette - Luxury warmth
+        gold: {
+          'bright': 'hsl(var(--gold-bright))',
+          'warm': 'hsl(var(--gold-warm))',
+          'antique': 'hsl(var(--gold-antique))',
+          'muted': 'hsl(var(--gold-muted))',
+          'light': 'hsl(var(--gold-light))'
+        },
+        // Orache Palette - Warm earthy orange
+        orache: {
+          'bright': 'hsl(var(--orache-bright))',
+          'warm': 'hsl(var(--orache-warm))',
+          'rust': 'hsl(var(--orache-rust))',
+          'dusty': 'hsl(var(--orache-dusty))',
+          'light': 'hsl(var(--orache-light))'
+        },
+        // Imperial White Gold & Bronze Gradient Colors
         imperial: {
-          dark: "#121821",
-          gold: "#D4AF37",
-          light: "#F0F4F8",
+          'white': 'hsl(var(--imperial-white))',
+          'platinum': 'hsl(var(--imperial-platinum))',
+          'gold-light': 'hsl(var(--imperial-gold-light))',
+          'gold': 'hsl(var(--imperial-gold))',
+          'bronze-light': 'hsl(var(--imperial-bronze-light))',
+          'bronze': 'hsl(var(--imperial-bronze))',
+          'bronze-dark': 'hsl(var(--imperial-bronze-dark))'
         },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-      },
-      keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
+        // Elegant Background Gradient Colors
+        bgGradient: {
+          'white': 'hsl(var(--bg-gradient-white))',
+          'light': 'hsl(var(--bg-gradient-light))',
+          'medium': 'hsl(var(--bg-gradient-medium))',
+          'dark': 'hsl(var(--bg-gradient-dark))',
+          'black': 'hsl(var(--bg-gradient-black))'
         },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
+        // Subtle Green Accent Colors
+        accentGreen: {
+          'sage': 'hsl(var(--accent-sage))',
+          'mint': 'hsl(var(--accent-mint))',
+          'forest': 'hsl(var(--accent-forest))',
+          'light': 'hsl(141, 76%, 48%)',
+          'DEFAULT': 'hsl(141, 79%, 35%)',
+          'dark': 'hsl(141, 79%, 27%)',
         },
-        "fade-in": {
-          "0%": {
-            opacity: "0",
-            transform: "translateY(10px)"
-          },
-          "100%": {
-            opacity: "1",
-            transform: "translateY(0)"
-          }
+        // Feature colors (for product features only)
+        feature: {
+          'blue': 'hsl(var(--feature-blue))',
+          'green': 'hsl(var(--feature-green))',
+          'orange': 'hsl(var(--feature-orange))',
+          'purple': 'hsl(var(--feature-purple))',
+          'pink': 'hsl(var(--feature-pink))',
+          'red': 'hsl(var(--feature-red))',
+          'light': 'hsl(217, 91%, 65%)',
+          'DEFAULT': 'hsl(217, 91%, 60%)',
+          'dark': 'hsl(217, 91%, 55%)',
         },
-        "fade-out": {
-          "0%": {
-            opacity: "1",
-            transform: "translateY(0)"
-          },
-          "100%": {
-            opacity: "0",
-            transform: "translateY(10px)"
-          }
+        // Trading platform accent colors  
+        accent: {
+          'green': 'hsl(var(--accent-green))',
+          'blue': 'hsl(var(--accent-blue))',
+          'gold': 'hsl(var(--accent-gold))',
+          'red': 'hsl(var(--accent-red))'
         },
-        "scale-in": {
-          "0%": {
-            transform: "scale(0.95)",
-            opacity: "0"
-          },
-          "100%": {
-            transform: "scale(1)",
-            opacity: "1"
-          }
-        },
-        "scale-out": {
-          from: { transform: "scale(1)", opacity: "1" },
-          to: { transform: "scale(0.95)", opacity: "0" }
-        },
-        "slide-in-right": {
-          "0%": { transform: "translateX(100%)" },
-          "100%": { transform: "translateX(0)" }
-        },
-        "slide-out-right": {
-          "0%": { transform: "translateX(0)" },
-          "100%": { transform: "translateX(100%)" }
-        },
-        "blink-cursor": {
-          "0%, 50%": { 
-            "border-color": "#D4AF37" 
-          },
-          "51%, 100%": { 
-            "border-color": "transparent" 
-          }
-        },
-        "imperial-glow": {
-          "0%": {
-            "box-shadow": "0 0 5px rgba(212, 175, 55, 0.2)"
-          },
-          "50%": {
-            "box-shadow": "0 0 20px rgba(212, 175, 55, 0.4), 0 0 30px rgba(212, 175, 55, 0.1)"
-          },
-          "100%": {
-            "box-shadow": "0 0 5px rgba(212, 175, 55, 0.2)"
-          }
-        }
-      },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.3s ease-out",
-        "fade-out": "fade-out 0.3s ease-out",
-        "scale-in": "scale-in 0.2s ease-out",
-        "scale-out": "scale-out 0.2s ease-out",
-        "slide-in-right": "slide-in-right 0.3s ease-out",
-        "slide-out-right": "slide-out-right 0.3s ease-out",
-        "enter": "fade-in 0.3s ease-out, scale-in 0.2s ease-out",
-        "exit": "fade-out 0.3s ease-out, scale-out 0.2s ease-out",
-        "blink-cursor": "blink-cursor 750ms steps(44) infinite normal",
-        "imperial-glow": "imperial-glow 2s ease-in-out infinite"
-      },
-    },
-  },
-  plugins: [require("tailwindcss-animate")],
+				// Surface colors for components
+				surface: 'hsl(var(--surface))',
+				// Light mode specific colors
+				lightGreenHover: 'hsl(var(--light-green-hover))'
+			},
+			fontFamily: {
+				'apple': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+				'display': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'system-ui', 'sans-serif'],
+			},
+			borderRadius: {
+				lg: 'var(--radius)',
+				md: 'calc(var(--radius) - 2px)',
+				sm: 'calc(var(--radius) - 4px)'
+			},
+			keyframes: {
+				'accordion-down': {
+					from: {
+						height: '0'
+					},
+					to: {
+						height: 'var(--radix-accordion-content-height)'
+					}
+				},
+				'accordion-up': {
+					from: {
+						height: 'var(--radix-accordion-content-height)'
+					},
+					to: {
+						height: '0'
+					}
+				}
+			},
+			animation: {
+				'accordion-down': 'accordion-down 0.2s ease-out',
+				'accordion-up': 'accordion-up 0.2s ease-out'
+			}
+		}
+	},
+	plugins: [require("tailwindcss-animate")],
 } satisfies Config;
-
-export default config;

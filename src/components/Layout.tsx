@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
-import { WidgetSidebar } from "@/components/navigation/WidgetSidebar"
 
 function DashboardHeader() {
   const { openMobile } = useSidebar();
@@ -432,13 +431,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <DashboardHeader />
         </ErrorBoundary>
 
-        {/* Widget Sidebar - Always visible on desktop/tablet */}
-        {!isMobile && (
-          <ErrorBoundary componentName="Widget Sidebar">
-            <WidgetSidebar />
-          </ErrorBoundary>
-        )}
-
         {/* Mobile: Use existing Sheet-based sidebar */}
         {isMobile && (
           <ErrorBoundary componentName="Mobile Sidebar">
@@ -451,8 +443,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <SidebarOverlay />
         </ErrorBoundary>
         
-        {/* Main content - adjust margin for widget sidebar */}
-        <main className={`w-full min-h-screen pt-20 bg-background ${!isMobile ? 'ml-80' : ''}`}>
+        {/* Main content - always full width, independent of sidebar */}
+        <main className="w-full min-h-screen pt-20 bg-background">
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>

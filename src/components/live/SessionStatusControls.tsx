@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -31,6 +32,7 @@ export function SessionStatusControls({
       setIsDeleting(false);
     }
   };
+
   const canGoLive = session.status === 'scheduled';
   const canComplete = session.status === 'live';
   const canReschedule = session.status === 'completed';
@@ -117,11 +119,11 @@ export function SessionStatusControls({
         </TooltipContent>
       </Tooltip>
 
-      {/* Delete Button */}
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Tooltip>
-            <TooltipTrigger asChild>
+      {/* Delete Button with Fixed Structure */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
               <Button
                 size="sm"
                 disabled={isUpdating}
@@ -130,33 +132,33 @@ export function SessionStatusControls({
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Delete session permanently
-            </TooltipContent>
-          </Tooltip>
-        </AlertDialogTrigger>
-        <AlertDialogContent className="bg-surface border-default">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-primary">Delete Session</AlertDialogTitle>
-            <AlertDialogDescription className="text-secondary">
-              Are you sure you want to delete "{session.session_title}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-default text-secondary hover:bg-surface">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-red-500 hover:bg-red-600 text-white disabled:opacity-50"
-            >
-              {isDeleting ? 'Deleting...' : 'Delete Session'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-surface border-default">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-primary">Delete Session</AlertDialogTitle>
+                <AlertDialogDescription className="text-secondary">
+                  Are you sure you want to delete "{session.session_title}"? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="border-default text-secondary hover:bg-surface">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="bg-red-500 hover:bg-red-600 text-white disabled:opacity-50"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Session'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </TooltipTrigger>
+        <TooltipContent>
+          Delete session permanently
+        </TooltipContent>
+      </Tooltip>
 
       {/* Session Time Indicator */}
       <div className="flex items-center text-xs text-muted-foreground ml-2">

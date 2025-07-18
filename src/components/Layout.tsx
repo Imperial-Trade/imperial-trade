@@ -89,88 +89,88 @@ function DashboardHeader() {
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300 bg-transparent border-b border-transparent`}>
-      <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-between'}`}>
+    <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex flex-col items-center justify-center px-6 transition-all duration-300 bg-transparent border-b border-transparent`}>
+      <div className="w-full max-w-7xl flex flex-col items-center">
         
-        {/* Logo - Hide when collapsed */}
+        {/* Logo - Always visible, centered above sidebar */}
         {!isHeaderCollapsed && (
-          <Link to="/dashboard/home" className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-2">
             <Crown className="h-6 w-6 text-primary" />
             <span className="text-xl imperial-tech-font">IMPERIAL</span>
-          </Link>
+          </div>
         )}
 
-        {/* Desktop Navigation */}
-        {!isHeaderCollapsed && (
-          <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
-          {navigationItems.map(item => {
-            const isActive = location.pathname === item.to;
-            return (
-              <div key={item.to} className="relative" onMouseEnter={() => setActiveDropdown(item.label)} onMouseLeave={() => setActiveDropdown(null)}>
-                <Link to={item.to}>
-                  <Button 
-                    variant="ghost" 
-                    className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-2 transition-all duration-200 ${
-                      isActive 
-                        ? 'bg-primary/10 text-primary border border-primary/20' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Button>
-                </Link>
-              
-                {/* Apple/Stripe style dropdown */}
-                {activeDropdown === item.label && (
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-background/95 backdrop-blur-xl rounded-2xl border border-border/50 shadow-2xl p-6 animate-fade-in-up z-50">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-semibold text-foreground mb-1">{item.label}</h3>
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
+        <div className={`w-full flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-center'}`}>
+          {/* Desktop Navigation - Centered */}
+          {!isHeaderCollapsed && (
+            <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
+            {navigationItems.map(item => {
+              const isActive = location.pathname === item.to;
+              return (
+                <div key={item.to} className="relative" onMouseEnter={() => setActiveDropdown(item.label)} onMouseLeave={() => setActiveDropdown(null)}>
+                  <Link to={item.to}>
+                    <Button 
+                      variant="ghost" 
+                      className={`flex items-center gap-2 text-sm font-medium rounded-xl px-3 py-2 transition-all duration-200 ${
+                        isActive 
+                          ? 'bg-primary/10 text-primary border border-primary/20' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-background/80'
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                
+                  {/* Apple/Stripe style dropdown */}
+                  {activeDropdown === item.label && (
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-background/95 backdrop-blur-xl rounded-2xl border border-border/50 shadow-2xl p-6 animate-fade-in-up z-50">
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-semibold text-foreground mb-1">{item.label}</h3>
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                        </div>
+                        <div className="space-y-2">
+                          {item.features.map((feature, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                              {feature}
+                            </div>
+                          ))}
+                        </div>
+                        <Link to={item.to}>
+                          <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+                            Explore {item.label}
+                          </Button>
+                        </Link>
                       </div>
-                      <div className="space-y-2">
-                        {item.features.map((feature, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                            {feature}
-                          </div>
-                        ))}
-                      </div>
-                      <Link to={item.to}>
-                        <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
-                          Explore {item.label}
-                        </Button>
-                      </Link>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          </nav>
-        )}
+                  )}
+                </div>
+              );
+            })}
+            </nav>
+          )}
 
-
-        {/* Menu Button - Always visible, rightmost position when collapsed */}
-        <div className="hidden lg:flex">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-            className={`h-8 w-8 rounded-full hover:bg-muted/50 transition-all duration-200 ${
-              isHeaderCollapsed ? 'ml-auto' : 'ml-2'
-            }`}
-            title={isHeaderCollapsed ? "Expand header" : "Collapse header"}
-          >
-            {isHeaderCollapsed ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-            ) : (
-              <ChevronUp className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-            )}
-          </Button>
+          {/* Menu Button - Positioned to the right */}
+          <div className={`hidden lg:flex ${isHeaderCollapsed ? '' : 'absolute right-6'}`}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+              className="h-8 w-8 rounded-full hover:bg-muted/50 transition-all duration-200"
+              title={isHeaderCollapsed ? "Expand header" : "Collapse header"}
+            >
+              {isHeaderCollapsed ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+              ) : (
+                <ChevronUp className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+              )}
+            </Button>
+          </div>
         </div>
-
+      </div>
+      
         {/* Mobile Menu */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild>
@@ -231,7 +231,6 @@ function DashboardHeader() {
             </nav>
           </SheetContent>
         </Sheet>
-      </div>
 
       <style>{`
         /* Imperial Tech Font Styles */

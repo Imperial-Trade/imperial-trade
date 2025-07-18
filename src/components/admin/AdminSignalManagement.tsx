@@ -8,6 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { 
   Plus, 
   Search, 
   TrendingUp, 
@@ -25,6 +32,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import EditSignalForm from '@/components/signals/EditSignalForm';
 
 interface AdminSignalAnalytics {
   total_signals: number;
@@ -43,6 +51,8 @@ export function AdminSignalManagement() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [analytics, setAnalytics] = useState<AdminSignalAnalytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+  const [viewingAlert, setViewingAlert] = useState<any>(null);
+  const [editingAlert, setEditingAlert] = useState<any>(null);
 
   // Filter alerts to show only the current admin's own signals
   const userAlerts = useMemo(() => {
@@ -183,6 +193,139 @@ export function AdminSignalManagement() {
       });
     }
   };
+
+  const handleEditSignal = async (updateData: any) => {
+    if (!editingAlert) return;
+
+    try {
+      const { error } = await supabase
+        .from('trade_alerts')
+        .update({
+          status: updateData.status,
+          notes: updateData.notes,
+          tp_hits: updateData.tpHits,
+          close_reason: updateData.closeReason,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingAlert.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Signal updated successfully",
+      });
+
+      setEditingAlert(null);
+      refreshAlerts();
+    } catch (error) {
+      console.error('Error updating signal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update signal",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const renderSignalCard = (alert: any, index: number) => (
+    <motion.div
+      key={alert.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ delay: index * 0.05 }}
+    >
+      <Card className="hover:shadow-lg transition-all duration-300">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">{alert.assetName}</h3>
+                  <Badge variant="outline" className="text-xs">
+                    {alert.finnhubSymbol}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  {getStatusBadge(alert.status)}
+                  {getPerformanceBadge(alert)}
+                  <Badge className={alert.tradeType.includes('buy') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
+                    {alert.tradeType === 'buy' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                    {alert.tradeType.toUpperCase()}
+                  </Badge>
+                  {alert.creator && (
+                    <Badge variant="secondary" className="text-xs">
+                      by {alert.creator.display_name || 'Unknown'}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Entry Price</p>
+                <p className="font-semibold">${alert.entryPrice}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Stop Loss</p>
+                <p className="font-semibold text-red-400">${alert.stopLoss}</p>
+              </div>
+              {alert.tp1 && (
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">TP1</p>
+                  <p className="font-semibold text-green-400">${alert.tp1}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {alert.notes && (
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+              <p className="text-sm">{alert.notes}</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mt-4 pt-4 border-t">
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span>Created {new Date(alert.createdAt).toLocaleDateString()}</span>
+              <span>•</span>
+              <span>Updated {new Date(alert.updatedAt).toLocaleDateString()}</span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setViewingAlert(alert)}
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                View
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setEditingAlert(alert)}
+              >
+                <Edit className="w-4 h-4 mr-1" />
+                Edit
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleDeleteSignal(alert.id)}
+                className="text-red-500 hover:text-red-600"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
 
   if (isLoading || loadingAnalytics) {
     return (
@@ -345,104 +488,7 @@ export function AdminSignalManagement() {
 
         <TabsContent value="all" className="space-y-4">
           <AnimatePresence>
-            {filteredAlerts.map((alert, index) => (
-              <motion.div
-                key={alert.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Card className="hover:shadow-lg transition-all duration-300">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-semibold">{alert.assetName}</h3>
-                            <Badge variant="outline" className="text-xs">
-                              {alert.finnhubSymbol}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            {getStatusBadge(alert.status)}
-                            {getPerformanceBadge(alert)}
-                            <Badge className={alert.tradeType.includes('buy') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
-                              {alert.tradeType === 'buy' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
-                              {alert.tradeType.toUpperCase()}
-                            </Badge>
-                            {alert.creator && (
-                              <Badge variant="secondary" className="text-xs">
-                                by {alert.creator.display_name || 'Unknown'}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Entry Price</p>
-                          <p className="font-semibold">${alert.entryPrice}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Stop Loss</p>
-                          <p className="font-semibold text-red-400">${alert.stopLoss}</p>
-                        </div>
-                        {alert.tp1 && (
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">TP1</p>
-                            <p className="font-semibold text-green-400">${alert.tp1}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {alert.notes && (
-                      <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                        <p className="text-sm">{alert.notes}</p>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Created {new Date(alert.createdAt).toLocaleDateString()}</span>
-                        <span>•</span>
-                        <span>Updated {new Date(alert.updatedAt).toLocaleDateString()}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.open(`/dashboard/signal-stream?highlight=${alert.id}`, '_blank')}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.open(`/dashboard/new-signal?edit=${alert.id}`, '_blank')}
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleDeleteSignal(alert.id)}
-                          className="text-red-500 hover:text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+            {filteredAlerts.map((alert, index) => renderSignalCard(alert, index))}
           </AnimatePresence>
 
           {filteredAlerts.length === 0 && (
@@ -469,103 +515,7 @@ export function AdminSignalManagement() {
 
         <TabsContent value="active" className="space-y-4">
           <AnimatePresence>
-            {filteredAlerts.filter(alert => alert.status === 'active').map((alert, index) => (
-              <motion.div
-                key={alert.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Card className="hover:shadow-lg transition-all duration-300">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-semibold">{alert.assetName}</h3>
-                            <Badge variant="outline" className="text-xs">
-                              {alert.finnhubSymbol}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            {getStatusBadge(alert.status)}
-                            <Badge className={alert.tradeType.includes('buy') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
-                              {alert.tradeType === 'buy' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
-                              {alert.tradeType.toUpperCase()}
-                            </Badge>
-                            {alert.creator && (
-                              <Badge variant="secondary" className="text-xs">
-                                by {alert.creator.display_name || 'Unknown'}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Entry Price</p>
-                          <p className="font-semibold">${alert.entryPrice}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Stop Loss</p>
-                          <p className="font-semibold text-red-400">${alert.stopLoss}</p>
-                        </div>
-                        {alert.tp1 && (
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">TP1</p>
-                            <p className="font-semibold text-green-400">${alert.tp1}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {alert.notes && (
-                      <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                        <p className="text-sm">{alert.notes}</p>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Created {new Date(alert.createdAt).toLocaleDateString()}</span>
-                        <span>•</span>
-                        <span>Updated {new Date(alert.updatedAt).toLocaleDateString()}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.open(`/dashboard/signal-stream?highlight=${alert.id}`, '_blank')}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.open(`/dashboard/new-signal?edit=${alert.id}`, '_blank')}
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleDeleteSignal(alert.id)}
-                          className="text-red-500 hover:text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+            {filteredAlerts.filter(alert => alert.status === 'active').map((alert, index) => renderSignalCard(alert, index))}
           </AnimatePresence>
 
           {filteredAlerts.filter(alert => alert.status === 'active').length === 0 && (
@@ -588,104 +538,7 @@ export function AdminSignalManagement() {
 
         <TabsContent value="closed" className="space-y-4">
           <AnimatePresence>
-            {filteredAlerts.filter(alert => alert.status === 'closed').map((alert, index) => (
-              <motion.div
-                key={alert.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Card className="hover:shadow-lg transition-all duration-300">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-semibold">{alert.assetName}</h3>
-                            <Badge variant="outline" className="text-xs">
-                              {alert.finnhubSymbol}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            {getStatusBadge(alert.status)}
-                            {getPerformanceBadge(alert)}
-                            <Badge className={alert.tradeType.includes('buy') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
-                              {alert.tradeType === 'buy' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
-                              {alert.tradeType.toUpperCase()}
-                            </Badge>
-                            {alert.creator && (
-                              <Badge variant="secondary" className="text-xs">
-                                by {alert.creator.display_name || 'Unknown'}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Entry Price</p>
-                          <p className="font-semibold">${alert.entryPrice}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Stop Loss</p>
-                          <p className="font-semibold text-red-400">${alert.stopLoss}</p>
-                        </div>
-                        {alert.tp1 && (
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">TP1</p>
-                            <p className="font-semibold text-green-400">${alert.tp1}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {alert.notes && (
-                      <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                        <p className="text-sm">{alert.notes}</p>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Created {new Date(alert.createdAt).toLocaleDateString()}</span>
-                        <span>•</span>
-                        <span>Updated {new Date(alert.updatedAt).toLocaleDateString()}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.open(`/dashboard/signal-stream?highlight=${alert.id}`, '_blank')}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.open(`/dashboard/new-signal?edit=${alert.id}`, '_blank')}
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleDeleteSignal(alert.id)}
-                          className="text-red-500 hover:text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+            {filteredAlerts.filter(alert => alert.status === 'closed').map((alert, index) => renderSignalCard(alert, index))}
           </AnimatePresence>
 
           {filteredAlerts.filter(alert => alert.status === 'closed').length === 0 && (
@@ -706,6 +559,135 @@ export function AdminSignalManagement() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* View Signal Modal */}
+      <Dialog open={!!viewingAlert} onOpenChange={() => setViewingAlert(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Signal Details</DialogTitle>
+            <DialogDescription>
+              Comprehensive view of your trading signal
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewingAlert && (
+            <div className="space-y-6">
+              {/* Signal Header */}
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold">{viewingAlert.assetName}</h3>
+                  {getStatusBadge(viewingAlert.status)}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Symbol</p>
+                    <p className="font-mono">{viewingAlert.finnhubSymbol}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Trade Type</p>
+                    <p className="font-semibold">{viewingAlert.tradeType.toUpperCase()}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Entry Price</p>
+                    <p className="font-mono">${viewingAlert.entryPrice}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Stop Loss</p>
+                    <p className="text-red-400 font-mono">${viewingAlert.stopLoss}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Take Profit Levels */}
+              {(viewingAlert.tp1 || viewingAlert.tp2 || viewingAlert.tp3 || viewingAlert.tp4 || viewingAlert.tp5) && (
+                <div>
+                  <h4 className="font-semibold mb-3">Take Profit Levels</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {[1, 2, 3, 4, 5].map(tpNumber => {
+                      const tpValue = viewingAlert[`tp${tpNumber}`];
+                      if (!tpValue) return null;
+                      
+                      const isHit = viewingAlert.tpHits?.includes(tpNumber);
+                      
+                      return (
+                        <div
+                          key={tpNumber}
+                          className={`p-3 rounded-lg border ${
+                            isHit 
+                              ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+                              : 'bg-muted/50 border-border'
+                          }`}
+                        >
+                          <p className="text-xs font-medium">TP{tpNumber}</p>
+                          <p className="font-mono">${tpValue}</p>
+                          {isHit && <CheckCircle className="w-3 h-3 mt-1" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Performance */}
+              {viewingAlert.status === 'closed' && (
+                <div>
+                  <h4 className="font-semibold mb-3">Performance</h4>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    {getPerformanceBadge(viewingAlert)}
+                    {viewingAlert.closeReason && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Close Reason: {viewingAlert.closeReason.replace('_', ' ').toUpperCase()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {viewingAlert.notes && (
+                <div>
+                  <h4 className="font-semibold mb-3">Notes</h4>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <p className="text-sm">{viewingAlert.notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Created</p>
+                  <p>{new Date(viewingAlert.createdAt).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Last Updated</p>
+                  <p>{new Date(viewingAlert.updatedAt).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Signal Modal */}
+      <Dialog open={!!editingAlert} onOpenChange={() => setEditingAlert(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Signal</DialogTitle>
+            <DialogDescription>
+              Update your trading signal details and status
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingAlert && (
+            <EditSignalForm
+              alert={editingAlert}
+              onSubmit={handleEditSignal}
+              onCancel={() => setEditingAlert(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

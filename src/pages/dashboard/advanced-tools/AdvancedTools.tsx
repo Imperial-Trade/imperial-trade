@@ -160,7 +160,7 @@ export default function AdvancedTools() {
       {/* Main Content Area - Full Width */}
         <div className={`w-full min-h-screen p-6 ${
           activeTool?.name === "Trading Journal" 
-            ? "bg-transparent relative before:absolute before:inset-0 before:bg-gradient-to-br before:from-slate-900/80 before:via-blue-500/30 before:to-slate-900/80 before:pointer-events-none" 
+            ? "bg-transparent relative before:absolute before:inset-0 before:bg-gradient-to-br before:from-blue-950/90 before:via-blue-800/40 before:to-blue-950/90 before:pointer-events-none" 
             : "bg-background"
         }`}>
         {/* Header with Tool Info and Selection Panel */}

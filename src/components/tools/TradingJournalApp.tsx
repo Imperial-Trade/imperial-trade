@@ -471,6 +471,9 @@ export const TradingJournalApp: React.FC = () => {
         isDayViewActive: true,
       }));
 
+      // Scroll to top when day view opens
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
       if (openModal) {
         setShowAddTradeModal(true);
       }
@@ -1461,13 +1464,15 @@ Please provide a brief analysis focusing on what went well, what could be improv
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
+              onClick={() => {
                 setJournalState((prev) => ({
                   ...prev,
                   selectedDate: null,
                   isDayViewActive: false,
-                }))
-              }
+                }));
+                // Scroll to top when returning to calendar
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />

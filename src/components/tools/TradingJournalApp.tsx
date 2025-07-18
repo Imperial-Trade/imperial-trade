@@ -1469,6 +1469,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   ...prev,
                   selectedDate: null,
                   isDayViewActive: false,
+                  currentFilter: prev.currentFilter, // Ensure we maintain the current filter
                 }));
                 // Scroll to top when returning to calendar
                 window.scrollTo({ top: 0, behavior: 'smooth' });

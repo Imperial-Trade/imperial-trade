@@ -3,6 +3,7 @@ import React, { useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { SidebarTriggerButton } from "@/components/sidebar/SidebarTriggerButton"
+import { WidgetSidebar } from "@/components/navigation/WidgetSidebar"
 import { Crown, Bell, Menu, GraduationCap, Video, Users, TrendingUp, User, Settings, BarChart3, Shield, Plus, ChevronUp, ChevronDown, LogOut } from "lucide-react"
 import { Link, Outlet, useLocation } from "react-router-dom"
 import AppBar from "@/components/layout/AppBar"
@@ -442,9 +443,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <ErrorBoundary componentName="Sidebar Overlay">
           <SidebarOverlay />
         </ErrorBoundary>
+
+        {/* Trading Arsenal Widget Sidebar - Always visible on all pages */}
+        <ErrorBoundary componentName="Trading Arsenal Sidebar">
+          <WidgetSidebar />
+        </ErrorBoundary>
         
-        {/* Main content - always full width, independent of sidebar */}
-        <main className="w-full min-h-screen pt-20 bg-background">
+        {/* Main content - always full width, with left margin for widget sidebar */}
+        <main className="w-full min-h-screen pt-20 bg-background ml-80">
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>

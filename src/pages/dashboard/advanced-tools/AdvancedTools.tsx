@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -118,9 +119,42 @@ const ToolSelector = ({ tool, onSelect, isActive }) => {
 };
 
 export default function AdvancedTools() {
-  const [activeTool, setActiveTool] = useState(coreTools[0]); // Set Trading Journal as default
+  const location = useLocation();
+  const [activeTool, setActiveTool] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+
+  // Get all tools in one array for easier lookup
+  const allTools = [...coreTools, ...aiTools];
+
+  // Function to get tool by query parameter
+  const getToolFromQuery = () => {
+    const params = new URLSearchParams(location.search);
+    const toolParam = params.get('tool');
+    
+    const toolMap = {
+      'journal': 'Trading Journal',
+      'calendar': 'Economic Calendar', 
+      'calculator': 'Risk Calculator',
+      'analyst': 'Trade Analyst',
+      'scanner': 'Opportunity Scanner',
+      'simulator': 'Risk Simulator'
+    };
+    
+    const toolName = toolMap[toolParam];
+    return allTools.find(tool => tool.name === toolName) || null;
+  };
+
+  // Set active tool based on URL parameter on component mount and URL changes
+  useEffect(() => {
+    const toolFromQuery = getToolFromQuery();
+    if (toolFromQuery) {
+      setActiveTool(toolFromQuery);
+    } else {
+      // Default to Trading Journal if no query parameter
+      setActiveTool(coreTools[0]);
+    }
+  }, [location.search]);
 
   const handleToolSelect = (tool) => {
     if (activeTool && activeTool.name === tool.name) {

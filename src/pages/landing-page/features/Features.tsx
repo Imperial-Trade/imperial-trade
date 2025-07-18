@@ -30,71 +30,84 @@ const coreProducts = [
   {
     icon: BookOpen,
     title: "Education: The Master's Curriculum",
-    description: "Education is not just information; it's the systematic installation of a professional trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned analyst.",
+    description: "Education is not just information; it's the systematic installation of a professional trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned analyst. Our goal is to make you self-sufficient.",
     features: [
-      "The Foundation Pathway: Market Mechanics, Advanced Candlestick Interpretation, Charting Essentials, Risk Management I, Trading Psychology Fundamentals",
-      "The Specialist Pathway: Institutional Concepts (Order Blocks, Fair Value Gaps), Liquidity Engineering, Advanced Market Structure, Risk Management II",
-      "50+ Professional HD Video Lessons with on-screen graphics and chart annotations",
-      "Interactive Quizzes as Knowledge Gates - mandatory progression system",
-      "Downloadable Arsenal: Trading Plan Templates, Strategy Checklists, Quick-Reference Guides",
-      "Modular Learning: 5-10 minute focused sessions for any schedule",
-      "Scenario-Based Testing: Practical application over rote memorization"
+      "The Foundation Pathway (Beginner to Intermediate): Market Mechanics, Advanced Candlestick Interpretation, Charting Essentials, Risk Management I, Trading Psychology Fundamentals - transforming you from confusion to confident trade placement and management",
+      "The Specialist Pathway (Intermediate to Advanced): Institutional Concepts (Order Blocks, Fair Value Gaps), Liquidity Engineering, Advanced Market Structure, Risk Management II (Portfolio Hedging), High-Performance Mindset - transition to lethal market analyst with smart money perspective",
+      "50+ Professional HD Video Lessons: Professionally produced, concise lessons with on-screen graphics, chart annotations, and clear explanations making complex topics digestible - no rambling, no fluff",
+      "Interactive Quizzes & Knowledge Gates: Mandatory quizzes that act as 'knowledge gates' ensuring mastery before progression, preventing weak foundations with scenario-based questions testing practical application",
+      "Downloadable Arsenal: Trading Plan Templates (professional-grade structured templates), Strategy Checklists (printable checklists for core strategies like 'The Liquidity Sweep Entry Model'), Cheat Sheets (quick-reference guides for candlestick patterns, chart formations, session timings)",
+      "Modular Micro-Learning: Courses broken into 5-10 minute focused sessions allowing learning to fit any schedule with maximum retention",
+      "Netflix-Style Video Interface: Category-based content organization (Beginner, Intermediate, Advanced) with progress tracking and completion percentages",
+      "Learning Pathways with Certificates: Structured progression with completion certificates and achievement tracking",
+      "Course Structure with Lessons and Quizzes: Comprehensive curriculum with user progress tracking throughout the entire educational journey"
     ]
   },
   {
     icon: TrendingUp,
     title: "Signal Stream: Your Professional Trade Blueprint",
-    description: "The Signal Stream is your 'over-the-shoulder' view of our professional analysts at work. Designed to generate potential profits while providing a masterclass in professional trade planning.",
+    description: "The Signal Stream is your 'over-the-shoulder' view of our professional analysts at work. It's designed to be a dual-purpose tool: generate potential profits for you while simultaneously providing a masterclass in professional trade planning.",
     features: [
-      "Precision Parameters: Exact Entry Price, Hard Stop Loss, Up to 5 Take Profit levels",
-      "Multi-TP Strategy: Advanced trade management with partial profit taking and stop loss adjustment",
-      "Analyst's Commentary: Brief but potent notes explaining the 'why' behind each trade",
-      "Live Price Integration: Pulsating live price feed on alert cards with visual proximity indicators",
-      "Automated Status & TP Tracking: Real-time trade progression with visual updates and notifications",
-      "Risk Calculator Integration: One-click position sizing with pre-filled entry and stop loss prices",
-      "24/5 Market Monitoring: Professional analysts covering major currency pairs around the clock"
+      "Precision Parameters: More than just 'Buy Gold' - exact Entry Price (e.g., 2342.50), hard Stop Loss (e.g., 2338.00), and up to 5 Take Profit (TP) levels for complete trade plans",
+      "Multi-TP Advanced Strategy: Crucial trade management teaching - de-risk by taking partial profits at TP1, move stop loss to breakeven, let rest of position run for maximum winner potential",
+      "Analyst's Commentary ('The Why'): Each alert includes brief but potent notes explaining rationale (e.g., 'Bullish divergence on H4, targeting daily liquidity at 2360') - mini-lessons in themselves",
+      "Live Price Integration Dashboard: Pulsating dot or live number showing current market price directly on alert card - visual proximity to entry/exit levels without screen switching",
+      "Automated Status & TP Tracking: System monitors price feed, visually updates when TP levels hit, greys out completed levels, triggers notifications for real-time trade progression feedback",
+      "Risk Calculator Integration: 'Calculate Position Size' button pre-fills entry and stop-loss prices into Risk Calculator - just enter account balance and risk % for perfect lot size",
+      "Professional Signal Streaming: WebSocket technology with role-based signal creation (Educators/Admins only), live price integration, signal status management (pending → active → closed)",
+      "Take Profit Tracking: Multiple TP levels (TP1-TP5) with advanced filtering by status, type, educator, asset",
+      "Signal Sharing & Notifications: Follower notifications system with comprehensive signal management tools",
+      "24/5 Market Coverage: Professional analysts monitoring and providing signals across all major trading sessions"
     ]
   },
   {
     icon: Radio,
     title: "Live Sessions: The Virtual Trading Floor",
-    description: "Direct, unfiltered access to the mind of a professional trader during the most critical hours of the trading day. Your chance to ask questions you can't find answers to in books or videos.",
+    description: "To provide direct, unfiltered access to the mind of a professional trader during the most critical hours of the trading day. This is your chance to ask the questions you can't find answers to in books or videos.",
     features: [
-      "Pre-Session Briefing: Economic calendar review, market themes, and key levels identification",
-      "Live Analysis & Execution: Real-time top-down analysis with live trade execution when valid setups appear",
-      "Interactive Q&A Throughout: Direct questions to hosts via dedicated moderator for instant feedback",
-      "Professional Zoom Integration: High-quality audio/video with robust interactive features",
-      "Event Calendar & Notifications: Scheduled sessions with 15-minute email/push notifications",
-      "The Archive Vault: Searchable recorded sessions with timestamps for key topics",
-      "Daily Coverage: Key market sessions including London and New York openings"
+      "Pre-Session Briefing (First 15 mins): Host reviews economic calendar for the day, outlines major market themes, identifies key assets and levels being watched",
+      "Live Analysis & Execution (Core Session): Heart of the session - host shares charting platform, performs top-down analysis, identifies potential setups real-time, explains reasoning. Live trade execution when valid setups appear",
+      "Interactive Q&A Throughout: Not a lecture but a workshop - dedicated moderator feeds chat questions to host for live answers. Ask about unwatched pairs, get opinions on your analysis, clarify concepts",
+      "Professional Zoom SDK Integration: Professional Zoom webinar setup for high-quality audio/video and robust interactive features with stream embedding and fallback options",
+      "Event Calendar & Notifications: Upcoming sessions listed in event calendar with opt-in email/push notifications 15 minutes before sessions go live",
+      "The Archive Vault: Every session recorded, timestamped with key topics, uploaded to searchable archive within 24 hours. Search 'Fed day analysis' or 'Gold breakout' for exact moments",
+      "Session Scheduling & Management: Auto-start functionality for scheduled sessions with role-based access (Educators host, Members view)",
+      "Daily Scheduled Sessions: Coverage of key market openings like London and New York sessions at optimal trading times",
+      "Stream Recording & Replay: Session recording capabilities for those who miss live sessions or want to review key concepts multiple times"
     ]
   },
   {
     icon: MessageCircle,
     title: "Community Forum: The Collective Intelligence",
-    description: "A curated, professional ecosystem designed to foster collaboration, eliminate bad habits, and keep you connected to a network of serious, like-minded peers.",
+    description: "Trading is a lonely endeavor, but it doesn't have to be. The forum is a curated, professional ecosystem designed to foster collaboration, eliminate bad habits, and keep you connected to a network of serious, like-minded peers.",
     features: [
-      "Market-Specific Channels: #xauusd-gold, #eurusd-majors for focused asset discussion",
-      "Concept Channels: #risk-management, #ict-smc-concepts for deep strategy questions",
-      "Performance Channels: #trade-review, #psychology-check-in for growth-focused discussions",
-      "The 'Second Opinion' Advantage: Community validation before trade execution",
-      "Crowdsourced Strategy Refinement: Collaborative backtesting and strategy development",
-      "Analyst & Moderator Presence: Professional analysts providing daily market outlooks",
-      "Judgment-Free Growth Zone: Safe space for discussing wins, losses, and psychological struggles"
+      "Market-Specific Channels: #xauusd-gold, #eurusd-majors for focused asset-specific discussion and chart analysis with targeted feedback",
+      "Concept Channels: #risk-management, #ict-smc-concepts for deep strategy questions and advanced trading concept discussions",
+      "Performance Channels: #trade-review, #psychology-check-in for posting winning/losing trades for community review and discussing psychological trading struggles - judgment-free growth zone",
+      "The 'Second Opinion' Advantage: Post charts and analysis before trade execution - second set of experienced eyes helps spot missed elements, validates ideas, or saves from bad trades",
+      "Crowdsourced Strategy Refinement: Share new strategy ideas for community backtesting, flaw identification, and rule refinement through collective wisdom",
+      "Analyst & Moderator Presence: Professional analysts actively participate providing daily market outlooks, answering questions, weighing in on community trade ideas with professional oversight",
+      "Forum System with Categories: Discussion, analysis, news, strategy with user following system for top traders and trading groups with shared journals",
+      "Achievement System with Gamification: Trading achievement tracking with verified trader profiles showing performance metrics",
+      "Post Engagement System: Likes, saves, and reply system for comprehensive community interaction and knowledge sharing",
+      "User Following & Trading Groups: Connect with top performers and join trading groups for shared learning and accountability"
     ]
   },
   {
     icon: Briefcase,
     title: "IB Partnership: Your Trading Business Empire",
-    description: "A fully-fledged, turnkey business opportunity. Build a significant, recurring income stream by leveraging the Imperial Trade brand and your personal network.",
+    description: "To provide our most ambitious members with a fully-fledged, turnkey business opportunity. We give you the tools, the structure, and the financial incentives to build a significant, recurring income stream by leveraging the power of the Imperial Trade brand and your personal network.",
     features: [
-      "6-Tier Progression: Hero ($6/lot) → Expert ($9/lot) → Specialist ($12/lot) → Ambassador ($15/lot) → Royal Ambassador ($18/lot) → Imperial ($20/lot)",
-      "IB Dashboard Mission Control: Real-time client tracking, live volume monitoring, earnings calculator, withdrawal interface",
-      "Marketing & Onboarding Arsenal: Personalized referral links, professional marketing suite, client onboarding support",
-      "Imperial Gold Club: Company-sponsored luxury retreats, exclusive cruises, leaderboard recognition",
-      "Volume-Based Transparent Metrics: Clear pathway to next tier based on monthly trading volume",
-      "Scalable Business Asset: Diversified income stream independent of personal trading P&L",
-      "Career Path Integration: Not just referrals - a complete business development opportunity"
+      "6-Tier Progression Path: Hero ($6/lot) → Expert ($9/lot) → Specialist ($12/lot) → Ambassador ($15/lot) → Royal Ambassador ($18/lot) → Imperial ($20/lot) based on total monthly trading volume with clear, transparent metrics",
+      "IB Dashboard Mission Control: Dynamic dashboard showing Client List (every linked client), Live Volume Tracking (progress bar to next rank), Earnings Calculator (real-time monthly earnings), Withdrawal Interface (clear payout requests and tracking)",
+      "Marketing & Onboarding Arsenal: Personalized Referral Link (automatic sign-up attribution), Marketing Suite (professionally designed banners, social media templates, email copy), Onboarding Support (client understanding and value materials)",
+      "Imperial Gold Club Exclusive Rewards: Company-Sponsored Retreats (all-expenses-paid luxury destinations), Luxury Cruises & Events (success celebration rewards), Leaderboard Recognition (public-facing top partner status)",
+      "Volume-Based Transparent Metrics: Clear pathway to next tier based on monthly trading volume - know exactly what's needed for advancement",
+      "Scalable Business Asset: Diversified income stream independent of personal trading P&L - long-term business asset building",
+      "Career Path Integration: Not just referrals but complete business development opportunity providing pathway to financial freedom",
+      "Real-time Analytics & Tracking: Live commission tracking, client activity monitoring, and performance analytics dashboard",
+      "Professional Marketing Materials: Access to high-quality promotional content and brand assets for effective client acquisition",
+      "Dedicated Support System: Comprehensive support for IB partners including training and business development assistance"
     ]
   }
 ];
@@ -103,85 +116,91 @@ const advancedTools = [
   {
     icon: BookOpenCheck,
     title: "Trading Journal: Ultimate Performance Optimizer",
-    description: "Turn your trade history into actionable data with effortless logging, AI coach feedback, and pattern insights that break negative trading habits.",
+    description: "To be the ultimate tool for self-reflection and performance optimization by turning your trade history into actionable data. This is the single most powerful tool for long-term improvement.",
     features: [
-      "Effortless Logging: Quick trade entry with asset, P&L, and personal notes",
-      "Screenshot Uploads: Attach chart screenshots for visual context and later review",
-      "AI Coach Feedback: Encouraging comments highlighting good practices and constructive takeaways",
-      "AI Pattern Insight: Detects recurring phrases like 'exited too early' or 'FOMO' and provides actionable insights",
-      "Gamification: Unlock achievements and track journaling streaks to build consistent review habits",
-      "Subconscious Bias Detection: Makes you aware of hidden trading patterns",
-      "Concrete Improvement Steps: Specific actions to fix identified negative patterns"
+      "Effortless Logging: Quickly log trades with key details - asset, P&L, and personal notes on why you took the trade with intuitive interface design",
+      "Screenshot Uploads: Attach chart screenshot to each entry for visual context and later review - essential for pattern recognition and learning",
+      "AI Coach Feedback: Upon submitting a trade, AI provides short, encouraging comment highlighting good practice or constructive takeaway, reinforcing positive habits",
+      "AI Pattern Insight: System analyzes your notes over time - detects recurring phrases like 'exited too early,' 'FOMO,' or 'revenge trade' and provides specific, actionable insights to break negative patterns",
+      "Gamification: Unlock achievements and track journaling 'streak' to build critical habit of consistent review with progress tracking and milestone rewards",
+      "Subconscious Bias Detection: Makes you aware of your subconscious trading biases and gives concrete steps to fix them",
+      "Trading Psychology Logging: Mood tracking and psychological state documentation for comprehensive performance analysis",
+      "Performance Analytics: Advanced metrics tracking including win rate analysis, average holding times, and profit factor calculations with visual charts and graphs"
     ]
   },
   {
     icon: Calendar,
     title: "Economic Calendar: Market Event Mastery",
-    description: "Stay ahead of high-impact news events that create massive market volatility. Either avoid them or capitalize on them with comprehensive event intelligence.",
+    description: "To ensure you are always aware of high-impact news events that can create massive market volatility, so you can either avoid them or capitalize on them. It turns news from a threat into an opportunity.",
     features: [
-      "Full Event Schedule: Complete listing of major economic events worldwide",
-      "Advanced Filtering: Filter by date (Today, This Week), Impact Level (High, Medium, Low), and Currency",
-      "Comprehensive Data: Previous, Forecast, and Actual data for instant impact assessment",
-      "Event Descriptions: Detailed explanations of what each event means and market importance",
-      "Volatility Preparation: Turn news from threat into opportunity",
-      "Multi-Currency Coverage: Global economic events affecting all major trading pairs",
-      "Real-Time Updates: Live data feeds for immediate market reaction analysis"
+      "Full Event Schedule: Lists all major economic events from around the world with comprehensive coverage of central bank decisions, employment data, inflation reports, and GDP releases",
+      "Advanced Filtering: Filter events by date (Today, This Week), Impact Level (High, Medium, Low), and by Currency with customizable view options for personalized market focus",
+      "Comprehensive Data: Shows 'Previous,' 'Forecast,' and 'Actual' data for each event, allowing instant assessment if news was better or worse than expected with color-coded impact indicators",
+      "Event Descriptions: Explains what each event means and why it's important for the market with detailed context and historical significance",
+      "Volatility Preparation: Prevents being caught on wrong side of sudden, news-driven market moves with pre-event alerts and suggested trading actions",
+      "Multi-Currency Coverage: Global economic events affecting all major trading pairs with timezone adjustments for local market hours",
+      "Real-Time Updates: Live data feeds for immediate market reaction analysis with push notifications for high-impact events",
+      "Historical Data Analysis: Access to past event impacts and market reactions for pattern recognition and strategy development"
     ]
   },
   {
     icon: ScanLine,
     title: "AI Trade Analyst: The Deconstructor",
-    description: "Get brutally honest, objective analysis of your trading performance. Upload screenshots from any platform and receive comprehensive reporting on your strengths and weaknesses.",
+    description: "To provide a deep, brutally honest, and objective analysis of your trading performance by having an AI review your actual trade history. It's like hiring a professional performance coach to review your work.",
     features: [
-      "Screenshot Analysis: Upload from any trading platform (MT4, TradingView, etc.)",
-      "Comprehensive Reporting: Win rate, risk management consistency, average risk/reward analysis",
-      "Trade Pattern Recognition: Identifies your most profitable setups and timing patterns",
-      "Strengths & Weaknesses: Explicit lists of what you're doing well and areas for improvement",
-      "Professional Performance Coaching: Like hiring a professional coach to review your work",
-      "Bias-Free Analysis: Emotion-free, objective assessment of your trading performance",
-      "Clear Improvement Roadmap: Specific steps to enhance your trading consistency"
+      "Screenshot Analysis: Upload screenshots from any trading platform (MT4, TradingView, etc.) for comprehensive visual trade analysis",
+      "Comprehensive Reporting: AI analyzes all visible trades and generates detailed report covering win rate, risk management consistency, average risk/reward, and identifies most profitable setups",
+      "Trade Pattern Recognition: Identifies your most profitable setups and timing patterns with detailed breakdowns of successful vs. unsuccessful trade characteristics",
+      "Strengths & Weaknesses: Report explicitly lists what you're doing well (e.g., 'Excellent entry timing on pullbacks') and where you need improvement (e.g., 'Consistently cutting winners short')",
+      "Professional Performance Coaching: Shows you the truth of your trading, free from emotion or bias, and gives clear roadmap for improvement",
+      "Bias-Free Analysis: Emotion-free, objective assessment of your trading performance eliminating self-deception and confirmation bias",
+      "Clear Improvement Roadmap: Specific steps to enhance trading consistency with actionable recommendations and practice exercises",
+      "Portfolio Performance Tracking: Advanced P&L calculations and portfolio analytics with real-time tracking and historical performance analysis"
     ]
   },
   {
     icon: TestTube,
     title: "AI Opportunity Scanner: The Signal Finder",
-    description: "Save hours of screen time with 24/7 automated market scanning for high-probability trading setups across all major markets using proven strategies.",
+    description: "To save you hours of screen time by proactively scanning all major markets 24/7 for high-probability trading setups that match proven strategies. It acts as your personal research assistant.",
     features: [
-      "Automated Market Scanning: Constantly monitors Forex, Commodities, Indices, and Crypto",
-      "Pattern Recognition: Identifies breakouts, trend reversals, and volatility squeezes",
-      "High-Probability Alerts: Complete setup details with instrument, type, key levels, and probability scores",
-      "24/7 Market Coverage: Never miss opportunities even when away from charts",
-      "Multiple Asset Classes: Comprehensive coverage across all tradeable instruments",
-      "Proven Strategy Filters: Based on institutional and retail-tested trading strategies",
-      "Personal Research Assistant: Acts as your dedicated market opportunity scout"
+      "Automated Market Scanning: AI constantly monitors Forex, Commodities, Indices, and Crypto markets with sophisticated algorithms analyzing price action patterns",
+      "Pattern Recognition: Identifies key technical patterns like breakouts from consolidation, major trend reversals, and volatility squeezes using institutional-grade analysis",
+      "High-Probability Alerts: When quality setup identified, generates signal with instrument, type of setup, key levels to watch, and probability score with detailed reasoning",
+      "24/7 Market Coverage: Ensures you never miss potential A+ trading opportunity, even when away from charts with intelligent alert prioritization",
+      "Multiple Asset Classes: Comprehensive coverage across all tradeable instruments including major forex pairs, commodities, indices, and cryptocurrencies",
+      "Proven Strategy Filters: Based on institutional and retail-tested trading strategies with backtested performance metrics",
+      "Personal Research Assistant: Acts as dedicated market opportunity scout with customizable scanning parameters and user preference learning",
+      "Market Alerts System: Custom conditions and real-time notifications for specific market movements and setup completions"
     ]
   },
   {
     icon: Shield,
     title: "AI Risk Simulator: Trade War-Gaming",
-    description: "War-game potential trades before risking real capital. Get AI-powered feedback on trade viability with risk assessment and probability analysis.",
+    description: "To allow you to 'war-game' a potential trade before risking real capital, getting AI-powered feedback on its viability. It adds crucial layer of confirmation to your trade planning.",
     features: [
-      "Trade Setup Input: Enter instrument, entry price, stop loss, and take profit parameters",
-      "AI Risk Assessment: Analysis against current volatility, historical data, and technical levels",
-      "Viability Score: Overall risk score with stop loss vs. take profit probability assessment",
-      "Risk-Reward Validation: Feedback on proposed risk-to-reward ratios",
-      "Trade Confirmation Layer: Kill bad ideas before they cost money, validate good ones",
-      "Market Context Analysis: Current market conditions impact on proposed trade",
-      "Confidence Building: Increase conviction in well-planned trades"
+      "Trade Setup Input: Enter parameters of trade you're considering - instrument, entry price, stop loss, and take profit with intuitive interface for quick analysis",
+      "AI Risk Assessment: AI analyzes proposed trade against current market volatility, historical data, and key technical levels with sophisticated risk modeling",
+      "Viability Score: Provides overall risk score, probability of hitting stop loss vs. take profit, and feedback on proposed risk-to-reward ratio with detailed explanation",
+      "Risk-Reward Validation: Helps kill bad trade ideas before they cost money and validates good ones, increasing confidence in decision-making process",
+      "Trade Confirmation Layer: Additional verification step preventing impulsive trading decisions with objective analysis free from emotional bias",
+      "Market Context Analysis: Current market conditions impact assessment on proposed trade with volatility and correlation analysis",
+      "Confidence Building: Increases conviction in well-planned trades through systematic validation process and risk quantification",
+      "Risk Management Calculators: Advanced position sizing tools and portfolio risk assessment with scenario analysis and stress testing"
     ]
   },
   {
     icon: Calculator,
     title: "Risk Calculator: Position Sizing Mastery",
-    description: "The single most important variable in trading: position size. Fast, accurate calculations for all instruments using correct formulas for survival and profitability.",
+    description: "To provide a simple, fast, and deadly accurate way to calculate the single most important variable in trading: position size. This tool is the key to survival and long-term profitability.",
     features: [
-      "Multi-Asset Calculation: Accurate formulas for Gold, JPY pairs, standard Forex, and Crypto",
-      "Risk-Based Sizing: Input account balance, risk percentage, and stop distance for exact lot size",
-      "Forward Calculation: Input lot size to see exact risk amount and potential profit",
-      "Live Metrics: Instant Risk:Reward ratio and account percentage at risk display",
-      "Capital Protection: Ensures you never lose more than planned on a single trade",
-      "Long-Term Profitability: Key to staying in the game and building consistent profits",
-      "Professional Risk Management: Industry-standard position sizing methodology"
+      "Multi-Asset Calculation: Accurately calculates risk for all instruments, using correct formulas for Gold, JPY pairs, standard Forex, and Crypto with precision to decimal places",
+      "Risk-Based Sizing: Input account balance, desired risk percentage (e.g., 1%), and stop loss distance - tells you exact lot size to use for optimal position sizing",
+      "Forward Calculation: Alternatively, input lot size and it will show exact amount of money you're risking and potential profit with comprehensive P&L projections",
+      "Live Metrics: Shows Risk:Reward ratio and percentage of account at risk instantly with real-time calculations and visual indicators",
+      "Capital Protection: Ensures you can never lose more than planned on single trade, protecting capital and allowing you to stay in the game",
+      "Long-Term Profitability: Industry-standard position sizing methodology for building consistent profits and managing portfolio risk",
+      "Professional Risk Management: Advanced risk metrics including portfolio correlation analysis and maximum drawdown calculations",
+      "Multi-Asset Portfolio Risk: Comprehensive portfolio-level risk assessment across different asset classes and trading strategies with correlation adjustments"
     ]
   }
 ];

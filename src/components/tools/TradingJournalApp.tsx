@@ -1233,7 +1233,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-4 space-y-3 min-h-[400px] bg-gradient-to-b from-background to-transparent">
+              <CardContent className="p-4 space-y-3 min-h-[500px] bg-gradient-to-b from-background to-transparent">
                 {analyticsView === "ai" ? (
                   <div className="space-y-3 p-4 bg-card/50 backdrop-blur-sm rounded-lg border border-border/30">
                     <motion.div
@@ -1321,20 +1321,20 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="relative h-96 flex items-center justify-center">
+                    <div className="relative h-80 flex items-start justify-center pt-4">
                       <svg
-                        width="400"
-                        height="400"
-                        viewBox="0 0 400 400"
+                        width="320"
+                        height="320"
+                        viewBox="0 0 320 320"
                         className="transform -rotate-90"
                       >
                         <circle
-                          cx="200"
-                          cy="200"
-                          r="140"
+                          cx="160"
+                          cy="160"
+                          r="120"
                           fill="none"
                           stroke={theme === "dark" ? "#2d2d2d" : "#e5e7eb"}
-                          strokeWidth="48"
+                          strokeWidth="40"
                         />
                         {mostTradedData.map((item, index) => {
                           const total = mostTradedData.reduce(
@@ -1342,7 +1342,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                             0
                           );
                           const percentage = (item.count / total) * 100;
-                          const circumference = 2 * Math.PI * 140;
+                          const circumference = 2 * Math.PI * 120;
                           const strokeDasharray = `${
                             (percentage / 100) * circumference
                           } ${circumference}`;
@@ -1355,12 +1355,12 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           return (
                             <motion.circle
                               key={item.asset}
-                              cx="200"
-                              cy="200"
-                              r="140"
+                              cx="160"
+                              cy="160"
+                              r="120"
                               fill="none"
                               stroke={colors[index]}
-                              strokeWidth="48"
+                              strokeWidth="40"
                               strokeDasharray={strokeDasharray}
                               strokeDashoffset={strokeDashoffset}
                               initial={{

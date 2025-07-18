@@ -310,6 +310,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_job_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          execution_time: string
+          id: string
+          job_name: string
+          records_affected: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          execution_time?: string
+          id?: string
+          job_name: string
+          records_affected?: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          execution_time?: string
+          id?: string
+          job_name?: string
+          records_affected?: number
+          status?: string
+        }
+        Relationships: []
+      }
       economic_events: {
         Row: {
           country: string
@@ -1626,6 +1656,10 @@ export type Database = {
       get_community_tier_info: {
         Args: { tier_level: number }
         Returns: Json
+      }
+      update_expired_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
     }
     Enums: {

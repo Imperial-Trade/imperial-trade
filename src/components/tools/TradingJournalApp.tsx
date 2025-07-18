@@ -214,6 +214,14 @@ const sampleTrades: Trade[] = [
 ];
 
 export const TradingJournalApp: React.FC = () => {
+  // Helper function to format date consistently without timezone issues
+  const formatDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const { theme } = useTheme();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -435,6 +443,8 @@ export const TradingJournalApp: React.FC = () => {
   // Handle date click with smooth transition animation
   const handleDateClick = useCallback(
     (dateStr: string, event: React.MouseEvent, openModal?: boolean) => {
+      console.log("🗓️ Date clicked:", dateStr, "Current date:", formatDateString(new Date()));
+      
       // Check if the date is in the future (using precise current time)
       const clickedDate = new Date(dateStr);
       const now = new Date();
@@ -719,7 +729,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
       for (let i = 0; i < 7; i++) {
         const date = new Date(startOfWeek);
         date.setDate(startOfWeek.getDate() + i);
-        const dateStr = date.toISOString().split("T")[0];
+        const dateStr = formatDateString(date);
         const dayTrades = trades.filter((t) => t.date === dateStr);
         const dayPnL = dayTrades.reduce((sum, t) => sum + t.pnl, 0);
         const isFuture = date > today;
@@ -825,10 +835,8 @@ Please provide a brief analysis focusing on what went well, what could be improv
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(
-        2,
-        "0"
-      )}-${String(day).padStart(2, "0")}`;
+      const dateStr = formatDateString(new Date(currentYear, currentMonth, day));
+      console.log("📅 Month view day", day, "dateStr:", dateStr);
       const dayTrades = trades.filter((t) => t.date === dateStr);
       const dayPnL = dayTrades.reduce((sum, t) => sum + t.pnl, 0);
       const isFuture = new Date(dateStr) > today;

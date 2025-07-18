@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 
 const AdvancedToolsPage: React.FC = () => {
+  // Clear any potential reference errors
   const tools = [
     {
       icon: FileText,

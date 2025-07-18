@@ -1,10 +1,9 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TypewriterText } from '@/components/ui/typewriter-text';
-import { CanvasWelcomeAnimation } from '@/components/ui/canvas-welcome-animation';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -75,7 +74,6 @@ export const DashboardHome: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.user_metadata?.access_level === 'admin';
   const isEducator = user?.user_metadata?.user_type === 'educator';
-  const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(true);
 
   // Get user's full name for the typewriter effect
   const getUserFullName = () => {
@@ -93,27 +91,13 @@ export const DashboardHome: React.FC = () => {
 
   const welcomeText = `Welcome, ${getUserFullName()}. The Imperial experience awaits.`;
 
-  // Handle animation completion
-  const handleAnimationComplete = () => {
-    setShowWelcomeAnimation(false);
-  };
-
   return (
     <div className="relative min-h-screen">
       {/* Video Background */}
       <VideoBackground />
       
-      {/* Welcome Animation Overlay within video section */}
-      {showWelcomeAnimation && (
-        <div className="absolute inset-0 z-20">
-          <CanvasWelcomeAnimation onComplete={handleAnimationComplete} />
-        </div>
-      )}
-      {/* Main Content - Hidden during animation */}
-      <div className={`transition-opacity duration-500 ${showWelcomeAnimation ? 'opacity-0' : 'opacity-100'}`}>
-        
-        {/* Hero Section with Typewriter Welcome */}
-        <div className="relative z-20 min-h-[70vh] flex items-center pt-12">
+      {/* Hero Section with Typewriter Welcome */}
+      <div className="relative z-20 min-h-[70vh] flex items-center pt-12">
         <div className="container mx-auto px-6 text-center mt-8">
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Welcome Message with Typewriter Effect */}
@@ -430,8 +414,6 @@ export const DashboardHome: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
-      {/* End of transition wrapper */}
       </div>
     </div>
   );

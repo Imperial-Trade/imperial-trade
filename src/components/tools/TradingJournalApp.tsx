@@ -1390,8 +1390,8 @@ Please provide a brief analysis focusing on what went well, what could be improv
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-center">
-                          <p className="text-xs text-blue-800">Total</p>
-                          <p className="text-sm font-bold text-blue-900">{trades.length}</p>
+                          <p className="text-xs text-muted-foreground">Total</p>
+                          <p className="text-sm font-bold">{trades.length}</p>
                         </div>
                       </div>
                     </div>

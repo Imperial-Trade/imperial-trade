@@ -81,6 +81,14 @@ interface JournalState {
   isDayViewActive: boolean;
 }
 
+// Move SESSIONS constant to global scope
+const SESSIONS = [
+  { value: "sydney", label: "Sydney (9PM-6AM GMT)" },
+  { value: "tokyo", label: "Tokyo (11PM-8AM GMT)" },
+  { value: "london", label: "London (7AM-4PM GMT)" },
+  { value: "newyork", label: "New York (12PM-9PM GMT)" },
+] as const;
+
 // Sample data for demo with multiple trades across different time periods
 const sampleTrades: Trade[] = [
   {
@@ -232,7 +240,6 @@ export const TradingJournalApp: React.FC = () => {
     setJournalState((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      // Initial load
       const { data: initialTrades, error } = await supabase
         .from("trade_journal_entries")
         .select("*")
@@ -266,7 +273,6 @@ export const TradingJournalApp: React.FC = () => {
 
       setTrades(mappedTrades);
 
-      // Setup real-time listener
       const channel = supabase
         .channel("trade_journal_updates")
         .on(
@@ -278,7 +284,6 @@ export const TradingJournalApp: React.FC = () => {
             filter: `user_id=eq.${user.id}`,
           },
           () => {
-            // Refetch data when changes occur
             supabase
               .from("trade_journal_entries")
               .select("*")
@@ -423,7 +428,7 @@ export const TradingJournalApp: React.FC = () => {
       ...prev,
       currentFilter: newFilter || prev.currentFilter,
       currentDate: newDate || prev.currentDate,
-      selectedDate: null, // Reset selected date when changing views
+      selectedDate: null,
     }));
   }, []);
 
@@ -451,18 +456,18 @@ export const TradingJournalApp: React.FC = () => {
     []
   );
 
-  // AI Analysis Function
-  const getAISummaryForTrade = async (trade: Partial<Trade>) => {
+  // AI Analysis Function - Fixed type compatibility
+  const getAISummaryForTrade = async (tradeData: TradeFormData) => {
     try {
       const prompt = `Analyze this trading data and provide insights:
-Asset: ${trade.asset}
-Direction: ${trade.direction}
-Outcome: ${trade.outcome}
-P/L: $${trade.pnl}
-Strategy: ${trade.strategy || "Not specified"}
-Emotion: ${trade.emotion || "Not specified"}
-Session: ${trade.session || "Not specified"}
-Notes: ${trade.notes || "None"}
+Asset: ${tradeData.asset}
+Direction: ${tradeData.direction}
+Outcome: ${tradeData.outcome}
+P/L: $${tradeData.pnl}
+Strategy: ${tradeData.strategy || "Not specified"}
+Emotion: ${tradeData.emotion || "Not specified"}
+Session: ${tradeData.session || "Not specified"}
+Notes: ${tradeData.notes || "None"}
 
 Please provide a brief analysis focusing on what went well, what could be improved, and any patterns you notice.`;
 
@@ -524,7 +529,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
         description: "Failed to save trade",
         variant: "destructive",
       });
-      throw error; // Re-throw to let the form handle the error state
+      throw error;
     }
   }, [user, toast]);
 
@@ -689,7 +694,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
     }
 
     if (journalState.currentFilter === "week") {
-      // Week view - single row of 7 days
       const startOfWeek = new Date(journalState.currentDate);
       startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
 
@@ -740,7 +744,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
     }
 
     if (journalState.currentFilter === "year") {
-      // Year view - 4x3 grid of mini-months
       const year = journalState.currentDate.getFullYear();
       const months = [];
 
@@ -801,12 +804,10 @@ Please provide a brief analysis focusing on what went well, what could be improv
 
     const days = [];
 
-    // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDayWeekday; i++) {
       days.push(<div key={`empty-${i}`} className="h-20" />);
     }
 
-    // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(
         2,
@@ -894,11 +895,10 @@ Please provide a brief analysis focusing on what went well, what could be improv
     const minPnL = Math.min(...data.map((d) => d.pnl));
     const range = maxPnL - minPnL || 100;
     const padding = range * 0.1;
-    const chartHeight = 320; // Increased height to accommodate date labels
+    const chartHeight = 320;
     const chartWidth = 1000;
-    const chartPadding = 30; // Increased bottom padding for date labels
+    const chartPadding = 30;
 
-    // Generate points for the line
     const points = data.map((point, index) => ({
       x:
         chartPadding +
@@ -908,11 +908,10 @@ Please provide a brief analysis focusing on what went well, what could be improv
         chartPadding +
         (chartHeight - chartPadding * 2 - 40) -
         ((point.pnl - minPnL + padding) / (range + 2 * padding)) *
-          (chartHeight - chartPadding * 2 - 40), // Reserve 40px for date labels
+          (chartHeight - chartPadding * 2 - 40),
       ...point,
     }));
 
-    // Generate smooth path
     const generatePath = () => {
       if (points.length < 2) return "";
 
@@ -921,8 +920,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
       for (let i = 1; i < points.length; i++) {
         const prevPoint = points[i - 1];
         const currentPoint = points[i];
-
-        // Simple smooth curve using quadratic bezier
         const midX = (prevPoint.x + currentPoint.x) / 2;
         const midY = (prevPoint.y + currentPoint.y) / 2;
 
@@ -936,7 +933,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
       return path;
     };
 
-    // Handle mouse movement over the SVG
     const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
       if (!svgRef.current) return;
 
@@ -944,7 +940,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
       const x = ((event.clientX - rect.left) / rect.width) * chartWidth;
       const y = ((event.clientY - rect.top) / rect.height) * chartHeight;
 
-      // Find closest point
       let closestIndex = 0;
       let closestDistance = Infinity;
 
@@ -956,7 +951,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
         }
       });
 
-      // Only show tooltip if mouse is reasonably close to a point
       if (closestDistance < 50) {
         setHoveredPoint(closestIndex);
         setMousePosition({
@@ -969,7 +963,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
       }
     };
 
-    // Y-axis labels
     const yAxisLabels = [];
     const labelCount = 5;
     for (let i = 0; i <= labelCount; i++) {
@@ -984,7 +977,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
 
     return (
       <div className="h-80 w-full relative">
-        {/* Increased height */}
         <svg
           ref={svgRef}
           width="100%"
@@ -997,7 +989,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
             setMousePosition(null);
           }}
         >
-          {/* Grid lines */}
           <defs>
             <pattern
               id="grid"
@@ -1022,7 +1013,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
             fill="url(#grid)"
           />
 
-          {/* Y-axis labels */}
           {yAxisLabels.map((label, index) => (
             <text
               key={index}
@@ -1036,9 +1026,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
             </text>
           ))}
 
-          {/* X-axis labels - Enhanced visibility */}
           {points.map((point, index) => {
-            // Show more date labels for better visibility
             const shouldShowLabel =
               index === 0 ||
               index === points.length - 1 ||
@@ -1065,7 +1053,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
             return null;
           })}
 
-          {/* Main line */}
           <motion.path
             d={generatePath()}
             fill="none"
@@ -1078,7 +1065,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
             transition={{ duration: 2, ease: "easeOut" }}
           />
 
-          {/* Data points */}
           {points.map((point, index) => (
             <motion.circle
               key={index}
@@ -1095,7 +1081,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
             />
           ))}
 
-          {/* Invisible overlay for better hover detection */}
           <rect
             x={chartPadding}
             y={chartPadding}
@@ -1106,7 +1091,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
           />
         </svg>
 
-        {/* Tooltip */}
         {hoveredPoint !== null && mousePosition && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
@@ -1150,7 +1134,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
           </motion.div>
         )}
 
-        {/* Current value display - moved to top right */}
         <div className="absolute top-4 right-4">
           <div className="text-sm text-muted-foreground text-right">
             Current Total
@@ -1332,7 +1315,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Donut Chart */}
                     <div className="relative h-32 flex items-center justify-center">
                       <svg
                         width="100"
@@ -1392,7 +1374,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
                       </div>
                     </div>
 
-                    {/* Legend */}
                     <div className="space-y-2">
                       {mostTradedData.map((item, index) => {
                         const total = mostTradedData.reduce(
@@ -1605,7 +1586,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
   // Main Dashboard View
   const DashboardView: React.FC = () => (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Trading Journal</h1>
@@ -1628,14 +1608,10 @@ Please provide a brief analysis focusing on what went well, what could be improv
         </Button>
       </div>
 
-      {/* Enhanced Dashboard Metrics */}
       <EnhancedDashboardMetrics metrics={metrics} />
 
-      {/* Main Content Row */}
       <div className="flex gap-4">
-        {/* Left Side - Analytics and Calendar */}
         <div className="flex-1 space-y-6">
-          {/* Performance Graph */}
           <Card
             className={cn(
               "h-96",
@@ -1658,7 +1634,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
             </CardContent>
           </Card>
 
-          {/* Time Filter Controls */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {(["today", "week", "month", "year", "all"] as ViewType[]).map(
@@ -1721,7 +1696,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
             </div>
           </div>
 
-          {/* Dynamic Calendar */}
           <Card
             className={cn(
               theme === "dark"
@@ -1734,7 +1708,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
             </CardContent>
           </Card>
 
-          {/* Trade Log */}
           <Card
             className={cn(
               theme === "dark"
@@ -1784,7 +1757,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
           </Card>
         </div>
 
-        {/* Right Side - Enhanced Stats Panel */}
         <EnhancedStatsPanel />
       </div>
     </div>

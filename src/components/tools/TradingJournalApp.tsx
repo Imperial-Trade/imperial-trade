@@ -1471,22 +1471,16 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   isDayViewActive: false,
                   currentFilter: prev.currentFilter,
                 }));
-                // Scroll to calendar view specifically, not too high up
+                // Scroll to calendar container
                 setTimeout(() => {
                   const calendarElement = document.querySelector('[data-calendar-view]');
                   if (calendarElement) {
-                    const rect = calendarElement.getBoundingClientRect();
-                    const elementTop = rect.top + window.pageYOffset;
-                    const offset = window.innerHeight / 2 - rect.height / 2;
-                    window.scrollTo({ 
-                      top: Math.max(0, elementTop - offset), 
-                      behavior: 'smooth' 
+                    calendarElement.scrollIntoView({ 
+                      behavior: 'smooth', 
+                      block: 'center' 
                     });
-                  } else {
-                    // Fallback: scroll to a reasonable position, not the very top
-                    window.scrollTo({ top: 200, behavior: 'smooth' });
                   }
-                }, 200);
+                }, 100);
               }}
               className="flex items-center gap-2"
             >

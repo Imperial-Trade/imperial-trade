@@ -1588,7 +1588,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Trading Journal</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-600 to-amber-700 bg-clip-text text-transparent">Journal XX</h1>
           <p className="text-muted-foreground">
             Your intelligent trading companion
           </p>

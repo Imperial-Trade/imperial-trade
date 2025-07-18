@@ -197,19 +197,29 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     return (
       <motion.button
         onClick={() => handleToolClick(tool)}
-        className={`${sizeClasses[size]} bg-black dark:bg-white backdrop-blur-sm rounded-2xl p-3 shadow-sm border border-gray-200/20 dark:border-gray-700/30 transition-all duration-300 hover:shadow-md hover:scale-[1.02] ${
-          isActive ? 'ring-2 ring-primary/50 shadow-lg' : ''
+        className={`${sizeClasses[size]} bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-2xl p-3 shadow-lg border border-white/20 dark:border-white/10 transition-all duration-300 group ${
+          isActive ? 'ring-2 ring-primary/50 shadow-2xl bg-white/20 dark:bg-black/30' : ''
         }`}
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.98 }}
+        whileHover={{ 
+          y: -4,
+          scale: 1.03,
+          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          backgroundColor: "rgba(255, 255, 255, 0.15)"
+        }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 400, damping: 17 }}
       >
         <div className="flex flex-col h-full gap-2">
           <div className="flex items-start justify-between mb-1">
-            <h3 className={`font-medium text-xs leading-tight ${isActive ? 'text-primary' : 'text-white dark:text-black'}`}>
+            <h3 className={`font-medium text-xs leading-tight transition-colors duration-200 group-hover:text-primary ${isActive ? 'text-primary' : 'text-foreground/80'}`}>
               {tool.name}
             </h3>
             {isActive && (
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
+              <motion.div 
+                className="w-2 h-2 rounded-full bg-primary flex-shrink-0"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
             )}
           </div>
           <div className="flex-1 min-h-0">
@@ -234,10 +244,14 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
   return (
     <motion.aside
-      className={`h-[calc(100vh-5rem)] w-72 bg-card/95 backdrop-blur-md border border-border/50 rounded-lg overflow-y-auto shadow-xl ${className}`}
+      className={`h-[calc(100vh-5rem)] w-72 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-y-auto shadow-2xl ${className}`}
       initial={{ x: -300, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
+      whileHover={{ 
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        scale: 1.01
+      }}
     >
       <div className="p-4 h-full">
         {/* Header */}
@@ -269,12 +283,21 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
         {/* Profile and Controls Section */}
         <div className="mt-6 relative">
-          <div className="bg-gray-800 dark:bg-gray-200 rounded-2xl p-4">
+          <motion.div 
+            className="bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-white/20 dark:border-white/10"
+            whileHover={{ 
+              backgroundColor: "rgba(255, 255, 255, 0.15)",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)"
+            }}
+            transition={{ duration: 0.2 }}
+          >
             <div className="flex items-center justify-between">
               {/* Profile Section */}
-              <button 
-                className="flex items-center gap-3 hover:bg-gray-700 dark:hover:bg-gray-300 rounded-lg p-2 -m-2 transition-colors"
+              <motion.button 
+                className="flex items-center gap-3 hover:bg-white/10 dark:hover:bg-black/20 rounded-lg p-2 -m-2 transition-all duration-200"
                 onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                   <span className="text-white text-xs font-medium">
@@ -282,24 +305,28 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                   </span>
                 </div>
                 <div className="text-left">
-                  <div className="text-white dark:text-black text-sm font-medium">
+                  <div className="text-foreground text-sm font-medium">
                     {user?.email?.split('@')[0] || 'User'}
                   </div>
-                  <div className="text-gray-400 dark:text-gray-600 text-xs">
+                  <div className="text-foreground/60 text-xs">
                     {user?.user_metadata?.access_level === 'admin' ? 'Administrator' : 'Member'}
                   </div>
                 </div>
-              </button>
+              </motion.button>
               
               {/* Controls */}
               <div className="flex items-center gap-2">
-                <button className="p-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors">
-                  <Bell className="w-4 h-4 text-gray-400 dark:text-gray-600" />
-                </button>
+                <motion.button 
+                  className="p-2 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <Bell className="w-4 h-4 text-foreground/60" />
+                </motion.button>
                 <ThemeToggle />
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Profile Dropdown */}
           {showProfileDropdown && (
@@ -308,54 +335,62 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="absolute top-full left-0 right-0 mt-2 bg-gray-800 dark:bg-gray-200 rounded-2xl shadow-lg border border-gray-700 dark:border-gray-300 z-50"
+              className="absolute top-full left-0 right-0 mt-2 bg-white/15 dark:bg-black/25 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 z-50"
             >
               <div className="p-2">
-                <button
+                <motion.button
                   onClick={() => {
                     setShowProfileDropdown(false);
                     window.location.href = '/dashboard/my-progress';
                   }}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-700 dark:hover:bg-gray-300 rounded-lg transition-colors"
+                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
+                  whileHover={{ scale: 1.02, x: 4 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <BarChart3 className="w-4 h-4 text-white dark:text-black" />
-                  <span className="text-white dark:text-black text-sm">My Progress</span>
-                </button>
+                  <BarChart3 className="w-4 h-4 text-foreground" />
+                  <span className="text-foreground text-sm">My Progress</span>
+                </motion.button>
                 
-                <button
+                <motion.button
                   onClick={() => {
                     setShowProfileDropdown(false);
                     window.location.href = '/dashboard/administration';
                   }}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-700 dark:hover:bg-gray-300 rounded-lg transition-colors"
+                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
+                  whileHover={{ scale: 1.02, x: 4 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Settings className="w-4 h-4 text-white dark:text-black" />
-                  <span className="text-white dark:text-black text-sm">Administration</span>
-                </button>
+                  <Settings className="w-4 h-4 text-foreground" />
+                  <span className="text-foreground text-sm">Administration</span>
+                </motion.button>
                 
                 {user?.user_metadata?.access_level === 'admin' && (
-                  <button
+                  <motion.button
                     onClick={() => {
                       setShowProfileDropdown(false);
                       window.location.href = '/dashboard/admin-panel';
                     }}
-                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-700 dark:hover:bg-gray-300 rounded-lg transition-colors"
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <Shield className="w-4 h-4 text-white dark:text-black" />
-                    <span className="text-white dark:text-black text-sm">Admin Panel</span>
-                  </button>
+                    <Shield className="w-4 h-4 text-foreground" />
+                    <span className="text-foreground text-sm">Admin Panel</span>
+                  </motion.button>
                 )}
                 
-                <button
+                <motion.button
                   onClick={() => {
                     setShowProfileDropdown(false);
                     handleSignOut();
                   }}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-red-600 dark:hover:bg-red-400 rounded-lg transition-colors text-red-400 dark:text-red-600 hover:text-white dark:hover:text-white"
+                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-red-500/20 rounded-lg transition-all duration-200 text-red-400 hover:text-red-300"
+                  whileHover={{ scale: 1.02, x: 4 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   <LogOut className="w-4 h-4" />
                   <span className="text-sm">Sign Out</span>
-                </button>
+                </motion.button>
               </div>
             </motion.div>
           )}

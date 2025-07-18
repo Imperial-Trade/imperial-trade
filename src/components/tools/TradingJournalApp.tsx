@@ -4,23 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -51,6 +34,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import AddTradeModal from "@/components/trading/AddTradeModal";
+import { TradeFormData } from "@/hooks/useTradeForm";
 
 // Enhanced Types
 interface Trade {
@@ -95,42 +80,6 @@ interface JournalState {
   isLoading: boolean;
   isDayViewActive: boolean;
 }
-
-// AI Analysis Strategies
-const TRADING_STRATEGIES = [
-  "Breakout",
-  "Reversal",
-  "Trend Following",
-  "Support/Resistance",
-  "Fibonacci",
-  "Moving Average",
-  "RSI Divergence",
-  "News Trading",
-  "Scalping",
-  "Swing Trading",
-  "Day Trading",
-  "Custom Strategy",
-];
-
-const EMOTIONS = [
-  "Confident",
-  "Anxious",
-  "Greedy",
-  "Fearful",
-  "Neutral",
-  "Excited",
-  "Frustrated",
-  "Disciplined",
-  "Impulsive",
-  "Focused",
-];
-
-const SESSIONS = [
-  { value: "sydney", label: "Sydney (9PM-6AM GMT)" },
-  { value: "tokyo", label: "Tokyo (11PM-8AM GMT)" },
-  { value: "london", label: "London (7AM-4PM GMT)" },
-  { value: "newyork", label: "New York (12PM-9PM GMT)" },
-];
 
 // Sample data for demo with multiple trades across different time periods
 const sampleTrades: Trade[] = [
@@ -274,7 +223,6 @@ export const TradingJournalApp: React.FC = () => {
   const [trades, setTrades] = useState<Trade[]>(sampleTrades);
   const [showStats, setShowStats] = useState(true);
   const [showAddTradeModal, setShowAddTradeModal] = useState(false);
-  const [newTrade, setNewTrade] = useState<Partial<Trade>>({});
   const dayViewRef = useRef<HTMLDivElement>(null);
 
   // Real-time database sync with Supabase
@@ -529,8 +477,8 @@ Please provide a brief analysis focusing on what went well, what could be improv
     }
   };
 
-  // Save trade with AI analysis
-  const saveTrade = async (tradeData: Partial<Trade>) => {
+  // Optimized save trade handler
+  const handleSaveTrade = useCallback(async (tradeData: TradeFormData & { date: string }) => {
     if (!user) return;
 
     try {
@@ -540,7 +488,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
         trade_type: (tradeData.direction === "long" ? "Long" : "Short") as
           | "Long"
           | "Short",
-        pnl: tradeData.pnl || 0,
+        pnl: tradeData.pnl as number,
         trade_date: tradeData.date,
         entry_price: tradeData.entry_price,
         exit_price: tradeData.exit_price,
@@ -569,9 +517,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
         title: "Trade Saved",
         description: "Your trade has been logged successfully",
       });
-
-      setShowAddTradeModal(false);
-      setNewTrade({});
     } catch (error) {
       console.error("Error saving trade:", error);
       toast({
@@ -579,8 +524,27 @@ Please provide a brief analysis focusing on what went well, what could be improv
         description: "Failed to save trade",
         variant: "destructive",
       });
+      throw error; // Re-throw to let the form handle the error state
     }
+  }, [user, toast]);
+
+  // Get most traded assets
+  const getMostTradedAssets = () => {
+    const assetCounts = trades.reduce((acc, trade) => {
+      acc[trade.asset] = (acc[trade.asset] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(assetCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([asset, count]) => ({ asset, count }));
   };
+
+  // State for analytics toggle
+  const [analyticsView, setAnalyticsView] = useState<"ai" | "most-traded">(
+    "ai"
+  );
 
   // Enhanced Dashboard Metrics with more insights
   const EnhancedDashboardMetrics: React.FC<{ metrics: DashboardMetrics }> = ({
@@ -897,24 +861,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
       </div>
     );
   };
-
-  // Get most traded assets
-  const getMostTradedAssets = () => {
-    const assetCounts = trades.reduce((acc, trade) => {
-      acc[trade.asset] = (acc[trade.asset] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(assetCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
-      .map(([asset, count]) => ({ asset, count }));
-  };
-
-  // State for analytics toggle
-  const [analyticsView, setAnalyticsView] = useState<"ai" | "most-traded">(
-    "ai"
-  );
 
   // Simple Equity Curve Chart Component matching reference design
   const EquityCurveChart: React.FC<{
@@ -1656,211 +1602,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
     );
   };
 
-  // Add Trade Modal
-  const AddTradeModal: React.FC = () => (
-    <Dialog open={showAddTradeModal} onOpenChange={setShowAddTradeModal}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Log New Trade
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="asset">Asset</Label>
-              <Input
-                id="asset"
-                placeholder="e.g., EURUSD"
-                value={newTrade.asset || ""}
-                onChange={(e) =>
-                  setNewTrade((prev) => ({ ...prev, asset: e.target.value }))
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="pnl">P&L ($)</Label>
-              <Input
-                id="pnl"
-                type="number"
-                step="0.01"
-                placeholder="150.00"
-                value={newTrade.pnl || ""}
-                onChange={(e) =>
-                  setNewTrade((prev) => ({
-                    ...prev,
-                    pnl: parseFloat(e.target.value),
-                  }))
-                }
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Direction</Label>
-              <div className="flex gap-2 mt-1">
-                <Button
-                  type="button"
-                  variant={
-                    newTrade.direction === "long" ? "default" : "outline"
-                  }
-                  size="sm"
-                  onClick={() =>
-                    setNewTrade((prev) => ({ ...prev, direction: "long" }))
-                  }
-                >
-                  Long
-                </Button>
-                <Button
-                  type="button"
-                  variant={
-                    newTrade.direction === "short" ? "default" : "outline"
-                  }
-                  size="sm"
-                  onClick={() =>
-                    setNewTrade((prev) => ({ ...prev, direction: "short" }))
-                  }
-                >
-                  Short
-                </Button>
-              </div>
-            </div>
-            <div>
-              <Label>Outcome</Label>
-              <div className="flex gap-2 mt-1">
-                <Button
-                  type="button"
-                  variant={newTrade.outcome === "win" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() =>
-                    setNewTrade((prev) => ({ ...prev, outcome: "win" }))
-                  }
-                >
-                  Win
-                </Button>
-                <Button
-                  type="button"
-                  variant={
-                    newTrade.outcome === "loss" ? "destructive" : "outline"
-                  }
-                  size="sm"
-                  onClick={() =>
-                    setNewTrade((prev) => ({ ...prev, outcome: "loss" }))
-                  }
-                >
-                  Loss
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4 border-t pt-4">
-            <h4 className="font-medium text-sm">AI Coach Data Points</h4>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="strategy">Strategy</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setNewTrade((prev) => ({ ...prev, strategy: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select strategy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRADING_STRATEGIES.map((strategy) => (
-                      <SelectItem key={strategy} value={strategy}>
-                        {strategy}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="emotion">Emotion</Label>
-                <Select
-                  onValueChange={(value) =>
-                    setNewTrade((prev) => ({ ...prev, emotion: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select emotion" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EMOTIONS.map((emotion) => (
-                      <SelectItem key={emotion} value={emotion}>
-                        {emotion}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="session">Trading Session</Label>
-              <Select
-                onValueChange={(value) =>
-                  setNewTrade((prev) => ({ ...prev, session: value as any }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select session" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SESSIONS.map((session) => (
-                    <SelectItem key={session.value} value={session.value}>
-                      {session.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              placeholder="What happened? What did you learn?"
-              value={newTrade.notes || ""}
-              onChange={(e) =>
-                setNewTrade((prev) => ({ ...prev, notes: e.target.value }))
-              }
-            />
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowAddTradeModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() =>
-                saveTrade({
-                  ...newTrade,
-                  date:
-                    journalState.selectedDate ||
-                    new Date().toISOString().split("T")[0],
-                })
-              }
-              disabled={!newTrade.asset || newTrade.pnl === undefined}
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Save Trade
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
   // Main Dashboard View
   const DashboardView: React.FC = () => (
     <div className="space-y-6">
@@ -2066,7 +1807,12 @@ Please provide a brief analysis focusing on what went well, what could be improv
         )}
       </AnimatePresence>
 
-      <AddTradeModal />
+      <AddTradeModal
+        isOpen={showAddTradeModal}
+        onClose={() => setShowAddTradeModal(false)}
+        onSave={handleSaveTrade}
+        selectedDate={journalState.selectedDate || undefined}
+      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
   BookOpen, 
   TrendingUp, 
@@ -19,7 +20,9 @@ import {
   ScanLine,
   TestTube,
   BookOpenCheck,
-  Radio
+  Radio,
+  Bell,
+  GraduationCap
 } from 'lucide-react';
 import ContentSection from '@/components/landing/ContentSection';
 
@@ -183,7 +186,38 @@ const advancedTools = [
   }
 ];
 
+const navigationTabs = [
+  { id: 'tools', name: 'Advanced Tools', icon: BarChart3 },
+  { id: 'signals', name: 'Signals', icon: Bell },
+  { id: 'education', name: 'Education', icon: GraduationCap },
+  { id: 'live', name: 'Live Sessions', icon: Video },
+  { id: 'community', name: 'Community Forum', icon: Users },
+  { id: 'partnership', name: 'IB Partnership', icon: Briefcase },
+];
+
 export default function Features() {
+  const [activeTab, setActiveTab] = useState('tools');
+  const getActiveContent = () => {
+    switch (activeTab) {
+      case 'tools':
+        return { title: 'Advanced Tools: The Trading Arsenal', subtitle: 'Your integrated suite of professional-grade utilities designed to give you a decisive edge in every aspect of your trading.', products: advancedTools, color: 'amber-300' };
+      case 'signals':
+        return { title: 'Signal Stream: Professional Trade Blueprint', subtitle: "Your 'over-the-shoulder' view of professional analysts at work, designed to generate profits while providing masterclass trade planning.", products: [coreProducts[1]], color: 'blue-400' };
+      case 'education':
+        return { title: "Education: The Master's Curriculum", subtitle: "Systematic installation of professional trading framework into your mind. We teach you how to think like a seasoned analyst.", products: [coreProducts[0]], color: 'purple-400' };
+      case 'live':
+        return { title: 'Live Sessions: Virtual Trading Floor', subtitle: 'Direct, unfiltered access to professional trader minds during critical market hours with interactive learning.', products: [coreProducts[2]], color: 'green-400' };
+      case 'community':
+        return { title: 'Community Forum: Collective Intelligence', subtitle: 'Curated professional ecosystem connecting 500+ serious traders in a supportive, growth-focused environment.', products: [coreProducts[3]], color: 'orange-400' };
+      case 'partnership':
+        return { title: 'IB Partnership: Trading Business Empire', subtitle: 'Fully-fledged business opportunity with 6-tier progression system and luxury rewards for top performers.', products: [coreProducts[4]], color: 'pink-400' };
+      default:
+        return { title: 'Advanced Tools: The Trading Arsenal', subtitle: 'Your integrated suite of professional-grade utilities designed to give you a decisive edge in every aspect of your trading.', products: advancedTools, color: 'amber-300' };
+    }
+  };
+
+  const activeContent = getActiveContent();
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Hero Section */}
@@ -206,28 +240,52 @@ export default function Features() {
         </div>
       </ContentSection>
 
-      {/* Core Products Section */}
+      {/* Interactive Navigation */}
+      <ContentSection className="pb-8 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-wrap justify-center gap-3 mb-12">
+            {navigationTabs.map((tab) => (
+              <Button
+                key={tab.id}
+                variant={activeTab === tab.id ? "default" : "outline"}
+                size="lg"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                  activeTab === tab.id 
+                    ? 'bg-primary text-primary-foreground shadow-lg transform scale-105' 
+                    : 'hover:bg-accent hover:scale-105'
+                }`}
+              >
+                <tab.icon className="h-5 w-5" />
+                {tab.name}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </ContentSection>
+
+      {/* Dynamic Content Section */}
       <ContentSection className="pb-24 px-4">
         <div className="max-w-7xl mx-auto space-y-16">
           <div className="text-center">
-            <h2 className="text-4xl font-bold text-foreground mb-4 bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
-              Core Products & Features
+            <h2 className={`text-4xl font-bold text-foreground mb-4 bg-gradient-to-r from-${activeContent.color} to-primary bg-clip-text text-transparent`}>
+              {activeContent.title}
             </h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              A complete trading ecosystem designed with Apple-like precision to transform you from beginner to professional trader.
+              {activeContent.subtitle}
             </p>
           </div>
           
-          <div className="space-y-12">
-            {coreProducts.map((product, productIndex) => (
-              <Card key={productIndex} className="bg-card border-border hover:border-primary/30 transition-all duration-300 group overflow-hidden">
+          <div className={`space-y-12 ${activeTab === 'tools' ? 'grid md:grid-cols-2 gap-8' : ''}`}>
+            {activeContent.products.map((product, productIndex) => (
+              <Card key={productIndex} className={`bg-card border-border hover:border-${activeContent.color}/50 transition-all duration-300 group overflow-hidden`}>
                 <CardHeader className="pb-6">
                   <div className="flex items-start gap-6">
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 group-hover:from-primary/30 group-hover:to-primary/10 transition-all duration-300">
-                      <product.icon className="h-8 w-8 text-primary" />
+                    <div className={`p-4 rounded-2xl bg-gradient-to-br from-${activeContent.color}/20 to-${activeContent.color}/5 group-hover:from-${activeContent.color}/30 group-hover:to-${activeContent.color}/10 transition-all duration-300`}>
+                      <product.icon className={`h-8 w-8 text-${activeContent.color}`} />
                     </div>
                     <div className="flex-1">
-                      <CardTitle className="text-2xl text-card-foreground mb-3 group-hover:text-primary transition-colors">
+                      <CardTitle className={`text-2xl text-card-foreground mb-3 group-hover:text-${activeContent.color} transition-colors`}>
                         {product.title}
                       </CardTitle>
                       <CardDescription className="text-muted-foreground text-base leading-relaxed">
@@ -238,67 +296,19 @@ export default function Features() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <h4 className="font-semibold text-card-foreground text-sm mb-4 uppercase tracking-wide">Detailed Features:</h4>
-                    <div className="grid gap-3">
-                      {product.features.map((feature, featureIndex) => (
-                        <div key={featureIndex} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                          <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                    <h4 className="font-semibold text-card-foreground text-sm mb-4 uppercase tracking-wide">
+                      {activeTab === 'tools' ? 'Key Features:' : 'Detailed Features:'}
+                    </h4>
+                    <div className={activeTab === 'tools' ? 'space-y-2' : 'grid gap-3'}>
+                      {(activeTab === 'tools' ? product.features.slice(0, 4) : product.features).map((feature, featureIndex) => (
+                        <div key={featureIndex} className={`flex items-start gap-3 ${activeTab !== 'tools' ? 'p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors' : ''}`}>
+                          <div className={`${activeTab === 'tools' ? 'w-1.5 h-1.5' : 'w-2 h-2'} rounded-full bg-${activeContent.color} mt-2 flex-shrink-0`}></div>
                           <span className="text-sm text-muted-foreground leading-relaxed">{feature}</span>
                         </div>
                       ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </ContentSection>
-
-      {/* Advanced Tools Section */}
-      <ContentSection className="pb-24 px-4">
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center">
-            <h2 className="text-4xl font-bold text-foreground mb-4 bg-gradient-to-r from-amber-300 to-primary bg-clip-text text-transparent">
-              Advanced Tools: The Trading Arsenal
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              Your integrated suite of professional-grade utilities designed to give you a decisive edge in every aspect of your trading.
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-8">
-            {advancedTools.map((tool, toolIndex) => (
-              <Card key={toolIndex} className="bg-card border-border hover:border-amber-300/50 transition-all duration-300 group">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-amber-300/20 to-amber-300/5 group-hover:from-amber-300/30 group-hover:to-amber-300/10 transition-all duration-300">
-                      <tool.icon className="h-6 w-6 text-amber-300" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl text-card-foreground group-hover:text-amber-300 transition-colors">
-                        {tool.title}
-                      </CardTitle>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <CardDescription className="text-muted-foreground text-base leading-relaxed">
-                    {tool.description}
-                  </CardDescription>
-                  
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-card-foreground text-sm uppercase tracking-wide">Key Features:</h4>
-                    <div className="space-y-2">
-                      {tool.features.slice(0, 4).map((feature, featureIndex) => (
-                        <div key={featureIndex} className="flex items-start gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-300 mt-2 flex-shrink-0"></div>
-                          <span className="text-sm text-muted-foreground leading-relaxed">{feature}</span>
-                        </div>
-                      ))}
-                      {tool.features.length > 4 && (
-                        <div className="text-xs text-amber-300 font-medium">
-                          +{tool.features.length - 4} more features
+                      {activeTab === 'tools' && product.features.length > 4 && (
+                        <div className={`text-xs text-${activeContent.color} font-medium`}>
+                          +{product.features.length - 4} more features
                         </div>
                       )}
                     </div>

@@ -118,9 +118,6 @@ const DashboardNav: React.FC = () => {
 
         {/* Desktop Actions */}
         <div className="hidden lg:flex items-center gap-3">
-          {/* Theme Toggle - Always visible next to NavBar */}
-          <ThemeToggle />
-
           {/* Live Market Indicator - hide when collapsed */}
           {!isHeaderCollapsed && (
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-300 ${
@@ -194,6 +191,8 @@ const DashboardNav: React.FC = () => {
                   })}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <ThemeToggle />
             </>
           )}
 

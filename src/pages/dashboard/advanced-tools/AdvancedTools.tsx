@@ -178,7 +178,7 @@ export default function AdvancedTools() {
             <h3 className="text-xs font-medium text-muted-foreground mb-2">Quick Access</h3>
             
             {/* All Tools in one compact grid */}
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-6 gap-1.5">
               {[...coreTools, ...aiTools].map((tool) => (
                 <button
                   key={tool.name}

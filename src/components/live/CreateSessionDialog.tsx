@@ -40,7 +40,15 @@ export function CreateSessionDialog({ onCreateSession, creating }: CreateSession
       const fieldErrors: Record<string, string> = {};
       result.error.errors?.forEach((err) => {
         const field = err.path[0] as string;
-        fieldErrors[field] = err.message;
+        // Handle specific validation messages based on stream type
+        if (field === 'zoom_meeting_url' && streamType === 'embed') {
+          fieldErrors['stream_embed_url'] = err.message;
+        } else if (field === 'zoom_meeting_id' && err.message.includes('required when using Zoom')) {
+          fieldErrors['zoom_meeting_id'] = 'Meeting ID is required when using Zoom URL';
+          fieldErrors['zoom_passcode'] = 'Passcode is required when using Zoom URL';
+        } else {
+          fieldErrors[field] = err.message;
+        }
       });
       setErrors(fieldErrors);
       return false;

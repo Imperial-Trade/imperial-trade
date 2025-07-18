@@ -1,8 +1,9 @@
+
 import React from 'react';
-import JournalXX from '@/components/trading/JournalXX';
+import TradingJournal from '@/components/tools/TradingJournal';
 
 const TradingJournalPage: React.FC = () => {
-  return <JournalXX />;
+  return <TradingJournal />;
 };
 
 export default TradingJournalPage;

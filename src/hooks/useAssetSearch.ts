@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useOptimizedDebounce } from './useOptimizedDebounce';
 
 // Static asset lists (moved outside to prevent recreation)
@@ -25,6 +25,7 @@ interface UseAssetSearchProps {
 
 export const useAssetSearch = ({ query, delay = 300 }: UseAssetSearchProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [cryptoSuggestions, setCryptoSuggestions] = useState<string[]>([]);
   const debouncedQuery = useOptimizedDebounce(query, delay);
   
   // Get recent assets from localStorage
@@ -82,8 +83,19 @@ export const useAssetSearch = ({ query, delay = 300 }: UseAssetSearchProps) => {
     return [];
   }, []);
 
+  // Effect to fetch crypto suggestions when query changes
+  useEffect(() => {
+    const normalizedQuery = debouncedQuery.toUpperCase().trim();
+    
+    if (normalizedQuery && normalizedQuery.length > 1) {
+      fetchCryptoSuggestions(debouncedQuery).then(setCryptoSuggestions);
+    } else {
+      setCryptoSuggestions([]);
+    }
+  }, [debouncedQuery, fetchCryptoSuggestions]);
+
   // Generate suggestions based on query
-  const suggestions = useMemo(async () => {
+  const suggestions = useMemo(() => {
     const normalizedQuery = debouncedQuery.toUpperCase().trim();
     
     if (!normalizedQuery) {
@@ -101,9 +113,6 @@ export const useAssetSearch = ({ query, delay = 300 }: UseAssetSearchProps) => {
       i.includes(normalizedQuery)
     );
 
-    // Get crypto suggestions
-    const cryptoSuggestions = await fetchCryptoSuggestions(debouncedQuery);
-
     // Combine all sources
     const combined = [
       ...indexSuggestions,
@@ -113,7 +122,7 @@ export const useAssetSearch = ({ query, delay = 300 }: UseAssetSearchProps) => {
     ];
 
     return [...new Set(combined)].slice(0, 10);
-  }, [debouncedQuery, getRecentAssets, fetchCryptoSuggestions]);
+  }, [debouncedQuery, getRecentAssets, cryptoSuggestions]);
 
   return {
     suggestions,

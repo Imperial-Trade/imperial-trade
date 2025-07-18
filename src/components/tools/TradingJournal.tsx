@@ -164,7 +164,7 @@ export default function TradingJournal() {
   return (
     <div className={`min-h-screen p-6 transition-all duration-700 ${
       activeTab === 'advanced' 
-        ? 'bg-blue-950' 
+        ? 'bg-transparent' 
         : 'bg-gradient-to-br from-background via-background to-muted/20'
     }`}>
       <div className={`mx-auto transition-all duration-500 ${

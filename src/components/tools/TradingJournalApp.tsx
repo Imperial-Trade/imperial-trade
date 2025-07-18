@@ -1227,7 +1227,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-4 space-y-3">
+              <CardContent className="p-4 space-y-3 min-h-[400px]">
                 {analyticsView === "ai" ? (
                   <div className="space-y-3 p-4 bg-card/50 backdrop-blur-sm rounded-lg border border-border/30">
                     <motion.div

@@ -7,8 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CreateLiveSessionData, validateCreateSession } from '@/lib/validations/liveSessionSchema';
-import { Calendar, Clock, Video, Save, X, Info, Plus, Monitor } from 'lucide-react';
+import { Calendar, Clock, Video, Save, X, Info, Plus, Monitor, Radio } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface CreateSessionDialogProps {
   onCreateSession: (sessionData: CreateLiveSessionData) => Promise<boolean>;
@@ -17,6 +18,7 @@ interface CreateSessionDialogProps {
 
 export function CreateSessionDialog({ onCreateSession, creating }: CreateSessionDialogProps) {
   const [open, setOpen] = useState(false);
+  const [streamType, setStreamType] = useState<'zoom' | 'embed'>('zoom');
   const [formData, setFormData] = useState<CreateLiveSessionData>({
     session_title: '',
     description: '',
@@ -57,6 +59,7 @@ export function CreateSessionDialog({ onCreateSession, creating }: CreateSession
     const success = await onCreateSession(formData);
     if (success) {
       setOpen(false);
+      setStreamType('zoom');
       setFormData({
         session_title: '',
         description: '',
@@ -79,6 +82,32 @@ export function CreateSessionDialog({ onCreateSession, creating }: CreateSession
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleStreamTypeChange = (value: 'zoom' | 'embed') => {
+    setStreamType(value);
+    // Clear relevant fields when switching
+    if (value === 'zoom') {
+      setFormData(prev => ({ ...prev, stream_embed_url: '' }));
+      if (errors.stream_embed_url) {
+        setErrors(prev => ({ ...prev, stream_embed_url: '' }));
+      }
+    } else {
+      setFormData(prev => ({ 
+        ...prev, 
+        zoom_meeting_url: '',
+        zoom_meeting_id: '',
+        zoom_passcode: '',
+        zoom_meeting_number: '',
+        zoom_sdk_enabled: false
+      }));
+      // Clear zoom-related errors
+      ['zoom_meeting_url', 'zoom_meeting_id', 'zoom_passcode', 'zoom_meeting_number'].forEach(field => {
+        if (errors[field]) {
+          setErrors(prev => ({ ...prev, [field]: '' }));
+        }
+      });
     }
   };
 
@@ -222,164 +251,212 @@ export function CreateSessionDialog({ onCreateSession, creating }: CreateSession
             )}
           </div>
 
-          {/* Zoom Meeting URL */}
+          {/* Stream Type Selection */}
           <div>
-            <Label htmlFor="zoom_meeting_url" className="text-primary">
-              Zoom Meeting URL
+            <Label className="text-primary mb-3 block">
+              Stream Type
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="w-3 h-3 ml-1 inline" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  The full Zoom meeting link (must be a valid zoom.us or zoom.com URL)
+                  Choose between Zoom meeting or embedded stream
                 </TooltipContent>
               </Tooltip>
             </Label>
-            <Input
-              id="zoom_meeting_url"
-              type="url"
-              value={formData.zoom_meeting_url}
-              onChange={(e) => handleInputChange('zoom_meeting_url', e.target.value)}
-              className={`bg-background border-default text-primary ${errors.zoom_meeting_url ? 'border-red-500' : ''}`}
-              placeholder="https://zoom.us/j/1234567890"
-            />
-            {errors.zoom_meeting_url && (
-              <p className="text-red-400 text-sm mt-1">{errors.zoom_meeting_url}</p>
-            )}
-          </div>
-
-          {/* Optional Zoom Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="zoom_meeting_id" className="text-primary">
-                Meeting ID (Optional)
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="w-3 h-3 ml-1 inline" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    The numerical meeting ID for easier access
-                  </TooltipContent>
-                </Tooltip>
-              </Label>
-              <Input
-                id="zoom_meeting_id"
-                value={formData.zoom_meeting_id || ''}
-                onChange={(e) => handleInputChange('zoom_meeting_id', e.target.value)}
-                className={`bg-background border-default text-primary ${errors.zoom_meeting_id ? 'border-red-500' : ''}`}
-                placeholder="123-456-7890"
-              />
-              {errors.zoom_meeting_id && (
-                <p className="text-red-400 text-sm mt-1">{errors.zoom_meeting_id}</p>
-              )}
-            </div>
-
-            <div>
-              <Label htmlFor="zoom_passcode" className="text-primary">
-                Passcode (Optional)
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="w-3 h-3 ml-1 inline" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Meeting passcode if required
-                  </TooltipContent>
-                </Tooltip>
-              </Label>
-              <Input
-                id="zoom_passcode"
-                value={formData.zoom_passcode || ''}
-                onChange={(e) => handleInputChange('zoom_passcode', e.target.value)}
-                className={`bg-background border-default text-primary ${errors.zoom_passcode ? 'border-red-500' : ''}`}
-                placeholder="passcode123"
-              />
-              {errors.zoom_passcode && (
-                <p className="text-red-400 text-sm mt-1">{errors.zoom_passcode}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Stream Embed URL */}
-          <div>
-            <Label htmlFor="stream_embed_url" className="text-primary">
-              Stream Embed URL (Optional)
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="w-3 h-3 ml-1 inline" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  Add a YouTube Live, Facebook Live, or Twitch stream URL for in-app viewing
-                </TooltipContent>
-              </Tooltip>
-            </Label>
-            <Input
-              id="stream_embed_url"
-              type="url"
-              value={formData.stream_embed_url || ''}
-              onChange={(e) => handleInputChange('stream_embed_url', e.target.value)}
-              className={`bg-background border-default text-primary ${errors.stream_embed_url ? 'border-red-500' : ''}`}
-              placeholder="e.g., https://www.youtube.com/watch?v=..."
-            />
-            {errors.stream_embed_url && (
-              <p className="text-red-400 text-sm mt-1">{errors.stream_embed_url}</p>
-            )}
-          </div>
-
-          <Separator />
-          
-          {/* Zoom SDK Integration */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="zoom_sdk_enabled" className="text-primary flex items-center">
-                  <Monitor className="w-4 h-4 mr-2" />
-                  Enable Zoom SDK Integration
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="w-3 h-3 ml-1 inline" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      Use Zoom Web SDK for integrated meeting experience (requires meeting number)
-                    </TooltipContent>
-                  </Tooltip>
+            <RadioGroup 
+              value={streamType} 
+              onValueChange={handleStreamTypeChange}
+              className="flex flex-col space-y-3"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="zoom" id="zoom" />
+                <Label htmlFor="zoom" className="text-primary cursor-pointer">
+                  <Video className="w-4 h-4 inline mr-2" />
+                  Zoom Meeting URL
                 </Label>
-                <p className="text-sm text-muted-foreground">
-                  Provide seamless meeting experience within the app
-                </p>
               </div>
-              <Switch
-                id="zoom_sdk_enabled"
-                checked={formData.zoom_sdk_enabled}
-                onCheckedChange={(checked) => handleInputChange('zoom_sdk_enabled', checked)}
-              />
-            </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="embed" id="embed" />
+                <Label htmlFor="embed" className="text-primary cursor-pointer">
+                  <Monitor className="w-4 h-4 inline mr-2" />
+                  Stream Embed URL
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
 
-            {formData.zoom_sdk_enabled && (
+          {/* Zoom Meeting Configuration */}
+          {streamType === 'zoom' && (
+            <div className="space-y-4">
+              {/* Zoom Meeting URL */}
               <div>
-                <Label htmlFor="zoom_meeting_number" className="text-primary">
-                  Zoom Meeting Number
+                <Label htmlFor="zoom_meeting_url" className="text-primary">
+                  Zoom Meeting URL *
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Info className="w-3 h-3 ml-1 inline" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      The numerical meeting number for SDK integration
+                      The full Zoom meeting link (must be a valid zoom.us or zoom.com URL)
                     </TooltipContent>
                   </Tooltip>
                 </Label>
                 <Input
-                  id="zoom_meeting_number"
-                  value={formData.zoom_meeting_number || ''}
-                  onChange={(e) => handleInputChange('zoom_meeting_number', e.target.value)}
-                  className={`bg-background border-default text-primary ${errors.zoom_meeting_number ? 'border-red-500' : ''}`}
-                  placeholder="1234567890"
+                  id="zoom_meeting_url"
+                  type="url"
+                  value={formData.zoom_meeting_url}
+                  onChange={(e) => handleInputChange('zoom_meeting_url', e.target.value)}
+                  className={`bg-background border-default text-primary ${errors.zoom_meeting_url ? 'border-red-500' : ''}`}
+                  placeholder="https://zoom.us/j/1234567890"
+                  required
                 />
-                {errors.zoom_meeting_number && (
-                  <p className="text-red-400 text-sm mt-1">{errors.zoom_meeting_number}</p>
+                {errors.zoom_meeting_url && (
+                  <p className="text-red-400 text-sm mt-1">{errors.zoom_meeting_url}</p>
                 )}
               </div>
-            )}
-          </div>
+
+              {/* Required Zoom Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="zoom_meeting_id" className="text-primary">
+                    Meeting ID *
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-3 h-3 ml-1 inline" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The numerical meeting ID for easier access
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
+                  <Input
+                    id="zoom_meeting_id"
+                    value={formData.zoom_meeting_id || ''}
+                    onChange={(e) => handleInputChange('zoom_meeting_id', e.target.value)}
+                    className={`bg-background border-default text-primary ${errors.zoom_meeting_id ? 'border-red-500' : ''}`}
+                    placeholder="123-456-7890"
+                    required
+                  />
+                  {errors.zoom_meeting_id && (
+                    <p className="text-red-400 text-sm mt-1">{errors.zoom_meeting_id}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="zoom_passcode" className="text-primary">
+                    Passcode *
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-3 h-3 ml-1 inline" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Meeting passcode for security
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
+                  <Input
+                    id="zoom_passcode"
+                    value={formData.zoom_passcode || ''}
+                    onChange={(e) => handleInputChange('zoom_passcode', e.target.value)}
+                    className={`bg-background border-default text-primary ${errors.zoom_passcode ? 'border-red-500' : ''}`}
+                    placeholder="passcode123"
+                    required
+                  />
+                  {errors.zoom_passcode && (
+                    <p className="text-red-400 text-sm mt-1">{errors.zoom_passcode}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Stream Embed URL */}
+          {streamType === 'embed' && (
+            <div>
+              <Label htmlFor="stream_embed_url" className="text-primary">
+                Stream Embed URL *
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3 h-3 ml-1 inline" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Add a YouTube Live, Facebook Live, or Twitch stream URL for in-app viewing
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
+              <Input
+                id="stream_embed_url"
+                type="url"
+                value={formData.stream_embed_url || ''}
+                onChange={(e) => handleInputChange('stream_embed_url', e.target.value)}
+                className={`bg-background border-default text-primary ${errors.stream_embed_url ? 'border-red-500' : ''}`}
+                placeholder="e.g., https://www.youtube.com/watch?v=..."
+                required
+              />
+              {errors.stream_embed_url && (
+                <p className="text-red-400 text-sm mt-1">{errors.stream_embed_url}</p>
+              )}
+            </div>
+          )}
+
+          <Separator />
+          
+          {/* Zoom SDK Integration - Only show for Zoom meetings */}
+          {streamType === 'zoom' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="zoom_sdk_enabled" className="text-primary flex items-center">
+                    <Monitor className="w-4 h-4 mr-2" />
+                    Enable Zoom SDK Integration
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-3 h-3 ml-1 inline" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Use Zoom Web SDK for integrated meeting experience (requires meeting number)
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Provide seamless meeting experience within the app
+                  </p>
+                </div>
+                <Switch
+                  id="zoom_sdk_enabled"
+                  checked={formData.zoom_sdk_enabled}
+                  onCheckedChange={(checked) => handleInputChange('zoom_sdk_enabled', checked)}
+                />
+              </div>
+
+              {formData.zoom_sdk_enabled && (
+                <div>
+                  <Label htmlFor="zoom_meeting_number" className="text-primary">
+                    Zoom Meeting Number
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-3 h-3 ml-1 inline" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        The numerical meeting number for SDK integration
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
+                  <Input
+                    id="zoom_meeting_number"
+                    value={formData.zoom_meeting_number || ''}
+                    onChange={(e) => handleInputChange('zoom_meeting_number', e.target.value)}
+                    className={`bg-background border-default text-primary ${errors.zoom_meeting_number ? 'border-red-500' : ''}`}
+                    placeholder="1234567890"
+                  />
+                  {errors.zoom_meeting_number && (
+                    <p className="text-red-400 text-sm mt-1">{errors.zoom_meeting_number}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Auto Start Toggle */}
           <div className="flex items-center justify-between">

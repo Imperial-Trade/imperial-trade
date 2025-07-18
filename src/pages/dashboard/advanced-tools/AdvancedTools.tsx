@@ -233,8 +233,8 @@ export default function AdvancedTools() {
                 transition={{ duration: 0.4, ease: "easeInOut" }}
                 className="relative h-full"
               >
-                <Card className="bg-white dark:bg-gray-900/30 border-transparent backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50 rounded-2xl h-full overflow-y-auto">
-                  <div className="p-4">{activeTool.component}</div>
+                <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
+                  <div className="p-4 bg-transparent">{activeTool.component}</div>
                 </Card>
               </motion.div>
             ) : (

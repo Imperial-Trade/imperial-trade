@@ -221,16 +221,22 @@ export default function TradingJournal() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="log" className="mt-6">
-            {LogTab}
+          <TabsContent value="log" className="mt-6 relative z-10">
+            <div className={activeTab === 'advanced' ? 'bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 shadow-2xl' : ''}>
+              {LogTab}
+            </div>
           </TabsContent>
 
-          <TabsContent value="analytics" className="mt-6">
-            {AnalyticsTab}
+          <TabsContent value="analytics" className="mt-6 relative z-10">
+            <div className={activeTab === 'advanced' ? 'bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 shadow-2xl' : ''}>
+              {AnalyticsTab}
+            </div>
           </TabsContent>
 
-          <TabsContent value="advanced" className="mt-6">
-            <TradingJournalApp />
+          <TabsContent value="advanced" className="mt-6 relative z-10">
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 shadow-2xl">
+              <TradingJournalApp />
+            </div>
           </TabsContent>
         </Tabs>
       </div>

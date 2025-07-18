@@ -155,7 +155,7 @@ function DashboardHeader() {
           </nav>
         )}
 
-        {/* Desktop Actions & User Info - Hide when collapsed */}
+        {/* Desktop Actions - Simplified */}
         {!isHeaderCollapsed && (
           <div className="hidden lg:flex items-center gap-4">
             {/* Live Market Indicator */}
@@ -163,94 +163,6 @@ function DashboardHeader() {
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-xs font-medium text-green-700 dark:text-green-400">Market Open</span>
             </div>
-
-            {/* Theme Toggle */}
-            <ThemeToggle />
-
-            {/* User Info */}
-            {user && (
-              <div className="flex items-center gap-2">
-                <div className="flex flex-col items-end text-sm">
-                  <span className="font-medium text-foreground">
-                    {user.user_metadata?.first_name && user.user_metadata?.last_name 
-                      ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
-                      : user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'}
-                  </span>
-                  <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-xs font-medium border-0 bg-transparent px-0`}>
-                    {getAccessLevelDisplay(getUserAccessLevel()).label}
-                  </Badge>
-                </div>
-                <Bell className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-pointer transition-colors" />
-                
-                {/* Profile Dropdown */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="flex items-center gap-1 p-1 h-auto ml-2">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 border border-primary/20">
-                        <User className="h-4 w-4 text-primary" />
-                      </div>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-background/95 backdrop-blur-xl border border-border/50 shadow-2xl">
-                    {/* User Menu Items */}
-                    <DropdownMenuItem asChild>
-                      <Link to="/dashboard/progress" className="flex items-center gap-2 cursor-pointer">
-                        <BarChart3 className="h-4 w-4" />
-                        My Progress
-                      </Link>
-                    </DropdownMenuItem>
-                    
-                    {/* Educator Menu Items */}
-                    {(user.user_metadata?.role === 'educator' || user.user_metadata?.user_type === 'educator') && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link to="/live-sessions" className="flex items-center gap-2 cursor-pointer">
-                            <Video className="h-4 w-4" />
-                            Manage Sessions
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/trade-alerts" className="flex items-center gap-2 cursor-pointer">
-                            <TrendingUp className="h-4 w-4" />
-                            Trade Alerts
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    
-                    {/* Admin Menu Items */}
-                    {(getUserAccessLevel() === 'admin' || user.user_metadata?.role === 'admin') && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link to="/dashboard/administration" className="flex items-center gap-2 cursor-pointer">
-                            <Settings className="h-4 w-4" />
-                            Administration
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/dashboard/admin" className="flex items-center gap-2 cursor-pointer">
-                            <Shield className="h-4 w-4" />
-                            Admin Panel
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    
-                    {/* Logout */}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={signOut}
-                      className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Logout
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
           </div>
         )}
 

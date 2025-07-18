@@ -160,15 +160,14 @@ export default function AdvancedTools() {
             transition={{ duration: 0.3 }}
             className="mb-6 flex justify-center"
           >
-            <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-2xl p-6 shadow-2xl shadow-primary/5">
-              <div className="flex flex-col items-center text-center gap-4">
-                <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
-                  {React.createElement(activeTool.icon, { className: "w-6 h-6 text-primary" })}
+            <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-3 shadow-lg shadow-primary/5">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                  {React.createElement(activeTool.icon, { className: "w-4 h-4 text-primary" })}
                 </div>
-                <div>
-                  <h2 className="font-semibold text-xl text-foreground tracking-tight">{activeTool.name}</h2>
-                  <p className="text-sm text-muted-foreground mt-1">{activeTool.description}</p>
-                </div>
+                <h2 className="font-semibold text-base text-foreground tracking-tight">{activeTool.name}</h2>
+                <span className="text-sm text-muted-foreground">•</span>
+                <p className="text-sm text-muted-foreground">{activeTool.description}</p>
               </div>
             </div>
           </motion.div>

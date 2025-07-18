@@ -234,14 +234,12 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
   return (
     <motion.aside
-      className={`fixed left-0 top-0 h-full z-40 bg-transparent overflow-y-auto ${className}`}
-      initial={false}
-      animate={{
-        width: 320,
-      }}
-      transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+      className={`h-[calc(100vh-5rem)] w-72 bg-card/95 backdrop-blur-md border border-border/50 rounded-lg overflow-y-auto shadow-xl ${className}`}
+      initial={{ x: -300, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.3 }}
     >
-      <div className="p-4 h-full pt-20">
+      <div className="p-4 h-full">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Today</h1>

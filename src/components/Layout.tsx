@@ -444,17 +444,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <SidebarOverlay />
         </ErrorBoundary>
 
-        {/* Trading Arsenal Widget Sidebar - Always visible on all pages */}
-        <ErrorBoundary componentName="Trading Arsenal Sidebar">
-          <WidgetSidebar />
-        </ErrorBoundary>
-        
-        {/* Main content - always full width, with left margin for widget sidebar */}
-        <main className="w-full min-h-screen pt-20 bg-background ml-80">
+        {/* Main content - centered, no left margin */}
+        <main className="w-full min-h-screen pt-20 bg-background">
           <ErrorBoundary componentName="Page Content">
             <Outlet />
           </ErrorBoundary>
         </main>
+        
+        {/* Trading Arsenal Sidebar - Floating overlay */}
+        <ErrorBoundary componentName="Trading Arsenal Sidebar">
+          <WidgetSidebar className="fixed left-4 top-20 z-50" />
+        </ErrorBoundary>
       </div>
     </SidebarProvider>
   )

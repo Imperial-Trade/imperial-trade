@@ -152,14 +152,15 @@ export default function AdvancedTools() {
     <div className="min-h-screen bg-background">
       {/* Main Content Area - Full Width */}
       <div className="w-full min-h-screen p-6">
-        {/* Active Tool Header */}
-        {activeTool && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mb-6 flex justify-center"
-          >
+        {/* Header with Tool Info and Selection Panel */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-6 flex items-start gap-6"
+        >
+          {/* Active Tool Info - Left Side */}
+          {activeTool && (
             <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-3 shadow-lg shadow-primary/5">
               <div className="flex items-center gap-3">
                 <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
@@ -170,8 +171,59 @@ export default function AdvancedTools() {
                 <p className="text-sm text-muted-foreground">{activeTool.description}</p>
               </div>
             </div>
-          </motion.div>
-        )}
+          )}
+
+          {/* Tools Selection Panel - Right Side */}
+          <div className="flex-1 bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-4 shadow-lg shadow-primary/5">
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Tool Access</h3>
+            
+            {/* Core Tools */}
+            <div className="mb-4">
+              <p className="text-xs text-muted-foreground/80 mb-2">Core Tools</p>
+              <div className="grid grid-cols-3 gap-2">
+                {coreTools.map((tool) => (
+                  <button
+                    key={tool.name}
+                    onClick={() => setActiveTool(tool)}
+                    className={`p-2 rounded-lg border transition-all text-left ${
+                      activeTool?.name === tool.name
+                        ? 'bg-primary/10 border-primary/20 text-primary'
+                        : 'bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {React.createElement(tool.icon, { className: "w-3.5 h-3.5" })}
+                      <span className="text-xs font-medium truncate">{tool.name}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Tools */}
+            <div>
+              <p className="text-xs text-muted-foreground/80 mb-2">AI Tools</p>
+              <div className="grid grid-cols-3 gap-2">
+                {aiTools.map((tool) => (
+                  <button
+                    key={tool.name}
+                    onClick={() => setActiveTool(tool)}
+                    className={`p-2 rounded-lg border transition-all text-left ${
+                      activeTool?.name === tool.name
+                        ? 'bg-primary/10 border-primary/20 text-primary'
+                        : 'bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {React.createElement(tool.icon, { className: "w-3.5 h-3.5" })}
+                      <span className="text-xs font-medium truncate">{tool.name}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Tool Display */}
         <div className="min-h-[600px]">

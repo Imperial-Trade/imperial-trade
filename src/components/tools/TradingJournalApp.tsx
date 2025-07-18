@@ -1751,8 +1751,9 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   ? "bg-slate-900/80 border-slate-700"
                   : "bg-white border-slate-200"
               )}
+              data-calendar-view
             >
-              <CardContent className="p-6" data-calendar-view>
+              <CardContent className="p-6">
                 <DynamicCalendarView />
               </CardContent>
             </Card>

@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { TypewriterText } from '@/components/ui/typewriter-text';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -74,35 +75,45 @@ export const DashboardHome: React.FC = () => {
   const isAdmin = user?.user_metadata?.access_level === 'admin';
   const isEducator = user?.user_metadata?.user_type === 'educator';
 
+  // Get user's full name for the typewriter effect
+  const getUserFullName = () => {
+    if (user?.user_metadata?.first_name && user?.user_metadata?.last_name) {
+      return `${user.user_metadata.first_name} ${user.user_metadata.last_name}`;
+    }
+    if (user?.user_metadata?.full_name) {
+      return user.user_metadata.full_name;
+    }
+    if (user?.user_metadata?.display_name) {
+      return user.user_metadata.display_name;
+    }
+    return user?.email?.split('@')[0] || 'Trader';
+  };
+
+  const welcomeText = `Welcome, ${getUserFullName()}. The Imperial experience awaits.`;
+
   return (
     <div className="relative min-h-screen">
       {/* Video Background */}
       <VideoBackground />
       
-      {/* Hero Section with Heartfelt Welcome */}
+      {/* Hero Section with Typewriter Welcome */}
       <div className="relative z-20 min-h-[70vh] flex items-center pt-12">
         <div className="container mx-auto px-6 text-center mt-8">
           <div className="max-w-6xl mx-auto space-y-6">
-            {/* Welcome Message */}
+            {/* Welcome Message with Typewriter Effect */}
             <div className="space-y-4">
-              <h1 className="text-5xl lg:text-7xl font-bold text-white mb-4 flex items-center justify-center gap-4 flex-wrap">
-                Welcome to{' '}
-                <div className="flex items-center gap-3">
-                  <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-yellow-400" />
-                  <span className="text-yellow-400">
-                    Imperial
-                  </span>
-                </div>
-                {' '}
-                <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                  {user?.user_metadata?.first_name && user?.user_metadata?.last_name 
-                    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}!`
-                    : user?.user_metadata?.full_name 
-                      ? `${user.user_metadata.full_name}!`
-                      : user?.user_metadata?.display_name 
-                        ? `${user.user_metadata.display_name}!`
-                        : `${user?.email?.split('@')[0] || 'Trader'}!`}
-                </span>
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-yellow-400" />
+              </div>
+              
+              <h1 className="text-5xl lg:text-7xl font-bold text-white mb-4 min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
+                <TypewriterText
+                  text={welcomeText}
+                  speed={80}
+                  showCursor={true}
+                  cursorBlinkSpeed={500}
+                  className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent"
+                />
               </h1>
               
               <p className="text-xl lg:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed">

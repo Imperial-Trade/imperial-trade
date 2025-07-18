@@ -1170,7 +1170,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
   // Enhanced Stats Panel with AI insights and Most Traded toggle
   const EnhancedStatsPanel: React.FC = () => {
     const mostTradedData = getMostTradedAssets();
-    const colors = ["#4a4a4a", "#6b6b6b", "#2d2d2d", "#5a5a5a", "#3d3d3d"];
+    const colors = ["#87ceeb", "#3b82f6", "#1e40af", "#1d4ed8", "#1e3a8a"];
 
     return (
       <AnimatePresence>

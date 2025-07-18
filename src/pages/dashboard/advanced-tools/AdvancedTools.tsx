@@ -35,13 +35,13 @@ import RiskCalculator from "@/components/tools/RiskCalculator";
 import TradeAnalyst from "@/components/ai/TradeAnalyst";
 import OpportunityScanner from "@/components/ai/OpportunityScanner";
 import RiskSimulator from "@/components/ai/RiskSimulator";
-import TradingJournalApp from "@/components/tools/TradingJournalApp";
+import TradingJournal from "@/components/tools/TradingJournal";
 
 const coreTools = [
   {
     name: "Trading Journal",
     icon: BookOpen,
-    component: <TradingJournalApp />,
+    component: <TradingJournal />,
     description: "Log and analyze your trades with AI-powered feedback.",
   },
   {

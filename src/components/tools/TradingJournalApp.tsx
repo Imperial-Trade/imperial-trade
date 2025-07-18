@@ -1756,6 +1756,10 @@ Please provide a brief analysis focusing on what went well, what could be improv
                         variant={
                           trade.outcome === "win" ? "default" : "destructive"
                         }
+                        className={cn(
+                          trade.outcome === "win" &&
+                            "bg-gradient-to-r from-amber-400 via-yellow-400 to-teal-600 text-white border-0"
+                        )}
                       >
                         {trade.asset}
                       </Badge>

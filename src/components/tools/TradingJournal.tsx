@@ -808,47 +808,22 @@ export default function TradingJournal() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        {/* Header with title and controls */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-400 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-foreground">Advanced Trading Journal</h2>
-              <p className="text-sm text-muted-foreground">Comprehensive analysis and visualization of your trades</p>
-            </div>
+        {/* Header with title */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-400 flex items-center justify-center">
+            <BookOpen className="w-5 h-5 text-white" />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsStatsVisible(!isStatsVisible)}
-            className="flex items-center gap-2"
-          >
-            {isStatsVisible ? (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                  <line x1="1" y1="1" x2="23" y2="23"></line>
-                </svg>
-                <span>Hide Stats</span>
-              </>
-            ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-                <span>Show Stats</span>
-              </>
-            )}
-          </Button>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Advanced Trading Journal</h2>
+            <p className="text-sm text-muted-foreground">Comprehensive analysis and visualization of your trades</p>
+          </div>
         </div>
         
-        {/* Time period filter */}
-        <div className="flex items-center gap-2 mb-6">
-          <span className="text-sm text-muted-foreground">Time Period:</span>
-          <div className="flex bg-muted/30 rounded-lg p-1">
+        {/* Time period filter with stats toggle */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Time Period:</span>
+            <div className="flex bg-muted/30 rounded-lg p-1">
             <Button 
               variant={timeFilter === 'today' ? 'default' : 'ghost'} 
               size="sm"
@@ -889,7 +864,32 @@ export default function TradingJournal() {
             >
               All Time
             </Button>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsStatsVisible(!isStatsVisible)}
+            className="flex items-center gap-2"
+          >
+            {isStatsVisible ? (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+                <span>Hide Stats</span>
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span>Show Stats</span>
+              </>
+            )}
+          </Button>
         </div>
 
         {/* KPI Cards */}

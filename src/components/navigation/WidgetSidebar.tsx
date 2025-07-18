@@ -20,43 +20,43 @@ import {
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Define the 6 trading arsenal tools with their dedicated routes
+// Define the 6 trading arsenal tools with their correct existing routes
 const tradingTools = [
   { 
     name: 'Trading Journal', 
     icon: BookOpen, 
     description: 'Log and analyze your trades with AI-powered feedback.',
-    route: '/dashboard/trade-journal'
+    route: '/dashboard/advanced-tools?tool=journal'
   },
   { 
     name: 'Economic Calendar', 
     icon: Calendar, 
     description: 'Stay ahead of market-moving events and news releases.',
-    route: '/dashboard/economic-calendar'
+    route: '/dashboard/advanced-tools?tool=calendar'
   },
   { 
     name: 'Risk Calculator', 
     icon: Calculator, 
     description: 'Calculate position size, risk, and potential profit.',
-    route: '/dashboard/risk-calculator'
+    route: '/dashboard/advanced-tools?tool=calculator'
   },
   { 
     name: 'Trade Analyst', 
     icon: Brain, 
     description: 'Upload screenshots for deep performance analysis.',
-    route: '/dashboard/trade-analyst'
+    route: '/dashboard/advanced-tools?tool=analyst'
   },
   { 
     name: 'Opportunity Scanner', 
     icon: Search, 
     description: 'Scan markets for high-probability trading setups.',
-    route: '/dashboard/opportunity-scanner'
+    route: '/dashboard/advanced-tools?tool=scanner'
   },
   { 
     name: 'Risk Simulator', 
     icon: Scale,
     description: 'Simulate trade setups to assess risk before you enter.',
-    route: '/dashboard/risk-simulator'
+    route: '/dashboard/advanced-tools?tool=simulator'
   },
 ];
 

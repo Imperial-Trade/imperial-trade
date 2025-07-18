@@ -455,6 +455,66 @@ export default function RiskCalculator() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* How Did I Calculate It Section */}
+                {results && (
+                  <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Calculator className="w-5 h-5 text-primary" />
+                        <h3 className="text-lg font-semibold text-foreground">How did I calculate it?</h3>
+                      </div>
+                      
+                      <div className="space-y-4 text-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-3">
+                            <div className="p-3 bg-muted/30 rounded-lg">
+                              <h4 className="font-medium text-foreground mb-2">Risk Amount</h4>
+                              <p className="text-muted-foreground leading-relaxed">
+                                {riskType === 'percentage' 
+                                  ? `Account Balance × Risk % = $${formData.accountBalance} × ${formData.riskPercentage[0]}% = $${results.riskAmount}`
+                                  : `Fixed Dollar Risk = $${formData.riskDollar}`
+                                }
+                              </p>
+                            </div>
+                            
+                            <div className="p-3 bg-muted/30 rounded-lg">
+                              <h4 className="font-medium text-foreground mb-2">Price Movement</h4>
+                              <p className="text-muted-foreground leading-relaxed">
+                                Entry to Stop Loss = |${formData.entryPrice} - ${formData.stopLoss}| = ${results.pipValue}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="p-3 bg-muted/30 rounded-lg">
+                              <h4 className="font-medium text-foreground mb-2">Position Size</h4>
+                              <p className="text-muted-foreground leading-relaxed">
+                                Risk Amount ÷ (Price Movement × Contract Size) = ${results.riskAmount} ÷ ${results.pipValue} = {results.positionSize} lots
+                              </p>
+                            </div>
+                            
+                            {results.potentialProfit > 0 && (
+                              <div className="p-3 bg-muted/30 rounded-lg">
+                                <h4 className="font-medium text-foreground mb-2">Risk:Reward Ratio</h4>
+                                <p className="text-muted-foreground leading-relaxed">
+                                  Potential Profit ÷ Risk = ${results.potentialProfit} ÷ ${results.riskAmount} = 1:{results.riskReward}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="pt-3 border-t border-border/30">
+                          <p className="text-xs text-muted-foreground">
+                            <strong>Asset Type:</strong> {results.assetType} • 
+                            Contract calculations follow industry standard lot sizing mechanics for optimal accuracy.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
           </CardContent>

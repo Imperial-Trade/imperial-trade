@@ -151,14 +151,15 @@ function DashboardHeader() {
         )}
 
 
-        {/* Menu Button - Always visible, rightmost position when collapsed */}
-        <div className="hidden lg:flex">
+        {/* Theme Toggle and Menu Button - Always visible, rightmost position when collapsed */}
+        <div className="hidden lg:flex items-center gap-2">
+          <ThemeToggle />
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
             className={`h-8 w-8 rounded-full hover:bg-muted/50 transition-all duration-200 ${
-              isHeaderCollapsed ? 'ml-auto' : 'ml-2'
+              isHeaderCollapsed ? 'ml-auto' : ''
             }`}
             title={isHeaderCollapsed ? "Expand header" : "Collapse header"}
           >

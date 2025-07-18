@@ -412,11 +412,19 @@ export function AdminSignalManagement() {
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(`/dashboard/signal-stream?highlight=${alert.id}`, '_blank')}
+                        >
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(`/dashboard/new-signal?edit=${alert.id}`, '_blank')}
+                        >
                           <Edit className="w-4 h-4 mr-1" />
                           Edit
                         </Button>
@@ -459,12 +467,243 @@ export function AdminSignalManagement() {
           )}
         </TabsContent>
 
-        <TabsContent value="active">
-          {/* Active signals would be filtered here */}
+        <TabsContent value="active" className="space-y-4">
+          <AnimatePresence>
+            {filteredAlerts.filter(alert => alert.status === 'active').map((alert, index) => (
+              <motion.div
+                key={alert.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Card className="hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold">{alert.assetName}</h3>
+                            <Badge variant="outline" className="text-xs">
+                              {alert.finnhubSymbol}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {getStatusBadge(alert.status)}
+                            <Badge className={alert.tradeType.includes('buy') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
+                              {alert.tradeType === 'buy' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                              {alert.tradeType.toUpperCase()}
+                            </Badge>
+                            {alert.creator && (
+                              <Badge variant="secondary" className="text-xs">
+                                by {alert.creator.display_name || 'Unknown'}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Entry Price</p>
+                          <p className="font-semibold">${alert.entryPrice}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Stop Loss</p>
+                          <p className="font-semibold text-red-400">${alert.stopLoss}</p>
+                        </div>
+                        {alert.tp1 && (
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">TP1</p>
+                            <p className="font-semibold text-green-400">${alert.tp1}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {alert.notes && (
+                      <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                        <p className="text-sm">{alert.notes}</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>Created {new Date(alert.createdAt).toLocaleDateString()}</span>
+                        <span>•</span>
+                        <span>Updated {new Date(alert.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(`/dashboard/signal-stream?highlight=${alert.id}`, '_blank')}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(`/dashboard/new-signal?edit=${alert.id}`, '_blank')}
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDeleteSignal(alert.id)}
+                          className="text-red-500 hover:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {filteredAlerts.filter(alert => alert.status === 'active').length === 0 && (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Clock className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Active Signals</h3>
+                <p className="text-muted-foreground mb-4">You don't have any active trading signals at the moment.</p>
+                <Button
+                  onClick={() => window.open('/dashboard/new-signal', '_blank')}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create New Signal
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
-        <TabsContent value="closed">
-          {/* Closed signals would be filtered here */}
+        <TabsContent value="closed" className="space-y-4">
+          <AnimatePresence>
+            {filteredAlerts.filter(alert => alert.status === 'closed').map((alert, index) => (
+              <motion.div
+                key={alert.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Card className="hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold">{alert.assetName}</h3>
+                            <Badge variant="outline" className="text-xs">
+                              {alert.finnhubSymbol}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {getStatusBadge(alert.status)}
+                            {getPerformanceBadge(alert)}
+                            <Badge className={alert.tradeType.includes('buy') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}>
+                              {alert.tradeType === 'buy' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                              {alert.tradeType.toUpperCase()}
+                            </Badge>
+                            {alert.creator && (
+                              <Badge variant="secondary" className="text-xs">
+                                by {alert.creator.display_name || 'Unknown'}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Entry Price</p>
+                          <p className="font-semibold">${alert.entryPrice}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Stop Loss</p>
+                          <p className="font-semibold text-red-400">${alert.stopLoss}</p>
+                        </div>
+                        {alert.tp1 && (
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">TP1</p>
+                            <p className="font-semibold text-green-400">${alert.tp1}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {alert.notes && (
+                      <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                        <p className="text-sm">{alert.notes}</p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>Created {new Date(alert.createdAt).toLocaleDateString()}</span>
+                        <span>•</span>
+                        <span>Updated {new Date(alert.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(`/dashboard/signal-stream?highlight=${alert.id}`, '_blank')}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(`/dashboard/new-signal?edit=${alert.id}`, '_blank')}
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDeleteSignal(alert.id)}
+                          className="text-red-500 hover:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {filteredAlerts.filter(alert => alert.status === 'closed').length === 0 && (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <CheckCircle className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Closed Signals</h3>
+                <p className="text-muted-foreground mb-4">You don't have any closed trading signals yet.</p>
+                <Button
+                  onClick={() => window.open('/dashboard/new-signal', '_blank')}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create New Signal
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

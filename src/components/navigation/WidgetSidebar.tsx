@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  BookOpen,
-  Calendar,
-  Calculator,
-  TrendingUp,
-  Search,
-  Shield as ShieldIcon,
+  Home,
+  Signal,
+  GraduationCap,
+  Video,
+  Users,
+  Zap,
   User,
   Bell,
   BarChart3,
@@ -18,47 +18,50 @@ import {
 
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 
-const toolItems = [
+const navItems = [
   { 
-    name: 'Trading Journal', 
-    icon: BookOpen, 
-    description: 'Log and analyze your trades with AI-powered feedback.',
-    color: 'blue'
+    name: 'Home', 
+    icon: Home, 
+    path: '/dashboard/home',
+    description: 'Dashboard overview and quick access to key metrics.'
   },
   { 
-    name: 'Economic Calendar', 
-    icon: Calendar, 
-    description: 'Stay ahead of market-moving events and news releases.',
-    color: 'green'
+    name: 'Signals', 
+    icon: Signal, 
+    path: '/dashboard/signal-stream',
+    description: 'Live trading signals from verified educators.'
   },
   { 
-    name: 'Risk Calculator', 
-    icon: Calculator, 
-    description: 'Calculate position size, risk, and potential profit.',
-    color: 'purple'
+    name: 'Education', 
+    icon: GraduationCap, 
+    path: '/dashboard/education',
+    description: 'Video courses and trading education content.'
   },
   { 
-    name: 'Trade Analyst', 
-    icon: TrendingUp, 
-    description: 'Upload screenshots for deep performance analysis.',
-    color: 'red'
+    name: 'Live Sessions', 
+    icon: Video, 
+    path: '/dashboard/live',
+    description: 'Join live trading sessions and webinars.'
   },
   { 
-    name: 'Opportunity Scanner', 
-    icon: Search, 
-    description: 'Scan markets for high-probability trading setups.',
-    color: 'orange'
+    name: 'Community', 
+    icon: Users, 
+    path: '/dashboard/community',
+    description: 'Connect with traders and share insights.'
   },
   { 
-    name: 'Risk Simulator', 
-    icon: ShieldIcon, 
-    description: 'Simulate trade setups to assess risk before you enter.',
-    color: 'yellow'
+    name: 'Tools', 
+    icon: Zap, 
+    path: '/dashboard/advanced-tools',
+    description: 'Advanced trading tools and calculators.'
   },
 ];
 
-const ToolWidget = ({ toolItem, size = 'small' }) => {
-  const Icon = toolItem.icon;
+const NavWidget = ({ navItem, size = 'small' }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const Icon = navItem.icon;
+  const isActive = location.pathname === navItem.path;
   
   const sizeClasses = {
     small: 'col-span-1 h-28',
@@ -66,89 +69,127 @@ const ToolWidget = ({ toolItem, size = 'small' }) => {
     large: 'col-span-2 h-36'
   };
 
-  const getColorClasses = (color) => {
-    switch (color) {
-      case 'blue':
-        return {
-          gradient: 'from-slate-800 to-blue-900 dark:from-blue-100 dark:to-slate-50',
-          icon: 'bg-blue-400 dark:bg-blue-600',
-          accent: 'bg-blue-300 dark:bg-blue-700'
-        };
-      case 'green':
-        return {
-          gradient: 'from-slate-800 to-green-900 dark:from-green-100 dark:to-slate-50',
-          icon: 'bg-green-400 dark:bg-green-600',
-          accent: 'bg-green-300 dark:bg-green-700'
-        };
-      case 'purple':
-        return {
-          gradient: 'from-slate-800 to-purple-900 dark:from-purple-100 dark:to-slate-50',
-          icon: 'bg-purple-400 dark:bg-purple-600',
-          accent: 'bg-purple-300 dark:bg-purple-700'
-        };
-      case 'red':
-        return {
-          gradient: 'from-slate-800 to-red-900 dark:from-red-100 dark:to-slate-50',
-          icon: 'bg-red-400 dark:bg-red-600',
-          accent: 'bg-red-300 dark:bg-red-700'
-        };
-      case 'orange':
-        return {
-          gradient: 'from-slate-800 to-orange-900 dark:from-orange-100 dark:to-slate-50',
-          icon: 'bg-orange-400 dark:bg-orange-600',
-          accent: 'bg-orange-300 dark:bg-orange-700'
-        };
-      case 'yellow':
-        return {
-          gradient: 'from-slate-800 to-yellow-900 dark:from-yellow-100 dark:to-slate-50',
-          icon: 'bg-yellow-400 dark:bg-yellow-600',
-          accent: 'bg-yellow-300 dark:bg-yellow-700'
-        };
+  const renderWidgetContent = () => {
+    switch (navItem.name) {
+      case 'Home':
+        return (
+          <div className="w-full h-full bg-gradient-to-br from-slate-800 to-blue-900 dark:from-blue-100 dark:to-slate-50 rounded-lg overflow-hidden">
+            <div className="p-2 h-full flex flex-col justify-center items-center">
+              <div className="w-8 h-8 bg-blue-400 dark:bg-blue-600 rounded-lg flex items-center justify-center mb-2">
+                <Home className="w-4 h-4 text-white dark:text-blue-100" />
+              </div>
+              <div className="flex gap-1">
+                <div className="w-1 h-2 bg-blue-300 dark:bg-blue-700 rounded"></div>
+                <div className="w-1 h-3 bg-blue-400 dark:bg-blue-800 rounded"></div>
+                <div className="w-1 h-2 bg-blue-200 dark:bg-blue-600 rounded"></div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'Signals':
+        return (
+          <div className="w-full h-full bg-gradient-to-br from-slate-800 to-green-900 dark:from-green-100 dark:to-slate-50 rounded-lg overflow-hidden">
+            <div className="p-2 h-full">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1">
+                  <div className="w-1 h-1 bg-green-300 dark:bg-green-700 rounded-full animate-pulse"></div>
+                  <div className="h-1 bg-green-200 dark:bg-green-600 rounded flex-1"></div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-1 h-1 bg-green-400 dark:bg-green-800 rounded-full animate-pulse delay-100"></div>
+                  <div className="h-1 bg-green-300 dark:bg-green-700 rounded flex-1"></div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-1 h-1 bg-green-500 dark:bg-green-900 rounded-full animate-pulse delay-200"></div>
+                  <div className="h-1 bg-green-400 dark:bg-green-800 rounded flex-1"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'Education':
+        return (
+          <div className="w-full h-full bg-gradient-to-br from-slate-800 to-purple-900 dark:from-purple-100 dark:to-slate-50 rounded-lg overflow-hidden">
+            <div className="p-2 h-full flex flex-col justify-center items-center">
+              <div className="w-6 h-4 bg-purple-300 dark:bg-purple-700 rounded mb-1"></div>
+              <div className="space-y-1 w-full">
+                <div className="h-1 bg-purple-200 dark:bg-purple-600 rounded w-3/4 mx-auto"></div>
+                <div className="h-1 bg-purple-300 dark:bg-purple-700 rounded w-1/2 mx-auto"></div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'Live Sessions':
+        return (
+          <div className="w-full h-full bg-gradient-to-br from-slate-800 to-red-900 dark:from-red-100 dark:to-slate-50 rounded-lg overflow-hidden">
+            <div className="p-2 h-full flex items-center justify-center">
+              <div className="relative">
+                <div className="w-6 h-4 bg-red-300 dark:bg-red-700 rounded"></div>
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 dark:bg-red-900 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'Community':
+        return (
+          <div className="w-full h-full bg-gradient-to-br from-slate-800 to-orange-900 dark:from-orange-100 dark:to-slate-50 rounded-lg overflow-hidden">
+            <div className="p-2 h-full flex items-center justify-center">
+              <div className="flex gap-1">
+                <div className="w-3 h-3 bg-orange-300 dark:bg-orange-700 rounded-full"></div>
+                <div className="w-3 h-3 bg-orange-400 dark:bg-orange-800 rounded-full"></div>
+                <div className="w-3 h-3 bg-orange-200 dark:bg-orange-600 rounded-full"></div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 'Tools':
+        return (
+          <div className="w-full h-full bg-gradient-to-br from-slate-800 to-yellow-900 dark:from-yellow-100 dark:to-slate-50 rounded-lg overflow-hidden">
+            <div className="p-2 h-full flex flex-col justify-center items-center">
+              <div className="w-6 h-6 border-2 border-yellow-300 dark:border-yellow-700 rounded flex items-center justify-center mb-1">
+                <Zap className="w-3 h-3 text-yellow-200 dark:text-yellow-800" />
+              </div>
+            </div>
+          </div>
+        );
+      
       default:
-        return {
-          gradient: 'from-slate-800 to-gray-900 dark:from-gray-100 dark:to-slate-50',
-          icon: 'bg-gray-400 dark:bg-gray-600',
-          accent: 'bg-gray-300 dark:bg-gray-700'
-        };
+        return (
+          <div className="w-full h-full bg-gray-800 dark:bg-gray-100 rounded-lg flex items-center justify-center">
+            <Icon className="w-6 h-6 text-gray-300 dark:text-gray-600" />
+          </div>
+        );
     }
   };
 
-  const renderWidgetContent = () => {
-    const colors = getColorClasses(toolItem.color);
-    
-    return (
-      <div className={`w-full h-full bg-gradient-to-br ${colors.gradient} rounded-lg overflow-hidden`}>
-        <div className="p-2 h-full flex flex-col justify-center items-center">
-          <div className={`w-8 h-8 ${colors.icon} rounded-lg flex items-center justify-center mb-2`}>
-            <Icon className="w-4 h-4 text-white dark:text-blue-100" />
-          </div>
-          <div className="flex gap-1">
-            <div className={`w-1 h-2 ${colors.accent} rounded`}></div>
-            <div className={`w-1 h-3 ${colors.icon} rounded`}></div>
-            <div className={`w-1 h-2 ${colors.accent} rounded opacity-70`}></div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <motion.div
-      className={`${sizeClasses[size]} bg-black dark:bg-white backdrop-blur-sm rounded-2xl p-3 shadow-sm border border-gray-200/20 dark:border-gray-700/30 transition-all duration-300 hover:shadow-md hover:scale-[1.02]`}
+    <motion.button
+      onClick={() => navigate(navItem.path)}
+      className={`${sizeClasses[size]} bg-black dark:bg-white backdrop-blur-sm rounded-2xl p-3 shadow-sm border border-gray-200/20 dark:border-gray-700/30 transition-all duration-300 hover:shadow-md hover:scale-[1.02] ${
+        isActive ? 'ring-2 ring-primary/50 shadow-lg' : ''
+      }`}
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
     >
       <div className="flex flex-col h-full gap-2">
         <div className="flex items-start justify-between mb-1">
-          <h3 className="font-medium text-xs leading-tight text-white dark:text-black">
-            {toolItem.name}
+          <h3 className={`font-medium text-xs leading-tight ${isActive ? 'text-primary' : 'text-white dark:text-black'}`}>
+            {navItem.name}
           </h3>
+          {isActive && (
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
+          )}
         </div>
         <div className="flex-1 min-h-0">
           {renderWidgetContent()}
         </div>
       </div>
-    </motion.div>
+    </motion.button>
   );
 };
 
@@ -169,29 +210,29 @@ export function WidgetSidebar() {
       <div className="p-4 h-full pt-20">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Tools</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Advanced Trading Suite</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Today</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Trading Arsenal</p>
         </div>
 
-        {/* Advanced Tools Widget Grid */}
+        {/* Navigation Widget Grid */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Trading Journal - Large Widget */}
-          <ToolWidget toolItem={toolItems[0]} size="large" />
+          {/* Home - Large Widget */}
+          <NavWidget navItem={navItems[0]} size="large" />
           
-          {/* Economic Calendar */}
-          <ToolWidget toolItem={toolItems[1]} size="small" />
+          {/* Signals */}
+          <NavWidget navItem={navItems[1]} size="small" />
           
-          {/* Risk Calculator */}
-          <ToolWidget toolItem={toolItems[2]} size="small" />
+          {/* Education */}
+          <NavWidget navItem={navItems[2]} size="small" />
           
-          {/* Trade Analyst - Medium Widget */}
-          <ToolWidget toolItem={toolItems[3]} size="medium" />
+          {/* Live Sessions - Medium Widget */}
+          <NavWidget navItem={navItems[3]} size="medium" />
           
-          {/* Opportunity Scanner */}
-          <ToolWidget toolItem={toolItems[4]} size="small" />
+          {/* Community */}
+          <NavWidget navItem={navItems[4]} size="small" />
           
-          {/* Risk Simulator */}
-          <ToolWidget toolItem={toolItems[5]} size="small" />
+          {/* Tools */}
+          <NavWidget navItem={navItems[5]} size="small" />
         </div>
 
         {/* Profile and Controls Section */}

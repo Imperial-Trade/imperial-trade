@@ -1162,7 +1162,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
   // Enhanced Stats Panel with AI insights and Most Traded toggle
   const EnhancedStatsPanel: React.FC = () => {
     const mostTradedData = getMostTradedAssets();
-    const colors = ["#2d2d2d", "#1a1a1a", "#cd7f32", "#404040", "#8b7355"];
+    const colors = ["#4a4a4a", "#6b6b6b", "#2d2d2d", "#5a5a5a", "#3d3d3d"];
 
     return (
       <AnimatePresence>
@@ -1321,20 +1321,20 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="relative h-64 flex items-center justify-center">
+                    <div className="relative h-96 flex items-center justify-center">
                       <svg
-                        width="200"
-                        height="200"
-                        viewBox="0 0 200 200"
+                        width="400"
+                        height="400"
+                        viewBox="0 0 400 400"
                         className="transform -rotate-90"
                       >
                         <circle
-                          cx="100"
-                          cy="100"
-                          r="70"
+                          cx="200"
+                          cy="200"
+                          r="140"
                           fill="none"
-                          stroke={theme === "dark" ? "#1a1a1a" : "#2d2d2d"}
-                          strokeWidth="24"
+                          stroke={theme === "dark" ? "#2d2d2d" : "#e5e7eb"}
+                          strokeWidth="48"
                         />
                         {mostTradedData.map((item, index) => {
                           const total = mostTradedData.reduce(
@@ -1342,7 +1342,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                             0
                           );
                           const percentage = (item.count / total) * 100;
-                          const circumference = 2 * Math.PI * 70;
+                          const circumference = 2 * Math.PI * 140;
                           const strokeDasharray = `${
                             (percentage / 100) * circumference
                           } ${circumference}`;
@@ -1355,12 +1355,12 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           return (
                             <motion.circle
                               key={item.asset}
-                              cx="100"
-                              cy="100"
-                              r="70"
+                              cx="200"
+                              cy="200"
+                              r="140"
                               fill="none"
                               stroke={colors[index]}
-                              strokeWidth="24"
+                              strokeWidth="48"
                               strokeDasharray={strokeDasharray}
                               strokeDashoffset={strokeDashoffset}
                               initial={{

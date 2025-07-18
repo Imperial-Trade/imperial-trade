@@ -234,7 +234,7 @@ export default function TradingJournal() {
           </TabsContent>
 
           <TabsContent value="advanced" className="mt-6 relative z-10">
-            <div className="bg-transparent p-6">
+            <div className="bg-transparent p-6 focus:outline-none focus:border-transparent focus:ring-0 active:border-transparent">
               <TradingJournalApp />
             </div>
           </TabsContent>

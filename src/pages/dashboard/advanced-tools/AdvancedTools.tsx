@@ -206,7 +206,7 @@ export default function AdvancedTools() {
                           className: "w-3 h-3 flex-shrink-0",
                         })}
                     <span className="text-xs font-medium truncate">
-                      {tool.name === "Trading Journal" ? "Journal" : tool.name === "Economic Calendar" ? "Calendar" : tool.name === "Risk Calculator" ? "Calculator" : tool.name === "Trade Analyst" ? "Analyst" : tool.name === "Opportunity Scanner" ? "Scanner" : tool.name.split(" ")[0]}
+                      {tool.name === "Trading Journal" ? "Journal" : tool.name === "Economic Calendar" ? "Calendar" : tool.name === "Risk Calculator" ? "Calculator" : tool.name === "Trade Analyst" ? "Analyst" : tool.name === "Opportunity Scanner" ? "Scanner" : tool.name === "Risk Simulator" ? "Simulator" : tool.name.split(" ")[0]}
                     </span>
                       </div>
                     </button>

@@ -17,8 +17,8 @@ const AdminPanel: React.FC = () => {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-          <p className="text-gray-600 mt-1">Manage users, requests, and system settings</p>
+          <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
+          <p className="text-muted-foreground mt-1">Manage users, requests, and system settings</p>
         </div>
         <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
           <Shield className="w-3 h-3 mr-1" />
@@ -84,9 +84,9 @@ const AdminPanel: React.FC = () => {
 
         <TabsContent value="settings" className="space-y-4">
           <div className="text-center py-12">
-            <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Advanced Settings</h3>
-            <p className="text-gray-600">Additional admin configuration options coming soon...</p>
+            <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">Advanced Settings</h3>
+            <p className="text-muted-foreground">Additional admin configuration options coming soon...</p>
           </div>
         </TabsContent>
       </Tabs>

@@ -423,23 +423,24 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                   </motion.button>
                 )}
                 
-                <motion.button
-                  onClick={() => {
-                    setShowProfileDropdown(false);
-                    handleSignOut();
-                  }}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-red-500/20 rounded-lg transition-all duration-200 text-red-400 hover:text-red-300"
-                  whileHover={{ scale: 1.02, x: 4 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="text-sm">Sign Out</span>
-                </motion.button>
               </div>
             </motion.div>
-          )}
-        </div>
-      </div>
-    </motion.aside>
-  );
+           )}
+          
+          {/* Sign Out Button - Standalone */}
+          <motion.button
+            onClick={handleSignOut}
+            className="w-full mt-2 text-red-400 hover:text-red-300 text-sm transition-colors duration-200 text-center py-2"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out</span>
+            </div>
+          </motion.button>
+         </div>
+       </div>
+     </motion.aside>
+   );
 }

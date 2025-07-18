@@ -90,16 +90,15 @@ function DashboardHeader() {
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 ${isHeaderCollapsed ? 'h-12' : 'h-20'} flex items-center justify-center px-6 transition-all duration-300 bg-transparent border-b border-transparent`}>
-      <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-between'}`}>
-        
-        {/* Logo - Hide when collapsed */}
-        {!isHeaderCollapsed && (
-          <Link to="/dashboard/home" className="flex items-center gap-2">
-            <Crown className="h-6 w-6 text-primary" />
-            <span className="text-xl imperial-tech-font">IMPERIAL</span>
-          </Link>
-        )}
+      {/* Logo - Fixed to leftmost position */}
+      <div className="fixed top-4 left-6 z-60">
+        <Link to="/dashboard/home" className="flex items-center gap-2">
+          <Crown className="h-6 w-6 text-primary" />
+          <span className="text-xl imperial-tech-font">IMPERIAL</span>
+        </Link>
+      </div>
 
+      <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-center'}`}>
         {/* Desktop Navigation */}
         {!isHeaderCollapsed && (
           <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">

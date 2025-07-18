@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -67,8 +67,36 @@ interface WidgetSidebarProps {
 export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+
+  // Mouse position tracking for edge detection
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const isNearLeftEdge = e.clientX <= 50; // Show when mouse is within 50px of left edge
+      
+      if (isNearLeftEdge && !isVisible) {
+        setIsVisible(true);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      // Hide sidebar when mouse leaves the window entirely
+      if (!isHovering) {
+        setIsVisible(false);
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [isVisible, isHovering]);
 
   const handleToolClick = (tool: typeof tradingTools[0]) => {
     setActiveTool(tool.name);
@@ -246,10 +274,24 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
   return (
     <motion.aside
-      className={`h-[calc(100vh-5rem)] w-72 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-y-auto shadow-2xl ${className}`}
-      initial={{ x: -300, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      className={`fixed left-4 top-20 z-50 h-[calc(100vh-5rem)] w-72 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-y-auto shadow-2xl ${className}`}
+      initial={{ x: -280, opacity: 0 }}
+      animate={{ 
+        x: isVisible ? 0 : -280, 
+        opacity: isVisible ? 1 : 0 
+      }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 300, 
+        damping: 30,
+        mass: 0.8
+      }}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => {
+        setIsHovering(false);
+        setIsVisible(false);
+        setShowProfileDropdown(false);
+      }}
       whileHover={{ 
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
         scale: 1.01

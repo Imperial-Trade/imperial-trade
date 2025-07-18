@@ -453,7 +453,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         
         {/* Trading Arsenal Sidebar - Floating overlay */}
         <ErrorBoundary componentName="Trading Arsenal Sidebar">
-          <WidgetSidebar className="fixed left-4 top-20 z-50" />
+          <WidgetSidebar />
         </ErrorBoundary>
       </div>
     </SidebarProvider>

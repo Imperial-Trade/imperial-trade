@@ -11,27 +11,27 @@ export const CanvasWelcomeAnimation: React.FC<CanvasWelcomeAnimationProps> = ({ 
   const startTimeRef = useRef<number>();
   const { user } = useAuth();
 
-  // Animation timeline configuration (in milliseconds)
+  // Apple-style animation timeline (faster, more refined)
   const TIMELINE = {
-    // Phase 1: Cursive Welcome (0.5s - 6.5s) = 6 seconds total
-    phase1_start: 500,
-    phase1_end: 6500,
+    // Phase 1: Elegant fade-in title (0.3s - 2.5s) = 2.2 seconds
+    phase1_start: 300,
+    phase1_end: 2500,
     
-    // Phase 2: User Name Greeting (appears at 7s)
-    phase2_start: 7000,
-    phase2_end: 9000,
+    // Phase 2: User Name with subtle scale (2.8s - 4.2s) = 1.4 seconds  
+    phase2_start: 2800,
+    phase2_end: 4200,
     
-    // Phase 3: Tagline Typewriter (10s - 14s) = 4 seconds
-    phase3_start: 10000,
-    phase3_end: 14000,
+    // Phase 3: Refined typewriter (4.5s - 7s) = 2.5 seconds
+    phase3_start: 4500,
+    phase3_end: 7000,
     
-    // Phase 4: Dramatic Pause (14s - 17s) = 3 seconds
-    phase4_start: 14000,
-    phase4_end: 17000,
+    // Phase 4: Brief pause (7s - 7.8s) = 0.8 seconds
+    phase4_start: 7000,
+    phase4_end: 7800,
     
-    // Phase 5: Final Brand Reveal (17.5s+)
-    phase5_start: 17500,
-    phase5_end: 20000,
+    // Phase 5: Apple-style brand reveal (8s - 9.5s) = 1.5 seconds
+    phase5_start: 8000,
+    phase5_end: 9500,
   };
 
   // Get user's full name
@@ -77,57 +77,30 @@ export const CanvasWelcomeAnimation: React.FC<CanvasWelcomeAnimationProps> = ({ 
     };
   };
 
-  // Drawing functions for each phase
-  const drawPhase1 = (ctx: CanvasRenderingContext2D, progress: number) => {
-    // Phase 1: Cursive "Welcome" reveal effect
-    const canvas = ctx.canvas;
-    const centerX = canvas.width / (2 * window.devicePixelRatio);
-    const centerY = canvas.height / (2 * window.devicePixelRatio) - 50;
-
-    // Clear canvas with black background
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
-
-    // Save context for clipping
-    ctx.save();
-
-    // Create clipping mask that grows from left to right
-    const maskWidth = (canvas.width / window.devicePixelRatio) * progress;
-    ctx.beginPath();
-    ctx.rect(0, 0, maskWidth, canvas.height / window.devicePixelRatio);
-    ctx.clip();
-
-    // Draw cursive "Welcome" text
-    ctx.font = `bold 120px "Great Vibes", cursive`;
-    ctx.fillStyle = '#D4AF37'; // Imperial gold
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Welcome', centerX, centerY);
-
-    // Restore context
-    ctx.restore();
+  // Apple-style easing function
+  const easeOutCubic = (t: number): number => {
+    return 1 - Math.pow(1 - t, 3);
   };
 
-  const drawPhase2 = (ctx: CanvasRenderingContext2D, progress: number) => {
-    // Phase 2: User name greeting with fade and scale
+  const easeInOutCubic = (t: number): number => {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  };
+
+  // Drawing functions with Apple-style refinement
+  const drawPhase1 = (ctx: CanvasRenderingContext2D, progress: number) => {
+    // Phase 1: Elegant fade-in "Welcome" with Apple-style animation
     const canvas = ctx.canvas;
     const centerX = canvas.width / (2 * window.devicePixelRatio);
-    const centerY = canvas.height / (2 * window.devicePixelRatio) + 80;
+    const centerY = canvas.height / (2 * window.devicePixelRatio) - 40;
 
-    // Black background
+    // Clear with subtle gradient background
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
 
-    // Keep cursive "Welcome" visible
-    ctx.font = `bold 120px "Great Vibes", cursive`;
-    ctx.fillStyle = '#D4AF37';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Welcome', centerX, centerY - 130);
-
-    // Animate user name with fade and scale
-    const scale = 0.95 + (0.05 * progress);
-    const opacity = progress;
+    // Apple-style smooth fade with scale
+    const easedProgress = easeOutCubic(progress);
+    const opacity = easedProgress;
+    const scale = 0.9 + (0.1 * easedProgress);
 
     ctx.save();
     ctx.globalAlpha = opacity;
@@ -135,111 +108,153 @@ export const CanvasWelcomeAnimation: React.FC<CanvasWelcomeAnimationProps> = ({ 
     ctx.scale(scale, scale);
     ctx.translate(-centerX, -centerY);
 
-    ctx.font = 'bold 48px "Inter", sans-serif';
+    // Clean, Apple-style typography - no cursive
+    ctx.font = 'bold 72px "Inter", sans-serif';
     ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(userName, centerX, centerY);
+    ctx.fillText('Welcome', centerX, centerY);
+
+    ctx.restore();
+  };
+
+  const drawPhase2 = (ctx: CanvasRenderingContext2D, progress: number) => {
+    // Phase 2: Apple-style user name with refined animation
+    const canvas = ctx.canvas;
+    const centerX = canvas.width / (2 * window.devicePixelRatio);
+    const centerY = canvas.height / (2 * window.devicePixelRatio);
+
+    // Clean black background
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+
+    // Keep welcome text visible with same styling
+    ctx.font = 'bold 72px "Inter", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Welcome', centerX, centerY - 40);
+
+    // Apple-style user name animation
+    const easedProgress = easeInOutCubic(progress);
+    const scale = 0.95 + (0.05 * easedProgress);
+    const opacity = easedProgress;
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.translate(centerX, centerY + 50);
+    ctx.scale(scale, scale);
+    ctx.translate(-centerX, -centerY - 50);
+
+    ctx.font = '400 36px "Inter", sans-serif';
+    ctx.fillStyle = '#D4AF37';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(userName, centerX, centerY + 50);
 
     ctx.restore();
   };
 
   const drawPhase3 = (ctx: CanvasRenderingContext2D, progress: number) => {
-    // Phase 3: Typewriter effect for tagline
+    // Phase 3: Apple-style refined typewriter
     const canvas = ctx.canvas;
     const centerX = canvas.width / (2 * window.devicePixelRatio);
     const centerY = canvas.height / (2 * window.devicePixelRatio);
 
-    // Black background
+    // Clean background
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
 
     // Keep previous elements visible
-    ctx.font = `bold 120px "Great Vibes", cursive`;
-    ctx.fillStyle = '#D4AF37';
+    ctx.font = 'bold 72px "Inter", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Welcome', centerX, centerY - 100);
+    ctx.fillText('Welcome', centerX, centerY - 40);
 
-    ctx.font = 'bold 48px "Inter", sans-serif';
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(userName, centerX, centerY);
+    ctx.font = '400 36px "Inter", sans-serif';
+    ctx.fillStyle = '#D4AF37';
+    ctx.fillText(userName, centerX, centerY + 50);
 
-    // Typewriter effect for tagline
-    const charsToShow = Math.floor(tagline.length * progress);
+    // Refined typewriter with easing
+    const easedProgress = easeOutCubic(progress);
+    const charsToShow = Math.floor(tagline.length * easedProgress);
     const displayText = tagline.substring(0, charsToShow);
 
-    ctx.font = '32px "Inter", sans-serif';
-    ctx.fillStyle = '#CCCCCC';
+    ctx.font = '300 24px "Inter", sans-serif';
+    ctx.fillStyle = '#AAAAAA';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(displayText, centerX, centerY + 80);
+    ctx.fillText(displayText, centerX, centerY + 120);
 
-    // Typing cursor
-    if (charsToShow < tagline.length) {
+    // Subtle cursor
+    if (charsToShow < tagline.length && Math.floor(Date.now() / 600) % 2) {
       const textWidth = ctx.measureText(displayText).width;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(centerX + textWidth / 2 + 5, centerY + 60, 3, 40);
+      ctx.fillStyle = '#D4AF37';
+      ctx.fillRect(centerX + textWidth / 2 + 3, centerY + 110, 2, 20);
     }
   };
 
   const drawPhase4 = (ctx: CanvasRenderingContext2D) => {
-    // Phase 4: Dramatic pause - hold everything static
+    // Phase 4: Brief pause with all elements visible
     const canvas = ctx.canvas;
     const centerX = canvas.width / (2 * window.devicePixelRatio);
     const centerY = canvas.height / (2 * window.devicePixelRatio);
 
-    // Black background
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
 
-    // All text visible
-    ctx.font = `bold 120px "Great Vibes", cursive`;
-    ctx.fillStyle = '#D4AF37';
+    // All text visible in final positions
+    ctx.font = 'bold 72px "Inter", sans-serif';
+    ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Welcome', centerX, centerY - 100);
+    ctx.fillText('Welcome', centerX, centerY - 40);
 
-    ctx.font = 'bold 48px "Inter", sans-serif';
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(userName, centerX, centerY);
+    ctx.font = '400 36px "Inter", sans-serif';
+    ctx.fillStyle = '#D4AF37';
+    ctx.fillText(userName, centerX, centerY + 50);
 
-    ctx.font = '32px "Inter", sans-serif';
-    ctx.fillStyle = '#CCCCCC';
-    ctx.fillText(tagline, centerX, centerY + 80);
+    ctx.font = '300 24px "Inter", sans-serif';
+    ctx.fillStyle = '#AAAAAA';
+    ctx.fillText(tagline, centerX, centerY + 120);
   };
 
   const drawPhase5 = (ctx: CanvasRenderingContext2D, progress: number) => {
-    // Phase 5: Final brand reveal with fade in
+    // Phase 5: Apple-style brand reveal
     const canvas = ctx.canvas;
     const centerX = canvas.width / (2 * window.devicePixelRatio);
     const centerY = canvas.height / (2 * window.devicePixelRatio);
 
-    // Black background
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
 
-    // Fade in Imperial logo and brand name
-    ctx.save();
-    ctx.globalAlpha = progress;
+    // Apple-style fade with subtle scale
+    const easedProgress = easeOutCubic(progress);
+    const scale = 0.98 + (0.02 * easedProgress);
 
-    // Imperial logo (crown symbol)
-    ctx.font = '80px "Lucide"';
+    ctx.save();
+    ctx.globalAlpha = easedProgress;
+    ctx.translate(centerX, centerY);
+    ctx.scale(scale, scale);
+    ctx.translate(-centerX, -centerY);
+
+    // Minimalist crown icon
+    ctx.font = '48px "Inter", sans-serif';
     ctx.fillStyle = '#D4AF37';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('♔', centerX, centerY - 60);
+    ctx.fillText('♔', centerX, centerY - 40);
 
-    // Imperial Trading text
-    ctx.font = 'bold 48px "Inter", sans-serif';
+    // Clean brand typography
+    ctx.font = 'bold 42px "Inter", sans-serif';
     ctx.fillStyle = '#FFFFFF';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     ctx.fillText('IMPERIAL', centerX, centerY + 20);
 
-    ctx.font = '24px "Inter", sans-serif';
+    ctx.font = '300 18px "Inter", sans-serif';
     ctx.fillStyle = '#D4AF37';
-    ctx.fillText('TRADING PLATFORM', centerX, centerY + 60);
+    ctx.letterSpacing = '3px';
+    ctx.fillText('TRADING PLATFORM', centerX, centerY + 50);
 
     ctx.restore();
   };
@@ -305,11 +320,11 @@ export const CanvasWelcomeAnimation: React.FC<CanvasWelcomeAnimationProps> = ({ 
   }, [user]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black">
+    <div className="absolute inset-0 z-30 flex items-center justify-center">
       <canvas
         ref={canvasRef}
         className="w-full h-full block"
-        style={{ background: '#000000' }}
+        style={{ background: 'rgba(0, 0, 0, 0.9)' }}
       />
     </div>
   );

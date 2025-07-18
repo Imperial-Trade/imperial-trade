@@ -20,7 +20,17 @@ export function SessionStatusControls({
   onEditSession,
   updating 
 }: SessionStatusControlsProps) {
+  const [isDeleting, setIsDeleting] = React.useState(false);
   const isUpdating = updating === session.id;
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await onDeleteSession(session.id);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   const canGoLive = session.status === 'scheduled';
   const canComplete = session.status === 'live';
   const canReschedule = session.status === 'completed';
@@ -138,10 +148,11 @@ export function SessionStatusControls({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => onDeleteSession(session.id)}
-              className="bg-red-500 hover:bg-red-600 text-white"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600 text-white disabled:opacity-50"
             >
-              Delete Session
+              {isDeleting ? 'Deleting...' : 'Delete Session'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

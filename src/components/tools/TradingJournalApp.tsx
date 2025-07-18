@@ -1758,7 +1758,9 @@ Please provide a brief analysis focusing on what went well, what could be improv
                         }
                         className={cn(
                           trade.outcome === "win" &&
-                            "bg-gradient-to-r from-amber-400 via-yellow-400 to-teal-600 text-white border-0"
+                            "bg-gradient-to-r from-amber-400 via-yellow-400 to-teal-600 text-white border-0",
+                          trade.outcome === "loss" &&
+                            "bg-gradient-to-r from-amber-400 via-yellow-400 to-red-800 text-white border-0"
                         )}
                       >
                         {trade.asset}

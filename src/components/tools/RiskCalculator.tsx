@@ -1,20 +1,69 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Calculator, DollarSign, TrendingUp, AlertTriangle, Bot, Shield, Target, Brain } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, AlertTriangle, Bot, Shield, Target, Brain, Search } from 'lucide-react';
+import { useAssetSearch } from '@/hooks/useAssetSearch';
 export default function RiskCalculator() {
   const [formData, setFormData] = useState({
     accountBalance: '',
     riskPercentage: [2],
     entryPrice: '',
     stopLoss: '',
-    takeProfit: ''
+    takeProfit: '',
+    assetTicker: ''
   });
+  
+  // Asset selection states
+  const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+  const dropdownTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  // Use asset search hook with automatic currency detection
+  const { suggestions, saveRecentAsset } = useAssetSearch({ 
+    query: formData.assetTicker,
+    delay: 300 
+  });
+  
   const [results, setResults] = useState(null);
   const [aiSanityCheck, setAiSanityCheck] = useState(null);
+  // Asset selection handlers
+  const handleAssetSelect = useCallback((asset: string) => {
+    handleInputChange('assetTicker', asset);
+    saveRecentAsset(asset);
+    setShowAssetDropdown(false);
+  }, [saveRecentAsset]);
+
+  const handleAssetFocus = useCallback(() => {
+    setShowAssetDropdown(true);
+  }, []);
+
+  const handleAssetBlur = useCallback(() => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setShowAssetDropdown(false);
+    }, 300);
+  }, []);
+
+  const handleDropdownMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+    }
+  }, []);
+
+  // Get asset badge for visual categorization
+  const getAssetBadge = useCallback((asset: string) => {
+    if (['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'].some(pair => asset.includes(pair.replace('/', '')))) 
+      return { label: "FX", variant: "outline" as const };
+    if (['XAU/USD', 'XAG/USD', 'WTI/USD', 'BRENT/USD'].some(comm => asset.includes(comm.replace('/', '')))) 
+      return { label: "Gold", variant: "outline" as const };
+    if (['SPX500', 'US30', 'NAS100', 'UK100', 'DAX30', 'JP225'].includes(asset)) 
+      return { label: "Index", variant: "outline" as const };
+    if (asset.includes("USDT")) return { label: "Crypto", variant: "outline" as const };
+    return null;
+  }, []);
+
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -113,6 +162,67 @@ export default function RiskCalculator() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Asset Selection Section */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Asset / Trading Pair</label>
+              <div className="relative">
+                <Input
+                  placeholder="Asset / Ticker (e.g., EURUSD, XAUUSD, BTCUSDT)"
+                  value={formData.assetTicker}
+                  onChange={e => handleInputChange('assetTicker', e.target.value)}
+                  onFocus={handleAssetFocus}
+                  onBlur={handleAssetBlur}
+                  className="bg-background border-border text-foreground h-12 text-lg pr-8"
+                />
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+
+                {showAssetDropdown && (
+                  <div
+                    className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-48 overflow-y-auto"
+                    onMouseDown={handleDropdownMouseDown}
+                  >
+                    {suggestions && suggestions.length > 0 ? (
+                      <div className="p-1">
+                        {!formData.assetTicker && (
+                          <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
+                            Recent Assets
+                          </div>
+                        )}
+                        {suggestions.map((asset) => {
+                          const badge = getAssetBadge(asset);
+                          return (
+                            <button
+                              key={asset}
+                              type="button"
+                              onClick={() => handleAssetSelect(asset)}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium">{asset}</span>
+                                {badge && (
+                                  <Badge variant={badge.variant} className="text-xs h-5 px-2">
+                                    {badge.label}
+                                  </Badge>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : formData.assetTicker ? (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        No matches found
+                      </div>
+                    ) : (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        Start typing to see suggestions
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Account Balance ($)</label>

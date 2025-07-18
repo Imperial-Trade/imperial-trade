@@ -141,8 +141,8 @@ export const AdminNotificationSystem: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Notification Settings</h3>
-          <p className="text-gray-600">Configure admin notifications for account requests</p>
+          <h3 className="text-lg font-semibold text-foreground">Notification Settings</h3>
+          <p className="text-muted-foreground">Configure admin notifications for account requests</p>
         </div>
         <Button
           onClick={sendTestNotification}
@@ -159,7 +159,7 @@ export const AdminNotificationSystem: React.FC = () => {
         {/* Email Notifications */}
         <Card className="border-gray-200">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-900">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Mail className="w-5 h-5" />
               Email Notifications
             </CardTitle>
@@ -167,8 +167,8 @@ export const AdminNotificationSystem: React.FC = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-900">New Account Requests</p>
-                <p className="text-sm text-gray-600">Get notified immediately when someone submits a new request</p>
+                <p className="font-medium text-foreground">New Account Requests</p>
+                <p className="text-sm text-muted-foreground">Get notified immediately when someone submits a new request</p>
               </div>
               <Switch
                 checked={settings.newRequests}
@@ -179,8 +179,8 @@ export const AdminNotificationSystem: React.FC = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-900">Request Resubmissions</p>
-                <p className="text-sm text-gray-600">Get alerts when users resubmit after rejection</p>
+                <p className="font-medium text-foreground">Request Resubmissions</p>
+                <p className="text-sm text-muted-foreground">Get alerts when users resubmit after rejection</p>
               </div>
               <Switch
                 checked={settings.resubmissions}
@@ -191,8 +191,8 @@ export const AdminNotificationSystem: React.FC = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-900">Daily Digest</p>
-                <p className="text-sm text-gray-600">Summary of pending requests sent daily at 9 AM</p>
+                <p className="font-medium text-foreground">Daily Digest</p>
+                <p className="text-sm text-muted-foreground">Summary of pending requests sent daily at 9 AM</p>
               </div>
               <Switch
                 checked={settings.dailyDigest}
@@ -203,8 +203,8 @@ export const AdminNotificationSystem: React.FC = () => {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-900">Weekly Report</p>
-                <p className="text-sm text-gray-600">Comprehensive weekly statistics and trends</p>
+                <p className="font-medium text-foreground">Weekly Report</p>
+                <p className="text-sm text-muted-foreground">Comprehensive weekly statistics and trends</p>
               </div>
               <Switch
                 checked={settings.weeklyReport}
@@ -218,7 +218,7 @@ export const AdminNotificationSystem: React.FC = () => {
         {/* Recent Activity */}
         <Card className="border-gray-200">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-900">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <Clock className="w-5 h-5" />
               Recent Activity
             </CardTitle>
@@ -256,9 +256,9 @@ export const AdminNotificationSystem: React.FC = () => {
       {/* Statistics Overview */}
       <Card className="border-gray-200">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-900">
-            <Settings className="w-5 h-5" />
-            Notification Statistics
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Settings className="w-5 h-5" />
+              Notification Statistics
           </CardTitle>
         </CardHeader>
         <CardContent>

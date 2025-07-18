@@ -130,6 +130,17 @@ export const ImperialWelcome: React.FC<ImperialWelcomeProps> = ({
         <div className="absolute bottom-10 right-10 w-48 h-48 bg-primary/5 rounded-full blur-3xl"></div>
       </div>
 
+      {/* Custom Styles */}
+      <style jsx>{`
+        .imperial-name {
+          color: #D4AF37;
+          font-weight: 700;
+        }
+        
+        .imperial-cta-button:hover {
+          box-shadow: 0 10px 25px rgba(212, 175, 55, 0.2);
+        }
+      `}</style>
     </div>
   );
 };

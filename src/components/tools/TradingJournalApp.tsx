@@ -1469,10 +1469,20 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   ...prev,
                   selectedDate: null,
                   isDayViewActive: false,
-                  currentFilter: prev.currentFilter, // Ensure we maintain the current filter
+                  currentFilter: prev.currentFilter,
                 }));
-                // Scroll to top when returning to calendar
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                // Scroll to calendar view when returning
+                setTimeout(() => {
+                  const calendarElement = document.querySelector('[data-calendar-view]');
+                  if (calendarElement) {
+                    calendarElement.scrollIntoView({ 
+                      behavior: 'smooth', 
+                      block: 'center' 
+                    });
+                  } else {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }, 100);
               }}
               className="flex items-center gap-2"
             >
@@ -1744,7 +1754,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                   : "bg-white border-slate-200"
               )}
             >
-              <CardContent className="p-6">
+              <CardContent className="p-6" data-calendar-view>
                 <DynamicCalendarView />
               </CardContent>
             </Card>

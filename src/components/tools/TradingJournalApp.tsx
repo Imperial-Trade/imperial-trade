@@ -1672,7 +1672,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                     className={cn(
                       "capitalize",
                       journalState.currentFilter === view &&
-                        "bg-gradient-to-r from-amber-400 via-orange-500 to-amber-800 text-white border-0 hover:from-amber-500 hover:via-orange-600 hover:to-amber-900"
+                        "bg-gradient-to-r from-amber-400 via-yellow-400 to-teal-600 text-white border-0 hover:from-amber-500 hover:via-yellow-500 hover:to-teal-700"
                     )}
                   >
                     {view}

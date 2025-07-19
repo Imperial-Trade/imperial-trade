@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWelcome } from '@/contexts/WelcomeContext';
 import { VideoBackground } from '@/components/account-request/VideoBackground';
 
 interface StatCardProps {
@@ -73,6 +74,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change, trend, icon }
 
 export const DashboardHome: React.FC = () => {
   const { user } = useAuth();
+  const { hasSeenWelcome, markWelcomeAsSeen } = useWelcome();
   const isAdmin = user?.user_metadata?.access_level === 'admin';
   const isEducator = user?.user_metadata?.user_type === 'educator';
   const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(true);
@@ -80,25 +82,19 @@ export const DashboardHome: React.FC = () => {
 
   // Check if we should show the session-based welcome message
   useEffect(() => {
-    if (user?.id) {
-      // Create a unique session key based on user ID and login time
-      const sessionKey = `imperial_welcome_session_${user.id}`;
-      const hasSeenWelcomeThisSession = localStorage.getItem(sessionKey);
+    if (user?.id && !hasSeenWelcome) {
+      // First time in this login session, show welcome
+      markWelcomeAsSeen();
+      setShowSessionWelcome(true);
       
-      if (!hasSeenWelcomeThisSession) {
-        // First time in this login session, show welcome
-        localStorage.setItem(sessionKey, 'true');
-        setShowSessionWelcome(true);
-        
-        // Hide the welcome message after 5 seconds
-        const timer = setTimeout(() => {
-          setShowSessionWelcome(false);
-        }, 5000);
-        
-        return () => clearTimeout(timer);
-      }
+      // Hide the welcome message after 5 seconds
+      const timer = setTimeout(() => {
+        setShowSessionWelcome(false);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [user?.id]);
+  }, [user?.id, hasSeenWelcome, markWelcomeAsSeen]);
 
 
   // Get user's full name for the typewriter effect

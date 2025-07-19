@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -76,9 +77,10 @@ function App() {
             <PostHogPageViewTracker />
             <ScrollToTop />
             <AuthProvider>
-              <NavigationGuard>
-                <SignalRealtimeProvider>
-                  <WebSocketPriceProvider>
+              <WelcomeProvider>
+                <NavigationGuard>
+                  <SignalRealtimeProvider>
+                    <WebSocketPriceProvider>
                     <Routes>
                       {/* Landing Routes */}
                       <Route
@@ -256,9 +258,10 @@ function App() {
                       <Route path="/access-denied" element={<AccessDenied />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
-                  </WebSocketPriceProvider>
-                </SignalRealtimeProvider>
-              </NavigationGuard>
+                    </WebSocketPriceProvider>
+                  </SignalRealtimeProvider>
+                </NavigationGuard>
+              </WelcomeProvider>
             </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>

@@ -96,7 +96,7 @@ export default function FeatureCarousel() {
 
             {/* Feature Display - Larger */}
             <div className="lg:col-span-4 relative">
-              <div className="bg-card rounded-3xl border-2 border-border p-12 lg:p-20 h-full flex flex-col justify-center">
+              <div className="bg-background/10 backdrop-blur-md rounded-3xl border border-white/20 p-12 lg:p-20 h-full flex flex-col justify-center glass-effect">
                 <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style={{
                 backgroundColor: features[activeIndex].color + '20'
               }}>

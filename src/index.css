@@ -1050,16 +1050,14 @@
 .gradient-gold-bluegreen {
   background: linear-gradient(135deg, 
     hsl(var(--gradient-gold-start)) 0%, 
-    hsl(var(--gradient-gold-start)) 60%, 
-    hsl(var(--gradient-gold-mid)) 80%, 
+    hsl(var(--gradient-gold-start)) 50%, 
     hsl(var(--gradient-bluegreen-end)) 100%);
 }
 
 .gradient-gold-bluegreen-text {
   background: linear-gradient(135deg, 
     hsl(var(--gradient-gold-start)) 0%, 
-    hsl(var(--gradient-gold-start)) 60%, 
-    hsl(var(--gradient-gold-mid)) 80%, 
+    hsl(var(--gradient-gold-start)) 50%, 
     hsl(var(--gradient-bluegreen-end)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1071,16 +1069,14 @@
   border: 2px solid;
   border-image: linear-gradient(135deg, 
     hsl(var(--gradient-gold-start)) 0%, 
-    hsl(var(--gradient-gold-start)) 60%, 
-    hsl(var(--gradient-gold-mid)) 80%, 
+    hsl(var(--gradient-gold-start)) 50%, 
     hsl(var(--gradient-bluegreen-end)) 100%) 1;
 }
 
 .bg-gradient-gold-bluegreen-subtle {
   background: linear-gradient(135deg, 
     hsl(var(--gradient-gold-start) / 0.1) 0%, 
-    hsl(var(--gradient-gold-start) / 0.08) 60%, 
-    hsl(var(--gradient-gold-mid) / 0.05) 80%, 
+    hsl(var(--gradient-gold-start) / 0.1) 50%, 
     hsl(var(--gradient-bluegreen-end) / 0.1) 100%);
 }
 

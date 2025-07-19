@@ -14,7 +14,7 @@ interface TypewriterTextProps {
 export const TypewriterText: React.FC<TypewriterTextProps> = ({
   text,
   speed = 100,
-  showCursor = true,
+  showCursor = false,
   cursorBlinkSpeed = 500,
   className,
   onComplete

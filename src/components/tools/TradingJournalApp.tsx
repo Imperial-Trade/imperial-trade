@@ -679,24 +679,24 @@ Please provide a brief analysis focusing on what went well, what could be improv
 
       <Card
         className={cn(
-          "border-2 transition-all duration-300 hover:scale-105",
+          "border-2 transition-all duration-300 hover:scale-105 gold-bluegreen-border",
           theme === "dark"
-            ? "bg-slate-900/80 border-slate-700 hover:border-orange-500/50"
-            : "bg-white border-slate-200 hover:border-orange-500/50"
+            ? "bg-slate-900/80 border-slate-700 hover:border-[#20b2aa]/50"
+            : "bg-white border-slate-200 hover:border-[#20b2aa]/50"
         )}
       >
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Trades</p>
-              <p className="text-2xl font-bold text-orange-500">
+              <p className="text-2xl font-bold gold-bluegreen-gradient">
                 {metrics.totalTrades}
               </p>
               <p className="text-xs text-muted-foreground">
                 Best: ${metrics.bestTrade.toFixed(0)}
               </p>
             </div>
-            <Activity className="h-8 w-8 text-orange-500" />
+            <Activity className="h-8 w-8" style={{color: '#ffd700'}} />
           </div>
         </CardContent>
       </Card>

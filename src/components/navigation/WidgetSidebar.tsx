@@ -18,6 +18,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { TradingSessionIndicator } from '@/components/ui/TradingSessionIndicator';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Define the 6 trading arsenal tools with their correct existing routes
@@ -303,6 +304,9 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Today</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">Trading Arsenal</p>
         </div>
+
+        {/* Trading Session Indicator */}
+        <TradingSessionIndicator />
 
         {/* Widget Grid */}
         <div className="grid grid-cols-2 gap-3">

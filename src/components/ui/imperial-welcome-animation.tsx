@@ -13,15 +13,15 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
 
   const tagline = "the imperial experience awaits.";
 
-  // Updated timeline with pause and opening effect
+  // Updated timeline with longer pause and dots animation
   const timeline = {
     typewriter_start: 0,     // Start immediately
     typewriter_end: 3000,    // 3 seconds for typing
     pause_start: 3000,       // Pause starts after typing
-    pause_end: 6000,         // 3 second pause
-    opening_start: 6000,     // Opening effect starts
-    opening_end: 7500,       // 1.5 seconds for opening
-    complete: 7500           // Total animation time
+    pause_end: 7000,         // 4 second pause (3-7 seconds)
+    opening_start: 7000,     // Opening effect starts
+    opening_end: 8500,       // 1.5 seconds for opening
+    complete: 8500           // Total animation time
   };
 
   // Apple-style easing function
@@ -72,17 +72,39 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     }
   };
 
-  // Pause phase - show completed text without cursor
-  const drawPause = (ctx: CanvasRenderingContext2D) => {
+  // Pause phase with animated dots
+  const drawPause = (ctx: CanvasRenderingContext2D, elapsedTime: number) => {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     
+    // Main text
     ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
     ctx.fillText(tagline, ctx.canvas.width / 2, ctx.canvas.height / 2);
+    
+    // Animated dots below the text
+    const dotStartY = ctx.canvas.height / 2 + 60;
+    const dotSize = 8;
+    const dotSpacing = 20;
+    const animationSpeed = 800; // milliseconds per cycle
+    
+    // Calculate which dot should be active based on time
+    const cycleTime = elapsedTime % animationSpeed;
+    const activeDot = Math.floor((cycleTime / animationSpeed) * 4);
+    
+    // Draw 4 dots
+    for (let i = 0; i < 4; i++) {
+      const dotX = ctx.canvas.width / 2 - (1.5 * dotSpacing) + (i * dotSpacing);
+      const isActive = i === activeDot;
+      
+      ctx.beginPath();
+      ctx.arc(dotX, dotStartY, dotSize, 0, Math.PI * 2);
+      ctx.fillStyle = isActive ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.3)';
+      ctx.fill();
+    }
   };
 
   // Opening effect - dramatic fade out with scale
@@ -147,8 +169,8 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       const progress = Math.min(1, elapsedTime / (timeline.typewriter_end - timeline.typewriter_start));
       drawTypewriter(ctx, progress);
     } else if (elapsedTime <= timeline.pause_end) {
-      // Pause phase - show completed text
-      drawPause(ctx);
+      // Pause phase with animated dots
+      drawPause(ctx, elapsedTime - timeline.pause_start);
     } else if (elapsedTime <= timeline.opening_end) {
       // Opening effect
       const progress = Math.min(1, (elapsedTime - timeline.opening_start) / (timeline.opening_end - timeline.opening_start));

@@ -55,7 +55,7 @@ export default function FeatureCarousel() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
-  return <section className="relative py-32 bg-gradient-to-br from-white/40 via-white/20 to-transparent">
+  return <section className="relative py-32 bg-gradient-to-br from-white/50 via-white/30 via-white/15 to-transparent">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <ContentSection>
           <div className="text-center mb-16">

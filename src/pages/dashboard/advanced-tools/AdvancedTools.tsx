@@ -96,11 +96,11 @@ export default function AdvancedTools() {
   const location = useLocation();
   const [activeTool, setActiveTool] = useState(null);
 
-  // Get all tools in one array for easier lookup
-  const allTools = [...coreTools, ...aiTools];
+  // Memoize all tools to prevent recreation on every render
+  const allTools = React.useMemo(() => [...coreTools, ...aiTools], []);
 
   // Function to get tool by query parameter
-  const getToolFromQuery = () => {
+  const getToolFromQuery = React.useCallback(() => {
     const params = new URLSearchParams(location.search);
     const toolParam = params.get("tool");
 
@@ -115,7 +115,7 @@ export default function AdvancedTools() {
 
     const toolName = toolMap[toolParam];
     return allTools.find((tool) => tool.name === toolName) || null;
-  };
+  }, [location.search, allTools]);
 
   // Set active tool based on URL parameter on component mount and URL changes
   useEffect(() => {
@@ -126,7 +126,7 @@ export default function AdvancedTools() {
       // Default to Trading Journal if no query parameter
       setActiveTool(coreTools[0]);
     }
-  }, [location.search]);
+  }, [getToolFromQuery]);
 
   const Placeholder = () => (
     <motion.div
@@ -222,7 +222,6 @@ export default function AdvancedTools() {
           <AnimatePresence mode="wait">
             {activeTool ? (
               <motion.div
-                key={activeTool.name}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -30 }}
@@ -231,12 +230,12 @@ export default function AdvancedTools() {
               >
                 <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
                   <div className="p-4 bg-transparent">
-                    {activeTool.name === "Trading Journal" && <TradingJournal />}
-                    {activeTool.name === "Economic Calendar" && <EconomicCalendar />}
-                    {activeTool.name === "Risk Calculator" && <RiskCalculator />}
-                    {activeTool.name === "Trade Analyst" && <TradeAnalyst />}
-                    {activeTool.name === "Opportunity Scanner" && <OpportunityScanner />}
-                    {activeTool.name === "Risk Simulator" && <RiskSimulator />}
+                    {activeTool.name === "Trading Journal" && <TradingJournal key="journal" />}
+                    {activeTool.name === "Economic Calendar" && <EconomicCalendar key="calendar" />}
+                    {activeTool.name === "Risk Calculator" && <RiskCalculator key="calculator" />}
+                    {activeTool.name === "Trade Analyst" && <TradeAnalyst key="analyst" />}
+                    {activeTool.name === "Opportunity Scanner" && <OpportunityScanner key="scanner" />}
+                    {activeTool.name === "Risk Simulator" && <RiskSimulator key="simulator" />}
                   </div>
                 </Card>
               </motion.div>

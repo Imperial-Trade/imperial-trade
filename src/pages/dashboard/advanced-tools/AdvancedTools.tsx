@@ -219,30 +219,30 @@ export default function AdvancedTools() {
 
         {/* Tool Display */}
         <div className="min-h-[600px]">
-          <AnimatePresence mode="wait">
-            {activeTool ? (
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -30 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="relative h-full"
-              >
-                <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
-                  <div className="p-4 bg-transparent">
-                    {activeTool.name === "Trading Journal" && <TradingJournal key="journal" />}
-                    {activeTool.name === "Economic Calendar" && <EconomicCalendar key="calendar" />}
-                    {activeTool.name === "Risk Calculator" && <RiskCalculator key="calculator" />}
-                    {activeTool.name === "Trade Analyst" && <TradeAnalyst key="analyst" />}
-                    {activeTool.name === "Opportunity Scanner" && <OpportunityScanner key="scanner" />}
-                    {activeTool.name === "Risk Simulator" && <RiskSimulator key="simulator" />}
-                  </div>
-                </Card>
-              </motion.div>
-            ) : (
-              <Placeholder />
-            )}
-          </AnimatePresence>
+          <div className="relative h-full">
+            <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
+              <div className="p-4 bg-transparent">
+                <div style={{ display: activeTool?.name === "Trading Journal" ? 'block' : 'none' }}>
+                  <TradingJournal />
+                </div>
+                <div style={{ display: activeTool?.name === "Economic Calendar" ? 'block' : 'none' }}>
+                  <EconomicCalendar />
+                </div>
+                <div style={{ display: activeTool?.name === "Risk Calculator" ? 'block' : 'none' }}>
+                  <RiskCalculator />
+                </div>
+                <div style={{ display: activeTool?.name === "Trade Analyst" ? 'block' : 'none' }}>
+                  <TradeAnalyst />
+                </div>
+                <div style={{ display: activeTool?.name === "Opportunity Scanner" ? 'block' : 'none' }}>
+                  <OpportunityScanner />
+                </div>
+                <div style={{ display: activeTool?.name === "Risk Simulator" ? 'block' : 'none' }}>
+                  <RiskSimulator />
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

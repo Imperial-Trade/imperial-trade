@@ -7,7 +7,7 @@ export default function StatsSection() {
     {
       icon: TrendingUp,
       label: "Trading Volume",
-      value: "$2.5B",
+      value: "$200k +",
       description: "Processed monthly",
       color: "hsl(var(--feature-blue))",
       delay: "0ms"
@@ -30,8 +30,8 @@ export default function StatsSection() {
     },
     {
       icon: Award,
-      label: "Awards Won",
-      value: "15+",
+      label: "Traders Experience",
+      value: "30+",
       description: "Industry recognition",
       color: "hsl(var(--feature-orange))",
       delay: "600ms"

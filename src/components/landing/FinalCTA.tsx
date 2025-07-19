@@ -109,7 +109,7 @@ export default function FinalCTA() {
               </div>
               
               <p className="text-xs text-muted-foreground">
-                Trusted by over 10,000 professional traders worldwide
+                We're building for you. In the spirit of transparency, we want you to know that some exciting new features are currently in development and will be rolled out soon.
               </p>
             </div>
           </div>

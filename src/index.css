@@ -501,32 +501,6 @@
   color: hsl(var(--accent-gold)); /* Fallback color */
 }
 
-.gold-bluegreen-gradient {
-  background: linear-gradient(135deg, 
-    #ffd700 0%, 
-    #20b2aa 50%, 
-    #008b8b 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: #ffd700; /* Fallback color */
-}
-
-.gold-bluegreen-border {
-  border-color: #ffd700;
-}
-
-.gold-bluegreen-border:hover {
-  border-color: #20b2aa;
-}
-
-.gold-bluegreen-bg {
-  background: linear-gradient(135deg, 
-    rgba(255, 215, 0, 0.1) 0%, 
-    rgba(32, 178, 170, 0.1) 50%, 
-    rgba(0, 139, 139, 0.1) 100%);
-}
-
 /* Two-tone tool title styling */
 .tool-title-two-tone .first-part {
   color: hsl(var(--foreground)); /* Dark in light mode, light in dark mode */

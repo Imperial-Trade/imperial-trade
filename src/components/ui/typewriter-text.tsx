@@ -51,8 +51,12 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
   }, [showCursor, cursorBlinkSpeed]);
 
   return (
-    <span className={cn('inline-block', className)}>
-      {displayedText}
+    <span className={cn('inline-block text-center', className)}>
+      {displayedText.split('\n').map((line, index) => (
+        <span key={index} className="block">
+          {line}
+        </span>
+      ))}
       {showCursor && (
         <span 
           className={cn(

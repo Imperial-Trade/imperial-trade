@@ -275,7 +275,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
   return (
     <motion.aside
-      className={`fixed left-4 top-20 z-50 h-[calc(100vh-5rem)] w-72 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-y-auto shadow-2xl ${className}`}
+      className={`fixed left-4 top-20 z-50 h-[calc(100vh-5rem)] w-72 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
       initial={{ x: -280, opacity: 0 }}
       animate={{ 
         x: isVisible ? 0 : -280, 

@@ -81,14 +81,13 @@ export const DashboardHome: React.FC = () => {
   // Check if we should show the session-based welcome message
   useEffect(() => {
     if (user?.id) {
-      // Use localStorage with a combination of user ID and current date to create a unique session identifier
-      const today = new Date().toDateString();
-      const welcomeKey = `imperial_welcome_${user.id}_${today}`;
-      const hasSeenWelcome = localStorage.getItem(welcomeKey);
+      // Create a unique session key based on user ID and login time
+      const sessionKey = `imperial_welcome_session_${user.id}`;
+      const hasSeenWelcomeThisSession = localStorage.getItem(sessionKey);
       
-      if (!hasSeenWelcome) {
-        // First time seeing welcome today, show it
-        localStorage.setItem(welcomeKey, 'true');
+      if (!hasSeenWelcomeThisSession) {
+        // First time in this login session, show welcome
+        localStorage.setItem(sessionKey, 'true');
         setShowSessionWelcome(true);
         
         // Hide the welcome message after 5 seconds
@@ -97,12 +96,10 @@ export const DashboardHome: React.FC = () => {
         }, 5000);
         
         return () => clearTimeout(timer);
-      } else {
-        // Already seen welcome today, don't show
-        setShowSessionWelcome(false);
       }
     }
   }, [user?.id]);
+
 
   // Get user's full name for the typewriter effect
   const getUserFullName = () => {

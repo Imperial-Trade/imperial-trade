@@ -681,22 +681,22 @@ Please provide a brief analysis focusing on what went well, what could be improv
         className={cn(
           "border-2 transition-all duration-300 hover:scale-105",
           theme === "dark"
-            ? "bg-slate-900/80 border-slate-700 hover:border-gradient-to-r hover:from-yellow-400 hover:via-blue-500 hover:to-green-400"
-            : "bg-white border-slate-200 hover:border-gradient-to-r hover:from-yellow-400 hover:via-blue-500 hover:to-green-400"
+            ? "bg-slate-900/80 border-slate-700 hover:border-orange-500/50"
+            : "bg-white border-slate-200 hover:border-orange-500/50"
         )}
       >
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Trades</p>
-              <p className="text-2xl font-bold bg-gradient-to-r from-yellow-400 via-blue-500 to-green-400 bg-clip-text text-transparent">
+              <p className="text-2xl font-bold text-orange-500">
                 {metrics.totalTrades}
               </p>
               <p className="text-xs text-muted-foreground">
                 Best: ${metrics.bestTrade.toFixed(0)}
               </p>
             </div>
-            <Activity className="h-8 w-8 text-blue-500" />
+            <Activity className="h-8 w-8 text-orange-500" />
           </div>
         </CardContent>
       </Card>
@@ -1213,8 +1213,8 @@ Please provide a brief analysis focusing on what went well, what could be improv
                       </>
                     ) : (
                       <>
-                        <div className="p-1.5 rounded-lg bg-gradient-to-r from-yellow-400/10 via-blue-500/10 to-green-400/10">
-                          <PieChart className="h-4 w-4 bg-gradient-to-r from-yellow-400 via-blue-500 to-green-400 bg-clip-text text-transparent" />
+                        <div className="p-1.5 rounded-lg bg-orange-500/10">
+                          <PieChart className="h-4 w-4 text-orange-500" />
                         </div>
                         Assets
                       </>
@@ -1297,16 +1297,16 @@ Please provide a brief analysis focusing on what went well, what could be improv
                     </motion.div>
 
                     <motion.div
-                      className="p-4 rounded-xl bg-gradient-to-br from-yellow-400/5 via-blue-500/5 to-green-400/10 border border-gradient-to-r from-yellow-400/10 via-blue-500/10 to-green-400/10"
+                      className="p-4 rounded-xl bg-gradient-to-br from-orange-500/5 to-orange-500/10 border border-orange-500/10"
                       whileHover={{ scale: 1.02 }}
                       transition={{ duration: 0.2 }}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="p-1.5 rounded-lg bg-gradient-to-r from-yellow-400/10 via-blue-500/10 to-green-400/10 mt-0.5">
-                          <Heart className="h-3.5 w-3.5 bg-gradient-to-r from-yellow-400 via-blue-500 to-green-400 bg-clip-text text-transparent" />
+                        <div className="p-1.5 rounded-lg bg-orange-500/10 mt-0.5">
+                          <Heart className="h-3.5 w-3.5 text-orange-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold bg-gradient-to-r from-yellow-400 via-blue-500 to-green-400 bg-clip-text text-transparent text-sm mb-1">
+                          <p className="font-semibold text-orange-700 dark:text-orange-400 text-sm mb-1">
                             Psychology Tip
                           </p>
                           <p className="text-xs text-muted-foreground leading-relaxed">

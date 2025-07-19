@@ -58,7 +58,7 @@ export default function FeatureCarousel() {
   return <section className="relative py-32 bg-gradient-to-br from-white/50 via-white/30 via-white/15 to-transparent">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <ContentSection>
-          <div className="text-center mb-16">
+          <div className="text-center mb-16 bg-gradient-to-b from-white/60 via-white/30 to-white/10 rounded-3xl p-8 backdrop-blur-sm">
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
               Everything You Need
               <span className="white-gold-gradient block">

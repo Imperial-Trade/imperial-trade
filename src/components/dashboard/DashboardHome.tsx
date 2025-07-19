@@ -106,16 +106,16 @@ export const DashboardHome: React.FC = () => {
       <VideoBackground />
       
       {/* Hero Section with Typewriter Welcome */}
-      <div className="relative z-20 min-h-[70vh] flex items-center pt-12">
-        <div className="container mx-auto px-6 text-center mt-8">
-          <div className="max-w-6xl mx-auto space-y-6">
+      <div className="relative z-20 min-h-screen flex items-center justify-center">
+        <div className="container mx-auto px-6 text-center">
+          <div className="max-w-6xl mx-auto space-y-8">
             {/* Welcome Message with Typewriter Effect */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-center gap-4 mb-4">
+            <div className="space-y-8">
+              <div className="flex items-center justify-center gap-4 mb-6">
                 <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-yellow-400" />
               </div>
               
-              <h1 className="text-5xl lg:text-7xl font-bold text-white mb-4 min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
+              <h1 className="text-5xl lg:text-7xl font-bold text-white mb-8 min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
                 <TypewriterText
                   text={welcomeText}
                   speed={80}
@@ -125,28 +125,14 @@ export const DashboardHome: React.FC = () => {
                 />
               </h1>
               
-              <p className="text-xl lg:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed">
+              <p className="text-xl lg:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed mb-16">
                 You've taken the brave step into the world of trading. Every expert was once a beginner, 
                 and every champion was once a contender who refused to give up.
               </p>
-              
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 max-w-2xl mx-auto">
-                <p className="text-lg text-white/95 italic leading-relaxed">
-                  "Success in trading comes not from being right all the time, but from learning, 
-                  adapting, and growing with every trade. Your journey starts here, and we're honored 
-                  to be part of it."
-                </p>
-                <div className="mt-4 flex items-center justify-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                    <Crown className="h-4 w-4 text-white" />
-                  </div>
-                  <span className="text-white/80 font-medium">The Trading Elite Team</span>
-                </div>
-              </div>
             </div>
             
-            {/* Spacer to maintain layout */}
-            <div className="pt-6">
+            {/* Large spacer to push content below viewport */}
+            <div className="pt-32">
             </div>
           </div>
         </div>

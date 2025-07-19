@@ -1792,7 +1792,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                             trade.outcome === "win" &&
                               "gradient-gold-bluegreen text-white border-transparent",
                             trade.outcome === "loss" &&
-                              "bg-destructive text-destructive-foreground border-transparent"
+                              "gradient-gold-redbronze text-white border-transparent"
                           )}
                         >
                           {trade.asset}
@@ -1809,7 +1809,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                       <span
                         className={cn(
                           "font-bold",
-                          trade.pnl >= 0 ? "text-green-500" : "text-red-500"
+                           trade.pnl >= 0 ? "text-green-500" : "gradient-gold-redbronze-text"
                         )}
                       >
                         ${trade.pnl.toFixed(2)}

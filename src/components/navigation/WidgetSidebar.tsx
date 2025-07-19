@@ -390,7 +390,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="absolute top-full left-0 right-0 mt-2 bg-white/15 dark:bg-black/25 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 z-50"
+              className="absolute bottom-full left-0 right-0 mb-2 bg-white/15 dark:bg-black/25 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 z-50"
             >
               <div className="p-2">
                 <motion.button

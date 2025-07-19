@@ -23,7 +23,7 @@ export default function StatsSection() {
     {
       icon: Shield,
       label: "Productivity Rate",
-      value: "92%",
+      value: "$200k +",
       description: "Ai tools usage",
       color: "hsl(var(--feature-green))",
       delay: "400ms"

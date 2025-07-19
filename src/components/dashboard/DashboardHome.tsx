@@ -78,8 +78,26 @@ export const DashboardHome: React.FC = () => {
   const isAdmin = user?.user_metadata?.access_level === 'admin';
   const isEducator = user?.user_metadata?.user_type === 'educator';
   const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(true);
+  const [showSessionWelcome, setShowSessionWelcome] = useState(false);
 
-  // Get user's full name for the welcome message
+  // Check if we should show the session-based welcome message
+  useEffect(() => {
+    if (user?.id && !hasSeenWelcome) {
+      // First time in this login session, show welcome
+      markWelcomeAsSeen();
+      setShowSessionWelcome(true);
+      
+      // Hide the welcome message after 5 seconds
+      const timer = setTimeout(() => {
+        setShowSessionWelcome(false);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user?.id, hasSeenWelcome, markWelcomeAsSeen]);
+
+
+  // Get user's full name for the typewriter effect
   const getUserFullName = () => {
     if (user?.user_metadata?.first_name && user?.user_metadata?.last_name) {
       return `${user.user_metadata.first_name} ${user.user_metadata.last_name}`;
@@ -93,7 +111,7 @@ export const DashboardHome: React.FC = () => {
     return user?.email?.split('@')[0] || 'Trader';
   };
 
-  const personalWelcomeText = `Welcome to Imperial\n${getUserFullName()}`;
+  const welcomeText = `Welcome to Imperial\n${getUserFullName()}`;
 
   return (
     <div className="relative min-h-screen">
@@ -104,6 +122,21 @@ export const DashboardHome: React.FC = () => {
         />
       )}
       
+      {/* Session-based Welcome Message */}
+      {showSessionWelcome && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-card border border-primary/30 rounded-xl p-8 mx-4 max-w-md text-center shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <Crown className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-primary to-accent bg-clip-text text-transparent mb-4">
+              The Imperial Experience Awaits
+            </h2>
+            <p className="text-muted-foreground">
+              Welcome to your trading empire. Let's make history together.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Video Background */}
       <VideoBackground />
       
@@ -111,7 +144,7 @@ export const DashboardHome: React.FC = () => {
       <div className="relative z-20 min-h-screen flex items-center justify-center">
         <div className="container mx-auto px-6 text-center">
           <div className="max-w-6xl mx-auto space-y-8">
-            {/* Main Imperial Experience Message */}
+            {/* Welcome Message with Typewriter Effect */}
             <div className="space-y-8">
               <div className="flex items-center justify-center gap-4 mb-6">
                 <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-yellow-400" />
@@ -119,23 +152,13 @@ export const DashboardHome: React.FC = () => {
               
               <h1 className="text-5xl lg:text-7xl font-bold text-white mb-8 min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
                 <TypewriterText
-                  text="THE IMPERIAL EXPERIENCE AWAITS."
+                  text={welcomeText}
                   speed={80}
                   showCursor={false}
                   cursorBlinkSpeed={500}
                   className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent"
                 />
               </h1>
-              
-              {/* Personal Welcome Message */}
-              <div className="text-2xl lg:text-3xl text-white/90 max-w-4xl mx-auto leading-relaxed mb-8">
-                <TypewriterText
-                  text={personalWelcomeText}
-                  speed={60}
-                  showCursor={false}
-                  className="text-white/80"
-                />
-              </div>
               
               <p className="text-xl lg:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed mb-16">
                 You've taken the brave step into the world of trading. Every expert was once a beginner, 

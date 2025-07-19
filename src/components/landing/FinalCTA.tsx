@@ -54,7 +54,7 @@ export default function FinalCTA() {
               </h2>
 
               <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                Join thousands of successful traders who've transformed their trading with our AI-powered platform.
+                Transform your trading and get the edge with our AI-powered platform.
               </p>
             </div>
 

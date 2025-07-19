@@ -1205,7 +1205,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
 
       <div className="flex gap-4">
         <div className="flex-1 space-y-6">
-          <Card className={cn("h-96", theme === "dark" ? "bg-slate-900/80 border-slate-700" : "bg-white border-slate-200")}>
+          <Card className="h-96 bg-card border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
@@ -1253,7 +1253,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
         }} transition={{
           duration: 0.3
         }}>
-            <Card className={cn(theme === "dark" ? "bg-slate-900/80 border-slate-700" : "bg-white border-slate-200")} data-calendar-view>
+            <Card className="bg-card border-border" data-calendar-view>
               <CardContent className="p-6">
                 <DynamicCalendarView />
               </CardContent>
@@ -1272,7 +1272,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
         }} transition={{
           duration: 0.3
         }}>
-            <Card className={cn(theme === "dark" ? "bg-slate-900/80 border-slate-700" : "bg-white border-slate-200")}>
+            <Card className="bg-card border-border">
               <CardHeader>
                 <CardTitle>Recent Trades</CardTitle>
               </CardHeader>

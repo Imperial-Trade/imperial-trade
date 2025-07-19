@@ -53,14 +53,14 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
   return (
     <span className={cn('inline-block text-center', className)}>
       {displayedText.split('\n').map((line, index) => (
-        <span key={index} className="block">
+        <span key={index} className="block bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent">
           {line}
         </span>
       ))}
       {showCursor && (
         <span 
           className={cn(
-            'inline-block w-0.5 h-[1em] bg-current ml-1 align-middle',
+            'inline-block w-0.5 h-[1em] bg-gradient-to-r from-yellow-400 via-white to-primary ml-1 align-middle',
             showCursorBlink ? 'opacity-100' : 'opacity-0'
           )}
         />

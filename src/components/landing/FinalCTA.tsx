@@ -108,7 +108,7 @@ export default function FinalCTA() {
                 </div>
               </div>
               
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-foreground/80">
                 We're building for you. In the spirit of transparency, we want you to know that some exciting new features are currently in development and will be rolled out soon.
               </p>
             </div>

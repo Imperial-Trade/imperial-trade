@@ -60,27 +60,8 @@ export default function ToolsCarousel() {
   }, []);
 
   return (
-    <section className="relative py-32 bg-gradient-to-br from-background via-card to-muted">
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-accent/30 rounded-full blur-3xl" />
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-        <ContentSection>
-          <div className="text-center mb-20">
-            <h2 className="text-4xl lg:text-6xl font-bold mb-6">
-              Professional Trading
-              <span className="white-gold-gradient block">
-                Arsenal
-              </span>
-            </h2>
-            <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Everything you need to dominate the markets. Built by traders, for traders.
-            </p>
-          </div>
-
-          <div className="h-[320px] relative flex flex-col items-center justify-center">
+    <ContentSection>
+      <div className="h-[320px] relative flex flex-col items-center justify-center">
         <div
           className="relative w-full h-[280px]"
           style={{ perspective: "1500px" }}
@@ -157,9 +138,7 @@ export default function ToolsCarousel() {
             />
           ))}
         </div>
-          </div>
-        </ContentSection>
       </div>
-    </section>
+    </ContentSection>
   );
 }

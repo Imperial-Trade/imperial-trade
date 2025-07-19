@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TradeJournalEntry } from "@/api/entities";
@@ -10,7 +9,6 @@ import TradingJournalApp from "./TradingJournalApp";
 import JournalFormCard from "../trading/JournalFormCard";
 import JournalAnalytics from "../trading/JournalAnalytics";
 import JournalLogList from "../trading/JournalLogList";
-
 interface JournalEntry {
   id: string;
   asset_ticker: string;
@@ -20,7 +18,6 @@ interface JournalEntry {
   ai_positive_feedback?: string;
   screenshot_url?: string;
 }
-
 export default function TradingJournal() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,13 +28,15 @@ export default function TradingJournal() {
   // Memoize stable functions
   const loadUserProfile = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
+        const {
+          data: profile
+        } = await supabase.from("profiles").select("*").eq("id", user.id).single();
         if (profile) {
           setUserProfile(profile);
         }
@@ -46,11 +45,14 @@ export default function TradingJournal() {
       console.error("Error loading user profile:", error);
     }
   }, []);
-
   const loadEntries = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       if (user) {
         const fetchedEntries = await TradeJournalEntry.list(user.id);
         setEntries(fetchedEntries);
@@ -62,7 +64,6 @@ export default function TradingJournal() {
     }
     setIsLoading(false);
   }, []);
-
   const handleDelete = useCallback(async (entryId: string) => {
     try {
       await TradeJournalEntry.delete(entryId);
@@ -71,7 +72,6 @@ export default function TradingJournal() {
       console.error("Error deleting entry:", error);
     }
   }, [loadEntries]);
-
   const handleSubmit = useCallback(async (data: {
     asset_ticker: string;
     pnl: string;
@@ -79,14 +79,16 @@ export default function TradingJournal() {
     screenshotFile?: File;
   }) => {
     setIsSubmitting(true);
-
     try {
       let screenshot_url = "";
       if (data.screenshotFile) {
-        const { file_url } = await UploadFile({ file: data.screenshotFile });
+        const {
+          file_url
+        } = await UploadFile({
+          file: data.screenshotFile
+        });
         screenshot_url = file_url;
       }
-
       const pnlValue = parseFloat(data.pnl);
       const tradeOutcome = pnlValue >= 0 ? "a winning trade" : "a losing trade";
       const aiPrompt = `
@@ -96,26 +98,24 @@ export default function TradingJournal() {
         Provide encouraging feedback (1-2 sentences) highlighting good practices or learning opportunities.
         Focus on process and discipline, not just results.
       `;
-
       const aiResult = await InvokeLLM({
         prompt: aiPrompt,
-        file_urls: screenshot_url ? [screenshot_url] : [],
+        file_urls: screenshot_url ? [screenshot_url] : []
       });
-
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       if (user) {
-        await TradeJournalEntry.create(
-          {
-            ...data,
-            pnl: pnlValue,
-            trade_date: new Date().toISOString(),
-            screenshot_url,
-            ai_positive_feedback: aiResult,
-          },
-          user.id
-        );
+        await TradeJournalEntry.create({
+          ...data,
+          pnl: pnlValue,
+          trade_date: new Date().toISOString(),
+          screenshot_url,
+          ai_positive_feedback: aiResult
+        }, user.id);
       }
-
       loadEntries();
     } catch (error) {
       console.error("Error submitting journal entry:", error);
@@ -128,7 +128,6 @@ export default function TradingJournal() {
   useEffect(() => {
     loadUserProfile();
   }, [loadUserProfile]);
-
   useEffect(() => {
     if (userProfile) {
       loadEntries();
@@ -136,86 +135,40 @@ export default function TradingJournal() {
   }, [userProfile, loadEntries]);
 
   // Memoized tab content components
-  const LogTab = useMemo(() => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
+  const LogTab = useMemo(() => <motion.div initial={{
+    opacity: 0,
+    y: 20
+  }} animate={{
+    opacity: 1,
+    y: 0
+  }} className="space-y-6">
       <JournalFormCard onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-      <JournalLogList 
-        entries={entries} 
-        isLoading={isLoading} 
-        onDelete={handleDelete}
-      />
-    </motion.div>
-  ), [handleSubmit, isSubmitting, entries, isLoading, handleDelete]);
-
-  const AnalyticsTab = useMemo(() => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
+      <JournalLogList entries={entries} isLoading={isLoading} onDelete={handleDelete} />
+    </motion.div>, [handleSubmit, isSubmitting, entries, isLoading, handleDelete]);
+  const AnalyticsTab = useMemo(() => <motion.div initial={{
+    opacity: 0,
+    y: 20
+  }} animate={{
+    opacity: 1,
+    y: 0
+  }} className="space-y-6">
       <JournalAnalytics entries={entries} />
-    </motion.div>
-  ), [entries]);
-
-  return (
-    <div className={`min-h-screen p-6 transition-all duration-700 ${
-      activeTab === 'advanced' 
-        ? 'bg-transparent' 
-        : 'bg-gradient-to-br from-background via-background to-muted/20'
-    }`}>
-      <div className={`mx-auto transition-all duration-500 ${
-        activeTab === 'advanced' ? 'max-w-full px-4' : 'max-w-6xl'
-      }`}>
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-6"
-        >
-          <TabsList className={`grid w-full grid-cols-3 transition-all duration-500 ${
-            activeTab === 'advanced' 
-              ? 'bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl' 
-              : 'bg-card'
-          }`}>
-            <TabsTrigger 
-              value="log" 
-              className={`flex items-center gap-2 transition-all duration-300 ${
-                activeTab === 'advanced' 
-                  ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' 
-                  : ''
-              }`}
-            >
+    </motion.div>, [entries]);
+  return <div className={`min-h-screen p-6 transition-all duration-700 ${activeTab === 'advanced' ? 'bg-transparent' : 'bg-gradient-to-br from-background via-background to-muted/20'}`}>
+      <div className={`mx-auto transition-all duration-500 ${activeTab === 'advanced' ? 'max-w-full px-4' : 'max-w-6xl'}`}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className={`grid w-full grid-cols-3 transition-all duration-500 ${activeTab === 'advanced' ? 'bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl' : 'bg-card'}`}>
+            <TabsTrigger value="log" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
               <Calendar className="w-4 h-4" />
               Journal Log
             </TabsTrigger>
-            <TabsTrigger 
-              value="analytics" 
-              className={`flex items-center gap-2 transition-all duration-300 ${
-                activeTab === 'advanced' 
-                  ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' 
-                  : ''
-              }`}
-            >
+            <TabsTrigger value="analytics" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
               <BarChart3 className="w-4 h-4" />
               AI Analytics
             </TabsTrigger>
-            <TabsTrigger 
-              value="advanced" 
-              className={`flex items-center gap-2 transition-all duration-300 ${
-                activeTab === 'advanced' 
-                  ? 'text-white hover:text-white hover:bg-white/10 data-[state=active]:bg-gradient-to-r data-[state=active]:from-white/30 data-[state=active]:to-white/20 data-[state=active]:text-white data-[state=active]:shadow-lg' 
-                  : ''
-              }`}
-            >
+            <TabsTrigger value="advanced" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white hover:text-white hover:bg-white/10 data-[state=active]:bg-gradient-to-r data-[state=active]:from-white/30 data-[state=active]:to-white/20 data-[state=active]:text-white data-[state=active]:shadow-lg' : ''}`}>
               <Sparkles className="w-4 h-4" />
-              <span className={`font-semibold ${
-                activeTab === 'advanced' 
-                  ? 'text-white' 
-                  : 'bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent'
-              }`}>
+              <span className={`font-semibold ${activeTab === 'advanced' ? 'text-white' : 'bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent'}`}>
                 Advanced Journal
               </span>
             </TabsTrigger>
@@ -234,12 +187,11 @@ export default function TradingJournal() {
           </TabsContent>
 
           <TabsContent value="advanced" className="mt-6 relative z-10">
-            <div className="bg-transparent p-6 focus:outline-none focus:border-transparent focus:ring-0 active:border-transparent">
+            <div className="p-6 focus:outline-none focus:border-transparent focus:ring-0 active:border-transparent bg-transparent rounded-sm">
               <TradingJournalApp />
             </div>
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-  );
+    </div>;
 }

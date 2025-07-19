@@ -53,7 +53,19 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
   return (
     <span className={cn('inline-block text-center', className)}>
       {displayedText.split('\n').map((line, index) => (
-        <span key={index} className="block bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent">
+        <span 
+          key={index} 
+          className="block relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255, 215, 0, 0.8) 20%, rgba(255, 255, 255, 1) 50%, rgba(255, 215, 0, 0.8) 80%, transparent 100%)',
+            backgroundSize: '200% 100%',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            color: 'transparent',
+            animation: 'shimmer 3s infinite',
+            backgroundPosition: '-200% 0'
+          }}
+        >
           {line}
         </span>
       ))}

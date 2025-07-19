@@ -231,7 +231,12 @@ export default function AdvancedTools() {
               >
                 <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
                   <div className="p-4 bg-transparent">
-                    {React.createElement(activeTool.component)}
+                    {activeTool.name === "Trading Journal" && <TradingJournal />}
+                    {activeTool.name === "Economic Calendar" && <EconomicCalendar />}
+                    {activeTool.name === "Risk Calculator" && <RiskCalculator />}
+                    {activeTool.name === "Trade Analyst" && <TradeAnalyst />}
+                    {activeTool.name === "Opportunity Scanner" && <OpportunityScanner />}
+                    {activeTool.name === "Risk Simulator" && <RiskSimulator />}
                   </div>
                 </Card>
               </motion.div>

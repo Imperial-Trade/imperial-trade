@@ -119,7 +119,7 @@ export const DashboardHome: React.FC = () => {
                 <TypewriterText
                   text={welcomeText}
                   speed={80}
-                  showCursor={true}
+                  showCursor={false}
                   cursorBlinkSpeed={500}
                   className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent"
                 />

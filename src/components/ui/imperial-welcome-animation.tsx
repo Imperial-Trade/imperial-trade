@@ -157,62 +157,178 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   };
 
-  // Phase 5: Imperial logo with gold hover effect
+  // Phase 5: Dramatic Imperial logo with crown and enhanced effects
   const drawPhase5 = (ctx: CanvasRenderingContext2D, progress: number) => {
     const easedProgress = easeInOutQuart(progress);
     
-    ctx.fillStyle = '#000000';
+    // Dramatic black background with subtle glow
+    const gradient = ctx.createRadialGradient(
+      ctx.canvas.width / 2, ctx.canvas.height / 2, 0,
+      ctx.canvas.width / 2, ctx.canvas.height / 2, ctx.canvas.width * 0.8
+    );
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.95)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     
     ctx.save();
     ctx.globalAlpha = easedProgress;
     
-    // Logo (Crown icon representation)
-    const logoSize = Math.min(ctx.canvas.width * 0.15, 120);
-    const logoX = ctx.canvas.width / 2;
-    const logoY = ctx.canvas.height / 2 - 40;
+    const centerX = ctx.canvas.width / 2;
+    const centerY = ctx.canvas.height / 2;
     
-    // Draw crown shape
-    ctx.fillStyle = '#D4AF37';
-    ctx.beginPath();
-    ctx.moveTo(logoX, logoY);
-    ctx.lineTo(logoX - logoSize/2, logoY + logoSize/2);
-    ctx.lineTo(logoX - logoSize/4, logoY + logoSize/4);
-    ctx.lineTo(logoX, logoY + logoSize/3);
-    ctx.lineTo(logoX + logoSize/4, logoY + logoSize/4);
-    ctx.lineTo(logoX + logoSize/2, logoY + logoSize/2);
-    ctx.closePath();
-    ctx.fill();
+    // Add dramatic scaling and glow effect
+    const scale = 0.3 + (0.7 * easedProgress);
+    const glowIntensity = easedProgress * 0.8;
     
-    // Imperial text with gold left-to-right effect
-    const textProgress = Math.max(0, (progress - 0.3) / 0.7);
-    const goldWidth = ctx.canvas.width * textProgress;
+    ctx.translate(centerX, centerY);
+    ctx.scale(scale, scale);
     
-    ctx.font = `${Math.min(ctx.canvas.width * 0.08, 100)}px 'Orbitron', system-ui, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    // Dramatic crown with multiple layers and glow
+    const crownSize = Math.min(ctx.canvas.width * 0.2, 150);
     
-    // Base text
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillText('IMPERIAL', logoX, logoY + logoSize + 40);
-    
-    // Gold overlay with clipping
-    if (textProgress > 0) {
+    // Outer glow effect
+    for (let i = 5; i >= 1; i--) {
       ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, 0, goldWidth, ctx.canvas.height);
-      ctx.clip();
-      
-      const goldGradient = ctx.createLinearGradient(goldWidth - 100, 0, goldWidth + 100, 0);
-      goldGradient.addColorStop(0, '#D4AF37');
-      goldGradient.addColorStop(0.5, '#FFD700');
-      goldGradient.addColorStop(1, '#B8860B');
-      
-      ctx.fillStyle = goldGradient;
-      ctx.fillText('IMPERIAL', logoX, logoY + logoSize + 40);
+      ctx.globalAlpha = (glowIntensity * 0.3) / i;
+      ctx.fillStyle = '#FFD700';
+      ctx.shadowColor = '#FFD700';
+      ctx.shadowBlur = 20 * i;
+      drawCrown(ctx, 0, -40, crownSize + (i * 8));
       ctx.restore();
     }
     
+    // Main crown with gradient
+    ctx.save();
+    const crownGradient = ctx.createLinearGradient(0, -60, 0, 20);
+    crownGradient.addColorStop(0, '#FFD700');
+    crownGradient.addColorStop(0.3, '#FFA500');
+    crownGradient.addColorStop(0.7, '#DAA520');
+    crownGradient.addColorStop(1, '#B8860B');
+    
+    ctx.fillStyle = crownGradient;
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#FFD700';
+    ctx.shadowBlur = 15;
+    drawCrown(ctx, 0, -40, crownSize);
+    ctx.restore();
+    
+    // IMPERIAL text with dramatic reveal and gold wave effect
+    const textProgress = Math.max(0, (progress - 0.2) / 0.8);
+    if (textProgress > 0) {
+      const textY = 60;
+      const fontSize = Math.min(ctx.canvas.width * 0.12, 120);
+      
+      // Create the wave effect for gold reveal
+      const waveWidth = ctx.canvas.width * 2;
+      const waveOffset = -ctx.canvas.width + (waveWidth * textProgress);
+      
+      // Base text (gradient from dark to light)
+      ctx.font = `700 ${fontSize}px 'Orbitron', system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      const baseGradient = ctx.createLinearGradient(-200, 0, 200, 0);
+      baseGradient.addColorStop(0, '#666666');
+      baseGradient.addColorStop(1, '#CCCCCC');
+      ctx.fillStyle = baseGradient;
+      ctx.fillText('IMPERIAL', 0, textY);
+      
+      // Golden wave overlay with enhanced effects
+      ctx.save();
+      
+      // Create wave clipping path
+      ctx.beginPath();
+      for (let x = -ctx.canvas.width; x <= ctx.canvas.width; x += 10) {
+        const waveY = textY + Math.sin((x - waveOffset) * 0.02) * 30;
+        if (x === -ctx.canvas.width) {
+          ctx.moveTo(x, waveY);
+        } else {
+          ctx.lineTo(x, waveY);
+        }
+      }
+      ctx.lineTo(ctx.canvas.width, ctx.canvas.height);
+      ctx.lineTo(-ctx.canvas.width, ctx.canvas.height);
+      ctx.closePath();
+      
+      // Only show the gold if the wave has reached this point
+      const revealClip = ctx.createLinearGradient(waveOffset - 200, 0, waveOffset + 200, 0);
+      revealClip.addColorStop(0, 'rgba(0,0,0,0)');
+      revealClip.addColorStop(0.4, 'rgba(0,0,0,1)');
+      revealClip.addColorStop(0.6, 'rgba(0,0,0,1)');
+      revealClip.addColorStop(1, 'rgba(0,0,0,0)');
+      
+      ctx.clip();
+      
+      // Multiple golden text layers for depth
+      for (let i = 3; i >= 0; i--) {
+        ctx.save();
+        
+        if (i > 0) {
+          ctx.globalAlpha = 0.6 / i;
+          ctx.shadowColor = '#FFD700';
+          ctx.shadowBlur = 20 + (i * 10);
+          ctx.shadowOffsetX = i * 2;
+          ctx.shadowOffsetY = i * 2;
+        }
+        
+        const goldGradient = ctx.createLinearGradient(
+          waveOffset - 100, 0, waveOffset + 300, 0
+        );
+        goldGradient.addColorStop(0, '#B8860B');
+        goldGradient.addColorStop(0.2, '#DAA520');
+        goldGradient.addColorStop(0.4, '#FFD700');
+        goldGradient.addColorStop(0.6, '#FFEF94');
+        goldGradient.addColorStop(0.8, '#FFD700');
+        goldGradient.addColorStop(1, '#DAA520');
+        
+        ctx.fillStyle = goldGradient;
+        ctx.fillText('IMPERIAL', 0, textY);
+        ctx.restore();
+      }
+      
+      ctx.restore();
+    }
+    
+    ctx.restore();
+  };
+  
+  // Helper function to draw crown shape (matching Lucide Crown icon style)
+  const drawCrown = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number) => {
+    const scale = size / 100;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    
+    ctx.beginPath();
+    // Crown base
+    ctx.moveTo(-40, 30);
+    ctx.lineTo(40, 30);
+    ctx.lineTo(35, 15);
+    ctx.lineTo(-35, 15);
+    ctx.closePath();
+    
+    // Crown peaks
+    ctx.moveTo(-35, 15);
+    ctx.lineTo(-25, -10);
+    ctx.lineTo(-15, 5);
+    ctx.lineTo(0, -25);
+    ctx.lineTo(15, 5);
+    ctx.lineTo(25, -10);
+    ctx.lineTo(35, 15);
+    
+    // Crown jewels (circles)
+    ctx.moveTo(-20, 0);
+    ctx.arc(-20, 0, 3, 0, Math.PI * 2);
+    ctx.moveTo(0, -15);
+    ctx.arc(0, -15, 4, 0, Math.PI * 2);
+    ctx.moveTo(20, 0);
+    ctx.arc(20, 0, 3, 0, Math.PI * 2);
+    
+    ctx.fill();
+    ctx.stroke();
     ctx.restore();
   };
 

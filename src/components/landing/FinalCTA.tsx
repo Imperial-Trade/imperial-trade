@@ -30,7 +30,7 @@ export default function FinalCTA() {
     text: "Enterprise-grade security and protection"
   }, {
     icon: Award,
-    text: "Award-winning trading platform"
+    text: "Top-tier trading platform"
   }, {
     icon: CheckCircle,
     text: "24/7 professional support"

@@ -681,22 +681,22 @@ Please provide a brief analysis focusing on what went well, what could be improv
         className={cn(
           "border-2 transition-all duration-300 hover:scale-105",
           theme === "dark"
-            ? "bg-slate-900/80 border-slate-700 hover:border-gradient-gold-to-blue-green"
-            : "bg-white border-slate-200 hover:border-gradient-gold-to-blue-green"
+            ? "bg-slate-900/80 border-slate-700 hover:border-orange-500/50"
+            : "bg-white border-slate-200 hover:border-orange-500/50"
         )}
       >
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Trades</p>
-              <p className="text-2xl font-bold text-gradient-gold-to-blue-green">
+              <p className="text-2xl font-bold text-orange-500">
                 {metrics.totalTrades}
               </p>
               <p className="text-xs text-muted-foreground">
                 Best: ${metrics.bestTrade.toFixed(0)}
               </p>
             </div>
-            <Activity className="h-8 w-8 text-gradient-gold-to-blue-green" />
+            <Activity className="h-8 w-8 text-orange-500" />
           </div>
         </CardContent>
       </Card>
@@ -1213,8 +1213,8 @@ Please provide a brief analysis focusing on what went well, what could be improv
                       </>
                     ) : (
                       <>
-                        <div className="p-1.5 rounded-lg bg-gradient-gold-to-blue-green/10">
-                          <PieChart className="h-4 w-4 text-gradient-gold-to-blue-green" />
+                        <div className="p-1.5 rounded-lg bg-orange-500/10">
+                          <PieChart className="h-4 w-4 text-orange-500" />
                         </div>
                         Assets
                       </>
@@ -1297,16 +1297,16 @@ Please provide a brief analysis focusing on what went well, what could be improv
                     </motion.div>
 
                     <motion.div
-                      className="p-4 rounded-xl bg-gradient-gold-to-blue-green/5 border border-gradient-gold-to-blue-green/10"
+                      className="p-4 rounded-xl bg-gradient-to-br from-orange-500/5 to-orange-500/10 border border-orange-500/10"
                       whileHover={{ scale: 1.02 }}
                       transition={{ duration: 0.2 }}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="p-1.5 rounded-lg bg-gradient-gold-to-blue-green/10 mt-0.5">
-                          <Heart className="h-3.5 w-3.5 text-gradient-gold-to-blue-green" />
+                        <div className="p-1.5 rounded-lg bg-orange-500/10 mt-0.5">
+                          <Heart className="h-3.5 w-3.5 text-orange-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gradient-gold-to-blue-green text-sm mb-1">
+                          <p className="font-semibold text-orange-700 dark:text-orange-400 text-sm mb-1">
                             Psychology Tip
                           </p>
                           <p className="text-xs text-muted-foreground leading-relaxed">

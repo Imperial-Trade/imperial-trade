@@ -1115,8 +1115,8 @@ Please provide a brief analysis focusing on what went well, what could be improv
         }} transition={{
           duration: 0.3
         }}>
-              <Card className={cn("border-2 transition-all duration-300 hover:shadow-lg", theme === "dark" ? "bg-slate-900/80 border-slate-700 hover:border-slate-600" : "bg-white border-slate-200 hover:border-slate-300")}>
-                <CardContent className="p-6 bg-zinc-900 rounded-sm">
+              <Card className="bg-card border-border hover:shadow-md transition-all duration-200">
+                <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="space-y-3 flex-1">
                       <div className="flex items-center gap-3">
@@ -1157,16 +1157,13 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           </div>}
                       </div>
 
-                      {trade.ai_feedback && <div className="mt-4 p-3 rounded-lg border border-blue-500/20 bg-neutral-900">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Brain className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm font-medium text-blue-600">
-                              AI Analysis
-                            </span>
+                      {trade.ai_feedback && <div className="mt-4 p-3 rounded-lg bg-muted/30 border-l-4 border-l-primary">
+                          <div className="flex items-start gap-2">
+                            <Brain className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {trade.ai_feedback}
-                          </p>
+                            <p className="text-sm text-foreground leading-relaxed">
+                              {trade.ai_feedback}
+                            </p>
                         </div>}
                     </div>
 
@@ -1278,7 +1275,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {trades.slice(0, 5).map(trade => <div key={trade.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors">
+                  {trades.slice(0, 5).map(trade => <div key={trade.id} className="flex items-center justify-between p-4 rounded-lg bg-card border border-border hover:shadow-md transition-all duration-200">
                       <div className="flex items-center gap-3">
                         <Badge variant={trade.outcome === "win" ? "default" : "destructive"} className={cn(trade.outcome === "win" && "gradient-gold-bluegreen text-white border-transparent", trade.outcome === "loss" && "gradient-gold-redbronze text-white border-transparent")}>
                           {trade.asset}

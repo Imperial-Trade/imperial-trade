@@ -78,23 +78,6 @@ export const DashboardHome: React.FC = () => {
   const isAdmin = user?.user_metadata?.access_level === 'admin';
   const isEducator = user?.user_metadata?.user_type === 'educator';
   const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(true);
-  const [showSessionWelcome, setShowSessionWelcome] = useState(false);
-
-  // Check if we should show the session-based welcome message
-  useEffect(() => {
-    if (user?.id && !hasSeenWelcome) {
-      // First time in this login session, show welcome
-      markWelcomeAsSeen();
-      setShowSessionWelcome(true);
-      
-      // Hide the welcome message after 5 seconds
-      const timer = setTimeout(() => {
-        setShowSessionWelcome(false);
-      }, 5000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [user?.id, hasSeenWelcome, markWelcomeAsSeen]);
 
 
   // Get user's full name for the typewriter effect
@@ -122,20 +105,6 @@ export const DashboardHome: React.FC = () => {
         />
       )}
       
-      {/* Session-based Welcome Message */}
-      {showSessionWelcome && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card border border-primary/30 rounded-xl p-8 mx-4 max-w-md text-center shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <Crown className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-primary to-accent bg-clip-text text-transparent mb-4">
-              The Imperial Experience Awaits
-            </h2>
-            <p className="text-muted-foreground">
-              Welcome to your trading empire. Let's make history together.
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Video Background */}
       <VideoBackground />

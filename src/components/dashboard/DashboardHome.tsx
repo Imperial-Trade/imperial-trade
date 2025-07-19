@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -76,6 +76,18 @@ export const DashboardHome: React.FC = () => {
   const isAdmin = user?.user_metadata?.access_level === 'admin';
   const isEducator = user?.user_metadata?.user_type === 'educator';
   const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(true);
+  const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
+
+  // Check if user has seen welcome message this session
+  useEffect(() => {
+    if (user) {
+      const hasSeenWelcome = sessionStorage.getItem(`imperial_welcome_seen_${user.id}`);
+      if (!hasSeenWelcome) {
+        setShowWelcomeMessage(true);
+        sessionStorage.setItem(`imperial_welcome_seen_${user.id}`, 'true');
+      }
+    }
+  }, [user]);
 
   // Get user's full name for the typewriter effect
   const getUserFullName = () => {
@@ -105,38 +117,40 @@ export const DashboardHome: React.FC = () => {
       {/* Video Background */}
       <VideoBackground />
       
-      {/* Hero Section with Typewriter Welcome */}
-      <div className="relative z-20 min-h-screen flex items-center justify-center">
-        <div className="container mx-auto px-6 text-center">
-          <div className="max-w-6xl mx-auto space-y-8">
-            {/* Welcome Message with Typewriter Effect */}
-            <div className="space-y-8">
-              <div className="flex items-center justify-center gap-4 mb-6">
-                <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-yellow-400" />
+      {/* Hero Section with Typewriter Welcome - Only show once per session */}
+      {showWelcomeMessage && (
+        <div className="relative z-20 min-h-screen flex items-center justify-center">
+          <div className="container mx-auto px-6 text-center">
+            <div className="max-w-6xl mx-auto space-y-8">
+              {/* Welcome Message with Typewriter Effect */}
+              <div className="space-y-8">
+                <div className="flex items-center justify-center gap-4 mb-6">
+                  <Crown className="h-16 w-16 lg:h-20 lg:w-20 text-yellow-400" />
+                </div>
+                
+                <h1 className="text-5xl lg:text-7xl font-bold text-white mb-8 min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
+                  <TypewriterText
+                    text="The Imperial Experience Awaits"
+                    speed={80}
+                    showCursor={false}
+                    cursorBlinkSpeed={500}
+                    className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent"
+                  />
+                </h1>
+                
+                <p className="text-xl lg:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed mb-16">
+                  You've taken the brave step into the world of trading. Every expert was once a beginner, 
+                  and every champion was once a contender who refused to give up.
+                </p>
               </div>
               
-              <h1 className="text-5xl lg:text-7xl font-bold text-white mb-8 min-h-[120px] lg:min-h-[160px] flex items-center justify-center">
-                <TypewriterText
-                  text={welcomeText}
-                  speed={80}
-                  showCursor={false}
-                  cursorBlinkSpeed={500}
-                  className="bg-gradient-to-r from-yellow-400 via-white to-primary bg-clip-text text-transparent"
-                />
-              </h1>
-              
-              <p className="text-xl lg:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed mb-16">
-                You've taken the brave step into the world of trading. Every expert was once a beginner, 
-                and every champion was once a contender who refused to give up.
-              </p>
-            </div>
-            
-            {/* Large spacer to push content below viewport */}
-            <div className="pt-32">
+              {/* Large spacer to push content below viewport */}
+              <div className="pt-32">
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Premium Stats Grid */}
       <div className="relative z-20 container mx-auto px-6 mb-12">

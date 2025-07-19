@@ -1790,7 +1790,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           }
                           className={cn(
                             trade.outcome === "win" &&
-                              "bg-primary text-primary-foreground border-transparent",
+                              "gradient-gold-bluegreen text-white border-transparent",
                             trade.outcome === "loss" &&
                               "bg-destructive text-destructive-foreground border-transparent"
                           )}

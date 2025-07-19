@@ -13,11 +13,15 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
 
   const tagline = "the imperial experience awaits.";
 
-  // Simplified timeline - only typewriter effect
+  // Updated timeline with pause and opening effect
   const timeline = {
     typewriter_start: 0,     // Start immediately
     typewriter_end: 3000,    // 3 seconds for typing
-    complete: 4000           // Total animation time
+    pause_start: 3000,       // Pause starts after typing
+    pause_end: 6000,         // 3 second pause
+    opening_start: 6000,     // Opening effect starts
+    opening_end: 7500,       // 1.5 seconds for opening
+    complete: 7500           // Total animation time
   };
 
   // Apple-style easing function
@@ -68,6 +72,62 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     }
   };
 
+  // Pause phase - show completed text without cursor
+  const drawPause = (ctx: CanvasRenderingContext2D) => {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    
+    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    ctx.fillText(tagline, ctx.canvas.width / 2, ctx.canvas.height / 2);
+  };
+
+  // Opening effect - dramatic fade out with scale
+  const drawOpening = (ctx: CanvasRenderingContext2D, progress: number) => {
+    const easedProgress = easeInOutCubic(progress);
+    
+    // Create expanding circle effect
+    const maxRadius = Math.sqrt(Math.pow(ctx.canvas.width, 2) + Math.pow(ctx.canvas.height, 2));
+    const currentRadius = maxRadius * easedProgress;
+    
+    // Fill background
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    
+    // Show text with fade out
+    const textOpacity = 1 - easedProgress;
+    ctx.font = `300 ${Math.min(ctx.canvas.width * 0.06, 80)}px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif`;
+    ctx.fillStyle = `rgba(255, 255, 255, ${textOpacity * 0.9})`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Scale text slightly
+    ctx.save();
+    const scale = 1 + (easedProgress * 0.1);
+    ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
+    ctx.scale(scale, scale);
+    ctx.fillText(tagline, 0, 0);
+    ctx.restore();
+    
+    // Create circular opening effect
+    if (easedProgress > 0.3) {
+      const openingProgress = (easedProgress - 0.3) / 0.7;
+      const openingRadius = maxRadius * openingProgress;
+      
+      // Create circular clipping mask for opening effect
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(ctx.canvas.width / 2, ctx.canvas.height / 2, openingRadius, 0, Math.PI * 2);
+      ctx.fillStyle = 'white';
+      ctx.fill();
+      ctx.restore();
+    }
+  };
+
 
   const animate = (currentTime: number) => {
     if (!startTimeRef.current) {
@@ -86,12 +146,19 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       // Typewriter effect
       const progress = Math.min(1, elapsedTime / (timeline.typewriter_end - timeline.typewriter_start));
       drawTypewriter(ctx, progress);
+    } else if (elapsedTime <= timeline.pause_end) {
+      // Pause phase - show completed text
+      drawPause(ctx);
+    } else if (elapsedTime <= timeline.opening_end) {
+      // Opening effect
+      const progress = Math.min(1, (elapsedTime - timeline.opening_start) / (timeline.opening_end - timeline.opening_start));
+      drawOpening(ctx, progress);
     } else {
       // Animation complete
       setTimeout(() => {
         setIsVisible(false);
         onComplete?.();
-      }, 500);
+      }, 200);
       return;
     }
     

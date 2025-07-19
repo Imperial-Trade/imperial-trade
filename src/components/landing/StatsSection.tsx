@@ -15,7 +15,7 @@ export default function StatsSection() {
     {
       icon: Users,
       label: "Active Traders",
-      value: "10K+",
+      value: "200+",
       description: "Worldwide community",
       color: "hsl(var(--feature-purple))",
       delay: "200ms"

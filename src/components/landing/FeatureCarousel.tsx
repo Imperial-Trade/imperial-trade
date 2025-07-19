@@ -59,7 +59,7 @@ export default function FeatureCarousel() {
       {/* Modular white to transparent background layers */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-white/40 to-white/10"></div>
       <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-white/30"></div>
-      <div className="absolute inset-0 bg-gradient-to-r from-white/25 via-transparent to-white/15"></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-white/25 via-transparent to-white/15 dark:from-black/40 dark:via-transparent dark:to-black/25"></div>
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <ContentSection>
           <div className="text-center mb-16">

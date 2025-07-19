@@ -1300,12 +1300,15 @@ Please provide a brief analysis focusing on what went well, what could be improv
         <EnhancedStatsPanel />
       </div>
     </div>;
-  return <div className="min-h-screen p-6 transition-colors duration-300 bg-transparent border-transparent focus:border-transparent active:border-transparent focus:outline-none">
+
+  return (
+    <div className="min-h-screen p-6 transition-colors duration-300 bg-transparent border-transparent focus:border-transparent active:border-transparent focus:outline-none">
       <AnimatePresence mode="wait">
         {journalState.selectedDate ? <EnhancedDayView key="day-view" date={journalState.selectedDate} /> : <DashboardView key="dashboard-view" />}
       </AnimatePresence>
 
       <AddTradeModal isOpen={showAddTradeModal} onClose={() => setShowAddTradeModal(false)} onSave={handleSaveTrade} selectedDate={journalState.selectedDate || undefined} />
-    </div>;
+    </div>
+  );
 };
 export default TradingJournalApp;

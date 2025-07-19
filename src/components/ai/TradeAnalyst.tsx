@@ -150,49 +150,52 @@ export default function TradeAnalyst() {
 
       setAnalysisProgress('Extracting trade data...');
 
-      // Create comprehensive AI prompt for trade analysis
+      // Create comprehensive AI prompt for trade analysis - ISOLATED TO CURRENT UPLOAD ONLY
       const masterPrompt = `
         You are Marcus Aurelius combined with Warren Buffett's analytical mind and Ray Dalio's systematic thinking - analyzing trading performance.
 
-        Context: I have uploaded ${validUrls.length} screenshots of my trading platform taken over different time periods.
+        Context: I have uploaded ${validUrls.length} screenshots of my trading platform for THIS SPECIFIC ANALYSIS SESSION.
+
+        IMPORTANT: Base your analysis EXCLUSIVELY on these ${validUrls.length} screenshots provided in this session. DO NOT reference any previous analyses, historical data, or past trading sessions. This is a fresh, independent analysis.
 
         YOUR MISSION:
-        Provide a comprehensive, brutally honest but constructive analysis of my trading performance.
+        Provide a comprehensive, brutally honest but constructive analysis of my trading performance based ONLY on the current screenshots uploaded.
 
         ANALYSIS FRAMEWORK:
 
         1. OVERALL PERFORMANCE ASSESSMENT
-           - Calculate key metrics from visible data
-           - Identify the trader's skill level
-           - Assess consistency and reliability
+           - Calculate key metrics ONLY from the visible data in these screenshots
+           - Identify the trader's skill level based on THESE specific trades
+           - Assess consistency ONLY within these uploaded screenshots
 
         2. STRENGTH IDENTIFICATION
-           - What is this trader doing exceptionally well?
-           - Which trades show the best decision-making?
-           - What edges can be identified and amplified?
+           - What is this trader doing exceptionally well in THESE screenshots?
+           - Which trades in THESE images show the best decision-making?
+           - What edges can be identified from THESE specific examples?
 
         3. WEAKNESS DIAGNOSIS
-           - Critical flaws in execution
-           - Risk management failures
-           - Behavioral issues evident from trade data
+           - Critical flaws in execution visible in THESE screenshots
+           - Risk management failures shown in THESE trades
+           - Behavioral issues evident from THESE specific trades
 
         4. BEHAVIORAL PSYCHOLOGY ANALYSIS
-           - Signs of emotional trading
-           - Discipline breakdowns
-           - Confidence vs overconfidence indicators
+           - Signs of emotional trading in THESE screenshots
+           - Discipline breakdowns visible in THESE trades
+           - Confidence vs overconfidence indicators from THESE examples
 
         5. ACTIONABLE IMPROVEMENT ROADMAP
-           - Specific, implementable changes
-           - Priority order of improvements
-           - Behavioral modifications needed
+           - Specific improvements based on THESE screenshots
+           - Priority order based on what's visible in THESE trades
+           - Behavioral modifications based on THESE examples
 
         CRITICAL INSTRUCTIONS:
-        - Analyze ALL screenshots collectively, not individually
-        - Look for patterns across multiple trades
-        - Estimate performance metrics where visible
-        - Focus on actionable insights, not generic advice
-        - Be specific with examples from the screenshots
-        - Provide confidence levels for your assessments
+        - Analyze ONLY the screenshots provided in this current upload session
+        - DO NOT reference any previous analyses or historical context
+        - Look for patterns ONLY within these current screenshots
+        - Estimate performance metrics ONLY from visible data in these images
+        - Focus on actionable insights from THESE specific trades
+        - Be specific with examples from THESE current screenshots only
+        - This is an independent analysis session - treat it as such
 
         OUTPUT FORMAT (JSON):
         {

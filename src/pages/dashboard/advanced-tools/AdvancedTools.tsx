@@ -41,19 +41,19 @@ const coreTools = [
   {
     name: "Trading Journal",
     icon: BookOpen,
-    component: <TradingJournal />,
+    component: TradingJournal,
     description: "Log and analyze your trades with AI-powered feedback.",
   },
   {
     name: "Economic Calendar",
     icon: Calendar,
-    component: <EconomicCalendar />,
+    component: EconomicCalendar,
     description: "Stay ahead of market-moving events and news releases.",
   },
   {
     name: "Risk Calculator",
     icon: Calculator,
-    component: <RiskCalculator />,
+    component: RiskCalculator,
     description: "Calculate position size, risk, and potential profit.",
   },
 ];
@@ -62,19 +62,19 @@ const aiTools = [
   {
     name: "Trade Analyst",
     icon: Brain,
-    component: <TradeAnalyst />,
+    component: TradeAnalyst,
     description: "Upload screenshots for deep performance analysis.",
   },
   {
     name: "Opportunity Scanner",
     icon: Search,
-    component: <OpportunityScanner />,
+    component: OpportunityScanner,
     description: "Scan markets for high-probability trading setups.",
   },
   {
     name: "Risk Simulator",
     icon: Scale,
-    component: <RiskSimulator />,
+    component: RiskSimulator,
     description: "Simulate trade setups to assess risk before you enter.",
   },
 ];
@@ -230,7 +230,9 @@ export default function AdvancedTools() {
                 className="relative h-full"
               >
                 <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
-                  <div className="p-4 bg-transparent">{activeTool.component}</div>
+                  <div className="p-4 bg-transparent">
+                    {React.createElement(activeTool.component)}
+                  </div>
                 </Card>
               </motion.div>
             ) : (

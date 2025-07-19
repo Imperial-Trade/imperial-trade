@@ -63,7 +63,9 @@ export default function TradeAnalyst() {
   useEffect(() => {
     const loadUserAndHistory = async () => {
       try {
+        console.log('TradeAnalyst: Loading user and history...');
         const { data: { user: currentUser } } = await supabase.auth.getUser();
+        console.log('TradeAnalyst: Current user:', currentUser?.id);
         setUser(currentUser);
         
         if (currentUser) {
@@ -74,11 +76,15 @@ export default function TradeAnalyst() {
             .order('created_at', { ascending: false })
             .limit(10);
           
-          if (error) throw error;
+          if (error) {
+            console.error('TradeAnalyst: Database error:', error);
+            throw error;
+          }
+          console.log('TradeAnalyst: Loaded history:', history?.length || 0, 'records');
           setAnalysisHistory(history || []);
         }
       } catch (error) {
-        console.error('Error loading user data:', error);
+        console.error('TradeAnalyst: Error loading user data:', error);
       }
     };
 
@@ -314,12 +320,29 @@ export default function TradeAnalyst() {
   };
 
   const loadPreviousAnalysis = (analysis: TradeHistoryRecord) => {
-    const result = typeof analysis.analysis_result === 'string' 
-      ? JSON.parse(analysis.analysis_result) 
-      : analysis.analysis_result;
-    
-    setAnalysisResult(result);
-    setCurrentView('analysis');
+    try {
+      const result = typeof analysis.analysis_result === 'string' 
+        ? JSON.parse(analysis.analysis_result) 
+        : analysis.analysis_result;
+      
+      if (result) {
+        setAnalysisResult(result);
+        setCurrentView('analysis');
+      } else {
+        toast({
+          title: "Error",
+          description: "This analysis appears to be incomplete or corrupted.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error loading previous analysis:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load the previous analysis.",
+        variant: "destructive"
+      });
+    }
   };
 
   const goBackToUploader = () => {

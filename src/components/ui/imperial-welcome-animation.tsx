@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface ImperialWelcomeAnimationProps {
   onComplete?: () => void;
@@ -9,38 +8,20 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
   const startTimeRef = useRef<number>();
-  const { user } = useAuth();
   
   const [isVisible, setIsVisible] = useState(true);
 
-  // Get user's full name for continuation text
-  const getUserFullName = () => {
-    if (user?.user_metadata?.first_name && user?.user_metadata?.last_name) {
-      return `${user.user_metadata.first_name} ${user.user_metadata.last_name}`;
-    }
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name;
-    }
-    if (user?.user_metadata?.display_name) {
-      return user.user_metadata.display_name;
-    }
-    return user?.email?.split('@')[0] || 'Trader';
-  };
-
   const tagline = "the imperial experience awaits.";
-  const continuationText = `Welcome, ${getUserFullName()}. The Imperial experience awaits.`;
 
-  // Updated timeline with continuation text
+  // Updated timeline with longer pause and dots animation
   const timeline = {
-    typewriter_start: 0,        // Start immediately
-    typewriter_end: 3000,       // 3 seconds for typing
-    pause_start: 3000,          // Pause starts after typing
-    pause_end: 7000,            // 4 second pause (3-7 seconds)
-    opening_start: 7000,        // Opening effect starts
-    opening_end: 8500,          // 1.5 seconds for opening
-    continuation_start: 8500,   // Continue with personalized text
-    continuation_end: 12000,    // 3.5 seconds for continuation
-    complete: 12000             // Total animation time
+    typewriter_start: 0,     // Start immediately
+    typewriter_end: 3000,    // 3 seconds for typing
+    pause_start: 3000,       // Pause starts after typing
+    pause_end: 7000,         // 4 second pause (3-7 seconds)
+    opening_start: 7000,     // Opening effect starts
+    opening_end: 8500,       // 1.5 seconds for opening
+    complete: 8500           // Total animation time
   };
 
   // Apple-style easing function
@@ -169,40 +150,6 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     }
   };
 
-  // Continuation phase - personalized welcome text
-  const drawContinuation = (ctx: CanvasRenderingContext2D, progress: number) => {
-    // Transparent background to show dashboard underneath
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    
-    const charsToShow = Math.floor(continuationText.length * progress);
-    const displayText = continuationText.substring(0, charsToShow);
-    
-    // Position text in upper area to match dashboard layout
-    const textY = ctx.canvas.height * 0.3;
-    
-    ctx.font = `600 ${Math.min(ctx.canvas.width * 0.04, 60)}px -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif`;
-    
-    // Create gradient text to match dashboard styling
-    const gradient = ctx.createLinearGradient(0, 0, ctx.canvas.width, 0);
-    gradient.addColorStop(0, '#FBBF24'); // yellow-400
-    gradient.addColorStop(0.5, '#FFFFFF'); // white
-    gradient.addColorStop(1, '#D4AF37'); // primary gold
-    
-    ctx.fillStyle = gradient;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    
-    ctx.fillText(displayText, ctx.canvas.width / 2, textY);
-    
-    // Cursor effect
-    if (progress < 1) {
-      const cursorOpacity = Math.sin(Date.now() * 0.01) * 0.5 + 0.5;
-      ctx.fillStyle = `rgba(255, 255, 255, ${cursorOpacity})`;
-      const textWidth = ctx.measureText(displayText).width;
-      ctx.fillRect(ctx.canvas.width / 2 + textWidth / 2 + 5, textY - 15, 3, 30);
-    }
-  };
-
 
   const animate = (currentTime: number) => {
     if (!startTimeRef.current) {
@@ -228,10 +175,6 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
       // Opening effect
       const progress = Math.min(1, (elapsedTime - timeline.opening_start) / (timeline.opening_end - timeline.opening_start));
       drawOpening(ctx, progress);
-    } else if (elapsedTime <= timeline.continuation_end) {
-      // Continuation with personalized text
-      const progress = Math.min(1, (elapsedTime - timeline.continuation_start) / (timeline.continuation_end - timeline.continuation_start));
-      drawContinuation(ctx, progress);
     } else {
       // Animation complete
       setTimeout(() => {

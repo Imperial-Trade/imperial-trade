@@ -107,6 +107,11 @@
     --feature-pink: 330 81% 60%;
     --feature-red: 0 84% 60%;
     
+    /* Gold to Blue-Green Gradient Colors */
+    --gradient-gold-start: 43 74% 60%;
+    --gradient-teal-middle: 180 80% 50%;
+    --gradient-blue-green-end: 160 100% 35%;
+    
     /* Light mode accent colors */
     --accent-green: 142 76% 36%; /* Trading green for light mode */
     --accent-blue: 210 100% 46%; /* Trading blue for light mode */
@@ -181,6 +186,11 @@
     --accent-blue: 210 100% 60%; /* Trading blue #0080FF */
     --accent-gold: 43 74% 60%; /* Trading gold #E6B800 */
     --accent-red: 0 84% 60%; /* Trading red */
+    
+    /* Gold to Blue-Green Gradient Colors for dark mode */
+    --gradient-gold-start: 43 74% 60%;
+    --gradient-teal-middle: 180 80% 50%;
+    --gradient-blue-green-end: 160 100% 35%;
 
     /* Surface colors for components */
     --surface: 210 20% 12%; /* Component surface */
@@ -1044,4 +1054,32 @@
   100% {
     background-position: 200% 0;
   }
+}
+
+/* Gold to Blue-Green Gradient Classes */
+.bg-gradient-gold-to-blue-green {
+  background: linear-gradient(135deg, 
+    hsl(var(--gradient-gold-start)) 0%, 
+    hsl(var(--gradient-teal-middle)) 50%, 
+    hsl(var(--gradient-blue-green-end)) 100%);
+}
+
+.text-gradient-gold-to-blue-green {
+  background: linear-gradient(135deg, 
+    hsl(var(--gradient-gold-start)) 0%, 
+    hsl(var(--gradient-teal-middle)) 50%, 
+    hsl(var(--gradient-blue-green-end)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: hsl(var(--gradient-gold-start)); /* Fallback color */
+}
+
+.border-gradient-gold-to-blue-green {
+  border: 2px solid transparent;
+  background: linear-gradient(135deg, 
+    hsl(var(--gradient-gold-start)) 0%, 
+    hsl(var(--gradient-teal-middle)) 50%, 
+    hsl(var(--gradient-blue-green-end)) 100%) border-box;
+  background-clip: border-box;
 }

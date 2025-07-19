@@ -1116,7 +1116,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
           duration: 0.3
         }}>
               <Card className={cn("border-2 transition-all duration-300 hover:shadow-lg", theme === "dark" ? "bg-slate-900/80 border-slate-700 hover:border-slate-600" : "bg-white border-slate-200 hover:border-slate-300")}>
-                <CardContent className="p-6">
+                <CardContent className="p-6 bg-zinc-900 rounded-sm">
                   <div className="flex items-start justify-between">
                     <div className="space-y-3 flex-1">
                       <div className="flex items-center gap-3">
@@ -1157,7 +1157,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           </div>}
                       </div>
 
-                      {trade.ai_feedback && <div className="mt-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                      {trade.ai_feedback && <div className="mt-4 p-3 rounded-lg border border-blue-500/20 bg-neutral-900">
                           <div className="flex items-center gap-2 mb-2">
                             <Brain className="h-4 w-4 text-blue-500" />
                             <span className="text-sm font-medium text-blue-600">

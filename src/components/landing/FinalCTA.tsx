@@ -24,7 +24,7 @@ export default function FinalCTA() {
   }, []);
   const benefits = [{
     icon: Star,
-    text: "AI-powered trading signals with 92% accuracy"
+    text: "AI-powered trading signals with accuracy"
   }, {
     icon: Shield,
     text: "Enterprise-grade security and protection"

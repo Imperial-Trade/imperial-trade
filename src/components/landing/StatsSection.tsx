@@ -22,7 +22,7 @@ export default function StatsSection() {
     },
     {
       icon: Shield,
-      label: "Success Rate",
+      label: "Productivity Rate",
       value: "92%",
       description: "Average profitability",
       color: "hsl(var(--feature-green))",

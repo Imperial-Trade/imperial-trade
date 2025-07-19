@@ -24,7 +24,7 @@ export default function StatsSection() {
       icon: Shield,
       label: "Productivity Rate",
       value: "92%",
-      description: "Average profitability",
+      description: "Ai tools usage",
       color: "hsl(var(--feature-green))",
       delay: "400ms"
     },

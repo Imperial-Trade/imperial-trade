@@ -62,7 +62,7 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
             color: 'transparent',
-            animation: 'shimmer 3s infinite',
+            animation: 'shimmer 6s infinite',
             backgroundPosition: '-200% 0'
           }}
         >

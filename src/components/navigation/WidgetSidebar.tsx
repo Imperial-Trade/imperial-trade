@@ -110,9 +110,9 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     const isActive = activeTool === tool.name;
     
     const sizeClasses = {
-      small: 'col-span-1 h-24 sm:h-28 md:h-32 lg:h-36',
-      medium: 'col-span-2 sm:col-span-1 md:col-span-2 h-24 sm:h-28 md:h-32 lg:h-36',
-      large: 'col-span-2 h-32 sm:h-36 md:h-40 lg:h-44'
+      small: 'col-span-1 h-28',
+      medium: 'col-span-2 h-28',
+      large: 'col-span-2 h-36'
     };
 
     const renderWidgetContent = () => {
@@ -275,7 +275,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
   return (
     <motion.aside
-      className={`fixed left-2 md:left-4 top-16 md:top-20 z-50 h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] w-80 sm:w-72 md:w-80 lg:w-96 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
+      className={`fixed left-4 top-20 z-50 h-[calc(100vh-5rem)] w-72 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
       initial={{ x: -280, opacity: 0 }}
       animate={{ 
         x: isVisible ? 0 : -280, 
@@ -298,18 +298,18 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
         scale: 1.01
       }}
     >
-      <div className="p-2 sm:p-3 md:p-4 h-full">
+      <div className="p-4 h-full">
         {/* Header */}
-        <div className="mb-4 md:mb-6">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-1">Today</h1>
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Trading Arsenal</p>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Today</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Trading Arsenal</p>
         </div>
 
         {/* Trading Session Indicator */}
         <TradingSessionIndicator />
 
         {/* Widget Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {/* Trading Journal - Large Widget */}
           <WidgetTool tool={tradingTools[0]} size="large" />
           

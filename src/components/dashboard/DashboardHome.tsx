@@ -81,14 +81,17 @@ export const DashboardHome: React.FC = () => {
   // Check if we should show the session-based welcome message
   useEffect(() => {
     if (user?.id) {
-      const sessionKey = `imperial_welcome_shown_${user.id}`;
-      const welcomeShown = sessionStorage.getItem(sessionKey);
+      const sessionKey = `imperial_welcome_shown_${user.id}_${Date.now().toString().slice(0, -7)}`; // Use timestamp to create unique session
+      const globalSessionKey = `imperial_welcome_session_${user.id}`;
       
-      if (!welcomeShown) {
-        // Mark as shown immediately to prevent showing again
+      // Check if welcome was already shown in this browser session
+      const globalWelcomeShown = sessionStorage.getItem(globalSessionKey);
+      
+      if (!globalWelcomeShown) {
+        // First time showing welcome in this session
+        sessionStorage.setItem(globalSessionKey, 'true');
         sessionStorage.setItem(sessionKey, 'true');
         
-        // Show the welcome message
         setShowSessionWelcome(true);
         
         // Hide the welcome message after 5 seconds

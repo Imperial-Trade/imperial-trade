@@ -85,9 +85,11 @@ export const DashboardHome: React.FC = () => {
       const welcomeShown = sessionStorage.getItem(sessionKey);
       
       if (!welcomeShown) {
-        // Show the welcome message and mark it as shown for this session
-        setShowSessionWelcome(true);
+        // Mark as shown immediately to prevent showing again
         sessionStorage.setItem(sessionKey, 'true');
+        
+        // Show the welcome message
+        setShowSessionWelcome(true);
         
         // Hide the welcome message after 5 seconds
         const timer = setTimeout(() => {
@@ -95,6 +97,9 @@ export const DashboardHome: React.FC = () => {
         }, 5000);
         
         return () => clearTimeout(timer);
+      } else {
+        // Already shown this session, don't show again
+        setShowSessionWelcome(false);
       }
     }
   }, [user?.id]);

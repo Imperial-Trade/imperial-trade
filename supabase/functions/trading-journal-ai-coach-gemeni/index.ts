@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.15.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -132,17 +131,46 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Gemini AI
-    const genAI = new GoogleGenerativeAI(googleApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
     // Build comprehensive prompt
     const prompt = buildCoachingPrompt(entry, recentEntries || [], customPrompt);
 
-    // Generate AI coaching
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const analysisText = response.text();
+    // Make direct HTTP call to Gemini API
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${googleApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+          }
+        })
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error('Gemini API error:', errorText);
+      throw new Error(`Gemini API error: ${geminiResponse.status}`);
+    }
+
+    const geminiData = await geminiResponse.json();
+    
+    if (!geminiData.candidates || !geminiData.candidates[0] || !geminiData.candidates[0].content) {
+      throw new Error('Invalid response from Gemini API');
+    }
+
+    const analysisText = geminiData.candidates[0].content.parts[0].text;
 
     // Parse the AI response to structured format
     const coachingAnalysis = parseCoachingResponse(analysisText);
@@ -180,7 +208,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in trading journal AI coach:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

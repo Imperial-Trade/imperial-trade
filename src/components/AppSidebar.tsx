@@ -25,27 +25,29 @@ export function AppSidebar() {
   if (isMobile) {
     return (
       <Sidebar 
-        className="border-r-0 bg-background/95 backdrop-blur-xl"
+        className="border-r-0 bg-background/95 backdrop-blur-xl h-screen max-h-screen"
         collapsible="offcanvas"
         variant="floating"
       >
-        <SidebarHeader className="p-4 border-b border-border/20">
+        <SidebarHeader className="p-4 border-b border-border/20 flex-shrink-0">
           <SidebarBrand isCollapsed={false} />
         </SidebarHeader>
 
-        <SidebarContent className="px-3 py-4 flex-1">
-          <SidebarNavigation isCollapsed={false} />
-          <SidebarEducatorSection 
-            isCollapsed={false} 
-            userType={user?.user_metadata?.user_type} 
-          />
-          <SidebarAdminSection 
-            isCollapsed={false} 
-            userAccessLevel={user?.user_metadata?.access_level} 
-          />
+        <SidebarContent className="px-3 py-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+          <div className="space-y-4">
+            <SidebarNavigation isCollapsed={false} />
+            <SidebarEducatorSection 
+              isCollapsed={false} 
+              userType={user?.user_metadata?.user_type} 
+            />
+            <SidebarAdminSection 
+              isCollapsed={false} 
+              userAccessLevel={user?.user_metadata?.access_level} 
+            />
+          </div>
         </SidebarContent>
 
-        <SidebarFooter className="p-4 mt-auto">
+        <SidebarFooter className="p-4 flex-shrink-0 border-t border-border/20">
           <SidebarUserMenu isCollapsed={false} />
         </SidebarFooter>
       </Sidebar>
@@ -55,27 +57,29 @@ export function AppSidebar() {
   // For tablet and desktop, use proper Sidebar component with no collapsing
   return (
     <Sidebar 
-      className="border-r-0 bg-background/95 backdrop-blur-xl"
+      className="border-r-0 bg-background/95 backdrop-blur-xl h-screen max-h-screen"
       collapsible="none"
       variant="sidebar"
     >
-      <SidebarHeader className="p-4 border-b border-border/20">
+      <SidebarHeader className="p-4 border-b border-border/20 flex-shrink-0">
         <SidebarBrand isCollapsed={false} />
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4 flex-1 overflow-auto">
-        <SidebarNavigation isCollapsed={false} />
-        <SidebarEducatorSection 
-          isCollapsed={false} 
-          userType={user?.user_metadata?.user_type} 
-        />
-        <SidebarAdminSection 
-          isCollapsed={false} 
-          userAccessLevel={user?.user_metadata?.access_level} 
-        />
+      <SidebarContent className="px-3 py-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+        <div className="space-y-4">
+          <SidebarNavigation isCollapsed={false} />
+          <SidebarEducatorSection 
+            isCollapsed={false} 
+            userType={user?.user_metadata?.user_type} 
+          />
+          <SidebarAdminSection 
+            isCollapsed={false} 
+            userAccessLevel={user?.user_metadata?.access_level} 
+          />
+        </div>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 mt-auto">
+      <SidebarFooter className="p-4 flex-shrink-0 border-t border-border/20">
         <SidebarUserMenu isCollapsed={false} />
       </SidebarFooter>
     </Sidebar>

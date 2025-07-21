@@ -79,7 +79,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen max-h-screen h-screen flex w-full bg-gradient-to-br from-background via-background to-background/95 overflow-hidden">
+      <div className="min-h-[100vh] max-h-[100vh] h-[100vh] flex w-full bg-gradient-to-br from-background via-background to-background/95 overflow-hidden">
         <AppSidebar />
         
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

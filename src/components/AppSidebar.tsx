@@ -24,7 +24,7 @@ export function AppSidebar() {
   // Base responsive classes for all devices
   const baseClasses = "border-r-0 bg-background/95 backdrop-blur-xl flex flex-col";
   const responsiveClasses = "w-full sm:w-80 md:w-72 lg:w-80 xl:w-96";
-  const heightClasses = "h-screen max-h-screen min-h-0";
+  const heightClasses = "h-[100vh] max-h-[100vh] min-h-0";
 
   // For mobile devices (phones)
   if (isMobile) {
@@ -38,8 +38,8 @@ export function AppSidebar() {
           <SidebarBrand isCollapsed={false} />
         </SidebarHeader>
 
-        <SidebarContent className="px-2 sm:px-3 py-3 sm:py-4 flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
-          <div className="space-y-3 sm:space-y-4 min-h-min pb-4">
+        <SidebarContent className="px-2 sm:px-3 py-3 sm:py-4 flex-1 min-h-0 max-h-full overflow-y-auto overscroll-contain scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+          <div className="space-y-3 sm:space-y-4 min-h-min pb-20">
             <SidebarNavigation isCollapsed={false} />
             <SidebarEducatorSection 
               isCollapsed={false} 
@@ -70,8 +70,8 @@ export function AppSidebar() {
         <SidebarBrand isCollapsed={false} />
       </SidebarHeader>
 
-      <SidebarContent className="px-3 lg:px-4 py-4 lg:py-5 flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
-        <div className="space-y-4 lg:space-y-5 min-h-min pb-4">
+      <SidebarContent className="px-3 lg:px-4 py-4 lg:py-5 flex-1 min-h-0 max-h-full overflow-y-auto overscroll-contain scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+        <div className="space-y-4 lg:space-y-5 min-h-min pb-20">
           <SidebarNavigation isCollapsed={false} />
           <SidebarEducatorSection 
             isCollapsed={false} 

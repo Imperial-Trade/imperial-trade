@@ -24,13 +24,13 @@ export default function FinalCTA() {
   }, []);
   const benefits = [{
     icon: Star,
-    text: "AI-powered trading signals with 92% accuracy"
+    text: "AI-powered trading signals with accuracy"
   }, {
     icon: Shield,
     text: "Enterprise-grade security and protection"
   }, {
     icon: Award,
-    text: "Award-winning trading platform"
+    text: "Top-tier trading platform"
   }, {
     icon: CheckCircle,
     text: "24/7 professional support"
@@ -54,7 +54,7 @@ export default function FinalCTA() {
               </h2>
 
               <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-                Join thousands of successful traders who've transformed their trading with our AI-powered platform.
+                Transform your trading and get the edge with our AI-powered platform.
               </p>
             </div>
 
@@ -108,8 +108,8 @@ export default function FinalCTA() {
                 </div>
               </div>
               
-              <p className="text-xs text-muted-foreground">
-                Trusted by over 10,000 professional traders worldwide
+              <p className="text-xs text-foreground/80">
+                We're building for you. In the spirit of transparency, we want you to know that some exciting new features are currently in development and will be rolled out soon.
               </p>
             </div>
           </div>

@@ -41,19 +41,19 @@ const coreTools = [
   {
     name: "Trading Journal",
     icon: BookOpen,
-    component: <TradingJournal />,
+    component: TradingJournal,
     description: "Log and analyze your trades with AI-powered feedback.",
   },
   {
     name: "Economic Calendar",
     icon: Calendar,
-    component: <EconomicCalendar />,
+    component: EconomicCalendar,
     description: "Stay ahead of market-moving events and news releases.",
   },
   {
     name: "Risk Calculator",
     icon: Calculator,
-    component: <RiskCalculator />,
+    component: RiskCalculator,
     description: "Calculate position size, risk, and potential profit.",
   },
 ];
@@ -62,19 +62,19 @@ const aiTools = [
   {
     name: "Trade Analyst",
     icon: Brain,
-    component: <TradeAnalyst />,
+    component: TradeAnalyst,
     description: "Upload screenshots for deep performance analysis.",
   },
   {
     name: "Opportunity Scanner",
     icon: Search,
-    component: <OpportunityScanner />,
+    component: OpportunityScanner,
     description: "Scan markets for high-probability trading setups.",
   },
   {
     name: "Risk Simulator",
     icon: Scale,
-    component: <RiskSimulator />,
+    component: RiskSimulator,
     description: "Simulate trade setups to assess risk before you enter.",
   },
 ];
@@ -96,11 +96,11 @@ export default function AdvancedTools() {
   const location = useLocation();
   const [activeTool, setActiveTool] = useState(null);
 
-  // Get all tools in one array for easier lookup
-  const allTools = [...coreTools, ...aiTools];
+  // Memoize all tools to prevent recreation on every render
+  const allTools = React.useMemo(() => [...coreTools, ...aiTools], []);
 
   // Function to get tool by query parameter
-  const getToolFromQuery = () => {
+  const getToolFromQuery = React.useCallback(() => {
     const params = new URLSearchParams(location.search);
     const toolParam = params.get("tool");
 
@@ -115,7 +115,7 @@ export default function AdvancedTools() {
 
     const toolName = toolMap[toolParam];
     return allTools.find((tool) => tool.name === toolName) || null;
-  };
+  }, [location.search, allTools]);
 
   // Set active tool based on URL parameter on component mount and URL changes
   useEffect(() => {
@@ -126,7 +126,7 @@ export default function AdvancedTools() {
       // Default to Trading Journal if no query parameter
       setActiveTool(coreTools[0]);
     }
-  }, [location.search]);
+  }, [getToolFromQuery]);
 
   const Placeholder = () => (
     <motion.div
@@ -158,7 +158,7 @@ export default function AdvancedTools() {
   return (
     <div className="min-h-screen bg-background">
       {/* Main Content Area - Full Width */}
-      <div className="w-full min-h-screen p-6">
+        <div className="w-full min-h-screen p-6 bg-background">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -219,24 +219,30 @@ export default function AdvancedTools() {
 
         {/* Tool Display */}
         <div className="min-h-[600px]">
-          <AnimatePresence mode="wait">
-            {activeTool ? (
-              <motion.div
-                key={activeTool.name}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -30 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="relative h-full"
-              >
-                <Card className="bg-white dark:bg-gray-900/30 border-transparent backdrop-blur-sm dark:shadow-2xl dark:shadow-gray-900/50 rounded-2xl h-full overflow-y-auto">
-                  <div className="p-4">{activeTool.component}</div>
-                </Card>
-              </motion.div>
-            ) : (
-              <Placeholder />
-            )}
-          </AnimatePresence>
+          <div className="relative h-full">
+            <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
+              <div className="p-4 bg-transparent">
+                <div style={{ display: activeTool?.name === "Trading Journal" ? 'block' : 'none' }}>
+                  <TradingJournal />
+                </div>
+                <div style={{ display: activeTool?.name === "Economic Calendar" ? 'block' : 'none' }}>
+                  <EconomicCalendar />
+                </div>
+                <div style={{ display: activeTool?.name === "Risk Calculator" ? 'block' : 'none' }}>
+                  <RiskCalculator />
+                </div>
+                <div style={{ display: activeTool?.name === "Trade Analyst" ? 'block' : 'none' }}>
+                  <TradeAnalyst />
+                </div>
+                <div style={{ display: activeTool?.name === "Opportunity Scanner" ? 'block' : 'none' }}>
+                  <OpportunityScanner />
+                </div>
+                <div style={{ display: activeTool?.name === "Risk Simulator" ? 'block' : 'none' }}>
+                  <RiskSimulator />
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

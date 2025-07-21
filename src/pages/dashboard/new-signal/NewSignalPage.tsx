@@ -36,6 +36,10 @@ const NewSignalPage: React.FC = () => {
 
   const { createAlert } = useOptimizedTrading(user?.id || '');
 
+  const handleCancel = () => {
+    navigate('/dashboard/signal-stream');
+  };
+
   const handleSubmit = async (data: TradeAlertSubmissionData) => {
     if (!user?.id) {
       toast({
@@ -115,6 +119,7 @@ const NewSignalPage: React.FC = () => {
         <div className="bg-card rounded-lg border border-border p-6">
           <OptimizedNewAlertForm 
             onSubmit={handleSubmit}
+            onCancel={handleCancel}
           />
         </div>
       </div>

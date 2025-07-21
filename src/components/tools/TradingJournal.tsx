@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TradeJournalEntry } from "@/api/entities";
@@ -10,6 +9,8 @@ import TradingJournalApp from "./TradingJournalApp";
 import JournalFormCard from "../trading/JournalFormCard";
 import JournalAnalytics from "../trading/JournalAnalytics";
 import JournalLogList from "../trading/JournalLogList";
+import { compressImage, validateImageFile } from "@/utils/imageCompression";
+import { toast } from "sonner";
 
 interface JournalEntry {
   id: string;
@@ -31,13 +32,15 @@ export default function TradingJournal() {
   // Memoize stable functions
   const loadUserProfile = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
+        const {
+          data: profile
+        } = await supabase.from("profiles").select("*").eq("id", user.id).single();
         if (profile) {
           setUserProfile(profile);
         }
@@ -46,11 +49,14 @@ export default function TradingJournal() {
       console.error("Error loading user profile:", error);
     }
   }, []);
-
   const loadEntries = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       if (user) {
         const fetchedEntries = await TradeJournalEntry.list(user.id);
         setEntries(fetchedEntries);
@@ -62,7 +68,6 @@ export default function TradingJournal() {
     }
     setIsLoading(false);
   }, []);
-
   const handleDelete = useCallback(async (entryId: string) => {
     try {
       await TradeJournalEntry.delete(entryId);
@@ -71,7 +76,6 @@ export default function TradingJournal() {
       console.error("Error deleting entry:", error);
     }
   }, [loadEntries]);
-
   const handleSubmit = useCallback(async (data: {
     asset_ticker: string;
     pnl: string;
@@ -79,56 +83,104 @@ export default function TradingJournal() {
     screenshotFile?: File;
   }) => {
     setIsSubmitting(true);
+    
+    // Core trade data - this will always be saved
+    const pnlValue = parseFloat(data.pnl);
+    const tradeData = {
+      asset_ticker: data.asset_ticker,
+      pnl: pnlValue,
+      notes: data.notes,
+      trade_date: new Date().toISOString(),
+      screenshot_url: "",
+      ai_positive_feedback: ""
+    };
 
     try {
-      let screenshot_url = "";
-      if (data.screenshotFile) {
-        const { file_url } = await UploadFile({ file: data.screenshotFile });
-        screenshot_url = file_url;
-      }
-
-      const pnlValue = parseFloat(data.pnl);
-      const tradeOutcome = pnlValue >= 0 ? "a winning trade" : "a losing trade";
-      const aiPrompt = `
-        You are a supportive trading coach. Analyze this ${tradeOutcome} of ${pnlValue} USD.
-        User notes: "${data.notes}"
-        
-        Provide encouraging feedback (1-2 sentences) highlighting good practices or learning opportunities.
-        Focus on process and discipline, not just results.
-      `;
-
-      const aiResult = await InvokeLLM({
-        prompt: aiPrompt,
-        file_urls: screenshot_url ? [screenshot_url] : [],
-      });
-
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await TradeJournalEntry.create(
-          {
-            ...data,
-            pnl: pnlValue,
-            trade_date: new Date().toISOString(),
-            screenshot_url,
-            ai_positive_feedback: aiResult,
-          },
-          user.id
-        );
+      if (!user) {
+        toast.error("Please log in to save your trade");
+        return;
       }
 
+      // Optional: Handle screenshot upload with compression
+      if (data.screenshotFile) {
+        try {
+          const validationError = validateImageFile(data.screenshotFile);
+          if (validationError) {
+            toast.error(validationError);
+            // Continue without screenshot - don't block the trade save
+          } else {
+            toast.info("Compressing image...");
+            const compressedFile = await compressImage(data.screenshotFile, {
+              maxWidth: 1920,
+              maxHeight: 1080,
+              quality: 0.8,
+              maxFileSize: 2 * 1024 * 1024 // 2MB
+            });
+            
+            toast.info("Uploading screenshot...");
+            const { file_url } = await UploadFile({ file: compressedFile });
+            tradeData.screenshot_url = file_url;
+            toast.success("Screenshot uploaded successfully");
+          }
+        } catch (uploadError) {
+          console.error("Screenshot upload failed:", uploadError);
+          toast.error("Screenshot upload failed, but trade will still be saved");
+          // Continue without screenshot - don't block the trade save
+        }
+      }
+
+      // Enhanced AI coaching analysis
+      try {
+        const tradeOutcome = pnlValue >= 0 ? "winning" : "losing";
+        const coachingPrompt = `
+          TRADE LOGGED: ${data.asset_ticker} with P&L of $${pnlValue}
+          
+          TRADE DETAILS:
+          - Asset: ${data.asset_ticker}
+          - P&L: $${pnlValue} (${tradeOutcome} trade)
+          - Notes: "${data.notes}"
+          - Screenshot: ${tradeData.screenshot_url ? "Provided" : "Not provided"}
+          
+          Please provide comprehensive coaching feedback following the 5-part structure:
+          1. Celebrate the effort to log this trade
+          2. Recognize any patterns, streaks, or milestones
+          3. Provide constructive insights about the trade
+          4. Reinforce their developing trader identity
+          5. Encourage continued growth and consistency
+        `;
+        
+        toast.info("Getting personalized coaching feedback...");
+        const aiResult = await InvokeLLM({
+          prompt: coachingPrompt,
+          file_urls: tradeData.screenshot_url ? [tradeData.screenshot_url] : [],
+          user_id: user.id // Pass user_id for enhanced coaching context
+        });
+        tradeData.ai_positive_feedback = aiResult;
+        toast.success("Personalized coaching feedback generated!");
+      } catch (aiError) {
+        console.error("AI coaching analysis failed:", aiError);
+        toast.error("AI coaching failed, but trade will still be saved");
+        // Continue without AI feedback - don't block the trade save
+      }
+
+      // Save the trade (this should always work)
+      await TradeJournalEntry.create(tradeData, user.id);
+      toast.success("Trade saved successfully!");
       loadEntries();
+
     } catch (error) {
       console.error("Error submitting journal entry:", error);
-      alert("Failed to save entry. Please try again.");
+      toast.error("Failed to save trade. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   }, [loadEntries]);
 
   // Effects
   useEffect(() => {
     loadUserProfile();
   }, [loadUserProfile]);
-
   useEffect(() => {
     if (userProfile) {
       loadEntries();
@@ -136,69 +188,63 @@ export default function TradingJournal() {
   }, [userProfile, loadEntries]);
 
   // Memoized tab content components
-  const LogTab = useMemo(() => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
+  const LogTab = useMemo(() => <motion.div initial={{
+    opacity: 0,
+    y: 20
+  }} animate={{
+    opacity: 1,
+    y: 0
+  }} className="space-y-6">
       <JournalFormCard onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-      <JournalLogList 
-        entries={entries} 
-        isLoading={isLoading} 
-        onDelete={handleDelete}
-      />
-    </motion.div>
-  ), [handleSubmit, isSubmitting, entries, isLoading, handleDelete]);
-
-  const AnalyticsTab = useMemo(() => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
+      <JournalLogList entries={entries} isLoading={isLoading} onDelete={handleDelete} />
+    </motion.div>, [handleSubmit, isSubmitting, entries, isLoading, handleDelete]);
+  const AnalyticsTab = useMemo(() => <motion.div initial={{
+    opacity: 0,
+    y: 20
+  }} animate={{
+    opacity: 1,
+    y: 0
+  }} className="space-y-6">
       <JournalAnalytics entries={entries} />
-    </motion.div>
-  ), [entries]);
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
-      <div className="max-w-6xl mx-auto">
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-6"
-        >
-          <TabsList className="grid w-full grid-cols-3 bg-card">
-            <TabsTrigger value="log" className="flex items-center gap-2">
+    </motion.div>, [entries]);
+  return <div className={`min-h-screen p-6 transition-all duration-700 ${activeTab === 'advanced' ? 'bg-transparent' : 'bg-gradient-to-br from-background via-background to-muted/20'}`}>
+      <div className={`mx-auto transition-all duration-500 ${activeTab === 'advanced' ? 'max-w-full px-4' : 'max-w-6xl'}`}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className={`grid w-full grid-cols-3 transition-all duration-500 ${activeTab === 'advanced' ? 'bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl' : 'bg-card'}`}>
+            <TabsTrigger value="log" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
               <Calendar className="w-4 h-4" />
               Journal Log
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <TabsTrigger value="analytics" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
               <BarChart3 className="w-4 h-4" />
               AI Analytics
             </TabsTrigger>
-            <TabsTrigger value="advanced" className="flex items-center gap-2">
+            <TabsTrigger value="advanced" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white hover:text-white hover:bg-white/10 data-[state=active]:bg-gradient-to-r data-[state=active]:from-white/30 data-[state=active]:to-white/20 data-[state=active]:text-white data-[state=active]:shadow-lg' : ''}`}>
               <Sparkles className="w-4 h-4" />
-              <span className="bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent font-semibold">
+              <span className={`font-semibold ${activeTab === 'advanced' ? 'text-white' : 'bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent'}`}>
                 Advanced Journal
               </span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="log" className="mt-6">
-            {LogTab}
+          <TabsContent value="log" className="mt-6 relative z-10">
+            <div className={activeTab === 'advanced' ? 'bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 shadow-2xl' : ''}>
+              {LogTab}
+            </div>
           </TabsContent>
 
-          <TabsContent value="analytics" className="mt-6">
-            {AnalyticsTab}
+          <TabsContent value="analytics" className="mt-6 relative z-10">
+            <div className={activeTab === 'advanced' ? 'bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 shadow-2xl' : ''}>
+              {AnalyticsTab}
+            </div>
           </TabsContent>
 
-          <TabsContent value="advanced" className="mt-6">
-            <TradingJournalApp />
+          <TabsContent value="advanced" className="mt-6 relative z-10">
+            <div className="p-6 focus:outline-none focus:border-transparent focus:ring-0 active:border-transparent bg-transparent rounded-sm">
+              <TradingJournalApp />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-  );
+    </div>;
 }

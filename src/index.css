@@ -113,6 +113,15 @@
     --accent-gold: 43 84% 38%; /* Trading gold for light mode */
     --accent-red: 0 84% 60%; /* Trading red */
     
+    /* Gold to Blue-Green Gradient Colors */
+    --gradient-gold-start: 43 84% 58%; /* Gold start */
+    --gradient-gold-mid: 165 45% 45%; /* Blue-green transition */
+    --gradient-bluegreen-end: 180 55% 35%; /* Blue-green end */
+    
+    /* Gold to Red-Bronze Gradient Colors */
+    --gradient-gold-bronze-start: 43 84% 58%; /* Gold start */
+    --gradient-red-bronze-end: 15 70% 45%; /* Red-bronze end */
+    
     /* Surface colors for components */
     --surface: 0 0% 98%; /* Component surface in light mode */
     --surface-hover: 0 0% 94%; /* Hover state in light mode */
@@ -181,6 +190,15 @@
     --accent-blue: 210 100% 60%; /* Trading blue #0080FF */
     --accent-gold: 43 74% 60%; /* Trading gold #E6B800 */
     --accent-red: 0 84% 60%; /* Trading red */
+    
+    /* Gold to Blue-Green Gradient Colors for dark mode */
+    --gradient-gold-start: 43 74% 60%; /* Gold start */
+    --gradient-gold-mid: 165 50% 50%; /* Blue-green transition */
+    --gradient-bluegreen-end: 180 60% 40%; /* Blue-green end */
+    
+    /* Gold to Red-Bronze Gradient Colors for dark mode */
+    --gradient-gold-bronze-start: 43 74% 60%; /* Gold start */
+    --gradient-red-bronze-end: 15 75% 50%; /* Red-bronze end */
 
     /* Surface colors for components */
     --surface: 210 20% 12%; /* Component surface */
@@ -1033,5 +1051,68 @@
   }
   .gradient-text-visible::before {
     opacity: 1;
+  }
+}
+
+/* Gold to Blue-Green Gradient Utility Classes */
+.gradient-gold-bluegreen {
+  background: linear-gradient(135deg, 
+    hsl(var(--gradient-gold-start)) 0%, 
+    hsl(var(--gradient-gold-start)) 50%, 
+    hsl(var(--gradient-bluegreen-end)) 100%);
+}
+
+.gradient-gold-bluegreen-text {
+  background: linear-gradient(135deg, 
+    hsl(var(--gradient-gold-start)) 0%, 
+    hsl(var(--gradient-gold-start)) 50%, 
+    hsl(var(--gradient-bluegreen-end)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: hsl(var(--gradient-gold-start)); /* Fallback color */
+}
+
+.border-gradient-gold-bluegreen {
+  border: 2px solid;
+  border-image: linear-gradient(135deg, 
+    hsl(var(--gradient-gold-start)) 0%, 
+    hsl(var(--gradient-gold-start)) 50%, 
+    hsl(var(--gradient-bluegreen-end)) 100%) 1;
+}
+
+.bg-gradient-gold-bluegreen-subtle {
+  background: linear-gradient(135deg, 
+    hsl(var(--gradient-gold-start) / 0.1) 0%, 
+    hsl(var(--gradient-gold-start) / 0.1) 50%, 
+    hsl(var(--gradient-bluegreen-end) / 0.1) 100%);
+}
+
+/* Gold to Red-Bronze Gradient Utility Classes */
+.gradient-gold-redbronze {
+  background: linear-gradient(135deg, 
+    hsl(var(--gradient-gold-bronze-start)) 0%, 
+    hsl(var(--gradient-gold-bronze-start)) 50%, 
+    hsl(var(--gradient-red-bronze-end)) 100%);
+}
+
+.gradient-gold-redbronze-text {
+  background: linear-gradient(135deg, 
+    hsl(var(--gradient-gold-bronze-start)) 0%, 
+    hsl(var(--gradient-gold-bronze-start)) 50%, 
+    hsl(var(--gradient-red-bronze-end)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: hsl(var(--gradient-gold-bronze-start)); /* Fallback color */
+}
+
+/* Shimmer animation for gold shine effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
   }
 }

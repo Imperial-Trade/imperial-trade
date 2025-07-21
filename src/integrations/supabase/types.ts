@@ -131,6 +131,47 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_coach_feedback: {
+        Row: {
+          coaching_analysis: Json
+          created_at: string
+          feedback_type: string
+          id: string
+          journal_entry_id: string
+          model_used: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coaching_analysis: Json
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          journal_entry_id: string
+          model_used?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coaching_analysis?: Json
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          journal_entry_id?: string
+          model_used?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_coach_feedback_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "trade_journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athena_interactions: {
         Row: {
           context: string | null
@@ -200,6 +241,66 @@ export type Database = {
           target_entity?: string
           target_id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      celebration_history: {
+        Row: {
+          celebration_data: Json | null
+          celebration_preference: string | null
+          celebration_type: string
+          created_at: string | null
+          id: string
+          module_number: number | null
+          user_id: string
+          user_interaction: string | null
+        }
+        Insert: {
+          celebration_data?: Json | null
+          celebration_preference?: string | null
+          celebration_type: string
+          created_at?: string | null
+          id?: string
+          module_number?: number | null
+          user_id: string
+          user_interaction?: string | null
+        }
+        Update: {
+          celebration_data?: Json | null
+          celebration_preference?: string | null
+          celebration_type?: string
+          created_at?: string | null
+          id?: string
+          module_number?: number | null
+          user_id?: string
+          user_interaction?: string | null
+        }
+        Relationships: []
+      }
+      coach_message_cache: {
+        Row: {
+          cached_message: Json
+          created_at: string | null
+          expires_at: string
+          id: string
+          message_type: string
+          user_id: string
+        }
+        Insert: {
+          cached_message: Json
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          message_type: string
+          user_id: string
+        }
+        Update: {
+          cached_message?: Json
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          message_type?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -307,6 +408,36 @@ export type Database = {
           title?: string
           total_duration_minutes?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      cron_job_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          execution_time: string
+          id: string
+          job_name: string
+          records_affected: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          execution_time?: string
+          id?: string
+          job_name: string
+          records_affected?: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          execution_time?: string
+          id?: string
+          job_name?: string
+          records_affected?: number
+          status?: string
         }
         Relationships: []
       }
@@ -469,6 +600,45 @@ export type Database = {
           modules?: Json
           pathway_name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      learning_streaks: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_activity: string | null
+          longest_streak: number | null
+          monthly_consistency: number | null
+          streak_count: number | null
+          total_learning_time: number | null
+          updated_at: string | null
+          user_id: string
+          weekly_goals_met: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_activity?: string | null
+          longest_streak?: number | null
+          monthly_consistency?: number | null
+          streak_count?: number | null
+          total_learning_time?: number | null
+          updated_at?: string | null
+          user_id: string
+          weekly_goals_met?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_activity?: string | null
+          longest_streak?: number | null
+          monthly_consistency?: number | null
+          streak_count?: number | null
+          total_learning_time?: number | null
+          updated_at?: string | null
+          user_id?: string
+          weekly_goals_met?: number | null
         }
         Relationships: []
       }
@@ -774,6 +944,7 @@ export type Database = {
           location: string | null
           phone_number: string | null
           profile_type: string | null
+          real_name: string | null
           registration_source:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
@@ -807,6 +978,7 @@ export type Database = {
           location?: string | null
           phone_number?: string | null
           profile_type?: string | null
+          real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
@@ -840,6 +1012,7 @@ export type Database = {
           location?: string | null
           phone_number?: string | null
           profile_type?: string | null
+          real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
@@ -1219,6 +1392,60 @@ export type Database = {
         }
         Relationships: []
       }
+      trades: {
+        Row: {
+          created_at: string
+          direction: string
+          duration: unknown | null
+          entry_date: string
+          entry_price: number
+          exit_date: string | null
+          exit_price: number | null
+          id: number
+          position_size: number
+          profit_loss: number | null
+          profit_loss_percentage: number | null
+          strategy: string | null
+          symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          duration?: unknown | null
+          entry_date: string
+          entry_price: number
+          exit_date?: string | null
+          exit_price?: number | null
+          id?: never
+          position_size: number
+          profit_loss?: number | null
+          profit_loss_percentage?: number | null
+          strategy?: string | null
+          symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          duration?: unknown | null
+          entry_date?: string
+          entry_price?: number
+          exit_date?: string | null
+          exit_price?: number | null
+          id?: never
+          position_size?: number
+          profit_loss?: number | null
+          profit_loss_percentage?: number | null
+          strategy?: string | null
+          symbol?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       trading_groups: {
         Row: {
           created_at: string
@@ -1299,6 +1526,36 @@ export type Database = {
           rules?: Json
           strategy_name?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_data: Json | null
+          achievement_type: string
+          created_at: string | null
+          earned_at: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          achievement_data?: Json | null
+          achievement_type: string
+          created_at?: string | null
+          earned_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          achievement_data?: Json | null
+          achievement_type?: string
+          created_at?: string | null
+          earned_at?: string | null
+          id?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -1626,6 +1883,10 @@ export type Database = {
       get_community_tier_info: {
         Args: { tier_level: number }
         Returns: Json
+      }
+      update_expired_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
     }
     Enums: {

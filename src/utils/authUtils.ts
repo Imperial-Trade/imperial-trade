@@ -12,6 +12,13 @@ export const cleanupAuthState = () => {
     }
   });
   
+  // Remove Imperial welcome message flags
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith('imperial_welcome_session_')) {
+      localStorage.removeItem(key);
+    }
+  });
+  
   // Remove from sessionStorage if in use
   Object.keys(sessionStorage || {}).forEach((key) => {
     if (key.startsWith('supabase.auth.') || key.includes('sb-')) {

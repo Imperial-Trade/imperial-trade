@@ -114,6 +114,15 @@ export class TradeJournalEntry {
     if (error) throw error;
     return data;
   }
+
+  static async delete(entryId: string) {
+    const { error } = await supabase
+      .from('trade_journal_entries')
+      .delete()
+      .eq('id', entryId);
+    
+    if (error) throw error;
+  }
 }
 
 export class TradingStrategy {

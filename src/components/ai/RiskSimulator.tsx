@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, TrendingDown, AlertTriangle, Target, BarChart3, DollarSign } from 'lucide-react';
+import { Calculator, TrendingDown, AlertTriangle, Target, BarChart3, DollarSign, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAssetSearch } from '@/hooks/useAssetSearch';
+import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec } from '@/utils/lotSizing';
 export default function RiskSimulator() {
   const [tradeParams, setTradeParams] = useState({
     instrument: '',
@@ -16,6 +18,52 @@ export default function RiskSimulator() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationResult, setSimulationResult] = useState(null);
   const [error, setError] = useState('');
+  
+  // Asset selection states
+  const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+  const dropdownTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  // Use asset search hook with automatic currency detection
+  const { suggestions, saveRecentAsset } = useAssetSearch({ 
+    query: tradeParams.instrument,
+    delay: 300 
+  });
+  // Asset selection handlers
+  const handleAssetSelect = useCallback((asset: string) => {
+    handleInputChange('instrument', asset);
+    saveRecentAsset(asset);
+    setShowAssetDropdown(false);
+  }, [saveRecentAsset]);
+
+  const handleAssetFocus = useCallback(() => {
+    setShowAssetDropdown(true);
+  }, []);
+
+  const handleAssetBlur = useCallback(() => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setShowAssetDropdown(false);
+    }, 300);
+  }, []);
+
+  const handleDropdownMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+    }
+  }, []);
+
+  // Get asset badge for visual categorization
+  const getAssetBadge = useCallback((asset: string) => {
+    if (['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'].some(pair => asset.includes(pair.replace('/', '')))) 
+      return { label: "FX", variant: "outline" as const };
+    if (['XAU/USD', 'XAG/USD', 'WTI/USD', 'BRENT/USD'].some(comm => asset.includes(comm.replace('/', '')))) 
+      return { label: "Gold", variant: "outline" as const };
+    if (['SPX500', 'US30', 'NAS100', 'UK100', 'DAX30', 'JP225'].includes(asset)) 
+      return { label: "Index", variant: "outline" as const };
+    if (asset.includes("USDT")) return { label: "Crypto", variant: "outline" as const };
+    return null;
+  }, []);
+
   const handleInputChange = (field, value) => {
     setTradeParams(prev => ({
       ...prev,
@@ -28,19 +76,40 @@ export default function RiskSimulator() {
       setError('Please fill in all fields');
       return;
     }
+    
     setIsSimulating(true);
     setError('');
+    
     try {
-      // Mock simulation result instead of API call
+      // Calculate actual values using lot sizing mechanics
+      const entry = parseFloat(tradeParams.entry_price);
+      const stop = parseFloat(tradeParams.stop_loss);
+      const tp = parseFloat(tradeParams.take_profit);
+      const lotSize = parseFloat(tradeParams.position_size);
+      
+      const riskAmount = calculateRiskAmount(entry, stop, lotSize, tradeParams.instrument);
+      const profitAmount = Math.abs(calculatePnL(entry, tp, lotSize, tradeParams.instrument));
+      const riskRewardRatio = riskAmount > 0 ? profitAmount / riskAmount : 0;
+      
+      const spec = getLotSizeSpec(tradeParams.instrument);
+      
+      // Enhanced mock simulation result with real calculations
       const mockResult = {
-        risk_reward_ratio: Math.random() * 3 + 1,
+        risk_reward_ratio: riskRewardRatio,
         stop_loss_probability: Math.floor(Math.random() * 30) + 20,
         take_profit_probability: Math.floor(Math.random() * 40) + 40,
-        volatility_assessment: "Medium volatility expected based on current market conditions",
-        position_sizing_feedback: "Position size appears appropriate for the account risk level",
+        volatility_assessment: `${spec.assetType.charAt(0).toUpperCase() + spec.assetType.slice(1)} markets showing moderate volatility`,
+        position_sizing_feedback: `Position of ${formatLotSize(lotSize, tradeParams.instrument)} appears well-sized for this ${spec.assetType} trade`,
         overall_risk_score: Math.floor(Math.random() * 6) + 3,
-        recommendations: ["Consider tightening stop loss for better risk management", "Monitor market volatility around key economic events", "Ensure position size aligns with overall portfolio risk"],
-        market_conditions: "Markets showing mixed signals with moderate volatility"
+        recommendations: [
+          `Consider ${spec.assetType}-specific market conditions`, 
+          "Monitor economic events affecting this asset class", 
+          "Ensure position size aligns with portfolio risk"
+        ],
+        market_conditions: `${spec.assetType.charAt(0).toUpperCase() + spec.assetType.slice(1)} markets showing mixed signals with moderate volatility`,
+        calculated_risk: riskAmount,
+        calculated_profit: profitAmount,
+        asset_type: spec.assetType
       };
 
       // Simulate API delay
@@ -78,18 +147,76 @@ export default function RiskSimulator() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Asset</label>
-                      <Input 
-                        placeholder="EUR/USD, TSLA, BTC" 
-                        value={tradeParams.instrument} 
-                        onChange={e => handleInputChange('instrument', e.target.value)} 
-                        className="bg-background" 
-                      />
+                      <div className="relative">
+                        <Input 
+                          placeholder="Asset / Ticker (e.g., EURUSD, XAUUSD, BTCUSDT)" 
+                          value={tradeParams.instrument} 
+                          onChange={e => handleInputChange('instrument', e.target.value)} 
+                          onFocus={handleAssetFocus}
+                          onBlur={handleAssetBlur}
+                          className="bg-background pr-8" 
+                        />
+                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+
+                        {showAssetDropdown && (
+                          <div
+                            className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-48 overflow-y-auto"
+                            onMouseDown={handleDropdownMouseDown}
+                          >
+                            {suggestions && suggestions.length > 0 ? (
+                              <div className="p-1">
+                                {!tradeParams.instrument && (
+                                  <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
+                                    Recent Assets
+                                  </div>
+                                )}
+                                {suggestions.map((asset) => {
+                                  const badge = getAssetBadge(asset);
+                                  return (
+                                    <button
+                                      key={asset}
+                                      type="button"
+                                      onClick={() => handleAssetSelect(asset)}
+                                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-medium">{asset}</span>
+                                        {badge && (
+                                          <Badge variant={badge.variant} className="text-xs h-5 px-2">
+                                            {badge.label}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : tradeParams.instrument ? (
+                              <div className="p-3 text-sm text-muted-foreground text-center">
+                                No matches found
+                              </div>
+                            ) : (
+                              <div className="p-3 text-sm text-muted-foreground text-center">
+                                Start typing to see suggestions
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Position Size</label>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Position Size
+                        {tradeParams.position_size && tradeParams.instrument && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({formatLotSize(parseFloat(tradeParams.position_size) || 0, tradeParams.instrument)})
+                          </span>
+                        )}
+                      </label>
                       <Input 
                         type="number" 
-                        placeholder="1000" 
+                        step="0.01"
+                        placeholder="0.1" 
                         value={tradeParams.position_size} 
                         onChange={e => handleInputChange('position_size', e.target.value)} 
                         className="bg-background" 
@@ -177,16 +304,20 @@ export default function RiskSimulator() {
                 <Card className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border-green-500/30">
                   <CardContent className="p-6">
                     <h3 className="text-xl font-bold text-foreground mb-4">Core Numbers</h3>
-                    <div className="grid grid-cols-3 gap-4 text-center">
+                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
                         <DollarSign className="w-8 h-8 text-green-400 mx-auto mb-2" />
                         <p className="text-sm text-muted-foreground">Potential Profit</p>
-                        <p className="text-xl font-bold text-green-400">$245</p>
+                        <p className="text-xl font-bold text-green-400">
+                          ${simulationResult.calculated_profit?.toFixed(2) || 'N/A'}
+                        </p>
                       </div>
                       <div>
                         <TrendingDown className="w-8 h-8 text-red-400 mx-auto mb-2" />
                         <p className="text-sm text-muted-foreground">Potential Loss</p>
-                        <p className="text-xl font-bold text-red-400">$120</p>
+                        <p className="text-xl font-bold text-red-400">
+                          ${simulationResult.calculated_risk?.toFixed(2) || 'N/A'}
+                        </p>
                       </div>
                       <div>
                         <Target className="w-8 h-8 text-blue-400 mx-auto mb-2" />

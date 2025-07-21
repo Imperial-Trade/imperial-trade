@@ -1,20 +1,12 @@
 
-project_id = "kmuoqkcxguafxulqlbmi"
+[project]
+name = "imperial-trading"
 
-[functions.economic-calendar]
-verify_jwt = false
+[api]
+enabled = true
 
-[functions.get-market-data]
-verify_jwt = false
+[auth]
+enabled = true
 
-[functions.get-historical-data]
-verify_jwt = false
-
-[functions.share-trade-signal]
-verify_jwt = false
-
-[functions.live-price-stream]
-verify_jwt = false
-
-[functions.account-request-notifications]
-verify_jwt = false
+[edge_functions]
+enabled = true

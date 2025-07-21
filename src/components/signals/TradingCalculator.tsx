@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass } from 'lucide-react';
+import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec } from '@/utils/lotSizing';
 
 export default function TradingCalculator({ alert, livePrice }) {
   const [accountBalance, setAccountBalance] = useState('');
@@ -29,16 +30,14 @@ export default function TradingCalculator({ alert, livePrice }) {
     }
 
     const isBuy = alert.trade_type.includes('buy');
+    const symbol = alert.finnhub_symbol || alert.asset_name || '';
     
-    // Calculate risk (stop loss distance) - This is always based on the entry/limit price.
-    const riskPerUnit = Math.abs(entryPrice - stopLoss);
-    const totalRisk = riskPerUnit * lots;
+    // Calculate risk using proper lot sizing mechanics
+    const totalRisk = calculateRiskAmount(entryPrice, stopLoss, lots, symbol);
     const riskPercentage = (totalRisk / balance) * 100;
 
-    // Calculate current P&L (only relevant for active trades)
-    const currentPnL = isBuy 
-      ? (currentPrice - entryPrice) * lots
-      : (entryPrice - currentPrice) * lots;
+    // Calculate current P&L using proper lot sizing mechanics
+    const currentPnL = calculatePnL(entryPrice, currentPrice, lots, symbol);
     const currentPnLPercentage = (currentPnL / balance) * 100;
 
     // Calculate potential rewards for each TP level - Always based on entry/limit price.
@@ -51,13 +50,12 @@ export default function TradingCalculator({ alert, livePrice }) {
     ].filter(tp => tp.price && tp.price > 0);
 
     const rewards = takeProfits.map(tp => {
-      const rewardPerUnit = Math.abs(tp.price - entryPrice);
-      const totalReward = rewardPerUnit * lots;
-      const rewardRiskRatio = totalRisk > 0 ? totalReward / totalRisk : 0;
+      const totalReward = calculatePnL(entryPrice, tp.price, lots, symbol);
+      const rewardRiskRatio = totalRisk > 0 ? Math.abs(totalReward) / totalRisk : 0;
       return {
         level: tp.level,
         price: tp.price,
-        usd: totalReward,
+        usd: Math.abs(totalReward),
         ratio: rewardRiskRatio
       };
     });
@@ -111,7 +109,14 @@ export default function TradingCalculator({ alert, livePrice }) {
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs text-gray-400">Position Size</Label>
+            <Label className="text-xs text-gray-400">
+              Position Size 
+              {lotSize && (
+                <span className="ml-2 text-xs text-gray-500">
+                  ({formatLotSize(parseFloat(lotSize) || 0, alert.finnhub_symbol || alert.asset_name || '')})
+                </span>
+              )}
+            </Label>
             <Input
               type="number"
               step="any"

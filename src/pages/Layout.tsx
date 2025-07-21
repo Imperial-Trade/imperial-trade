@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import Header from '@/components/layout/Header';
-import Sidebar from '@/components/layout/Sidebar';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { useVoiceRecognition } from '@/components/layout/VoiceRecognition';
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from '@/components/AppSidebar';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -77,33 +78,29 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-background/95">
-      <Header
-        user={user}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        isListening={isListening}
-        toggleVoiceRecognition={toggleVoiceRecognition}
-        getUserAccessLevel={getUserAccessLevel}
-        getAccessLevelDisplay={getAccessLevelDisplay}
-      />
+    <SidebarProvider>
+      <div className="min-h-[100vh] max-h-[100vh] h-[100vh] flex w-full bg-gradient-to-br from-background via-background to-background/95 overflow-hidden">
+        <AppSidebar />
+        
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <Header
+            user={user}
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            isListening={isListening}
+            toggleVoiceRecognition={toggleVoiceRecognition}
+            getUserAccessLevel={getUserAccessLevel}
+            getAccessLevelDisplay={getAccessLevelDisplay}
+          />
 
-      <div className="flex pt-16">
-        <Sidebar
-          user={user}
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          currentPageName={currentPageName}
-          filteredMenuItems={filteredMenuItems}
-          getUserAccessLevel={getUserAccessLevel}
-          getAccessLevelDisplay={getAccessLevelDisplay}
-        />
-
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+          <main className="flex-1 overflow-auto pt-16 overscroll-contain">
+            <div className="min-h-full">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 

@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,8 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Zap } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Plus, Zap, CalendarIcon } from "lucide-react";
 import { useTradeForm, TradeFormData } from "@/hooks/useTradeForm";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 // Static data to prevent re-creation on every render
 const TRADING_STRATEGIES = [
@@ -69,13 +77,21 @@ const AddTradeModal = memo<AddTradeModalProps>(({
   onSave,
   selectedDate 
 }) => {
+  const [tradeDate, setTradeDate] = useState<Date | undefined>(() => {
+    if (selectedDate) {
+      return new Date(selectedDate);
+    }
+    return new Date();
+  });
+
   const handleSave = useCallback(async (formData: TradeFormData) => {
+    const dateToUse = tradeDate ? tradeDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     await onSave({
       ...formData,
-      date: selectedDate || new Date().toISOString().split('T')[0],
+      date: dateToUse,
     });
     onClose();
-  }, [onSave, onClose, selectedDate]);
+  }, [onSave, onClose, tradeDate]);
 
   const {
     formData,
@@ -134,6 +150,40 @@ const AddTradeModal = memo<AddTradeModalProps>(({
                 onChange={handlePnLChange}
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="tradeDate">Trade Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !tradeDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {tradeDate ? format(tradeDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={tradeDate}
+                  onSelect={setTradeDate}
+                  disabled={(date) => {
+                    // Disable future dates - use precise current time
+                    const now = new Date();
+                    const endOfDay = new Date(date);
+                    endOfDay.setHours(23, 59, 59, 999);
+                    return endOfDay > now;
+                  }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

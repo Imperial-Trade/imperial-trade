@@ -2,7 +2,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
-import { TrendingUp, TrendingDown, RefreshCw, Pause, Play, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -25,14 +25,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     error,
     lastUpdated,
     connectionStatus,
-    isPaused,
-    refreshPrice,
-    pauseUpdates,
-    resumeUpdates
+    refreshPrice
   } = useOptimizedLivePrice(symbol, {
-    enableSmartPausing: true,
-    debounceMs: 500,
-    pauseOnInput: true
+    enableSmartPausing: false, // Disable pausing for trading signals
+    debounceMs: 1000,
+    pauseOnInput: false
   });
 
   const formatPrice = useCallback((price: number) => {
@@ -52,12 +49,37 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     });
   }, []);
 
-  const connectionStatusColor = useMemo(() => {
+  const connectionStatusInfo = useMemo(() => {
     switch (connectionStatus) {
-      case 'connected': return 'text-green-400';
-      case 'connecting': return 'text-yellow-400';
-      case 'error': return 'text-red-400';
-      default: return 'text-gray-400';
+      case 'connected':
+        return { 
+          color: 'text-green-400', 
+          icon: Wifi, 
+          text: 'Live Data',
+          description: 'Connected to Twelve Data API'
+        };
+      case 'connecting':
+        return { 
+          color: 'text-yellow-400', 
+          icon: RefreshCw, 
+          text: 'Connecting',
+          description: 'Establishing connection...'
+        };
+      case 'error':
+      case 'disconnected':
+        return { 
+          color: 'text-red-400', 
+          icon: WifiOff, 
+          text: 'Unavailable',
+          description: 'Live data not available'
+        };
+      default:
+        return { 
+          color: 'text-gray-400', 
+          icon: WifiOff, 
+          text: 'Disconnected',
+          description: 'Not connected'
+        };
     }
   }, [connectionStatus]);
 
@@ -74,43 +96,42 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           <div className="text-white font-medium">
             Live Price for {assetName}:
           </div>
-          <div className={`text-xs ${connectionStatusColor}`}>
-            ● {connectionStatus}
+          <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
+            <connectionStatusInfo.icon className="w-3 h-3" />
+            <span>{connectionStatusInfo.text}</span>
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={isPaused ? resumeUpdates : pauseUpdates}
-            className="text-gray-400 hover:text-white h-8 w-8 p-0"
-            title={isPaused ? 'Resume updates' : 'Pause updates'}
-          >
-            {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-          </Button>
-          
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={refreshPrice}
-            className="text-gray-400 hover:text-white h-8 w-8 p-0"
-            title="Refresh price"
-            disabled={isLoading}
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => refreshPrice()}
+          className="text-gray-400 hover:text-white h-8 w-8 p-0"
+          title="Refresh price"
+          disabled={isLoading}
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </Button>
       </div>
 
+      {/* Error State */}
+      {error && (
+        <div className="flex items-center gap-2 mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+          <div className="text-red-400 text-sm">
+            {error}
+          </div>
+        </div>
+      )}
+
+      {/* Price Display */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           {isLoading ? (
             <div className="animate-pulse text-gray-400">Loading...</div>
           ) : error ? (
-            <div className="text-red-400">Error: {error}</div>
+            <div className="text-gray-500 font-mono text-lg">---.--</div>
           ) : (
             <div className="text-accent-green font-mono text-lg">
               ${formatPrice(price)}
@@ -118,7 +139,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           )}
         </div>
         
-        {!isLoading && !error && (
+        {!isLoading && !error && price > 0 && (
           <div className={`flex items-center gap-1 ${priceChangeColor}`}>
             {change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span className="text-sm font-medium">
@@ -128,16 +149,16 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         )}
       </div>
 
+      {/* Footer */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-xs text-gray-400">
           <Clock className="w-3 h-3" />
           <span>
             {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
           </span>
-          {isPaused && <span className="text-yellow-400 ml-2">● Paused</span>}
         </div>
         
-        {onUseCurrentPrice && !isLoading && !error && (
+        {onUseCurrentPrice && !isLoading && !error && price > 0 && (
           <Button
             type="button"
             variant="outline"
@@ -148,6 +169,13 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             Use Current Price
           </Button>
         )}
+      </div>
+
+      {/* Data Source Info */}
+      <div className="mt-2 pt-2 border-t border-gray-600">
+        <div className="text-xs text-gray-500">
+          {connectionStatusInfo.description}
+        </div>
       </div>
     </div>
   );

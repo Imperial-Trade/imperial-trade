@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { Trash2, Brain, MessageSquare } from "lucide-react";
-import { AICoachFeedback } from './AICoachFeedback';
 
 interface JournalEntry {
   id: string;
@@ -102,7 +101,7 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                 )}
 
                 {entry.ai_positive_feedback && (
-                  <div className="bg-muted/30 rounded-lg p-3 border-l-4 border-l-primary">
+                  <div className="bg-muted/30 rounded-lg p-3 border-l-4 border-l-primary mb-3">
                     <div className="flex items-start gap-2">
                       <Brain className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                       <p className="text-sm text-foreground leading-relaxed">
@@ -124,10 +123,6 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                     />
                   </div>
                 )}
-
-                <div className="mt-3">
-                  <AICoachFeedback entryId={entry.id} />
-                </div>
               </CardContent>
             </Card>
           </motion.div>

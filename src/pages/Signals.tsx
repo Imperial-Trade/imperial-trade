@@ -55,7 +55,7 @@ const Signals = () => {
       time: "30 minutes ago",
       profit: "+25 pips",
       type: "trending-down",
-      educator: "Expert Analyst Lisa",
+      educator: "Lead Educator Lisa",
       verified: true
     }
   ]
@@ -83,7 +83,7 @@ const Signals = () => {
             </Badge>
           </div>
           <p className="text-lg text-muted-foreground">
-            Real-time trading opportunities from our verified professional analysts and educators.
+            Real-time educational opportunities from our verified market educators and contributors.
           </p>
         </div>
 

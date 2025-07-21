@@ -27,7 +27,7 @@ const coreProducts = [
   {
     icon: BookOpen,
     title: "Education: The Master's Curriculum",
-    description: "Education is not just information; it's the systematic installation of a professional trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned analyst.",
+    description: "Education is not just information; it's the systematic installation of an educational trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned market educator.",
     features: [
       "The Foundation Pathway: Market Mechanics, Advanced Candlestick Interpretation, Charting Essentials, Risk Management I, Trading Psychology Fundamentals",
       "The Specialist Pathway: Institutional Concepts (Order Blocks, Fair Value Gaps), Liquidity Engineering, Advanced Market Structure, Risk Management II",
@@ -40,8 +40,8 @@ const coreProducts = [
   },
   {
     icon: TrendingUp,
-    title: "Signal Stream: Your Professional Trade Blueprint",
-    description: "The Signal Stream is your 'over-the-shoulder' view of our professional analysts at work. Designed to generate potential profits while providing a masterclass in professional trade planning.",
+    title: "Pattern Stream: Your Educational Analysis Framework",
+    description: "The Pattern Stream is your 'over-the-shoulder' view of our market educators at work. Designed to provide educational content while providing a masterclass in market analysis planning.",
     features: [
       "Precision Parameters: Exact Entry Price, Hard Stop Loss, Up to 5 Take Profit levels",
       "Multi-TP Strategy: Advanced trade management with partial profit taking and stop loss adjustment",
@@ -49,7 +49,7 @@ const coreProducts = [
       "Live Price Integration: Pulsating live price feed on alert cards with visual proximity indicators",
       "Automated Status & TP Tracking: Real-time trade progression with visual updates and notifications",
       "Risk Calculator Integration: One-click position sizing with pre-filled entry and stop loss prices",
-      "24/5 Market Monitoring: Professional analysts covering major currency pairs around the clock"
+      "24/5 Market Monitoring: Market educators covering major currency pairs around the clock"
     ]
   },
   {
@@ -76,7 +76,7 @@ const coreProducts = [
       "Performance Channels: #trade-review, #psychology-check-in for growth-focused discussions",
       "The 'Second Opinion' Advantage: Community validation before trade execution",
       "Crowdsourced Strategy Refinement: Collaborative backtesting and strategy development",
-      "Analyst & Moderator Presence: Professional analysts providing daily market outlooks",
+      "Educator & Moderator Presence: Market educators providing daily market outlooks",
       "Judgment-Free Growth Zone: Safe space for discussing wins, losses, and psychological struggles"
     ]
   },

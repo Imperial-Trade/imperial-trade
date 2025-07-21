@@ -128,7 +128,7 @@ const LiveSessionsPage: React.FC = () => {
 
   const stats = [
     { value: "Daily", label: "Live Sessions", subtitle: "Never Miss A Day" },
-    { value: "5+", label: "Expert Hosts", subtitle: "Professional Analysts" },
+    { value: "5+", label: "Expert Hosts", subtitle: "Educational Contributors" },
     { value: "1000+", label: "Archived Sessions", subtitle: "Complete Library" }
   ];
 

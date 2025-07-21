@@ -94,8 +94,8 @@ const CommunityForumPage: React.FC = () => {
     },
     {
       icon: Shield,
-      title: "Professional Oversight",
-      description: "Active participation from professional analysts providing expert guidance.",
+      title: "Educational Oversight",
+      description: "Active participation from market educators providing guidance.",
       benefits: [
         "Daily market outlooks from pros",
         "Professional trade idea feedback",
@@ -134,7 +134,7 @@ const CommunityForumPage: React.FC = () => {
       avatar: "A"
     },
     {
-      quote: "Having access to professional analysts in the chat is incredible. They don't just give signals - they teach you how to think.",
+      quote: "Having access to market educators in the chat is incredible. They don't just give patterns - they teach you how to think.",
       author: "Sarah L.", 
       role: "Advanced Trader",
       avatar: "S"
@@ -418,7 +418,7 @@ const CommunityForumPage: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-pink-600" />
-                Expert analyst access
+                Educational contributor access
               </div>
             </div>
           </div>

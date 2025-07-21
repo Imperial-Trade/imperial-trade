@@ -14,8 +14,8 @@ const features = [{
   gradient: "from-purple-500 to-blue-500"
 }, {
   icon: TrendingUp,
-  title: "Professional Trade Blueprint",
-  description: "Over-the-shoulder view of professional analysts with precision parameters.",
+  title: "Educational Trade Analysis",
+  description: "Educational view of market educators with reference parameters.",
   details: "Exact Entry Prices, Hard Stop Loss, Up to 5 Take Profit levels. Live price integration with automated TP tracking and risk calculator integration for one-click position sizing.",
   link: "SignalStream",
   color: "hsl(var(--feature-blue))",
@@ -23,7 +23,7 @@ const features = [{
 }, {
   icon: Radio,
   title: "Virtual Trading Floor",
-  description: "Direct access to professional trader minds during critical market hours.",
+  description: "Direct access to experienced trader minds during critical market hours.",
   details: "Live Analysis & Execution with real-time top-down analysis. Interactive Q&A throughout sessions. Professional Zoom integration with searchable archived sessions.",
   link: "Live",
   color: "hsl(var(--feature-green))",
@@ -31,8 +31,8 @@ const features = [{
 }, {
   icon: MessageSquare,
   title: "Collective Intelligence",
-  description: "Curated professional ecosystem with 500+ serious traders.",
-  details: "Market-specific channels for focused discussion. The 'Second Opinion' advantage for trade validation. Professional analysts providing daily market outlooks and strategy refinement.",
+  description: "Curated educational ecosystem with 500+ serious traders.",
+  details: "Market-specific channels for focused discussion. The 'Second Opinion' advantage for trade validation. Market educators providing daily market outlooks and strategy refinement.",
   link: "Forum",
   color: "hsl(var(--feature-orange))",
   gradient: "from-orange-500 to-red-500"

@@ -293,7 +293,7 @@ function SidebarOverlay() {
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out ${
         isTablet ? 'w-72' : 'w-64'
       }`}>
-        <div className="h-screen max-h-screen bg-background/95 backdrop-blur-xl border-r border-border/50 shadow-2xl flex flex-col">
+        <div className="h-[100vh] max-h-[100vh] bg-background/95 backdrop-blur-xl border-r border-border/50 shadow-2xl flex flex-col">
           <AppSidebar />
         </div>
       </div>

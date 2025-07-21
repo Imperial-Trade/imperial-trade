@@ -25,7 +25,7 @@ export function AppSidebar() {
   if (isMobile) {
     return (
       <Sidebar 
-        className="border-r-0 bg-background/95 backdrop-blur-xl h-screen max-h-screen"
+        className="border-r-0 bg-background/95 backdrop-blur-xl h-[100vh] max-h-[100vh]"
         collapsible="offcanvas"
         variant="floating"
       >
@@ -57,7 +57,7 @@ export function AppSidebar() {
   // For tablet and desktop, use proper Sidebar component with no collapsing
   return (
     <Sidebar 
-      className="border-r-0 bg-background/95 backdrop-blur-xl h-screen max-h-screen"
+      className="border-r-0 bg-background/95 backdrop-blur-xl h-[100vh] max-h-[100vh]"
       collapsible="none"
       variant="sidebar"
     >

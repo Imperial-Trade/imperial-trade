@@ -25,7 +25,7 @@ export function AppSidebar() {
   if (isMobile) {
     return (
       <Sidebar 
-        className="border-r-0 bg-background/95 backdrop-blur-xl h-[100dvh] max-h-[100dvh] w-full max-w-full"
+        className="border-r-0 bg-background/95 backdrop-blur-xl min-h-0 h-full w-full max-w-full flex flex-col"
         collapsible="offcanvas"
         variant="floating"
       >
@@ -33,8 +33,8 @@ export function AppSidebar() {
           <SidebarBrand isCollapsed={false} />
         </SidebarHeader>
 
-        <SidebarContent className="px-3 py-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
-          <div className="space-y-4">
+        <SidebarContent className="px-3 py-4 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+          <div className="space-y-4 min-h-min">
             <SidebarNavigation isCollapsed={false} />
             <SidebarEducatorSection 
               isCollapsed={false} 
@@ -57,7 +57,7 @@ export function AppSidebar() {
   // For tablet and desktop, use proper Sidebar component with no collapsing
   return (
     <Sidebar 
-      className="border-r-0 bg-background/95 backdrop-blur-xl h-[100dvh] max-h-[100dvh] w-full max-w-full overflow-hidden"
+      className="border-r-0 bg-background/95 backdrop-blur-xl min-h-0 h-full w-full max-w-full flex flex-col"
       collapsible="none"
       variant="sidebar"
     >
@@ -65,8 +65,8 @@ export function AppSidebar() {
         <SidebarBrand isCollapsed={false} />
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
-        <div className="space-y-4">
+      <SidebarContent className="px-3 py-4 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+        <div className="space-y-4 min-h-min">
           <SidebarNavigation isCollapsed={false} />
           <SidebarEducatorSection 
             isCollapsed={false} 

@@ -1,3 +1,4 @@
+
 [project]
 name = "imperial-trading"
 
@@ -9,7 +10,3 @@ enabled = true
 
 [edge_functions]
 enabled = true
-
-[[edge_functions.functions]]
-name = "trading-journal-ai-coach-gemeni"
-verify_jwt = true

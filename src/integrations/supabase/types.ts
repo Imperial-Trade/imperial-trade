@@ -804,6 +804,7 @@ export type Database = {
           location: string | null
           phone_number: string | null
           profile_type: string | null
+          real_name: string | null
           registration_source:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
@@ -837,6 +838,7 @@ export type Database = {
           location?: string | null
           phone_number?: string | null
           profile_type?: string | null
+          real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
@@ -870,6 +872,7 @@ export type Database = {
           location?: string | null
           phone_number?: string | null
           profile_type?: string | null
+          real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
             | null
@@ -1244,6 +1247,60 @@ export type Database = {
           screenshot_url?: string | null
           trade_date?: string
           trade_type?: Database["public"]["Enums"]["trade_type"] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trades: {
+        Row: {
+          created_at: string
+          direction: string
+          duration: unknown | null
+          entry_date: string
+          entry_price: number
+          exit_date: string | null
+          exit_price: number | null
+          id: number
+          position_size: number
+          profit_loss: number | null
+          profit_loss_percentage: number | null
+          strategy: string | null
+          symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          duration?: unknown | null
+          entry_date: string
+          entry_price: number
+          exit_date?: string | null
+          exit_price?: number | null
+          id?: never
+          position_size: number
+          profit_loss?: number | null
+          profit_loss_percentage?: number | null
+          strategy?: string | null
+          symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          duration?: unknown | null
+          entry_date?: string
+          entry_price?: number
+          exit_date?: string | null
+          exit_price?: number | null
+          id?: never
+          position_size?: number
+          profit_loss?: number | null
+          profit_loss_percentage?: number | null
+          strategy?: string | null
+          symbol?: string
           updated_at?: string
           user_id?: string
         }

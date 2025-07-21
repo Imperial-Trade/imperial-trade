@@ -131,6 +131,47 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_coach_feedback: {
+        Row: {
+          coaching_analysis: Json
+          created_at: string
+          feedback_type: string
+          id: string
+          journal_entry_id: string
+          model_used: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coaching_analysis: Json
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          journal_entry_id: string
+          model_used?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coaching_analysis?: Json
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          journal_entry_id?: string
+          model_used?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_coach_feedback_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "trade_journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athena_interactions: {
         Row: {
           context: string | null
@@ -200,6 +241,66 @@ export type Database = {
           target_entity?: string
           target_id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      celebration_history: {
+        Row: {
+          celebration_data: Json | null
+          celebration_preference: string | null
+          celebration_type: string
+          created_at: string | null
+          id: string
+          module_number: number | null
+          user_id: string
+          user_interaction: string | null
+        }
+        Insert: {
+          celebration_data?: Json | null
+          celebration_preference?: string | null
+          celebration_type: string
+          created_at?: string | null
+          id?: string
+          module_number?: number | null
+          user_id: string
+          user_interaction?: string | null
+        }
+        Update: {
+          celebration_data?: Json | null
+          celebration_preference?: string | null
+          celebration_type?: string
+          created_at?: string | null
+          id?: string
+          module_number?: number | null
+          user_id?: string
+          user_interaction?: string | null
+        }
+        Relationships: []
+      }
+      coach_message_cache: {
+        Row: {
+          cached_message: Json
+          created_at: string | null
+          expires_at: string
+          id: string
+          message_type: string
+          user_id: string
+        }
+        Insert: {
+          cached_message: Json
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          message_type: string
+          user_id: string
+        }
+        Update: {
+          cached_message?: Json
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          message_type?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -499,6 +600,45 @@ export type Database = {
           modules?: Json
           pathway_name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      learning_streaks: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_activity: string | null
+          longest_streak: number | null
+          monthly_consistency: number | null
+          streak_count: number | null
+          total_learning_time: number | null
+          updated_at: string | null
+          user_id: string
+          weekly_goals_met: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_activity?: string | null
+          longest_streak?: number | null
+          monthly_consistency?: number | null
+          streak_count?: number | null
+          total_learning_time?: number | null
+          updated_at?: string | null
+          user_id: string
+          weekly_goals_met?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_activity?: string | null
+          longest_streak?: number | null
+          monthly_consistency?: number | null
+          streak_count?: number | null
+          total_learning_time?: number | null
+          updated_at?: string | null
+          user_id?: string
+          weekly_goals_met?: number | null
         }
         Relationships: []
       }
@@ -1386,6 +1526,36 @@ export type Database = {
           rules?: Json
           strategy_name?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_data: Json | null
+          achievement_type: string
+          created_at: string | null
+          earned_at: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          achievement_data?: Json | null
+          achievement_type: string
+          created_at?: string | null
+          earned_at?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          achievement_data?: Json | null
+          achievement_type?: string
+          created_at?: string | null
+          earned_at?: string | null
+          id?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []

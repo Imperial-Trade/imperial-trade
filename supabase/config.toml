@@ -1,20 +1,15 @@
+[project]
+name = "imperial-trading"
 
-project_id = "kmuoqkcxguafxulqlbmi"
+[api]
+enabled = true
 
-[functions.economic-calendar]
-verify_jwt = false
+[auth]
+enabled = true
 
-[functions.get-market-data]
-verify_jwt = false
+[edge_functions]
+enabled = true
 
-[functions.get-historical-data]
-verify_jwt = false
-
-[functions.share-trade-signal]
-verify_jwt = false
-
-[functions.live-price-stream]
-verify_jwt = false
-
-[functions.account-request-notifications]
-verify_jwt = false
+[[edge_functions.functions]]
+name = "trading-journal-ai-coach-gemeni"
+verify_jwt = true

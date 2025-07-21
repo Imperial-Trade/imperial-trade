@@ -19,3 +19,24 @@ export interface RetryConfig {
   maxDelay: number;
   backoffFactor: number;
 }
+
+export interface CoachingAnalysis {
+  execution_analysis: string;
+  risk_management: string;
+  strengths: string;
+  improvements: string;
+  recommendations: string;
+  overall_score: number;
+  key_insights: string[];
+}
+
+export interface AiCoachFeedback {
+  id: string;
+  user_id: string;
+  journal_entry_id: string;
+  coaching_analysis: CoachingAnalysis;
+  feedback_type: string;
+  model_used: string;
+  created_at: string;
+  updated_at: string;
+}

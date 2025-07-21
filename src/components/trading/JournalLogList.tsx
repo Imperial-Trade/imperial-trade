@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { Trash2, Brain, MessageSquare } from "lucide-react";
+import { AICoachFeedback } from './AICoachFeedback';
 
 interface JournalEntry {
   id: string;
@@ -123,6 +124,10 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                     />
                   </div>
                 )}
+
+                <div className="mt-3">
+                  <AICoachFeedback entryId={entry.id} />
+                </div>
               </CardContent>
             </Card>
           </motion.div>

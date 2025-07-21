@@ -6,6 +6,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to convert image URL to base64
+async function imageUrlToBase64(url: string): Promise<string> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    return base64;
+  } catch (error) {
+    console.error('Error converting image to base64:', error);
+    throw error;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -13,9 +29,9 @@ serve(async (req) => {
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not set');
+    const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
+    if (!GOOGLE_API_KEY) {
+      throw new Error('GOOGLE_API_KEY is not set');
     }
 
     const { prompt, file_urls } = await req.json();
@@ -30,55 +46,67 @@ serve(async (req) => {
       );
     }
 
-    // Prepare messages for OpenAI API
-    const messages = [
+    // Prepare content parts for Gemini API
+    const parts = [
       {
-        role: "system",
-        content: "You are an expert trading analyst with deep knowledge of technical analysis, risk management, and trading psychology. Analyze trading screenshots and provide detailed, actionable insights based solely on what you can observe in the images."
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: prompt
-          },
-          // Add image URLs if provided
-          ...(file_urls && file_urls.length > 0 ? file_urls.map((url: string) => ({
-            type: "image_url",
-            image_url: {
-              url: url,
-              detail: "high"
-            }
-          })) : [])
-        ]
+        text: `You are an expert trading analyst with deep knowledge of technical analysis, risk management, and trading psychology. Analyze trading screenshots and provide detailed, actionable insights based solely on what you can observe in the images.\n\n${prompt}`
       }
     ];
 
-    console.log('Calling OpenAI API with', file_urls?.length || 0, 'images');
+    // Add images if provided
+    if (file_urls && file_urls.length > 0) {
+      console.log('Processing', file_urls.length, 'images for Gemini analysis');
+      
+      for (const url of file_urls) {
+        try {
+          const base64Data = await imageUrlToBase64(url);
+          parts.push({
+            inline_data: {
+              mime_type: "image/jpeg", // Assuming JPEG, could be made dynamic
+              data: base64Data
+            }
+          });
+        } catch (error) {
+          console.error('Failed to process image:', url, error);
+          // Continue processing other images even if one fails
+        }
+      }
+    }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    console.log('Calling Gemini API with', file_urls?.length || 0, 'images');
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
-        messages: messages,
-        max_tokens: 2000,
-        temperature: 0.7,
+        contents: [{
+          parts: parts
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2000,
+        }
       }),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('OpenAI API error:', error);
-      throw new Error(`OpenAI API error: ${response.status} ${error}`);
+      console.error('Gemini API error:', error);
+      throw new Error(`Gemini API error: ${response.status} ${error}`);
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+      console.error('Unexpected Gemini response structure:', data);
+      throw new Error('Invalid response from Gemini API');
+    }
+
+    const aiResponse = data.candidates[0].content.parts[0].text;
 
     console.log('AI analysis completed successfully');
 

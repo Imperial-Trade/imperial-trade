@@ -62,10 +62,10 @@ const EducationPage: React.FC = () => {
   const educationFeatures = [
     {
       icon: Video,
-      title: "Professional HD Video Production",
+      title: "High-Definition Video Production",
       description: "Each video is professionally produced with on-screen graphics, chart annotations, and clear explanations.",
       details: [
-        "Professional Production Quality: No rambling, no fluff - concise, focused lessons",
+        "High Production Quality: No rambling, no fluff - concise, focused lessons",
         "On-Screen Graphics: Visual learning with chart annotations and clear explanations",
         "Modular Learning: 5-10 minute videos for focused sessions that fit any schedule",
         "Mobile Accessibility: Learn anywhere, anytime on any device",
@@ -99,7 +99,7 @@ const EducationPage: React.FC = () => {
   ];
 
   const stats = [
-    { value: "50+", label: "HD Video Lessons", subtitle: "Professional Quality" },
+    { value: "50+", label: "HD Video Lessons", subtitle: "High-Quality Content" },
     { value: "95%", label: "Student Success Rate", subtitle: "Proven Results" },
     { value: "24/7", label: "Learning Access", subtitle: "Learn At Your Pace" }
   ];

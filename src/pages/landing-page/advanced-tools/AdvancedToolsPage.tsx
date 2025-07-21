@@ -64,7 +64,7 @@ const AdvancedToolsPage: React.FC = () => {
         "Comprehensive Reporting: Analyzes win rate, risk management consistency, and average risk/reward",
         "Trade Pattern Recognition: Identifies your most profitable setups and optimal timing patterns",
         "Strengths & Weaknesses: Explicit lists of what you're doing well and areas needing improvement",
-        "Professional Performance Coaching: Like hiring a professional coach to review your work objectively",
+        "Institutional Performance Coaching: Like hiring an institutional coach to review your work objectively",
         "Bias-Free Analysis: Shows the truth of your trading, free from emotion or personal bias",
         "Clear Improvement Roadmap: Specific, actionable steps to enhance trading consistency"
       ],
@@ -120,7 +120,7 @@ const AdvancedToolsPage: React.FC = () => {
         "Live Metrics: Shows Risk:Reward ratio and percentage of account at risk in real-time",
         "Capital Protection: Ensures you never lose more than planned on any single trade",
         "Long-Term Profitability: Key to staying in the game and building consistent profits over time",
-        "Professional Standards: Industry-standard position sizing methodology used by institutions"
+        "Institutional Standards: Industry-standard position sizing methodology used by institutions"
       ],
       whatItDoes: "This tool is the key to survival and long-term profitability. It ensures you can never lose more than you plan to on a single trade, protecting your capital and allowing you to stay in the game.",
       gradient: "from-violet-500/20 to-purple-500/20",
@@ -129,7 +129,7 @@ const AdvancedToolsPage: React.FC = () => {
   ];
 
   const stats = [
-    { value: "6", label: "Professional Tools", subtitle: "Complete Arsenal" },
+    { value: "6", label: "Advanced Tools", subtitle: "Complete Arsenal" },
     { value: "24/7", label: "Market Scanning", subtitle: "Never Miss Opportunities" },
     { value: "99.9%", label: "Accuracy Rate", subtitle: "Institutional Grade" }
   ];

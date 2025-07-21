@@ -386,7 +386,7 @@ export default function TradeAnalyst() {
           </span>
         </h1>
         <p className="text-xl text-muted-foreground">
-          Professional trading performance analysis powered by advanced AI
+          Advanced trading performance analysis powered by sophisticated AI
         </p>
       </div>
 

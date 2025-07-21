@@ -98,7 +98,7 @@ const CommunityForumPage: React.FC = () => {
       description: "Active participation from market educators providing guidance.",
       benefits: [
         "Daily market outlooks from pros",
-        "Professional trade idea feedback",
+        "Educational trade idea feedback",
         "Expert answers to complex questions",
         "Institutional perspective sharing"
       ]
@@ -142,7 +142,7 @@ const CommunityForumPage: React.FC = () => {
     {
       quote: "This isn't just a forum - it's a brotherhood of serious traders who actually help each other succeed.",
       author: "Marcus R.",
-      role: "Professional Trader",
+      role: "Experienced Trader",
       avatar: "M"
     }
   ];

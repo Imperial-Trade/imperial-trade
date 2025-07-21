@@ -71,7 +71,7 @@ const LiveSessionsPage: React.FC = () => {
     {
       icon: Calendar,
       title: "Daily Scheduled Sessions",
-      description: "Professional coverage during key market hours with predictable scheduling.",
+      description: "Comprehensive coverage during key market hours with predictable scheduling.",
       details: [
         "London Session (8:00-12:00 GMT): European market opening coverage",
         "New York Session (13:00-17:00 GMT): US market overlap and major USD pairs",
@@ -91,10 +91,10 @@ const LiveSessionsPage: React.FC = () => {
     },
     {
       icon: Users,
-      title: "Professional Integration",
+      title: "Advanced Integration",
       description: "High-quality technical setup with robust interactive features.",
       details: [
-        "Professional Zoom Setup: High-quality audio/video with minimal latency",
+        "Advanced Zoom Setup: High-quality audio/video with minimal latency",
         "Screen Sharing: Crystal clear chart sharing with annotation capabilities",
         "Interactive Features: Polls, emoji reactions, and chat moderation",
         "Backup Systems: Redundant streaming to ensure session continuity"

@@ -62,7 +62,7 @@ export const features = [
       "Pre-Session Briefing: Economic calendar review, market themes, and key levels identification",
       "Live Analysis & Execution: Real-time top-down analysis with live trade execution when valid setups appear",
       "Interactive Q&A Throughout: Direct questions to hosts via dedicated moderator for instant feedback",
-      "Professional Zoom Integration: High-quality audio/video with robust interactive features",
+      "Advanced Zoom Integration: High-quality audio/video with robust interactive features",
       "Event Calendar & Notifications: Scheduled sessions with 15-minute email/push notifications",
       "The Archive Vault: Searchable recorded sessions with timestamps for key topics",
       "Daily Coverage: Key market sessions including London and New York openings"

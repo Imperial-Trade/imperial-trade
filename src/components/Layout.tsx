@@ -76,13 +76,13 @@ function DashboardHeader() {
       icon: Users,
       label: "Community",
       description: "Connect with fellow traders",
-      features: ["Discussions", "Strategy Sharing", "Expert Advice"]
+      features: ["Discussions", "Strategy Sharing", "Educational Guidance"]
     },
     {
       to: "/dashboard/advanced-tools",
       icon: TrendingUp,
       label: "Tools",
-      description: "Professional trading tools and analytics",
+      description: "Advanced trading tools and analytics",
       features: ["Risk Calculator", "Portfolio Analysis", "Market Scanner"]
     }
   ];

@@ -173,7 +173,7 @@ const IBPartnership = () => {
               {
                 icon: Target,
                 title: "Marketing Tools",
-                description: "Professional marketing materials and resources",
+                description: "Advanced marketing materials and resources",
               },
             ].map((benefit, index) => (
               <ScrollReveal key={index} delay={index * 100}>

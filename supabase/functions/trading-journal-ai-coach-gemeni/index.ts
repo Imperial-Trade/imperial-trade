@@ -1,6 +1,7 @@
+
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
-import { GoogleGenerativeAI } from "npm:@google/generative-ai@1.1.0";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.15.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -133,7 +134,7 @@ serve(async (req) => {
 
     // Initialize Gemini AI
     const genAI = new GoogleGenerativeAI(googleApiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // Build comprehensive prompt
     const prompt = buildCoachingPrompt(entry, recentEntries || [], customPrompt);
@@ -154,7 +155,7 @@ serve(async (req) => {
         journal_entry_id: entryId,
         coaching_analysis: coachingAnalysis,
         feedback_type: 'gemini_coach',
-        model_used: 'gemini-1.5-pro'
+        model_used: 'gemini-1.5-flash'
       })
       .select('*')
       .single();

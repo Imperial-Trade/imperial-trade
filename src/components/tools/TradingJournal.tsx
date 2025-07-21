@@ -9,6 +9,8 @@ import TradingJournalApp from "./TradingJournalApp";
 import JournalFormCard from "../trading/JournalFormCard";
 import JournalAnalytics from "../trading/JournalAnalytics";
 import JournalLogList from "../trading/JournalLogList";
+import { compressImage, validateImageFile } from "@/utils/imageCompression";
+import { toast } from "sonner";
 interface JournalEntry {
   id: string;
   asset_ticker: string;
@@ -79,49 +81,87 @@ export default function TradingJournal() {
     screenshotFile?: File;
   }) => {
     setIsSubmitting(true);
+    
+    // Core trade data - this will always be saved
+    const pnlValue = parseFloat(data.pnl);
+    const tradeData = {
+      asset_ticker: data.asset_ticker,
+      pnl: pnlValue,
+      notes: data.notes,
+      trade_date: new Date().toISOString(),
+      screenshot_url: "",
+      ai_positive_feedback: ""
+    };
+
     try {
-      let screenshot_url = "";
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please log in to save your trade");
+        return;
+      }
+
+      // Optional: Handle screenshot upload with compression
       if (data.screenshotFile) {
-        const {
-          file_url
-        } = await UploadFile({
-          file: data.screenshotFile
-        });
-        screenshot_url = file_url;
-      }
-      const pnlValue = parseFloat(data.pnl);
-      const tradeOutcome = pnlValue >= 0 ? "a winning trade" : "a losing trade";
-      const aiPrompt = `
-        You are a supportive trading coach. Analyze this ${tradeOutcome} of ${pnlValue} USD.
-        User notes: "${data.notes}"
-        
-        Provide encouraging feedback (1-2 sentences) highlighting good practices or learning opportunities.
-        Focus on process and discipline, not just results.
-      `;
-      const aiResult = await InvokeLLM({
-        prompt: aiPrompt,
-        file_urls: screenshot_url ? [screenshot_url] : []
-      });
-      const {
-        data: {
-          user
+        try {
+          const validationError = validateImageFile(data.screenshotFile);
+          if (validationError) {
+            toast.error(validationError);
+            // Continue without screenshot - don't block the trade save
+          } else {
+            toast.info("Compressing image...");
+            const compressedFile = await compressImage(data.screenshotFile, {
+              maxWidth: 1920,
+              maxHeight: 1080,
+              quality: 0.8,
+              maxFileSize: 2 * 1024 * 1024 // 2MB
+            });
+            
+            toast.info("Uploading screenshot...");
+            const { file_url } = await UploadFile({ file: compressedFile });
+            tradeData.screenshot_url = file_url;
+            toast.success("Screenshot uploaded successfully");
+          }
+        } catch (uploadError) {
+          console.error("Screenshot upload failed:", uploadError);
+          toast.error("Screenshot upload failed, but trade will still be saved");
+          // Continue without screenshot - don't block the trade save
         }
-      } = await supabase.auth.getUser();
-      if (user) {
-        await TradeJournalEntry.create({
-          ...data,
-          pnl: pnlValue,
-          trade_date: new Date().toISOString(),
-          screenshot_url,
-          ai_positive_feedback: aiResult
-        }, user.id);
       }
+
+      // Optional: Get AI analysis
+      try {
+        const tradeOutcome = pnlValue >= 0 ? "a winning trade" : "a losing trade";
+        const aiPrompt = `
+          You are a supportive trading coach. Analyze this ${tradeOutcome} of ${pnlValue} USD.
+          User notes: "${data.notes}"
+          
+          Provide encouraging feedback (1-2 sentences) highlighting good practices or learning opportunities.
+          Focus on process and discipline, not just results.
+        `;
+        
+        toast.info("Getting AI feedback...");
+        const aiResult = await InvokeLLM({
+          prompt: aiPrompt,
+          file_urls: tradeData.screenshot_url ? [tradeData.screenshot_url] : []
+        });
+        tradeData.ai_positive_feedback = aiResult;
+      } catch (aiError) {
+        console.error("AI analysis failed:", aiError);
+        toast.error("AI analysis failed, but trade will still be saved");
+        // Continue without AI feedback - don't block the trade save
+      }
+
+      // Save the trade (this should always work)
+      await TradeJournalEntry.create(tradeData, user.id);
+      toast.success("Trade saved successfully!");
       loadEntries();
+
     } catch (error) {
       console.error("Error submitting journal entry:", error);
-      alert("Failed to save entry. Please try again.");
+      toast.error("Failed to save trade. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   }, [loadEntries]);
 
   // Effects

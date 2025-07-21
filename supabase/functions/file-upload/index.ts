@@ -32,11 +32,40 @@ serve(async (req) => {
       );
     }
 
-    // Generate unique filename
+    // Validate file type and size
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    
+    if (!allowedTypes.includes(file.type)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid file type. Only JPEG, PNG, and WebP are allowed.' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    if (file.size > maxSize) {
+      return new Response(
+        JSON.stringify({ error: 'File too large. Maximum size is 10MB.' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    // Optional server-side compression logging for very large files
+    if (file.size > 5 * 1024 * 1024) { // 5MB threshold
+      console.log('Large file detected:', file.size, 'bytes - client compression recommended');
+    }
+
+    // Generate unique filename  
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
     const fileExtension = file.name.split('.').pop();
-    const fileName = `trade-screenshots/${timestamp}-${randomString}.${fileExtension}`;
+    const fileName = `${timestamp}-${randomString}.${fileExtension}`;
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
@@ -59,7 +88,11 @@ serve(async (req) => {
     console.log('File uploaded successfully:', publicUrl);
 
     return new Response(
-      JSON.stringify({ file_url: publicUrl }),
+      JSON.stringify({ 
+        file_url: publicUrl,
+        file_size: file.size,
+        file_name: fileName
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }

@@ -123,18 +123,18 @@ const SignalsPage: React.FC = () => {
               <div className="space-y-6">
                 <Badge variant="outline" className="inline-flex items-center gap-2 border-green-500/20 text-green-600 bg-green-500/5">
                   <Bell className="h-4 w-4" />
-                  Professional Trade Blueprints
+                  Educational Market Analysis
                 </Badge>
                 <h1 className="text-6xl font-bold leading-tight tracking-tight">
                   <span className="bg-gradient-to-r from-green-500 via-emerald-400 to-green-600 bg-clip-text text-transparent">
-                    Signal Stream
+                    Pattern Recognition
                   </span>
                   <br />
-                  <span className="text-foreground">Your Professional Edge</span>
+                  <span className="text-foreground">Your Learning Platform</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
-                  Your 'over-the-shoulder' view of professional analysts at work. Designed to generate potential profits 
-                  while providing a masterclass in professional trade planning and execution.
+                  Educational tools designed to help you understand market patterns and develop analytical skills. 
+                  Learn from experienced market contributors through structured analysis and educational content.
                 </p>
               </div>
               

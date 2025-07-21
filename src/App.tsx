@@ -30,6 +30,7 @@ import CommunityForumPage from "@/pages/landing-page/community-forum/CommunityFo
 import IBPartnershipPage from "@/pages/landing-page/ib-partnership-page/IBPartnershipPage";
 import Signin from "@/pages/landing-page/signin/Signin";
 import ResetPasswordPage from "@/pages/reset-password/ResetPasswordPage";
+import DisclaimersPage from "@/pages/legal/DisclaimersPage";
 import AccountRequest from "@/pages/landing-page/account-request/AccountRequest";
 import AccountRequestStatus from "@/pages/landing-page/account-request-status/AccountRequestStatus";
 
@@ -116,6 +117,7 @@ function App() {
                           />
                            <Route path="signin" element={<Signin />} />
                            <Route path="reset-password" element={<ResetPasswordPage />} />
+                           <Route path="legal/disclaimers" element={<DisclaimersPage />} />
                           <Route
                             path="account-request"
                             element={<AccountRequest />}

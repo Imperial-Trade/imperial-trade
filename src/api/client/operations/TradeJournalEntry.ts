@@ -1,3 +1,4 @@
+
 import { enhancedApiClient } from '../EnhancedApiClient';
 import { AiCoachFeedback, CoachingAnalysis } from '../types';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,7 +48,7 @@ export class TradeJournalEntry {
         throw new Error('No active session');
       }
 
-      const response = await supabase.functions.invoke('trading-journal-ai-coach-gemeni', {
+      const response = await supabase.functions.invoke('trading-journal-ai-coach-gemini', {
         body: {
           entryId,
           customPrompt,

@@ -1,212 +1,205 @@
 
-import React, { memo, useCallback, useRef, useState } from 'react';
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Camera, Search } from "lucide-react";
-import { useAssetSearch, FOREX_PAIRS, COMMODITIES, INDICES } from '@/hooks/useAssetSearch';
-import { useJournalForm } from '@/hooks/useJournalForm';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Upload, DollarSign, FileImage, X } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ComplianceNotice, EducationalBadge } from '@/components/compliance/ComplianceNotice';
 
 interface JournalFormCardProps {
-  onSubmit: (data: { asset_ticker: string; pnl: string; notes: string; screenshotFile?: File }) => Promise<void>;
+  onSubmit: (data: {
+    asset_ticker: string;
+    pnl: string;
+    notes: string;
+    screenshotFile?: File;
+  }) => void;
   isSubmitting: boolean;
 }
 
-const JournalFormCard = memo(({ onSubmit, isSubmitting }: JournalFormCardProps) => {
-  const { formState, handleInputChange, setAsset, resetForm } = useJournalForm();
-  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-  const [showAssetDropdown, setShowAssetDropdown] = useState(false);
-  const dropdownTimeoutRef = useRef<NodeJS.Timeout>();
-
-  const { suggestions } = useAssetSearch({ 
-    query: formState.asset_ticker,
-    delay: 300 
+export default function JournalFormCard({ onSubmit, isSubmitting }: JournalFormCardProps) {
+  const [formData, setFormData] = useState({
+    asset_ticker: '',
+    pnl: '',
+    notes: ''
   });
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string>('');
 
-  const handleAssetSelect = useCallback((asset: string) => {
-    setAsset(asset);
-    setShowAssetDropdown(false);
-  }, [setAsset]);
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setScreenshotFile(e.target.files[0]);
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setScreenshotFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setScreenshotPreview(e.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
     }
-  }, []);
+  };
 
-  const handleFormSubmit = useCallback(async (e: React.FormEvent) => {
+  const removeScreenshot = () => {
+    setScreenshotFile(null);
+    setScreenshotPreview('');
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formState.asset_ticker || !formState.pnl) {
-      alert("Please fill in Asset and P&L.");
-      return;
-    }
-
-    await onSubmit({
-      ...formState,
-      screenshotFile: screenshotFile || undefined,
+    
+    onSubmit({
+      ...formData,
+      screenshotFile: screenshotFile || undefined
     });
 
-    resetForm();
+    // Reset form
+    setFormData({
+      asset_ticker: '',
+      pnl: '',
+      notes: ''
+    });
     setScreenshotFile(null);
-  }, [formState, screenshotFile, onSubmit, resetForm]);
+    setScreenshotPreview('');
+  };
 
-  const handleAssetFocus = useCallback(() => {
-    setShowAssetDropdown(true);
-  }, []);
-
-  const handleAssetBlur = useCallback(() => {
-    dropdownTimeoutRef.current = setTimeout(() => {
-      setShowAssetDropdown(false);
-    }, 300);
-  }, []);
-
-  const handleDropdownMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    if (dropdownTimeoutRef.current) {
-      clearTimeout(dropdownTimeoutRef.current);
-    }
-  }, []);
-
-  const getAssetBadge = useCallback((asset: string) => {
-    if (FOREX_PAIRS.includes(asset)) return { label: "FX", variant: "outline" as const };
-    if (COMMODITIES.includes(asset)) return { label: "Gold", variant: "outline" as const };
-    if (INDICES.includes(asset)) return { label: "Index", variant: "outline" as const };
-    if (asset.includes("/USDT")) return { label: "Crypto", variant: "outline" as const };
-    return null;
-  }, []);
+  const isValid = formData.asset_ticker && formData.pnl && formData.notes;
 
   return (
-    <Card className="bg-card border-border">
-      <CardContent className="p-6">
-        <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-          <Plus className="w-5 h-5 text-primary" />
-          Add New Trade
-        </h3>
-
-        <form onSubmit={handleFormSubmit} className="space-y-4">
+    <Card className="bg-card border-border shadow-lg">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-primary" />
+          Log Educational Entry
+        </CardTitle>
+        <div className="flex gap-2">
+          <EducationalBadge />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ComplianceNotice type="educational" size="sm" className="mb-6" />
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <div className="relative">
-                <Input
-                  name="asset_ticker"
-                  placeholder="Asset / Ticker (e.g., EURUSD, AAPL)"
-                  value={formState.asset_ticker}
-                  onChange={handleInputChange}
-                  onFocus={handleAssetFocus}
-                  onBlur={handleAssetBlur}
-                  className="bg-background pr-8"
-                  required
-                />
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-
-                {showAssetDropdown && (
-                  <div
-                    className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-48 overflow-y-auto"
-                    onMouseDown={handleDropdownMouseDown}
-                  >
-                    {suggestions && suggestions.length > 0 ? (
-                      <div className="p-1">
-                        {!formState.asset_ticker && (
-                          <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
-                            Recent Assets
-                          </div>
-                        )}
-                        {suggestions.map((asset) => {
-                          const badge = getAssetBadge(asset);
-                          return (
-                            <button
-                              key={asset}
-                              type="button"
-                              onClick={() => handleAssetSelect(asset)}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium">{asset}</span>
-                                {badge && (
-                                  <Badge variant={badge.variant} className="text-xs h-5 px-2">
-                                    {badge.label}
-                                  </Badge>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : formState.asset_ticker ? (
-                      <div className="p-3 text-sm text-muted-foreground text-center">
-                        No matches found
-                      </div>
-                    ) : (
-                      <div className="p-3 text-sm text-muted-foreground text-center">
-                        Start typing to see suggestions
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="asset">Educational Asset</Label>
+              <Input
+                id="asset"
+                placeholder="e.g., EURUSD, XAUUSD (educational example)"
+                value={formData.asset_ticker}
+                onChange={(e) => handleInputChange('asset_ticker', e.target.value)}
+                className="bg-background"
+                required
+              />
             </div>
-            <Input
-              name="pnl"
-              type="number"
-              placeholder="P&L (e.g., 150.50 or -75.25)"
-              value={formState.pnl}
-              onChange={handleInputChange}
-              className="bg-background"
+            
+            <div className="space-y-2">
+              <Label htmlFor="pnl">Educational P&L ($)</Label>
+              <Input
+                id="pnl"
+                type="number"
+                step="0.01"
+                placeholder="e.g., +150.50 or -75.25 (hypothetical)"
+                value={formData.pnl}
+                onChange={(e) => handleInputChange('pnl', e.target.value)}
+                className="bg-background"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Educational Analysis Notes</Label>
+            <Textarea
+              id="notes"
+              placeholder="Why did you analyze this educational setup? What did you learn? What educational concepts were applied? (For learning purposes only)"
+              value={formData.notes}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
+              className="min-h-[120px] bg-background"
               required
             />
           </div>
 
-          <Textarea
-            name="notes"
-            placeholder="Your insights: Why did you analyze this setup? What did you learn?"
-            value={formState.notes}
-            onChange={handleInputChange}
-            className="bg-background h-24"
-          />
-
-          <div className="flex items-center gap-4">
-            <label htmlFor="screenshot-upload" className="cursor-pointer flex-1">
-              <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-border rounded-lg text-muted-foreground hover:bg-muted/30 transition">
-                <Camera className="w-5 h-5" />
-                <span>
-                  {screenshotFile ? screenshotFile.name : "Upload Screenshot"}
-                </span>
-              </div>
+          {/* Educational Screenshot Upload */}
+          <div className="space-y-4">
+            <Label>Educational Screenshot (Optional)</Label>
+            <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
               <input
-                id="screenshot-upload"
                 type="file"
                 accept="image/*"
+                onChange={handleFileUpload}
                 className="hidden"
-                onChange={handleFileChange}
+                id="screenshot-upload"
               />
-            </label>
+              
+              {!screenshotPreview ? (
+                <label
+                  htmlFor="screenshot-upload"
+                  className="cursor-pointer flex flex-col items-center space-y-2"
+                >
+                  <Upload className="w-8 h-8 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    Upload educational screenshot (optional)
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    PNG, JPG up to 10MB - For educational analysis only
+                  </span>
+                </label>
+              ) : (
+                <div className="relative">
+                  <img
+                    src={screenshotPreview}
+                    alt="Educational screenshot preview"
+                    className="max-w-full max-h-48 mx-auto rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeScreenshot}
+                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <div className="mt-2 flex items-center justify-center gap-2">
+                    <FileImage className="w-4 h-4 text-green-400" />
+                    <span className="text-sm text-green-400">Educational screenshot ready</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
             <Button
               type="submit"
-              disabled={isSubmitting}
-              className="bg-gradient-to-r from-accent-green to-primary hover:from-accent-green/90 hover:to-primary/90 text-white"
+              disabled={!isValid || isSubmitting}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3"
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                  Saving...
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
+                  Saving Educational Entry...
                 </>
               ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Save Trade
-                </>
+                'Save Educational Entry'
               )}
             </Button>
-          </div>
+          </motion.div>
         </form>
       </CardContent>
     </Card>
   );
-});
-
-JournalFormCard.displayName = 'JournalFormCard';
-
-export default JournalFormCard;
+}

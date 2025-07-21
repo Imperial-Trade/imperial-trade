@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,7 @@ import {
 } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { ComplianceNotice } from "@/components/compliance/ComplianceNotice";
 
 import EconomicCalendar from "@/components/tools/EconomicCalendar";
 import RiskCalculator from "@/components/tools/RiskCalculator";
@@ -39,53 +41,53 @@ import TradingJournal from "@/components/tools/TradingJournal";
 
 const coreTools = [
   {
-    name: "Trading Journal",
+    name: "Educational Journal",
     icon: BookOpen,
     component: TradingJournal,
-    description: "Log and analyze your trades with AI-powered feedback.",
+    description: "Log and analyze your learning progress with AI-powered educational feedback.",
   },
   {
     name: "Economic Calendar",
     icon: Calendar,
     component: EconomicCalendar,
-    description: "Stay ahead of market-moving events and news releases.",
+    description: "Stay informed about market-moving events for educational analysis.",
   },
   {
-    name: "Risk Calculator",
+    name: "Educational Calculator",
     icon: Calculator,
     component: RiskCalculator,
-    description: "Calculate position size, risk, and potential profit.",
+    description: "Learn position sizing and risk calculation fundamentals.",
   },
 ];
 
 const aiTools = [
   {
-    name: "Trade Analyst",
+    name: "Setup Learning Analyzer",
     icon: Brain,
     component: TradeAnalyst,
-    description: "Upload screenshots for deep performance analysis.",
+    description: "Upload screenshots for educational performance analysis and learning.",
   },
   {
-    name: "Opportunity Scanner",
+    name: "Educational Pattern Scanner",
     icon: Search,
     component: OpportunityScanner,
-    description: "Scan markets for high-probability trading setups.",
+    description: "Scan markets for educational pattern recognition and learning opportunities.",
   },
   {
-    name: "Risk Simulator",
+    name: "Educational Risk Calculator",
     icon: Scale,
     component: RiskSimulator,
-    description: "Simulate trade setups to assess risk before you enter.",
+    description: "Analyze hypothetical setups to learn risk assessment principles.",
   },
 ];
 
 const navButtons = [
-  { name: "Signals", icon: Bell, path: "/dashboard/signals" },
+  { name: "Pattern Learning", icon: Bell, path: "/dashboard/signals" },
   { name: "Education", icon: GraduationCap, path: "/dashboard/academy" },
-  { name: "Live Sessions", icon: Video, path: "/dashboard/live-sessions" },
+  { name: "Learning Sessions", icon: Video, path: "/dashboard/live-sessions" },
   { name: "Community", icon: Users, path: "/dashboard/community" },
   {
-    name: "Tools",
+    name: "Educational Tools",
     icon: BarChart3,
     path: "/dashboard/advanced-tools",
     isActive: true,
@@ -105,12 +107,12 @@ export default function AdvancedTools() {
     const toolParam = params.get("tool");
 
     const toolMap = {
-      journal: "Trading Journal",
+      journal: "Educational Journal",
       calendar: "Economic Calendar",
-      calculator: "Risk Calculator",
-      analyst: "Trade Analyst",
-      scanner: "Opportunity Scanner",
-      simulator: "Risk Simulator",
+      calculator: "Educational Calculator",
+      analyst: "Setup Learning Analyzer",
+      scanner: "Educational Pattern Scanner",
+      simulator: "Educational Risk Calculator",
     };
 
     const toolName = toolMap[toolParam];
@@ -123,7 +125,7 @@ export default function AdvancedTools() {
     if (toolFromQuery) {
       setActiveTool(toolFromQuery);
     } else {
-      // Default to Trading Journal if no query parameter
+      // Default to Educational Journal if no query parameter
       setActiveTool(coreTools[0]);
     }
   }, [getToolFromQuery]);
@@ -142,23 +144,28 @@ export default function AdvancedTools() {
         </div>
       </div>
       <h2 className="text-2xl font-bold text-primary mb-2">
-        Welcome to the Trading Arsenal
+        Welcome to the Educational Learning Arsenal
       </h2>
       <p className="text-secondary max-w-md">
-        Select a tool from the auto-hiding sidebar to begin your analysis. Hover
-        near the left edge to reveal the trading arsenal.
+        Select an educational tool from the auto-hiding sidebar to begin your learning journey. Hover
+        near the left edge to reveal the educational toolkit.
       </p>
       <div className="flex items-center gap-2 mt-6 text-secondary/80">
         <MousePointerClick className="w-5 h-5" />
-        <span>Hover near the left edge to reveal the trading arsenal</span>
+        <span>Hover near the left edge to reveal the educational toolkit</span>
       </div>
     </motion.div>
   );
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Compliance Notice */}
+      <div className="p-4">
+        <ComplianceNotice type="educational" size="sm" />
+      </div>
+
       {/* Main Content Area - Full Width */}
-        <div className="w-full min-h-screen p-6 bg-background">
+      <div className="w-full min-h-screen p-6 bg-background">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -205,9 +212,9 @@ export default function AdvancedTools() {
                         {React.createElement(tool.icon, {
                           className: "w-3 h-3 flex-shrink-0",
                         })}
-                    <span className="text-xs font-medium truncate">
-                      {tool.name === "Trading Journal" ? "Journal" : tool.name === "Economic Calendar" ? "Calendar" : tool.name === "Risk Calculator" ? "Calculator" : tool.name === "Trade Analyst" ? "Analyst" : tool.name === "Opportunity Scanner" ? "Scanner" : tool.name === "Risk Simulator" ? "Simulator" : tool.name.split(" ")[0]}
-                    </span>
+                        <span className="text-xs font-medium truncate">
+                          {tool.name === "Educational Journal" ? "Journal" : tool.name === "Economic Calendar" ? "Calendar" : tool.name === "Educational Calculator" ? "Calculator" : tool.name === "Setup Learning Analyzer" ? "Analyzer" : tool.name === "Educational Pattern Scanner" ? "Scanner" : tool.name === "Educational Risk Calculator" ? "Risk Calc" : tool.name.split(" ")[0]}
+                        </span>
                       </div>
                     </button>
                   ))}
@@ -222,22 +229,22 @@ export default function AdvancedTools() {
           <div className="relative h-full">
             <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
               <div className="p-4 bg-transparent">
-                <div style={{ display: activeTool?.name === "Trading Journal" ? 'block' : 'none' }}>
+                <div style={{ display: activeTool?.name === "Educational Journal" ? 'block' : 'none' }}>
                   <TradingJournal />
                 </div>
                 <div style={{ display: activeTool?.name === "Economic Calendar" ? 'block' : 'none' }}>
                   <EconomicCalendar />
                 </div>
-                <div style={{ display: activeTool?.name === "Risk Calculator" ? 'block' : 'none' }}>
+                <div style={{ display: activeTool?.name === "Educational Calculator" ? 'block' : 'none' }}>
                   <RiskCalculator />
                 </div>
-                <div style={{ display: activeTool?.name === "Trade Analyst" ? 'block' : 'none' }}>
+                <div style={{ display: activeTool?.name === "Setup Learning Analyzer" ? 'block' : 'none' }}>
                   <TradeAnalyst />
                 </div>
-                <div style={{ display: activeTool?.name === "Opportunity Scanner" ? 'block' : 'none' }}>
+                <div style={{ display: activeTool?.name === "Educational Pattern Scanner" ? 'block' : 'none' }}>
                   <OpportunityScanner />
                 </div>
-                <div style={{ display: activeTool?.name === "Risk Simulator" ? 'block' : 'none' }}>
+                <div style={{ display: activeTool?.name === "Educational Risk Calculator" ? 'block' : 'none' }}>
                   <RiskSimulator />
                 </div>
               </div>

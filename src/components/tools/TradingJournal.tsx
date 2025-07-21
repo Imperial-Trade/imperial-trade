@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TradeJournalEntry } from "@/api/entities";
@@ -11,6 +12,7 @@ import JournalAnalytics from "../trading/JournalAnalytics";
 import JournalLogList from "../trading/JournalLogList";
 import { compressImage, validateImageFile } from "@/utils/imageCompression";
 import { toast } from "sonner";
+import { ComplianceNotice, EducationalBadge } from "@/components/compliance/ComplianceNotice";
 
 interface JournalEntry {
   id: string;
@@ -49,6 +51,7 @@ export default function TradingJournal() {
       console.error("Error loading user profile:", error);
     }
   }, []);
+
   const loadEntries = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -64,18 +67,20 @@ export default function TradingJournal() {
         setEntries([]);
       }
     } catch (error) {
-      console.error("Error loading journal entries:", error);
+      console.error("Error loading educational journal entries:", error);
     }
     setIsLoading(false);
   }, []);
+
   const handleDelete = useCallback(async (entryId: string) => {
     try {
       await TradeJournalEntry.delete(entryId);
       loadEntries();
     } catch (error) {
-      console.error("Error deleting entry:", error);
+      console.error("Error deleting educational entry:", error);
     }
   }, [loadEntries]);
+
   const handleSubmit = useCallback(async (data: {
     asset_ticker: string;
     pnl: string;
@@ -84,9 +89,9 @@ export default function TradingJournal() {
   }) => {
     setIsSubmitting(true);
     
-    // Core trade data - this will always be saved
+    // Core educational data - this will always be saved
     const pnlValue = parseFloat(data.pnl);
-    const tradeData = {
+    const educationalData = {
       asset_ticker: data.asset_ticker,
       pnl: pnlValue,
       notes: data.notes,
@@ -98,7 +103,7 @@ export default function TradingJournal() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Please log in to save your trade");
+        toast.error("Please log in to save your educational entry");
         return;
       }
 
@@ -108,9 +113,9 @@ export default function TradingJournal() {
           const validationError = validateImageFile(data.screenshotFile);
           if (validationError) {
             toast.error(validationError);
-            // Continue without screenshot - don't block the trade save
+            // Continue without screenshot - don't block the educational entry save
           } else {
-            toast.info("Compressing image...");
+            toast.info("Compressing educational image...");
             const compressedFile = await compressImage(data.screenshotFile, {
               maxWidth: 1920,
               maxHeight: 1080,
@@ -118,60 +123,62 @@ export default function TradingJournal() {
               maxFileSize: 2 * 1024 * 1024 // 2MB
             });
             
-            toast.info("Uploading screenshot...");
+            toast.info("Uploading educational screenshot...");
             const { file_url } = await UploadFile({ file: compressedFile });
-            tradeData.screenshot_url = file_url;
-            toast.success("Screenshot uploaded successfully");
+            educationalData.screenshot_url = file_url;
+            toast.success("Educational screenshot uploaded successfully");
           }
         } catch (uploadError) {
-          console.error("Screenshot upload failed:", uploadError);
-          toast.error("Screenshot upload failed, but trade will still be saved");
-          // Continue without screenshot - don't block the trade save
+          console.error("Educational screenshot upload failed:", uploadError);
+          toast.error("Educational screenshot upload failed, but entry will still be saved");
+          // Continue without screenshot - don't block the educational entry save
         }
       }
 
-      // Enhanced AI coaching analysis
+      // Enhanced educational coaching analysis
       try {
-        const tradeOutcome = pnlValue >= 0 ? "winning" : "losing";
-        const coachingPrompt = `
-          TRADE LOGGED: ${data.asset_ticker} with P&L of $${pnlValue}
+        const setupOutcome = pnlValue >= 0 ? "educational positive" : "learning opportunity";
+        const educationalCoachingPrompt = `
+          EDUCATIONAL ENTRY LOGGED: ${data.asset_ticker} with learning result of $${pnlValue}
           
-          TRADE DETAILS:
+          EDUCATIONAL DETAILS:
           - Asset: ${data.asset_ticker}
-          - P&L: $${pnlValue} (${tradeOutcome} trade)
-          - Notes: "${data.notes}"
-          - Screenshot: ${tradeData.screenshot_url ? "Provided" : "Not provided"}
+          - Learning Result: $${pnlValue} (${setupOutcome} example)
+          - Educational Notes: "${data.notes}"
+          - Educational Screenshot: ${educationalData.screenshot_url ? "Provided" : "Not provided"}
           
-          Please provide comprehensive coaching feedback following the 5-part structure:
-          1. Celebrate the effort to log this trade
-          2. Recognize any patterns, streaks, or milestones
-          3. Provide constructive insights about the trade
-          4. Reinforce their developing trader identity
-          5. Encourage continued growth and consistency
+          Please provide comprehensive educational coaching feedback following the 5-part learning structure:
+          1. Celebrate the effort to log this educational entry
+          2. Recognize any learning patterns, consistency, or educational milestones
+          3. Provide constructive educational insights about the setup analysis
+          4. Reinforce their developing educational trader identity
+          5. Encourage continued learning growth and consistency in education
+          
+          Focus on educational value, learning opportunities, and skill development.
         `;
         
-        toast.info("Getting personalized coaching feedback...");
+        toast.info("Getting personalized educational coaching feedback...");
         const aiResult = await InvokeLLM({
-          prompt: coachingPrompt,
-          file_urls: tradeData.screenshot_url ? [tradeData.screenshot_url] : [],
-          user_id: user.id // Pass user_id for enhanced coaching context
+          prompt: educationalCoachingPrompt,
+          file_urls: educationalData.screenshot_url ? [educationalData.screenshot_url] : [],
+          user_id: user.id // Pass user_id for enhanced educational coaching context
         });
-        tradeData.ai_positive_feedback = aiResult;
-        toast.success("Personalized coaching feedback generated!");
+        educationalData.ai_positive_feedback = aiResult;
+        toast.success("Personalized educational coaching feedback generated!");
       } catch (aiError) {
-        console.error("AI coaching analysis failed:", aiError);
-        toast.error("AI coaching failed, but trade will still be saved");
-        // Continue without AI feedback - don't block the trade save
+        console.error("Educational coaching analysis failed:", aiError);
+        toast.error("Educational coaching failed, but entry will still be saved");
+        // Continue without AI feedback - don't block the educational entry save
       }
 
-      // Save the trade (this should always work)
-      await TradeJournalEntry.create(tradeData, user.id);
-      toast.success("Trade saved successfully!");
+      // Save the educational entry (this should always work)
+      await TradeJournalEntry.create(educationalData, user.id);
+      toast.success("Educational entry saved successfully!");
       loadEntries();
 
     } catch (error) {
-      console.error("Error submitting journal entry:", error);
-      toast.error("Failed to save trade. Please try again.");
+      console.error("Error submitting educational journal entry:", error);
+      toast.error("Failed to save educational entry. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -181,6 +188,7 @@ export default function TradingJournal() {
   useEffect(() => {
     loadUserProfile();
   }, [loadUserProfile]);
+  
   useEffect(() => {
     if (userProfile) {
       loadEntries();
@@ -188,41 +196,47 @@ export default function TradingJournal() {
   }, [userProfile, loadEntries]);
 
   // Memoized tab content components
-  const LogTab = useMemo(() => <motion.div initial={{
-    opacity: 0,
-    y: 20
-  }} animate={{
-    opacity: 1,
-    y: 0
-  }} className="space-y-6">
+  const LogTab = useMemo(() => 
+    <motion.div initial={{
+      opacity: 0,
+      y: 20
+    }} animate={{
+      opacity: 1,
+      y: 0
+    }} className="space-y-6">
+      <ComplianceNotice type="educational" size="sm" />
       <JournalFormCard onSubmit={handleSubmit} isSubmitting={isSubmitting} />
       <JournalLogList entries={entries} isLoading={isLoading} onDelete={handleDelete} />
     </motion.div>, [handleSubmit, isSubmitting, entries, isLoading, handleDelete]);
-  const AnalyticsTab = useMemo(() => <motion.div initial={{
-    opacity: 0,
-    y: 20
-  }} animate={{
-    opacity: 1,
-    y: 0
-  }} className="space-y-6">
+  
+  const AnalyticsTab = useMemo(() => 
+    <motion.div initial={{
+      opacity: 0,
+      y: 20
+    }} animate={{
+      opacity: 1,
+      y: 0
+    }} className="space-y-6">
+      <ComplianceNotice type="hypothetical" size="sm" />
       <JournalAnalytics entries={entries} />
     </motion.div>, [entries]);
+
   return <div className={`min-h-screen p-6 transition-all duration-700 ${activeTab === 'advanced' ? 'bg-transparent' : 'bg-gradient-to-br from-background via-background to-muted/20'}`}>
       <div className={`mx-auto transition-all duration-500 ${activeTab === 'advanced' ? 'max-w-full px-4' : 'max-w-6xl'}`}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className={`grid w-full grid-cols-3 transition-all duration-500 ${activeTab === 'advanced' ? 'bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl' : 'bg-card'}`}>
             <TabsTrigger value="log" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
               <Calendar className="w-4 h-4" />
-              Journal Log
+              Educational Log
             </TabsTrigger>
             <TabsTrigger value="analytics" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
               <BarChart3 className="w-4 h-4" />
-              AI Analytics
+              Educational Analytics
             </TabsTrigger>
             <TabsTrigger value="advanced" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white hover:text-white hover:bg-white/10 data-[state=active]:bg-gradient-to-r data-[state=active]:from-white/30 data-[state=active]:to-white/20 data-[state=active]:text-white data-[state=active]:shadow-lg' : ''}`}>
               <Sparkles className="w-4 h-4" />
               <span className={`font-semibold ${activeTab === 'advanced' ? 'text-white' : 'bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent'}`}>
-                Advanced Journal
+                Advanced Educational Journal
               </span>
             </TabsTrigger>
           </TabsList>

@@ -10,10 +10,8 @@ interface OptimizedLivePriceData {
   error: string | null;
   lastUpdated: Date | null;
   connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error';
-  isPaused: boolean;
+  dataSource: 'twelve_data_api' | 'unavailable';
   refreshPrice: () => void;
-  pauseUpdates: () => void;
-  resumeUpdates: () => void;
 }
 
 interface UseOptimizedLivePriceOptions {
@@ -27,21 +25,19 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    enableSmartPausing = true,
-    debounceMs = 500,
-    pauseOnInput = true
+    debounceMs = 1000
   } = options;
 
   const {
     prices,
     connectionStatus,
+    dataSource,
+    lastUpdated: contextLastUpdated,
+    errors,
     subscribe,
     unsubscribe,
     getPrice,
-    pauseUpdates: contextPauseUpdates,
-    resumeUpdates: contextResumeUpdates,
-    refreshPrice: contextRefreshPrice,
-    lastUpdated: contextLastUpdated
+    refreshPrice: contextRefreshPrice
   } = useWebSocketPrices();
 
   const [debouncedPrice, setDebouncedPrice] = useState({
@@ -49,12 +45,9 @@ export function useOptimizedLivePrice(
     change: 0,
     changePercent: 0
   });
-  const [isLocallyPaused, setIsLocallyPaused] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const inputActivityRef = useRef(false);
-  const inputTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Subscribe to symbol on mount
   useEffect(() => {
@@ -93,83 +86,22 @@ export function useOptimizedLivePrice(
     };
   }, [prices, symbol, debounceMs, getPrice]);
 
-  // Smart input detection for pausing
-  useEffect(() => {
-    if (!enableSmartPausing || !pauseOnInput) return;
-
-    const handleFocusIn = (event: FocusEvent) => {
-      const target = event.target as HTMLElement;
-      if (target.matches('input, textarea, select')) {
-        inputActivityRef.current = true;
-        setIsLocallyPaused(true);
-        contextPauseUpdates();
-      }
-    };
-
-    const handleFocusOut = () => {
-      if (inputTimeoutRef.current) {
-        clearTimeout(inputTimeoutRef.current);
-      }
-
-      inputTimeoutRef.current = setTimeout(() => {
-        inputActivityRef.current = false;
-        setIsLocallyPaused(false);
-        contextResumeUpdates();
-      }, 3000); // Resume after 3 seconds of inactivity
-    };
-
-    const handleInput = () => {
-      if (inputTimeoutRef.current) {
-        clearTimeout(inputTimeoutRef.current);
-      }
-
-      inputTimeoutRef.current = setTimeout(() => {
-        inputActivityRef.current = false;
-        setIsLocallyPaused(false);
-        contextResumeUpdates();
-      }, 3000);
-    };
-
-    document.addEventListener('focusin', handleFocusIn);
-    document.addEventListener('focusout', handleFocusOut);
-    document.addEventListener('input', handleInput);
-
-    return () => {
-      document.removeEventListener('focusin', handleFocusIn);
-      document.removeEventListener('focusout', handleFocusOut);
-      document.removeEventListener('input', handleInput);
-      
-      if (inputTimeoutRef.current) {
-        clearTimeout(inputTimeoutRef.current);
-      }
-    };
-  }, [enableSmartPausing, pauseOnInput, contextPauseUpdates, contextResumeUpdates]);
-
   const refreshPrice = useCallback(() => {
     contextRefreshPrice(symbol);
   }, [contextRefreshPrice, symbol]);
 
-  const pauseUpdates = useCallback(() => {
-    setIsLocallyPaused(true);
-    contextPauseUpdates();
-  }, [contextPauseUpdates]);
-
-  const resumeUpdates = useCallback(() => {
-    setIsLocallyPaused(false);
-    contextResumeUpdates();
-  }, [contextResumeUpdates]);
+  // Get error for this specific symbol or global error
+  const symbolError = errors[symbol] || errors.global || null;
 
   return {
     price: debouncedPrice.price,
     change: debouncedPrice.change,
     changePercent: debouncedPrice.changePercent,
     isLoading: connectionStatus === 'connecting',
-    error: connectionStatus === 'error' ? 'Connection failed' : null,
+    error: symbolError,
     lastUpdated: lastUpdated || contextLastUpdated,
     connectionStatus,
-    isPaused: isLocallyPaused,
-    refreshPrice,
-    pauseUpdates,
-    resumeUpdates
+    dataSource,
+    refreshPrice
   };
 }

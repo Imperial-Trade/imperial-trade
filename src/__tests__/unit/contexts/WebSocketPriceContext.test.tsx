@@ -224,34 +224,9 @@ describe('WebSocketPriceContext', () => {
       expect(result.current).toHaveProperty('subscribe');
       expect(result.current).toHaveProperty('unsubscribe');
       expect(result.current).toHaveProperty('getPrice');
-      expect(result.current).toHaveProperty('pauseUpdates');
-      expect(result.current).toHaveProperty('resumeUpdates');
       expect(result.current).toHaveProperty('refreshPrice');
       expect(result.current).toHaveProperty('lastUpdated');
     });
   });
 
-  describe('pause and resume functionality', () => {
-    it('pauses and resumes updates correctly', async () => {
-      const { result } = renderHook(() => useWebSocketPrices(), {
-        wrapper: ({ children }) => (
-          <WebSocketPriceProvider>{children}</WebSocketPriceProvider>
-        )
-      });
-
-      act(() => {
-        result.current.pauseUpdates();
-      });
-
-      // Pausing should change update interval and set paused state
-      expect(result.current.connectionStatus).toBe('disconnected'); // Should remain disconnected when paused
-
-      act(() => {
-        result.current.resumeUpdates();
-      });
-
-      // Resuming should restore normal operation
-      expect(result.current.connectionStatus).toBe('disconnected'); // Will connect when subscribing
-    });
-  });
 });

@@ -47,24 +47,18 @@ export class TradeJournalEntry {
         throw new Error('No active session');
       }
 
-      const response = await fetch('https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/trading-journal-ai-coach-gemeni', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
+      const response = await supabase.functions.invoke('trading-journal-ai-coach-gemeni', {
+        body: {
           entryId,
           customPrompt,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get AI coaching');
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to get AI coaching');
       }
 
-      return await response.json();
+      return response.data;
     } catch (error) {
       console.error('Error getting AI coaching:', error);
       return {

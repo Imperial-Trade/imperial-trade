@@ -79,10 +79,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-[100dvh] flex w-full bg-gradient-to-br from-background via-background to-background/95">
+      <div className="min-h-screen max-h-screen h-screen flex w-full bg-gradient-to-br from-background via-background to-background/95 overflow-hidden">
         <AppSidebar />
         
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header
             user={user}
             sidebarOpen={sidebarOpen}
@@ -93,8 +93,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
             getAccessLevelDisplay={getAccessLevelDisplay}
           />
 
-          <main className="flex-1 overflow-auto pt-16">
-            {children}
+          <main className="flex-1 overflow-auto pt-16 overscroll-contain">
+            <div className="min-h-full">
+              {children}
+            </div>
           </main>
         </div>
       </div>

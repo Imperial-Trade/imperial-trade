@@ -25,7 +25,7 @@ const NewSignalPage: React.FC = () => {
         console.log('User not logged in:', e);
         toast({
           title: "Authentication Required",
-          description: "Please log in to create signals.",
+          description: "Please log in to create educational patterns.",
           variant: "destructive",
         });
         navigate('/signin');
@@ -44,7 +44,7 @@ const NewSignalPage: React.FC = () => {
     if (!user?.id) {
       toast({
         title: "Authentication Error",
-        description: "You must be logged in to create signals.",
+        description: "You must be logged in to create educational patterns.",
         variant: "destructive",
       });
       return;
@@ -74,20 +74,20 @@ const NewSignalPage: React.FC = () => {
       
       if (result) {
         toast({
-          title: "🚀 Signal Created Successfully!",
-          description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} signal has been posted and is now live.`,
+          title: "🚀 Educational Pattern Created!",
+          description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`,
         });
         
-        // Navigate to signals page to show the new signal
-        navigate('/dashboard/signals');
+        // Navigate to pattern stream page to show the new pattern
+        navigate('/dashboard/signal-stream');
       } else {
-        throw new Error('Failed to create signal');
+        throw new Error('Failed to create educational pattern');
       }
     } catch (error) {
       console.error('Error creating trade alert:', error);
       toast({
-        title: "Error Creating Signal",
-        description: "Failed to create trading signal. Please check your inputs and try again.",
+        title: "Error Creating Educational Pattern",
+        description: "Failed to create educational analysis. Please check your inputs and try again.",
         variant: "destructive",
       });
     } finally {
@@ -110,9 +110,9 @@ const NewSignalPage: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">New Signal</h1>
+          <h1 className="text-3xl font-bold text-foreground">New Educational Pattern</h1>
           <p className="text-muted-foreground mt-2">
-            Create a new trading signal with real-time price data
+            Create a new educational market analysis pattern with reference price data
           </p>
         </div>
         

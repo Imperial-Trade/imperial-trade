@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
+import { ComplianceFooter } from "@/components/compliance/ComplianceFooter"
 
 function DashboardHeader() {
   const { openMobile } = useSidebar();
@@ -52,9 +53,9 @@ function DashboardHeader() {
     {
       to: "/dashboard/signal-stream",
       icon: Bell,
-      label: "Signals",
-      description: "Real-time trading signals and alerts",
-      features: ["Live Alerts", "Custom Indicators", "Signal History"]
+      label: "Pattern Stream",
+      description: "Educational market analysis and pattern recognition",
+      features: ["Live Patterns", "Educational Indicators", "Analysis History"]
     },
     {
       to: "/dashboard/education",
@@ -353,6 +354,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <ErrorBoundary componentName="Trading Arsenal Sidebar">
           <WidgetSidebar />
         </ErrorBoundary>
+        
+        {/* Compliance Footer */}
+        <ComplianceFooter />
       </div>
     </SidebarProvider>
   )

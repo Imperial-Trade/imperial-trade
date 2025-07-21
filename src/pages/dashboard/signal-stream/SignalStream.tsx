@@ -438,15 +438,15 @@ export default function SignalStream() {
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h1 className="text-3xl font-bold text-foreground">
-                  Professional Signal <span className="text-accent-green">Stream</span>
+                  Educational Pattern <span className="text-accent-green">Stream</span>
                 </h1>
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
                   <Shield className="w-3 h-3 mr-1" />
-                  Verified Educators & Admins
+                  Educational Contributors
                 </Badge>
               </div>
               <p className="text-muted-foreground">
-                Real-time professional trading signals with live price tracking from verified educators and admins
+                Educational market analysis patterns with reference pricing from verified educational contributors
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -456,7 +456,7 @@ export default function SignalStream() {
                   className="bg-foreground text-background hover:bg-foreground/90 border border-border"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Create Signal
+                  Create Pattern
                 </Button>
               )}
               {getConnectionStatusBadge()}
@@ -485,7 +485,7 @@ export default function SignalStream() {
               <div className="flex justify-center items-center h-64 flex-col space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
                 <div className="text-center">
-                  <p className="text-muted-foreground">Loading professional signals...</p>
+                  <p className="text-muted-foreground">Loading educational patterns...</p>
                   {connectionStatus === 'connecting' && (
                     <p className="text-xs text-muted-foreground mt-1">Establishing real-time connection...</p>
                   )}
@@ -505,7 +505,7 @@ export default function SignalStream() {
               <div className="space-y-6">
                 <div>
                   <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
-                    Active Professional Signals ({activeAlerts.length})
+                    Educational Market Patterns ({activeAlerts.length})
                   </h2>
                   {activeAlerts.length > 0 ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
@@ -543,15 +543,15 @@ export default function SignalStream() {
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <Shield className="w-8 h-8 text-muted-foreground/50" />
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-2">No Active Professional Signals</h3>
-                      <p className="text-muted-foreground">New professional trading signals will appear here when posted by verified educators and admins.</p>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
+                      <p className="text-muted-foreground">New educational analysis patterns will appear here when posted by educational contributors.</p>
                     </div>
                   )}
                 </div>
                 
                 <div>
                   <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
-                    Recent Closed Professional Trades ({closedAlerts.length})
+                    Recent Educational Analysis ({closedAlerts.length})
                   </h2>
                   {sortedClosedAlerts.length > 0 ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
@@ -589,8 +589,8 @@ export default function SignalStream() {
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-2">No Closed Professional Trades</h3>
-                      <p className="text-muted-foreground">Completed professional trades will be shown here for reference.</p>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No Completed Analysis</h3>
+                      <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
                     </div>
                   )}
                 </div>

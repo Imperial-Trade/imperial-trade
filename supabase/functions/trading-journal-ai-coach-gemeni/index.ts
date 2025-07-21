@@ -1,4 +1,5 @@
 
+
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
 
@@ -37,6 +38,9 @@ interface CoachingAnalysis {
 }
 
 serve(async (req) => {
+  console.log('Trading Journal AI Coach function started');
+  console.log('Request method:', req.method);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -46,13 +50,18 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const googleApiKey = Deno.env.get('GOOGLE_API_KEY');
 
+    console.log('Environment variables loaded');
+    console.log('Has Google API Key:', !!googleApiKey);
+
     if (!googleApiKey) {
+      console.error('Google API key not configured');
       throw new Error('Google API key not configured');
     }
 
     // Get authorization token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('No authorization header provided');
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -67,11 +76,14 @@ serve(async (req) => {
     // Verify user authentication
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
+      console.error('User authentication failed:', userError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('User authenticated:', user.id);
 
     if (req.method !== 'POST') {
       return new Response(
@@ -81,6 +93,7 @@ serve(async (req) => {
     }
 
     const { entryId, customPrompt }: RequestBody = await req.json();
+    console.log('Processing entry:', entryId);
 
     if (!entryId) {
       return new Response(
@@ -98,11 +111,14 @@ serve(async (req) => {
       .single();
 
     if (entryError || !entry) {
+      console.error('Entry not found:', entryError);
       return new Response(
         JSON.stringify({ error: 'Trade entry not found or access denied' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('Entry found:', entry.asset_ticker);
 
     // Fetch recent entries for context (last 5 entries)
     const { data: recentEntries } = await supabase
@@ -121,6 +137,7 @@ serve(async (req) => {
       .single();
 
     if (existingCoaching) {
+      console.log('Returning cached coaching feedback');
       return new Response(
         JSON.stringify({
           success: true,
@@ -133,6 +150,7 @@ serve(async (req) => {
 
     // Build comprehensive prompt
     const prompt = buildCoachingPrompt(entry, recentEntries || [], customPrompt);
+    console.log('Calling Gemini API...');
 
     // Make direct HTTP call to Gemini API
     const geminiResponse = await fetch(
@@ -167,10 +185,12 @@ serve(async (req) => {
     const geminiData = await geminiResponse.json();
     
     if (!geminiData.candidates || !geminiData.candidates[0] || !geminiData.candidates[0].content) {
+      console.error('Invalid Gemini response structure:', geminiData);
       throw new Error('Invalid response from Gemini API');
     }
 
     const analysisText = geminiData.candidates[0].content.parts[0].text;
+    console.log('Gemini API response received, parsing...');
 
     // Parse the AI response to structured format
     const coachingAnalysis = parseCoachingResponse(analysisText);
@@ -195,6 +215,8 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('Coaching feedback saved successfully');
 
     return new Response(
       JSON.stringify({
@@ -281,3 +303,4 @@ function parseCoachingResponse(responseText: string): CoachingAnalysis {
     key_insights: ['Analysis requires manual review']
   };
 }
+

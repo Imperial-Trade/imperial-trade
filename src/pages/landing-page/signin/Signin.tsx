@@ -8,6 +8,7 @@ import { BrandHeader } from "@/components/account-request/BrandHeader";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { StatusMessage } from "@/components/account-request/StatusMessage";
 import { LoginForm } from "@/components/login/LoginForm";
+import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { PageStyles } from "@/components/account-request/PageStyles";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 export default function SigninPage() {
@@ -15,6 +16,7 @@ export default function SigninPage() {
     type: "",
     message: ""
   });
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const {
     form,
     onSubmit,
@@ -61,9 +63,21 @@ export default function SigninPage() {
               <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
             </ErrorBoundary>
 
-            {status.type !== "success" && <ErrorBoundary componentName="Login Form">
-                <LoginForm form={form} onSubmit={handleFormSubmit} isSubmitting={isSubmitting} canSubmit={canSubmit} />
-              </ErrorBoundary>}
+            {status.type !== "success" && (
+              <ErrorBoundary componentName="Auth Form">
+                {showForgotPassword ? (
+                  <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
+                ) : (
+                  <LoginForm 
+                    form={form} 
+                    onSubmit={handleFormSubmit} 
+                    isSubmitting={isSubmitting} 
+                    canSubmit={canSubmit}
+                    onForgotPassword={() => setShowForgotPassword(true)}
+                  />
+                )}
+              </ErrorBoundary>
+            )}
 
             <div className="pt-4 space-y-3 grid grid-cols">
               <Link to="/account-request">

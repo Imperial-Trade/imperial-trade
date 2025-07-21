@@ -29,6 +29,7 @@ import LiveSessionsPage from "@/pages/landing-page/live-sessions/LiveSessionsPag
 import CommunityForumPage from "@/pages/landing-page/community-forum/CommunityForumPage";
 import IBPartnershipPage from "@/pages/landing-page/ib-partnership-page/IBPartnershipPage";
 import Signin from "@/pages/landing-page/signin/Signin";
+import ResetPasswordPage from "@/pages/reset-password/ResetPasswordPage";
 import AccountRequest from "@/pages/landing-page/account-request/AccountRequest";
 import AccountRequestStatus from "@/pages/landing-page/account-request-status/AccountRequestStatus";
 
@@ -113,7 +114,8 @@ function App() {
                             path="ib-partnership-new"
                             element={<IBPartnershipPage />}
                           />
-                          <Route path="signin" element={<Signin />} />
+                           <Route path="signin" element={<Signin />} />
+                           <Route path="reset-password" element={<ResetPasswordPage />} />
                           <Route
                             path="account-request"
                             element={<AccountRequest />}

@@ -11,6 +11,7 @@ import JournalAnalytics from "../trading/JournalAnalytics";
 import JournalLogList from "../trading/JournalLogList";
 import { compressImage, validateImageFile } from "@/utils/imageCompression";
 import { toast } from "sonner";
+
 interface JournalEntry {
   id: string;
   asset_ticker: string;
@@ -20,6 +21,7 @@ interface JournalEntry {
   ai_positive_feedback?: string;
   screenshot_url?: string;
 }
+
 export default function TradingJournal() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -128,26 +130,37 @@ export default function TradingJournal() {
         }
       }
 
-      // Optional: Get AI analysis
+      // Enhanced AI coaching analysis
       try {
-        const tradeOutcome = pnlValue >= 0 ? "a winning trade" : "a losing trade";
-        const aiPrompt = `
-          You are a supportive trading coach. Analyze this ${tradeOutcome} of ${pnlValue} USD.
-          User notes: "${data.notes}"
+        const tradeOutcome = pnlValue >= 0 ? "winning" : "losing";
+        const coachingPrompt = `
+          TRADE LOGGED: ${data.asset_ticker} with P&L of $${pnlValue}
           
-          Provide encouraging feedback (1-2 sentences) highlighting good practices or learning opportunities.
-          Focus on process and discipline, not just results.
+          TRADE DETAILS:
+          - Asset: ${data.asset_ticker}
+          - P&L: $${pnlValue} (${tradeOutcome} trade)
+          - Notes: "${data.notes}"
+          - Screenshot: ${tradeData.screenshot_url ? "Provided" : "Not provided"}
+          
+          Please provide comprehensive coaching feedback following the 5-part structure:
+          1. Celebrate the effort to log this trade
+          2. Recognize any patterns, streaks, or milestones
+          3. Provide constructive insights about the trade
+          4. Reinforce their developing trader identity
+          5. Encourage continued growth and consistency
         `;
         
-        toast.info("Getting AI feedback...");
+        toast.info("Getting personalized coaching feedback...");
         const aiResult = await InvokeLLM({
-          prompt: aiPrompt,
-          file_urls: tradeData.screenshot_url ? [tradeData.screenshot_url] : []
+          prompt: coachingPrompt,
+          file_urls: tradeData.screenshot_url ? [tradeData.screenshot_url] : [],
+          user_id: user.id // Pass user_id for enhanced coaching context
         });
         tradeData.ai_positive_feedback = aiResult;
+        toast.success("Personalized coaching feedback generated!");
       } catch (aiError) {
-        console.error("AI analysis failed:", aiError);
-        toast.error("AI analysis failed, but trade will still be saved");
+        console.error("AI coaching analysis failed:", aiError);
+        toast.error("AI coaching failed, but trade will still be saved");
         // Continue without AI feedback - don't block the trade save
       }
 

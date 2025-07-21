@@ -160,7 +160,7 @@ const JournalFormCard = memo(({ onSubmit, isSubmitting }: JournalFormCardProps) 
 
           <Textarea
             name="notes"
-            placeholder="Your insights: Why did you take this trade? What did you learn?"
+            placeholder="Your insights: Why did you analyze this setup? What did you learn?"
             value={formState.notes}
             onChange={handleInputChange}
             className="bg-background h-24"

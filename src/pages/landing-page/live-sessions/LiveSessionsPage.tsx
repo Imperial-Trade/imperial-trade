@@ -45,7 +45,7 @@ const LiveSessionsPage: React.FC = () => {
         "Top-Down Analysis: Multi-timeframe analysis from monthly down to intraday charts",
         "Setup Identification: Real-time identification and explanation of valid trading setups",
         "Live Trade Execution: When valid setups appear, trades are executed live with full transparency",
-        "Risk Management: Live demonstration of position sizing, stop placement, and trade management",
+        "Risk Management: Live demonstration of position sizing, stop placement, and educational trade management",
         "Market Psychology: Explanation of sentiment indicators and institutional positioning"
       ],
       gradient: "from-blue-500/20 to-cyan-500/20"

@@ -96,7 +96,7 @@ const AdvancedToolsPage: React.FC = () => {
       subtitle: "Trade War-Gaming",
       description: "War-game potential trades before risking real capital, getting AI-powered feedback on trade viability.",
       detailedFeatures: [
-        "Trade Setup Input: Enter parameters of trades you're considering - instrument, entry, stop loss, take profit",
+        "Setup Analysis Input: Enter parameters of setups you're analyzing - instrument, entry, stop loss, take profit",
         "AI Risk Assessment: Analyzes proposed trades against current volatility, historical data, and key levels",
         "Viability Score: Provides overall risk score and probability of hitting stop loss vs. take profit",
         "Risk-Reward Validation: Comprehensive feedback on your proposed risk-to-reward ratios",

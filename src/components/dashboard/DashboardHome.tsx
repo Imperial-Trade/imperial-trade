@@ -153,9 +153,9 @@ export const DashboardHome: React.FC = () => {
               </h1>
 
               <p className="text-xl lg:text-2xl text-white/90 max-w-4xl mx-auto leading-relaxed mb-16">
-                You've taken the brave step into the world of trading. Every
-                expert was once a beginner, and every champion was once a
-                contender who refused to give up.
+                You've taken the brave step into the world of trading education. Every
+                successful trader was once a beginner, and every champion was once a
+                student who refused to give up.
               </p>
             </div>
 
@@ -265,7 +265,7 @@ export const DashboardHome: React.FC = () => {
             </CardHeader>
             <CardContent className="relative">
               <p className="text-muted-foreground mb-4">
-                Join discussions with verified traders and industry experts.
+                Join discussions with verified traders and educational contributors.
               </p>
               <Button
                 asChild
@@ -292,14 +292,14 @@ export const DashboardHome: React.FC = () => {
                     Live Market
                   </CardTitle>
                   <CardDescription className="text-sm">
-                    Professional trading sessions
+                    Educational trading sessions
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="relative">
               <p className="text-muted-foreground mb-4">
-                Participate in live trading sessions with market experts.
+                Participate in live educational sessions with market educators.
               </p>
               <Button
                 asChild

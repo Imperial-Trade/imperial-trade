@@ -34,7 +34,7 @@ const EducationPage: React.FC = () => {
         "Risk Management I: Capital preservation and position sizing basics",
         "Trading Psychology Fundamentals: Mental game and emotional control"
       ],
-      outcome: "You will understand market structure, read price action fluently, and most importantly, know how to protect your capital from day one. You'll finish with skills to place trades confidently and manage them effectively.",
+      outcome: "You will understand market structure, read price action fluently, and most importantly, know how to protect your capital from day one. You'll finish with analytical skills to evaluate trade setups confidently and manage risk effectively.",
       gradient: "from-blue-500/20 to-indigo-500/20",
       duration: "8-12 weeks",
       lessons: "25+ lessons"

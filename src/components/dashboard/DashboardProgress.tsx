@@ -31,8 +31,8 @@ export default function DashboardProgress() {
 
   const achievements = [
     { name: "First Trade", earned: true },
-    { name: "Profitable Week", earned: true },
-    { name: "Risk Master", earned: true },
+    { name: "Educational Progress", earned: true },
+    { name: "Risk Management", earned: true },
     { name: "Consistency King", earned: false },
     { name: "Elite Trader", earned: false }
   ];
@@ -116,14 +116,14 @@ export default function DashboardProgress() {
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               <div className="flex-1">
-                <p className="text-sm font-medium">Profitable trade on EURUSD</p>
+                <p className="text-sm font-medium">Educational analysis on EURUSD</p>
                 <p className="text-xs text-muted-foreground">Yesterday</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
               <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
               <div className="flex-1">
-                <p className="text-sm font-medium">Achieved "Risk Master" badge</p>
+                <p className="text-sm font-medium">Achieved "Risk Management" badge</p>
                 <p className="text-xs text-muted-foreground">3 days ago</p>
               </div>
             </div>

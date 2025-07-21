@@ -27,7 +27,7 @@ const SignalsPage: React.FC = () => {
       detailedFeatures: [
         "Exact Entry Price: Precise entry points down to the pip (e.g., 2342.50 for Gold)",
         "Hard Stop Loss: Clearly defined risk parameters for every single trade",
-        "Multi-TP Strategy: Up to 5 Take Profit levels for advanced trade management",
+        "Multi-TP Strategy: Up to 5 Take Profit levels for educational setup analysis",
         "Analyst's Commentary: Brief but potent notes explaining the 'why' behind each trade",
         "Risk-Reward Analysis: Pre-calculated ratios for informed decision making",
         "Trade Timeframe: Clear indication of expected trade duration and style"
@@ -102,7 +102,7 @@ const SignalsPage: React.FC = () => {
       icon: TrendingUp,
       title: "Earn While You Learn",
       description: "Develop analytical skills while simultaneously receiving a masterclass in market analysis and educational content.",
-      benefits: ["Educational purpose", "Skill development", "Learning potential"]
+      benefits: ["Educational purpose only", "Market analysis learning", "Pattern recognition development"]
     }
   ];
 

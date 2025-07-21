@@ -151,7 +151,7 @@ export default function TradeAnalyst() {
       setAnalysisProgress('Extracting trade data...');
 
       // Create comprehensive AI prompt for trade analysis - ISOLATED TO CURRENT UPLOAD ONLY
-      const masterPrompt = `
+      const educationalPrompt = `
         You are Marcus Aurelius combined with Warren Buffett's analytical mind and Ray Dalio's systematic thinking - analyzing trading performance.
 
         Context: I have uploaded ${validUrls.length} screenshots of my trading platform for THIS SPECIFIC ANALYSIS SESSION.
@@ -224,7 +224,7 @@ export default function TradeAnalyst() {
       setAnalysisProgress('Analyzing patterns and performance...');
 
       const aiResult = await InvokeLLM({
-        prompt: masterPrompt,
+        prompt: educationalPrompt,
         file_urls: validUrls
       });
 

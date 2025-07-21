@@ -63,7 +63,7 @@ export const ComplianceFooter: React.FC = () => {
             </p>
             <p className="max-w-md text-right">
               Not registered as a securities broker-dealer or investment adviser. 
-              All information is for educational purposes only.
+              All information is for educational purposes only. CFTC Rule 4.41 applies.
             </p>
           </div>
         </div>

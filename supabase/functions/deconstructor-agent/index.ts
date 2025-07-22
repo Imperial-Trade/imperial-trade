@@ -7,22 +7,80 @@ import { sanitizeText } from "../_shared/sanitizer.ts";
 
 interface DeconstructorRequest {
   user_id: string;
+  file_urls?: string[];
 }
 
-const SYSTEM_PROMPT = `You are "Helios," a quantitative performance analyst AI. Your function is to provide objective, data-driven analysis of a trader's performance, identifying statistical edges and behavioral patterns. Your tone is neutral, precise, and analytical.
-**Output Format:** Your analysis must be structured in Markdown with the following sections:
-### 1. Key Performance Metrics
-- Calculate and display basic metrics from the provided trade data (e.g., Win Rate, Average Win, Average Loss, Risk:Reward Ratio).
-### 2. Behavioral Pattern Analysis
-- Identify and list recurring behaviors based on trade data. Examples:
-  - "Pattern Identified: Tendency to exit profitable trades before price reaches the initial target."
-  - "Pattern Identified: Stop-loss is consistently widened on losing positions in the 'Resistance Breakout' setup."
-### 3. Journal-Sourced Blindspots
-- Scan the \`raw_journal_text\` for language indicating emotional decision-making. Flag these as potential blindspots.
-  - "Blindspot Flag: Journal entry for trade #X contains language ('frustrated', 'make the money back') consistent with 'Revenge Trading,' a behavior that statistically invalidates a trading edge."
-### 4. Performance Summary
-- Provide a concise, objective summary of the findings.
-**Execution Rule:** Do not provide advice, motivation, or predictions. Your sole purpose is to reflect the data back to the user in a structured, analytical format.`;
+// Helper function to convert image URL to base64
+async function imageUrlToBase64(url: string): Promise<string> {
+  try {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const base64String = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    return base64String;
+  } catch (error) {
+    console.error('Error converting image to base64:', error);
+    throw error;
+  }
+}
+
+const SYSTEM_PROMPT = `You are "Helios," a quantitative performance analyst AI specializing in educational trading analysis. Your function is to provide objective, data-driven analysis combining both visual trading screenshots and historical journal data. Your tone is neutral, precise, and analytical.
+
+**Analysis Scope:**
+- When screenshots are provided: Analyze chart patterns, setups, technical indicators, and visual trading decisions
+- Always analyze trading journal data for performance metrics and behavioral patterns
+- Combine visual and historical data for comprehensive educational insights
+
+**Output Format:** Your analysis must be structured as a JSON object with the following sections:
+
+{
+  "overall_performance": {
+    "summary": "Brief overall performance summary",
+    "screenshots_analyzed": number,
+    "trades_analyzed": number,
+    "risk_score": "Low/Medium/High",
+    "confidence_level": "percentage"
+  },
+  "performance_metrics": {
+    "win_rate": "percentage",
+    "profit_factor": "ratio",
+    "risk_reward_ratio": "ratio",
+    "max_drawdown": "percentage",
+    "execution_quality": "Poor/Fair/Good/Excellent"
+  },
+  "visual_analysis": {
+    "chart_patterns_identified": ["pattern1", "pattern2"],
+    "technical_indicators_used": ["indicator1", "indicator2"],
+    "setup_quality": "Poor/Fair/Good/Excellent",
+    "entry_timing": "Early/Optimal/Late",
+    "exit_strategy": "analysis of exit decisions"
+  },
+  "key_insights": [
+    "Insight 1: Behavioral observation",
+    "Insight 2: Pattern recognition",
+    "Insight 3: Decision-making analysis"
+  ],
+  "strengths": [
+    "Strength 1: Positive pattern identified",
+    "Strength 2: Good trading behavior",
+    "Strength 3: Consistent execution"
+  ],
+  "improvements": [
+    "Improvement 1: Area needing attention",
+    "Improvement 2: Behavioral adjustment needed",
+    "Improvement 3: Technical skill development"
+  ],
+  "recommendations": [
+    "1. Specific actionable recommendation",
+    "2. Educational development suggestion",
+    "3. Risk management improvement"
+  ],
+  "performance_evolution": {
+    "trend": "Improving/Declining/Stable",
+    "progression_summary": "Analysis of trading development over time"
+  }
+}
+
+**Execution Rule:** Do not provide financial advice, motivation, or predictions. Your sole purpose is to reflect the data back to the user in a structured, educational format for learning purposes only.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -37,10 +95,11 @@ serve(async (req) => {
       throw new Error("Missing required environment variables.");
     }
 
-    const { user_id }: DeconstructorRequest = await req.json();
+    const { user_id, file_urls = [] }: DeconstructorRequest = await req.json();
     if (!user_id) throw new Error("user_id is required.");
 
     console.log("Deconstructor Agent - Processing request for user:", user_id);
+    console.log("Deconstructor Agent - Screenshots to analyze:", file_urls.length);
 
     // Use service role key for database operations to bypass RLS
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -61,6 +120,7 @@ serve(async (req) => {
     const userName = userProfile?.display_name || userProfile?.real_name || "Trader";
     console.log("Deconstructor Agent - User name resolved:", userName);
 
+    // Fetch trading journal data
     const { data: trades, error: fetchError } = await supabase
       .from("trade_journal_entries")
       .select("asset_ticker, trade_type, entry_price, exit_price, notes, pnl, trade_date")
@@ -69,59 +129,76 @@ serve(async (req) => {
       .limit(20);
 
     if (fetchError) throw fetchError;
-    if (!trades || trades.length === 0) {
-      return new Response(
-        JSON.stringify({
-          reply: "No trades found to analyze. Please log some trades first.",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
 
-    const sanitizedTrades = trades.map((trade) => ({
+    const sanitizedTrades = trades?.map((trade) => ({
       ...trade,
       notes: sanitizeText(trade.notes),
-    }));
+    })) || [];
 
-    // Generate technical response (with IDs for logging)
-    const technicalPrompt = `Analyze these trades for patterns and blindspots: ${JSON.stringify(
-      sanitizedTrades
-    )}`;
-    const fullTechnicalPrompt = `${SYSTEM_PROMPT}\n\n--- DATA ---\n${technicalPrompt}`;
+    // Prepare prompt parts for Google AI
+    const promptParts = [];
+    
+    // Add system prompt
+    promptParts.push({
+      text: SYSTEM_PROMPT
+    });
 
-    // Generate user-readable response (with actual names)
-    const userReadablePrompt = `Analyze ${userName}'s recent trades for patterns and blindspots: ${JSON.stringify(
-      sanitizedTrades
-    )}`;
-    const fullUserReadablePrompt = `${SYSTEM_PROMPT}\n\n--- DATA ---\n${userReadablePrompt}`;
+    // Add screenshot analysis if images are provided
+    if (file_urls.length > 0) {
+      promptParts.push({
+        text: `\n\n--- VISUAL ANALYSIS ---\nAnalyze the following ${file_urls.length} trading screenshots for ${userName}:`
+      });
+
+      for (const imageUrl of file_urls) {
+        try {
+          const base64Image = await imageUrlToBase64(imageUrl);
+          promptParts.push({
+            inlineData: {
+              mimeType: "image/jpeg",
+              data: base64Image
+            }
+          });
+        } catch (error) {
+          console.error("Error processing image:", imageUrl, error);
+          promptParts.push({
+            text: `[Error processing screenshot: ${imageUrl}]`
+          });
+        }
+      }
+    }
+
+    // Add trading journal data analysis
+    promptParts.push({
+      text: `\n\n--- TRADING JOURNAL DATA ---\nAnalyze ${userName}'s trading journal entries: ${JSON.stringify(sanitizedTrades)}`
+    });
+
+    promptParts.push({
+      text: `\n\nProvide a comprehensive educational analysis in the specified JSON format, combining insights from both visual screenshots (if provided) and trading journal data.`
+    });
 
     const modelName = "gemini-1.5-pro-latest";
 
-    console.log("Deconstructor Agent - Generating technical response...");
-    const technicalResponse = await callGoogleAI(
+    console.log("Deconstructor Agent - Generating comprehensive analysis...");
+    const analysisResponse = await callGoogleAI(
       apiKey,
       modelName,
-      fullTechnicalPrompt
+      promptParts
     );
-    console.log("Deconstructor Agent - Technical response generated:", technicalResponse.substring(0, 100) + "...");
+    
+    console.log("Deconstructor Agent - Analysis response generated:", analysisResponse.substring(0, 200) + "...");
 
-    console.log("Deconstructor Agent - Generating user-readable response...");
-    const userReadableResponse = await callGoogleAI(
-      apiKey,
-      modelName,
-      fullUserReadablePrompt
-    );
-    console.log("Deconstructor Agent - User-readable response generated:", userReadableResponse.substring(0, 100) + "...");
-
-    // Store both versions in agent_outputs table
+    // Store analysis in agent_outputs table
     console.log("Deconstructor Agent - Storing agent output...");
     const { error: agentOutputError } = await supabase.from("agent_outputs").insert({
       user_id,
       agent_name: "Deconstructor",
-      output_text: technicalResponse,
-      user_readable_text: userReadableResponse,
+      output_text: analysisResponse,
+      user_readable_text: analysisResponse,
+      metadata: {
+        screenshots_analyzed: file_urls.length,
+        trades_analyzed: sanitizedTrades.length,
+        analysis_type: "comprehensive_pattern_analysis"
+      }
     });
 
     if (agentOutputError) {
@@ -130,7 +207,7 @@ serve(async (req) => {
       console.log("Deconstructor Agent - Agent output stored successfully");
     }
 
-    return new Response(JSON.stringify({ reply: userReadableResponse }), {
+    return new Response(JSON.stringify({ reply: analysisResponse }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

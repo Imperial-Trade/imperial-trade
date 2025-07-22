@@ -56,14 +56,16 @@ export const InvokeLLM = async ({ prompt, file_urls = [], user_id = null }) => {
   }
 };
 
-export const AnalyzeSetup = async ({ user_id }) => {
+export const AnalyzeSetup = async ({ user_id, file_urls = [] }) => {
   try {
     console.log('Invoking deconstructor agent for educational setup analysis');
+    console.log('Screenshots to analyze:', file_urls.length);
     
     // Call Supabase Edge Function for deconstructor analysis
     const { data, error } = await supabase.functions.invoke('deconstructor-agent', {
       body: {
-        user_id
+        user_id,
+        file_urls
       }
     });
     

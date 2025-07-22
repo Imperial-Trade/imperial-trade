@@ -44,8 +44,8 @@ serve(async (req) => {
     });
 
     const { data: trades, error: fetchError } = await supabase
-      .from("trades")
-      .select("asset, strategy_used, entry_price, exit_price, raw_journal_text")
+      .from("trade_journal_entries")
+      .select("asset_ticker, trade_type, entry_price, exit_price, notes, pnl, trade_date")
       .eq("user_id", user_id)
       .order("created_at", { ascending: false })
       .limit(20);
@@ -64,7 +64,7 @@ serve(async (req) => {
 
     const sanitizedTrades = trades.map((trade) => ({
       ...trade,
-      raw_journal_text: sanitizeText(trade.raw_journal_text),
+      notes: sanitizeText(trade.notes),
     }));
 
     const userActionPrompt = `Analyze these trades for patterns and blindspots: ${JSON.stringify(

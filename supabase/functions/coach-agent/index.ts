@@ -6,7 +6,7 @@ import { callGoogleAI } from "../_shared/google-ai-helper";
 interface CoachRequest {
   event_type: "LOG_TRADE" | "MODULE_COMPLETE";
   user_id: string;
-  trade_id?: number;
+  journal_entry_id?: string;
 }
 
 const SYSTEM_PROMPT = `You are "Zenith," an elite performance coach for professional traders. Your tone is composed, encouraging, and insightful. Your primary objective is to cultivate the mindset, discipline, and resilience required for long-term trading success.
@@ -30,14 +30,14 @@ serve(async (req) => {
       throw new Error("Missing required environment variables.");
     }
 
-    const { event_type, user_id, trade_id }: CoachRequest = await req.json();
+    const { event_type, user_id, journal_entry_id }: CoachRequest = await req.json();
     if (!event_type || !user_id) {
       throw new Error("event_type and user_id are required.");
     }
 
     let userActionPrompt = "";
     if (event_type === "LOG_TRADE") {
-      userActionPrompt = `The user (ID: ${user_id}) just logged a trade. Praise them for their discipline in journaling.`;
+      userActionPrompt = `The user (ID: ${user_id}) just logged a trade entry. Praise them for their discipline in journaling. Journal Entry ID: ${journal_entry_id}`;
     } else if (event_type === "MODULE_COMPLETE") {
       userActionPrompt = `The user (ID: ${user_id}) just completed a learning module. Congratulate them on their commitment to education.`;
     } else {
@@ -56,7 +56,6 @@ serve(async (req) => {
 
     await supabase.from("agent_outputs").insert({
       user_id,
-      trade_id: trade_id || null,
       agent_name: "Coach",
       output_text: coachResponse,
     });

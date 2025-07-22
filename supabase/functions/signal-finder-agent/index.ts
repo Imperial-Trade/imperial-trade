@@ -34,22 +34,22 @@ async function getWinningPatterns(
   userId: string
 ): Promise<any[]> {
   const { data: trades, error } = await supabase
-    .from("trades")
-    .select("strategy_used, entry_price, exit_price")
+    .from("trade_journal_entries")
+    .select("notes, entry_price, exit_price, pnl")
     .eq("user_id", userId)
     .not("exit_price", "is", null); // Only consider completed trades
 
   if (error) throw error;
   if (!trades) return [];
 
-  // Group trades by strategy
+  // Group trades by strategy extracted from notes
   const strategies = trades.reduce((acc, trade) => {
-    const strategy = trade.strategy_used || "Uncategorized";
+    const strategy = extractStrategyFromNotes(trade.notes) || "Uncategorized";
     if (!acc[strategy]) {
       acc[strategy] = { wins: 0, losses: 0 };
     }
-    if (trade.exit_price > trade.entry_price) {
-      // Simple win/loss logic for long trades
+    if (trade.pnl > 0) {
+      // Use P&L to determine wins/losses
       acc[strategy].wins++;
     } else {
       acc[strategy].losses++;
@@ -67,6 +67,20 @@ async function getWinningPatterns(
     }));
 
   return winningStrategies;
+}
+
+// Helper function to extract strategy from trade notes
+function extractStrategyFromNotes(notes: string | null): string | null {
+  if (!notes) return null;
+  
+  // Simple keyword extraction for common strategies
+  const strategies = ['breakout', 'reversal', 'trend', 'scalp', 'swing', 'momentum', 'support', 'resistance'];
+  for (const strategy of strategies) {
+    if (notes.toLowerCase().includes(strategy)) {
+      return strategy.charAt(0).toUpperCase() + strategy.slice(1);
+    }
+  }
+  return null;
 }
 
 // Placeholder for a real market data API call.

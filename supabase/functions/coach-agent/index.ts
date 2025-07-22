@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors";
-import { callGoogleAI } from "../_shared/google-ai-helper";
+import { corsHeaders } from "../_shared/cors.ts";
+import { callGoogleAI } from "../_shared/google-ai-helper.ts";
 
 interface CoachRequest {
   event_type: "LOG_TRADE" | "MODULE_COMPLETE";

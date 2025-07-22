@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TradeJournalEntry } from "@/api/entities";
 import { supabase } from "@/integrations/supabase/client";
-import { UploadFile, InvokeLLM } from "@/api/integrations";
+import { UploadFile } from "@/api/integrations";
 import { Calendar, BarChart3, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import TradingJournalApp from "./TradingJournalApp";
@@ -135,45 +135,38 @@ export default function TradingJournal() {
         }
       }
 
-      // Enhanced educational coaching analysis
+      // Save the educational entry first (this should always work)
+      const createdEntry = await TradeJournalEntry.create(educationalData, user.id);
+      toast.success("Educational entry saved successfully!");
+
+      // Enhanced educational coaching analysis using coach-agent
       try {
-        const setupOutcome = pnlValue >= 0 ? "educational positive" : "learning opportunity";
-        const educationalCoachingPrompt = `
-          EDUCATIONAL ENTRY LOGGED: ${data.asset_ticker} with learning result of $${pnlValue}
-          
-          EDUCATIONAL DETAILS:
-          - Asset: ${data.asset_ticker}
-          - Learning Result: $${pnlValue} (${setupOutcome} example)
-          - Educational Notes: "${data.notes}"
-          - Educational Screenshot: ${educationalData.screenshot_url ? "Provided" : "Not provided"}
-          
-          Please provide comprehensive educational coaching feedback following the 5-part learning structure:
-          1. Celebrate the effort to log this educational entry
-          2. Recognize any learning patterns, consistency, or educational milestones
-          3. Provide constructive educational insights about the setup analysis
-          4. Reinforce their developing educational trader identity
-          5. Encourage continued learning growth and consistency in education
-          
-          Focus on educational value, learning opportunities, and skill development.
-        `;
-        
         toast.info("Getting personalized educational coaching feedback...");
-        const aiResult = await InvokeLLM({
-          prompt: educationalCoachingPrompt,
-          file_urls: educationalData.screenshot_url ? [educationalData.screenshot_url] : [],
-          user_id: user.id // Pass user_id for enhanced educational coaching context
+        
+        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('coach-agent', {
+          body: {
+            event_type: "LOG_TRADE",
+            user_id: user.id,
+            journal_entry_id: createdEntry.id
+          }
         });
-        educationalData.ai_positive_feedback = aiResult;
-        toast.success("Personalized educational coaching feedback generated!");
+
+        if (coachError) {
+          console.error("Coach agent error:", coachError);
+          toast.error("Educational coaching failed, but entry was saved");
+        } else {
+          // Update the journal entry with the coaching feedback
+          await TradeJournalEntry.update(createdEntry.id, {
+            ai_positive_feedback: coachResponse.reply
+          });
+          toast.success("Personalized educational coaching feedback generated!");
+        }
       } catch (aiError) {
         console.error("Educational coaching analysis failed:", aiError);
-        toast.error("Educational coaching failed, but entry will still be saved");
-        // Continue without AI feedback - don't block the educational entry save
+        toast.error("Educational coaching failed, but entry was saved");
+        // Continue - don't block since the educational entry is already saved
       }
 
-      // Save the educational entry (this should always work)
-      await TradeJournalEntry.create(educationalData, user.id);
-      toast.success("Educational entry saved successfully!");
       loadEntries();
 
     } catch (error) {

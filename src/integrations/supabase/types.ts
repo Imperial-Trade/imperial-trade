@@ -140,6 +140,7 @@ export type Database = {
           output_text: string
           updated_at: string
           user_id: string
+          user_readable_text: string | null
         }
         Insert: {
           agent_name: string
@@ -149,6 +150,7 @@ export type Database = {
           output_text: string
           updated_at?: string
           user_id: string
+          user_readable_text?: string | null
         }
         Update: {
           agent_name?: string
@@ -158,6 +160,7 @@ export type Database = {
           output_text?: string
           updated_at?: string
           user_id?: string
+          user_readable_text?: string | null
         }
         Relationships: []
       }

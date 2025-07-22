@@ -38,15 +38,39 @@ serve(async (req) => {
 
     console.log("Coach Agent - Processing request:", { event_type, user_id, journal_entry_id });
 
+    // Use service role key for database operations to bypass RLS
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch user profile information for personalized feedback
+    console.log("Coach Agent - Fetching user profile...");
+    const { data: userProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("real_name, display_name")
+      .eq("id", user_id)
+      .single();
+
+    if (profileError) {
+      console.error("Coach Agent - Error fetching user profile:", profileError);
+      throw new Error("Failed to fetch user profile information");
+    }
+
+    const userName = userProfile?.display_name || userProfile?.real_name || "Trader";
+    console.log("Coach Agent - User name resolved:", userName);
+
     let userActionPrompt = "";
+    let userReadablePrompt = "";
+    
     if (event_type === "LOG_TRADE") {
       userActionPrompt = `The user (ID: ${user_id}) just logged a trade entry. Praise them for their discipline in journaling. Journal Entry ID: ${journal_entry_id}`;
+      userReadablePrompt = `${userName} just logged a trade entry. Praise them for their discipline in journaling their recent trade.`;
     } else if (event_type === "MODULE_COMPLETE") {
       userActionPrompt = `The user (ID: ${user_id}) just completed a learning module. Congratulate them on their commitment to education.`;
+      userReadablePrompt = `${userName} just completed a learning module. Congratulate them on their commitment to education.`;
     } else {
       throw new Error(`Unsupported event_type: ${event_type}`);
     }
 
+    // Generate technical response (with IDs for logging)
     const fullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userActionPrompt}`;
     const modelName = "gemini-1.5-flash-latest";
 
@@ -54,15 +78,19 @@ serve(async (req) => {
     const coachResponse = await callGoogleAI(apiKey, modelName, fullPrompt);
     console.log("Coach Agent - AI response generated:", coachResponse.substring(0, 100) + "...");
 
-    // Use service role key for database operations to bypass RLS
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Generate user-readable response (with actual names)
+    const userReadableFullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userReadablePrompt}`;
+    console.log("Coach Agent - Generating user-readable response...");
+    const userReadableResponse = await callGoogleAI(apiKey, modelName, userReadableFullPrompt);
+    console.log("Coach Agent - User-readable response generated:", userReadableResponse.substring(0, 100) + "...");
 
-    // Store the coach output in agent_outputs table
+    // Store the coach output in agent_outputs table with both versions
     console.log("Coach Agent - Storing agent output...");
     const { error: agentOutputError } = await supabase.from("agent_outputs").insert({
       user_id,
       agent_name: "Coach",
       output_text: coachResponse,
+      user_readable_text: userReadableResponse,
     });
 
     if (agentOutputError) {
@@ -78,7 +106,7 @@ serve(async (req) => {
       try {
         const { data: updateResult, error: updateError } = await supabase
           .from("trade_journal_entries")
-          .update({ ai_positive_feedback: coachResponse })
+          .update({ ai_positive_feedback: userReadableResponse })
           .eq("id", journal_entry_id)
           .eq("user_id", user_id) // Extra security check
           .select();
@@ -117,7 +145,7 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ reply: coachResponse }), {
+    return new Response(JSON.stringify({ reply: userReadableResponse }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

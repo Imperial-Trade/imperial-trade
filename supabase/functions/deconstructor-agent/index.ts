@@ -13,13 +13,38 @@ interface DeconstructorRequest {
 // Helper function to convert image URL to base64
 async function imageUrlToBase64(url: string): Promise<string> {
   try {
+    console.log('Converting image to base64:', url);
     const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+    
     const arrayBuffer = await response.arrayBuffer();
     const base64String = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    console.log('Image converted to base64 successfully, size:', base64String.length);
     return base64String;
   } catch (error) {
     console.error('Error converting image to base64:', error);
     throw error;
+  }
+}
+
+// Helper function to detect MIME type from URL
+function getMimeTypeFromUrl(url: string): string {
+  const extension = url.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'gif':
+      return 'image/gif';
+    default:
+      return 'image/jpeg'; // Default fallback
   }
 }
 
@@ -92,11 +117,15 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!apiKey || !supabaseUrl || !supabaseServiceKey) {
+      console.error("Missing required environment variables");
       throw new Error("Missing required environment variables.");
     }
 
     const { user_id, file_urls = [] }: DeconstructorRequest = await req.json();
-    if (!user_id) throw new Error("user_id is required.");
+    if (!user_id) {
+      console.error("user_id is required");
+      throw new Error("user_id is required.");
+    }
 
     console.log("Deconstructor Agent - Processing request for user:", user_id);
     console.log("Deconstructor Agent - Screenshots to analyze:", file_urls.length);
@@ -121,6 +150,7 @@ serve(async (req) => {
     console.log("Deconstructor Agent - User name resolved:", userName);
 
     // Fetch trading journal data
+    console.log("Deconstructor Agent - Fetching trading journal data...");
     const { data: trades, error: fetchError } = await supabase
       .from("trade_journal_entries")
       .select("asset_ticker, trade_type, entry_price, exit_price, notes, pnl, trade_date")
@@ -128,17 +158,22 @@ serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(20);
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error("Deconstructor Agent - Error fetching trades:", fetchError);
+      throw fetchError;
+    }
 
     const sanitizedTrades = trades?.map((trade) => ({
       ...trade,
       notes: sanitizeText(trade.notes),
     })) || [];
 
-    // Prepare the content for Google AI API
+    console.log("Deconstructor Agent - Trades fetched:", sanitizedTrades.length);
+
+    // Build the contents array for Google AI API
     const contents = [];
     
-    // Create the main content part with system prompt and context
+    // Create the main text content
     let mainContent = SYSTEM_PROMPT;
     
     // Add screenshot analysis section if images are provided
@@ -151,40 +186,47 @@ serve(async (req) => {
     
     mainContent += `\n\nProvide a comprehensive educational analysis in the specified JSON format, combining insights from both visual screenshots (if provided) and trading journal data.`;
 
-    // Start building the parts array for this content
+    // Start with the text part
     const parts = [{ text: mainContent }];
 
     // Add image parts if screenshots are provided
     if (file_urls.length > 0) {
+      console.log("Deconstructor Agent - Processing images...");
       for (const imageUrl of file_urls) {
         try {
+          console.log("Deconstructor Agent - Processing image:", imageUrl);
           const base64Image = await imageUrlToBase64(imageUrl);
+          const mimeType = getMimeTypeFromUrl(imageUrl);
+          
           parts.push({
             inlineData: {
-              mimeType: "image/jpeg",
+              mimeType: mimeType,
               data: base64Image
             }
           });
+          
+          console.log("Deconstructor Agent - Image processed successfully:", imageUrl);
         } catch (error) {
-          console.error("Error processing image:", imageUrl, error);
+          console.error("Deconstructor Agent - Error processing image:", imageUrl, error);
+          // Add error placeholder instead of failing completely
           parts.push({
-            text: `[Error processing screenshot: ${imageUrl}]`
+            text: `[Error processing screenshot: ${imageUrl} - ${error.message}]`
           });
         }
       }
     }
 
-    // Create the contents array with proper structure
+    // Create the contents array in the format expected by Google AI
     contents.push({
-      role: "user",
       parts: parts
     });
 
     const modelName = "gemini-1.5-pro-latest";
 
-    console.log("Deconstructor Agent - Generating comprehensive analysis...");
-    console.log("Contents structure:", JSON.stringify(contents, null, 2));
+    console.log("Deconstructor Agent - Calling Google AI with contents array...");
+    console.log("Deconstructor Agent - Contents structure:", JSON.stringify(contents, null, 2));
     
+    // Use the updated helper function with the contents array
     const analysisResponse = await callGoogleAI(
       apiKey,
       modelName,
@@ -218,8 +260,12 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("Deconstructor Agent Error:", error.message);
+    console.error("Deconstructor Agent Stack:", error.stack);
     return new Response(
-      JSON.stringify({ error: `Deconstructor Agent failed: ${error.message}` }),
+      JSON.stringify({ 
+        error: `Deconstructor Agent failed: ${error.message}`,
+        details: error.stack 
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

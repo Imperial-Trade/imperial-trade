@@ -1,8 +1,7 @@
-
 import React, { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, Brain, FileImage, Loader2, CheckCircle, AlertCircle, X, Plus, BarChart3, Lightbulb, TrendingUp, Target, Users, Award, Camera } from 'lucide-react';
+import { Upload, Brain, FileImage, Loader2, CheckCircle, AlertCircle, X, Plus, BarChart3, Lightbulb, TrendingUp, Target, Users, Award, Camera, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnalyzeSetup, UploadFile } from '@/api/integrations';
 import { toast } from 'sonner';
@@ -58,6 +57,7 @@ export default function TradeAnalyst() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [rawResult, setRawResult] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
   const [analysisHistory, setAnalysisHistory] = useState<any[]>([]);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -131,7 +131,7 @@ export default function TradeAnalyst() {
     });
   }, []);
 
-  const analyzeTradePerformance = async () => {
+  const analyzeTradePerformance = async (isRetry = false) => {
     if (!user) {
       setError('Please sign in to access educational analysis');
       return;
@@ -145,7 +145,13 @@ export default function TradeAnalyst() {
         .filter(f => f.uploaded && f.url)
         .map(f => f.url);
 
-      toast.info("Analyzing your trading patterns and screenshots...");
+      console.log('Starting analysis with files:', uploadedFileUrls);
+      
+      if (uploadedFileUrls.length === 0) {
+        toast.info("Analyzing your trading journal data...");
+      } else {
+        toast.info(`Analyzing your trading patterns with ${uploadedFileUrls.length} screenshot(s)...`);
+      }
 
       // Call the deconstructor agent with uploaded file URLs
       const analysisResult = await AnalyzeSetup({ 
@@ -153,32 +159,52 @@ export default function TradeAnalyst() {
         file_urls: uploadedFileUrls 
       });
 
+      console.log('Analysis result received:', analysisResult);
       setRawResult(analysisResult);
 
       // Try to parse JSON result
       try {
         const parsedResult = JSON.parse(analysisResult);
         setResult(parsedResult);
+        console.log('Analysis result parsed successfully:', parsedResult);
       } catch (parseError) {
         console.error('Failed to parse analysis result as JSON:', parseError);
-        // Fallback to raw text display
+        // Fallback to structured display with raw text
         setResult({
           overall_performance: {
-            summary: analysisResult.substring(0, 200) + '...'
-          }
+            summary: analysisResult.substring(0, 300) + (analysisResult.length > 300 ? '...' : ''),
+            screenshots_analyzed: uploadedFileUrls.length,
+            trades_analyzed: 0,
+            risk_score: 'Unknown',
+            confidence_level: 'N/A'
+          },
+          key_insights: ['Raw analysis result available in complete analysis section'],
+          recommendations: ['Review the complete analysis below for detailed insights']
         });
       }
 
       setCurrentView('results');
+      setRetryCount(0); // Reset retry count on success
       toast.success("Educational pattern analysis completed!");
       
     } catch (error) {
       console.error('Educational analysis error:', error);
-      setError('Educational analysis failed. Please try again.');
-      toast.error("Educational analysis failed");
+      const errorMessage = error.message || 'Educational analysis failed. Please try again.';
+      setError(errorMessage);
+      
+      if (isRetry) {
+        setRetryCount(prev => prev + 1);
+        toast.error(`Analysis failed (Attempt ${retryCount + 1}): ${errorMessage}`);
+      } else {
+        toast.error("Educational analysis failed");
+      }
     }
     
     setIsAnalyzing(false);
+  };
+
+  const handleRetry = () => {
+    analyzeTradePerformance(true);
   };
 
   const backToUpload = () => {
@@ -186,6 +212,7 @@ export default function TradeAnalyst() {
     setResult(null);
     setRawResult(null);
     setError('');
+    setRetryCount(0);
   };
 
   const renderUploadView = () => (
@@ -322,34 +349,56 @@ export default function TradeAnalyst() {
             </div>
           </div>
 
-          <Button 
-            onClick={analyzeTradePerformance} 
-            disabled={!user || isAnalyzing}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Analyzing Trade Performance...
-              </>
-            ) : (
-              <>
-                <Brain className="w-5 h-5 mr-2" />
-                Analyze My Trade Performance
-              </>
-            )}
-          </Button>
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg flex items-center gap-2"
+          <div className="space-y-4">
+            <Button 
+              onClick={() => analyzeTradePerformance(false)} 
+              disabled={!user || isAnalyzing}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3"
             >
-              <AlertCircle className="w-4 h-4" />
-              {error}
-            </motion.div>
-          )}
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Analyzing Trade Performance...
+                </>
+              ) : (
+                <>
+                  <Brain className="w-5 h-5 mr-2" />
+                  Analyze My Trade Performance
+                </>
+              )}
+            </Button>
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="font-medium">Analysis Failed</span>
+                </div>
+                <p className="text-sm mb-3">{error}</p>
+                {retryCount < 3 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetry}
+                    disabled={isAnalyzing}
+                    className="border-red-500/20 text-red-400 hover:bg-red-500/10"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Try Again {retryCount > 0 && `(${retryCount}/3)`}
+                  </Button>
+                )}
+                {retryCount >= 3 && (
+                  <p className="text-xs text-red-400/80">
+                    Maximum retry attempts reached. Please try again later or contact support.
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

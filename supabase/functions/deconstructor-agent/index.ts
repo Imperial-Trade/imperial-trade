@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -30,18 +31,35 @@ serve(async (req) => {
   try {
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!apiKey || !supabaseUrl || !supabaseAnonKey) {
+    if (!apiKey || !supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing required environment variables.");
     }
 
     const { user_id }: DeconstructorRequest = await req.json();
     if (!user_id) throw new Error("user_id is required.");
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: req.headers.get("Authorization")! } },
-    });
+    console.log("Deconstructor Agent - Processing request for user:", user_id);
+
+    // Use service role key for database operations to bypass RLS
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch user profile information for personalized feedback
+    console.log("Deconstructor Agent - Fetching user profile...");
+    const { data: userProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("real_name, display_name")
+      .eq("id", user_id)
+      .single();
+
+    if (profileError) {
+      console.error("Deconstructor Agent - Error fetching user profile:", profileError);
+      throw new Error("Failed to fetch user profile information");
+    }
+
+    const userName = userProfile?.display_name || userProfile?.real_name || "Trader";
+    console.log("Deconstructor Agent - User name resolved:", userName);
 
     const { data: trades, error: fetchError } = await supabase
       .from("trade_journal_entries")
@@ -67,26 +85,52 @@ serve(async (req) => {
       notes: sanitizeText(trade.notes),
     }));
 
-    const userActionPrompt = `Analyze these trades for patterns and blindspots: ${JSON.stringify(
+    // Generate technical response (with IDs for logging)
+    const technicalPrompt = `Analyze these trades for patterns and blindspots: ${JSON.stringify(
       sanitizedTrades
     )}`;
-    const fullPrompt = `${SYSTEM_PROMPT}\n\n--- DATA ---\n${userActionPrompt}`;
+    const fullTechnicalPrompt = `${SYSTEM_PROMPT}\n\n--- DATA ---\n${technicalPrompt}`;
+
+    // Generate user-readable response (with actual names)
+    const userReadablePrompt = `Analyze ${userName}'s recent trades for patterns and blindspots: ${JSON.stringify(
+      sanitizedTrades
+    )}`;
+    const fullUserReadablePrompt = `${SYSTEM_PROMPT}\n\n--- DATA ---\n${userReadablePrompt}`;
 
     const modelName = "gemini-1.5-pro-latest";
 
-    const deconstructorResponse = await callGoogleAI(
+    console.log("Deconstructor Agent - Generating technical response...");
+    const technicalResponse = await callGoogleAI(
       apiKey,
       modelName,
-      fullPrompt
+      fullTechnicalPrompt
     );
+    console.log("Deconstructor Agent - Technical response generated:", technicalResponse.substring(0, 100) + "...");
 
-    await supabase.from("agent_outputs").insert({
+    console.log("Deconstructor Agent - Generating user-readable response...");
+    const userReadableResponse = await callGoogleAI(
+      apiKey,
+      modelName,
+      fullUserReadablePrompt
+    );
+    console.log("Deconstructor Agent - User-readable response generated:", userReadableResponse.substring(0, 100) + "...");
+
+    // Store both versions in agent_outputs table
+    console.log("Deconstructor Agent - Storing agent output...");
+    const { error: agentOutputError } = await supabase.from("agent_outputs").insert({
       user_id,
       agent_name: "Deconstructor",
-      output_text: deconstructorResponse,
+      output_text: technicalResponse,
+      user_readable_text: userReadableResponse,
     });
 
-    return new Response(JSON.stringify({ reply: deconstructorResponse }), {
+    if (agentOutputError) {
+      console.error("Deconstructor Agent - Error storing agent output:", agentOutputError);
+    } else {
+      console.log("Deconstructor Agent - Agent output stored successfully");
+    }
+
+    return new Response(JSON.stringify({ reply: userReadableResponse }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
   createClient,
@@ -105,18 +106,35 @@ serve(async (req) => {
   try {
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!apiKey || !supabaseUrl || !supabaseAnonKey) {
+    if (!apiKey || !supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing required environment variables.");
     }
 
     const { user_id }: SignalFinderRequest = await req.json();
     if (!user_id) throw new Error("user_id is required.");
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: req.headers.get("Authorization")! } },
-    });
+    console.log("Signal Finder Agent - Processing request for user:", user_id);
+
+    // Use service role key for database operations to bypass RLS
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch user profile information for personalized feedback
+    console.log("Signal Finder Agent - Fetching user profile...");
+    const { data: userProfile, error: profileError } = await supabase
+      .from("profiles")
+      .select("real_name, display_name")
+      .eq("id", user_id)
+      .single();
+
+    if (profileError) {
+      console.error("Signal Finder Agent - Error fetching user profile:", profileError);
+      throw new Error("Failed to fetch user profile information");
+    }
+
+    const userName = userProfile?.display_name || userProfile?.real_name || "Trader";
+    console.log("Signal Finder Agent - User name resolved:", userName);
 
     const winningPatterns = await getWinningPatterns(supabase, user_id);
     if (winningPatterns.length === 0) {
@@ -128,9 +146,10 @@ serve(async (req) => {
       );
     }
 
+    // Fetch latest Deconstructor analysis using user_readable_text
     const { data: latestAnalysis } = await supabase
       .from("agent_outputs")
-      .select("output_text")
+      .select("output_text, user_readable_text")
       .eq("user_id", user_id)
       .eq("agent_name", "Deconstructor")
       .order("created_at", { ascending: false })
@@ -139,7 +158,8 @@ serve(async (req) => {
 
     const liveMarketData = await fetchMarketData();
 
-    const prompt = `
+    // Generate technical response (with IDs for logging)
+    const technicalPrompt = `
       Context from Deconstructor: ${
         latestAnalysis?.output_text || "No recent analysis available."
       }
@@ -147,15 +167,55 @@ serve(async (req) => {
       Live Market Data: ${JSON.stringify(liveMarketData)}
       Based on all of the above, identify any opportunity flags.
     `;
-    const fullPrompt = `${SYSTEM_PROMPT}\n\n--- CONTEXT & DATA ---\n${prompt}`;
+    const fullTechnicalPrompt = `${SYSTEM_PROMPT}\n\n--- CONTEXT & DATA ---\n${technicalPrompt}`;
+
+    // Generate user-readable response (with actual names)
+    const userReadablePrompt = `
+      Context from ${userName}'s Recent Analysis: ${
+        latestAnalysis?.user_readable_text || "No recent analysis available."
+      }
+      ${userName}'s Winning Patterns: ${JSON.stringify(winningPatterns)}
+      Live Market Data: ${JSON.stringify(liveMarketData)}
+      Based on all of the above, identify any opportunity flags for ${userName}.
+    `;
+    const fullUserReadablePrompt = `${SYSTEM_PROMPT}\n\n--- CONTEXT & DATA ---\n${userReadablePrompt}`;
 
     const modelName = "gemini-1.5-pro-latest";
 
-    const signalResponse = await callGoogleAI(apiKey, modelName, fullPrompt);
+    console.log("Signal Finder Agent - Generating technical response...");
+    const technicalResponse = await callGoogleAI(apiKey, modelName, fullTechnicalPrompt);
+    console.log("Signal Finder Agent - Technical response generated:", technicalResponse.substring(0, 100) + "...");
 
-    return new Response(JSON.stringify({ reply: JSON.parse(signalResponse) }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    console.log("Signal Finder Agent - Generating user-readable response...");
+    const userReadableResponse = await callGoogleAI(apiKey, modelName, fullUserReadablePrompt);
+    console.log("Signal Finder Agent - User-readable response generated:", userReadableResponse.substring(0, 100) + "...");
+
+    // Store both versions in agent_outputs table
+    console.log("Signal Finder Agent - Storing agent output...");
+    const { error: agentOutputError } = await supabase.from("agent_outputs").insert({
+      user_id,
+      agent_name: "Signal Finder",
+      output_text: technicalResponse,
+      user_readable_text: userReadableResponse,
     });
+
+    if (agentOutputError) {
+      console.error("Signal Finder Agent - Error storing agent output:", agentOutputError);
+    } else {
+      console.log("Signal Finder Agent - Agent output stored successfully");
+    }
+
+    // Return user-readable response parsed as JSON
+    try {
+      return new Response(JSON.stringify({ reply: JSON.parse(userReadableResponse) }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (parseError) {
+      console.error("Signal Finder Agent - Failed to parse user-readable response as JSON, returning as text");
+      return new Response(JSON.stringify({ reply: { status: "Error", message: userReadableResponse } }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   } catch (error) {
     console.error("Signal Finder Agent Error:", error.message);
     if (error instanceof SyntaxError) {

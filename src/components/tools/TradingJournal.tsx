@@ -14,18 +14,8 @@ import { compressImage, validateImageFile } from "@/utils/imageCompression";
 import { toast } from "sonner";
 import { ComplianceNotice, EducationalBadge } from "@/components/compliance/ComplianceNotice";
 
-interface JournalEntry {
-  id: string;
-  asset_ticker: string;
-  pnl: number;
-  notes?: string;
-  trade_date: string;
-  ai_positive_feedback?: string;
-  screenshot_url?: string;
-}
-
 export default function TradingJournal() {
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [entries, setEntries] = useState<TradeJournalEntry[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);

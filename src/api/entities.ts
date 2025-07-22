@@ -177,106 +177,153 @@ export class TradeJournalEntry {
   }
 }
 
-export class EducationalModule {
+export class User {
+  constructor(
+    public id: string,
+    public email: string,
+    public full_name?: string
+  ) {}
+
+  static async me(): Promise<User | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("real_name")
+      .eq("id", user.id)
+      .single();
+    
+    return new User(user.id, user.email || '', profile?.real_name);
+  }
+}
+
+export class AccountRequest {
+  constructor(
+    public id: string,
+    public full_name: string,
+    public email: string,
+    public account_type: string,
+    public status: string,
+    public created_at?: string,
+    public updated_at?: string,
+    public reason?: string,
+    public rejection_reason?: string,
+    public resubmission_count?: number
+  ) {}
+
+  static async list(): Promise<AccountRequest[]> {
+    const { data, error } = await supabase
+      .from("account_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch account requests: ${error.message}`);
+    }
+
+    return data.map(req => new AccountRequest(
+      req.id,
+      req.full_name,
+      req.email,
+      req.account_type,
+      req.status,
+      req.created_at,
+      req.updated_at,
+      req.reason,
+      req.rejection_reason,
+      req.resubmission_count
+    ));
+  }
+}
+
+export class AuditLog {
+  constructor(
+    public id: string,
+    public admin_email: string,
+    public action: string,
+    public target_entity: string,
+    public target_id: string,
+    public details?: any,
+    public created_at?: string
+  ) {}
+
+  static async create(data: {
+    admin_email: string;
+    action: string;
+    target_entity: string;
+    target_id: string;
+    details?: any;
+  }): Promise<AuditLog> {
+    const { data: result, error } = await supabase
+      .from("audit_logs")
+      .insert([data])
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create audit log: ${error.message}`);
+    }
+
+    return new AuditLog(
+      result.id,
+      result.admin_email,
+      result.action,
+      result.target_entity,
+      result.target_id,
+      result.details,
+      result.created_at
+    );
+  }
+}
+
+export class AthenaInteraction {
   constructor(
     public id: string,
     public user_id: string,
-    public module_name: string,
-    public completed: boolean,
+    public user_email: string,
+    public prompt: string,
+    public response: string,
+    public context?: string,
+    public feedback_score?: number,
+    public interaction_time?: string,
     public created_at?: string,
     public updated_at?: string
   ) {}
 
-  static async list(user_id: string): Promise<EducationalModule[]> {
-    const { data, error } = await supabase
-      .from("educational_modules")
-      .select("*")
-      .eq("user_id", user_id);
-
-    if (error) {
-      console.error("Error fetching educational modules:", error);
-      throw new Error(`Failed to fetch educational modules: ${error.message}`);
-    }
-
-    return data.map(
-      (module) =>
-        new EducationalModule(
-          module.id,
-          module.user_id,
-          module.module_name,
-          module.completed,
-          module.created_at,
-          module.updated_at
-        )
-    );
-  }
-
-  static async create(
-    data: {
-      module_name: string;
-      completed: boolean;
-    },
-    user_id: string
-  ): Promise<EducationalModule> {
+  static async create(data: {
+    user_id: string;
+    user_email: string;
+    prompt: string;
+    response: string;
+    context?: string;
+    feedback_score?: number;
+  }): Promise<AthenaInteraction> {
     const { data: result, error } = await supabase
-      .from("educational_modules")
-      .insert([{ user_id, module_name: data.module_name, completed: data.completed }])
+      .from("athena_interactions")
+      .insert([{
+        ...data,
+        interaction_time: new Date().toISOString()
+      }])
       .select()
       .single();
 
     if (error) {
-      console.error("Error creating educational module:", error);
-      throw new Error(`Failed to create educational module: ${error.message}`);
+      throw new Error(`Failed to create Athena interaction: ${error.message}`);
     }
 
-    return new EducationalModule(
+    return new AthenaInteraction(
       result.id,
       result.user_id,
-      result.module_name,
-      result.completed,
+      result.user_email,
+      result.prompt,
+      result.response,
+      result.context,
+      result.feedback_score,
+      result.interaction_time,
       result.created_at,
       result.updated_at
     );
-  }
-
-  static async update(
-    id: string,
-    data: {
-      module_name?: string;
-      completed?: boolean;
-    }
-  ): Promise<EducationalModule> {
-    const { data: result, error } = await supabase
-      .from("educational_modules")
-      .update(data)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error updating educational module:", error);
-      throw new Error(`Failed to update educational module: ${error.message}`);
-    }
-
-    return new EducationalModule(
-      result.id,
-      result.user_id,
-      result.module_name,
-      result.completed,
-      result.created_at,
-      result.updated_at
-    );
-  }
-
-  static async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from("educational_modules")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      console.error("Error deleting educational module:", error);
-      throw new Error(`Failed to delete educational module: ${error.message}`);
-    }
   }
 }
+

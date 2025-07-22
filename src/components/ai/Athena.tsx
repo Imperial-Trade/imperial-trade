@@ -507,6 +507,7 @@ export default function Athena({ isOpen, onClose, autoListen }) {
       // Log interaction with enhanced context
       if (currentUser) {
         await AthenaInteraction.create({
+          user_id: currentUser.id,
           user_email: currentUser.email,
           prompt: messageText,
           response: aiResponseText,

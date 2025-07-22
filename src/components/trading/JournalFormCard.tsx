@@ -1,11 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Upload, DollarSign, FileImage, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Upload, DollarSign, FileImage, X, Search } from 'lucide-react';
+import { useAssetSearch } from '@/hooks/useAssetSearch';
 import { motion } from 'framer-motion';
 import { ComplianceNotice, EducationalBadge } from '@/components/compliance/ComplianceNotice';
 
@@ -27,6 +29,52 @@ export default function JournalFormCard({ onSubmit, isSubmitting }: JournalFormC
   });
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string>('');
+  
+  // Asset selection states
+  const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+  const dropdownTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  // Use asset search hook
+  const { suggestions, saveRecentAsset } = useAssetSearch({ 
+    query: formData.asset_ticker,
+    delay: 300 
+  });
+
+  // Asset selection handlers
+  const handleAssetSelect = useCallback((asset: string) => {
+    handleInputChange('asset_ticker', asset);
+    saveRecentAsset(asset);
+    setShowAssetDropdown(false);
+  }, [saveRecentAsset]);
+
+  const handleAssetFocus = useCallback(() => {
+    setShowAssetDropdown(true);
+  }, []);
+
+  const handleAssetBlur = useCallback(() => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setShowAssetDropdown(false);
+    }, 300);
+  }, []);
+
+  const handleDropdownMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+    }
+  }, []);
+
+  // Get asset badge for visual categorization
+  const getAssetBadge = useCallback((asset: string) => {
+    if (['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD'].some(pair => asset.includes(pair.replace('/', '')))) 
+      return { label: "FX", variant: "outline" as const };
+    if (['XAU/USD', 'XAG/USD', 'WTI/USD', 'BRENT/USD'].some(comm => asset.includes(comm.replace('/', '')))) 
+      return { label: "Gold", variant: "outline" as const };
+    if (['SPX500', 'US30', 'NAS100', 'UK100', 'DAX30', 'JP225'].includes(asset)) 
+      return { label: "Index", variant: "outline" as const };
+    if (asset.includes("USDT")) return { label: "Crypto", variant: "outline" as const };
+    return null;
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -94,14 +142,64 @@ export default function JournalFormCard({ onSubmit, isSubmitting }: JournalFormC
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="asset">Educational Asset</Label>
-              <Input
-                id="asset"
-                placeholder="e.g., EURUSD, XAUUSD (educational example)"
-                value={formData.asset_ticker}
-                onChange={(e) => handleInputChange('asset_ticker', e.target.value)}
-                className="bg-background"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="asset"
+                  placeholder="e.g., EURUSD, XAUUSD (educational example)"
+                  value={formData.asset_ticker}
+                  onChange={(e) => handleInputChange('asset_ticker', e.target.value)}
+                  onFocus={handleAssetFocus}
+                  onBlur={handleAssetBlur}
+                  className="bg-background pr-8"
+                  required
+                />
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+
+                {showAssetDropdown && (
+                  <div
+                    className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-[100] max-h-48 overflow-y-auto"
+                    onMouseDown={handleDropdownMouseDown}
+                  >
+                    {suggestions && suggestions.length > 0 ? (
+                      <div className="p-1">
+                        {!formData.asset_ticker && (
+                          <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
+                            Recent Educational Assets
+                          </div>
+                        )}
+                        {suggestions.map((asset) => {
+                          const badge = getAssetBadge(asset);
+                          return (
+                            <button
+                              key={asset}
+                              type="button"
+                              onClick={() => handleAssetSelect(asset)}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 rounded-sm transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium">{asset}</span>
+                                {badge && (
+                                  <Badge variant={badge.variant} className="text-xs h-5 px-2">
+                                    {badge.label}
+                                  </Badge>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : formData.asset_ticker ? (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        No matches found
+                      </div>
+                    ) : (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        Start typing to see educational suggestions
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="space-y-2">

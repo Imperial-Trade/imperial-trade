@@ -27,7 +27,7 @@ const coreProducts = [
   {
     icon: BookOpen,
     title: "Education: The Master's Curriculum",
-    description: "Education is not just information; it's the systematic installation of an educational trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned market educator.",
+    description: "Education is not just information; it's the systematic installation of an educational trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned market educator. All content is for educational purposes only.",
     features: [
       "The Foundation Pathway: Market Mechanics, Advanced Candlestick Interpretation, Charting Essentials, Risk Management I, Trading Psychology Fundamentals",
       "The Specialist Pathway: Institutional Concepts (Order Blocks, Fair Value Gaps), Liquidity Engineering, Advanced Market Structure, Risk Management II",

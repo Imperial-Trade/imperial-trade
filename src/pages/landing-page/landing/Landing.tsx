@@ -5,6 +5,7 @@ import FeatureCarousel from "@/components/landing/FeatureCarousel";
 import ToolsShowcase from "@/components/landing/ToolsShowcase";
 import ToolsCarousel from "@/components/landing/ToolsCarousel";
 import FinalCTA from "@/components/landing/FinalCTA";
+import { ComplianceFooter } from "@/components/compliance/ComplianceFooter";
 
 const Landing = () => {
   return (
@@ -15,6 +16,7 @@ const Landing = () => {
       <ToolsShowcase />
       <ToolsCarousel />
       <FinalCTA />
+      <ComplianceFooter />
     </div>
   );
 };

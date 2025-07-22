@@ -221,17 +221,42 @@ serve(async (req) => {
       parts: parts
     });
 
-    const modelName = "gemini-1.5-pro-latest";
+    const modelName = "gemini-1.5-flash"; // Use flash model for higher quota limits
 
     console.log("Deconstructor Agent - Calling Google AI with contents array...");
-    console.log("Deconstructor Agent - Contents structure:", JSON.stringify(contents, null, 2));
     
-    // Use the updated helper function with the contents array
-    const analysisResponse = await callGoogleAI(
-      apiKey,
-      modelName,
-      contents
-    );
+    // Implement rate limiting and retry logic
+    let analysisResponse;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        // Use the updated helper function with the contents array
+        analysisResponse = await callGoogleAI(
+          apiKey,
+          modelName,
+          contents
+        );
+        break; // Success, exit retry loop
+      } catch (error) {
+        console.error(`Deconstructor Agent - Attempt ${retryCount + 1} failed:`, error.message);
+        
+        // Check if it's a quota/rate limit error
+        if (error.message.includes('429') || error.message.includes('quota') || error.message.includes('RATE_LIMIT')) {
+          retryCount++;
+          if (retryCount < maxRetries) {
+            const delay = Math.pow(2, retryCount) * 30000; // 30s, 60s, 120s
+            console.log(`Deconstructor Agent - Rate limit hit, retrying in ${delay/1000}s...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          } else {
+            throw new Error("API quota exceeded. Please try again in a few minutes. The free tier has limited requests per day.");
+          }
+        } else {
+          throw error; // Re-throw non-quota errors immediately
+        }
+      }
+    }
     
     console.log("Deconstructor Agent - Analysis response generated:", analysisResponse.substring(0, 200) + "...");
 

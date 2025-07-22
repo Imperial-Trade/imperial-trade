@@ -42,7 +42,7 @@ const tools = [
   {
     icon: Smartphone,
     title: "Mobile Trading",
-    description: "Full-featured mobile app for educational trading analysis on the go",
+    description: "Full-featured mobile app for educational trading analysis on the go - for educational purposes only",
     color: "hsl(var(--feature-blue))",
     gradient: "from-blue-500 to-cyan-500"
   },

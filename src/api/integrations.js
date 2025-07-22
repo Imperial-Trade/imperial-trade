@@ -61,11 +61,22 @@ export const AnalyzeSetup = async ({ user_id, file_urls = [] }) => {
     console.log('Invoking deconstructor agent for educational setup analysis');
     console.log('Screenshots to analyze:', file_urls.length);
     
+    // Upload files first if any are provided
+    const uploadedUrls = [];
+    if (file_urls && file_urls.length > 0) {
+      console.log('Uploading', file_urls.length, 'files...');
+      for (const file of file_urls) {
+        const uploadResult = await UploadFile({ file });
+        uploadedUrls.push(uploadResult.file_url);
+      }
+      console.log('All files uploaded successfully');
+    }
+    
     // Call Supabase Edge Function for deconstructor analysis
     const { data, error } = await supabase.functions.invoke('deconstructor-agent', {
       body: {
         user_id,
-        file_urls
+        file_urls: uploadedUrls
       }
     });
     

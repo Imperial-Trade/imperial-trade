@@ -59,24 +59,14 @@ export const InvokeLLM = async ({ prompt, file_urls = [], user_id = null }) => {
 export const AnalyzeSetup = async ({ user_id, file_urls = [] }) => {
   try {
     console.log('Invoking deconstructor agent for educational setup analysis');
-    console.log('Screenshots to analyze:', file_urls.length);
-    
-    // Upload files first if any are provided
-    const uploadedUrls = [];
-    if (file_urls && file_urls.length > 0) {
-      console.log('Uploading', file_urls.length, 'files...');
-      for (const file of file_urls) {
-        const uploadResult = await UploadFile({ file });
-        uploadedUrls.push(uploadResult.file_url);
-      }
-      console.log('All files uploaded successfully');
-    }
+    console.log('File URLs to analyze:', file_urls.length);
     
     // Call Supabase Edge Function for deconstructor analysis
+    // Note: file_urls should already be uploaded URLs from the frontend
     const { data, error } = await supabase.functions.invoke('deconstructor-agent', {
       body: {
         user_id,
-        file_urls: uploadedUrls
+        file_urls // These should be already uploaded URLs
       }
     });
     

@@ -147,7 +147,7 @@ export default function TradeAnalyst() {
 
       toast.info("Analyzing your trading patterns and screenshots...");
 
-      // Call the deconstructor agent with file URLs
+      // Call the deconstructor agent with uploaded file URLs
       const analysisResult = await AnalyzeSetup({ 
         user_id: user.id, 
         file_urls: uploadedFileUrls 
@@ -190,6 +190,7 @@ export default function TradeAnalyst() {
 
   const renderUploadView = () => (
     <div className="space-y-6">
+      {/* Upload Screenshots Card */}
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -283,7 +284,7 @@ export default function TradeAnalyst() {
         </CardContent>
       </Card>
 
-      {/* Analysis Information */}
+      {/* Analysis Button and Information Card */}
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -298,7 +299,7 @@ export default function TradeAnalyst() {
             <HypotheticalBadge />
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
               <h3 className="text-sm font-medium text-blue-400 mb-2">Visual Analysis Includes:</h3>

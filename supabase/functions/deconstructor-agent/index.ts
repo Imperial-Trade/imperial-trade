@@ -135,24 +135,31 @@ serve(async (req) => {
       notes: sanitizeText(trade.notes),
     })) || [];
 
-    // Prepare prompt parts for Google AI
-    const promptParts = [];
+    // Prepare the content for Google AI API
+    const contents = [];
     
-    // Add system prompt
-    promptParts.push({
-      text: SYSTEM_PROMPT
-    });
-
-    // Add screenshot analysis if images are provided
+    // Create the main content part with system prompt and context
+    let mainContent = SYSTEM_PROMPT;
+    
+    // Add screenshot analysis section if images are provided
     if (file_urls.length > 0) {
-      promptParts.push({
-        text: `\n\n--- VISUAL ANALYSIS ---\nAnalyze the following ${file_urls.length} trading screenshots for ${userName}:`
-      });
+      mainContent += `\n\n--- VISUAL ANALYSIS ---\nAnalyze the following ${file_urls.length} trading screenshots for ${userName}:`;
+    }
+    
+    // Add trading journal data
+    mainContent += `\n\n--- TRADING JOURNAL DATA ---\nAnalyze ${userName}'s trading journal entries: ${JSON.stringify(sanitizedTrades)}`;
+    
+    mainContent += `\n\nProvide a comprehensive educational analysis in the specified JSON format, combining insights from both visual screenshots (if provided) and trading journal data.`;
 
+    // Start building the parts array for this content
+    const parts = [{ text: mainContent }];
+
+    // Add image parts if screenshots are provided
+    if (file_urls.length > 0) {
       for (const imageUrl of file_urls) {
         try {
           const base64Image = await imageUrlToBase64(imageUrl);
-          promptParts.push({
+          parts.push({
             inlineData: {
               mimeType: "image/jpeg",
               data: base64Image
@@ -160,29 +167,28 @@ serve(async (req) => {
           });
         } catch (error) {
           console.error("Error processing image:", imageUrl, error);
-          promptParts.push({
+          parts.push({
             text: `[Error processing screenshot: ${imageUrl}]`
           });
         }
       }
     }
 
-    // Add trading journal data analysis
-    promptParts.push({
-      text: `\n\n--- TRADING JOURNAL DATA ---\nAnalyze ${userName}'s trading journal entries: ${JSON.stringify(sanitizedTrades)}`
-    });
-
-    promptParts.push({
-      text: `\n\nProvide a comprehensive educational analysis in the specified JSON format, combining insights from both visual screenshots (if provided) and trading journal data.`
+    // Create the contents array with proper structure
+    contents.push({
+      role: "user",
+      parts: parts
     });
 
     const modelName = "gemini-1.5-pro-latest";
 
     console.log("Deconstructor Agent - Generating comprehensive analysis...");
+    console.log("Contents structure:", JSON.stringify(contents, null, 2));
+    
     const analysisResponse = await callGoogleAI(
       apiKey,
       modelName,
-      promptParts
+      contents
     );
     
     console.log("Deconstructor Agent - Analysis response generated:", analysisResponse.substring(0, 200) + "...");

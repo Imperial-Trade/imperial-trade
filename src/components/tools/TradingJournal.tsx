@@ -133,6 +133,12 @@ export default function TradingJournal() {
       try {
         toast.info("Getting personalized educational coaching feedback...");
         
+        console.log("Invoking coach-agent with payload:", {
+          event_type: "LOG_TRADE",
+          user_id: user.id,
+          journal_entry_id: createdEntry.id
+        });
+
         const { data: coachResponse, error: coachError } = await supabase.functions.invoke('coach-agent', {
           body: {
             event_type: "LOG_TRADE",
@@ -141,15 +147,28 @@ export default function TradingJournal() {
           }
         });
 
+        console.log("Coach-agent response:", coachResponse);
+        console.log("Coach-agent error:", coachError);
+
         if (coachError) {
           console.error("Coach agent error:", coachError);
           toast.error("Educational coaching failed, but entry was saved");
-        } else {
+        } else if (coachResponse && coachResponse.reply) {
           // Update the journal entry with the coaching feedback
-          await TradeJournalEntry.update(createdEntry.id, {
-            ai_positive_feedback: coachResponse.reply
-          });
-          toast.success("Personalized educational coaching feedback generated!");
+          try {
+            console.log("Updating journal entry with AI feedback:", coachResponse.reply);
+            const updatedEntry = await TradeJournalEntry.update(createdEntry.id, {
+              ai_positive_feedback: coachResponse.reply
+            });
+            console.log("Successfully updated journal entry:", updatedEntry);
+            toast.success("Personalized educational coaching feedback generated!");
+          } catch (updateError) {
+            console.error("Failed to update journal entry with AI feedback:", updateError);
+            toast.error("Failed to save coaching feedback, but entry was saved");
+          }
+        } else {
+          console.warn("Coach response does not contain expected reply field:", coachResponse);
+          toast.warning("Coaching feedback format unexpected, but entry was saved");
         }
       } catch (aiError) {
         console.error("Educational coaching analysis failed:", aiError);

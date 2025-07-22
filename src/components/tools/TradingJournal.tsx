@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TradeJournalEntry } from "@/api/entities";
@@ -21,7 +20,6 @@ export default function TradingJournal() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("log");
 
-  // Memoize stable functions
   const loadUserProfile = useCallback(async () => {
     try {
       const {
@@ -97,6 +95,8 @@ export default function TradingJournal() {
         return;
       }
 
+      console.log("TradingJournal.handleSubmit - User authenticated:", user.id);
+
       // Optional: Handle screenshot upload with compression
       if (data.screenshotFile) {
         try {
@@ -126,14 +126,16 @@ export default function TradingJournal() {
       }
 
       // Save the educational entry first (this should always work)
+      console.log("TradingJournal.handleSubmit - Creating journal entry with data:", educationalData);
       const createdEntry = await TradeJournalEntry.create(educationalData, user.id);
+      console.log("TradingJournal.handleSubmit - Created journal entry:", createdEntry);
       toast.success("Educational entry saved successfully!");
 
       // Enhanced educational coaching analysis using coach-agent
       try {
         toast.info("Getting personalized educational coaching feedback...");
         
-        console.log("Invoking coach-agent with payload:", {
+        console.log("TradingJournal.handleSubmit - Invoking coach-agent with payload:", {
           event_type: "LOG_TRADE",
           user_id: user.id,
           journal_entry_id: createdEntry.id
@@ -147,46 +149,67 @@ export default function TradingJournal() {
           }
         });
 
-        console.log("Coach-agent response:", coachResponse);
-        console.log("Coach-agent error:", coachError);
+        console.log("TradingJournal.handleSubmit - Coach-agent response:", coachResponse);
+        console.log("TradingJournal.handleSubmit - Coach-agent error:", coachError);
 
         if (coachError) {
-          console.error("Coach agent error:", coachError);
+          console.error("TradingJournal.handleSubmit - Coach agent error:", coachError);
           toast.error("Educational coaching failed, but entry was saved");
         } else if (coachResponse && coachResponse.reply) {
           // Update the journal entry with the coaching feedback
           try {
-            console.log("Updating journal entry with AI feedback:", coachResponse.reply);
+            console.log("TradingJournal.handleSubmit - Updating journal entry with AI feedback:", coachResponse.reply);
+            console.log("TradingJournal.handleSubmit - Journal entry ID:", createdEntry.id);
+            
+            // Wait a moment to ensure the entry is fully created
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             const updatedEntry = await TradeJournalEntry.update(createdEntry.id, {
               ai_positive_feedback: coachResponse.reply
             });
-            console.log("Successfully updated journal entry:", updatedEntry);
+            console.log("TradingJournal.handleSubmit - Successfully updated journal entry:", updatedEntry);
             toast.success("Personalized educational coaching feedback generated!");
           } catch (updateError) {
-            console.error("Failed to update journal entry with AI feedback:", updateError);
+            console.error("TradingJournal.handleSubmit - Failed to update journal entry with AI feedback:", updateError);
+            console.error("TradingJournal.handleSubmit - Update error details:", {
+              name: updateError.name,
+              message: updateError.message,
+              stack: updateError.stack
+            });
             toast.error("Failed to save coaching feedback, but entry was saved");
           }
         } else {
-          console.warn("Coach response does not contain expected reply field:", coachResponse);
+          console.warn("TradingJournal.handleSubmit - Coach response does not contain expected reply field:", coachResponse);
           toast.warning("Coaching feedback format unexpected, but entry was saved");
         }
       } catch (aiError) {
-        console.error("Educational coaching analysis failed:", aiError);
+        console.error("TradingJournal.handleSubmit - Educational coaching analysis failed:", aiError);
+        console.error("TradingJournal.handleSubmit - AI error details:", {
+          name: aiError.name,
+          message: aiError.message,
+          stack: aiError.stack
+        });
         toast.error("Educational coaching failed, but entry was saved");
         // Continue - don't block since the educational entry is already saved
       }
 
+      // Reload entries to show the updated data
+      console.log("TradingJournal.handleSubmit - Reloading entries...");
       loadEntries();
 
     } catch (error) {
-      console.error("Error submitting educational journal entry:", error);
+      console.error("TradingJournal.handleSubmit - Error submitting educational journal entry:", error);
+      console.error("TradingJournal.handleSubmit - Error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       toast.error("Failed to save educational entry. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   }, [loadEntries]);
 
-  // Effects
   useEffect(() => {
     loadUserProfile();
   }, [loadUserProfile]);
@@ -197,7 +220,6 @@ export default function TradingJournal() {
     }
   }, [userProfile, loadEntries]);
 
-  // Memoized tab content components
   const LogTab = useMemo(() => 
     <motion.div initial={{
       opacity: 0,

@@ -101,34 +101,95 @@ export class TradeJournalEntry {
       position_size?: number;
     }
   ): Promise<TradeJournalEntry> {
-    const { data: result, error } = await supabase
-      .from("trade_journal_entries")
-      .update(data)
-      .eq("id", id)
-      .select()
-      .single();
+    console.log("TradeJournalEntry.update - Starting update for ID:", id);
+    console.log("TradeJournalEntry.update - Data to update:", data);
 
-    if (error) {
-      console.error("Error updating trade journal entry:", error);
-      throw new Error(`Failed to update trade journal entry: ${error.message}`);
+    try {
+      // Check authentication first
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log("TradeJournalEntry.update - Current user:", user?.id);
+      
+      if (authError) {
+        console.error("TradeJournalEntry.update - Auth error:", authError);
+        throw new Error(`Authentication error: ${authError.message}`);
+      }
+
+      if (!user) {
+        console.error("TradeJournalEntry.update - No authenticated user");
+        throw new Error("No authenticated user found");
+      }
+
+      // Check if the entry exists and belongs to the user
+      const { data: existingEntry, error: fetchError } = await supabase
+        .from("trade_journal_entries")
+        .select("id, user_id")
+        .eq("id", id)
+        .single();
+
+      if (fetchError) {
+        console.error("TradeJournalEntry.update - Error fetching existing entry:", fetchError);
+        throw new Error(`Failed to fetch existing entry: ${fetchError.message}`);
+      }
+
+      if (!existingEntry) {
+        console.error("TradeJournalEntry.update - Entry not found with ID:", id);
+        throw new Error("Journal entry not found");
+      }
+
+      if (existingEntry.user_id !== user.id) {
+        console.error("TradeJournalEntry.update - User mismatch. Entry user:", existingEntry.user_id, "Current user:", user.id);
+        throw new Error("Unauthorized: Entry belongs to different user");
+      }
+
+      console.log("TradeJournalEntry.update - Performing update...");
+
+      // Perform the update
+      const { data: result, error } = await supabase
+        .from("trade_journal_entries")
+        .update(data)
+        .eq("id", id)
+        .eq("user_id", user.id) // Extra security check
+        .select()
+        .single();
+
+      if (error) {
+        console.error("TradeJournalEntry.update - Update error:", error);
+        console.error("TradeJournalEntry.update - Error details:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw new Error(`Failed to update trade journal entry: ${error.message}`);
+      }
+
+      if (!result) {
+        console.error("TradeJournalEntry.update - No result returned from update");
+        throw new Error("Update operation completed but no data returned");
+      }
+
+      console.log("TradeJournalEntry.update - Update successful:", result);
+
+      return new TradeJournalEntry(
+        result.id,
+        result.user_id,
+        result.asset_ticker,
+        result.pnl,
+        result.notes,
+        result.trade_date,
+        result.ai_positive_feedback,
+        result.screenshot_url,
+        result.trade_type,
+        result.entry_price,
+        result.exit_price,
+        result.position_size,
+        result.created_at,
+        result.updated_at
+      );
+    } catch (error) {
+      console.error("TradeJournalEntry.update - Caught error:", error);
+      throw error;
     }
-
-    return new TradeJournalEntry(
-      result.id,
-      result.user_id,
-      result.asset_ticker,
-      result.pnl,
-      result.notes,
-      result.trade_date,
-      result.ai_positive_feedback,
-      result.screenshot_url,
-      result.trade_type,
-      result.entry_price,
-      result.exit_price,
-      result.position_size,
-      result.created_at,
-      result.updated_at
-    );
   }
 
   static async list(user_id: string): Promise<TradeJournalEntry[]> {
@@ -326,4 +387,3 @@ export class AthenaInteraction {
     );
   }
 }
-

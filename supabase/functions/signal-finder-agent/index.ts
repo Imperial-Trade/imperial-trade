@@ -11,71 +11,127 @@ interface SignalFinderRequest {
   user_id: string;
 }
 
-const SYSTEM_PROMPT = `You are "Orion," a tactical trade setup analyst. Your function is to identify potential trading opportunities by matching a user's historically successful patterns against live market data, contextualized by their recent behavioral analysis. Your tone is concise, actionable, and risk-aware.
-**Core Directives:**
-1.  **Primary Task: Pattern Matching:** Your main goal is to check if current \`live_market_data\` meets the conditions of the user's \`historical_winning_patterns\`.
-2.  **Contextual Filter:** Use the provided \`Context from Deconstructor\` to add a layer of caution. If the Deconstructor noted a relevant blindspot (e.g., "user chases breakouts"), and you find a breakout setup, you must add a specific cautionary note.
-3.  **Strict Output Format:** If a match is found, your output must be a JSON object with the following structure:
-    \`\`\`json
-    {
-      "status": "MatchFound",
-      "asset": "[Asset Name]",
-      "strategy_name": "[Name of Matched Strategy]",
-      "confidence": "High" | "Medium",
-      "deconstructor_context_note": "[Cautionary note based on user's blindspots, or 'None']",
-      "disclaimer": "This is a high-probability pattern based on your historical data, not a trade signal. Perform your own due diligence and apply your risk management plan."
-    }
-    \`\`\`
-4.  **No Match Scenario:** If no patterns match, return: \`{"status": "NoMatch"}\`.
-**Execution Rule:** You are a pattern-matching engine, not a financial advisor. Never guarantee success. Your language must be probabilistic and heavily emphasize risk management and independent analysis.`;
+interface MarketDataPoint {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume?: number;
+  timestamp: string;
+  technicalIndicators?: {
+    rsi?: number;
+    macd?: number;
+    ma20?: number;
+    ma50?: number;
+    bollingerUpper?: number;
+    bollingerLower?: number;
+    support?: number;
+    resistance?: number;
+  };
+  marketContext?: {
+    trend: 'bullish' | 'bearish' | 'sideways';
+    volatility: 'low' | 'medium' | 'high';
+    volume_profile: 'above_average' | 'below_average' | 'normal';
+  };
+}
 
-// Initial logic to find a user's winning strategies.
-async function getWinningPatterns(
-  supabase: SupabaseClient,
-  userId: string
-): Promise<any[]> {
+const ENHANCED_SYSTEM_PROMPT = `You are "Orion," an advanced AI trading pattern analyst specializing in real-time technical analysis. Your expertise lies in identifying high-probability trading opportunities by analyzing live market data, technical indicators, and chart patterns.
+
+**Core Analysis Framework:**
+1. **Technical Pattern Recognition**: Identify classic patterns (breakouts, reversals, triangles, flags, head & shoulders, double tops/bottoms)
+2. **Multi-Indicator Confluence**: Analyze RSI, MACD, Moving Averages, Bollinger Bands for signal confirmation
+3. **Volume Analysis**: Assess volume profiles and their relationship to price action
+4. **Market Context**: Consider overall market trend, volatility, and sector performance
+5. **Risk Assessment**: Evaluate risk-reward ratios and position sizing recommendations
+
+**Live Market Data Analysis:**
+- Current price action and momentum
+- Technical indicator readings and divergences
+- Support and resistance levels
+- Volume confirmation patterns
+- Market volatility and trend strength
+
+**Pattern Identification Criteria:**
+- **Breakout Patterns**: Price breaking above/below key levels with volume confirmation
+- **Reversal Patterns**: Price action at support/resistance with indicator divergence
+- **Momentum Patterns**: Strong directional moves with technical confirmation
+- **Consolidation Patterns**: Range-bound price action approaching breakout levels
+
+**Response Format (JSON ONLY):**
+For REAL trading opportunities found in live market data:
+{
+  "status": "MatchFound",
+  "asset": "[Exact Symbol from Market Data]",
+  "pattern_type": "[breakout|reversal|momentum|consolidation]",
+  "strategy_name": "[Descriptive Pattern Name]",
+  "confidence": "High|Medium",
+  "entry_level": [Specific Price Level],
+  "stop_loss": [Risk Management Level],
+  "target_1": [First Take Profit],
+  "target_2": [Second Take Profit],
+  "risk_reward_ratio": [Calculated R:R],
+  "timeframe": "[1H|4H|1D]",
+  "technical_confluence": "[List of confirming indicators]",
+  "volume_analysis": "[Volume pattern description]",
+  "market_context": "[Current market environment]",
+  "pattern_explanation": "[Why this pattern is forming]",
+  "risk_factors": "[Potential risks to consider]",
+  "educational_note": "[Learning opportunity explanation]"
+}
+
+If NO high-probability patterns found:
+{"status": "NoMatch", "reason": "Insufficient technical confluence for reliable signals"}
+
+**Critical Rules:**
+- Only analyze REAL market data provided
+- Require multiple technical confirmations for "High" confidence
+- Always include proper risk management levels
+- Focus on educational value while maintaining accuracy
+- Never guarantee outcomes - emphasize probability and risk management`;
+
+async function getWinningPatterns(supabase: SupabaseClient, userId: string): Promise<any[]> {
   const { data: trades, error } = await supabase
     .from("trade_journal_entries")
-    .select("notes, entry_price, exit_price, pnl")
+    .select("notes, entry_price, exit_price, pnl, instrument")
     .eq("user_id", userId)
-    .not("exit_price", "is", null); // Only consider completed trades
+    .not("exit_price", "is", null);
 
   if (error) throw error;
   if (!trades) return [];
 
-  // Group trades by strategy extracted from notes
   const strategies = trades.reduce((acc, trade) => {
-    const strategy = extractStrategyFromNotes(trade.notes) || "Uncategorized";
+    const strategy = extractStrategyFromNotes(trade.notes) || "Pattern Trading";
     if (!acc[strategy]) {
-      acc[strategy] = { wins: 0, losses: 0 };
+      acc[strategy] = { wins: 0, losses: 0, instruments: new Set() };
     }
     if (trade.pnl > 0) {
-      // Use P&L to determine wins/losses
       acc[strategy].wins++;
     } else {
       acc[strategy].losses++;
     }
+    acc[strategy].instruments.add(trade.instrument);
     return acc;
-  }, {} as Record<string, { wins: number; losses: number }>);
+  }, {} as Record<string, { wins: number; losses: number; instruments: Set<string> }>);
 
-  // Filter for strategies with a win rate > 50%
-  const winningStrategies = Object.entries(strategies)
-    .filter(([, stats]) => stats.wins > stats.losses)
+  return Object.entries(strategies)
+    .filter(([, stats]) => stats.wins > stats.losses && stats.wins >= 2)
     .map(([name, stats]) => ({
       strategy_name: name,
-      // This is a placeholder; you would need a way to store the actual conditions for each strategy.
-      conditions: `Conditions for ${name} need to be defined.`,
+      win_rate: (stats.wins / (stats.wins + stats.losses) * 100).toFixed(1),
+      total_trades: stats.wins + stats.losses,
+      preferred_instruments: Array.from(stats.instruments)
     }));
-
-  return winningStrategies;
 }
 
-// Helper function to extract strategy from trade notes
 function extractStrategyFromNotes(notes: string | null): string | null {
   if (!notes) return null;
   
-  // Simple keyword extraction for common strategies
-  const strategies = ['breakout', 'reversal', 'trend', 'scalp', 'swing', 'momentum', 'support', 'resistance'];
+  const strategies = [
+    'breakout', 'reversal', 'momentum', 'scalp', 'swing', 
+    'trend following', 'support resistance', 'pattern trading',
+    'technical analysis', 'price action'
+  ];
+  
   for (const strategy of strategies) {
     if (notes.toLowerCase().includes(strategy)) {
       return strategy.charAt(0).toUpperCase() + strategy.slice(1);
@@ -84,18 +140,32 @@ function extractStrategyFromNotes(notes: string | null): string | null {
   return null;
 }
 
-// Placeholder for a real market data API call.
-async function fetchMarketData(): Promise<any> {
+async function fetchLiveMarketData(supabase: SupabaseClient): Promise<MarketDataPoint[]> {
   try {
-    // Example: const response = await fetch('https://api.yourmarketdata.com/v1/data');
-    // if (!response.ok) throw new Error('Market data API failed');
-    // return await response.json();
+    console.log("Fetching live market data with technical indicators...");
+    
+    const symbols = ['TSLA', 'BTC/USD', 'GOLD', 'EUR/USD', 'SPY', 'AAPL', 'NVDA', 'MSFT'];
+    
+    const { data, error } = await supabase.functions.invoke('get-market-data', {
+      body: { 
+        symbols,
+        includeVolume: true,
+        includeTechnicals: true
+      }
+    });
 
-    // Returning an empty object if the API fails or has no data.
-    return {};
-  } catch (e) {
-    console.error("Failed to fetch market data:", e.message);
-    return {}; // Return empty object on failure to prevent crash
+    if (error) {
+      console.error("Market data fetch error:", error);
+      return [];
+    }
+
+    const marketData = data?.prices || [];
+    console.log(`Fetched live data for ${marketData.length} instruments with technical indicators`);
+    
+    return marketData;
+  } catch (error) {
+    console.error("Failed to fetch live market data:", error);
+    return [];
   }
 }
 
@@ -115,13 +185,12 @@ serve(async (req) => {
     const { user_id }: SignalFinderRequest = await req.json();
     if (!user_id) throw new Error("user_id is required.");
 
-    console.log("Signal Finder Agent - Processing request for user:", user_id);
+    console.log("Enhanced Signal Finder Agent - Processing request for user:", user_id);
 
-    // Use service role key for database operations to bypass RLS
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch user profile information for personalized feedback
-    console.log("Signal Finder Agent - Fetching user profile...");
+    // Fetch user profile
+    console.log("Fetching user profile...");
     const { data: userProfile, error: profileError } = await supabase
       .from("profiles")
       .select("real_name, display_name")
@@ -129,24 +198,18 @@ serve(async (req) => {
       .single();
 
     if (profileError) {
-      console.error("Signal Finder Agent - Error fetching user profile:", profileError);
+      console.error("Error fetching user profile:", profileError);
       throw new Error("Failed to fetch user profile information");
     }
 
     const userName = userProfile?.display_name || userProfile?.real_name || "Trader";
-    console.log("Signal Finder Agent - User name resolved:", userName);
+    console.log("User name resolved:", userName);
 
+    // Get user's winning patterns
     const winningPatterns = await getWinningPatterns(supabase, user_id);
-    if (winningPatterns.length === 0) {
-      return new Response(
-        JSON.stringify({ reply: { status: "NoWinningPatterns" } }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    console.log("User winning patterns:", winningPatterns.length);
 
-    // Fetch latest Deconstructor analysis using user_readable_text
+    // Fetch latest Deconstructor analysis
     const { data: latestAnalysis } = await supabase
       .from("agent_outputs")
       .select("output_text, user_readable_text")
@@ -156,81 +219,91 @@ serve(async (req) => {
       .limit(1)
       .single();
 
-    const liveMarketData = await fetchMarketData();
-
-    // Generate technical response (with IDs for logging)
-    const technicalPrompt = `
-      Context from Deconstructor: ${
-        latestAnalysis?.output_text || "No recent analysis available."
-      }
-      User's Winning Patterns: ${JSON.stringify(winningPatterns)}
-      Live Market Data: ${JSON.stringify(liveMarketData)}
-      Based on all of the above, identify any opportunity flags.
-    `;
-    const fullTechnicalPrompt = `${SYSTEM_PROMPT}\n\n--- CONTEXT & DATA ---\n${technicalPrompt}`;
-
-    // Generate user-readable response (with actual names)
-    const userReadablePrompt = `
-      Context from ${userName}'s Recent Analysis: ${
-        latestAnalysis?.user_readable_text || "No recent analysis available."
-      }
-      ${userName}'s Winning Patterns: ${JSON.stringify(winningPatterns)}
-      Live Market Data: ${JSON.stringify(liveMarketData)}
-      Based on all of the above, identify any opportunity flags for ${userName}.
-    `;
-    const fullUserReadablePrompt = `${SYSTEM_PROMPT}\n\n--- CONTEXT & DATA ---\n${userReadablePrompt}`;
-
-    const modelName = "gemini-2.5-pro";
-
-    console.log("Signal Finder Agent - Generating technical response...");
-    const technicalResponse = await callGoogleAI(apiKey, modelName, fullTechnicalPrompt);
-    console.log("Signal Finder Agent - Technical response generated:", technicalResponse.substring(0, 100) + "...");
-
-    console.log("Signal Finder Agent - Generating user-readable response...");
-    const userReadableResponse = await callGoogleAI(apiKey, modelName, fullUserReadablePrompt);
-    console.log("Signal Finder Agent - User-readable response generated:", userReadableResponse.substring(0, 100) + "...");
-
-    // Store both versions in agent_outputs table
-    console.log("Signal Finder Agent - Storing agent output...");
-    const { error: agentOutputError } = await supabase.from("agent_outputs").insert({
-      user_id,
-      agent_name: "Signal Finder",
-      output_text: technicalResponse,
-      user_readable_text: userReadableResponse,
-    });
-
-    if (agentOutputError) {
-      console.error("Signal Finder Agent - Error storing agent output:", agentOutputError);
-    } else {
-      console.log("Signal Finder Agent - Agent output stored successfully");
-    }
-
-    // Return user-readable response parsed as JSON
-    try {
-      return new Response(JSON.stringify({ reply: JSON.parse(userReadableResponse) }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    } catch (parseError) {
-      console.error("Signal Finder Agent - Failed to parse user-readable response as JSON, returning as text");
-      return new Response(JSON.stringify({ reply: { status: "Error", message: userReadableResponse } }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-  } catch (error) {
-    console.error("Signal Finder Agent Error:", error.message);
-    if (error instanceof SyntaxError) {
+    // Fetch live market data with technical indicators
+    console.log("Fetching live market data...");
+    const liveMarketData = await fetchLiveMarketData(supabase);
+    
+    if (liveMarketData.length === 0) {
       return new Response(
-        JSON.stringify({
-          error: "AI returned a response that was not valid JSON.",
-        }),
+        JSON.stringify({ reply: { status: "NoMarketData", message: "Unable to fetch live market data" } }),
         {
-          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
+
+    // Prepare comprehensive analysis prompt
+    const analysisPrompt = `
+**LIVE MARKET DATA ANALYSIS REQUEST**
+
+**User Trading Profile:**
+- Trader: ${userName}
+- Winning Patterns: ${JSON.stringify(winningPatterns, null, 2)}
+- Recent Behavioral Analysis: ${latestAnalysis?.output_text || "No recent analysis available"}
+
+**REAL-TIME MARKET DATA:**
+${JSON.stringify(liveMarketData, null, 2)}
+
+**ANALYSIS REQUIREMENTS:**
+1. Analyze the live market data for high-probability trading patterns
+2. Look for technical confluences across multiple indicators
+3. Consider the user's historical success patterns when evaluating opportunities
+4. Assess current market volatility and trend strength
+5. Identify patterns that align with the user's proven strategies
+
+**FOCUS AREAS:**
+- Technical pattern formations (breakouts, reversals, consolidations)
+- Multi-timeframe confirmation signals
+- Volume and momentum analysis
+- Support/resistance level interactions
+- Risk-reward optimization opportunities
+
+Provide a detailed technical analysis identifying the BEST trading opportunity from the current live market data.
+`;
+
+    const modelName = "gemini-2.5-pro";
+
+    console.log("Generating enhanced market analysis with Gemini AI...");
+    const aiResponse = await callGoogleAI(apiKey, modelName, ENHANCED_SYSTEM_PROMPT + "\n\n" + analysisPrompt);
+    console.log("AI analysis completed");
+
+    // Store the analysis
+    console.log("Storing enhanced signal analysis...");
+    const { error: agentOutputError } = await supabase.from("agent_outputs").insert({
+      user_id,
+      agent_name: "Signal Finder",
+      output_text: aiResponse,
+      user_readable_text: aiResponse, // Same response for both since it's already user-friendly
+    });
+
+    if (agentOutputError) {
+      console.error("Error storing agent output:", agentOutputError);
+    } else {
+      console.log("Enhanced analysis stored successfully");
+    }
+
+    // Parse and return the AI response
+    try {
+      const parsedResponse = JSON.parse(aiResponse);
+      return new Response(JSON.stringify({ reply: parsedResponse }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (parseError) {
+      console.error("Failed to parse AI response as JSON:", parseError);
+      return new Response(JSON.stringify({ 
+        reply: { 
+          status: "Error", 
+          message: "AI analysis completed but response format was invalid",
+          raw_response: aiResponse
+        } 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  } catch (error) {
+    console.error("Enhanced Signal Finder Agent Error:", error.message);
     return new Response(
-      JSON.stringify({ error: `Signal Finder Agent failed: ${error.message}` }),
+      JSON.stringify({ error: `Enhanced Signal Finder failed: ${error.message}` }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

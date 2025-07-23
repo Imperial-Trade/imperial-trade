@@ -60,6 +60,61 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return delay;
   }, []);
 
+  // HTTP fallback for price fetching
+  const fetchPricesHTTP = useCallback(async (symbols: string[]) => {
+    try {
+      const response = await fetch(`https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/get-market-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ symbols })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        const updates: PriceData[] = data.data.map((item: any) => ({
+          symbol: item.symbol,
+          price: parseFloat(item.price) || 0,
+          change: parseFloat(item.change) || 0,
+          changePercent: parseFloat(item.changePercent) || 0,
+          timestamp: new Date().toISOString()
+        }));
+
+        setPrices(prev => {
+          const newPrices = { ...prev };
+          updates.forEach(update => {
+            newPrices[update.symbol] = update;
+          });
+          return newPrices;
+        });
+        
+        setDataSource('twelve_data_api');
+        setLastUpdated(new Date());
+        setConnectionStatus('connected');
+        
+        // Clear errors for successfully updated symbols
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          updates.forEach(update => {
+            delete newErrors[update.symbol];
+          });
+          return newErrors;
+        });
+      }
+    } catch (error) {
+      console.error('HTTP price fetch failed:', error);
+      setConnectionStatus('error');
+      setDataSource('unavailable');
+      setErrors(prev => ({ ...prev, global: 'Failed to fetch price data' }));
+    }
+  }, []);
+
   const connect = useCallback(() => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       return;
@@ -153,10 +208,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       };
 
       socketRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error('WebSocket error, falling back to HTTP:', error);
         setConnectionStatus('error');
         setDataSource('unavailable');
         reconnectAttemptsRef.current++;
+        
+        // Fallback to HTTP if WebSocket fails
+        if (subscribedSymbolsRef.current.size > 0) {
+          console.log('Attempting HTTP fallback...');
+          fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
+        }
       };
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
@@ -174,9 +235,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         symbols
       }));
     } else {
+      // Try WebSocket first, then fallback to HTTP
       connect();
+      
+      // Also try HTTP immediately as fallback
+      setTimeout(() => {
+        if (connectionStatus !== 'connected') {
+          console.log('WebSocket failed, using HTTP fallback for initial load');
+          fetchPricesHTTP(symbols);
+        }
+      }, 2000);
     }
-  }, [connect]);
+  }, [connect, connectionStatus, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     symbols.forEach(symbol => subscribedSymbolsRef.current.delete(symbol));
@@ -199,14 +269,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const refreshPrice = useCallback((symbol: string) => {
-    // For real API, we don't need manual refresh as data updates automatically
-    // Just clear any existing error for this symbol
+    // Clear any existing error for this symbol
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[symbol];
       return newErrors;
     });
-  }, []);
+    
+    // Force HTTP fetch for this symbol
+    fetchPricesHTTP([symbol]);
+  }, [fetchPricesHTTP]);
 
   const getPrice = useCallback((symbol: string): PriceData | null => {
     return prices[symbol] || null;

@@ -203,8 +203,8 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-card rounded-lg border border-border">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="w-full p-6 bg-card rounded-lg border border-border">
+      <form onSubmit={handleSubmit} className="w-full space-y-4">
         {/* Asset Selection */}
         <AssetSelector
           value={formData.finnhub_symbol}
@@ -221,49 +221,54 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
         {/* Live Price Display */}
         {selectedAsset && (
-          <EnhancedLivePriceDisplay
-            symbol={selectedAsset.symbol}
-            assetName={selectedAsset.name}
-            onUseCurrentPrice={handleUseCurrentPrice}
-            className="mb-4"
-          />
+          <div className="w-full">
+            <EnhancedLivePriceDisplay
+              symbol={selectedAsset.symbol}
+              assetName={selectedAsset.name}
+              onUseCurrentPrice={handleUseCurrentPrice}
+              className="w-full mb-4"
+            />
+          </div>
         )}
 
-        {/* Trade Type */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Trade Type</label>
-          <Select 
-            value={formData.trade_type} 
-            onValueChange={(value) => handleInputChange('trade_type', value)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="buy">Buy</SelectItem>
-              <SelectItem value="sell">Sell</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Trade Type & Entry Price Row */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Trade Type */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Trade Type</label>
+            <Select 
+              value={formData.trade_type} 
+              onValueChange={(value) => handleInputChange('trade_type', value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="buy">Buy</SelectItem>
+                <SelectItem value="sell">Sell</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Entry Price */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Entry Price</label>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={formData.entry_price}
-            onChange={(e) => handleInputChange('entry_price', e.target.value)}
-            className={errors.entry_price ? 'border-red-500' : ''}
-          />
-          {errors.entry_price && (
-            <p className="text-sm text-red-500">{errors.entry_price}</p>
-          )}
+          {/* Entry Price */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Entry Price</label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={formData.entry_price}
+              onChange={(e) => handleInputChange('entry_price', e.target.value)}
+              className={`w-full ${errors.entry_price ? 'border-red-500' : ''}`}
+            />
+            {errors.entry_price && (
+              <p className="text-sm text-red-500">{errors.entry_price}</p>
+            )}
+          </div>
         </div>
 
         {/* Stop Loss */}
-        <div className="space-y-2">
+        <div className="w-full space-y-2">
           <label className="text-sm font-medium text-foreground">Stop Loss</label>
           <Input
             type="number"
@@ -271,7 +276,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             placeholder="0.00"
             value={formData.stop_loss}
             onChange={(e) => handleInputChange('stop_loss', e.target.value)}
-            className={errors.stop_loss ? 'border-red-500' : ''}
+            className={`w-full ${errors.stop_loss ? 'border-red-500' : ''}`}
           />
           {errors.stop_loss && (
             <p className="text-sm text-red-500">{errors.stop_loss}</p>
@@ -279,7 +284,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         </div>
 
         {/* Take Profits */}
-        <div className="space-y-2">
+        <div className="w-full space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-foreground">Take Profits</label>
             {takeProfits.length < 5 && (
@@ -297,14 +302,14 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
           </div>
           
           {takeProfits.map((tp, index) => (
-            <div key={index} className="flex items-center gap-2">
+            <div key={index} className="flex items-center gap-2 w-full">
               <Input
                 type="number"
                 step="0.01"
                 placeholder={`TP${index + 1}`}
                 value={tp}
                 onChange={(e) => handleTakeProfitChange(index, e.target.value)}
-                className={errors[`tp${index + 1}`] ? 'border-red-500' : ''}
+                className={`flex-1 ${errors[`tp${index + 1}`] ? 'border-red-500' : ''}`}
               />
               {takeProfits.length > 1 && (
                 <Button
@@ -326,18 +331,19 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         </div>
 
         {/* Notes */}
-        <div className="space-y-2">
+        <div className="w-full space-y-2">
           <label className="text-sm font-medium text-foreground">Notes</label>
           <Textarea
             placeholder="Add notes about this signal..."
             value={formData.notes}
             onChange={(e) => handleInputChange('notes', e.target.value)}
             rows={3}
+            className="w-full"
           />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-2">
+        <div className="w-full flex gap-3 pt-2">
           <Button
             type="button"
             variant="outline"

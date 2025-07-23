@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,10 +61,10 @@ const coreTools = [
 
 const aiTools = [
   {
-    name: "Setup Learning Analyzer",
+    name: "Educational Trading Pattern Analysis",
     icon: Brain,
     component: TradeAnalyst,
-    description: "Upload screenshots for educational performance analysis and learning.",
+    description: "Professional trading performance analysis powered by advanced AI for educational purposes.",
   },
   {
     name: "Educational Pattern Scanner",
@@ -213,7 +212,13 @@ export default function AdvancedTools() {
                           className: "w-3 h-3 flex-shrink-0",
                         })}
                         <span className="text-xs font-medium truncate">
-                          {tool.name === "Educational Journal" ? "Journal" : tool.name === "Economic Calendar" ? "Calendar" : tool.name === "Educational Calculator" ? "Calculator" : tool.name === "Setup Learning Analyzer" ? "Analyzer" : tool.name === "Educational Pattern Scanner" ? "Scanner" : tool.name === "Educational Risk Calculator" ? "Risk Calc" : tool.name.split(" ")[0]}
+                          {tool.name === "Educational Journal" ? "Journal" : 
+                           tool.name === "Economic Calendar" ? "Calendar" : 
+                           tool.name === "Educational Calculator" ? "Calculator" : 
+                           tool.name === "Educational Trading Pattern Analysis" ? "Pattern Analysis" : 
+                           tool.name === "Educational Pattern Scanner" ? "Scanner" : 
+                           tool.name === "Educational Risk Calculator" ? "Risk Calc" : 
+                           tool.name.split(" ")[0]}
                         </span>
                       </div>
                     </button>
@@ -238,7 +243,7 @@ export default function AdvancedTools() {
                 <div style={{ display: activeTool?.name === "Educational Calculator" ? 'block' : 'none' }}>
                   <RiskCalculator />
                 </div>
-                <div style={{ display: activeTool?.name === "Setup Learning Analyzer" ? 'block' : 'none' }}>
+                <div style={{ display: activeTool?.name === "Educational Trading Pattern Analysis" ? 'block' : 'none' }}>
                   <TradeAnalyst />
                 </div>
                 <div style={{ display: activeTool?.name === "Educational Pattern Scanner" ? 'block' : 'none' }}>

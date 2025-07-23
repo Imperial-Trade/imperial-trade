@@ -1,13 +1,15 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, Brain, FileImage, Loader2, CheckCircle, AlertCircle, X, Plus, BarChart3, Lightbulb, TrendingUp, Target, Users, Award, Camera, RefreshCw } from 'lucide-react';
+import { Upload, Brain, FileImage, Loader2, CheckCircle, AlertCircle, X, Plus, BarChart3, Lightbulb, TrendingUp, Target, Users, Award, Camera, RefreshCw, Clock, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnalyzeSetup, UploadFile } from '@/api/integrations';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from '@/components/compliance/ComplianceNotice';
 import { validateImageFile, compressImage } from '@/utils/imageCompression';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface AnalysisResult {
   overall_performance?: {
@@ -50,6 +52,13 @@ interface UploadedFile {
   error?: string;
 }
 
+interface AgentOutput {
+  id: string;
+  created_at: string;
+  output_text: string;
+  metadata: any;
+}
+
 export default function TradeAnalyst() {
   const [currentView, setCurrentView] = useState<'upload' | 'results' | 'history'>('upload');
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -58,9 +67,29 @@ export default function TradeAnalyst() {
   const [rawResult, setRawResult] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [retryCount, setRetryCount] = useState(0);
-  const [analysisHistory, setAnalysisHistory] = useState<any[]>([]);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<AgentOutput | null>(null);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch analysis history
+  const { data: analysisHistory, isLoading: historyLoading } = useQuery({
+    queryKey: ['analysis-history', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('agent_outputs')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('agent_name', 'Deconstructor')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
 
   const handleFileSelect = useCallback(async (files: FileList) => {
     const maxFiles = 5;
@@ -92,14 +121,12 @@ export default function TradeAnalyst() {
       setUploadedFiles(prev => [...prev, fileData]);
 
       try {
-        // Compress image before upload
         const compressedFile = await compressImage(file, {
           maxWidth: 1920,
           maxHeight: 1080,
           quality: 0.8
         });
 
-        // Upload file
         const { file_url } = await UploadFile({ file: compressedFile });
         
         setUploadedFiles(prev => prev.map(f => 
@@ -153,7 +180,6 @@ export default function TradeAnalyst() {
         toast.info(`Analyzing your trading patterns with ${uploadedFileUrls.length} screenshot(s)...`);
       }
 
-      // Call the deconstructor agent with uploaded file URLs
       const analysisResult = await AnalyzeSetup({ 
         user_id: user.id, 
         file_urls: uploadedFileUrls 
@@ -162,14 +188,12 @@ export default function TradeAnalyst() {
       console.log('Analysis result received:', analysisResult);
       setRawResult(analysisResult);
 
-      // Try to parse JSON result
       try {
         const parsedResult = JSON.parse(analysisResult);
         setResult(parsedResult);
         console.log('Analysis result parsed successfully:', parsedResult);
       } catch (parseError) {
         console.error('Failed to parse analysis result as JSON:', parseError);
-        // Fallback to structured display with raw text
         setResult({
           overall_performance: {
             summary: analysisResult.substring(0, 300) + (analysisResult.length > 300 ? '...' : ''),
@@ -184,7 +208,7 @@ export default function TradeAnalyst() {
       }
 
       setCurrentView('results');
-      setRetryCount(0); // Reset retry count on success
+      setRetryCount(0);
       toast.success("Educational pattern analysis completed!");
       
     } catch (error) {
@@ -203,8 +227,28 @@ export default function TradeAnalyst() {
     setIsAnalyzing(false);
   };
 
-  const handleRetry = () => {
-    analyzeTradePerformance(true);
+  const viewHistoryItem = (item: AgentOutput) => {
+    setSelectedHistoryItem(item);
+    setRawResult(item.output_text);
+    
+    try {
+      const parsedResult = JSON.parse(item.output_text);
+      setResult(parsedResult);
+    } catch (parseError) {
+      setResult({
+        overall_performance: {
+          summary: item.output_text.substring(0, 300) + (item.output_text.length > 300 ? '...' : ''),
+          screenshots_analyzed: item.metadata?.screenshots_analyzed || 0,
+          trades_analyzed: item.metadata?.trades_analyzed || 0,
+          risk_score: 'Unknown',
+          confidence_level: 'N/A'
+        },
+        key_insights: ['Raw analysis result available in complete analysis section'],
+        recommendations: ['Review the complete analysis below for detailed insights']
+      });
+    }
+    
+    setCurrentView('results');
   };
 
   const backToUpload = () => {
@@ -213,32 +257,71 @@ export default function TradeAnalyst() {
     setRawResult(null);
     setError('');
     setRetryCount(0);
+    setSelectedHistoryItem(null);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const renderUploadView = () => (
-    <div className="space-y-6">
-      {/* Upload Screenshots Card */}
+    <div className="space-y-8">
+      {/* Main Header */}
+      <div className="text-center space-y-4">
+        <div className="flex items-center justify-center gap-3">
+          <div className="p-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30">
+            <Brain className="w-8 h-8 text-purple-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+              Educational Trading Pattern Analysis
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Professional trading performance analysis powered by advanced AI
+            </p>
+          </div>
+        </div>
+        
+        <div className="flex justify-center gap-2">
+          <EducationalBadge />
+          <HypotheticalBadge />
+        </div>
+      </div>
+
+      {/* Upload Section */}
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Camera className="w-5 h-5 text-blue-400" />
+            <Upload className="w-5 h-5 text-purple-400" />
             Upload Trading Screenshots
           </CardTitle>
           <CardDescription>
             Upload up to 5 trading screenshots for comprehensive visual analysis
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* File Upload Area */}
+        <CardContent className="space-y-6">
+          {/* Upload Area */}
           <div 
-            className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+            className="border-2 border-dashed border-purple-500/30 rounded-xl p-12 text-center hover:border-purple-500/50 transition-colors cursor-pointer bg-gradient-to-br from-purple-500/5 to-blue-500/5"
             onClick={() => fileInputRef.current?.click()}
           >
-            <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-lg font-medium mb-2">Drop screenshots here or click to upload</p>
-            <p className="text-sm text-muted-foreground">
-              Supports PNG, JPG, JPEG up to 10MB each
-            </p>
+            <div className="flex flex-col items-center gap-4">
+              <div className="p-4 rounded-full bg-purple-500/20 border border-purple-500/30">
+                <Upload className="w-8 h-8 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-xl font-semibold mb-2">Drop screenshots here or click to upload</p>
+                <p className="text-muted-foreground">
+                  PNG, JPG, JPEG up to 10MB each • Maximum 5 files
+                </p>
+              </div>
+            </div>
           </div>
 
           <input
@@ -250,16 +333,17 @@ export default function TradeAnalyst() {
             className="hidden"
           />
 
-          {/* Uploaded Files Display */}
+          {/* Uploaded Files */}
           {uploadedFiles.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium">Uploaded Screenshots ({uploadedFiles.length}/5)</h3>
+                <h3 className="font-semibold">Uploaded Screenshots ({uploadedFiles.length}/5)</h3>
                 {uploadedFiles.length < 5 && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
+                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add More
@@ -285,7 +369,6 @@ export default function TradeAnalyst() {
                       <X className="w-4 h-4" />
                     </button>
 
-                    {/* Status indicators */}
                     <div className="absolute bottom-2 right-2">
                       {file.uploading && (
                         <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
@@ -308,97 +391,109 @@ export default function TradeAnalyst() {
               </div>
             </div>
           )}
+
+          {/* Analysis Button */}
+          <Button 
+            onClick={() => analyzeTradePerformance(false)} 
+            disabled={!user || isAnalyzing}
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-4 text-lg font-semibold"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Analyzing Trading Performance...
+              </>
+            ) : (
+              <>
+                <Brain className="w-5 h-5 mr-2" />
+                Analyze Trading Performance
+              </>
+            )}
+          </Button>
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-4 h-4" />
+                <span className="font-medium">Analysis Failed</span>
+              </div>
+              <p className="text-sm mb-3">{error}</p>
+              {retryCount < 3 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => analyzeTradePerformance(true)}
+                  disabled={isAnalyzing}
+                  className="border-red-500/20 text-red-400 hover:bg-red-500/10"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again {retryCount > 0 && `(${retryCount}/3)`}
+                </Button>
+              )}
+            </motion.div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Analysis Button and Information Card */}
+      {/* Recent Analyses */}
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-blue-400" />
-            Educational Trading Pattern Analysis
+            <Clock className="w-5 h-5 text-blue-400" />
+            Recent Analyses
           </CardTitle>
           <CardDescription>
-            Comprehensive analysis combining visual screenshots and trading journal data
+            View your previous trading pattern analyses
           </CardDescription>
-          <div className="flex gap-2">
-            <EducationalBadge />
-            <HypotheticalBadge />
-          </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-              <h3 className="text-sm font-medium text-blue-400 mb-2">Visual Analysis Includes:</h3>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Chart pattern recognition</li>
-                <li>• Technical indicator analysis</li>
-                <li>• Entry and exit timing evaluation</li>
-                <li>• Setup quality assessment</li>
-              </ul>
+        <CardContent>
+          {historyLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
             </div>
-
-            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-              <h3 className="text-sm font-medium text-green-400 mb-2">Performance Metrics:</h3>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Win rate and profit factor</li>
-                <li>• Risk-reward ratio analysis</li>
-                <li>• Behavioral pattern identification</li>
-                <li>• Educational recommendations</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Button 
-              onClick={() => analyzeTradePerformance(false)} 
-              disabled={!user || isAnalyzing}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Analyzing Trade Performance...
-                </>
-              ) : (
-                <>
-                  <Brain className="w-5 h-5 mr-2" />
-                  Analyze My Trade Performance
-                </>
-              )}
-            </Button>
-
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="w-4 h-4" />
-                  <span className="font-medium">Analysis Failed</span>
-                </div>
-                <p className="text-sm mb-3">{error}</p>
-                {retryCount < 3 && (
+          ) : analysisHistory && analysisHistory.length > 0 ? (
+            <div className="space-y-3">
+              {analysisHistory.map((item) => (
+                <div 
+                  key={item.id}
+                  className="flex items-center justify-between p-4 bg-background rounded-lg border border-border hover:border-purple-500/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-purple-500/20 border border-purple-500/30">
+                      <BarChart3 className="w-4 h-4 text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        Analysis from {formatDate(item.created_at)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.metadata?.screenshots_analyzed || 0} screenshots • {item.metadata?.trades_analyzed || 0} trades
+                      </p>
+                    </div>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleRetry}
-                    disabled={isAnalyzing}
-                    className="border-red-500/20 text-red-400 hover:bg-red-500/10"
+                    onClick={() => viewHistoryItem(item)}
+                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
                   >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Try Again {retryCount > 0 && `(${retryCount}/3)`}
+                    <Eye className="w-4 h-4 mr-2" />
+                    View
                   </Button>
-                )}
-                {retryCount >= 3 && (
-                  <p className="text-xs text-red-400/80">
-                    Maximum retry attempts reached. Please try again later or contact support.
-                  </p>
-                )}
-              </motion.div>
-            )}
-          </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No previous analyses found</p>
+              <p className="text-sm">Upload screenshots to get started</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -407,8 +502,17 @@ export default function TradeAnalyst() {
   const renderResultsView = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Educational Analysis Results</h2>
-        <Button variant="outline" onClick={backToUpload}>
+        <div>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+            Educational Analysis Results
+          </h2>
+          {selectedHistoryItem && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Analysis from {formatDate(selectedHistoryItem.created_at)}
+            </p>
+          )}
+        </div>
+        <Button variant="outline" onClick={backToUpload} className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
           <Camera className="w-4 h-4 mr-2" />
           Back to Upload
         </Button>
@@ -425,19 +529,19 @@ export default function TradeAnalyst() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{result.overall_performance.screenshots_analyzed || 0}</div>
+                <div className="text-2xl font-bold text-purple-400">{result.overall_performance.screenshots_analyzed || 0}</div>
                 <div className="text-sm text-muted-foreground">Screenshots</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{result.overall_performance.trades_analyzed || 0}</div>
+                <div className="text-2xl font-bold text-purple-400">{result.overall_performance.trades_analyzed || 0}</div>
                 <div className="text-sm text-muted-foreground">Trades</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{result.overall_performance.risk_score || 'N/A'}</div>
+                <div className="text-2xl font-bold text-purple-400">{result.overall_performance.risk_score || 'N/A'}</div>
                 <div className="text-sm text-muted-foreground">Risk Level</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{result.overall_performance.confidence_level || 'N/A'}</div>
+                <div className="text-2xl font-bold text-purple-400">{result.overall_performance.confidence_level || 'N/A'}</div>
                 <div className="text-sm text-muted-foreground">Confidence</div>
               </div>
             </div>
@@ -463,7 +567,7 @@ export default function TradeAnalyst() {
                   <div className="text-sm text-muted-foreground mb-1">
                     {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </div>
-                  <div className="text-lg font-semibold text-primary">{value || 'N/A'}</div>
+                  <div className="text-lg font-semibold text-purple-400">{value || 'N/A'}</div>
                 </div>
               ))}
             </div>
@@ -525,7 +629,7 @@ export default function TradeAnalyst() {
             <div className="space-y-2">
               {result.recommendations.map((recommendation, index) => (
                 <div key={index} className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold mt-0.5 flex-shrink-0">
+                  <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold mt-0.5 flex-shrink-0">
                     {index + 1}
                   </div>
                   <span className="text-sm">{recommendation}</span>
@@ -564,9 +668,8 @@ export default function TradeAnalyst() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-500/5 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Compliance Notice */}
         <ComplianceNotice type="educational" size="md" />
         
         <AnimatePresence mode="wait">

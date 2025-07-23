@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from '@/components/compliance/ComplianceNotice';
 import { validateImageFile, compressImage } from '@/utils/imageCompression';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface AnalysisResult {
   overall_performance?: {
@@ -69,6 +69,7 @@ export default function TradeAnalyst() {
   const [retryCount, setRetryCount] = useState(0);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<AgentOutput | null>(null);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch analysis history
@@ -206,6 +207,9 @@ export default function TradeAnalyst() {
           recommendations: ['Review the complete analysis below for detailed insights']
         });
       }
+
+      // Invalidate the analysis history query to refresh the Recent Analyses list
+      queryClient.invalidateQueries({ queryKey: ['analysis-history', user?.id] });
 
       setCurrentView('results');
       setRetryCount(0);

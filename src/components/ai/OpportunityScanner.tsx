@@ -4,16 +4,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, TrendingUp, Clock, RefreshCw, AlertCircle, Target, Zap, BarChart3, Filter, SortDesc, Eye, Bell, Play } from 'lucide-react';
+import { Search, TrendingUp, Clock, RefreshCw, AlertCircle, Target, Zap, BarChart3, Filter, SortDesc, Eye, Bell, Play, Brain, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from '@/components/compliance/ComplianceNotice';
+import { useAuth } from '@/contexts/AuthContext';
+import { signalProcessingService, EducationalSignal } from '@/services/signalProcessingService';
 
 export default function OpportunityScanner() {
-  const [signals, setSignals] = useState([]);
+  const { user } = useAuth();
+  const [signals, setSignals] = useState<EducationalSignal[]>([]);
   const [isScanning, setIsScanning] = useState(false);
-  const [lastScan, setLastScan] = useState(null);
-  const [marketData, setMarketData] = useState(null);
-  const [dataStatus, setDataStatus] = useState('mock');
+  const [lastScan, setLastScan] = useState<Date | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     market: 'all',
     strategy: 'all',
@@ -21,142 +23,77 @@ export default function OpportunityScanner() {
   });
   const [sortBy, setSortBy] = useState('probability');
 
-  // Mock data with enhanced format for educational purposes
-  const mockSignals = [{
-    id: 1,
-    instrument: 'TSLA',
-    asset_name: 'Tesla, Inc.',
-    current_price: 245.67,
-    signal_type: 'breakout',
-    description: 'Educational example: Breaking above key resistance with increasing volume',
-    probability: 88,
-    key_levels: [240.00, 235.50, 255.00],
-    time_frame: '4H',
-    entry_trigger: 'Educational analysis: Break above $248 with volume',
-    risk_reward: 2.5,
-    status: 'active',
-    market: 'stocks',
-    strategy: 'Educational Breakout Pattern',
-    confidence_score: 88,
-    mini_chart: '📈',
-    rationale: 'Educational example of breaking above key resistance with increasing volume'
-  }, {
-    id: 2,
-    instrument: 'EUR/USD',
-    asset_name: 'Euro/US Dollar',
-    current_price: 1.0850,
-    signal_type: 'reversal',
-    description: 'Educational example: Potential reversal at key support level with bullish divergence',
-    probability: 75,
-    key_levels: [1.0800, 1.0780, 1.0920],
-    time_frame: '1H',
-    entry_trigger: 'Educational analysis: Bounce from 1.0800 support',
-    risk_reward: 2.1,
-    status: 'active',
-    market: 'forex',
-    strategy: 'Educational Reversal Pattern',
-    confidence_score: 75,
-    mini_chart: '📊',
-    rationale: 'Educational example: RSI oversold with bullish divergence forming'
-  }, {
-    id: 3,
-    instrument: 'BTC/USD',
-    asset_name: 'Bitcoin',
-    current_price: 43250.0,
-    signal_type: 'momentum',
-    description: 'Educational example: Strong bullish momentum continuation above $42K resistance',
-    probability: 82,
-    key_levels: [42000, 41500, 45000],
-    time_frame: '4H',
-    entry_trigger: 'Educational analysis: Break above $43,500',
-    risk_reward: 3.2,
-    status: 'active',
-    market: 'crypto',
-    strategy: 'Educational Momentum Pattern',
-    confidence_score: 82,
-    mini_chart: '⚡',
-    rationale: 'Educational example: Volume surge with institutional buying pressure'
-  }, {
-    id: 4,
-    instrument: 'GOLD',
-    asset_name: 'Gold Spot',
-    current_price: 2055.0,
-    signal_type: 'pattern',
-    description: 'Educational example: Ascending triangle pattern completion with bullish bias',
-    probability: 79,
-    key_levels: [2050.0, 2040.0, 2080.0],
-    time_frame: '4H',
-    entry_trigger: 'Educational analysis: Break above $2060',
-    risk_reward: 2.8,
-    status: 'active',
-    market: 'commodities',
-    strategy: 'Educational Pattern Recognition',
-    confidence_score: 79,
-    mini_chart: '📐',
-    rationale: 'Educational example: Triangle breakout with volume confirmation'
-  }];
-
-  const mockMarketData = {
-    'EUR/USD': 1.0850,
-    'GBP/USD': 1.2750,
-    'Gold': 2055.0,
-    'XAU/USD': 2055.0
-  };
-
   useEffect(() => {
     loadSignals();
-    checkMarketDataAvailability();
   }, []);
 
-  const checkMarketDataAvailability = async () => {
-    // Simulate checking market data
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setMarketData(mockMarketData);
-    setDataStatus('mock');
-  };
-
   const loadSignals = async () => {
-    // Filter and sort signals based on current filters
-    let filteredSignals = mockSignals.filter(s => s.status === 'active');
-    
-    if (filters.market !== 'all') {
-      filteredSignals = filteredSignals.filter(s => s.market === filters.market);
-    }
-    if (filters.strategy !== 'all') {
-      filteredSignals = filteredSignals.filter(s => s.strategy === filters.strategy);
-    }
-    if (filters.timeframe !== 'all') {
-      filteredSignals = filteredSignals.filter(s => s.time_frame === filters.timeframe);
+    if (!user) {
+      console.log('No user available for educational pattern scanning');
+      return;
     }
 
-    // Sort signals
-    filteredSignals.sort((a, b) => {
-      switch (sortBy) {
-        case 'probability':
-          return b.probability - a.probability;
-        case 'risk_reward':
-          return b.risk_reward - a.risk_reward;
-        case 'recency':
-          return b.id - a.id;
-        default:
-          return 0;
+    try {
+      setScanError(null);
+      const educationalSignals = await signalProcessingService.scanForEducationalOpportunities(user.id);
+      
+      // Apply filters and sorting
+      let filteredSignals = educationalSignals.filter(s => s.status === 'active');
+      
+      if (filters.market !== 'all') {
+        filteredSignals = filteredSignals.filter(s => s.market === filters.market);
       }
-    });
+      if (filters.strategy !== 'all') {
+        filteredSignals = filteredSignals.filter(s => s.strategy.includes(filters.strategy));
+      }
+      if (filters.timeframe !== 'all') {
+        filteredSignals = filteredSignals.filter(s => s.time_frame === filters.timeframe);
+      }
 
-    setSignals(filteredSignals);
+      // Sort signals
+      filteredSignals.sort((a, b) => {
+        switch (sortBy) {
+          case 'probability':
+            return b.probability - a.probability;
+          case 'risk_reward':
+            return b.risk_reward - a.risk_reward;
+          case 'recency':
+            return parseInt(b.id.split('-')[1] || '0') - parseInt(a.id.split('-')[1] || '0');
+          default:
+            return 0;
+        }
+      });
+
+      setSignals(filteredSignals);
+    } catch (error) {
+      console.error('Error loading educational signals:', error);
+      setScanError('Failed to load educational patterns. Using fallback examples.');
+    }
   };
 
   const scanForOpportunities = async () => {
+    if (!user) {
+      setScanError('Please sign in to access personalized educational content');
+      return;
+    }
+
     setIsScanning(true);
+    setScanError(null);
+    
     try {
-      // Simulate scanning delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log('Starting educational pattern scan for user:', user.id);
       
-      // Reload signals with current filters
+      // Call signal-finder-agent for AI-powered educational content
+      const educationalSignals = await signalProcessingService.scanForEducationalOpportunities(user.id);
+      
+      // Apply current filters and sorting
       await loadSignals();
       setLastScan(new Date());
+      
+      console.log('Educational pattern scan completed successfully');
     } catch (error) {
       console.error('Error scanning for educational opportunities:', error);
+      setScanError('Failed to scan for educational patterns. Please try again.');
     }
     setIsScanning(false);
   };
@@ -164,26 +101,27 @@ export default function OpportunityScanner() {
   // Update signals when filters change
   useEffect(() => {
     loadSignals();
-  }, [filters, sortBy]);
+  }, [filters, sortBy, user]);
 
-  const getSignalTypeColor = type => {
+  const getSignalTypeColor = (type: string) => {
     const colors = {
       breakout: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
       reversal: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
       news_event: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
       pattern: 'bg-green-500/10 text-green-400 border-green-500/20',
-      momentum: 'bg-red-500/10 text-red-400 border-red-500/20'
+      momentum: 'bg-red-500/10 text-red-400 border-red-500/20',
+      educational: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
     };
-    return colors[type] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+    return colors[type as keyof typeof colors] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
   };
 
-  const getProbabilityColor = probability => {
+  const getProbabilityColor = (probability: number) => {
     if (probability >= 80) return 'text-green-400';
     if (probability >= 60) return 'text-yellow-400';
     return 'text-red-400';
   };
 
-  const getConfidenceGauge = (score) => {
+  const getConfidenceGauge = (score: number) => {
     const percentage = score;
     const color = score >= 80 ? 'text-green-400' : score >= 60 ? 'text-yellow-400' : 'text-red-400';
     return { percentage, color };
@@ -200,6 +138,12 @@ export default function OpportunityScanner() {
           <div className="flex items-center gap-2">
             <EducationalBadge />
             <HypotheticalBadge />
+            {user && (
+              <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+                <Brain className="w-3 h-3 mr-1" />
+                AI-Powered Learning
+              </Badge>
+            )}
           </div>
           {lastScan && (
             <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -208,6 +152,30 @@ export default function OpportunityScanner() {
             </div>
           )}
         </div>
+
+        {/* Error Display */}
+        {scanError && (
+          <Card className="bg-orange-500/10 border-orange-500/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-orange-400">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-sm">{scanError}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Authentication Notice */}
+        {!user && (
+          <Card className="bg-blue-500/10 border-blue-500/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-blue-400">
+                <Brain className="w-4 h-4" />
+                <span className="text-sm">Sign in to access personalized AI-powered educational content based on your trading patterns</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="bg-card/50 border-border/50">
           <CardContent className="p-3">
@@ -229,6 +197,7 @@ export default function OpportunityScanner() {
                     <SelectItem value="stocks">Stocks</SelectItem>
                     <SelectItem value="forex">Forex</SelectItem>
                     <SelectItem value="commodities">Commodities</SelectItem>
+                    <SelectItem value="educational">Educational</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -238,10 +207,10 @@ export default function OpportunityScanner() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Educational Patterns</SelectItem>
-                    <SelectItem value="Educational Breakout Pattern">Educational Breakout</SelectItem>
-                    <SelectItem value="Educational Momentum Pattern">Educational Momentum</SelectItem>
-                    <SelectItem value="Educational Reversal Pattern">Educational Reversal</SelectItem>
-                    <SelectItem value="Educational Pattern Recognition">Educational Pattern</SelectItem>
+                    <SelectItem value="Breakout">Educational Breakout</SelectItem>
+                    <SelectItem value="Momentum">Educational Momentum</SelectItem>
+                    <SelectItem value="Reversal">Educational Reversal</SelectItem>
+                    <SelectItem value="Pattern">Educational Pattern</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -278,19 +247,19 @@ export default function OpportunityScanner() {
 
                 <Button 
                   onClick={scanForOpportunities} 
-                  disabled={isScanning} 
+                  disabled={isScanning || !user} 
                   size="sm"
                   className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-8 px-3 text-xs"
                 >
                   {isScanning ? (
                     <>
                       <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent mr-1" />
-                      Scanning Educational Patterns...
+                      AI Learning Scan...
                     </>
                   ) : (
                     <>
-                      <Search className="w-3 h-3 mr-1" />
-                      Scan for Learning
+                      <Brain className="w-3 h-3 mr-1" />
+                      AI Pattern Scan
                     </>
                   )}
                 </Button>
@@ -308,10 +277,17 @@ export default function OpportunityScanner() {
               className="text-center py-16"
             >
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/30 mb-6">
-                <Search className="w-10 h-10 text-blue-400" />
+                <BookOpen className="w-10 h-10 text-blue-400" />
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">No Educational Patterns Available</h3>
-              <p className="text-muted-foreground">Click "Scan for Learning" to discover new educational pattern examples</p>
+              <h3 className="text-xl font-semibold text-foreground mb-2">
+                {user ? 'No Educational Patterns Available' : 'Sign In for Personalized Learning'}
+              </h3>
+              <p className="text-muted-foreground">
+                {user 
+                  ? 'Click "AI Pattern Scan" to discover new educational opportunities based on your trading patterns'
+                  : 'Sign in to access AI-powered educational content personalized to your trading style'
+                }
+              </p>
             </motion.div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -331,7 +307,15 @@ export default function OpportunityScanner() {
                           <div>
                             <h3 className="text-lg font-bold text-foreground">{signal.instrument}</h3>
                             <p className="text-sm text-muted-foreground">{signal.asset_name}</p>
-                            <EducationalBadge className="mt-1" />
+                            <div className="flex gap-1 mt-1">
+                              <EducationalBadge />
+                              {signal.id.includes('ai-') && (
+                                <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs">
+                                  <Brain className="w-2 h-2 mr-1" />
+                                  AI
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <div className="text-right">
                             <Badge className={`${getSignalTypeColor(signal.signal_type)} border`}>
@@ -357,7 +341,7 @@ export default function OpportunityScanner() {
                               transition={{ duration: 1, delay: index * 0.1 }}
                             />
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">Hypothetical educational example only</p>
+                          <p className="text-xs text-muted-foreground mt-1">Educational probability for learning purposes</p>
                         </div>
 
                         {/* Mini Chart */}
@@ -368,6 +352,29 @@ export default function OpportunityScanner() {
                             <p className="text-xs text-muted-foreground">Learning R:R {signal.risk_reward}:1</p>
                           </div>
                         </div>
+
+                        {/* Learning Objective */}
+                        {signal.learning_objective && (
+                          <div className="mb-3 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                            <h4 className="text-sm font-semibold text-blue-400 mb-1">🎯 Learning Objective</h4>
+                            <p className="text-xs text-blue-300">{signal.learning_objective}</p>
+                          </div>
+                        )}
+
+                        {/* Pattern Explanation */}
+                        {signal.pattern_explanation && (
+                          <div className="mb-3">
+                            <h4 className="text-sm font-semibold text-foreground mb-1">📊 Pattern Analysis</h4>
+                            <p className="text-xs text-muted-foreground">{signal.pattern_explanation}</p>
+                          </div>
+                        )}
+
+                        {/* Risk Education */}
+                        {signal.risk_education && (
+                          <div className="mb-4 p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                            <p className="text-xs text-orange-300">{signal.risk_education}</p>
+                          </div>
+                        )}
 
                         {/* Educational Analysis */}
                         <div className="mb-4">

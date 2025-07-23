@@ -471,7 +471,7 @@ export default function TradeAnalyst() {
                         Analysis from {formatDate(item.created_at)}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {item.metadata?.screenshots_analyzed || 0} screenshots • {item.metadata?.trades_analyzed || 0} trades
+                        {(item.metadata as any)?.screenshots_analyzed || 0} screenshots • {(item.metadata as any)?.trades_analyzed || 0} trades
                       </p>
                     </div>
                   </div>

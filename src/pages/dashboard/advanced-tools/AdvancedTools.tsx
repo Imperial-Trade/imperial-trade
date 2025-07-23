@@ -215,7 +215,7 @@ export default function AdvancedTools() {
                           {tool.name === "Educational Journal" ? "Journal" : 
                            tool.name === "Economic Calendar" ? "Calendar" : 
                            tool.name === "Educational Calculator" ? "Calculator" : 
-                           tool.name === "Educational Trading Pattern Analysis" ? "Pattern Analysis" : 
+                           tool.name === "Educational Trading Pattern Analysis" ? "Analyst" : 
                            tool.name === "Educational Pattern Scanner" ? "Scanner" : 
                            tool.name === "Educational Risk Calculator" ? "Risk Calc" : 
                            tool.name.split(" ")[0]}

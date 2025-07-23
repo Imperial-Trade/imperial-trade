@@ -221,7 +221,7 @@ serve(async (req) => {
       parts: parts
     });
 
-    const modelName = "gemini-1.5-flash"; // Use flash model for higher quota limits
+    const modelName = "gemini-2.5-pro";
 
     console.log("Deconstructor Agent - Calling Google AI with contents array...");
     

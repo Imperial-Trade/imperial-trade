@@ -72,7 +72,7 @@ serve(async (req) => {
 
     // Generate technical response (with IDs for logging)
     const fullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userActionPrompt}`;
-    const modelName = "gemini-1.5-flash-latest";
+    const modelName = "gemini-2.5-flash";
 
     console.log("Coach Agent - Generating AI response...");
     const coachResponse = await callGoogleAI(apiKey, modelName, fullPrompt);

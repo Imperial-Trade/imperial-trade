@@ -180,7 +180,7 @@ serve(async (req) => {
     `;
     const fullUserReadablePrompt = `${SYSTEM_PROMPT}\n\n--- CONTEXT & DATA ---\n${userReadablePrompt}`;
 
-    const modelName = "gemini-1.5-pro-latest";
+    const modelName = "gemini-2.5-pro";
 
     console.log("Signal Finder Agent - Generating technical response...");
     const technicalResponse = await callGoogleAI(apiKey, modelName, fullTechnicalPrompt);

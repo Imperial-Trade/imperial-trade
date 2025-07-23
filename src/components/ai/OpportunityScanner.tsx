@@ -9,10 +9,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from '@/components/compliance/ComplianceNotice';
 import { useAuth } from '@/contexts/AuthContext';
 import { signalProcessingService, EducationalSignal } from '@/services/signalProcessingService';
+import { marketDataService, MarketDataPoint } from '@/services/MarketDataService';
 
 export default function OpportunityScanner() {
   const { user } = useAuth();
   const [signals, setSignals] = useState<EducationalSignal[]>([]);
+  const [livePrice, setLivePrice] = useState<Record<string, MarketDataPoint>>({});
   const [isScanning, setIsScanning] = useState(false);
   const [lastScan, setLastScan] = useState<Date | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -27,6 +29,19 @@ export default function OpportunityScanner() {
     loadSignals();
   }, []);
 
+  const fetchLivePrices = async (symbols: string[]) => {
+    try {
+      const marketData = await marketDataService.getMarketData({ symbols });
+      const priceMap: Record<string, MarketDataPoint> = {};
+      marketData.forEach(data => {
+        priceMap[data.symbol] = data;
+      });
+      setLivePrice(priceMap);
+    } catch (error) {
+      console.error('Error fetching live prices:', error);
+    }
+  };
+
   const loadSignals = async () => {
     if (!user) {
       console.log('No user available for educational pattern scanning');
@@ -36,6 +51,10 @@ export default function OpportunityScanner() {
     try {
       setScanError(null);
       const educationalSignals = await signalProcessingService.scanForEducationalOpportunities(user.id);
+      
+      // Fetch live prices for signals
+      const symbols = educationalSignals.map(s => s.instrument);
+      await fetchLivePrices(symbols);
       
       // Apply filters and sorting
       let filteredSignals = educationalSignals.filter(s => s.status === 'active');
@@ -134,21 +153,18 @@ export default function OpportunityScanner() {
         <ComplianceNotice type="educational" size="md" />
 
         {/* Header with Controls */}
-        <div className="flex flex-col lg:flex-row gap-4 lg:items-center justify-between">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <EducationalBadge />
-            <HypotheticalBadge />
-            {user && (
-              <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                <Brain className="w-3 h-3 mr-1" />
-                AI-Powered Learning
-              </Badge>
-            )}
+            <h1 className="text-2xl font-bold text-foreground">AI Pattern Scanner</h1>
+            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+              <Brain className="w-3 h-3 mr-1" />
+              Live Market Data
+            </Badge>
           </div>
           {lastScan && (
             <div className="text-sm text-muted-foreground flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              Last Educational Scan: {lastScan.toLocaleTimeString()}
+              Last Scan: {lastScan.toLocaleTimeString()}
             </div>
           )}
         </div>
@@ -300,109 +316,68 @@ export default function OpportunityScanner() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                   >
-                    <Card className="bg-card hover:bg-card/80 border-border hover:border-blue-500/50 transition-all duration-300 group">
-                      <CardContent className="p-6">
-                        {/* Header */}
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h3 className="text-lg font-bold text-foreground">{signal.instrument}</h3>
-                            <p className="text-sm text-muted-foreground">{signal.asset_name}</p>
-                            <div className="flex gap-1 mt-1">
-                              <EducationalBadge />
-                              {signal.id.includes('ai-') && (
-                                <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs">
-                                  <Brain className="w-2 h-2 mr-1" />
-                                  AI
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <Badge className={`${getSignalTypeColor(signal.signal_type)} border`}>
-                              {signal.signal_type.replace('_', ' ')}
-                            </Badge>
-                            <p className="text-xs text-muted-foreground mt-1">{signal.time_frame}</p>
-                          </div>
-                        </div>
+                     <Card className="bg-card hover:bg-card/80 border-border hover:border-blue-500/50 transition-all duration-300">
+                       <CardContent className="p-6">
+                         {/* Header */}
+                         <div className="flex items-start justify-between mb-4">
+                           <div>
+                             <h3 className="text-lg font-bold text-foreground">{signal.instrument}</h3>
+                             <p className="text-sm text-muted-foreground">{signal.asset_name}</p>
+                           </div>
+                           <Badge className={`${getSignalTypeColor(signal.signal_type)} border`}>
+                             {signal.signal_type.replace('_', ' ')}
+                           </Badge>
+                         </div>
 
-                        {/* Educational Confidence Score */}
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-foreground">Educational Confidence</span>
-                            <span className={`text-lg font-bold ${confidence.color}`}>
-                              {confidence.percentage}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-2">
-                            <motion.div
-                              className={`h-2 rounded-full ${confidence.percentage >= 80 ? 'bg-green-400' : confidence.percentage >= 60 ? 'bg-yellow-400' : 'bg-red-400'}`}
-                              initial={{ width: 0 }}
-                              animate={{ width: `${confidence.percentage}%` }}
-                              transition={{ duration: 1, delay: index * 0.1 }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">Educational probability for learning purposes</p>
-                        </div>
+                         {/* Live Price & Confidence */}
+                         <div className="mb-4 p-3 bg-muted/30 rounded-lg">
+                           <div className="flex items-center justify-between mb-2">
+                             <div>
+                               <div className="text-xl font-bold text-foreground">
+                                 ${livePrice[signal.instrument]?.price || signal.current_price}
+                               </div>
+                               {livePrice[signal.instrument] && (
+                                 <div className={`text-sm flex items-center gap-1 ${
+                                   livePrice[signal.instrument].changePercent >= 0 ? 'text-green-400' : 'text-red-400'
+                                 }`}>
+                                   <TrendingUp className="w-3 h-3" />
+                                   {livePrice[signal.instrument].changePercent.toFixed(2)}%
+                                 </div>
+                               )}
+                             </div>
+                             <div className="text-right">
+                               <div className={`text-xl font-bold ${confidence.color}`}>
+                                 {confidence.percentage}%
+                               </div>
+                               <div className="text-xs text-muted-foreground">Confidence</div>
+                             </div>
+                           </div>
+                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                             <span>{signal.time_frame}</span>
+                             <span>•</span>
+                             <span>R:R {signal.risk_reward}:1</span>
+                           </div>
+                         </div>
 
-                        {/* Mini Chart */}
-                        <div className="flex items-center gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
-                          <div className="text-2xl">{signal.mini_chart}</div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-foreground">Educational Price: ${signal.current_price}</p>
-                            <p className="text-xs text-muted-foreground">Learning R:R {signal.risk_reward}:1</p>
-                          </div>
-                        </div>
+                         {/* Analysis */}
+                         <div className="mb-4">
+                           <h4 className="text-sm font-semibold text-foreground mb-2">Analysis</h4>
+                           <p className="text-sm text-muted-foreground">{signal.rationale}</p>
+                         </div>
 
-                        {/* Learning Objective */}
-                        {signal.learning_objective && (
-                          <div className="mb-3 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                            <h4 className="text-sm font-semibold text-blue-400 mb-1">🎯 Learning Objective</h4>
-                            <p className="text-xs text-blue-300">{signal.learning_objective}</p>
-                          </div>
-                        )}
-
-                        {/* Pattern Explanation */}
-                        {signal.pattern_explanation && (
-                          <div className="mb-3">
-                            <h4 className="text-sm font-semibold text-foreground mb-1">📊 Pattern Analysis</h4>
-                            <p className="text-xs text-muted-foreground">{signal.pattern_explanation}</p>
-                          </div>
-                        )}
-
-                        {/* Risk Education */}
-                        {signal.risk_education && (
-                          <div className="mb-4 p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
-                            <p className="text-xs text-orange-300">{signal.risk_education}</p>
-                          </div>
-                        )}
-
-                        {/* Educational Analysis */}
-                        <div className="mb-4">
-                          <p className="text-sm text-muted-foreground mb-2">
-                            <strong className="text-blue-400">Educational Analysis:</strong> {signal.rationale}
-                          </p>
-                          <p className="text-xs text-muted-foreground italic">
-                            This is a hypothetical example for educational purposes only.
-                          </p>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 pt-4 border-t border-border">
-                          <Button variant="outline" size="sm" className="flex-1">
-                            <Eye className="w-4 h-4 mr-1" />
-                            Study Pattern
-                          </Button>
-                          <Button variant="outline" size="sm" className="flex-1">
-                            <Bell className="w-4 h-4 mr-1" />
-                            Save Example
-                          </Button>
-                          <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700">
-                            <Play className="w-4 h-4 mr-1" />
-                            Learn More
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                         {/* Action Buttons */}
+                         <div className="flex gap-2">
+                           <Button variant="outline" size="sm" className="flex-1">
+                             <Eye className="w-4 h-4 mr-1" />
+                             View
+                           </Button>
+                           <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700">
+                             <Target className="w-4 h-4 mr-1" />
+                             Track
+                           </Button>
+                         </div>
+                       </CardContent>
+                     </Card>
                   </motion.div>
                 );
               })}

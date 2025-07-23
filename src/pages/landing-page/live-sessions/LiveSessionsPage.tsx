@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Video,
   Users,
@@ -13,13 +13,40 @@ import {
   Eye,
   MessageSquare,
   Monitor,
-  Archive
+  Archive,
+  AlertTriangle,
+  BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ComplianceFooter } from "@/components/compliance/ComplianceFooter";
+import { LiveSessionCompliance, LiveSessionEducationalBanner } from "@/components/compliance/LiveSessionCompliance";
 
 const LiveSessionsPage: React.FC = () => {
+  const [complianceOpen, setComplianceOpen] = useState(false);
+  const [complianceAccepted, setComplianceAccepted] = useState(false);
+
+  const handleJoinSession = () => {
+    if (!complianceAccepted) {
+      setComplianceOpen(true);
+    } else {
+      // Redirect to actual session or dashboard
+      window.location.href = '/dashboard/live';
+    }
+  };
+
+  const handleComplianceAccept = () => {
+    setComplianceAccepted(true);
+    setComplianceOpen(false);
+    // Redirect to actual session or dashboard
+    window.location.href = '/dashboard/live';
+  };
+
+  const handleComplianceDecline = () => {
+    setComplianceOpen(false);
+  };
+
   const sessionTypes = [
     {
       icon: Monitor,
@@ -141,21 +168,24 @@ const LiveSessionsPage: React.FC = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <div className="space-y-6">
-                <Badge variant="outline" className="inline-flex items-center gap-2 border-purple-500/20 text-purple-600 bg-purple-500/5">
-                  <Video className="h-4 w-4" />
-                  The Virtual Trading Floor
+                <Badge variant="outline" className="inline-flex items-center gap-2 border-orange-500/20 text-orange-600 bg-orange-500/5">
+                  <BookOpen className="h-4 w-4" />
+                  Educational Trading Platform
                 </Badge>
                 <h1 className="text-6xl font-bold leading-tight tracking-tight">
                   <span className="bg-gradient-to-r from-purple-500 via-violet-400 to-purple-600 bg-clip-text text-transparent">
-                    Live Sessions
+                    Educational Live Sessions
                   </span>
                   <br />
-                  <span className="text-foreground">Real-Time Mastery</span>
+                  <span className="text-foreground">Learn Real-Time Trading</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
-                  Direct, unfiltered access to the mind of a professional trader during the most critical hours of the trading day. 
-                  Your chance to ask questions you can't find answers to in books or videos.
+                  Educational access to professional trading analysis and decision-making processes for learning purposes only. 
+                  Interactive educational sessions where you can ask questions about trading concepts and market analysis.
                 </p>
+                
+                {/* Educational Banner */}
+                <LiveSessionEducationalBanner />
               </div>
               
               {/* Stats */}
@@ -170,9 +200,9 @@ const LiveSessionsPage: React.FC = () => {
               </div>
               
               <div className="flex items-center gap-4">
-                <Button size="lg" className="bg-purple-600 hover:bg-purple-700 text-white px-8">
-                  Join Next Session
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                <Button size="lg" onClick={handleJoinSession} className="bg-orange-600 hover:bg-orange-700 text-white px-8">
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  Join Educational Session
                 </Button>
                 <Button variant="outline" size="lg" className="border-purple-500/20 hover:bg-purple-500/5 px-8">
                   View Schedule
@@ -419,6 +449,17 @@ const LiveSessionsPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Compliance Footer */}
+      <ComplianceFooter />
+
+      {/* Live Session Compliance Modal */}
+      <LiveSessionCompliance
+        isOpen={complianceOpen}
+        onAccept={handleComplianceAccept}
+        onDecline={handleComplianceDecline}
+        sessionType="live"
+      />
     </div>
   );
 };

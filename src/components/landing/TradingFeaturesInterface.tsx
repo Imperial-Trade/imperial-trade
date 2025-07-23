@@ -270,11 +270,11 @@ const TradingFeaturesInterface: React.FC = () => {
         },
         {
           icon: Video,
-          title: "Live Webinars",
-          description: "Weekly live educational sessions with Q&A and real-time market analysis.",
-          features: ["Weekly Sessions", "Live Q&A", "Market Analysis", "Recording Library"],
-          usage: "Join weekly live educational sessions with experienced traders and get your questions answered in real-time.",
-          benefits: ["Live interaction", "Expert access", "Q&A sessions"]
+          title: "Educational Live Sessions",
+          description: "Weekly educational trading sessions for learning purposes only - not investment advice.",
+          features: ["Educational Sessions", "Live Q&A", "Market Analysis", "Recording Library"],
+          usage: "Join weekly educational sessions with experienced traders to learn about market analysis and trading concepts.",
+          benefits: ["Educational interaction", "Expert guidance", "Learning Q&A"]
         },
         {
           icon: BookOpen,

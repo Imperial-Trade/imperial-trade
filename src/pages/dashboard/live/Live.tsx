@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Loader2, Calendar, Clock, User, Video, ExternalLink, Settings, Zap, MonitorPlay } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, Video, ExternalLink, Settings, Zap, MonitorPlay, AlertTriangle, BookOpen } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLiveSessionManager, LiveSession } from '@/hooks/useLiveSessionManager';
 import { CreateSessionDialog } from '@/components/live/CreateSessionDialog';
@@ -12,6 +12,7 @@ import { EditSessionDialog } from '@/components/live/EditSessionDialog';
 import { SessionStatusControls } from '@/components/live/SessionStatusControls';
 import { VideoPlayer } from '@/components/live/VideoPlayer';
 import { ZoomSDKPlayer } from '@/components/live/ZoomSDKPlayer';
+import { LiveSessionCompliance, LiveSessionEducationalBanner, SessionTypeEducationalLabel } from '@/components/compliance/LiveSessionCompliance';
 
 export default function Live() {
   const { user, profile } = useAuth();
@@ -31,6 +32,8 @@ export default function Live() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [watchingSession, setWatchingSession] = useState<LiveSession | null>(null);
   const [sdkSession, setSdkSession] = useState<LiveSession | null>(null);
+  const [complianceOpen, setComplianceOpen] = useState(false);
+  const [pendingSession, setPendingSession] = useState<LiveSession | null>(null);
 
   const handleEditSession = (session: LiveSession) => {
     setEditingSession(session);
@@ -97,6 +100,35 @@ export default function Live() {
     }
   };
 
+  // Compliance-protected session access
+  const handleSessionAccess = (session: LiveSession, accessType: 'watch' | 'join' | 'sdk') => {
+    setPendingSession(session);
+    setComplianceOpen(true);
+  };
+
+  const handleComplianceAccept = () => {
+    if (pendingSession) {
+      // Proceed with the original session access
+      const session = pendingSession;
+      if (canManageSessions) {
+        if (session.zoom_sdk_enabled && session.zoom_meeting_number) {
+          setSdkSession(session);
+        } else {
+          joinSession(session);
+        }
+      } else {
+        watchLiveSession(session);
+      }
+    }
+    setComplianceOpen(false);
+    setPendingSession(null);
+  };
+
+  const handleComplianceDecline = () => {
+    setComplianceOpen(false);
+    setPendingSession(null);
+  };
+
   const canUseSDK = (session: LiveSession) => {
     return session.zoom_sdk_enabled && session.zoom_meeting_number && canManageSessions;
   };
@@ -125,10 +157,14 @@ export default function Live() {
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-primary mb-2">Live Trading Sessions</h1>
+                <h1 className="text-3xl font-bold text-primary mb-2 flex items-center gap-2">
+                  <BookOpen className="h-8 w-8 text-orange-500" />
+                  Educational Live Sessions
+                </h1>
                 <p className="text-muted-foreground">
-                  Join live trading sessions with expert traders and educators
+                  Join educational trading sessions for learning purposes only. Not investment advice.
                 </p>
+                <LiveSessionEducationalBanner />
               </div>
               
               {/* Management Controls for Admins/Educators */}
@@ -243,15 +279,15 @@ export default function Live() {
                                  </Button>
                                )}
                              </>
-                           ) : (
-                             <Button 
-                               onClick={() => watchLiveSession(session)} 
-                               className="w-full bg-red-500 hover:bg-red-600 text-white mb-3"
-                             >
-                               <Video className="w-4 h-4 mr-2" />
-                               {session.stream_embed_url ? 'Watch Live' : 'Join Session'}
-                             </Button>
-                           )}
+                            ) : (
+                              <Button 
+                                onClick={() => handleSessionAccess(session, 'watch')} 
+                                className="w-full bg-orange-600 hover:bg-orange-700 text-white mb-3"
+                              >
+                                <AlertTriangle className="w-4 h-4 mr-2" />
+                                Join Educational Session
+                              </Button>
+                            )}
                           
                           {/* Management Controls for Admins/Educators */}
                           {canManageSessions && (
@@ -476,6 +512,14 @@ export default function Live() {
               onClose={() => setSdkSession(null)}
             />
           )}
+
+          {/* Live Session Compliance Modal */}
+          <LiveSessionCompliance
+            isOpen={complianceOpen}
+            onAccept={handleComplianceAccept}
+            onDecline={handleComplianceDecline}
+            sessionType="live"
+          />
         </div>
       </div>
     </TooltipProvider>

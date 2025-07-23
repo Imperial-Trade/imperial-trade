@@ -28,7 +28,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   const [formData, setFormData] = useState({
     asset_name: '',
     finnhub_symbol: '',
-    trade_type: 'buy',
+    trade_type: 'buy' as 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
     entry_price: '',
     stop_loss: '',
     tp1: '',

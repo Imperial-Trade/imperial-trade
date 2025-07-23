@@ -40,6 +40,11 @@ export interface HistoricalDataPoint {
   volume: number;
 }
 
+export interface MarketDataRequest {
+  symbols: string[];
+  includeVolume?: boolean;
+}
+
 export interface EnhancedMarketDataRequest {
   symbols?: string[];
   includeVolume?: boolean;

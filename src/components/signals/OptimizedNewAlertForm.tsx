@@ -4,10 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, TrendingUp, AlertTriangle, Target } from 'lucide-react';
+import { Loader2, AlertTriangle, Plus, X } from 'lucide-react';
 import EnhancedLivePriceDisplay from './EnhancedLivePriceDisplay';
 import { AssetSelector, SUPPORTED_ASSETS, type AssetOption } from './AssetSelector';
 import { useToast } from '@/components/ui/use-toast';
@@ -30,7 +28,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   const [formData, setFormData] = useState({
     asset_name: '',
     finnhub_symbol: '',
-    trade_type: 'buy_long',
+    trade_type: 'buy',
     entry_price: '',
     stop_loss: '',
     tp1: '',
@@ -41,6 +39,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     notes: ''
   });
 
+  const [takeProfits, setTakeProfits] = useState<string[]>(['']);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleAssetChange = useCallback((asset: AssetOption) => {
@@ -82,18 +81,50 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     });
   }, [toast]);
 
+  const addTakeProfit = () => {
+    if (takeProfits.length < 5) {
+      setTakeProfits([...takeProfits, '']);
+    }
+  };
+
+  const removeTakeProfit = (index: number) => {
+    if (takeProfits.length > 1) {
+      const newTPs = takeProfits.filter((_, i) => i !== index);
+      setTakeProfits(newTPs);
+      
+      // Clear corresponding form data
+      const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+      setFormData(prev => ({
+        ...prev,
+        [tpKeys[index]]: ''
+      }));
+    }
+  };
+
+  const handleTakeProfitChange = (index: number, value: string) => {
+    const newTPs = [...takeProfits];
+    newTPs[index] = value;
+    setTakeProfits(newTPs);
+    
+    const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+    setFormData(prev => ({
+      ...prev,
+      [tpKeys[index]]: value
+    }));
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.asset_name) newErrors.asset_name = 'Please select a trading instrument';
+    if (!formData.asset_name) newErrors.asset_name = 'Please select an asset';
     if (!formData.entry_price) newErrors.entry_price = 'Entry price is required';
     if (!formData.stop_loss) newErrors.stop_loss = 'Stop loss is required';
-    if (!formData.tp1) newErrors.tp1 = 'At least TP1 is required';
+    if (!takeProfits[0]) newErrors.tp1 = 'At least one take profit is required';
 
     // Validate numeric fields
     const entryPrice = parseFloat(formData.entry_price);
     const stopLoss = parseFloat(formData.stop_loss);
-    const tp1 = parseFloat(formData.tp1);
+    const tp1 = parseFloat(takeProfits[0]);
 
     if (isNaN(entryPrice) || entryPrice <= 0) {
       newErrors.entry_price = 'Entry price must be a valid positive number';
@@ -102,26 +133,26 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       newErrors.stop_loss = 'Stop loss must be a valid positive number';
     }
     if (isNaN(tp1) || tp1 <= 0) {
-      newErrors.tp1 = 'TP1 must be a valid positive number';
+      newErrors.tp1 = 'Take profit must be a valid positive number';
     }
 
-    // Validate price relationships for buy_long
-    if (formData.trade_type === 'buy_long' && !isNaN(entryPrice) && !isNaN(stopLoss) && !isNaN(tp1)) {
+    // Validate price relationships for buy
+    if (formData.trade_type === 'buy' && !isNaN(entryPrice) && !isNaN(stopLoss) && !isNaN(tp1)) {
       if (stopLoss >= entryPrice) {
-        newErrors.stop_loss = 'Stop loss must be below entry price for long positions';
+        newErrors.stop_loss = 'Stop loss must be below entry price for buy positions';
       }
       if (tp1 <= entryPrice) {
-        newErrors.tp1 = 'TP1 must be above entry price for long positions';
+        newErrors.tp1 = 'Take profit must be above entry price for buy positions';
       }
     }
 
-    // Validate price relationships for sell_short
-    if (formData.trade_type === 'sell_short' && !isNaN(entryPrice) && !isNaN(stopLoss) && !isNaN(tp1)) {
+    // Validate price relationships for sell
+    if (formData.trade_type === 'sell' && !isNaN(entryPrice) && !isNaN(stopLoss) && !isNaN(tp1)) {
       if (stopLoss <= entryPrice) {
-        newErrors.stop_loss = 'Stop loss must be above entry price for short positions';
+        newErrors.stop_loss = 'Stop loss must be above entry price for sell positions';
       }
       if (tp1 >= entryPrice) {
-        newErrors.tp1 = 'TP1 must be below entry price for short positions';
+        newErrors.tp1 = 'Take profit must be below entry price for sell positions';
       }
     }
 
@@ -147,14 +178,14 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       const submissionData: TradeAlertSubmissionData = {
         asset_name: formData.asset_name,
         finnhub_symbol: formData.finnhub_symbol,
-        trade_type: formData.trade_type === 'buy_long' ? 'buy' : 'sell',
+        trade_type: formData.trade_type,
         entry_price: parseFloat(formData.entry_price),
         stop_loss: parseFloat(formData.stop_loss),
-        tp1: parseFloat(formData.tp1),
-        tp2: formData.tp2 ? parseFloat(formData.tp2) : null,
-        tp3: formData.tp3 ? parseFloat(formData.tp3) : null,
-        tp4: formData.tp4 ? parseFloat(formData.tp4) : null,
-        tp5: formData.tp5 ? parseFloat(formData.tp5) : null,
+        tp1: takeProfits[0] ? parseFloat(takeProfits[0]) : null,
+        tp2: takeProfits[1] ? parseFloat(takeProfits[1]) : null,
+        tp3: takeProfits[2] ? parseFloat(takeProfits[2]) : null,
+        tp4: takeProfits[3] ? parseFloat(takeProfits[3]) : null,
+        tp5: takeProfits[4] ? parseFloat(takeProfits[4]) : null,
         notes: formData.notes || null
       };
 
@@ -163,7 +194,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       console.error('Form submission error:', error);
       toast({
         title: "Submission Error",
-        description: "Failed to create educational pattern. Please try again.",
+        description: "Failed to create signal. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -171,190 +202,168 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     }
   };
 
-  const riskRewardRatio = React.useMemo(() => {
-    const entryPrice = parseFloat(formData.entry_price);
-    const stopLoss = parseFloat(formData.stop_loss);
-    const tp1 = parseFloat(formData.tp1);
-
-    if (isNaN(entryPrice) || isNaN(stopLoss) || isNaN(tp1)) return null;
-
-    const risk = Math.abs(entryPrice - stopLoss);
-    const reward = Math.abs(tp1 - entryPrice);
-    
-    if (risk === 0) return null;
-    
-    return (reward / risk).toFixed(2);
-  }, [formData.entry_price, formData.stop_loss, formData.tp1]);
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Asset Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-accent-green" />
-            Trading Instrument Selection
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <AssetSelector
-            value={formData.finnhub_symbol}
-            onValueChange={(value) => handleInputChange('finnhub_symbol', value)}
-            onAssetChange={handleAssetChange}
+    <div className="max-w-md mx-auto p-6 bg-card rounded-lg border border-border">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Asset Selection */}
+        <AssetSelector
+          value={formData.finnhub_symbol}
+          onValueChange={(value) => handleInputChange('finnhub_symbol', value)}
+          onAssetChange={handleAssetChange}
+        />
+        
+        {errors.asset_name && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{errors.asset_name}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Live Price Display */}
+        {selectedAsset && (
+          <EnhancedLivePriceDisplay
+            symbol={selectedAsset.symbol}
+            assetName={selectedAsset.name}
+            onUseCurrentPrice={handleUseCurrentPrice}
+            className="mb-4"
           />
+        )}
+
+        {/* Trade Type */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Trade Type</label>
+          <Select 
+            value={formData.trade_type} 
+            onValueChange={(value) => handleInputChange('trade_type', value)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="buy">Buy</SelectItem>
+              <SelectItem value="sell">Sell</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Entry Price */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Entry Price</label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            value={formData.entry_price}
+            onChange={(e) => handleInputChange('entry_price', e.target.value)}
+            className={errors.entry_price ? 'border-red-500' : ''}
+          />
+          {errors.entry_price && (
+            <p className="text-sm text-red-500">{errors.entry_price}</p>
+          )}
+        </div>
+
+        {/* Stop Loss */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Stop Loss</label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            value={formData.stop_loss}
+            onChange={(e) => handleInputChange('stop_loss', e.target.value)}
+            className={errors.stop_loss ? 'border-red-500' : ''}
+          />
+          {errors.stop_loss && (
+            <p className="text-sm text-red-500">{errors.stop_loss}</p>
+          )}
+        </div>
+
+        {/* Take Profits */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-foreground">Take Profits</label>
+            {takeProfits.length < 5 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addTakeProfit}
+                className="h-6 px-2 text-xs"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add TP
+              </Button>
+            )}
+          </div>
           
-          {errors.asset_name && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{errors.asset_name}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Live Price Display */}
-          {selectedAsset && (
-            <EnhancedLivePriceDisplay
-              symbol={selectedAsset.symbol}
-              assetName={selectedAsset.name}
-              onUseCurrentPrice={handleUseCurrentPrice}
-              className="mt-4"
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Trade Setup */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-accent-green" />
-            Educational Pattern Setup
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Trade Type */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Position Type</label>
-            <Select 
-              value={formData.trade_type} 
-              onValueChange={(value) => handleInputChange('trade_type', value)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="buy_long">Long Position (Buy)</SelectItem>
-                <SelectItem value="sell_short">Short Position (Sell)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Entry Price */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Entry Price</label>
-            <Input
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={formData.entry_price}
-              onChange={(e) => handleInputChange('entry_price', e.target.value)}
-              className={errors.entry_price ? 'border-red-500' : ''}
-            />
-            {errors.entry_price && (
-              <p className="text-sm text-red-500">{errors.entry_price}</p>
-            )}
-          </div>
-
-          {/* Stop Loss */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Stop Loss</label>
-            <Input
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={formData.stop_loss}
-              onChange={(e) => handleInputChange('stop_loss', e.target.value)}
-              className={errors.stop_loss ? 'border-red-500' : ''}
-            />
-            {errors.stop_loss && (
-              <p className="text-sm text-red-500">{errors.stop_loss}</p>
-            )}
-          </div>
-
-          {/* Take Profit Levels */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5].map((num) => (
-              <div key={num} className="space-y-2">
-                <label className="text-sm font-medium text-foreground">
-                  TP{num} {num === 1 && <span className="text-red-500">*</span>}
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={formData[`tp${num}` as keyof typeof formData]}
-                  onChange={(e) => handleInputChange(`tp${num}`, e.target.value)}
-                  className={errors[`tp${num}`] ? 'border-red-500' : ''}
-                />
-                {errors[`tp${num}`] && (
-                  <p className="text-sm text-red-500">{errors[`tp${num}`]}</p>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Risk/Reward Display */}
-          {riskRewardRatio && (
-            <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
-              <Badge variant="outline" className="text-accent-green border-accent-green/30">
-                Risk/Reward: 1:{riskRewardRatio}
-              </Badge>
+          {takeProfits.map((tp, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <Input
+                type="number"
+                step="0.01"
+                placeholder={`TP${index + 1}`}
+                value={tp}
+                onChange={(e) => handleTakeProfitChange(index, e.target.value)}
+                className={errors[`tp${index + 1}`] ? 'border-red-500' : ''}
+              />
+              {takeProfits.length > 1 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeTakeProfit(index)}
+                  className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
             </div>
+          ))}
+          
+          {errors.tp1 && (
+            <p className="text-sm text-red-500">{errors.tp1}</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Educational Notes</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* Notes */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Notes</label>
           <Textarea
-            placeholder="Add educational context, analysis, or reasoning for this pattern..."
+            placeholder="Add notes about this signal..."
             value={formData.notes}
             onChange={(e) => handleInputChange('notes', e.target.value)}
-            rows={4}
+            rows={3}
           />
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isSubmitting}
-          className="flex-1"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex-1 bg-gradient-to-r from-accent-green to-green-600 hover:from-green-600 hover:to-green-700"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating Pattern...
-            </>
-          ) : (
-            'Create Educational Pattern'
-          )}
-        </Button>
-      </div>
-    </form>
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="flex-1 bg-accent-green hover:bg-accent-green/90"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Posting...
+              </>
+            ) : (
+              'Post Signal'
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };
 

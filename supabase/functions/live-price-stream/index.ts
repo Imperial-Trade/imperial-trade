@@ -29,44 +29,7 @@ interface ErrorMessage {
 const SYMBOL_MAPPING: Record<string, string> = {
   // Frontend -> API mapping
   'XAU/USD': 'GOLD',
-  'XAG/USD': 'SILVER',
-  'CRUDE_OIL': 'OIL',
-  'NATURAL_GAS': 'NATURAL_GAS',
-  'BTC/USD': 'BTCUSD',
-  'ETH/USD': 'ETHUSD',
-  'ADA/USD': 'ADAUSD',
-  'SOL/USD': 'SOLUSD',
-  'MATIC/USD': 'MATICUSD',
-  'DOT/USD': 'DOTUSD',
-  // Direct mappings for stocks and other assets
-  'TSLA': 'TSLA',
-  'NVDA': 'NVDA',
-  'SPY': 'SPY',
-  'AAPL': 'AAPL',
-  'MSFT': 'MSFT',
-  'META': 'META',
-  'GOOGL': 'GOOGL',
-  'AMZN': 'AMZN',
-  'JPM': 'JPM',
-  'BAC': 'BAC',
-  'JNJ': 'JNJ',
-  'PFE': 'PFE',
-  'XOM': 'XOM',
-  'CVX': 'CVX',
-  'EUR/USD': 'EURUSD',
-  'GBP/USD': 'GBPUSD',
-  'USD/JPY': 'USDJPY',
-  'AUD/USD': 'AUDUSD',
-  'USD/CAD': 'USDCAD',
-  'NZD/USD': 'NZDUSD',
-  'QQQ': 'QQQ',
-  'IWM': 'IWM',
-  'DIA': 'DIA',
-  'VTI': 'VTI',
-  'GLD': 'GLD',
-  'USO': 'USO',
-  'COPPER': 'COPPER',
-  'WHEAT': 'WHEAT'
+  'BTC/USD': 'BTCUSD'
 };
 
 // Reverse mapping for API -> Frontend
@@ -75,16 +38,8 @@ Object.entries(SYMBOL_MAPPING).forEach(([frontend, api]) => {
   REVERSE_SYMBOL_MAPPING[api] = frontend;
 });
 
-// Enhanced trading universe with all supported instruments
-const TRADING_UNIVERSE = {
-  stocks: ['TSLA', 'NVDA', 'SPY', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'JPM', 'BAC', 'JNJ', 'PFE', 'XOM', 'CVX'],
-  crypto: ['BTCUSD', 'ETHUSD', 'ADAUSD', 'SOLUSD', 'MATICUSD', 'DOTUSD'],
-  forex: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD'],
-  commodities: ['GOLD', 'SILVER', 'OIL', 'NATURAL_GAS', 'COPPER', 'WHEAT'],
-  etfs: ['QQQ', 'IWM', 'DIA', 'VTI', 'GLD', 'USO']
-};
-
-const ALL_SUPPORTED_SYMBOLS = Object.values(TRADING_UNIVERSE).flat();
+// Supported symbols for validation
+const ALL_SUPPORTED_SYMBOLS = ['GOLD', 'BTCUSD'];
 
 // Simple in-memory cache for price data
 const priceCache = new Map<string, { data: PriceUpdate, expires: number }>();
@@ -136,43 +91,18 @@ function setCachedPrice(symbol: string, data: PriceUpdate): void {
   });
 }
 
-function getAssetClass(symbol: string): 'stocks' | 'crypto' | 'forex' | 'commodities' | 'etfs' {
-  if (TRADING_UNIVERSE.stocks.includes(symbol)) return 'stocks';
-  if (TRADING_UNIVERSE.crypto.includes(symbol)) return 'crypto';
-  if (TRADING_UNIVERSE.forex.includes(symbol)) return 'forex';
-  if (TRADING_UNIVERSE.commodities.includes(symbol)) return 'commodities';
-  if (TRADING_UNIVERSE.etfs.includes(symbol)) return 'etfs';
-  return 'stocks'; // default
-}
-
-function generateEnhancedMockData(symbols: string[]): PriceUpdate[] {
+function generateMockData(symbols: string[]): PriceUpdate[] {
   const basePrices: Record<string, number> = {
-    // Stocks
-    'TSLA': 245, 'NVDA': 480, 'SPY': 485, 'AAPL': 190, 'MSFT': 380,
-    'META': 350, 'GOOGL': 140, 'AMZN': 155, 'JPM': 165, 'BAC': 32,
-    'JNJ': 160, 'PFE': 28, 'XOM': 115, 'CVX': 155,
-    // Crypto
-    'BTCUSD': 43500, 'ETHUSD': 2800, 'ADAUSD': 0.55, 'SOLUSD': 95,
-    'MATICUSD': 0.85, 'DOTUSD': 7.2,
-    // Forex
-    'EURUSD': 1.085, 'GBPUSD': 1.25, 'USDJPY': 150, 'AUDUSD': 0.66,
-    'USDCAD': 1.35, 'NZDUSD': 0.61,
-    // Commodities
-    'GOLD': 2055, 'SILVER': 24.5, 'OIL': 72, 'NATURAL_GAS': 2.8,
-    'COPPER': 3.85, 'WHEAT': 6.2,
-    // ETFs
-    'QQQ': 385, 'IWM': 195, 'DIA': 355, 'VTI': 245, 'GLD': 185, 'USO': 75
+    'GOLD': 2055,
+    'BTCUSD': 43500
   };
   
   return symbols.map((symbol: string) => {
     const apiSymbol = translateSymbol(symbol);
     const basePrice = basePrices[apiSymbol] || 150;
-    const assetClass = getAssetClass(apiSymbol);
     
     // Asset-specific volatility
-    const volatilityRange = assetClass === 'crypto' ? 0.08 : 
-                           assetClass === 'forex' ? 0.01 : 
-                           assetClass === 'commodities' ? 0.04 : 0.03;
+    const volatilityRange = apiSymbol === 'BTCUSD' ? 0.08 : 0.04;
     
     const changePercent = (Math.random() - 0.5) * 2 * volatilityRange * 100;
     const price = basePrice * (1 + changePercent / 100);
@@ -206,7 +136,14 @@ async function fetchRealPrice(symbol: string): Promise<PriceUpdate | null> {
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
     // Format symbol for Twelve Data API
-    const formattedSymbol = apiSymbol.replace('/', '').replace('USD', '/USD');
+    let formattedSymbol = apiSymbol;
+    if (apiSymbol === 'GOLD') {
+      formattedSymbol = 'XAU/USD';
+    } else if (apiSymbol === 'BTCUSD') {
+      formattedSymbol = 'BTC/USD';
+    }
+    
+    console.log(`Fetching price for ${symbol} (API symbol: ${apiSymbol}, formatted: ${formattedSymbol})`);
     
     const response = await fetch(
       `https://api.twelvedata.com/quote?symbol=${formattedSymbol}&apikey=${apiKey}`,
@@ -237,7 +174,7 @@ async function fetchRealPrice(symbol: string): Promise<PriceUpdate | null> {
     
     // Cache the result
     setCachedPrice(symbol, priceUpdate);
-    console.log(`Fetched real price for ${symbol}: $${priceUpdate.price}`);
+    console.log(`✅ Fetched real price for ${symbol}: $${priceUpdate.price} (${priceUpdate.changePercent >= 0 ? '+' : ''}${priceUpdate.changePercent}%)`);
     
     return priceUpdate;
     
@@ -266,7 +203,7 @@ serve(async (req) => {
   let priceInterval: number | null = null;
 
   socket.onopen = () => {
-    console.log("WebSocket connection opened");
+    console.log("🔗 WebSocket connection opened for Gold and Bitcoin pricing");
     
     // Check if API key is available on connection
     const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
@@ -285,7 +222,7 @@ serve(async (req) => {
       const message: SubscriptionMessage = JSON.parse(event.data);
       
       if (message.type === 'subscribe') {
-        // Validate symbols before subscribing
+        // Validate symbols before subscribing (only Gold and Bitcoin)
         const validSymbols = message.symbols.filter(symbol => {
           const apiSymbol = translateSymbol(symbol);
           return ALL_SUPPORTED_SYMBOLS.includes(apiSymbol);
@@ -298,13 +235,13 @@ serve(async (req) => {
         
         // Add valid symbols to subscription
         validSymbols.forEach(symbol => subscribedSymbols.add(symbol));
-        console.log(`Subscribed to symbols: ${Array.from(subscribedSymbols)}`);
+        console.log(`📊 Subscribed to symbols: ${Array.from(subscribedSymbols)}`);
         
         // Send error for invalid symbols
         invalidSymbols.forEach(symbol => {
           const errorMsg: ErrorMessage = {
             type: 'error',
-            message: `Symbol ${symbol} is not supported. Supported symbols: ${ALL_SUPPORTED_SYMBOLS.join(', ')}`,
+            message: `Symbol ${symbol} is not supported. Only Gold (XAU/USD) and Bitcoin (BTC/USD) are available.`,
             code: 'SYMBOL_UNSUPPORTED'
           };
           socket.send(JSON.stringify(errorMsg));
@@ -314,7 +251,6 @@ serve(async (req) => {
         if (!priceInterval && subscribedSymbols.size > 0) {
           priceInterval = setInterval(async () => {
             const updates: PriceUpdate[] = [];
-            const errors: ErrorMessage[] = [];
             
             for (const symbol of subscribedSymbols) {
               // Check cache first
@@ -329,9 +265,10 @@ serve(async (req) => {
                 updates.push(priceData);
               } else {
                 // Fallback to mock data for failed symbols
-                const mockData = generateEnhancedMockData([symbol])[0];
+                const mockData = generateMockData([symbol])[0];
                 setCachedPrice(symbol, mockData);
                 updates.push(mockData);
+                console.log(`⚠️ Using mock data for ${symbol}: $${mockData.price}`);
               }
             }
             
@@ -349,7 +286,7 @@ serve(async (req) => {
         }
       } else if (message.type === 'unsubscribe') {
         message.symbols.forEach(symbol => subscribedSymbols.delete(symbol));
-        console.log(`Unsubscribed from symbols: ${message.symbols}`);
+        console.log(`📤 Unsubscribed from symbols: ${message.symbols}`);
         
         // Stop updates if no symbols subscribed
         if (subscribedSymbols.size === 0 && priceInterval) {
@@ -358,7 +295,7 @@ serve(async (req) => {
         }
       }
     } catch (error) {
-      console.error('Error processing message:', error);
+      console.error('❌ Error processing message:', error);
       const errorMsg: ErrorMessage = {
         type: 'error',
         message: 'Invalid message format',
@@ -369,14 +306,14 @@ serve(async (req) => {
   };
 
   socket.onclose = () => {
-    console.log("WebSocket connection closed");
+    console.log("🔌 WebSocket connection closed");
     if (priceInterval) {
       clearInterval(priceInterval);
     }
   };
 
   socket.onerror = (error) => {
-    console.error("WebSocket error:", error);
+    console.error("❌ WebSocket error:", error);
   };
 
   return response;

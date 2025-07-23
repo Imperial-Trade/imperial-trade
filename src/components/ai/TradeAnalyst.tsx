@@ -395,7 +395,7 @@ export default function TradeAnalyst() {
           {/* Analysis Button */}
           <Button 
             onClick={() => analyzeTradePerformance(false)} 
-            disabled={!user || isAnalyzing}
+            disabled={!user || isAnalyzing || uploadedFiles.length === 0 || uploadedFiles.some(file => file.uploading)}
             className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-4 text-lg font-semibold"
           >
             {isAnalyzing ? (

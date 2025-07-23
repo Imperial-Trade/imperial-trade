@@ -87,6 +87,7 @@ const ComponentTypeSafetyTest: React.FC = () => {
         <CardContent>
           <OptimizedNewAlertForm 
             onSubmit={handleTestSubmit}
+            onCancel={() => console.log('Test form cancelled')}
           />
         </CardContent>
       </Card>

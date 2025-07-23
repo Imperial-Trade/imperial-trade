@@ -147,7 +147,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       const submissionData: TradeAlertSubmissionData = {
         asset_name: formData.asset_name,
         finnhub_symbol: formData.finnhub_symbol,
-        trade_type: formData.trade_type as 'buy_long' | 'sell_short',
+        trade_type: formData.trade_type === 'buy_long' ? 'buy' : 'sell',
         entry_price: parseFloat(formData.entry_price),
         stop_loss: parseFloat(formData.stop_loss),
         tp1: parseFloat(formData.tp1),

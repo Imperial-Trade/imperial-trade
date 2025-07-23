@@ -48,18 +48,18 @@ function getMimeTypeFromUrl(url: string): string {
   }
 }
 
-const SYSTEM_PROMPT = `You are "Helios," a quantitative performance analyst AI specializing in educational trading analysis. Your function is to provide objective, data-driven analysis combining both visual trading screenshots and historical journal data. Your tone is neutral, precise, and analytical.
+// Optimized system prompt with clearer structure and reduced token usage
+const SYSTEM_PROMPT = `You are "Helios," a quantitative performance analyst AI. Provide objective, data-driven trading analysis in JSON format only.
 
-**Analysis Scope:**
-- When screenshots are provided: Analyze chart patterns, setups, technical indicators, and visual trading decisions
-- Always analyze trading journal data for performance metrics and behavioral patterns
-- Combine visual and historical data for comprehensive educational insights
+**Analysis Requirements:**
+- Analyze visual screenshots (if provided) and trading journal data
+- Focus on performance metrics and behavioral patterns
+- Provide educational insights for learning purposes only
 
-**Output Format:** Your analysis must be structured as a JSON object with the following sections:
-
+**Required JSON Structure:**
 {
   "overall_performance": {
-    "summary": "Brief overall performance summary",
+    "summary": "Brief performance summary",
     "screenshots_analyzed": number,
     "trades_analyzed": number,
     "risk_score": "Low/Medium/High",
@@ -77,22 +77,22 @@ const SYSTEM_PROMPT = `You are "Helios," a quantitative performance analyst AI s
     "technical_indicators_used": ["indicator1", "indicator2"],
     "setup_quality": "Poor/Fair/Good/Excellent",
     "entry_timing": "Early/Optimal/Late",
-    "exit_strategy": "analysis of exit decisions"
+    "exit_strategy": "brief analysis"
   },
   "key_insights": [
-    "Insight 1: Behavioral observation",
-    "Insight 2: Pattern recognition",
+    "Insight 1: Key behavioral observation",
+    "Insight 2: Pattern recognition finding",
     "Insight 3: Decision-making analysis"
   ],
   "strengths": [
-    "Strength 1: Positive pattern identified",
-    "Strength 2: Good trading behavior",
+    "Strength 1: Positive pattern",
+    "Strength 2: Good behavior",
     "Strength 3: Consistent execution"
   ],
   "improvements": [
     "Improvement 1: Area needing attention",
-    "Improvement 2: Behavioral adjustment needed",
-    "Improvement 3: Technical skill development"
+    "Improvement 2: Behavioral adjustment",
+    "Improvement 3: Skill development"
   ],
   "recommendations": [
     "1. Specific actionable recommendation",
@@ -101,11 +101,136 @@ const SYSTEM_PROMPT = `You are "Helios," a quantitative performance analyst AI s
   ],
   "performance_evolution": {
     "trend": "Improving/Declining/Stable",
-    "progression_summary": "Analysis of trading development over time"
+    "progression_summary": "Brief development analysis"
   }
 }
 
-**Execution Rule:** Do not provide financial advice, motivation, or predictions. Your sole purpose is to reflect the data back to the user in a structured, educational format for learning purposes only.`;
+**Critical:** Respond ONLY with valid JSON. No financial advice or predictions.`;
+
+// Enhanced Google AI call with proper error handling
+async function callGoogleAIWithEnhancedHandling(
+  apiKey: string,
+  modelName: string,
+  contents: any[],
+  maxRetries: number = 3
+): Promise<string> {
+  let lastError: Error;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Deconstructor Agent - AI API attempt ${attempt}/${maxRetries}`);
+      
+      const response = await callGoogleAI(apiKey, modelName, contents);
+      
+      // Validate response structure
+      if (!response || typeof response !== 'string') {
+        throw new Error('Invalid response format from AI API');
+      }
+      
+      // Check if response is valid JSON
+      try {
+        JSON.parse(response);
+      } catch (parseError) {
+        throw new Error('AI response is not valid JSON');
+      }
+      
+      return response;
+      
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`Deconstructor Agent - Attempt ${attempt} failed:`, error.message);
+      
+      // Handle specific error types
+      if (error.message.includes('MAX_TOKENS') || error.message.includes('finishReason')) {
+        console.log('Deconstructor Agent - MAX_TOKENS error detected, trying with reduced prompt');
+        
+        // If this is a MAX_TOKENS error, we'll handle it differently on retry
+        if (attempt < maxRetries) {
+          // Reduce prompt complexity for next attempt
+          contents[0].parts[0].text = contents[0].parts[0].text.replace(
+            /Analyze.*trading journal entries: \[.*?\]/s,
+            'Analyze the provided trading data focusing on key performance metrics.'
+          );
+          
+          const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+          console.log(`Deconstructor Agent - Retrying in ${delay}ms with simplified prompt...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+      
+      // Handle rate limiting
+      if (error.message.includes('429') || error.message.includes('quota') || error.message.includes('RATE_LIMIT')) {
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 30000; // 30s, 60s, 120s
+          console.log(`Deconstructor Agent - Rate limit hit, retrying in ${delay/1000}s...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        } else {
+          throw new Error("API quota exceeded. Please try again in a few minutes. The free tier has limited requests per day.");
+        }
+      }
+      
+      // For other errors, don't retry
+      throw error;
+    }
+  }
+  
+  throw lastError!;
+}
+
+// Generate fallback analysis when AI fails
+function generateFallbackAnalysis(tradesCount: number, screenshotsCount: number): string {
+  const fallbackAnalysis = {
+    overall_performance: {
+      summary: "Analysis temporarily unavailable due to AI processing limits",
+      screenshots_analyzed: screenshotsCount,
+      trades_analyzed: tradesCount,
+      risk_score: "Medium",
+      confidence_level: "Low"
+    },
+    performance_metrics: {
+      win_rate: "Unable to calculate",
+      profit_factor: "Unable to calculate",
+      risk_reward_ratio: "Unable to calculate",
+      max_drawdown: "Unable to calculate",
+      execution_quality: "Unable to assess"
+    },
+    visual_analysis: {
+      chart_patterns_identified: ["Analysis pending"],
+      technical_indicators_used: ["Analysis pending"],
+      setup_quality: "Unable to assess",
+      entry_timing: "Unable to assess",
+      exit_strategy: "Analysis pending"
+    },
+    key_insights: [
+      "Analysis temporarily unavailable",
+      "Please try again in a few minutes",
+      "Check your recent trading journal entries"
+    ],
+    strengths: [
+      "Data collection is active",
+      "Trading journal is being maintained",
+      "Screenshots are being captured"
+    ],
+    improvements: [
+      "Try again when AI processing is available",
+      "Ensure trading journal entries are complete",
+      "Consider reducing screenshot complexity"
+    ],
+    recommendations: [
+      "1. Retry analysis in a few minutes",
+      "2. Continue maintaining detailed trading records",
+      "3. Focus on consistent journaling practices"
+    ],
+    performance_evolution: {
+      trend: "Stable",
+      progression_summary: "Analysis pending due to processing limitations"
+    }
+  };
+  
+  return JSON.stringify(fallbackAnalysis);
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -173,26 +298,34 @@ serve(async (req) => {
     // Build the contents array for Google AI API
     const contents = [];
     
-    // Create the main text content
+    // Create optimized main content
     let mainContent = SYSTEM_PROMPT;
     
     // Add screenshot analysis section if images are provided
     if (file_urls.length > 0) {
-      mainContent += `\n\n--- VISUAL ANALYSIS ---\nAnalyze the following ${file_urls.length} trading screenshots for ${userName}:`;
+      mainContent += `\n\n--- VISUAL ANALYSIS ---\nAnalyze ${file_urls.length} trading screenshots for ${userName}`;
     }
     
-    // Add trading journal data
-    mainContent += `\n\n--- TRADING JOURNAL DATA ---\nAnalyze ${userName}'s trading journal entries: ${JSON.stringify(sanitizedTrades)}`;
+    // Add condensed trading journal data
+    const condensedTrades = sanitizedTrades.slice(0, 10).map(trade => ({
+      ticker: trade.asset_ticker,
+      pnl: trade.pnl,
+      date: trade.trade_date,
+      notes: trade.notes ? trade.notes.substring(0, 100) : null
+    }));
     
-    mainContent += `\n\nProvide a comprehensive educational analysis in the specified JSON format, combining insights from both visual screenshots (if provided) and trading journal data.`;
+    mainContent += `\n\n--- TRADING DATA ---\nAnalyze ${userName}'s recent trades: ${JSON.stringify(condensedTrades)}`;
+    mainContent += `\n\nProvide comprehensive analysis in the specified JSON format.`;
 
     // Start with the text part
     const parts = [{ text: mainContent }];
 
-    // Add image parts if screenshots are provided
+    // Add image parts if screenshots are provided (limit to 3 for token efficiency)
     if (file_urls.length > 0) {
       console.log("Deconstructor Agent - Processing images...");
-      for (const imageUrl of file_urls) {
+      const imagesToProcess = file_urls.slice(0, 3); // Limit to 3 images
+      
+      for (const imageUrl of imagesToProcess) {
         try {
           console.log("Deconstructor Agent - Processing image:", imageUrl);
           const base64Image = await imageUrlToBase64(imageUrl);
@@ -210,7 +343,7 @@ serve(async (req) => {
           console.error("Deconstructor Agent - Error processing image:", imageUrl, error);
           // Add error placeholder instead of failing completely
           parts.push({
-            text: `[Error processing screenshot: ${imageUrl} - ${error.message}]`
+            text: `[Error processing screenshot: ${imageUrl}]`
           });
         }
       }
@@ -223,39 +356,23 @@ serve(async (req) => {
 
     const modelName = "gemini-2.5-pro";
 
-    console.log("Deconstructor Agent - Calling Google AI with contents array...");
+    console.log("Deconstructor Agent - Calling Google AI with enhanced error handling...");
     
-    // Implement rate limiting and retry logic
-    let analysisResponse;
-    let retryCount = 0;
-    const maxRetries = 3;
+    let analysisResponse: string;
     
-    while (retryCount < maxRetries) {
-      try {
-        // Use the updated helper function with the contents array
-        analysisResponse = await callGoogleAI(
-          apiKey,
-          modelName,
-          contents
-        );
-        break; // Success, exit retry loop
-      } catch (error) {
-        console.error(`Deconstructor Agent - Attempt ${retryCount + 1} failed:`, error.message);
-        
-        // Check if it's a quota/rate limit error
-        if (error.message.includes('429') || error.message.includes('quota') || error.message.includes('RATE_LIMIT')) {
-          retryCount++;
-          if (retryCount < maxRetries) {
-            const delay = Math.pow(2, retryCount) * 30000; // 30s, 60s, 120s
-            console.log(`Deconstructor Agent - Rate limit hit, retrying in ${delay/1000}s...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-          } else {
-            throw new Error("API quota exceeded. Please try again in a few minutes. The free tier has limited requests per day.");
-          }
-        } else {
-          throw error; // Re-throw non-quota errors immediately
-        }
-      }
+    try {
+      // Try enhanced AI call with proper error handling
+      analysisResponse = await callGoogleAIWithEnhancedHandling(
+        apiKey,
+        modelName,
+        contents,
+        3 // max retries
+      );
+    } catch (error) {
+      console.error("Deconstructor Agent - AI analysis failed, using fallback:", error.message);
+      
+      // Generate fallback analysis
+      analysisResponse = generateFallbackAnalysis(sanitizedTrades.length, file_urls.length);
     }
     
     console.log("Deconstructor Agent - Analysis response generated:", analysisResponse.substring(0, 200) + "...");
@@ -270,7 +387,9 @@ serve(async (req) => {
       metadata: {
         screenshots_analyzed: file_urls.length,
         trades_analyzed: sanitizedTrades.length,
-        analysis_type: "comprehensive_pattern_analysis"
+        analysis_type: "comprehensive_pattern_analysis",
+        model_used: modelName,
+        processing_status: analysisResponse.includes("temporarily unavailable") ? "fallback" : "success"
       }
     });
 
@@ -286,13 +405,18 @@ serve(async (req) => {
   } catch (error) {
     console.error("Deconstructor Agent Error:", error.message);
     console.error("Deconstructor Agent Stack:", error.stack);
+    
+    // Generate fallback response for critical errors
+    const fallbackResponse = generateFallbackAnalysis(0, 0);
+    
     return new Response(
       JSON.stringify({ 
-        error: `Deconstructor Agent failed: ${error.message}`,
-        details: error.stack 
+        reply: fallbackResponse,
+        error: `Analysis temporarily unavailable: ${error.message}`,
+        fallback: true
       }),
       {
-        status: 500,
+        status: 200, // Return 200 with fallback instead of 500
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );

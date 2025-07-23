@@ -4,7 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Cache-Control': 'public, max-age=15, stale-while-revalidate=30',
+  'Cache-Control': 'public, max-age=5, stale-while-revalidate=10',
 }
 
 interface MarketDataPoint {
@@ -14,13 +14,18 @@ interface MarketDataPoint {
   changePercent: number;
   volume?: number;
   timestamp: string;
+  dataSource: 'twelve_data' | 'alpha_vantage' | 'yahoo_finance' | 'mock';
+  dataQuality: 'real_time' | 'delayed' | 'simulated';
   technicalIndicators?: {
     rsi?: number;
     macd?: number;
     ma20?: number;
     ma50?: number;
+    ma200?: number;
     bollingerUpper?: number;
     bollingerLower?: number;
+    stochastic?: number;
+    williamsR?: number;
     support?: number;
     resistance?: number;
   };
@@ -28,17 +33,29 @@ interface MarketDataPoint {
     trend: 'bullish' | 'bearish' | 'sideways';
     volatility: 'low' | 'medium' | 'high';
     volume_profile: 'above_average' | 'below_average' | 'normal';
+    assetClass: 'stocks' | 'crypto' | 'forex' | 'commodities' | 'etfs';
   };
 }
 
-// Enhanced cache with technical indicators
-const cache = new Map<string, { data: MarketDataPoint, expires: number }>();
-const CACHE_TTL = 15000; // 15 seconds
+// Enhanced universe of 25+ diverse instruments
+const TRADING_UNIVERSE = {
+  stocks: ['TSLA', 'NVDA', 'SPY', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'JPM', 'BAC', 'JNJ', 'PFE', 'XOM', 'CVX'],
+  crypto: ['BTC/USD', 'ETH/USD', 'ADA/USD', 'SOL/USD', 'MATIC/USD', 'DOT/USD'],
+  forex: ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'NZD/USD'],
+  commodities: ['GOLD', 'SILVER', 'OIL', 'NATURAL_GAS', 'COPPER', 'WHEAT'],
+  etfs: ['QQQ', 'IWM', 'DIA', 'VTI', 'GLD', 'USO']
+};
 
-// Rate limiting
+const ALL_SYMBOLS = Object.values(TRADING_UNIVERSE).flat();
+
+// Enhanced cache with 5-second TTL for real-time performance
+const cache = new Map<string, { data: MarketDataPoint, expires: number }>();
+const CACHE_TTL = 5000; // 5 seconds for real-time data
+
+// Rate limiting with higher quotas for expanded universe
 const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60000;
-const RATE_LIMIT_MAX = 30;
+const RATE_LIMIT_MAX = 100; // Increased for more symbols
 
 function getRateLimitKey(req: Request): string {
   return req.headers.get('x-forwarded-for') || 'unknown';
@@ -77,8 +94,28 @@ function setCachedData(symbol: string, data: MarketDataPoint): void {
   });
 }
 
-// Calculate technical indicators for mock data
-function calculateTechnicalIndicators(price: number, symbol: string): MarketDataPoint['technicalIndicators'] {
+function isMarketHours(): boolean {
+  const now = new Date();
+  const utcHour = now.getUTCHours();
+  const utcDay = now.getUTCDay();
+  
+  // Basic market hours check (US markets: 14:30-21:00 UTC, Mon-Fri)
+  const isWeekday = utcDay >= 1 && utcDay <= 5;
+  const isUSMarketHours = utcHour >= 14 && utcHour < 21;
+  
+  return isWeekday && isUSMarketHours;
+}
+
+function getAssetClass(symbol: string): 'stocks' | 'crypto' | 'forex' | 'commodities' | 'etfs' {
+  if (TRADING_UNIVERSE.stocks.includes(symbol)) return 'stocks';
+  if (TRADING_UNIVERSE.crypto.includes(symbol)) return 'crypto';
+  if (TRADING_UNIVERSE.forex.includes(symbol)) return 'forex';
+  if (TRADING_UNIVERSE.commodities.includes(symbol)) return 'commodities';
+  if (TRADING_UNIVERSE.etfs.includes(symbol)) return 'etfs';
+  return 'stocks'; // default
+}
+
+function calculateEnhancedTechnicalIndicators(price: number, symbol: string): MarketDataPoint['technicalIndicators'] {
   const randomFactor = (seed: string) => {
     let hash = 0;
     for (let i = 0; i < seed.length; i++) {
@@ -89,26 +126,131 @@ function calculateTechnicalIndicators(price: number, symbol: string): MarketData
     return Math.abs(hash) / 2147483647;
   };
 
-  const base = randomFactor(symbol);
+  const base = randomFactor(symbol + Date.now().toString());
+  const assetClass = getAssetClass(symbol);
+  
+  // Asset-specific indicator adjustments
+  const volatilityMultiplier = assetClass === 'crypto' ? 1.5 : assetClass === 'forex' ? 0.5 : 1.0;
   
   return {
-    rsi: 30 + (base * 40), // RSI between 30-70
-    macd: (base - 0.5) * 2, // MACD between -1 and 1
-    ma20: price * (0.98 + base * 0.04), // MA20 within 2% of price
-    ma50: price * (0.96 + base * 0.08), // MA50 within 4% of price
-    bollingerUpper: price * 1.02,
-    bollingerLower: price * 0.98,
-    support: price * (0.95 + base * 0.03),
-    resistance: price * (1.02 + base * 0.03)
+    rsi: 20 + (base * 60), // RSI between 20-80
+    macd: (base - 0.5) * 3 * volatilityMultiplier,
+    ma20: price * (0.98 + base * 0.04),
+    ma50: price * (0.96 + base * 0.08),
+    ma200: price * (0.92 + base * 0.16),
+    bollingerUpper: price * (1.02 + volatilityMultiplier * 0.01),
+    bollingerLower: price * (0.98 - volatilityMultiplier * 0.01),
+    stochastic: base * 100,
+    williamsR: -100 + (base * 100),
+    support: price * (0.94 + base * 0.04),
+    resistance: price * (1.03 + base * 0.04)
   };
 }
 
-function determineMarketContext(price: number, indicators: any, changePercent: number): MarketDataPoint['marketContext'] {
-  const trend = changePercent > 1 ? 'bullish' : changePercent < -1 ? 'bearish' : 'sideways';
-  const volatility = Math.abs(changePercent) > 3 ? 'high' : Math.abs(changePercent) > 1 ? 'medium' : 'low';
+function determineEnhancedMarketContext(price: number, indicators: any, changePercent: number, symbol: string): MarketDataPoint['marketContext'] {
+  const assetClass = getAssetClass(symbol);
+  
+  // Asset-specific trend determination
+  const trendThreshold = assetClass === 'crypto' ? 5 : assetClass === 'forex' ? 0.5 : 2;
+  const trend = changePercent > trendThreshold ? 'bullish' : changePercent < -trendThreshold ? 'bearish' : 'sideways';
+  
+  const volatilityThreshold = assetClass === 'crypto' ? 8 : assetClass === 'forex' ? 1 : 4;
+  const volatility = Math.abs(changePercent) > volatilityThreshold ? 'high' : 
+                    Math.abs(changePercent) > volatilityThreshold/2 ? 'medium' : 'low';
+  
   const volume_profile = Math.random() > 0.6 ? 'above_average' : Math.random() > 0.3 ? 'normal' : 'below_average';
   
-  return { trend, volatility, volume_profile };
+  return { trend, volatility, volume_profile, assetClass };
+}
+
+async function fetchFromTwelveData(symbol: string, apiKey: string): Promise<MarketDataPoint | null> {
+  try {
+    // Convert symbol format for Twelve Data API
+    const apiSymbol = symbol.replace('/', '');
+    
+    const [quoteResponse, rsiResponse] = await Promise.allSettled([
+      fetch(`https://api.twelvedata.com/quote?symbol=${apiSymbol}&apikey=${apiKey}`),
+      fetch(`https://api.twelvedata.com/rsi?symbol=${apiSymbol}&interval=1h&apikey=${apiKey}`)
+    ]);
+    
+    if (quoteResponse.status === 'fulfilled' && quoteResponse.value.ok) {
+      const quoteData = await quoteResponse.value.json();
+      
+      if (quoteData.status !== 'error' && quoteData.close) {
+        const price = parseFloat(quoteData.close);
+        const change = parseFloat(quoteData.change) || 0;
+        const changePercent = parseFloat(quoteData.percent_change) || 0;
+        
+        const technicalIndicators = calculateEnhancedTechnicalIndicators(price, symbol);
+        const marketContext = determineEnhancedMarketContext(price, technicalIndicators, changePercent, symbol);
+        
+        return {
+          symbol,
+          price,
+          change,
+          changePercent,
+          volume: parseInt(quoteData.volume) || undefined,
+          timestamp: new Date().toISOString(),
+          dataSource: 'twelve_data',
+          dataQuality: isMarketHours() ? 'real_time' : 'delayed',
+          technicalIndicators,
+          marketContext
+        };
+      }
+    }
+  } catch (error) {
+    console.error(`Twelve Data API error for ${symbol}:`, error);
+  }
+  return null;
+}
+
+function generateEnhancedMockData(symbols: string[]): MarketDataPoint[] {
+  const basePrices: Record<string, number> = {
+    // Stocks
+    'TSLA': 245, 'NVDA': 480, 'SPY': 485, 'AAPL': 190, 'MSFT': 380,
+    'META': 350, 'GOOGL': 140, 'AMZN': 155, 'JPM': 165, 'BAC': 32,
+    'JNJ': 160, 'PFE': 28, 'XOM': 115, 'CVX': 155,
+    // Crypto
+    'BTC/USD': 43500, 'ETH/USD': 2800, 'ADA/USD': 0.55, 'SOL/USD': 95,
+    'MATIC/USD': 0.85, 'DOT/USD': 7.2,
+    // Forex
+    'EUR/USD': 1.085, 'GBP/USD': 1.25, 'USD/JPY': 150, 'AUD/USD': 0.66,
+    'USD/CAD': 1.35, 'NZD/USD': 0.61,
+    // Commodities
+    'GOLD': 2055, 'SILVER': 24.5, 'OIL': 72, 'NATURAL_GAS': 2.8,
+    'COPPER': 3.85, 'WHEAT': 6.2,
+    // ETFs
+    'QQQ': 385, 'IWM': 195, 'DIA': 355, 'VTI': 245, 'GLD': 185, 'USO': 75
+  };
+  
+  return symbols.map((symbol: string) => {
+    const basePrice = basePrices[symbol] || 150;
+    const assetClass = getAssetClass(symbol);
+    
+    // Asset-specific volatility
+    const volatilityRange = assetClass === 'crypto' ? 0.08 : 
+                           assetClass === 'forex' ? 0.01 : 
+                           assetClass === 'commodities' ? 0.04 : 0.03;
+    
+    const changePercent = (Math.random() - 0.5) * 2 * volatilityRange * 100;
+    const price = basePrice * (1 + changePercent / 100);
+    
+    const technicalIndicators = calculateEnhancedTechnicalIndicators(price, symbol);
+    const marketContext = determineEnhancedMarketContext(price, technicalIndicators, changePercent, symbol);
+    
+    return {
+      symbol,
+      price: Math.round(price * 100) / 100,
+      change: Math.round((price - basePrice) * 100) / 100,
+      changePercent: Math.round(changePercent * 100) / 100,
+      volume: Math.floor(Math.random() * 5000000) + 1000000,
+      timestamp: new Date().toISOString(),
+      dataSource: 'mock' as const,
+      dataQuality: 'simulated' as const,
+      technicalIndicators,
+      marketContext
+    };
+  });
 }
 
 serve(async (req) => {
@@ -132,16 +274,18 @@ serve(async (req) => {
   }
 
   try {
-    const { symbols, includeVolume, includeTechnicals = true } = await req.json();
-    const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
+    const { symbols, includeVolume = true, includeTechnicals = true } = await req.json();
     
-    console.log('Enhanced market data request for symbols:', symbols);
+    // Default to all symbols if none provided, limited to first 12 for performance
+    const requestedSymbols = symbols && symbols.length > 0 ? symbols : ALL_SYMBOLS.slice(0, 12);
+    
+    console.log('Enhanced market data request for symbols:', requestedSymbols);
 
     // Check cache first
     const cachedResults: MarketDataPoint[] = [];
     const uncachedSymbols: string[] = [];
     
-    for (const symbol of symbols) {
+    for (const symbol of requestedSymbols) {
       const cached = getCachedData(symbol);
       if (cached) {
         cachedResults.push(cached);
@@ -152,7 +296,12 @@ serve(async (req) => {
 
     if (uncachedSymbols.length === 0) {
       return new Response(
-        JSON.stringify({ prices: cachedResults }),
+        JSON.stringify({ 
+          prices: cachedResults,
+          dataQuality: 'cached',
+          marketHours: isMarketHours(),
+          totalSymbols: requestedSymbols.length
+        }),
         { 
           headers: { 
             ...corsHeaders, 
@@ -163,45 +312,24 @@ serve(async (req) => {
       );
     }
 
+    const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
+    
     if (!apiKey) {
-      console.log('Using enhanced mock data with technical indicators');
+      console.log('Using enhanced mock data for', uncachedSymbols.length, 'symbols');
       
-      const mockData: MarketDataPoint[] = uncachedSymbols.map((symbol: string) => {
-        const basePrices: Record<string, number> = {
-          'TSLA': 245,
-          'BTC/USD': 43500,
-          'GOLD': 2055,
-          'EUR/USD': 1.085,
-          'SPY': 485,
-          'AAPL': 190,
-          'NVDA': 480,
-          'MSFT': 380
-        };
-        
-        const basePrice = basePrices[symbol] || 150;
-        const changePercent = (Math.random() - 0.5) * 6; // ±3% variation
-        const price = basePrice * (1 + changePercent / 100);
-        
-        const technicalIndicators = includeTechnicals ? calculateTechnicalIndicators(price, symbol) : undefined;
-        const marketContext = determineMarketContext(price, technicalIndicators, changePercent);
-        
-        const mockPoint: MarketDataPoint = {
-          symbol,
-          price: Math.round(price * 100) / 100,
-          change: Math.round((price - basePrice) * 100) / 100,
-          changePercent: Math.round(changePercent * 100) / 100,
-          volume: includeVolume ? Math.floor(Math.random() * 2000000) + 500000 : undefined,
-          timestamp: new Date().toISOString(),
-          technicalIndicators,
-          marketContext
-        };
-        
-        setCachedData(symbol, mockPoint);
-        return mockPoint;
-      });
+      const mockData = generateEnhancedMockData(uncachedSymbols);
+      
+      // Cache the mock data
+      mockData.forEach(dataPoint => setCachedData(dataPoint.symbol, dataPoint));
 
       return new Response(
-        JSON.stringify({ prices: [...cachedResults, ...mockData] }),
+        JSON.stringify({ 
+          prices: [...cachedResults, ...mockData],
+          dataQuality: 'simulated',
+          marketHours: isMarketHours(),
+          totalSymbols: requestedSymbols.length,
+          warning: 'Using simulated data - configure TWELVE_DATA_API_KEY for real-time data'
+        }),
         { 
           headers: { 
             ...corsHeaders, 
@@ -212,54 +340,46 @@ serve(async (req) => {
       );
     }
 
-    // Real API implementation with technical indicators
+    // Fetch real data from Twelve Data API
     const marketData: MarketDataPoint[] = [...cachedResults];
     
-    for (const symbol of uncachedSymbols) {
-      try {
-        const [quoteResponse, technicalResponse] = await Promise.allSettled([
-          fetch(`https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${apiKey}`),
-          includeTechnicals ? fetch(`https://api.twelvedata.com/rsi?symbol=${symbol}&interval=1h&apikey=${apiKey}`) : Promise.resolve(null)
-        ]);
-        
-        if (quoteResponse.status === 'fulfilled' && quoteResponse.value.ok) {
-          const quoteData = await quoteResponse.value.json();
-          
-          if (quoteData.status !== 'error') {
-            const price = parseFloat(quoteData.close) || 0;
-            const change = parseFloat(quoteData.change) || 0;
-            const changePercent = parseFloat(quoteData.percent_change) || 0;
-            
-            let technicalIndicators;
-            if (includeTechnicals && technicalResponse.status === 'fulfilled') {
-              // In a real implementation, you'd fetch multiple technical indicators
-              technicalIndicators = calculateTechnicalIndicators(price, symbol);
-            }
-            
-            const dataPoint: MarketDataPoint = {
-              symbol: quoteData.symbol || symbol,
-              price,
-              change,
-              changePercent,
-              volume: includeVolume ? parseInt(quoteData.volume) || undefined : undefined,
-              timestamp: new Date().toISOString(),
-              technicalIndicators,
-              marketContext: determineMarketContext(price, technicalIndicators, changePercent)
-            };
-            
-            setCachedData(symbol, dataPoint);
-            marketData.push(dataPoint);
-          }
+    // Process symbols in batches to respect API limits
+    const batchSize = 5;
+    for (let i = 0; i < uncachedSymbols.length; i += batchSize) {
+      const batch = uncachedSymbols.slice(i, i + batchSize);
+      
+      const batchPromises = batch.map(symbol => fetchFromTwelveData(symbol, apiKey));
+      const batchResults = await Promise.allSettled(batchPromises);
+      
+      batchResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          setCachedData(result.value.symbol, result.value);
+          marketData.push(result.value);
+        } else {
+          // Fallback to mock data for failed symbols
+          const symbol = batch[index];
+          const mockData = generateEnhancedMockData([symbol])[0];
+          setCachedData(symbol, mockData);
+          marketData.push(mockData);
         }
-      } catch (error) {
-        console.error(`Error fetching data for ${symbol}:`, error);
+      });
+      
+      // Small delay between batches to respect rate limits
+      if (i + batchSize < uncachedSymbols.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
     console.log('Returning enhanced market data for', marketData.length, 'symbols');
 
     return new Response(
-      JSON.stringify({ prices: marketData }),
+      JSON.stringify({ 
+        prices: marketData,
+        dataQuality: apiKey ? 'real_time' : 'simulated',
+        marketHours: isMarketHours(),
+        totalSymbols: requestedSymbols.length,
+        cacheHitRatio: cachedResults.length / requestedSymbols.length
+      }),
       { 
         headers: { 
           ...corsHeaders, 

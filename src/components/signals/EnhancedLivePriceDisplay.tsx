@@ -27,16 +27,29 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     connectionStatus,
     refreshPrice
   } = useOptimizedLivePrice(symbol, {
-    enableSmartPausing: false, // Disable pausing for trading signals
-    debounceMs: 1000,
+    enableSmartPausing: false, // Keep connection active for trading signals
+    debounceMs: 500, // Faster updates for trading
     pauseOnInput: false
   });
 
   const formatPrice = useCallback((price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(price);
+    // Dynamic decimal places based on price magnitude
+    if (price >= 1000) {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(price);
+    } else if (price >= 1) {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+      }).format(price);
+    } else {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 6,
+      }).format(price);
+    }
   }, []);
 
   const formatTime = useCallback((date: Date | null) => {
@@ -55,15 +68,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         return { 
           color: 'text-green-400', 
           icon: Wifi, 
-          text: 'Live Data',
-          description: 'Connected to Twelve Data API'
+          text: 'Live WebSocket',
+          description: 'Real-time price updates via WebSocket'
         };
       case 'connecting':
         return { 
           color: 'text-yellow-400', 
           icon: RefreshCw, 
           text: 'Connecting',
-          description: 'Establishing connection...'
+          description: 'Establishing WebSocket connection...'
         };
       case 'error':
       case 'disconnected':
@@ -71,14 +84,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           color: 'text-red-400', 
           icon: WifiOff, 
           text: 'Unavailable',
-          description: 'Live data not available'
+          description: 'WebSocket connection failed'
         };
       default:
         return { 
           color: 'text-gray-400', 
           icon: WifiOff, 
           text: 'Disconnected',
-          description: 'Not connected'
+          description: 'Not connected to price feed'
         };
     }
   }, [connectionStatus]);
@@ -87,17 +100,22 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return change >= 0 ? 'text-green-400' : 'text-red-400';
   }, [change]);
 
+  const priceChangeIcon = useMemo(() => {
+    return change >= 0 ? TrendingUp : TrendingDown;
+  }, [change]);
+
   if (!symbol) return null;
 
   return (
-    <div className={`bg-gray-700/50 border border-gray-600 rounded-lg p-4 ${className}`}>
+    <div className={`bg-gray-800/50 border border-gray-600 rounded-lg p-4 ${className}`}>
+      {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className="text-white font-medium">
-            Live Price for {assetName}:
+            Live Price for {assetName}
           </div>
           <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
-            <connectionStatusInfo.icon className="w-3 h-3" />
+            <connectionStatusInfo.icon className={`w-3 h-3 ${connectionStatus === 'connecting' ? 'animate-spin' : ''}`} />
             <span>{connectionStatusInfo.text}</span>
           </div>
         </div>
@@ -126,14 +144,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       )}
 
       {/* Price Display */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
           {isLoading ? (
             <div className="animate-pulse text-gray-400">Loading...</div>
           ) : error ? (
-            <div className="text-gray-500 font-mono text-lg">---.--</div>
+            <div className="text-gray-500 font-mono text-xl">---.--</div>
           ) : (
-            <div className="text-accent-green font-mono text-lg">
+            <div className="text-accent-green font-mono text-xl font-bold">
               ${formatPrice(price)}
             </div>
           )}
@@ -141,10 +159,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         
         {!isLoading && !error && price > 0 && (
           <div className={`flex items-center gap-1 ${priceChangeColor}`}>
-            {change >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-            <span className="text-sm font-medium">
-              {change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%
-            </span>
+            {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
+            <div className="text-right">
+              <div className="text-sm font-medium">
+                {change >= 0 ? '+' : ''}{change.toFixed(4)}
+              </div>
+              <div className="text-xs">
+                ({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -164,7 +187,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onUseCurrentPrice(price)}
-            className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-2 text-xs"
+            className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
           >
             Use Current Price
           </Button>
@@ -174,7 +197,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       {/* Data Source Info */}
       <div className="mt-2 pt-2 border-t border-gray-600">
         <div className="text-xs text-gray-500">
-          {connectionStatusInfo.description}
+          {connectionStatusInfo.description} • Symbol: {symbol}
         </div>
       </div>
     </div>

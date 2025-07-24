@@ -4,11 +4,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass } from 'lucide-react';
-import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec } from '@/utils/lotSizing';
+import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
 
 export default function TradingCalculator({ alert, livePrice }) {
   const [accountBalance, setAccountBalance] = useState('');
   const [lotSize, setLotSize] = useState('');
+  
+  // Calculate maximum safe lot size based on account balance (max 10% risk)
+  const maxSafeLotSize = useMemo(() => {
+    const balance = parseFloat(accountBalance) || 0;
+    const entryPrice = alert.entry_price || 0;
+    const stopLoss = alert.stop_loss || 0;
+    
+    if (!balance || !entryPrice || !stopLoss) return null;
+    
+    const maxRiskAmount = balance * 0.10; // Max 10% of account
+    const symbol = alert.finnhub_symbol || alert.asset_name || '';
+    const maxLots = calculatePositionSize(maxRiskAmount, entryPrice, stopLoss, symbol);
+    
+    return Math.max(0.01, maxLots); // Minimum 0.01 lots
+  }, [accountBalance, alert]);
   
   const isPending = alert.status === 'pending';
 
@@ -125,16 +140,43 @@ export default function TradingCalculator({ alert, livePrice }) {
                   ({formatLotSize(parseFloat(lotSize) || 0, alert.finnhub_symbol || alert.asset_name || '')})
                 </span>
               )}
+              {maxSafeLotSize && (
+                <span className="ml-2 text-xs text-emerald-400">
+                  Max: {maxSafeLotSize.toFixed(2)}
+                </span>
+              )}
             </Label>
             <Input
               type="number"
               step="any"
               placeholder="0.1"
               value={lotSize}
-              onChange={(e) => setLotSize(e.target.value)}
+              max={maxSafeLotSize || undefined}
+              onChange={(e) => {
+                const inputValue = e.target.value;
+                const numValue = parseFloat(inputValue);
+                
+                // Allow input but warn if exceeding max
+                if (maxSafeLotSize && numValue > maxSafeLotSize) {
+                  // Still allow the input but will show warning below
+                  setLotSize(inputValue);
+                } else {
+                  setLotSize(inputValue);
+                }
+              }}
               onWheel={handleNumberInputWheel}
-              className="bg-gray-800 border-gray-600 text-white h-8 text-sm"
+              className={`bg-gray-800 border-gray-600 text-white h-8 text-sm ${
+                maxSafeLotSize && parseFloat(lotSize) > maxSafeLotSize 
+                  ? 'border-red-500 ring-1 ring-red-500' 
+                  : ''
+              }`}
             />
+            {maxSafeLotSize && parseFloat(lotSize) > maxSafeLotSize && (
+              <div className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Position size exceeds safe limit (10% max risk)
+              </div>
+            )}
           </div>
         </div>
 

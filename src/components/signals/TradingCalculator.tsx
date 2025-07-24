@@ -12,26 +12,49 @@ export default function TradingCalculator({ alert, livePrice }) {
   
   const isPending = alert.status === 'pending';
   
-  // Calculate maximum lot size based on risk from current price to stop loss
+  // Calculate maximum lot size based on 100% margin usage
   const maxLotSizeByMargin = useMemo(() => {
     const balance = parseFloat(accountBalance) || 0;
-    const entryPrice = alert.entry_price || 0;
-    const stopLoss = alert.stop_loss || 0;
     const symbol = alert.finnhub_symbol || alert.asset_name || '';
     
-    if (!balance || !entryPrice || !stopLoss || !symbol) return null;
+    if (!balance || !symbol) return null;
     
-    // Handle livePrice - use current price for active trades, entry price for pending
-    const currentPrice = typeof livePrice === 'number' && livePrice > 0 
-      ? livePrice 
-      : (livePrice?.price && livePrice.price > 0 ? livePrice.price : entryPrice);
+    // Margin requirements per 1 lot for different assets
+    const getMarginPerLot = (symbol: string): number => {
+      const upperSymbol = symbol.toUpperCase();
+      
+      // Gold/XAU margin requirements
+      if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) {
+        return 333; // $333 margin per 1 lot of Gold
+      }
+      
+      // Major forex pairs (approximate margin requirements)
+      if (upperSymbol.includes('EUR') || upperSymbol.includes('GBP') || 
+          upperSymbol.includes('USD') || upperSymbol.includes('JPY') ||
+          upperSymbol.includes('AUD') || upperSymbol.includes('CAD') ||
+          upperSymbol.includes('CHF') || upperSymbol.includes('NZD')) {
+        return 500; // $500 margin per 1 lot for major pairs
+      }
+      
+      // Crypto (higher margin requirements)
+      if (upperSymbol.includes('BTC') || upperSymbol.includes('ETH') ||
+          upperSymbol.includes('CRYPTO')) {
+        return 1000; // $1000 margin per 1 lot for crypto
+      }
+      
+      // Indices
+      if (upperSymbol.includes('SPX') || upperSymbol.includes('NAS') ||
+          upperSymbol.includes('DOW') || upperSymbol.includes('FTSE') ||
+          upperSymbol.includes('DAX') || upperSymbol.includes('INDEX')) {
+        return 200; // $200 margin per 1 lot for indices
+      }
+      
+      // Default fallback
+      return 500;
+    };
     
-    // Use current price for active trades, entry price for pending orders
-    const basePrice = isPending ? entryPrice : currentPrice;
-    
-    // Calculate max position size based on 5% account risk
-    const maxRiskAmount = balance * 0.05; // Max 5% of account at risk
-    const maxLots = calculatePositionSize(maxRiskAmount, basePrice, stopLoss, symbol);
+    const marginPerLot = getMarginPerLot(symbol);
+    const maxLots = Math.floor(balance / marginPerLot * 100) / 100; // Round down to 2 decimals
     
     return Math.max(0.01, maxLots); // Minimum 0.01 lots
   }, [accountBalance, alert, livePrice, isPending]);

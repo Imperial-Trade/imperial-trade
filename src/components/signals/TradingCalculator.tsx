@@ -23,8 +23,11 @@ export default function TradingCalculator({ alert, livePrice }) {
     const lots = parseFloat(lotSize) || 0;
     const entryPrice = alert.entry_price || 0;
     const stopLoss = alert.stop_loss || 0;
-    // Ensure we use actual live price when available, fallback to entry only if no live data
-    const currentPrice = livePrice?.price && livePrice.price > 0 ? livePrice.price : entryPrice;
+    
+    // Handle livePrice - it can be a number or an object with price property
+    const currentPrice = typeof livePrice === 'number' && livePrice > 0 
+      ? livePrice 
+      : (livePrice?.price && livePrice.price > 0 ? livePrice.price : entryPrice);
 
     if (!balance || !lots || !entryPrice || !stopLoss) {
       return null;
@@ -140,7 +143,7 @@ export default function TradingCalculator({ alert, livePrice }) {
             <div className="flex justify-between items-center">
               <span className="text-xs text-gray-400">Current Price</span>
               <span className="font-mono font-bold text-white">
-                {formatCurrency(livePrice?.price || 0)}
+                {formatCurrency(typeof livePrice === 'number' ? livePrice : (livePrice?.price || 0))}
               </span>
             </div>
             {calculations && (

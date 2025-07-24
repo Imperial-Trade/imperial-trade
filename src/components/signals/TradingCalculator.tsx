@@ -12,12 +12,26 @@ export default function TradingCalculator({ alert, livePrice }) {
   
   const isPending = alert.status === 'pending';
   
-  // Calculate maximum lot size based on 100% margin usage
+  // Calculate maximum lot size based on both margin requirements AND risk limit
   const maxLotSizeByMargin = useMemo(() => {
     const balance = parseFloat(accountBalance) || 0;
+    const entryPrice = alert.entry_price || 0;
+    const stopLoss = alert.stop_loss || 0;
     const symbol = alert.finnhub_symbol || alert.asset_name || '';
     
-    if (!balance || !symbol) return null;
+    if (!balance || !entryPrice || !stopLoss || !symbol) return null;
+    
+    // Handle livePrice - use current price for active trades, entry price for pending
+    const currentPrice = typeof livePrice === 'number' && livePrice > 0 
+      ? livePrice 
+      : (livePrice?.price && livePrice.price > 0 ? livePrice.price : entryPrice);
+    
+    // Use current price for active trades, entry price for pending orders
+    const basePrice = isPending ? entryPrice : currentPrice;
+    
+    // Calculate max lot size based on risk (100% of account balance)
+    const maxRiskAmount = balance; // Use 100% of account as max risk
+    const maxLotsByRisk = calculatePositionSize(maxRiskAmount, basePrice, stopLoss, symbol);
     
     // Margin requirements per 1 lot for different assets
     const getMarginPerLot = (symbol: string): number => {
@@ -54,7 +68,10 @@ export default function TradingCalculator({ alert, livePrice }) {
     };
     
     const marginPerLot = getMarginPerLot(symbol);
-    const maxLots = Math.floor(balance / marginPerLot * 100) / 100; // Round down to 2 decimals
+    const maxLotsByMargin = Math.floor(balance / marginPerLot * 100) / 100; // Round down to 2 decimals
+    
+    // Use the smaller of the two limits (risk-based or margin-based)
+    const maxLots = Math.min(maxLotsByRisk, maxLotsByMargin);
     
     return Math.max(0.01, maxLots); // Minimum 0.01 lots
   }, [accountBalance, alert, livePrice, isPending]);

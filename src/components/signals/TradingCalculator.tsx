@@ -36,8 +36,9 @@ export default function TradingCalculator({ alert, livePrice }) {
     const isBuy = alert.trade_type.includes('buy');
     const symbol = alert.finnhub_symbol || alert.asset_name || '';
     
-    // Calculate risk using proper lot sizing mechanics
-    const totalRisk = calculateRiskAmount(entryPrice, stopLoss, lots, symbol);
+    // Calculate risk using current price for active trades, entry price for pending orders
+    const riskBasePrice = isPending ? entryPrice : currentPrice;
+    const totalRisk = calculateRiskAmount(riskBasePrice, stopLoss, lots, symbol);
     const riskPercentage = (totalRisk / balance) * 100;
 
     // Calculate current P&L using proper lot sizing mechanics

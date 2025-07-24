@@ -40,7 +40,7 @@ export default function TradingCalculator({ alert, livePrice }) {
     const currentPnL = calculatePnL(entryPrice, currentPrice, lots, symbol);
     const currentPnLPercentage = (currentPnL / balance) * 100;
 
-    // Calculate potential rewards for each TP level - Always based on entry/limit price.
+    // Calculate potential rewards for each TP level - Based on current price for active trades
     const takeProfits = [
       { level: 1, price: alert.tp1 },
       { level: 2, price: alert.tp2 },
@@ -50,7 +50,9 @@ export default function TradingCalculator({ alert, livePrice }) {
     ].filter(tp => tp.price && tp.price > 0);
 
     const rewards = takeProfits.map(tp => {
-      const totalReward = calculatePnL(entryPrice, tp.price, lots, symbol);
+      // Use current price for active trades, entry price for pending orders
+      const basePrice = isPending ? entryPrice : currentPrice;
+      const totalReward = calculatePnL(basePrice, tp.price, lots, symbol);
       const rewardRiskRatio = totalRisk > 0 ? Math.abs(totalReward) / totalRisk : 0;
       return {
         level: tp.level,

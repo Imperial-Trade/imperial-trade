@@ -141,12 +141,7 @@ export default function TradingCalculator({ alert, livePrice }) {
         {/* Live Price & P&L Display (Only for Active Trades) */}
         {livePrice && !isPending && (
           <div className="bg-gray-800/50 rounded-md p-3 border border-gray-700">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">Current Price</span>
-              <span className="font-mono font-bold text-white">
-                {formatCurrency(typeof livePrice === 'number' ? livePrice : (livePrice?.price || 0))}
-              </span>
-            </div>
+            {/* Current price calculation kept for reward target mechanics but not displayed */}
             {/* Current P&L calculation kept for reward target mechanics but not displayed */}
           </div>
         )}

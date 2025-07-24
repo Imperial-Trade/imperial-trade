@@ -17,9 +17,10 @@ ADD COLUMN IF NOT EXISTS last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 ALTER TABLE economic_events 
 DROP CONSTRAINT IF EXISTS unique_economic_event;
 
--- Create unique index instead of constraint for date-based uniqueness
-CREATE UNIQUE INDEX IF NOT EXISTS unique_economic_event_idx 
-ON economic_events (event_name, country, (event_date::date));
+-- Create unique constraint to prevent exact duplicates
+ALTER TABLE economic_events 
+ADD CONSTRAINT unique_economic_event 
+UNIQUE (event_name, country, event_date);
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_economic_events_date ON economic_events (event_date);

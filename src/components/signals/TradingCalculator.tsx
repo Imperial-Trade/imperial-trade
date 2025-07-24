@@ -147,19 +147,7 @@ export default function TradingCalculator({ alert, livePrice }) {
                 {formatCurrency(typeof livePrice === 'number' ? livePrice : (livePrice?.price || 0))}
               </span>
             </div>
-            {calculations && (
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-xs text-gray-400">Current P&L</span>
-                <div className="text-right">
-                  <div className={`font-bold ${calculations.isCurrentlyProfit ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {formatCurrency(calculations.currentPnL)}
-                  </div>
-                  <div className="text-xs">
-                    {formatPercentage(calculations.currentPnLPercentage)}
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Current P&L calculation kept for reward target mechanics but not displayed */}
           </div>
         )}
         

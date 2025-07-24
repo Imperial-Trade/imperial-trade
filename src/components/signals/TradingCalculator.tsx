@@ -23,7 +23,7 @@ export default function TradingCalculator({ alert, livePrice }) {
     const lots = parseFloat(lotSize) || 0;
     const entryPrice = alert.entry_price || 0;
     const stopLoss = alert.stop_loss || 0;
-    const currentPrice = livePrice?.price || entryPrice;
+    const currentPrice = livePrice || entryPrice;
 
     if (!balance || !lots || !entryPrice || !stopLoss) {
       return null;
@@ -135,7 +135,7 @@ export default function TradingCalculator({ alert, livePrice }) {
             <div className="flex justify-between items-center">
               <span className="text-xs text-gray-400">Current Price</span>
               <span className="font-mono font-bold text-white">
-                {formatCurrency(livePrice?.price || 0)}
+                {formatCurrency(livePrice)}
               </span>
             </div>
             {calculations && (

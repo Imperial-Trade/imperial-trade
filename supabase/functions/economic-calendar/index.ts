@@ -56,9 +56,13 @@ serve(async (req) => {
       query = query.in('currency_code', currencies);
     }
 
-    // Apply impact filtering
+    // Apply impact filtering with case conversion
     if (impacts && impacts.length > 0) {
-      query = query.in('impact', impacts);
+      // Convert lowercase impacts to capitalized format for database
+      const capitalizedImpacts = impacts.map(impact => 
+        impact.charAt(0).toUpperCase() + impact.slice(1).toLowerCase()
+      );
+      query = query.in('impact', capitalizedImpacts);
     }
 
     const { data: dbEvents, error } = await query;
@@ -75,7 +79,7 @@ serve(async (req) => {
       id: dbEvent.id,
       time: dbEvent.event_time || '00:00',
       currency: dbEvent.currency_code || 'USD',
-      impact: dbEvent.impact,
+      impact: dbEvent.impact?.toLowerCase() as 'high' | 'medium' | 'low',
       event: dbEvent.event_name,
       actual: dbEvent.actual_value || '',
       forecast: dbEvent.forecast || '',

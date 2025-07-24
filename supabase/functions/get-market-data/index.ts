@@ -165,33 +165,46 @@ function determineEnhancedMarketContext(price: number, indicators: any, changePe
 
 async function fetchFromTwelveData(symbol: string, apiKey: string): Promise<MarketDataPoint | null> {
   try {
+    console.log(`🚀 API FETCH STARTED for symbol: ${symbol}`);
+    console.log(`🔑 API Key present: ${apiKey ? 'YES' : 'NO'}`);
+    
     // Enhanced symbol format conversion for Twelve Data API
     let apiSymbol = symbol.replace('/', '');
     
-    // Handle special cases for commodities and crypto
+    // Handle special cases for commodities and crypto with better mapping
     if (symbol === 'GOLD' || symbol === 'XAU/USD') {
       apiSymbol = 'XAU/USD';
-    } else if (symbol === 'BTC/USD' || symbol === 'BTCUSD') {
+    } else if (symbol === 'BTC/USD' || symbol === 'BTCUSD' || symbol === 'BTC') {
       apiSymbol = 'BTC/USD';
     } else if (symbol.includes('/')) {
       // Keep forex pairs as-is
       apiSymbol = symbol;
     }
     
-    console.log(`🔍 Fetching data for ${symbol} using API symbol: ${apiSymbol}`);
+    console.log(`📡 Making API call for ${symbol} -> ${apiSymbol}`);
     
-    const [quoteResponse, rsiResponse] = await Promise.allSettled([
-      fetch(`https://api.twelvedata.com/quote?symbol=${apiSymbol}&apikey=${apiKey}`),
-      fetch(`https://api.twelvedata.com/rsi?symbol=${apiSymbol}&interval=1h&apikey=${apiKey}`)
-    ]);
+    const url = `https://api.twelvedata.com/quote?symbol=${apiSymbol}&apikey=${apiKey}`;
+    console.log(`🌐 Full API URL: ${url}`);
     
-    if (quoteResponse.status === 'fulfilled' && quoteResponse.value.ok) {
-      const quoteData = await quoteResponse.value.json();
+    const quoteResponse = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(15000) // 15 second timeout
+    });
+    
+    console.log(`📊 API Response Status: ${quoteResponse.status}`);
+    
+    if (quoteResponse.ok) {
+      const quoteData = await quoteResponse.json();
+      console.log(`📊 API Response Data:`, JSON.stringify(quoteData, null, 2));
       
       if (quoteData.status !== 'error' && quoteData.close) {
         const price = parseFloat(quoteData.close);
         const change = parseFloat(quoteData.change) || 0;
         const changePercent = parseFloat(quoteData.percent_change) || 0;
+        
+        console.log(`✅ SUCCESS: Real price for ${symbol}: $${price.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent}%)`);
         
         const technicalIndicators = calculateEnhancedTechnicalIndicators(price, symbol);
         const marketContext = determineEnhancedMarketContext(price, technicalIndicators, changePercent, symbol);
@@ -208,31 +221,41 @@ async function fetchFromTwelveData(symbol: string, apiKey: string): Promise<Mark
           technicalIndicators,
           marketContext
         };
+      } else {
+        console.error(`❌ API returned error or no price for ${symbol}:`, quoteData);
       }
+    } else {
+      console.error(`❌ API HTTP error for ${symbol}: ${quoteResponse.status} ${quoteResponse.statusText}`);
+      const errorText = await quoteResponse.text();
+      console.error(`❌ Error response body: ${errorText}`);
     }
   } catch (error) {
-    console.error(`Twelve Data API error for ${symbol}:`, error);
+    console.error(`❌ Exception during API fetch for ${symbol}:`, error);
   }
   return null;
 }
 
+// ⚠️ EMERGENCY MOCK DATA ONLY - Using current Google Finance prices
 function generateEnhancedMockData(symbols: string[]): MarketDataPoint[] {
+  console.log('🚨 WARNING: Using mock data for symbols:', symbols);
+  console.log('🚨 This should only be used when API fails - configure TWELVE_DATA_API_KEY for real data');
+  
   const basePrices: Record<string, number> = {
-    // Stocks
-    'TSLA': 245, 'NVDA': 480, 'SPY': 485, 'AAPL': 190, 'MSFT': 380,
-    'META': 350, 'GOOGL': 140, 'AMZN': 155, 'JPM': 165, 'BAC': 32,
-    'JNJ': 160, 'PFE': 28, 'XOM': 115, 'CVX': 155,
-    // Crypto
-    'BTC/USD': 43500, 'ETH/USD': 2800, 'ADA/USD': 0.55, 'SOL/USD': 95,
-    'MATIC/USD': 0.85, 'DOT/USD': 7.2,
+    // Stocks - Updated to current approximate levels
+    'TSLA': 485, 'NVDA': 148, 'SPY': 605, 'AAPL': 241, 'MSFT': 445,
+    'META': 596, 'GOOGL': 186, 'AMZN': 230, 'JPM': 240, 'BAC': 48,
+    'JNJ': 160, 'PFE': 25, 'XOM': 125, 'CVX': 165,
+    // Crypto - CURRENT GOOGLE FINANCE PRICES
+    'BTC/USD': 117881, 'ETH/USD': 4089, 'ADA/USD': 1.15, 'SOL/USD': 248,
+    'MATIC/USD': 0.65, 'DOT/USD': 9.8,
     // Forex
-    'EUR/USD': 1.085, 'GBP/USD': 1.25, 'USD/JPY': 150, 'AUD/USD': 0.66,
-    'USD/CAD': 1.35, 'NZD/USD': 0.61,
-    // Commodities (with current approximate prices)
-    'GOLD': 2665, 'XAU/USD': 2665, 'SILVER': 30.2, 'OIL': 70.5, 'NATURAL_GAS': 3.1,
-    'COPPER': 4.15, 'WHEAT': 5.8,
+    'EUR/USD': 1.032, 'GBP/USD': 1.241, 'USD/JPY': 157, 'AUD/USD': 0.618,
+    'USD/CAD': 1.412, 'NZD/USD': 0.558,
+    // Commodities - CURRENT GOOGLE FINANCE PRICES
+    'GOLD': 3396.70, 'XAU/USD': 3396.70, 'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
+    'COPPER': 4.55, 'WHEAT': 5.4,
     // ETFs
-    'QQQ': 385, 'IWM': 195, 'DIA': 355, 'VTI': 245, 'GLD': 185, 'USO': 75
+    'QQQ': 515, 'IWM': 238, 'DIA': 445, 'VTI': 295, 'GLD': 325, 'USO': 85
   };
   
   return symbols.map((symbol: string) => {

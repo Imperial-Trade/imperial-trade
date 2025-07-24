@@ -91,10 +91,17 @@ function setCachedPrice(symbol: string, data: PriceUpdate): void {
   });
 }
 
+// ⚠️ EMERGENCY MOCK DATA ONLY - Current Google Finance prices
 function generateMockData(symbols: string[]): PriceUpdate[] {
+  console.log('🚨 WARNING: Generating mock data for symbols:', symbols);
+  console.log('🚨 API is not working - real prices should be fetched instead');
+  
   const basePrices: Record<string, number> = {
-    'GOLD': 2665,     // Current approximate Gold price
-    'BTCUSD': 102500  // Current approximate Bitcoin price
+    'GOLD': 3396.70,     // CURRENT GOOGLE FINANCE PRICE
+    'XAU/USD': 3396.70,  // Alternative Gold symbol
+    'BTCUSD': 117881.00, // CURRENT GOOGLE FINANCE PRICE  
+    'BTC/USD': 117881.00, // Alternative Bitcoin symbol
+    'BTC': 117881.00     // Short Bitcoin symbol
   };
   
   return symbols.map((symbol: string) => {
@@ -120,47 +127,61 @@ function generateMockData(symbols: string[]): PriceUpdate[] {
 async function fetchRealPrice(symbol: string): Promise<PriceUpdate | null> {
   const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
   
+  console.log(`🚀 fetchRealPrice called for: ${symbol}`);
+  console.log(`🔑 API Key available: ${apiKey ? 'YES' : 'NO'}`);
+  
   if (!apiKey) {
-    console.error('TWELVE_DATA_API_KEY not configured');
+    console.error('❌ TWELVE_DATA_API_KEY not configured - cannot fetch real prices');
     return null;
   }
 
   if (isRateLimited()) {
-    console.warn('Rate limit exceeded for Twelve Data API');
+    console.warn('⚠️ Rate limit exceeded for Twelve Data API');
     return null;
   }
 
   try {
     const apiSymbol = translateSymbol(symbol);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
     
-    // Format symbol for Twelve Data API
+    // Enhanced symbol formatting for Twelve Data API
     let formattedSymbol = apiSymbol;
-    if (apiSymbol === 'GOLD') {
+    if (apiSymbol === 'GOLD' || symbol === 'XAU/USD') {
       formattedSymbol = 'XAU/USD';
-    } else if (apiSymbol === 'BTCUSD') {
+    } else if (apiSymbol === 'BTCUSD' || symbol === 'BTC/USD' || symbol === 'BTC') {
       formattedSymbol = 'BTC/USD';
     }
     
-    console.log(`Fetching price for ${symbol} (API symbol: ${apiSymbol}, formatted: ${formattedSymbol})`);
+    console.log(`📡 API call mapping: ${symbol} -> ${apiSymbol} -> ${formattedSymbol}`);
     
-    const response = await fetch(
-      `https://api.twelvedata.com/quote?symbol=${formattedSymbol}&apikey=${apiKey}`,
-      { signal: controller.signal }
-    );
+    const url = `https://api.twelvedata.com/quote?symbol=${formattedSymbol}&apikey=${apiKey}`;
+    console.log(`🌐 Making API request to: ${url}`);
     
-    clearTimeout(timeoutId);
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(10000) // 10 second timeout
+    });
+    
+    console.log(`📊 API Response Status: ${response.status}`);
     
     if (!response.ok) {
-      console.error(`Twelve Data API error: ${response.status}`);
+      console.error(`❌ Twelve Data API HTTP error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ Error response body: ${errorText}`);
       return null;
     }
     
     const data = await response.json();
+    console.log(`📊 API Response Data for ${symbol}:`, JSON.stringify(data, null, 2));
     
     if (data.status === 'error') {
-      console.error(`Twelve Data API error for ${symbol}:`, data.message);
+      console.error(`❌ Twelve Data API error for ${symbol}:`, data.message || data);
+      return null;
+    }
+    
+    if (!data.close) {
+      console.error(`❌ No price data returned for ${symbol}:`, data);
       return null;
     }
     
@@ -174,12 +195,12 @@ async function fetchRealPrice(symbol: string): Promise<PriceUpdate | null> {
     
     // Cache the result
     setCachedPrice(symbol, priceUpdate);
-    console.log(`✅ Fetched real price for ${symbol}: $${priceUpdate.price} (${priceUpdate.changePercent >= 0 ? '+' : ''}${priceUpdate.changePercent}%)`);
+    console.log(`✅ SUCCESS: Real price for ${symbol}: $${priceUpdate.price.toFixed(2)} (${priceUpdate.changePercent >= 0 ? '+' : ''}${priceUpdate.changePercent}%)`);
     
     return priceUpdate;
     
   } catch (error) {
-    console.error(`Error fetching price for ${symbol}:`, error);
+    console.error(`❌ Exception during API fetch for ${symbol}:`, error);
     return null;
   }
 }

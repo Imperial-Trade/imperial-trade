@@ -412,8 +412,8 @@ export default function SignalStream() {
 
       {/* Main Content - Improved grid layout */}
       <div className="w-full px-4 py-6">
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-          <div className="xl:col-span-3">
+        <div className="max-w-none w-full">
+          <div className="w-full">
             {/* Enhanced Filters */}
             <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} />
             {isLoading ? <div className="flex justify-center items-center h-64 flex-col space-y-4">

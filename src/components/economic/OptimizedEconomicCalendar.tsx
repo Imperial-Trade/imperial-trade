@@ -148,7 +148,7 @@ export default function OptimizedEconomicCalendar({
   } = useEconomicCalendar(
     {
       dateFrom: format(new Date(), 'yyyy-MM-dd'),
-      dateTo: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+      dateTo: format(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
       currencies: ['USD', 'EUR', 'GBP', 'JPY', 'CAD'],
       impacts: ['high', 'medium', 'low']
     },

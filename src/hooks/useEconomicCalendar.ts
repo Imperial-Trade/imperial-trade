@@ -53,7 +53,7 @@ export function useEconomicCalendar(
   const [retryCount, setRetryCount] = useState(0);
 
   // Filter states
-  const [dateRange, setDateRange] = useState('today');
+  const [dateRange, setDateRange] = useState('this_week');
   const [currency, setCurrency] = useState('all');
   const [impact, setImpact] = useState('all');
 
@@ -128,8 +128,12 @@ export function useEconomicCalendar(
 
   // Memoized filtered events with optimized filtering
   const filteredEvents = useMemo(() => {
-    if (!events.length) return [];
+    if (!events.length) {
+      console.log('No events available for filtering');
+      return [];
+    }
 
+    console.log(`Filtering ${events.length} events with filters:`, { dateRange, currency, impact });
     let filtered = [...events];
 
     // Apply date filtering
@@ -140,16 +144,28 @@ export function useEconomicCalendar(
         filtered = filtered.filter(event => event.date.startsWith(today));
         break;
       case 'this_week':
-        const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
-        const weekEnd = new Date(now.setDate(weekStart.getDate() + 6));
+        const currentWeekStart = new Date(now);
+        currentWeekStart.setDate(now.getDate() - now.getDay());
+        currentWeekStart.setHours(0, 0, 0, 0);
+        
+        const currentWeekEnd = new Date(currentWeekStart);
+        currentWeekEnd.setDate(currentWeekStart.getDate() + 6);
+        currentWeekEnd.setHours(23, 59, 59, 999);
+        
         filtered = filtered.filter(event => {
           const eventDate = new Date(event.date);
-          return eventDate >= weekStart && eventDate <= weekEnd;
+          return eventDate >= currentWeekStart && eventDate <= currentWeekEnd;
         });
         break;
       case 'next_week':
-        const nextWeekStart = new Date(now.setDate(now.getDate() + 7));
-        const nextWeekEnd = new Date(now.setDate(nextWeekStart.getDate() + 6));
+        const nextWeekStart = new Date(now);
+        nextWeekStart.setDate(now.getDate() - now.getDay() + 7);
+        nextWeekStart.setHours(0, 0, 0, 0);
+        
+        const nextWeekEnd = new Date(nextWeekStart);
+        nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
+        nextWeekEnd.setHours(23, 59, 59, 999);
+        
         filtered = filtered.filter(event => {
           const eventDate = new Date(event.date);
           return eventDate >= nextWeekStart && eventDate <= nextWeekEnd;
@@ -157,22 +173,29 @@ export function useEconomicCalendar(
         break;
     }
 
+    console.log(`After date filtering (${dateRange}): ${filtered.length} events`);
+
     // Apply currency filtering
     if (currency !== 'all') {
       filtered = filtered.filter(event => event.currency === currency);
+      console.log(`After currency filtering (${currency}): ${filtered.length} events`);
     }
 
     // Apply impact filtering
     if (impact !== 'all') {
       filtered = filtered.filter(event => event.impact === impact);
+      console.log(`After impact filtering (${impact}): ${filtered.length} events`);
     }
 
     // Sort by date and time
-    return filtered.sort((a, b) => {
+    const sorted = filtered.sort((a, b) => {
       const dateA = new Date(`${a.date} ${a.time}`);
       const dateB = new Date(`${b.date} ${b.time}`);
       return dateA.getTime() - dateB.getTime();
     });
+
+    console.log(`Final filtered and sorted events: ${sorted.length}`);
+    return sorted;
   }, [events, dateRange, currency, impact]);
 
   // Memoized statistics

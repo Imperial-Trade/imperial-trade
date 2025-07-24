@@ -184,11 +184,6 @@ export default function TradingCalculator({ alert, livePrice }) {
           <div className="space-y-2">
             <Label className="text-xs text-gray-400">
               Position Size 
-              {lotSize && (
-                <span className="ml-2 text-xs text-gray-500">
-                  ({formatLotSize(parseFloat(lotSize) || 0, alert.finnhub_symbol || alert.asset_name || '')})
-                </span>
-              )}
               {maxLotSizeByMargin && (
                 <span className="ml-2 text-xs text-emerald-400">
                   Max: {maxLotSizeByMargin.toFixed(2)}

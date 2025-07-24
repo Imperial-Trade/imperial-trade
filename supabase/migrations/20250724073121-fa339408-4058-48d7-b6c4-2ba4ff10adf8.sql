@@ -12,7 +12,7 @@ ON economic_events (event_date, currency_code, impact, event_time);
 -- Add index for external_id to prevent duplicates more efficiently
 CREATE INDEX IF NOT EXISTS idx_economic_events_external_id ON economic_events (external_id);
 
--- Create a partial index for active events (events not older than 30 days)
+-- Create a partial index for recent events (events not older than a fixed date)
 CREATE INDEX IF NOT EXISTS idx_economic_events_recent 
 ON economic_events (event_date, currency_code, impact) 
-WHERE event_date >= CURRENT_DATE - INTERVAL '30 days';
+WHERE event_date >= '2025-01-01';

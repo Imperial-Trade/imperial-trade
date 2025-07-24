@@ -2,10 +2,14 @@ import React, { memo, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, Filter, AlertTriangle, Zap, TrendingUp, RefreshCw, Activity, Wifi, WifiOff } from 'lucide-react';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { useEconomicCalendar } from '@/hooks/useEconomicCalendar';
+import { EconomicRealtimeProvider } from '@/contexts/EconomicRealtimeContext';
+import { EconomicLiveFeed } from './EconomicLiveFeed';
+import { EconomicEventCountdown } from './EconomicEventCountdown';
 import { EnhancedLoading } from '@/components/ui/enhanced-loading';
 import type { EconomicEvent } from '@/services/EconomicCalendarService';
 
@@ -218,112 +222,194 @@ export default function OptimizedEconomicCalendar({
   ), [filters]);
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-3 md:p-6 ${className}`}>
-      <div className="max-w-6xl mx-auto space-y-6">
-        
-        {/* Summary Cards */}
-        {memoizedStatsCards}
+    <EconomicRealtimeProvider enabled={true} notificationsEnabled={true}>
+      <div className={`min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-3 md:p-6 ${className}`}>
+        <div className="max-w-7xl mx-auto space-y-6">
+          
+          {/* Summary Cards */}
+          {memoizedStatsCards}
 
-        <Card className="bg-card/50 border-border/50 shadow-2xl backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Economic Calendar
-                {!isOnline && (
-                  <Badge variant="destructive" className="ml-2">
-                    <WifiOff className="w-3 h-3 mr-1" />
-                    Offline
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                >
-                  <Activity className="w-4 h-4" />
-                  Live Updates
-                </Button>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-              {memoizedFilters}
-              
-              <div className="flex items-center gap-2">
-                <Button 
-                  onClick={refreshEvents} 
-                  disabled={isLoading || !isOnline} 
-                  variant="outline" 
-                  size="sm" 
-                  className="border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span className="hidden md:inline">Refresh</span>
-                </Button>
-                <Button 
-                  onClick={handleClearCache} 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  Clear Cache
-                </Button>
-              </div>
-            </div>
-            
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-4">
-              {lastUpdated && (
-                <p className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Clock className="w-3 h-3" />
-                  Last updated: {format(lastUpdated, 'HH:mm:ss')}
-                  {isOnline ? (
-                    <Wifi className="w-3 h-3 text-accent-green" />
-                  ) : (
-                    <WifiOff className="w-3 h-3 text-destructive" />
-                  )}
-                </p>
-              )}
-              {retryCount > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Retry attempts: {retryCount}
-                </p>
-              )}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Live Feed Sidebar */}
+            <div className="lg:col-span-1">
+              <EconomicLiveFeed />
             </div>
 
-            {/* Events List */}
-            {isLoading ? (
-              <EnhancedLoading message="Loading economic events..." />
-            ) : error ? (
-              <div className="text-center py-8">
-                <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-2" />
-                <p className="text-destructive mb-2">{error.message}</p>
-                <Button onClick={refreshEvents} variant="outline" size="sm">
-                  Retry
-                </Button>
-              </div>
-            ) : filteredEvents.length === 0 ? (
-              <div className="text-center py-8">
-                <Calendar className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-                <p className="text-muted-foreground">No economic events found for the selected criteria</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {filteredEvents.map(event => (
-                  <EventCard 
-                    key={event.id} 
-                    event={event} 
-                    onEventClick={onEventClick}
-                  />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            {/* Main Calendar */}
+            <div className="lg:col-span-2">
+              <Tabs defaultValue="calendar" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="calendar">📅 Calendar View</TabsTrigger>
+                  <TabsTrigger value="live">📊 Live Events</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="calendar" className="mt-6">
+                  <Card className="bg-card/50 border-border/50 shadow-2xl backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-5 h-5" />
+                          Economic Calendar
+                          {!isOnline && (
+                            <Badge variant="destructive" className="ml-2">
+                              <WifiOff className="w-3 h-3 mr-1" />
+                              Offline
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground"
+                          >
+                            <Activity className="w-4 h-4" />
+                            Live Updates
+                          </Button>
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        {memoizedFilters}
+                        
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            onClick={refreshEvents} 
+                            disabled={isLoading || !isOnline} 
+                            variant="outline" 
+                            size="sm" 
+                            className="border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                            <span className="hidden md:inline">Refresh</span>
+                          </Button>
+                          <Button 
+                            onClick={handleClearCache} 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            Clear Cache
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-4">
+                        {lastUpdated && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            <Clock className="w-3 h-3" />
+                            Last updated: {format(lastUpdated, 'HH:mm:ss')}
+                            {isOnline ? (
+                              <Wifi className="w-3 h-3 text-accent-green" />
+                            ) : (
+                              <WifiOff className="w-3 h-3 text-destructive" />
+                            )}
+                          </p>
+                        )}
+                        {retryCount > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Retry attempts: {retryCount}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Events List */}
+                      {isLoading ? (
+                        <EnhancedLoading message="Loading economic events..." />
+                      ) : error ? (
+                        <div className="text-center py-8">
+                          <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-2" />
+                          <p className="text-destructive mb-2">{error.message}</p>
+                          <Button onClick={refreshEvents} variant="outline" size="sm">
+                            Retry
+                          </Button>
+                        </div>
+                      ) : filteredEvents.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Calendar className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                          <p className="text-muted-foreground">No economic events found for the selected criteria</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                          {filteredEvents.map(event => (
+                            <div key={event.id} className="flex items-center justify-between p-4 bg-card/50 border border-border/50 rounded-lg hover:bg-card/70 transition-colors cursor-pointer" onClick={() => onEventClick?.(event)}>
+                              <EventCard 
+                                event={event} 
+                                onEventClick={onEventClick}
+                              />
+                              <div className="flex-shrink-0 ml-4">
+                                <EconomicEventCountdown 
+                                  event={event} 
+                                  variant="compact"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="live" className="mt-6">
+                  <Card className="bg-card/50 border-border/50 shadow-2xl backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Activity className="w-5 h-5" />
+                        Live Economic Events
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {filteredEvents
+                          .filter(event => {
+                            const now = new Date();
+                            const eventDate = new Date(`${event.date} ${event.time}`);
+                            const hoursUntil = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+                            return hoursUntil >= -1 && hoursUntil <= 24; // Show events from 1 hour ago to 24 hours ahead
+                          })
+                          .sort((a, b) => {
+                            const dateA = new Date(`${a.date} ${a.time}`);
+                            const dateB = new Date(`${b.date} ${b.time}`);
+                            return dateA.getTime() - dateB.getTime();
+                          })
+                          .map(event => (
+                            <div 
+                              key={event.id}
+                              className="flex items-center justify-between p-4 bg-card/30 border border-border/30 rounded-lg hover:bg-card/50 transition-colors"
+                            >
+                              <div className="flex-1">
+                                <EventCard event={event} onEventClick={onEventClick} />
+                              </div>
+                              <div className="flex-shrink-0 ml-4">
+                                <EconomicEventCountdown 
+                                  event={event} 
+                                  variant="detailed"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        {filteredEvents.filter(event => {
+                          const now = new Date();
+                          const eventDate = new Date(`${event.date} ${event.time}`);
+                          const hoursUntil = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+                          return hoursUntil >= -1 && hoursUntil <= 24;
+                        }).length === 0 && (
+                          <div className="text-center py-8">
+                            <Activity className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                            <p className="text-muted-foreground">No live events in the next 24 hours</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </EconomicRealtimeProvider>
   );
 }

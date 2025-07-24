@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Calendar, Clock, Filter, AlertTriangle, Zap, TrendingUp, RefreshCw, Bot, Brain, Activity, Globe } from 'lucide-react';
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isToday, isTomorrow, parseISO } from 'date-fns';
+import { Calendar, Clock, Filter, AlertTriangle, Zap, TrendingUp, RefreshCw, Bot, Activity, Globe, Wifi, WifiOff, Search } from 'lucide-react';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isToday, isTomorrow, parseISO, addDays } from 'date-fns';
+import { economicCalendarService } from '@/services/EconomicCalendarService';
+import { EnhancedLoading } from '@/components/ui/enhanced-loading';
+import { SkeletonCard } from '@/components/ui/skeleton-card';
+import { useToast } from '@/hooks/use-toast';
 
 interface EconomicEvent {
   id: string;
@@ -14,8 +17,8 @@ interface EconomicEvent {
   currency: string;
   event: string;
   impact: 'high' | 'medium' | 'low';
-  forecast: string;
-  previous: string;
+  forecast?: string;
+  previous?: string;
   actual?: string;
   description: string;
   aiVolatilityForecast?: {
@@ -32,8 +35,12 @@ export default function EconomicCalendar() {
   const [selectedCurrency, setSelectedCurrency] = useState('all');
   const [selectedImpact, setSelectedImpact] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<Error | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const { toast } = useToast();
 
   // Mock economic events data
   const mockEvents: EconomicEvent[] = [
@@ -110,6 +117,38 @@ export default function EconomicCalendar() {
     }
   ];
 
+  // Online/offline detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (events.length === 0) {
+        loadEconomicEvents();
+      }
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [events.length]);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      if (isOnline && !isLoading) {
+        loadEconomicEvents();
+      }
+    }, 300000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, isOnline, isLoading]);
+
   useEffect(() => {
     loadEconomicEvents();
   }, []);
@@ -118,22 +157,59 @@ export default function EconomicCalendar() {
     filterEvents();
   }, [events, selectedDate, selectedCurrency, selectedImpact]);
 
-  const loadEconomicEvents = async () => {
-    setIsLoading(true);
-    setError('');
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setEvents(mockEvents);
-      setLastUpdated(new Date());
-    } catch (error) {
-      setError('Failed to load economic events. Using cached data.');
-      setEvents(mockEvents);
+  const loadEconomicEvents = useCallback(async () => {
+    if (!isOnline) {
+      setError(new Error('No internet connection'));
+      return;
     }
-    setIsLoading(false);
-  };
 
-  const filterEvents = () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const today = new Date();
+      const dateFrom = format(today, 'yyyy-MM-dd');
+      const dateTo = format(addDays(today, 7), 'yyyy-MM-dd');
+      
+      const eventsData = await economicCalendarService.getEconomicEvents({
+        dateFrom,
+        dateTo,
+        currencies: ['USD', 'EUR', 'GBP', 'JPY', 'CAD'],
+        impacts: ['high', 'medium', 'low']
+      });
+      
+      setEvents(eventsData);
+      setLastUpdated(new Date());
+      setRetryCount(0);
+      
+      if (eventsData.length > 0) {
+        toast({
+          title: "Calendar Updated",
+          description: `Loaded ${eventsData.length} economic events`,
+        });
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to load economic events');
+      setError(error);
+      setRetryCount(prev => prev + 1);
+      
+      // Use fallback data only on first error
+      if (events.length === 0) {
+        setEvents(mockEvents);
+        setLastUpdated(new Date());
+      }
+      
+      toast({
+        title: "Connection Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isOnline, events.length, toast]);
+
+  const filterEvents = useCallback(() => {
     let filtered = [...events];
 
     // Filter by date
@@ -191,7 +267,7 @@ export default function EconomicCalendar() {
     });
 
     setFilteredEvents(filtered);
-  };
+  }, [events, selectedDate, selectedCurrency, selectedImpact]);
 
   const getImpactColor = (impact: string) => {
     switch (impact) {
@@ -241,24 +317,83 @@ export default function EconomicCalendar() {
     return format(date, 'E, MMM d');
   };
 
+  // Memoized summary stats
+  const summaryStats = useMemo(() => {
+    const high = filteredEvents.filter(e => e.impact === 'high').length;
+    const medium = filteredEvents.filter(e => e.impact === 'medium').length;
+    const low = filteredEvents.filter(e => e.impact === 'low').length;
+    return { high, medium, low, total: filteredEvents.length };
+  }, [filteredEvents]);
+
+  const handleRetry = useCallback(() => {
+    loadEconomicEvents();
+  }, [loadEconomicEvents]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-3 md:p-6">
       <div className="max-w-6xl mx-auto space-y-6">
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-accent-red">{summaryStats.high}</div>
+              <div className="text-sm text-muted-foreground">High Impact</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-accent-gold">{summaryStats.medium}</div>
+              <div className="text-sm text-muted-foreground">Medium Impact</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-accent-green">{summaryStats.low}</div>
+              <div className="text-sm text-muted-foreground">Low Impact</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-primary">{summaryStats.total}</div>
+              <div className="text-sm text-muted-foreground">Total Events</div>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card className="bg-card/50 border-border/50 shadow-2xl backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Market Events Timeline
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Market Events Timeline
+                {!isOnline && (
+                  <Badge variant="destructive" className="ml-2">
+                    <WifiOff className="w-3 h-3 mr-1" />
+                    Offline
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  className={autoRefresh ? "text-primary" : "text-muted-foreground"}
+                >
+                  <Activity className="w-4 h-4" />
+                  Auto-refresh {autoRefresh ? "ON" : "OFF"}
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex flex-wrap gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+              <div className="flex flex-wrap gap-2 md:gap-4">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-muted-foreground" />
                   <Select value={selectedDate} onValueChange={setSelectedDate}>
-                    <SelectTrigger className="w-40 bg-background border-border">
+                    <SelectTrigger className="w-32 md:w-40 bg-background border-border">
                       <SelectValue placeholder="Date" />
                     </SelectTrigger>
                     <SelectContent>
@@ -272,11 +407,11 @@ export default function EconomicCalendar() {
                 </div>
                 
                 <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-                  <SelectTrigger className="w-32 bg-background border-border">
+                  <SelectTrigger className="w-24 md:w-32 bg-background border-border">
                     <SelectValue placeholder="Currency" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Currencies</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="USD">🇺🇸 USD</SelectItem>
                     <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
                     <SelectItem value="GBP">🇬🇧 GBP</SelectItem>
@@ -287,8 +422,8 @@ export default function EconomicCalendar() {
                 </Select>
                 
                 <Select value={selectedImpact} onValueChange={setSelectedImpact}>
-                  <SelectTrigger className="w-40 bg-background border-border">
-                    <SelectValue placeholder="Impact Level" />
+                  <SelectTrigger className="w-28 md:w-40 bg-background border-border">
+                    <SelectValue placeholder="Impact" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Impact</SelectItem>
@@ -300,74 +435,121 @@ export default function EconomicCalendar() {
               </div>
               
               <div className="flex items-center gap-2">
-                <Button onClick={loadEconomicEvents} disabled={isLoading} variant="outline" size="sm" className="border-border text-muted-foreground hover:bg-muted hover:text-foreground">
+                <Button 
+                  onClick={handleRetry} 
+                  disabled={isLoading || !isOnline} 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
                   <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                  Refresh
+                  <span className="hidden md:inline">Refresh</span>
                 </Button>
               </div>
             </div>
             
-            {lastUpdated && (
-              <p className="text-xs text-muted-foreground flex items-center gap-2 mb-4">
-                <Clock className="w-3 h-3" />
-                Last updated: {format(lastUpdated, 'HH:mm:ss')}
-              </p>
-            )}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-4">
+              {lastUpdated && (
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Clock className="w-3 h-3" />
+                  Last updated: {format(lastUpdated, 'HH:mm:ss')}
+                  {isOnline ? (
+                    <Wifi className="w-3 h-3 text-accent-green" />
+                  ) : (
+                    <WifiOff className="w-3 h-3 text-destructive" />
+                  )}
+                </p>
+              )}
+              {retryCount > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Retry attempts: {retryCount}
+                </p>
+              )}
+            </div>
 
             {isLoading ? (
-              <div className="flex justify-center items-center h-32">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+              <div className="space-y-4">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <SkeletonCard key={i} showHeader={false} lines={4} />
+                ))}
               </div>
             ) : error && events.length === 0 ? (
-              <div className="text-center py-8">
-                <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
-                <p className="text-destructive mb-4">{error}</p>
-                <Button onClick={loadEconomicEvents} variant="outline">
-                  Try Again
-                </Button>
-              </div>
+              <EnhancedLoading
+                error={error}
+                onRetry={handleRetry}
+                retryButton={true}
+                message={!isOnline ? "Check your internet connection and try again" : undefined}
+              />
             ) : filteredEvents.length === 0 ? (
-              <div className="text-center py-8">
-                <Calendar className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-                <p className="text-muted-foreground">No events found for the selected filters.</p>
+              <div className="text-center py-12">
+                <Search className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No events found</h3>
+                <p className="text-muted-foreground mb-4">
+                  No economic events match your current filter criteria.
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      setSelectedDate('today');
+                      setSelectedCurrency('all');
+                      setSelectedImpact('all');
+                    }}
+                  >
+                    Reset Filters
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setSelectedDate('this_week')}>
+                    Try This Week
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredEvents.map(event => (
-                  <Card key={event.id} className="bg-card/50 border-border/50 backdrop-blur-sm hover:border-border transition-all duration-300 hover:shadow-lg">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3 flex-wrap">
-                            <Badge className="bg-primary/10 text-primary border-primary/20">
+                {filteredEvents.map((event, index) => (
+                  <Card 
+                    key={event.id} 
+                    className="bg-card/50 border-border/50 backdrop-blur-sm hover:border-border transition-all duration-300 hover:shadow-lg animate-fade-in"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <CardContent className="p-4 md:p-6">
+                      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 md:gap-6">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 md:gap-3 mb-3 flex-wrap">
+                            <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">
                               {event.currency}
                             </Badge>
-                            <Badge className={`${getImpactColor(event.impact)} border flex items-center gap-1`}>
+                            <Badge className={`${getImpactColor(event.impact)} border flex items-center gap-1 text-xs`}>
                               {getImpactIcon(event.impact)}
-                              {getImpactEmoji(event.impact)} {event.impact.toUpperCase()}
+                              <span className="hidden sm:inline">{getImpactEmoji(event.impact)}</span>
+                              {event.impact.toUpperCase()}
                             </Badge>
-                            <span className="text-sm text-muted-foreground flex items-center gap-1">
+                            <span className="text-xs md:text-sm text-muted-foreground flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               {event.time}
                             </span>
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-xs md:text-sm text-muted-foreground">
                               {formatEventDate(event.date)}
                             </span>
                           </div>
-                          <h3 className="font-semibold text-foreground text-lg mb-2">{event.event}</h3>
-                          <p className="text-sm text-muted-foreground mb-4">{event.description}</p>
+                          <h3 className="font-semibold text-foreground text-base md:text-lg mb-2 line-clamp-2">
+                            {event.event}
+                          </h3>
+                          <p className="text-xs md:text-sm text-muted-foreground mb-4 line-clamp-3">
+                            {event.description}
+                          </p>
                           
                           {/* AI Volatility Forecast */}
                           {event.aiVolatilityForecast && event.impact === 'high' && (
-                            <div className="p-4 rounded-xl bg-gradient-to-r from-secondary/10 to-primary/10 border border-secondary/30">
+                            <div className="p-3 md:p-4 rounded-xl bg-gradient-to-r from-secondary/10 to-primary/10 border border-secondary/30">
                               <div className="flex items-center gap-2 mb-2">
                                 <Bot className="w-4 h-4 text-primary" />
-                                <span className="text-sm font-medium text-foreground">AI Volatility Forecast</span>
+                                <span className="text-xs md:text-sm font-medium text-foreground">AI Volatility Forecast</span>
                                 <Badge className="bg-primary/10 text-primary text-xs">
                                   {event.aiVolatilityForecast.confidence}% confidence
                                 </Badge>
                               </div>
-                              <p className="text-sm text-muted-foreground mb-2">
+                              <p className="text-xs md:text-sm text-muted-foreground mb-2">
                                 Expected price swing: <span className="font-semibold text-foreground">{event.aiVolatilityForecast.range}</span> on major USD pairs
                               </p>
                               <div className="flex flex-wrap gap-1">
@@ -381,18 +563,22 @@ export default function EconomicCalendar() {
                           )}
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4 text-center lg:text-right">
-                          <div className="p-3 rounded-lg bg-muted/30">
+                        <div className="grid grid-cols-3 gap-2 md:gap-4 text-center lg:text-right min-w-0 lg:min-w-[240px]">
+                          <div className="p-2 md:p-3 rounded-lg bg-muted/30">
                             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Previous</p>
-                            <p className="font-semibold text-foreground">{event.previous || 'N/A'}</p>
+                            <p className="font-semibold text-foreground text-xs md:text-sm truncate">
+                              {event.previous || 'N/A'}
+                            </p>
                           </div>
-                          <div className="p-3 rounded-lg bg-muted/30">
+                          <div className="p-2 md:p-3 rounded-lg bg-muted/30">
                             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Forecast</p>
-                            <p className="font-semibold text-foreground">{event.forecast || 'N/A'}</p>
+                            <p className="font-semibold text-foreground text-xs md:text-sm truncate">
+                              {event.forecast || 'N/A'}
+                            </p>
                           </div>
-                          <div className="p-3 rounded-lg bg-muted/30">
+                          <div className="p-2 md:p-3 rounded-lg bg-muted/30">
                             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Actual</p>
-                            <p className={`font-bold ${getActualColor(event.actual, event.forecast, event.previous)}`}>
+                            <p className={`font-bold text-xs md:text-sm truncate ${getActualColor(event.actual, event.forecast, event.previous)}`}>
                               {event.actual || 'Pending'}
                             </p>
                           </div>

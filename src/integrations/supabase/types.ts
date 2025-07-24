@@ -476,30 +476,81 @@ export type Database = {
       }
       economic_events: {
         Row: {
+          actual_value: string | null
+          category: string | null
           country: string
           created_at: string
+          currency_code: string | null
+          description: string | null
+          difficulty_level: string | null
           event_date: string
           event_name: string
+          event_time: string | null
+          external_id: string | null
+          forecast: string | null
+          formatted_actual: string | null
+          formatted_forecast: string | null
+          formatted_previous: string | null
+          human_readable_title: string | null
           id: string
           impact: Database["public"]["Enums"]["impact_level"]
+          last_updated: string | null
+          previous_value: string | null
+          source: string | null
+          trader_explanation: string | null
+          typical_reaction: string | null
           updated_at: string
         }
         Insert: {
+          actual_value?: string | null
+          category?: string | null
           country: string
           created_at?: string
+          currency_code?: string | null
+          description?: string | null
+          difficulty_level?: string | null
           event_date: string
           event_name: string
+          event_time?: string | null
+          external_id?: string | null
+          forecast?: string | null
+          formatted_actual?: string | null
+          formatted_forecast?: string | null
+          formatted_previous?: string | null
+          human_readable_title?: string | null
           id?: string
           impact: Database["public"]["Enums"]["impact_level"]
+          last_updated?: string | null
+          previous_value?: string | null
+          source?: string | null
+          trader_explanation?: string | null
+          typical_reaction?: string | null
           updated_at?: string
         }
         Update: {
+          actual_value?: string | null
+          category?: string | null
           country?: string
           created_at?: string
+          currency_code?: string | null
+          description?: string | null
+          difficulty_level?: string | null
           event_date?: string
           event_name?: string
+          event_time?: string | null
+          external_id?: string | null
+          forecast?: string | null
+          formatted_actual?: string | null
+          formatted_forecast?: string | null
+          formatted_previous?: string | null
+          human_readable_title?: string | null
           id?: string
           impact?: Database["public"]["Enums"]["impact_level"]
+          last_updated?: string | null
+          previous_value?: string | null
+          source?: string | null
+          trader_explanation?: string | null
+          typical_reaction?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1941,6 +1992,10 @@ export type Database = {
       check_account_request_rate_limit: {
         Args: { p_email: string; p_ip_address?: string }
         Returns: Json
+      }
+      cleanup_old_economic_events: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       cleanup_old_rate_limits: {
         Args: Record<PropertyKey, never>

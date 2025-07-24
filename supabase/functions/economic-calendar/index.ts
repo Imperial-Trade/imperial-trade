@@ -7,6 +7,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
 interface EconomicEvent {
   id: string;
   time: string;
@@ -31,86 +36,58 @@ serve(async (req) => {
     
     console.log('Economic calendar request:', { dateFrom, dateTo, currencies, impacts });
 
-    // For now, we'll use a comprehensive mock dataset that simulates real economic events
-    // In production, you would integrate with services like ForexFactory, TradingEconomics, etc.
-    const mockEvents: EconomicEvent[] = [
-      {
-        id: '1',
-        time: '08:30',
-        currency: 'USD',
-        impact: 'high',
-        event: 'Non-Farm Payrolls',
-        actual: '',
-        forecast: '180K',
-        previous: '150K',
-        date: new Date().toISOString(),
-        description: 'Change in the number of employed people during the previous month.'
-      },
-      {
-        id: '2',
-        time: '10:00',
-        currency: 'USD',
-        impact: 'medium',
-        event: 'Unemployment Rate',
-        actual: '',
-        forecast: '4.2%',
-        previous: '4.2%',
-        date: new Date().toISOString(),
-        description: 'Percentage of the total work force that is unemployed.'
-      },
-      {
-        id: '3',
-        time: '14:00',
-        currency: 'EUR',
-        impact: 'high',
-        event: 'ECB Interest Rate Decision',
-        actual: '',
-        forecast: '4.50%',
-        previous: '4.50%',
-        date: new Date().toISOString(),
-        description: 'European Central Bank monetary policy decision.'
-      },
-      {
-        id: '4',
-        time: '15:30',
-        currency: 'GBP',
-        impact: 'medium',
-        event: 'GDP Growth Rate',
-        actual: '',
-        forecast: '0.2%',
-        previous: '0.1%',
-        date: new Date().toISOString(),
-        description: 'Quarterly gross domestic product growth rate.'
-      },
-      {
-        id: '5',
-        time: '21:30',
-        currency: 'JPY',
-        impact: 'low',
-        event: 'Industrial Production',
-        actual: '',
-        forecast: '1.5%',
-        previous: '1.2%',
-        date: new Date().toISOString(),
-        description: 'Monthly change in industrial production.'
-      }
-    ];
+    // Build database query
+    let query = supabase
+      .from('economic_events')
+      .select('*')
+      .order('event_date', { ascending: true })
+      .order('event_time', { ascending: true });
 
-    // Filter events based on request parameters
-    let filteredEvents = mockEvents;
+    // Apply date filtering
+    if (dateFrom) {
+      query = query.gte('event_date', dateFrom);
+    }
+    if (dateTo) {
+      query = query.lte('event_date', dateTo);
+    }
 
+    // Apply currency filtering
     if (currencies && currencies.length > 0) {
-      filteredEvents = filteredEvents.filter(event => currencies.includes(event.currency));
+      query = query.in('currency_code', currencies);
     }
 
+    // Apply impact filtering
     if (impacts && impacts.length > 0) {
-      filteredEvents = filteredEvents.filter(event => impacts.includes(event.impact));
+      query = query.in('impact', impacts);
     }
 
-    console.log('Returning filtered events:', filteredEvents.length);
+    const { data: dbEvents, error } = await query;
+
+    if (error) {
+      console.error('Database query error:', error);
+      throw new Error(`Database error: ${error.message}`);
+    }
+
+    console.log('Retrieved events from database:', dbEvents?.length || 0);
+
+    // Transform database results to match frontend interface
+    const events: EconomicEvent[] = (dbEvents || []).map(dbEvent => ({
+      id: dbEvent.id,
+      time: dbEvent.event_time || '00:00',
+      currency: dbEvent.currency_code || 'USD',
+      impact: dbEvent.impact,
+      event: dbEvent.event_name,
+      actual: dbEvent.actual_value || '',
+      forecast: dbEvent.forecast || '',
+      previous: dbEvent.previous_value || '',
+      date: dbEvent.event_date,
+      description: dbEvent.description || ''
+    }));
+
+    console.log('Returning transformed events:', events.length);
 
     return new Response(
-      JSON.stringify({ events: filteredEvents }),
+      JSON.stringify({ events }),
       { 
         headers: { 
           ...corsHeaders, 

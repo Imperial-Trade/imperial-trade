@@ -351,7 +351,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 };
 
 export default memo(TradeAlertCard, (prevProps, nextProps) => {
-  // Only re-render if non-price related props change
+  // Prevent re-renders when only livePrice changes - let LivePriceWidget handle price updates internally
   return (
     prevProps.alert.id === nextProps.alert.id &&
     prevProps.alert.status === nextProps.alert.status &&
@@ -374,8 +374,7 @@ export default memo(TradeAlertCard, (prevProps, nextProps) => {
     prevProps.isRecentClosure === nextProps.isRecentClosure &&
     prevProps.className === nextProps.className &&
     prevProps.testId === nextProps.testId &&
-    JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator) &&
-    // Allow livePrice to change without blocking re-render, but prevent unnecessary renders for same price
-    prevProps.livePrice === nextProps.livePrice
+    JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator)
+    // Note: livePrice is intentionally excluded to prevent card re-renders on price updates
   );
 });

@@ -1,5 +1,5 @@
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
@@ -32,6 +32,38 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     pauseOnInput: false
   });
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dataAge, setDataAge] = useState<string>('');
+
+  // Update data age every second
+  useEffect(() => {
+    const updateAge = () => {
+      if (!lastUpdated) {
+        setDataAge('');
+        return;
+      }
+      
+      const now = new Date();
+      const diffMs = now.getTime() - lastUpdated.getTime();
+      const diffSeconds = Math.floor(diffMs / 1000);
+      
+      if (diffSeconds < 30) {
+        setDataAge('Live');
+      } else if (diffSeconds < 60) {
+        setDataAge(`${diffSeconds}s ago`);
+      } else if (diffSeconds < 3600) {
+        const minutes = Math.floor(diffSeconds / 60);
+        setDataAge(`${minutes}m ago`);
+      } else {
+        setDataAge('Stale');
+      }
+    };
+
+    updateAge();
+    const interval = setInterval(updateAge, 1000);
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
+
   const formatPrice = useCallback((price: number) => {
     // Dynamic decimal places based on price magnitude
     if (price >= 1000) {
@@ -63,38 +95,76 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   }, []);
 
   const connectionStatusInfo = useMemo(() => {
-    switch (connectionStatus) {
-      case 'connected':
-        return { 
-          color: 'text-green-400', 
-          icon: Wifi, 
-          text: 'Live WebSocket',
-          description: 'Real-time price updates via WebSocket'
-        };
-      case 'connecting':
-        return { 
-          color: 'text-yellow-400', 
-          icon: RefreshCw, 
-          text: 'Connecting',
-          description: 'Establishing WebSocket connection...'
-        };
-      case 'error':
-      case 'disconnected':
-        return { 
-          color: 'text-red-400', 
-          icon: WifiOff, 
-          text: 'Unavailable',
-          description: 'WebSocket connection failed'
-        };
-      default:
-        return { 
-          color: 'text-gray-400', 
-          icon: WifiOff, 
-          text: 'Disconnected',
-          description: 'Not connected to price feed'
-        };
+    const dataFreshness = lastUpdated ? (new Date().getTime() - lastUpdated.getTime()) / 1000 : Infinity;
+    
+    if (isLoading || connectionStatus === 'connecting') {
+      return { 
+        color: 'text-yellow-400', 
+        icon: RefreshCw, 
+        text: 'Fetching',
+        description: 'Fetching latest price data...',
+        animate: true
+      };
     }
-  }, [connectionStatus]);
+    
+    if (error) {
+      return { 
+        color: 'text-red-400', 
+        icon: AlertTriangle, 
+        text: 'Error',
+        description: 'Failed to fetch price data',
+        animate: false
+      };
+    }
+    
+    if (connectionStatus === 'connected' && dataFreshness < 30) {
+      return { 
+        color: 'text-green-400', 
+        icon: Wifi, 
+        text: 'Live',
+        description: 'Real-time price updates active',
+        animate: false
+      };
+    }
+    
+    if (connectionStatus === 'connected' && dataFreshness < 60) {
+      return { 
+        color: 'text-yellow-400', 
+        icon: Wifi, 
+        text: 'Delayed',
+        description: 'Price data is slightly delayed',
+        animate: false
+      };
+    }
+    
+    if (connectionStatus === 'disconnected' || dataFreshness >= 60) {
+      return { 
+        color: 'text-red-400', 
+        icon: WifiOff, 
+        text: 'Offline',
+        description: 'No recent price updates',
+        animate: false
+      };
+    }
+    
+    return { 
+      color: 'text-gray-400', 
+      icon: WifiOff, 
+      text: 'Unknown',
+      description: 'Connection status unknown',
+      animate: false
+    };
+  }, [connectionStatus, isLoading, error, lastUpdated]);
+
+  // Handle refresh with loading state
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshPrice();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500); // Show loading for at least 500ms
+    }
+  };
 
   const priceChangeColor = useMemo(() => {
     return change >= 0 ? 'text-green-400' : 'text-red-400';
@@ -115,8 +185,22 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             Live Price for {assetName}
           </div>
           <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
-            <connectionStatusInfo.icon className={`w-3 h-3 ${connectionStatus === 'connecting' ? 'animate-spin' : ''}`} />
+            <connectionStatusInfo.icon 
+              className={`w-3 h-3 ${connectionStatusInfo.animate ? 'animate-spin' : ''}`} 
+            />
             <span>{connectionStatusInfo.text}</span>
+            {dataAge && (
+              <>
+                <span className="text-gray-500">•</span>
+                <span className={`${
+                  dataAge === 'Live' ? 'text-green-400' : 
+                  dataAge === 'Stale' ? 'text-red-400' : 
+                  'text-yellow-400'
+                }`}>
+                  {dataAge}
+                </span>
+              </>
+            )}
           </div>
         </div>
         
@@ -124,12 +208,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => refreshPrice()}
+          onClick={handleRefresh}
           className="text-gray-400 hover:text-white h-8 w-8 p-0"
           title="Refresh price"
-          disabled={isLoading}
+          disabled={isLoading || isRefreshing}
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${
+            isLoading || isRefreshing ? 'animate-spin' : ''
+          }`} />
         </Button>
       </div>
 
@@ -143,34 +229,60 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
+      {/* Loading State for Initial Load */}
+      {isLoading && price === 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-7 w-32 bg-gray-600 rounded animate-pulse"></div>
+              <div className="h-4 w-4 bg-gray-600 rounded animate-pulse"></div>
+            </div>
+            <div className="h-6 w-20 bg-gray-600 rounded animate-pulse"></div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-24 bg-gray-600 rounded animate-pulse"></div>
+            <div className="h-6 w-24 bg-gray-600 rounded animate-pulse"></div>
+          </div>
+        </div>
+      )}
+
       {/* Price Display */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          {isLoading ? (
-            <div className="animate-pulse text-gray-400">Loading...</div>
-          ) : error ? (
-            <div className="text-gray-500 font-mono text-xl">---.--</div>
-          ) : (
-            <div className="text-accent-green font-mono text-xl font-bold">
-              ${formatPrice(price)}
+      {(price > 0 || !isLoading) && (
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            {error ? (
+              <div className="text-gray-500 font-mono text-xl">---.--</div>
+            ) : (
+              <div className={`text-accent-green font-mono text-xl font-bold ${
+                isLoading || isRefreshing ? 'animate-pulse' : ''
+              }`}>
+                ${formatPrice(price)}
+              </div>
+            )}
+            
+            {(isLoading || isRefreshing) && price > 0 && (
+              <div className="flex items-center gap-1 text-yellow-400 text-xs">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                <span>Updating...</span>
+              </div>
+            )}
+          </div>
+          
+          {!error && price > 0 && (
+            <div className={`flex items-center gap-1 ${priceChangeColor}`}>
+              {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
+              <div className="text-right">
+                <div className="text-sm font-medium">
+                  {change >= 0 ? '+' : ''}{change.toFixed(4)}
+                </div>
+                <div className="text-xs">
+                  ({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
+                </div>
+              </div>
             </div>
           )}
         </div>
-        
-        {!isLoading && !error && price > 0 && (
-          <div className={`flex items-center gap-1 ${priceChangeColor}`}>
-            {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
-            <div className="text-right">
-              <div className="text-sm font-medium">
-                {change >= 0 ? '+' : ''}{change.toFixed(4)}
-              </div>
-              <div className="text-xs">
-                ({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Footer */}
       <div className="flex items-center justify-between">
@@ -188,6 +300,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             size="sm"
             onClick={() => onUseCurrentPrice(price)}
             className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
+            disabled={isRefreshing}
           >
             Use Current Price
           </Button>

@@ -23,6 +23,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<AssetOption | null>(null);
+  const [isLoadingPriceData, setIsLoadingPriceData] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -43,6 +44,8 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleAssetChange = useCallback((asset: AssetOption) => {
+    // Start loading immediately when asset is selected
+    setIsLoadingPriceData(true);
     setSelectedAsset(asset);
     setFormData(prev => ({
       ...prev,
@@ -57,6 +60,11 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       delete newErrors.finnhub_symbol;
       return newErrors;
     });
+
+    // Reset loading state after a short delay to allow the price component to initialize
+    setTimeout(() => {
+      setIsLoadingPriceData(false);
+    }, 1500);
   }, []);
 
   const handleInputChange = useCallback((field: string, value: string | number) => {
@@ -222,12 +230,44 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         {/* Live Price Display */}
         {selectedAsset && (
           <div className="w-full">
-            <EnhancedLivePriceDisplay
-              symbol={selectedAsset.symbol}
-              assetName={selectedAsset.name}
-              onUseCurrentPrice={handleUseCurrentPrice}
-              className="w-full mb-4"
-            />
+            {isLoadingPriceData ? (
+              <div className="w-full p-4 bg-card border border-border rounded-lg animate-pulse">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted rounded w-20"></div>
+                    <div className="h-6 bg-muted rounded w-32"></div>
+                  </div>
+                  <div className="h-8 bg-muted rounded w-16"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="h-8 bg-muted rounded w-28"></div>
+                    <div className="h-4 bg-muted rounded w-24"></div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Fetching live price for {selectedAsset.name}...</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <EnhancedLivePriceDisplay
+                symbol={selectedAsset.symbol}
+                assetName={selectedAsset.name}
+                onUseCurrentPrice={handleUseCurrentPrice}
+                className="w-full mb-4"
+              />
+            )}
+          </div>
+        )}
+
+        {/* Initial State Helper */}
+        {!selectedAsset && (
+          <div className="w-full p-6 bg-muted/30 border border-dashed border-border rounded-lg text-center">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Select an asset above to view live pricing and create your signal</p>
+              <p className="text-xs text-muted-foreground">Real-time price data will appear here once you choose an asset</p>
+            </div>
           </div>
         )}
 

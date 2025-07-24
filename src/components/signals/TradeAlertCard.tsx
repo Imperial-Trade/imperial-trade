@@ -301,6 +301,37 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             <p className="text-xs text-gray-400 italic bg-gray-900/50 p-2 rounded-md">"{alert.notes}"</p>
         </div>
       )}
+
+      {/* Stop Loss Proximity Warning */}
+      {livePrice && alert.status === 'active' && (() => {
+        const entryPrice = alert.entry_price;
+        const stopLoss = alert.stop_loss;
+        const currentPrice = livePrice;
+        
+        if (!entryPrice || !stopLoss) return null;
+        
+        // Calculate proximity to stop loss
+        const totalDistance = Math.abs(entryPrice - stopLoss);
+        const currentDistance = Math.abs(currentPrice - stopLoss);
+        const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
+        
+        // Only show warning if 50% or closer to stop loss
+        if (proximityPercentage >= 50) {
+          return (
+            <div className="px-4 pb-4">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-md p-3 flex items-center gap-2">
+                <span className="text-amber-400">🟡</span>
+                <div className="text-xs text-amber-300">
+                  <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>
+                  <br />
+                  <span className="text-amber-400/80">This trade is {proximityPercentage >= 75 ? 'very close' : 'halfway'} to its invalidation point.</span>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
       
       {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && (
         <div className="bg-gray-900/50 px-4 py-2 flex justify-end">

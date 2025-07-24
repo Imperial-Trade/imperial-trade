@@ -33,47 +33,8 @@ export default function TradingCalculator({ alert, livePrice }) {
     const maxRiskAmount = balance; // Use 100% of account as max risk
     const maxLotsByRisk = calculatePositionSize(maxRiskAmount, basePrice, stopLoss, symbol);
     
-    // Margin requirements per 1 lot for different assets
-    const getMarginPerLot = (symbol: string): number => {
-      const upperSymbol = symbol.toUpperCase();
-      
-      // Gold/XAU margin requirements
-      if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) {
-        return 333; // $333 margin per 1 lot of Gold
-      }
-      
-      // Major forex pairs (approximate margin requirements)
-      if (upperSymbol.includes('EUR') || upperSymbol.includes('GBP') || 
-          upperSymbol.includes('USD') || upperSymbol.includes('JPY') ||
-          upperSymbol.includes('AUD') || upperSymbol.includes('CAD') ||
-          upperSymbol.includes('CHF') || upperSymbol.includes('NZD')) {
-        return 500; // $500 margin per 1 lot for major pairs
-      }
-      
-      // Crypto (higher margin requirements)
-      if (upperSymbol.includes('BTC') || upperSymbol.includes('ETH') ||
-          upperSymbol.includes('CRYPTO')) {
-        return 1000; // $1000 margin per 1 lot for crypto
-      }
-      
-      // Indices
-      if (upperSymbol.includes('SPX') || upperSymbol.includes('NAS') ||
-          upperSymbol.includes('DOW') || upperSymbol.includes('FTSE') ||
-          upperSymbol.includes('DAX') || upperSymbol.includes('INDEX')) {
-        return 200; // $200 margin per 1 lot for indices
-      }
-      
-      // Default fallback
-      return 500;
-    };
-    
-    const marginPerLot = getMarginPerLot(symbol);
-    const maxLotsByMargin = Math.floor(balance / marginPerLot * 100) / 100; // Round down to 2 decimals
-    
-    // Use the smaller of the two limits (risk-based or margin-based)
-    const maxLots = Math.min(maxLotsByRisk, maxLotsByMargin);
-    
-    return Math.max(0.01, maxLots); // Minimum 0.01 lots
+    // Return the risk-based limit (this ensures risk never exceeds account balance)
+    return Math.max(0.01, maxLotsByRisk); // Minimum 0.01 lots
   }, [accountBalance, alert, livePrice, isPending]);
 
   // Prevent scroll wheel from changing number inputs

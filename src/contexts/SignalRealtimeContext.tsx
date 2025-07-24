@@ -209,7 +209,15 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         };
 
         console.log('SignalRealtimeContext - Adding new signal to state:', newSignal);
-        setSignals(prev => [newSignal, ...prev]);
+        setSignals(prev => {
+          // Check for duplicates using the state from the setter to avoid stale closure
+          const alreadyExists = prev.find(signal => signal.id === newSignal.id);
+          if (alreadyExists) {
+            console.log('SignalRealtimeContext - Signal already in state during update, skipping duplication:', newSignal.id);
+            return prev;
+          }
+          return [newSignal, ...prev];
+        });
         
         // Dispatch custom event for notifications
         window.dispatchEvent(new CustomEvent('signal-posted'));

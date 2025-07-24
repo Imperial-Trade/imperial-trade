@@ -7,7 +7,7 @@ import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass }
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
 
 export default function TradingCalculator({ alert, livePrice }) {
-  const [accountBalance, setAccountBalance] = useState('1000'); // Default account balance
+  const [accountBalance, setAccountBalance] = useState('');
   const [lotSize, setLotSize] = useState('');
   
   const isPending = alert.status === 'pending';
@@ -167,51 +167,65 @@ export default function TradingCalculator({ alert, livePrice }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Position Size Input */}
-        <div className="space-y-2">
-          <Label className="text-xs text-gray-400">
-            Position Size 
-            {lotSize && (
-              <span className="ml-2 text-xs text-gray-500">
-                ({formatLotSize(parseFloat(lotSize) || 0, alert.finnhub_symbol || alert.asset_name || '')})
-              </span>
+        {/* Input Fields */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label className="text-xs text-gray-400">Account Balance</Label>
+            <Input
+              type="number"
+              step="any"
+              placeholder="10000"
+              value={accountBalance}
+              onChange={(e) => setAccountBalance(e.target.value)}
+              onWheel={handleNumberInputWheel}
+              className="bg-gray-800 border-gray-600 text-white h-8 text-sm"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs text-gray-400">
+              Position Size 
+              {lotSize && (
+                <span className="ml-2 text-xs text-gray-500">
+                  ({formatLotSize(parseFloat(lotSize) || 0, alert.finnhub_symbol || alert.asset_name || '')})
+                </span>
+              )}
+              {maxLotSizeByMargin && (
+                <span className="ml-2 text-xs text-emerald-400">
+                  Max: {maxLotSizeByMargin.toFixed(2)}
+                </span>
+              )}
+            </Label>
+            <Input
+              type="number"
+              step="any"
+              placeholder="0.1"
+              value={lotSize}
+              max={maxLotSizeByMargin || undefined}
+              onChange={(e) => {
+                const inputValue = e.target.value;
+                const numValue = parseFloat(inputValue);
+                
+                // Prevent input if exceeding margin limit
+                if (maxLotSizeByMargin && numValue > maxLotSizeByMargin) {
+                  // Don't allow the input - enforce hard limit
+                  return;
+                }
+                setLotSize(inputValue);
+              }}
+              onWheel={handleNumberInputWheel}
+              className={`bg-gray-800 border-gray-600 text-white h-8 text-sm ${
+                maxLotSizeByMargin && parseFloat(lotSize) > maxLotSizeByMargin 
+                  ? 'border-red-500 ring-1 ring-red-500' 
+                  : ''
+              }`}
+            />
+            {maxLotSizeByMargin && parseFloat(lotSize) > maxLotSizeByMargin && (
+              <div className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Position size exceeds margin limit (100% margin used)
+              </div>
             )}
-            {maxLotSizeByMargin && (
-              <span className="ml-2 text-xs text-emerald-400">
-                Max: {maxLotSizeByMargin.toFixed(2)}
-              </span>
-            )}
-          </Label>
-          <Input
-            type="number"
-            step="any"
-            placeholder="0.1"
-            value={lotSize}
-            max={maxLotSizeByMargin || undefined}
-            onChange={(e) => {
-              const inputValue = e.target.value;
-              const numValue = parseFloat(inputValue);
-              
-              // Prevent input if exceeding margin limit
-              if (maxLotSizeByMargin && numValue > maxLotSizeByMargin) {
-                // Don't allow the input - enforce hard limit
-                return;
-              }
-              setLotSize(inputValue);
-            }}
-            onWheel={handleNumberInputWheel}
-            className={`bg-gray-800 border-gray-600 text-white h-8 text-sm ${
-              maxLotSizeByMargin && parseFloat(lotSize) > maxLotSizeByMargin 
-                ? 'border-red-500 ring-1 ring-red-500' 
-                : ''
-            }`}
-          />
-          {maxLotSizeByMargin && parseFloat(lotSize) > maxLotSizeByMargin && (
-            <div className="text-xs text-red-400 mt-1 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" />
-              Position size exceeds margin limit (100% margin used)
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Live Price & P&L Display (Only for Active Trades) */}
@@ -299,7 +313,7 @@ export default function TradingCalculator({ alert, livePrice }) {
           </div>
         ) : (
           <div className="text-center py-4 text-gray-500 text-sm">
-            Enter your position size to see calculations
+            Enter your account balance and position size to see calculations
           </div>
         )}
       </CardContent>

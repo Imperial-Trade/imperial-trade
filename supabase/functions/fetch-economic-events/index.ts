@@ -17,6 +17,120 @@ interface EconomicEvent {
   previous_value?: string;
   description?: string;
   external_id: string;
+  human_readable_title?: string;
+  trader_explanation?: string;
+  difficulty_level?: string;
+  typical_reaction?: string;
+  category?: string;
+  formatted_actual?: string;
+  formatted_forecast?: string;
+  formatted_previous?: string;
+}
+
+// Event descriptions mapping for human-readable content
+const eventDescriptions: Record<string, {
+  title: string;
+  explanation: string;
+  traderImpact: string;
+  difficulty: string;
+  typicalReaction: string;
+  category: string;
+}> = {
+  'non_farm_payrolls': {
+    title: 'US Jobs Report',
+    explanation: 'Shows how many jobs were created or lost in the US economy, excluding farm workers. This is the most important monthly economic indicator.',
+    traderImpact: 'Major USD movement expected. Higher than expected = USD strength, Lower = USD weakness',
+    difficulty: 'beginner',
+    typicalReaction: 'high_volatility',
+    category: 'Employment'
+  },
+  'unemployment_rate': {
+    title: 'US Unemployment Rate',
+    explanation: 'Percentage of people actively looking for work but unable to find jobs. Lower is better for the economy.',
+    traderImpact: 'Lower unemployment typically strengthens USD. Watch for divergence with jobs data.',
+    difficulty: 'beginner',
+    typicalReaction: 'bullish_on_low',
+    category: 'Employment'
+  },
+  'consumer_price_index': {
+    title: 'US Inflation Report',
+    explanation: 'Measures how much prices have increased for everyday goods and services. Key indicator for Federal Reserve policy.',
+    traderImpact: 'Higher inflation may signal Fed rate hikes, strengthening USD short-term but concerning long-term.',
+    difficulty: 'intermediate',
+    typicalReaction: 'mixed',
+    category: 'Inflation'
+  },
+  'gdp': {
+    title: 'Economic Growth Report',
+    explanation: 'Total value of all goods and services produced. The ultimate measure of economic health and growth.',
+    traderImpact: 'Higher GDP growth = stronger currency. Watch quarterly trends more than single releases.',
+    difficulty: 'intermediate',
+    typicalReaction: 'bullish_on_high',
+    category: 'Growth'
+  },
+  'federal_funds_rate': {
+    title: 'Fed Interest Rate Decision',
+    explanation: 'The interest rate banks charge each other. Directly affects borrowing costs throughout the economy.',
+    traderImpact: 'Rate hikes typically strengthen USD immediately. More important than the actual decision is the future guidance.',
+    difficulty: 'advanced',
+    typicalReaction: 'high_volatility',
+    category: 'Monetary Policy'
+  }
+};
+
+function getEventDescription(eventName: string) {
+  const normalizedName = eventName.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, '_');
+  
+  // Try exact match first
+  if (eventDescriptions[normalizedName]) {
+    return eventDescriptions[normalizedName];
+  }
+  
+  // Try partial matches
+  for (const [key, description] of Object.entries(eventDescriptions)) {
+    if (normalizedName.includes(key) || key.includes(normalizedName)) {
+      return description;
+    }
+  }
+  
+  // Default for unknown events
+  return {
+    title: eventName,
+    explanation: 'Economic data release that may impact market movements.',
+    traderImpact: 'Monitor market reaction and volume for trading opportunities.',
+    difficulty: 'intermediate',
+    typicalReaction: 'mixed',
+    category: 'Economic Data'
+  };
+}
+
+function formatValue(value: string | undefined, eventType: string): string {
+  if (!value || value === '' || value === 'N/A') return 'N/A';
+  
+  const numValue = parseFloat(value);
+  if (isNaN(numValue)) return value;
+  
+  const eventLower = eventType.toLowerCase();
+  
+  if (eventLower.includes('rate') || eventLower.includes('inflation') || eventLower.includes('unemployment')) {
+    return `${numValue}%`;
+  }
+  
+  if (eventLower.includes('gdp') && Math.abs(numValue) < 10) {
+    return `${numValue}%`;
+  }
+  
+  if (Math.abs(numValue) >= 1000000) {
+    return `${(numValue / 1000000).toFixed(1)}M`;
+  }
+  
+  if (Math.abs(numValue) >= 1000) {
+    return `${(numValue / 1000).toFixed(1)}K`;
+  }
+  
+  return numValue.toString();
 }
 
 Deno.serve(async (req) => {
@@ -89,6 +203,9 @@ Deno.serve(async (req) => {
         impact = 'low';
       }
 
+      // Get human-readable description
+      const eventDescription = getEventDescription(event.event || 'Economic Event');
+      
       return {
         event_name: event.event || 'Economic Event',
         country: country,
@@ -99,8 +216,16 @@ Deno.serve(async (req) => {
         actual_value: event.actual || null,
         forecast: event.forecast || null,
         previous_value: event.previous || null,
-        description: event.event || null,
-        external_id: `twelve_${event.date}_${event.event}_${event.country}`.replace(/[^a-zA-Z0-9_]/g, '_')
+        description: eventDescription.explanation,
+        external_id: `twelve_${event.date}_${event.event}_${event.country}`.replace(/[^a-zA-Z0-9_]/g, '_'),
+        human_readable_title: eventDescription.title,
+        trader_explanation: eventDescription.traderImpact,
+        difficulty_level: eventDescription.difficulty,
+        typical_reaction: eventDescription.typicalReaction,
+        category: eventDescription.category,
+        formatted_actual: formatValue(event.actual, event.event || ''),
+        formatted_forecast: formatValue(event.forecast, event.event || ''),
+        formatted_previous: formatValue(event.previous, event.event || '')
       };
     });
 
@@ -142,7 +267,15 @@ Deno.serve(async (req) => {
             previous_value: event.previous_value,
             description: event.description,
             external_id: event.external_id,
-            source: 'twelve_data'
+            source: 'twelve_data',
+            human_readable_title: event.human_readable_title,
+            trader_explanation: event.trader_explanation,
+            difficulty_level: event.difficulty_level,
+            typical_reaction: event.typical_reaction,
+            category: event.category,
+            formatted_actual: event.formatted_actual,
+            formatted_forecast: event.formatted_forecast,
+            formatted_previous: event.formatted_previous
           });
 
         if (insertError) {

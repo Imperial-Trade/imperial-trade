@@ -42,7 +42,7 @@ const IBPartnershipPage: React.FC = () => {
       commission: "$12", 
       requirements: "Established Business",
       color: "from-green-400 to-green-600",
-      description: "Professional-level partnership with significant volume."
+      description: "Advanced-level partnership with significant volume."
     },
     {
       tier: "Ambassador",
@@ -87,7 +87,7 @@ const IBPartnershipPage: React.FC = () => {
     {
       icon: Target,
       title: "Marketing & Onboarding Arsenal",
-      subtitle: "Professional Business Development",
+      subtitle: "Advanced Business Development",
       description: "Complete marketing ecosystem and client support infrastructure for business growth.",
       features: [
         "Personalized Referral Links: Unique tracking links automatically attributing new sign-ups",
@@ -127,15 +127,15 @@ const IBPartnershipPage: React.FC = () => {
     },
     {
       icon: Users,
-      title: "Professional Brand Leverage",
+      title: "Institutional Brand Leverage",
       description: "Leverage the Imperial Trade brand reputation and infrastructure for your business growth.",
-      benefits: ["Established brand trust", "Professional marketing materials", "Technical infrastructure"]
+      benefits: ["Established brand trust", "Advanced marketing materials", "Technical infrastructure"]
     },
     {
       icon: Award,
       title: "Career Development Path",
       description: "Not just referrals - a complete career advancement opportunity in financial services.",
-      benefits: ["Professional development", "Industry networking", "Leadership opportunities"]
+      benefits: ["Advanced development", "Industry networking", "Leadership opportunities"]
     }
   ];
 

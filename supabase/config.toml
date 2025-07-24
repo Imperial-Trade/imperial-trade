@@ -10,3 +10,9 @@ enabled = true
 
 [edge_functions]
 enabled = true
+
+[functions.get-market-data]
+verify_jwt = false
+
+[functions.live-price-stream]
+verify_jwt = false

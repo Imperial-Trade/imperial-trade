@@ -38,7 +38,7 @@ const AppBar: React.FC = () => {
       to: "/advanced-tools",
       icon: TrendingUp,
       label: "Advanced Tools",
-      description: "Professional trading tools and analytics",
+      description: "Advanced trading tools and analytics",
       features: ["Risk Calculator", "Portfolio Analysis", "Market Scanner"],
     },
     {

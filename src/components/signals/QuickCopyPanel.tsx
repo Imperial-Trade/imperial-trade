@@ -113,10 +113,15 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
             ) : (
               <>
                 <Copy className="w-3 h-3 mr-2" />
-                Copy All Prices
+                Copy Reference Parameters
               </>
             )}
           </Button>
+          
+          {/* Educational Disclaimer */}
+          <p className="text-xs text-gray-400 mt-2 text-center">
+            Educational reference only. Conduct your own analysis.
+          </p>
         </div>
       </CardContent>
     </Card>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -856,6 +856,179 @@ Please provide a brief analysis focusing on what went well, what could be improv
       </div>;
   };
 
+  // Generate real AI Analytics from trading history
+  const generateAIAnalytics = useMemo(() => {
+    if (trades.length < 5) {
+      return {
+        bestStrategy: "Build your trading history to unlock personalized strategy insights (need 5+ trades for analysis)",
+        timingInsight: "Add more trades to discover your peak performance times and market session preferences",
+        psychologyTip: "Track emotions in your trade notes to receive insights on how your mindset affects profitability",
+        riskManagement: "Complete more trades with entry/exit prices to get tailored risk management recommendations"
+      };
+    }
+
+    // Enhanced Strategy Analysis with intelligent detection
+    const detectStrategyFromNotes = (notes?: string): string => {
+      if (!notes) return "General Trading";
+      const notesLower = notes.toLowerCase();
+      if (notesLower.includes('breakout') || notesLower.includes('break out')) return "Breakout Strategy";
+      if (notesLower.includes('swing') || notesLower.includes('hold')) return "Swing Trading";
+      if (notesLower.includes('scalp') || notesLower.includes('quick')) return "Scalping";
+      if (notesLower.includes('trend') || notesLower.includes('follow')) return "Trend Following";
+      if (notesLower.includes('reversal') || notesLower.includes('counter')) return "Reversal Trading";
+      if (notesLower.includes('momentum') || notesLower.includes('momentum')) return "Momentum Trading";
+      return "General Trading";
+    };
+
+    const strategyPerformance = trades.reduce((acc, trade) => {
+      const detectedStrategy = trade.strategy || detectStrategyFromNotes(trade.notes);
+      if (!acc[detectedStrategy]) acc[detectedStrategy] = { wins: 0, total: 0, totalPnL: 0 };
+      acc[detectedStrategy].total++;
+      acc[detectedStrategy].totalPnL += trade.pnl;
+      if (trade.outcome === "win") acc[detectedStrategy].wins++;
+      return acc;
+    }, {} as Record<string, { wins: number; total: number; totalPnL: number }>);
+
+    const topStrategies = Object.entries(strategyPerformance)
+      .map(([strategy, data]) => ({
+        strategy,
+        winRate: (data.wins / data.total) * 100,
+        avgPnL: data.totalPnL / data.total,
+        total: data.total
+      }))
+      .filter(s => s.total >= 2)
+      .sort((a, b) => b.winRate - a.winRate);
+
+    // Enhanced Timing Analysis with proper session mapping
+    const mapSessionToReadable = (session?: string): string => {
+      if (!session || session === "Unknown") return "Mixed Sessions";
+      const sessionMap: Record<string, string> = {
+        "LondonSession": "London session",
+        "NewYorkSession": "New York session", 
+        "AsianSession": "Asian session",
+        "EuropeanOverlap": "European overlap hours",
+        "AmericanOverlap": "American overlap hours"
+      };
+      return sessionMap[session] || session.replace(/([A-Z])/g, ' $1').trim().toLowerCase();
+    };
+
+    const timePerformance = trades.reduce((acc, trade) => {
+      const readableSession = mapSessionToReadable(trade.session);
+      if (!acc[readableSession]) acc[readableSession] = { wins: 0, total: 0, totalPnL: 0 };
+      acc[readableSession].total++;
+      acc[readableSession].totalPnL += trade.pnl;
+      if (trade.outcome === "win") acc[readableSession].wins++;
+      return acc;
+    }, {} as Record<string, { wins: number; total: number; totalPnL: number }>);
+
+    const bestTiming = Object.entries(timePerformance)
+      .map(([session, data]) => ({
+        session,
+        winRate: (data.wins / data.total) * 100,
+        avgPnL: data.totalPnL / data.total,
+        total: data.total
+      }))
+      .filter(t => t.total >= 2)
+      .sort((a, b) => b.avgPnL - a.avgPnL)[0];
+
+    // Enhanced Psychology Analysis with sentiment detection
+    const detectEmotionFromNotes = (notes?: string): string => {
+      if (!notes) return "Neutral";
+      const notesLower = notes.toLowerCase();
+      if (notesLower.includes('confident') || notesLower.includes('sure') || notesLower.includes('good feeling')) return "Confident";
+      if (notesLower.includes('nervous') || notesLower.includes('anxious') || notesLower.includes('worried')) return "Nervous";
+      if (notesLower.includes('greedy') || notesLower.includes('fomo')) return "Greedy";
+      if (notesLower.includes('patient') || notesLower.includes('calm') || notesLower.includes('disciplined')) return "Patient";
+      if (notesLower.includes('frustrated') || notesLower.includes('angry')) return "Frustrated";
+      return "Neutral";
+    };
+
+    const emotionPerformance = trades.reduce((acc, trade) => {
+      const detectedEmotion = trade.emotion || detectEmotionFromNotes(trade.notes);
+      if (!acc[detectedEmotion]) acc[detectedEmotion] = { wins: 0, total: 0, totalPnL: 0 };
+      acc[detectedEmotion].total++;
+      acc[detectedEmotion].totalPnL += trade.pnl;
+      if (trade.outcome === "win") acc[detectedEmotion].wins++;
+      return acc;
+    }, {} as Record<string, { wins: number; total: number; totalPnL: number }>);
+
+    const bestEmotion = Object.entries(emotionPerformance)
+      .map(([emotion, data]) => ({
+        emotion,
+        winRate: (data.wins / data.total) * 100,
+        avgPnL: data.totalPnL / data.total,
+        total: data.total,
+        profitImprovement: data.totalPnL / data.total
+      }))
+      .filter(e => e.total >= 2)
+      .sort((a, b) => b.avgPnL - a.avgPnL);
+
+    // Enhanced Risk Management Analysis
+    const winningTrades = trades.filter(t => t.pnl > 0);
+    const losingTrades = trades.filter(t => t.pnl < 0);
+    const avgWin = winningTrades.length > 0 ? winningTrades.reduce((sum, t) => sum + t.pnl, 0) / winningTrades.length : 0;
+    const avgLoss = losingTrades.length > 0 ? Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl, 0) / losingTrades.length) : 0;
+    const riskRewardRatio = avgLoss > 0 ? avgWin / avgLoss : 0;
+    const avgPositionSize = trades.filter(t => t.position_size).reduce((sum, t) => sum + (t.position_size || 0), 0) / trades.filter(t => t.position_size).length || 0;
+
+    // Generate user-friendly insights
+    const generateBestStrategyInsight = () => {
+      if (topStrategies.length === 0) return "Focus on documenting your trading approach in notes to identify winning patterns";
+      const best = topStrategies[0];
+      if (best.winRate >= 70) {
+        return `Your ${best.strategy} approach is excellent with ${best.winRate.toFixed(0)}% win rate! Keep focusing on this strategy.`;
+      } else if (best.winRate >= 50) {
+        return `${best.strategy} shows promise at ${best.winRate.toFixed(0)}% win rate. Consider refining this approach for better results.`;
+      } else {
+        return `${best.strategy} needs improvement (${best.winRate.toFixed(0)}% win rate). Review what's working vs. what isn't.`;
+      }
+    };
+
+    const generateTimingInsight = () => {
+      if (!bestTiming) return "Track trading sessions to discover your optimal market timing patterns";
+      if (bestTiming.avgPnL > 50) {
+        return `You're crushing it during ${bestTiming.session}! Your performance peaks with $${bestTiming.avgPnL.toFixed(2)} average profit.`;
+      } else if (bestTiming.avgPnL > 0) {
+        return `${bestTiming.session} works best for you with $${bestTiming.avgPnL.toFixed(2)} average gains. Consider increasing exposure during this time.`;
+      } else {
+        return `Review your ${bestTiming.session} trades - currently averaging $${bestTiming.avgPnL.toFixed(2)}. Consider adjusting your approach.`;
+      }
+    };
+
+    const generatePsychologyTip = () => {
+      if (bestEmotion.length === 0) return "Add emotional state tracking to your notes for powerful psychology insights";
+      const topEmotion = bestEmotion[0];
+      const worstEmotion = bestEmotion[bestEmotion.length - 1];
+      
+      if (topEmotion.avgPnL > worstEmotion.avgPnL + 20) {
+        return `${topEmotion.emotion.toLowerCase()} trading yields ${Math.abs(topEmotion.avgPnL - worstEmotion.avgPnL).toFixed(0)}% better results than ${worstEmotion.emotion.toLowerCase()} trading. Mind your emotional state!`;
+      } else {
+        return `Your emotional consistency is good. ${topEmotion.emotion} entries average $${topEmotion.avgPnL.toFixed(2)} profit.`;
+      }
+    };
+
+    const generateRiskManagementTip = () => {
+      if (riskRewardRatio === 0) return "Add entry and exit prices to unlock powerful risk management insights";
+      
+      if (riskRewardRatio >= 2) {
+        return `Excellent risk management! Your ${riskRewardRatio.toFixed(1)}:1 risk-reward ratio shows disciplined trading.`;
+      } else if (riskRewardRatio >= 1.5) {
+        return `Good risk control with ${riskRewardRatio.toFixed(1)}:1 ratio. Try targeting 2:1+ for even better results.`;
+      } else if (riskRewardRatio >= 1) {
+        return `Consider tighter stops or bigger targets. Current ${riskRewardRatio.toFixed(1)}:1 ratio limits profit potential.`;
+      } else {
+        return `Risk management needs attention - ${riskRewardRatio.toFixed(1)}:1 ratio means losses exceed gains on average.`;
+      }
+    };
+
+    return {
+      bestStrategy: generateBestStrategyInsight(),
+      timingInsight: generateTimingInsight(),
+      psychologyTip: generatePsychologyTip(),
+      riskManagement: generateRiskManagementTip()
+    };
+  }, [trades]);
+
   // Enhanced Stats Panel with AI insights and Most Traded toggle
   const EnhancedStatsPanel: React.FC = () => {
     const mostTradedData = getMostTradedAssets();
@@ -915,8 +1088,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                             Best Strategy
                           </p>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            Breakout trades show 80% win rate during London
-                            session
+                            {generateAIAnalytics.bestStrategy}
                           </p>
                         </div>
                       </div>
@@ -936,7 +1108,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                             Timing Insight
                           </p>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            Your performance peaks during European overlap hours
+                            {generateAIAnalytics.timingInsight}
                           </p>
                         </div>
                       </div>
@@ -956,8 +1128,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                             Psychology Tip
                           </p>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            Confident entries yield 23% higher profits than
-                            anxious ones
+                            {generateAIAnalytics.psychologyTip}
                           </p>
                         </div>
                       </div>
@@ -977,8 +1148,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
                             Risk Management
                           </p>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            Consider 0.5% position sizing for setups below 2:1
-                            R/R
+                            {generateAIAnalytics.riskManagement}
                           </p>
                         </div>
                       </div>

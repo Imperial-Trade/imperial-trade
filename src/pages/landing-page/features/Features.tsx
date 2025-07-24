@@ -27,7 +27,7 @@ const coreProducts = [
   {
     icon: BookOpen,
     title: "Education: The Master's Curriculum",
-    description: "Education is not just information; it's the systematic installation of a professional trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned analyst.",
+    description: "Education is not just information; it's the systematic installation of an educational trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned market educator. All content is for educational purposes only.",
     features: [
       "The Foundation Pathway: Market Mechanics, Advanced Candlestick Interpretation, Charting Essentials, Risk Management I, Trading Psychology Fundamentals",
       "The Specialist Pathway: Institutional Concepts (Order Blocks, Fair Value Gaps), Liquidity Engineering, Advanced Market Structure, Risk Management II",
@@ -40,8 +40,8 @@ const coreProducts = [
   },
   {
     icon: TrendingUp,
-    title: "Signal Stream: Your Professional Trade Blueprint",
-    description: "The Signal Stream is your 'over-the-shoulder' view of our professional analysts at work. Designed to generate potential profits while providing a masterclass in professional trade planning.",
+    title: "Pattern Stream: Your Educational Analysis Framework",
+    description: "The Pattern Stream is your 'over-the-shoulder' view of our market educators at work. Designed to provide educational content while providing a masterclass in market analysis planning.",
     features: [
       "Precision Parameters: Exact Entry Price, Hard Stop Loss, Up to 5 Take Profit levels",
       "Multi-TP Strategy: Advanced trade management with partial profit taking and stop loss adjustment",
@@ -49,7 +49,7 @@ const coreProducts = [
       "Live Price Integration: Pulsating live price feed on alert cards with visual proximity indicators",
       "Automated Status & TP Tracking: Real-time trade progression with visual updates and notifications",
       "Risk Calculator Integration: One-click position sizing with pre-filled entry and stop loss prices",
-      "24/5 Market Monitoring: Professional analysts covering major currency pairs around the clock"
+      "24/5 Market Monitoring: Market educators covering major currency pairs around the clock"
     ]
   },
   {
@@ -60,7 +60,7 @@ const coreProducts = [
       "Pre-Session Briefing: Economic calendar review, market themes, and key levels identification",
       "Live Analysis & Execution: Real-time top-down analysis with live trade execution when valid setups appear",
       "Interactive Q&A Throughout: Direct questions to hosts via dedicated moderator for instant feedback",
-      "Professional Zoom Integration: High-quality audio/video with robust interactive features",
+      "Advanced Zoom Integration: High-quality audio/video with robust interactive features",
       "Event Calendar & Notifications: Scheduled sessions with 15-minute email/push notifications",
       "The Archive Vault: Searchable recorded sessions with timestamps for key topics",
       "Daily Coverage: Key market sessions including London and New York openings"
@@ -76,7 +76,7 @@ const coreProducts = [
       "Performance Channels: #trade-review, #psychology-check-in for growth-focused discussions",
       "The 'Second Opinion' Advantage: Community validation before trade execution",
       "Crowdsourced Strategy Refinement: Collaborative backtesting and strategy development",
-      "Analyst & Moderator Presence: Professional analysts providing daily market outlooks",
+      "Educator & Moderator Presence: Market educators providing daily market outlooks",
       "Judgment-Free Growth Zone: Safe space for discussing wins, losses, and psychological struggles"
     ]
   },
@@ -134,7 +134,7 @@ const advancedTools = [
       "Comprehensive Reporting: Win rate, risk management consistency, average risk/reward analysis",
       "Trade Pattern Recognition: Identifies your most profitable setups and timing patterns",
       "Strengths & Weaknesses: Explicit lists of what you're doing well and areas for improvement",
-      "Professional Performance Coaching: Like hiring a professional coach to review your work",
+      "Institutional Standards: Industry-standard position sizing methodology",
       "Bias-Free Analysis: Emotion-free, objective assessment of your trading performance",
       "Clear Improvement Roadmap: Specific steps to enhance your trading consistency"
     ]
@@ -178,7 +178,7 @@ const advancedTools = [
       "Live Metrics: Instant Risk:Reward ratio and account percentage at risk display",
       "Capital Protection: Ensures you never lose more than planned on a single trade",
       "Long-Term Profitability: Key to staying in the game and building consistent profits",
-      "Professional Risk Management: Industry-standard position sizing methodology"
+      "Institutional Risk Management: Industry-standard position sizing methodology"
     ]
   }
 ];

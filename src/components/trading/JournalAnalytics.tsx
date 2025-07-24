@@ -2,19 +2,10 @@
 import React, { memo, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, DollarSign, Target } from "lucide-react";
-
-interface JournalEntry {
-  id: string;
-  asset_ticker: string;
-  pnl: number;
-  notes?: string;
-  trade_date: string;
-  ai_positive_feedback?: string;
-  screenshot_url?: string;
-}
+import { TradeJournalEntry } from "@/api/entities";
 
 interface JournalAnalyticsProps {
-  entries: JournalEntry[];
+  entries: TradeJournalEntry[];
 }
 
 const JournalAnalytics = memo(({ entries }: JournalAnalyticsProps) => {

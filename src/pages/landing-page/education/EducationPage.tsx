@@ -34,7 +34,7 @@ const EducationPage: React.FC = () => {
         "Risk Management I: Capital preservation and position sizing basics",
         "Trading Psychology Fundamentals: Mental game and emotional control"
       ],
-      outcome: "You will understand market structure, read price action fluently, and most importantly, know how to protect your capital from day one. You'll finish with skills to place trades confidently and manage them effectively.",
+      outcome: "You will understand market structure, read price action fluently, and most importantly, know how to protect your capital from day one. You'll finish with analytical skills to evaluate trade setups confidently and manage risk effectively.",
       gradient: "from-blue-500/20 to-indigo-500/20",
       duration: "8-12 weeks",
       lessons: "25+ lessons"
@@ -62,10 +62,10 @@ const EducationPage: React.FC = () => {
   const educationFeatures = [
     {
       icon: Video,
-      title: "Professional HD Video Production",
+      title: "High-Definition Video Production",
       description: "Each video is professionally produced with on-screen graphics, chart annotations, and clear explanations.",
       details: [
-        "Professional Production Quality: No rambling, no fluff - concise, focused lessons",
+        "High Production Quality: No rambling, no fluff - concise, focused lessons",
         "On-Screen Graphics: Visual learning with chart annotations and clear explanations",
         "Modular Learning: 5-10 minute videos for focused sessions that fit any schedule",
         "Mobile Accessibility: Learn anywhere, anytime on any device",
@@ -99,7 +99,7 @@ const EducationPage: React.FC = () => {
   ];
 
   const stats = [
-    { value: "50+", label: "HD Video Lessons", subtitle: "Professional Quality" },
+    { value: "50+", label: "HD Video Lessons", subtitle: "High-Quality Content" },
     { value: "95%", label: "Student Success Rate", subtitle: "Proven Results" },
     { value: "24/7", label: "Learning Access", subtitle: "Learn At Your Pace" }
   ];

@@ -27,7 +27,7 @@ const SignalsPage: React.FC = () => {
       detailedFeatures: [
         "Exact Entry Price: Precise entry points down to the pip (e.g., 2342.50 for Gold)",
         "Hard Stop Loss: Clearly defined risk parameters for every single trade",
-        "Multi-TP Strategy: Up to 5 Take Profit levels for advanced trade management",
+        "Multi-TP Strategy: Up to 5 Take Profit levels for educational setup analysis",
         "Analyst's Commentary: Brief but potent notes explaining the 'why' behind each trade",
         "Risk-Reward Analysis: Pre-calculated ratios for informed decision making",
         "Trade Timeframe: Clear indication of expected trade duration and style"
@@ -53,8 +53,8 @@ const SignalsPage: React.FC = () => {
     },
     {
       icon: Brain,
-      title: "Professional Analyst Commentary",
-      subtitle: "Learn While You Earn",
+      title: "Market Educator Commentary",
+      subtitle: "Learn While You Analyze",
       description: "Each signal includes expert analysis explaining the reasoning, making it a mini masterclass in professional trading.",
       detailedFeatures: [
         "Market Context: Understanding of current market conditions and themes",
@@ -64,14 +64,14 @@ const SignalsPage: React.FC = () => {
         "Market Psychology: Understanding sentiment and positioning factors",
         "Alternative Scenarios: What to watch for if the trade doesn't go as planned"
       ],
-      whatItDoes: "It demystifies professional trading by showing you exactly how expert analysts think and plan their trades, turning every signal into a learning opportunity.",
+      whatItDoes: "It demystifies market analysis by showing you exactly how experienced market educators think and plan their analysis, turning every pattern into a learning opportunity.",
       gradient: "from-purple-500/20 to-indigo-500/20"
     },
     {
       icon: Clock,
       title: "24/5 Market Coverage",
       subtitle: "Global Market Monitoring",
-      description: "Professional analysts covering major currency pairs and instruments around the clock during market hours.",
+      description: "Market educators covering major currency pairs and instruments around the clock during market hours.",
       detailedFeatures: [
         "London Session Coverage: Key European market hours with GBP and EUR focus",
         "New York Session Coverage: US market hours with major USD pairs",
@@ -89,27 +89,27 @@ const SignalsPage: React.FC = () => {
     {
       icon: Eye,
       title: "The 'Over-the-Shoulder' Experience",
-      description: "Watch professional analysts work in real-time, seeing their complete thought process and decision-making methodology.",
-      benefits: ["Real-time learning", "Professional mindset", "Decision transparency"]
+      description: "Watch market educators work in real-time, seeing their complete thought process and decision-making methodology.",
+      benefits: ["Real-time learning", "Educational mindset", "Decision transparency"]
     },
     {
       icon: BarChart3,
       title: "Advanced Trade Management",
       description: "Learn sophisticated position management through partial profit-taking, stop loss adjustment, and risk optimization.",
-      benefits: ["Risk management", "Profit optimization", "Professional techniques"]
+      benefits: ["Risk management", "Educational optimization", "Learning techniques"]
     },
     {
       icon: TrendingUp,
       title: "Earn While You Learn",
-      description: "Generate potential profits while simultaneously receiving a masterclass in professional trade planning and execution.",
-      benefits: ["Dual purpose", "Skill development", "Profit potential"]
+      description: "Develop analytical skills while simultaneously receiving a masterclass in market analysis and educational content.",
+      benefits: ["Educational purpose only", "Market analysis learning", "Pattern recognition development"]
     }
   ];
 
   const stats = [
-    { value: "73%", label: "Average Win Rate", subtitle: "Proven Performance" },
-    { value: "2.4:1", label: "Risk/Reward Ratio", subtitle: "Optimized Returns" },
-    { value: "24/5", label: "Market Coverage", subtitle: "Never Miss Opportunities" }
+    { value: "73%", label: "Hypothetical Success Rate", subtitle: "Educational Backtest" },
+    { value: "2.4:1", label: "Avg Risk/Reward", subtitle: "Educational Reference" },
+    { value: "24/5", label: "Market Coverage", subtitle: "Educational Analysis" }
   ];
 
   return (
@@ -123,18 +123,18 @@ const SignalsPage: React.FC = () => {
               <div className="space-y-6">
                 <Badge variant="outline" className="inline-flex items-center gap-2 border-green-500/20 text-green-600 bg-green-500/5">
                   <Bell className="h-4 w-4" />
-                  Professional Trade Blueprints
+                  Educational Market Analysis
                 </Badge>
                 <h1 className="text-6xl font-bold leading-tight tracking-tight">
                   <span className="bg-gradient-to-r from-green-500 via-emerald-400 to-green-600 bg-clip-text text-transparent">
-                    Signal Stream
+                    Pattern Recognition
                   </span>
                   <br />
-                  <span className="text-foreground">Your Professional Edge</span>
+                  <span className="text-foreground">Your Learning Platform</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
-                  Your 'over-the-shoulder' view of professional analysts at work. Designed to generate potential profits 
-                  while providing a masterclass in professional trade planning and execution.
+                  Educational tools designed to help you understand market patterns and develop analytical skills. 
+                  Learn from experienced market contributors through structured analysis and educational content.
                 </p>
               </div>
               
@@ -151,11 +151,11 @@ const SignalsPage: React.FC = () => {
               
               <div className="flex items-center gap-4">
                 <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8">
-                  Start Receiving Signals
+                  Start Learning Patterns
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
                 <Button variant="outline" size="lg" className="border-green-500/20 hover:bg-green-500/5 px-8">
-                  View Performance
+                  View Educational Results
                 </Button>
               </div>
             </div>
@@ -167,7 +167,7 @@ const SignalsPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-sm font-medium text-foreground">LIVE SIGNAL</span>
+                      <span className="text-sm font-medium text-foreground">LIVE PATTERN</span>
                     </div>
                     <Badge className="bg-green-500/10 text-green-600 border-green-500/20">ACTIVE</Badge>
                   </div>
@@ -194,7 +194,7 @@ const SignalsPage: React.FC = () => {
                     </div>
                     
                     <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <div className="text-xs text-muted-foreground mb-1">Analyst Note:</div>
+                      <div className="text-xs text-muted-foreground mb-1">Educational Note:</div>
                       <div className="text-sm text-foreground">"Bullish divergence on H4, targeting daily liquidity zone"</div>
                     </div>
                   </div>
@@ -211,11 +211,11 @@ const SignalsPage: React.FC = () => {
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">
               <span className="bg-gradient-to-r from-emerald-400 to-green-600 bg-clip-text text-transparent">
-                The Anatomy of a Professional Signal
+                The Anatomy of Educational Analysis
               </span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              Every signal is a complete professional trade blueprint, designed to teach while it trades.
+              Every analysis is a complete educational blueprint, designed to teach market understanding.
             </p>
           </div>
 
@@ -282,10 +282,10 @@ const SignalsPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground mb-4">
-              Our Professional Trading Approach
+              Our Educational Analysis Approach
             </h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              More than signals - it's a complete educational experience designed to transform your trading mindset.
+              More than patterns - it's a complete educational experience designed to transform your analytical mindset.
             </p>
           </div>
 
@@ -332,27 +332,27 @@ const SignalsPage: React.FC = () => {
             <div className="space-y-4">
               <h2 className="text-4xl font-bold text-foreground">
                 Start Your 
-                <span className="bg-gradient-to-r from-green-500 to-emerald-400 bg-clip-text text-transparent"> Professional Signal Journey</span>
+                <span className="bg-gradient-to-r from-green-500 to-emerald-400 bg-clip-text text-transparent"> Educational Journey</span>
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Join thousands of traders who use our professional signals to improve their results while learning from the best.
+                Join thousands of traders who use our educational tools to improve their analytical skills while learning from experienced contributors.
               </p>
             </div>
             
             <div className="flex items-center justify-center gap-4">
               <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8">
-                Get Professional Signals
+                Get Educational Patterns
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button variant="outline" size="lg" className="border-green-500/20 hover:bg-green-500/5 px-8">
-                View Track Record
+                View Educational Record
               </Button>
             </div>
             
             <div className="flex items-center justify-center gap-8 text-sm text-muted-foreground pt-4">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600" />
-                Proven 73% win rate
+                Hypothetical 73% analysis rate
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600" />
@@ -360,7 +360,7 @@ const SignalsPage: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600" />
-                Learn while you trade
+                Study while you analyze
               </div>
             </div>
           </div>

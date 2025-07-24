@@ -7,19 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { Trash2, Brain, MessageSquare, Trophy, Target } from "lucide-react";
-
-interface JournalEntry {
-  id: string;
-  asset_ticker: string;
-  pnl: number;
-  notes?: string;
-  trade_date: string;
-  ai_positive_feedback?: string;
-  screenshot_url?: string;
-}
+import { TradeJournalEntry } from "@/api/entities";
 
 interface JournalLogListProps {
-  entries: JournalEntry[];
+  entries: TradeJournalEntry[];
   isLoading: boolean;
   onDelete: (entryId: string) => void;
 }

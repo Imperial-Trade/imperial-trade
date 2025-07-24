@@ -1,5 +1,4 @@
 
-
 // Real implementations using Supabase Edge Functions
 import { supabase } from '@/integrations/supabase/client';
 
@@ -57,3 +56,30 @@ export const InvokeLLM = async ({ prompt, file_urls = [], user_id = null }) => {
   }
 };
 
+export const AnalyzeSetup = async ({ user_id, file_urls = [] }) => {
+  try {
+    console.log('Invoking deconstructor agent for educational setup analysis');
+    console.log('File URLs to analyze:', file_urls.length);
+    
+    // Call Supabase Edge Function for deconstructor analysis
+    // Note: file_urls should already be uploaded URLs from the frontend
+    const { data, error } = await supabase.functions.invoke('deconstructor-agent', {
+      body: {
+        user_id,
+        file_urls // These should be already uploaded URLs
+      }
+    });
+    
+    if (error) {
+      console.error('Deconstructor agent analysis error:', error);
+      throw error;
+    }
+    
+    console.log('Deconstructor agent analysis completed successfully');
+    return data.reply;
+    
+  } catch (error) {
+    console.error('Deconstructor agent analysis failed:', error);
+    throw new Error('Failed to generate educational setup analysis. Please try again.');
+  }
+};

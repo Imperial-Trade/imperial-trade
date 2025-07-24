@@ -34,15 +34,15 @@ const tools = [
   },
   {
     icon: Target,
-    title: "Precision Signals",
-    description: "Machine learning algorithms for precise entry and exit points",
+    title: "Educational Patterns",
+    description: "Pattern recognition algorithms for educational entry and exit analysis",
     color: "hsl(var(--feature-pink))",
     gradient: "from-pink-500 to-purple-500"
   },
   {
     icon: Smartphone,
     title: "Mobile Trading",
-    description: "Full-featured mobile app for professional trading on the go",
+    description: "Full-featured mobile app for educational trading analysis on the go - for educational purposes only",
     color: "hsl(var(--feature-blue))",
     gradient: "from-blue-500 to-cyan-500"
   },
@@ -91,13 +91,13 @@ export default function ToolsShowcase() {
         <ContentSection>
           <div className="text-center mb-20">
             <h2 className="text-4xl lg:text-6xl font-bold mb-6">
-              Professional Trading
+              Educational Trading
               <span className="white-gold-gradient block">
-                Arsenal
+                Toolkit
               </span>
             </h2>
             <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Everything you need to dominate the markets. Built by traders, for traders.
+              Everything you need to analyze the markets effectively. Built by educators, for learners.
             </p>
           </div>
 

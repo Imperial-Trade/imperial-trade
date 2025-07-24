@@ -131,6 +131,39 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_outputs: {
+        Row: {
+          agent_name: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          output_text: string
+          updated_at: string
+          user_id: string
+          user_readable_text: string | null
+        }
+        Insert: {
+          agent_name: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          output_text: string
+          updated_at?: string
+          user_id: string
+          user_readable_text?: string | null
+        }
+        Update: {
+          agent_name?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          output_text?: string
+          updated_at?: string
+          user_id?: string
+          user_readable_text?: string | null
+        }
+        Relationships: []
+      }
       ai_coach_feedback: {
         Row: {
           coaching_analysis: Json
@@ -1752,6 +1785,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_streaks: {
+        Row: {
+          created_at: string
+          current_streak: number
+          id: string
+          last_activity_date: string | null
+          longest_streak: number
+          total_activities: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number
+          total_activities?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_activity_date?: string | null
+          longest_streak?: number
+          total_activities?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       verified_traders: {
         Row: {

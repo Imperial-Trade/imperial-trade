@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   Calculator,
@@ -14,148 +15,157 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ComplianceNotice, EducationalBadge } from "@/components/compliance/ComplianceNotice";
 
 const AdvancedToolsPage: React.FC = () => {
   // Clear any potential reference errors
   const tools = [
     {
       icon: FileText,
-      title: "Trading Journal",
-      subtitle: "Ultimate Performance Optimizer",
-      description: "Turn your trade history into actionable data with the ultimate tool for self-reflection and performance optimization.",
+      title: "Educational Journal",
+      subtitle: "Ultimate Learning Optimizer",
+      description: "Transform your learning journey into actionable educational data with the ultimate tool for self-reflection and skill development.",
       detailedFeatures: [
-        "Effortless Logging: Quickly log trades with asset, P&L, and personal notes on trade reasoning",
-        "Screenshot Uploads: Attach chart screenshots for visual context and comprehensive later review",
-        "AI Coach Feedback: Encouraging comments highlighting good practices and constructive takeaways after each entry",
-        "AI Pattern Insight: Analyzes your notes over time, detecting recurring phrases like 'exited too early' or 'FOMO'",
-        "Gamification System: Unlock achievements and track your journaling 'streak' to build critical review habits",
-        "Subconscious Bias Detection: Makes you aware of hidden trading patterns and psychological triggers",
-        "Concrete Improvement Steps: Specific, actionable insights to break negative trading patterns"
+        "Effortless Educational Logging: Quickly log learning progress with asset analysis, outcomes, and personal educational notes",
+        "Educational Screenshot Uploads: Attach chart screenshots for visual learning context and comprehensive review",
+        "Educational Coach Feedback: Encouraging educational comments highlighting good learning practices and constructive educational takeaways",
+        "Educational Pattern Recognition: Analyzes your learning notes over time, detecting educational patterns and learning opportunities",
+        "Learning Gamification System: Unlock educational achievements and track your learning 'streak' to build critical review habits",
+        "Educational Bias Detection: Makes you aware of learning patterns and educational triggers",
+        "Educational Improvement Steps: Specific, actionable learning insights to enhance educational development"
       ],
-      whatItDoes: "This is the single most powerful tool for long-term improvement. It makes you aware of your subconscious trading biases and gives you concrete steps to fix them.",
+      whatItDoes: "This is the single most powerful educational tool for long-term learning improvement. It makes you aware of your educational progress patterns and gives you concrete steps to enhance your learning journey.",
       gradient: "from-blue-500/20 to-cyan-500/20",
       accentColor: "blue"
     },
     {
       icon: Calendar,
       title: "Economic Calendar",
-      subtitle: "Market Event Mastery",
-      description: "Ensure you're always aware of high-impact news events that can create massive market volatility.",
+      subtitle: "Market Event Learning",
+      description: "Ensure you're always informed of high-impact educational events that can create learning opportunities about market volatility.",
       detailedFeatures: [
-        "Full Event Schedule: Complete listing of all major economic events from around the world",
-        "Advanced Filtering: Filter by date (Today, This Week), Impact Level (High, Medium, Low), and Currency",
-        "Comprehensive Data: Shows Previous, Forecast, and Actual data for instant impact assessment",
-        "Event Descriptions: Detailed explanations of what each event means and why it's important",
-        "Volatility Intelligence: Turn news events from threats into profitable opportunities",
-        "Multi-Currency Coverage: Global economic events affecting all major trading pairs",
-        "Real-Time Updates: Live data feeds for immediate market reaction analysis"
+        "Educational Event Schedule: Complete listing of all major economic events for educational analysis",
+        "Educational Filtering: Filter by date (Today, This Week), Impact Level (High, Medium, Low), and Currency for learning",
+        "Educational Data: Shows Previous, Forecast, and Actual data for educational impact assessment learning",
+        "Educational Event Descriptions: Detailed explanations of what each event means for educational purposes",
+        "Educational Volatility Learning: Turn news events into educational learning opportunities",
+        "Multi-Currency Educational Coverage: Global economic events for educational analysis of all major currency pairs",
+        "Educational Updates: Live data feeds for educational market reaction analysis"
       ],
-      whatItDoes: "It prevents you from being caught on the wrong side of a sudden, news-driven market move. It turns news from a threat into an opportunity.",
+      whatItDoes: "It provides educational awareness of market-moving events for learning purposes. It turns news from unknown variables into educational learning opportunities.",
       gradient: "from-emerald-500/20 to-teal-500/20",
       accentColor: "emerald"
     },
     {
       icon: Search,
-      title: "AI Trade Analyst",
-      subtitle: "The Deconstructor",
-      description: "Get brutally honest, objective analysis of your trading performance by having AI review your actual trade history.",
+      title: "Setup Learning Analyzer",
+      subtitle: "The Educational Deconstructor",
+      description: "Get comprehensive, objective educational analysis of your learning performance by having AI review your hypothetical setup examples.",
       detailedFeatures: [
-        "Screenshot Analysis: Upload screenshots from any trading platform (MT4, TradingView, etc.)",
-        "Comprehensive Reporting: Analyzes win rate, risk management consistency, and average risk/reward",
-        "Trade Pattern Recognition: Identifies your most profitable setups and optimal timing patterns",
-        "Strengths & Weaknesses: Explicit lists of what you're doing well and areas needing improvement",
-        "Professional Performance Coaching: Like hiring a professional coach to review your work objectively",
-        "Bias-Free Analysis: Shows the truth of your trading, free from emotion or personal bias",
-        "Clear Improvement Roadmap: Specific, actionable steps to enhance trading consistency"
+        "Educational Screenshot Analysis: Upload screenshots from any platform for educational review",
+        "Educational Reporting: Analyzes educational concepts, learning consistency, and educational pattern recognition",
+        "Educational Pattern Recognition: Identifies your most educational setups and optimal learning timing patterns",
+        "Educational Strengths & Learning Opportunities: Explicit lists of what you're learning well and educational areas needing development",
+        "Educational Performance Coaching: Like having an educational coach to review your learning objectively",
+        "Educational Analysis: Shows the educational value of your learning, free from emotion and focused on education",
+        "Educational Improvement Roadmap: Specific, actionable educational steps to enhance learning consistency"
       ],
-      whatItDoes: "It's like hiring a professional performance coach to review your work. It shows you the truth of your trading, free from emotion or bias, and gives you a clear roadmap for improvement.",
+      whatItDoes: "It's like having an educational performance coach to review your learning. It shows you the educational value of your progress, free from emotion and focused on learning, giving you a clear educational roadmap for improvement.",
       gradient: "from-purple-500/20 to-indigo-500/20",
       accentColor: "purple"
     },
     {
       icon: BarChart3,
-      title: "AI Opportunity Scanner",
-      subtitle: "The Signal Finder",
-      description: "Save hours of screen time with 24/7 automated market scanning for high-probability trading setups.",
+      title: "Educational Pattern Scanner",
+      subtitle: "The Learning Signal Finder",
+      description: "Save hours of screen time with 24/7 automated educational market scanning for high-probability learning setups and pattern recognition.",
       detailedFeatures: [
-        "Automated Market Scanning: AI constantly monitors Forex, Commodities, Indices, and Crypto markets",
-        "Pattern Recognition: Identifies key technical patterns like breakouts, reversals, and volatility squeezes",
-        "High-Probability Alerts: Complete setup details with instrument, type, key levels, and probability scores",
-        "24/7 Market Coverage: Never miss A+ trading opportunities, even when away from charts",
-        "Multiple Asset Classes: Comprehensive coverage across all tradeable financial instruments",
-        "Proven Strategy Filters: Based on institutional and retail-tested trading methodologies",
-        "Personal Research Assistant: Acts as your dedicated market opportunity scout around the clock"
+        "Educational Market Scanning: AI constantly monitors Forex, Commodities, Indices, and Crypto markets for educational purposes",
+        "Educational Pattern Recognition: Identifies key educational technical patterns like breakouts, reversals, and volatility squeezes for learning",
+        "Educational Learning Alerts: Complete educational setup details with instrument, type, key levels, and educational probability scores",
+        "24/7 Educational Coverage: Never miss educational learning opportunities, even when away from educational materials",
+        "Educational Asset Classes: Comprehensive educational coverage across all tradeable financial instruments for learning",
+        "Educational Strategy Filters: Based on educational and learning-tested methodologies",
+        "Educational Research Assistant: Acts as your dedicated educational market opportunity scout around the clock for learning"
       ],
-      whatItDoes: "It acts as your personal research assistant, ensuring you never miss a potential A+ trading opportunity, even when you're away from the charts.",
+      whatItDoes: "It acts as your educational research assistant, ensuring you never miss a potential educational learning opportunity, even when you're away from educational materials.",
       gradient: "from-amber-500/20 to-orange-500/20",
       accentColor: "amber"
     },
     {
       icon: Shield,
-      title: "AI Risk Simulator",
-      subtitle: "Trade War-Gaming",
-      description: "War-game potential trades before risking real capital, getting AI-powered feedback on trade viability.",
+      title: "Educational Risk Calculator",
+      subtitle: "Setup Learning Analysis",
+      description: "Analyze hypothetical potential setups before risking educational capital, getting AI-powered educational feedback on setup learning viability.",
       detailedFeatures: [
-        "Trade Setup Input: Enter parameters of trades you're considering - instrument, entry, stop loss, take profit",
-        "AI Risk Assessment: Analyzes proposed trades against current volatility, historical data, and key levels",
-        "Viability Score: Provides overall risk score and probability of hitting stop loss vs. take profit",
-        "Risk-Reward Validation: Comprehensive feedback on your proposed risk-to-reward ratios",
-        "Trade Confirmation Layer: Helps kill bad trade ideas before they cost money",
-        "Market Context Analysis: Considers current market conditions and their impact on proposed trades",
-        "Confidence Building: Validates good trades, increasing your conviction and execution confidence"
+        "Educational Setup Analysis Input: Enter parameters of educational setups you're analyzing - instrument, entry, stop loss, take profit for learning",
+        "Educational Risk Assessment: Analyzes hypothetical proposed setups against current volatility, historical data, and key levels for educational purposes",
+        "Educational Viability Score: Provides overall educational risk score and probability analysis for learning purposes",
+        "Educational Risk-Reward Validation: Comprehensive educational feedback on your proposed hypothetical risk-to-reward ratios",
+        "Educational Setup Confirmation Layer: Helps identify educational setup ideas for learning analysis",
+        "Educational Market Context Analysis: Considers current market conditions and their educational impact on proposed learning setups",
+        "Educational Confidence Building: Validates educational setups, increasing your learning conviction and educational execution confidence"
       ],
-      whatItDoes: "It adds a crucial layer of confirmation to your trade planning. It helps you kill bad trade ideas before they cost you money and validates good ones, increasing your confidence.",
+      whatItDoes: "It adds a crucial educational layer of confirmation to your learning planning. It helps you analyze educational setup ideas for learning purposes and validates educational concepts, increasing your learning confidence.",
       gradient: "from-red-500/20 to-pink-500/20",
       accentColor: "red"
     },
     {
       icon: Calculator,
-      title: "Risk Calculator",
-      subtitle: "Position Sizing Mastery",
-      description: "Calculate the single most important variable in trading: position size. Fast, accurate, and deadly precise.",
+      title: "Educational Calculator",
+      subtitle: "Position Sizing Learning",
+      description: "Learn the single most important variable in market analysis: position sizing concepts. Fast, accurate, and educational.",
       detailedFeatures: [
-        "Multi-Asset Calculation: Accurate formulas for Gold, JPY pairs, standard Forex, and Crypto instruments",
-        "Risk-Based Sizing: Input account balance, desired risk percentage, and stop distance for exact lot size",
-        "Forward Calculation: Input lot size to see exact risk amount and potential profit instantly",
-        "Live Metrics: Shows Risk:Reward ratio and percentage of account at risk in real-time",
-        "Capital Protection: Ensures you never lose more than planned on any single trade",
-        "Long-Term Profitability: Key to staying in the game and building consistent profits over time",
-        "Professional Standards: Industry-standard position sizing methodology used by institutions"
+        "Educational Multi-Asset Calculation: Accurate educational formulas for Gold, JPY pairs, standard Forex, and Crypto instruments for learning",
+        "Educational Risk-Based Sizing: Input hypothetical account balance, desired educational risk percentage, and stop distance for educational lot size analysis",
+        "Educational Forward Calculation: Input educational lot size to see hypothetical risk amount and potential educational examples instantly",
+        "Educational Live Metrics: Shows educational Risk:Reward ratio and percentage of hypothetical account at risk for learning purposes",
+        "Educational Capital Protection: Learn to never lose more than planned on any educational setup analysis",
+        "Educational Long-Term Learning: Key to understanding educational concepts and building consistent learning over time",
+        "Educational Standards: Industry-standard educational position sizing methodology for learning purposes"
       ],
-      whatItDoes: "This tool is the key to survival and long-term profitability. It ensures you can never lose more than you plan to on a single trade, protecting your capital and allowing you to stay in the game.",
+      whatItDoes: "This educational tool is the key to learning survival and long-term educational profitability concepts. It ensures you can learn to never lose more than you plan to on educational setup analysis, protecting educational capital concepts and allowing you to stay in the educational game.",
       gradient: "from-violet-500/20 to-purple-500/20",
       accentColor: "violet"
     }
   ];
 
   const stats = [
-    { value: "6", label: "Professional Tools", subtitle: "Complete Arsenal" },
-    { value: "24/7", label: "Market Scanning", subtitle: "Never Miss Opportunities" },
-    { value: "99.9%", label: "Accuracy Rate", subtitle: "Institutional Grade" }
+    { value: "6", label: "Educational Tools", subtitle: "Complete Learning Arsenal" },
+    { value: "24/7", label: "Educational Scanning", subtitle: "Never Miss Learning Opportunities" },
+    { value: "99.9%", label: "Educational Accuracy", subtitle: "Learning Grade Quality" }
   ];
 
   return (
     <div className="bg-background min-h-screen font-sans">
+      {/* Compliance Notice */}
+      <div className="p-6">
+        <ComplianceNotice type="educational" size="md" />
+      </div>
+
       {/* Hero Section */}
       <section className="relative py-24 px-6 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center space-y-8">
             <div className="space-y-6">
-              <Badge variant="outline" className="inline-flex items-center gap-2 border-primary/20 text-primary bg-primary/5">
-                <Target className="h-4 w-4" />
-                Advanced Trading Arsenal
-              </Badge>
+              <div className="flex justify-center gap-2 mb-4">
+                <EducationalBadge />
+                <Badge variant="outline" className="inline-flex items-center gap-2 border-primary/20 text-primary bg-primary/5">
+                  <Target className="h-4 w-4" />
+                  Educational Learning Arsenal
+                </Badge>
+              </div>
               <h1 className="text-6xl font-bold leading-tight tracking-tight">
                 <span className="bg-gradient-to-r from-primary via-amber-400 to-primary bg-clip-text text-transparent">
-                  Professional-Grade
+                  Educational-Grade
                 </span>
                 <br />
-                <span className="text-foreground">Trading Tools</span>
+                <span className="text-foreground">Learning Tools</span>
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-4xl mx-auto">
-                Your integrated suite of professional-grade utilities designed to give you a decisive edge in every aspect of your trading. 
-                Each tool is a weapon in your arsenal, engineered for precision and results.
+                Your integrated suite of educational-grade utilities designed to give you a decisive learning edge in every aspect of your educational journey. 
+                Each tool is an educational weapon in your learning arsenal, engineered for precision educational results.
               </p>
             </div>
             
@@ -172,11 +182,11 @@ const AdvancedToolsPage: React.FC = () => {
             
             <div className="flex items-center justify-center gap-4">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
-                Start Your Arsenal
+                Start Your Educational Arsenal
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button variant="outline" size="lg" className="border-primary/20 hover:bg-primary/5 px-8">
-                Explore Tools
+                Explore Educational Tools
               </Button>
             </div>
           </div>
@@ -189,12 +199,13 @@ const AdvancedToolsPage: React.FC = () => {
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">
               <span className="bg-gradient-to-r from-amber-400 to-primary bg-clip-text text-transparent">
-                The Trading Arsenal
+                The Educational Learning Arsenal
               </span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              Six precision-engineered tools that transform how you analyze, execute, and optimize your trading performance.
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto mb-4">
+              Six precision-engineered educational tools that transform how you analyze, learn, and optimize your educational performance.
             </p>
+            <EducationalBadge />
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
@@ -219,6 +230,9 @@ const AdvancedToolsPage: React.FC = () => {
                         <CardDescription className="text-muted-foreground mt-3 leading-relaxed">
                           {tool.description}
                         </CardDescription>
+                        <div className="mt-3">
+                          <EducationalBadge className="text-xs" />
+                        </div>
                       </div>
                     </div>
                   </CardHeader>
@@ -226,7 +240,7 @@ const AdvancedToolsPage: React.FC = () => {
                   <CardContent className="space-y-6">
                     {/* What It Does */}
                     <div className="space-y-3">
-                      <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">What It Does For You:</h4>
+                      <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">What It Does For Your Learning:</h4>
                       <p className="text-sm text-muted-foreground leading-relaxed italic bg-muted/30 p-4 rounded-lg">
                         "{tool.whatItDoes}"
                       </p>
@@ -234,7 +248,7 @@ const AdvancedToolsPage: React.FC = () => {
 
                     {/* Detailed Features */}
                     <div className="space-y-3">
-                      <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">Detailed Features:</h4>
+                      <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">Educational Features:</h4>
                       <div className="space-y-2">
                         {tool.detailedFeatures.slice(0, 4).map((feature, idx) => (
                           <div key={idx} className="flex items-start gap-3 text-sm">
@@ -244,7 +258,7 @@ const AdvancedToolsPage: React.FC = () => {
                         ))}
                         {tool.detailedFeatures.length > 4 && (
                           <div className="text-xs text-primary font-medium pl-4">
-                            +{tool.detailedFeatures.length - 4} more advanced features
+                            +{tool.detailedFeatures.length - 4} more educational features
                           </div>
                         )}
                       </div>
@@ -274,27 +288,30 @@ const AdvancedToolsPage: React.FC = () => {
             <div className="space-y-4">
               <h2 className="text-4xl font-bold text-foreground">
                 Arm Yourself with 
-                <span className="bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent"> Professional Tools</span>
+                <span className="bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent"> Educational Tools</span>
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Join the ranks of professional traders who use these institutional-grade tools to gain their edge in the markets.
+                Join the ranks of educational learners who use these learning-grade tools to gain their educational edge in market understanding.
               </p>
+              <div className="flex justify-center">
+                <EducationalBadge />
+              </div>
             </div>
             
             <div className="flex items-center justify-center gap-4">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
-                Access Professional Tools
+                Access Educational Tools
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button variant="outline" size="lg" className="border-primary/20 hover:bg-primary/5 px-8">
-                Schedule Demo
+                Schedule Educational Demo
               </Button>
             </div>
             
             <div className="flex items-center justify-center gap-8 text-sm text-muted-foreground pt-4">
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-primary" />
-                14-day trial included
+                14-day educational trial included
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-primary" />
@@ -302,7 +319,7 @@ const AdvancedToolsPage: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-primary" />
-                Professional support
+                Educational support
               </div>
             </div>
           </div>

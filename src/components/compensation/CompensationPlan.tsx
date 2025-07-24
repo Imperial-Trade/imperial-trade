@@ -30,7 +30,7 @@ const rankData = [
     perks: 'Standard rebate structure. Access to marketing materials and support.' 
   },
   { 
-    name: 'Expert', 
+    name: 'Advanced', 
     volume: 10000, 
     rebate: 9, 
     color: '#3b82f6', // blue-500
@@ -84,8 +84,8 @@ const testimonials = [
   },
   { 
     name: 'Anonymous', 
-    rank: 'Expert', 
-    quote: 'As someone new to being an IB, the Hero and Expert tiers gave me the confidence and earnings to go full-time. The platform is fantastic.' 
+    rank: 'Advanced', 
+    quote: 'As someone new to being an IB, the Hero and Advanced tiers gave me the confidence and earnings to go full-time. The platform is fantastic.'
   }
 ];
 
@@ -212,7 +212,7 @@ export default function CompensationPlan({ onBecomePartnerClick }) {
                 Your Path to <span className="text-accent-gold">Prosperity</span>
               </h1>
               <p className="text-xl text-secondary">
-                Imperial Professional Compensation Structure with VT Markets IB
+                Imperial Advanced Compensation Structure with VT Markets IB
               </p>
             </div>
           </div>

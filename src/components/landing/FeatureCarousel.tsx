@@ -14,16 +14,16 @@ const features = [{
   gradient: "from-purple-500 to-blue-500"
 }, {
   icon: TrendingUp,
-  title: "Professional Trade Blueprint",
-  description: "Over-the-shoulder view of professional analysts with precision parameters.",
-  details: "Exact Entry Prices, Hard Stop Loss, Up to 5 Take Profit levels. Live price integration with automated TP tracking and risk calculator integration for one-click position sizing.",
+  title: "Educational Trade Analysis",
+  description: "Educational view of market educators with reference parameters.",
+  details: "Educational Entry Price Guidance, Educational Stop Loss Levels, Up to 5 Educational Take Profit levels. Live price integration with educational TP tracking and risk calculator for educational position sizing analysis.",
   link: "SignalStream",
   color: "hsl(var(--feature-blue))",
   gradient: "from-blue-500 to-cyan-500"
 }, {
   icon: Radio,
   title: "Virtual Trading Floor",
-  description: "Direct access to professional trader minds during critical market hours.",
+  description: "Direct access to experienced trader minds during critical market hours.",
   details: "Live Analysis & Execution with real-time top-down analysis. Interactive Q&A throughout sessions. Professional Zoom integration with searchable archived sessions.",
   link: "Live",
   color: "hsl(var(--feature-green))",
@@ -31,8 +31,8 @@ const features = [{
 }, {
   icon: MessageSquare,
   title: "Collective Intelligence",
-  description: "Curated professional ecosystem with 500+ serious traders.",
-  details: "Market-specific channels for focused discussion. The 'Second Opinion' advantage for trade validation. Professional analysts providing daily market outlooks and strategy refinement.",
+  description: "Curated educational ecosystem with 500+ serious traders.",
+  details: "Market-specific channels for focused educational discussion. Educational 'Second Opinion' for learning and analysis. Market educators providing daily educational market outlooks and strategy discussions for learning purposes only.",
   link: "Forum",
   color: "hsl(var(--feature-orange))",
   gradient: "from-orange-500 to-red-500"
@@ -40,7 +40,7 @@ const features = [{
   icon: Briefcase,
   title: "Trading Business Empire",
   description: "6-tier progression system earning $6-$20 per lot with luxury rewards.",
-  details: "IB Dashboard Mission Control with real-time tracking. Imperial Gold Club access to luxury retreats and cruises. Volume-based transparent metrics for career progression.",
+  details: "IB Dashboard Mission Control with real-time tracking. Imperial Gold Club access to luxury retreats and cruises. Volume-based transparent metrics for IB program progression within our partner network.",
   link: "IBPartnership",
   color: "hsl(var(--feature-pink))",
   gradient: "from-pink-500 to-purple-500"

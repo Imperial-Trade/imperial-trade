@@ -14,7 +14,7 @@ const ProgressionChart = () => {
 
   const rankData = [
     { name: "Hero", volume: 0, rebate: 6 },
-    { name: "Expert", volume: 10000, rebate: 9 },
+    { name: "Advanced", volume: 10000, rebate: 9 },
     { name: "Specialist", volume: 20000, rebate: 12 },
     { name: "Ambassador", volume: 50000, rebate: 15 },
     { name: "Royal Ambassador", volume: 70000, rebate: 18 },

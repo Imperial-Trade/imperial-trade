@@ -1,327 +1,416 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+
+import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, X } from 'lucide-react';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { useOptimizedTradeAlertForm, type TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, AlertTriangle, Plus, X } from 'lucide-react';
 import EnhancedLivePriceDisplay from './EnhancedLivePriceDisplay';
-
-const supportedAssets = [
-  { name: 'Gold', symbol: 'XAU/USD', category: 'Commodities' },
-  { name: 'Bitcoin', symbol: 'BTC/USD', category: 'Crypto' }
-];
+import { AssetSelector, SUPPORTED_ASSETS, type AssetOption } from './AssetSelector';
+import { useToast } from '@/components/ui/use-toast';
+import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 
 interface OptimizedNewAlertFormProps {
-  onSubmit: (data: TradeAlertSubmissionData) => Promise<void> | void;
-  onCancel?: () => void;
-  initialData?: Partial<TradeAlertSubmissionData>;
+  onSubmit: (data: TradeAlertSubmissionData) => Promise<void>;
+  onCancel: () => void;
 }
 
-export default function OptimizedNewAlertForm({ onSubmit, onCancel, initialData }: OptimizedNewAlertFormProps) {
-  const [takeProfitCount, setTakeProfitCount] = useState(() => {
-    if (initialData) {
-      // Count how many take profit levels are set
-      let count = 1;
-      if (initialData.tp2) count = 2;
-      if (initialData.tp3) count = 3;
-      if (initialData.tp4) count = 4;
-      if (initialData.tp5) count = 5;
-      return count;
-    }
-    return 1;
-  });
-  const [selectedSymbol, setSelectedSymbol] = useState(initialData?.finnhub_symbol || '');
-  const [selectedAssetName, setSelectedAssetName] = useState(initialData?.asset_name || '');
+const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
+  onSubmit,
+  onCancel
+}) => {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<AssetOption | null>(null);
+  const [isLoadingPriceData, setIsLoadingPriceData] = useState(false);
   
-  // Use optimized form hook with smart validation
-  const { form, handleSubmit, isSubmitting, hasErrors } = useOptimizedTradeAlertForm({
-    onSubmit,
-    enableSmartValidation: true,
-    initialData
+  // Form state
+  const [formData, setFormData] = useState({
+    asset_name: '',
+    finnhub_symbol: '',
+    trade_type: 'buy' as 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
+    entry_price: '',
+    stop_loss: '',
+    tp1: '',
+    tp2: '',
+    tp3: '',
+    tp4: '',
+    tp5: '',
+    notes: ''
   });
 
-  // Memoized handlers to prevent unnecessary re-renders
-  const addTakeProfit = useCallback(() => {
-    if (takeProfitCount < 5) {
-      setTakeProfitCount(prev => prev + 1);
-    }
-  }, [takeProfitCount]);
+  const [takeProfits, setTakeProfits] = useState<string[]>(['']);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const removeTakeProfit = useCallback(() => {
-    if (takeProfitCount > 1) {
-      const tpFieldName = `tp${takeProfitCount}` as 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5';
-      form.setValue(tpFieldName, undefined);
-      setTakeProfitCount(prev => prev - 1);
-    }
-  }, [takeProfitCount, form]);
+  const handleAssetChange = useCallback((asset: AssetOption) => {
+    // Start loading immediately when asset is selected
+    setIsLoadingPriceData(true);
+    setSelectedAsset(asset);
+    setFormData(prev => ({
+      ...prev,
+      asset_name: asset.name,
+      finnhub_symbol: asset.symbol
+    }));
+    
+    // Clear asset-related errors
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.asset_name;
+      delete newErrors.finnhub_symbol;
+      return newErrors;
+    });
 
-  const handleAssetChange = useCallback((symbol: string) => {
-    const asset = supportedAssets.find(a => a.symbol === symbol);
-    if (asset) {
-      form.setValue('asset_name', asset.name);
-      form.setValue('finnhub_symbol', asset.symbol);
-      setSelectedSymbol(symbol);
-      setSelectedAssetName(asset.name);
+    // Reset loading state after a short delay to allow the price component to initialize
+    setTimeout(() => {
+      setIsLoadingPriceData(false);
+    }, 1500);
+  }, []);
+
+  const handleInputChange = useCallback((field: string, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear field-specific errors
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
     }
-  }, [form]);
+  }, [errors]);
 
   const handleUseCurrentPrice = useCallback((price: number) => {
-    form.setValue('entry_price', price, { shouldValidate: true });
-  }, [form]);
+    setFormData(prev => ({ ...prev, entry_price: price.toString() }));
+    
+    toast({
+      title: "Price Updated",
+      description: `Entry price set to $${price.toFixed(2)}`,
+    });
+  }, [toast]);
 
-  // Initialize form with initial data if provided
-  useEffect(() => {
-    if (initialData) {
-      // Pre-select the asset if it matches one of our supported assets
-      const matchingAsset = supportedAssets.find(asset => 
-        asset.symbol === initialData.finnhub_symbol || asset.name === initialData.asset_name
-      );
-      if (matchingAsset) {
-        setSelectedSymbol(matchingAsset.symbol);
-        setSelectedAssetName(matchingAsset.name);
+  const addTakeProfit = () => {
+    if (takeProfits.length < 5) {
+      setTakeProfits([...takeProfits, '']);
+    }
+  };
+
+  const removeTakeProfit = (index: number) => {
+    if (takeProfits.length > 1) {
+      const newTPs = takeProfits.filter((_, i) => i !== index);
+      setTakeProfits(newTPs);
+      
+      // Clear corresponding form data
+      const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+      setFormData(prev => ({
+        ...prev,
+        [tpKeys[index]]: ''
+      }));
+    }
+  };
+
+  const handleTakeProfitChange = (index: number, value: string) => {
+    const newTPs = [...takeProfits];
+    newTPs[index] = value;
+    setTakeProfits(newTPs);
+    
+    const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+    setFormData(prev => ({
+      ...prev,
+      [tpKeys[index]]: value
+    }));
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.asset_name) newErrors.asset_name = 'Please select an asset';
+    if (!formData.entry_price) newErrors.entry_price = 'Entry price is required';
+    if (!formData.stop_loss) newErrors.stop_loss = 'Stop loss is required';
+    if (!takeProfits[0]) newErrors.tp1 = 'At least one take profit is required';
+
+    // Validate numeric fields
+    const entryPrice = parseFloat(formData.entry_price);
+    const stopLoss = parseFloat(formData.stop_loss);
+    const tp1 = parseFloat(takeProfits[0]);
+
+    if (isNaN(entryPrice) || entryPrice <= 0) {
+      newErrors.entry_price = 'Entry price must be a valid positive number';
+    }
+    if (isNaN(stopLoss) || stopLoss <= 0) {
+      newErrors.stop_loss = 'Stop loss must be a valid positive number';
+    }
+    if (isNaN(tp1) || tp1 <= 0) {
+      newErrors.tp1 = 'Take profit must be a valid positive number';
+    }
+
+    // Validate price relationships for buy
+    if (formData.trade_type === 'buy' && !isNaN(entryPrice) && !isNaN(stopLoss) && !isNaN(tp1)) {
+      if (stopLoss >= entryPrice) {
+        newErrors.stop_loss = 'Stop loss must be below entry price for buy positions';
+      }
+      if (tp1 <= entryPrice) {
+        newErrors.tp1 = 'Take profit must be above entry price for buy positions';
       }
     }
-  }, [initialData]);
 
-  // Memoized take profit fields to prevent re-rendering
-  const takeProfitFields = useMemo(() => {
-    return Array.from({ length: takeProfitCount }, (_, index) => {
-      const tpField = `tp${index + 1}` as 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5';
-      return (
-        <FormField
-          key={tpField}
-          control={form.control}
-          name={tpField}
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex items-center gap-3">
-                <Label className="w-12 text-sm text-gray-300 font-medium">
-                  TP{index + 1}:
-                </Label>
-                <FormControl className="flex-1">
-                  <Input
-                    {...field}
-                    type="number"
-                    step="any"
-                    value={field.value || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      field.onChange(value ? parseFloat(value) : undefined);
-                    }}
-                    placeholder={`Take Profit ${index + 1}`}
-                    className="bg-gray-700 border-gray-600 text-white h-10 font-mono"
-                  />
-                </FormControl>
-              </div>
-              <FormMessage className="text-red-400 ml-15" />
-            </FormItem>
-          )}
-        />
-      );
-    });
-  }, [takeProfitCount, form.control]);
+    // Validate price relationships for sell
+    if (formData.trade_type === 'sell' && !isNaN(entryPrice) && !isNaN(stopLoss) && !isNaN(tp1)) {
+      if (stopLoss <= entryPrice) {
+        newErrors.stop_loss = 'Stop loss must be above entry price for sell positions';
+      }
+      if (tp1 >= entryPrice) {
+        newErrors.tp1 = 'Take profit must be below entry price for sell positions';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      toast({
+        title: "Validation Error",
+        description: "Please correct the errors before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const submissionData: TradeAlertSubmissionData = {
+        asset_name: formData.asset_name,
+        finnhub_symbol: formData.finnhub_symbol,
+        trade_type: formData.trade_type,
+        entry_price: parseFloat(formData.entry_price),
+        stop_loss: parseFloat(formData.stop_loss),
+        tp1: takeProfits[0] ? parseFloat(takeProfits[0]) : null,
+        tp2: takeProfits[1] ? parseFloat(takeProfits[1]) : null,
+        tp3: takeProfits[2] ? parseFloat(takeProfits[2]) : null,
+        tp4: takeProfits[3] ? parseFloat(takeProfits[3]) : null,
+        tp5: takeProfits[4] ? parseFloat(takeProfits[4]) : null,
+        notes: formData.notes || null
+      };
+
+      await onSubmit(submissionData);
+    } catch (error) {
+      console.error('Form submission error:', error);
+      toast({
+        title: "Submission Error",
+        description: "Failed to create signal. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-      <Form {...form}>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Asset Selection */}
-          <div className="space-y-3">
-            <Label htmlFor="asset" className="text-white text-sm font-medium">
-              Asset (Optimized Live Data)
-            </Label>
-            <Select onValueChange={handleAssetChange} name="asset" value={selectedSymbol}>
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white h-11">
-                <SelectValue placeholder="Select Gold or Bitcoin..." />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                {supportedAssets.map(asset => (
-                  <SelectItem key={asset.symbol} value={asset.symbol}>
-                    <div className="flex items-center justify-between w-full">
-                      <span className="font-medium">{asset.name}</span>
-                      <span className="text-xs text-accent-green ml-3">{asset.symbol}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            {/* Enhanced Live Price Display with smart controls */}
-            {selectedSymbol && (
-              <EnhancedLivePriceDisplay 
-                symbol={selectedSymbol} 
-                assetName={selectedAssetName}
+    <div className="w-full p-6 bg-card rounded-lg border border-border">
+      <form onSubmit={handleSubmit} className="w-full space-y-4">
+        {/* Asset Selection */}
+        <AssetSelector
+          value={formData.finnhub_symbol}
+          onValueChange={(value) => handleInputChange('finnhub_symbol', value)}
+          onAssetChange={handleAssetChange}
+        />
+        
+        {errors.asset_name && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{errors.asset_name}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Live Price Display */}
+        {selectedAsset && (
+          <div className="w-full">
+            {isLoadingPriceData ? (
+              <div className="w-full p-4 bg-card border border-border rounded-lg animate-pulse">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted rounded w-20"></div>
+                    <div className="h-6 bg-muted rounded w-32"></div>
+                  </div>
+                  <div className="h-8 bg-muted rounded w-16"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="h-8 bg-muted rounded w-28"></div>
+                    <div className="h-4 bg-muted rounded w-24"></div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Fetching live price for {selectedAsset.name}...</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <EnhancedLivePriceDisplay
+                symbol={selectedAsset.symbol}
+                assetName={selectedAsset.name}
                 onUseCurrentPrice={handleUseCurrentPrice}
+                className="w-full mb-4"
               />
             )}
           </div>
+        )}
 
-          {/* Trade Type and Entry Price Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="trade_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white text-sm font-medium">Trade Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white h-11">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                      <SelectItem value="buy">Buy (Market)</SelectItem>
-                      <SelectItem value="sell">Sell (Market)</SelectItem>
-                      <SelectItem value="buy_limit">Buy Limit</SelectItem>
-                      <SelectItem value="sell_limit">Sell Limit</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="entry_price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white text-sm font-medium">Entry Price</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="number"
-                      step="any"
-                      placeholder="0.00"
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      className="bg-gray-700 border-gray-600 text-white h-11 font-mono"
-                    />
-                  </FormControl>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
-          </div>
-          
-          {/* Stop Loss - Full Width */}
-          <FormField
-            control={form.control}
-            name="stop_loss"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white text-sm font-medium">Stop Loss</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    type="number"
-                    step="any"
-                    placeholder="0.00"
-                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    className="bg-gray-700 border-gray-600 text-white h-11 font-mono"
-                  />
-                </FormControl>
-                <FormMessage className="text-red-400" />
-              </FormItem>
-            )}
-          />
-          
-          {/* Take Profits Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-white text-sm font-medium">Take Profits</Label>
-              <div className="flex gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={addTakeProfit}
-                  className="bg-accent-green hover:bg-accent-green/80 border-accent-green text-white h-8 px-3 text-xs"
-                  disabled={takeProfitCount >= 5}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add TP
-                </Button>
-                {takeProfitCount > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={removeTakeProfit}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/20 h-8 px-2"
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
-            </div>
-            
-            <div className="space-y-3">
-              {takeProfitFields}
+        {/* Initial State Helper */}
+        {!selectedAsset && (
+          <div className="w-full p-6 bg-muted/30 border border-dashed border-border rounded-lg text-center">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Select an asset above to view live pricing and create your signal</p>
+              <p className="text-xs text-muted-foreground">Real-time price data will appear here once you choose an asset</p>
             </div>
           </div>
-         
-          {/* Notes */}
-          <FormField
-            control={form.control}
-            name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white text-sm font-medium">Notes</FormLabel>
-                <FormControl>
-                  <Textarea
-                    {...field}
-                    value={field.value || ''}
-                    placeholder="Add any additional notes or comments..."
-                    className="bg-gray-700 border-gray-600 text-white min-h-[80px] resize-none"
-                  />
-                </FormControl>
-                <FormMessage className="text-red-400" />
-              </FormItem>
-            )}
-          />
+        )}
 
-          {/* Form Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-600">
-            {onCancel && (
-              <Button 
+        {/* Trade Type & Entry Price Row */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Trade Type */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Trade Type</label>
+            <Select 
+              value={formData.trade_type} 
+              onValueChange={(value) => handleInputChange('trade_type', value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="buy">Buy</SelectItem>
+                <SelectItem value="sell">Sell</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Entry Price */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Entry Price</label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={formData.entry_price}
+              onChange={(e) => handleInputChange('entry_price', e.target.value)}
+              className={`w-full ${errors.entry_price ? 'border-red-500' : ''}`}
+            />
+            {errors.entry_price && (
+              <p className="text-sm text-red-500">{errors.entry_price}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Stop Loss */}
+        <div className="w-full space-y-2">
+          <label className="text-sm font-medium text-foreground">Stop Loss</label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            value={formData.stop_loss}
+            onChange={(e) => handleInputChange('stop_loss', e.target.value)}
+            className={`w-full ${errors.stop_loss ? 'border-red-500' : ''}`}
+          />
+          {errors.stop_loss && (
+            <p className="text-sm text-red-500">{errors.stop_loss}</p>
+          )}
+        </div>
+
+        {/* Take Profits */}
+        <div className="w-full space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-foreground">Take Profits</label>
+            {takeProfits.length < 5 && (
+              <Button
                 type="button"
                 variant="outline"
-                onClick={onCancel}
-                className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
+                size="sm"
+                onClick={addTakeProfit}
+                className="h-6 px-2 text-xs"
               >
-                Cancel
+                <Plus className="w-3 h-3 mr-1" />
+                Add TP
               </Button>
             )}
-            <Button 
-              type="submit" 
-              className="bg-accent-green hover:bg-accent-green/80 text-white min-w-[120px]"
-              disabled={isSubmitting || hasErrors}
-            >
-              {isSubmitting 
-                ? (initialData ? 'Updating...' : 'Posting...') 
-                : (initialData ? 'Update Signal' : 'Post Signal')
-              }
-            </Button>
           </div>
-        </form>
-      </Form>
+          
+          {takeProfits.map((tp, index) => (
+            <div key={index} className="flex items-center gap-2 w-full">
+              <Input
+                type="number"
+                step="0.01"
+                placeholder={`TP${index + 1}`}
+                value={tp}
+                onChange={(e) => handleTakeProfitChange(index, e.target.value)}
+                className={`flex-1 ${errors[`tp${index + 1}`] ? 'border-red-500' : ''}`}
+              />
+              {takeProfits.length > 1 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeTakeProfit(index)}
+                  className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          ))}
+          
+          {errors.tp1 && (
+            <p className="text-sm text-red-500">{errors.tp1}</p>
+          )}
+        </div>
+
+        {/* Notes */}
+        <div className="w-full space-y-2">
+          <label className="text-sm font-medium text-foreground">Notes</label>
+          <Textarea
+            placeholder="Add notes about this signal..."
+            value={formData.notes}
+            onChange={(e) => handleInputChange('notes', e.target.value)}
+            rows={3}
+            className="w-full"
+          />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="w-full flex gap-3 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="flex-1 bg-accent-green hover:bg-accent-green/90"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Posting...
+              </>
+            ) : (
+              'Post Signal'
+            )}
+          </Button>
+        </div>
+      </form>
     </div>
   );
-}
+};
+
+export default OptimizedNewAlertForm;

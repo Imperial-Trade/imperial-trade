@@ -3,6 +3,7 @@ import Layout from "@/components/Layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, TrendingDown, Clock, Target, Shield } from "lucide-react"
+import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from "@/components/compliance/ComplianceNotice"
 
 const Signals = () => {
   const signals = [
@@ -16,7 +17,7 @@ const Signals = () => {
       time: "2 hours ago",
       profit: "+65 pips",
       type: "trending-up",
-      educator: "Pro Trader Alex",
+      educator: "Market Educator Alex",
       verified: true
     },
     {
@@ -29,7 +30,7 @@ const Signals = () => {
       time: "4 hours ago",
       profit: "+130 pips",
       type: "trending-down",
-      educator: "FX Master Sarah",
+      educator: "Educational Contributor Sarah",
       verified: true
     },
     {
@@ -42,7 +43,7 @@ const Signals = () => {
       time: "1 hour ago",
       profit: "Waiting",
       type: "trending-up",
-      educator: "Trade Guru Mike",
+      educator: "Senior Educator Mike",
       verified: true
     },
     {
@@ -55,7 +56,7 @@ const Signals = () => {
       time: "30 minutes ago",
       profit: "+25 pips",
       type: "trending-down",
-      educator: "Expert Analyst Lisa",
+      educator: "Lead Educator Lisa",
       verified: true
     }
   ]
@@ -75,16 +76,25 @@ const Signals = () => {
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
-              Professional Trading Signals
+              Educational Market Patterns
             </h1>
-            <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-              <Shield className="w-4 h-4 mr-1" />
-              Verified Educators Only
-            </Badge>
+            <EducationalBadge />
           </div>
           <p className="text-lg text-muted-foreground">
-            Real-time trading opportunities from our verified professional analysts and educators.
+            Real-time educational opportunities from our verified market educators and contributors.
           </p>
+          
+          {/* Compliance Notices */}
+          <div className="mt-6 space-y-3">
+            <ComplianceNotice 
+              type="educational" 
+              size="md"
+            />
+            <ComplianceNotice 
+              type="hypothetical" 
+              size="sm"
+            />
+          </div>
         </div>
 
         {/* Statistics Cards */}
@@ -93,7 +103,7 @@ const Signals = () => {
             <CardContent className="p-6 text-center">
               <TrendingUp className="h-8 w-8 text-green-400 mx-auto mb-2" />
               <div className="text-2xl font-bold text-green-400">87%</div>
-              <div className="text-sm text-muted-foreground">Success Rate</div>
+              <div className="text-sm text-muted-foreground">Hypothetical Rate</div>
             </CardContent>
           </Card>
           
@@ -101,7 +111,7 @@ const Signals = () => {
             <CardContent className="p-6 text-center">
               <Target className="h-8 w-8 text-blue-400 mx-auto mb-2" />
               <div className="text-2xl font-bold text-blue-400">25+</div>
-              <div className="text-sm text-muted-foreground">Daily Signals</div>
+              <div className="text-sm text-muted-foreground">Daily Patterns</div>
             </CardContent>
           </Card>
           
@@ -117,7 +127,7 @@ const Signals = () => {
             <CardContent className="p-6 text-center">
               <Shield className="h-8 w-8 text-primary mx-auto mb-2" />
               <div className="text-2xl font-bold text-primary">15+</div>
-              <div className="text-sm text-muted-foreground">Pro Educators</div>
+              <div className="text-sm text-muted-foreground">Market Educators</div>
             </CardContent>
           </Card>
         </div>

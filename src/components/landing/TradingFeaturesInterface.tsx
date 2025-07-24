@@ -110,11 +110,11 @@ const TradingFeaturesInterface: React.FC = () => {
   const featuresData = {
     "Advanced Tools": {
       icon: Calculator,
-      tagline: "Professional Trading Analytics",
+      tagline: "Advanced Trading Analytics",
       description: "Institutional-grade tools designed for serious traders who demand precision, speed, and advanced functionality.",
       hero: {
         title: "Advanced Trading Tools",
-        subtitle: "Professional-grade analytics and risk management",
+        subtitle: "Institutional-grade analytics and risk management",
         stats: [
           { value: "500k+", label: "Active Traders" },
           { value: "99.9%", label: "Uptime" },
@@ -152,15 +152,15 @@ const TradingFeaturesInterface: React.FC = () => {
           description: "Institutional-grade portfolio analysis with advanced risk metrics and performance attribution.",
           features: ["Risk Metrics", "Performance Attribution", "Stress Testing", "Benchmark Comparison"],
           usage: "Analyze your portfolio with institutional-grade metrics including VaR, Sharpe ratio, and drawdown analysis.",
-          benefits: ["Professional analytics", "Risk optimization", "Benchmark tracking"]
+          benefits: ["Advanced analytics", "Risk optimization", "Benchmark tracking"]
         },
         {
           icon: Presentation,
           title: "Technical Analysis Suite",
           description: "Advanced charting platform with 150+ indicators and pattern recognition.",
           features: ["150+ Indicators", "Pattern Recognition", "Custom Drawings", "Multi-timeframe Analysis"],
-          usage: "Professional charting with advanced technical analysis tools and automated pattern recognition.",
-          benefits: ["Professional charting", "Pattern alerts", "Custom indicators"]
+          usage: "Advanced charting with sophisticated technical analysis tools and automated pattern recognition.",
+          benefits: ["Advanced charting", "Pattern alerts", "Custom indicators"]
         },
         {
           icon: Shield,
@@ -226,7 +226,7 @@ const TradingFeaturesInterface: React.FC = () => {
         {
           icon: LineChart,
           title: "Market Analysis",
-          description: "Daily market analysis and commentary from professional traders.",
+          description: "Daily market analysis and commentary from experienced traders.",
           features: ["Daily Analysis", "Market Commentary", "Economic Calendar", "News Integration"],
           usage: "Receive professional market analysis and commentary every trading day with economic calendar integration.",
           benefits: ["Expert analysis", "Market insights", "Economic awareness"]
@@ -252,7 +252,7 @@ const TradingFeaturesInterface: React.FC = () => {
       description: "From complete beginner to advanced professional, our education platform provides structured learning paths with expert instruction.",
       hero: {
         title: "Trading Education",
-        subtitle: "Master the markets with expert-led courses",
+        subtitle: "Master the markets with educator-led courses",
         stats: [
           { value: "100+", label: "Video Lessons" },
           { value: "10k+", label: "Students" },
@@ -265,16 +265,16 @@ const TradingFeaturesInterface: React.FC = () => {
           title: "Video Course Library",
           description: "Comprehensive video courses covering all aspects of trading and market analysis.",
           features: ["100+ Video Lessons", "Expert Instructors", "Lifetime Access", "Mobile App"],
-          usage: "Learn from professional traders with over 100 hours of premium video content accessible on any device.",
+          usage: "Learn from experienced traders with over 100 hours of premium video content accessible on any device.",
           benefits: ["Expert instruction", "Lifetime access", "Mobile learning"]
         },
         {
           icon: Video,
-          title: "Live Webinars",
-          description: "Weekly live educational sessions with Q&A and real-time market analysis.",
-          features: ["Weekly Sessions", "Live Q&A", "Market Analysis", "Recording Library"],
-          usage: "Join weekly live educational sessions with expert traders and get your questions answered in real-time.",
-          benefits: ["Live interaction", "Expert access", "Q&A sessions"]
+          title: "Educational Live Sessions",
+          description: "Weekly educational trading sessions for learning purposes only - not investment advice.",
+          features: ["Educational Sessions", "Live Q&A", "Market Analysis", "Recording Library"],
+          usage: "Join weekly educational sessions with experienced traders to learn about market analysis and trading concepts.",
+          benefits: ["Educational interaction", "Expert guidance", "Learning Q&A"]
         },
         {
           icon: BookOpen,
@@ -287,7 +287,7 @@ const TradingFeaturesInterface: React.FC = () => {
         {
           icon: Map,
           title: "Learning Paths",
-          description: "Structured learning paths designed to take you from beginner to expert trader.",
+          description: "Structured learning paths designed to take you from beginner to experienced trader.",
           features: ["Structured Curriculum", "Progress Tracking", "Skill Assessments", "Certificates"],
           usage: "Follow structured learning paths with progress tracking and skill assessments to measure your development.",
           benefits: ["Structured learning", "Progress tracking", "Skill validation"]
@@ -304,27 +304,27 @@ const TradingFeaturesInterface: React.FC = () => {
           icon: Award,
           title: "Certification Program",
           description: "Earn professional trading certifications recognized by the financial industry.",
-          features: ["Industry Certification", "Skill Validation", "Career Advancement", "Professional Recognition"],
+          features: ["Industry Certification", "Skill Validation", "Career Advancement", "Educational Recognition"],
           usage: "Complete certification programs to validate your trading skills and advance your career in finance.",
           benefits: ["Industry recognition", "Career advancement", "Skill certification"]
         }
       ],
       cta: {
         title: "Master Professional Trading",
-        description: "Start your journey from beginner to professional trader with our comprehensive education platform.",
+        description: "Start your journey from beginner to experienced trader with our comprehensive education platform.",
         buttonText: "Start Learning"
       }
     },
     "Live Sessions": {
       icon: Video,
       tagline: "Interactive Live Trading",
-      description: "Join professional traders in live sessions to see real trading in action and learn decision-making processes in real-time.",
+      description: "Join experienced traders in live sessions to see real analysis in action and learn decision-making processes in real-time.",
       hero: {
         title: "Live Trading Sessions",
         subtitle: "Learn by watching professionals trade live",
         stats: [
           { value: "Daily", label: "Live Sessions" },
-          { value: "5+", label: "Expert Traders" },
+          { value: "5+", label: "Experienced Traders" },
           { value: "1000+", label: "Recorded Sessions" }
         ]
       },
@@ -332,17 +332,17 @@ const TradingFeaturesInterface: React.FC = () => {
         {
           icon: Video,
           title: "Live Trading Rooms",
-          description: "Watch professional traders execute trades in real-time with full transparency.",
+          description: "Watch experienced traders execute analysis in real-time with full transparency.",
           features: ["Live Trading", "Real-time Commentary", "Full Transparency", "Strategy Explanation"],
           usage: "Join live trading rooms and watch professionals trade with real money while explaining their decision-making process.",
-          benefits: ["Real-time learning", "Professional insight", "Live commentary"]
+          benefits: ["Real-time learning", "Educational insight", "Live commentary"]
         },
         {
           icon: Users,
           title: "Interactive Sessions",
           description: "Participate in interactive sessions with Q&A and real-time discussions.",
           features: ["Live Q&A", "Real-time Chat", "Interactive Polls", "Community Engagement"],
-          usage: "Engage directly with professional traders during live sessions through chat and Q&A opportunities.",
+          usage: "Engage directly with experienced traders during live sessions through chat and Q&A opportunities.",
           benefits: ["Direct interaction", "Real-time Q&A", "Community engagement"]
         },
         {
@@ -380,7 +380,7 @@ const TradingFeaturesInterface: React.FC = () => {
       ],
       cta: {
         title: "Join Live Trading Sessions",
-        description: "Learn from the best by watching professional traders in action every day.",
+        description: "Learn from the best by watching experienced traders in action every day.",
         buttonText: "Join Live Sessions"
       }
     },
@@ -417,10 +417,10 @@ const TradingFeaturesInterface: React.FC = () => {
         {
           icon: Star,
           title: "Expert Network",
-          description: "Connect with verified expert traders and industry professionals.",
-          features: ["Verified Experts", "Professional Insights", "Direct Access", "Mentorship Programs"],
-          usage: "Get insights from verified expert traders and participate in mentorship programs.",
-          benefits: ["Expert access", "Professional insights", "Mentorship opportunities"]
+          description: "Connect with experienced traders and educational contributors.",
+          features: ["Experienced Contributors", "Educational Insights", "Direct Access", "Mentorship Programs"],
+          usage: "Get insights from experienced traders and participate in mentorship programs.",
+          benefits: ["Educator access", "Educational insights", "Mentorship opportunities"]
         },
         {
           icon: Heart,
@@ -534,7 +534,7 @@ const TradingFeaturesInterface: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">Professional Trading Platform</h1>
-              <p className="text-muted-foreground">Enterprise-grade tools for professional traders</p>
+              <p className="text-muted-foreground">Enterprise-grade tools for dedicated traders</p>
             </div>
             <div className="flex items-center gap-4">
               <Badge variant="outline" className="text-xs font-medium">6 Feature Categories</Badge>
@@ -626,7 +626,7 @@ const TradingFeaturesInterface: React.FC = () => {
               {activeSection} Features
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Discover the comprehensive features that make our platform the choice of professional traders worldwide.
+              Discover the comprehensive features that make our platform the choice of dedicated traders worldwide.
             </p>
           </div>
 

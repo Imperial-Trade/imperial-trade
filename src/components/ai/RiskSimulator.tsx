@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,8 @@ import { Calculator, TrendingDown, AlertTriangle, Target, BarChart3, DollarSign,
 import { motion } from 'framer-motion';
 import { useAssetSearch } from '@/hooks/useAssetSearch';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec } from '@/utils/lotSizing';
+import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from '@/components/compliance/ComplianceNotice';
+
 export default function RiskSimulator() {
   const [tradeParams, setTradeParams] = useState({
     instrument: '',
@@ -28,6 +31,7 @@ export default function RiskSimulator() {
     query: tradeParams.instrument,
     delay: 300 
   });
+
   // Asset selection handlers
   const handleAssetSelect = useCallback((asset: string) => {
     handleInputChange('instrument', asset);
@@ -70,10 +74,11 @@ export default function RiskSimulator() {
       [field]: value
     }));
   };
+
   const simulateRisk = async () => {
     // Validate inputs
     if (!tradeParams.instrument || !tradeParams.entry_price || !tradeParams.stop_loss || !tradeParams.take_profit || !tradeParams.position_size) {
-      setError('Please fill in all fields');
+      setError('Please fill in all fields for educational analysis');
       return;
     }
     
@@ -93,20 +98,20 @@ export default function RiskSimulator() {
       
       const spec = getLotSizeSpec(tradeParams.instrument);
       
-      // Enhanced mock simulation result with real calculations
+      // Enhanced mock simulation result with real calculations for educational purposes
       const mockResult = {
         risk_reward_ratio: riskRewardRatio,
         stop_loss_probability: Math.floor(Math.random() * 30) + 20,
         take_profit_probability: Math.floor(Math.random() * 40) + 40,
-        volatility_assessment: `${spec.assetType.charAt(0).toUpperCase() + spec.assetType.slice(1)} markets showing moderate volatility`,
-        position_sizing_feedback: `Position of ${formatLotSize(lotSize, tradeParams.instrument)} appears well-sized for this ${spec.assetType} trade`,
+        volatility_assessment: `Educational example: ${spec.assetType.charAt(0).toUpperCase() + spec.assetType.slice(1)} markets showing moderate volatility`,
+        position_sizing_feedback: `Educational analysis: Position of ${formatLotSize(lotSize, tradeParams.instrument)} for learning ${spec.assetType} concepts`,
         overall_risk_score: Math.floor(Math.random() * 6) + 3,
         recommendations: [
-          `Consider ${spec.assetType}-specific market conditions`, 
-          "Monitor economic events affecting this asset class", 
-          "Ensure position size aligns with portfolio risk"
+          `Educational focus: Consider ${spec.assetType}-specific market conditions for learning`, 
+          "Educational reminder: Monitor economic events affecting this asset class", 
+          "Learning objective: Ensure position size aligns with educational risk management principles"
         ],
-        market_conditions: `${spec.assetType.charAt(0).toUpperCase() + spec.assetType.slice(1)} markets showing mixed signals with moderate volatility`,
+        market_conditions: `Educational example: ${spec.assetType.charAt(0).toUpperCase() + spec.assetType.slice(1)} markets showing mixed signals with moderate volatility`,
         calculated_risk: riskAmount,
         calculated_profit: profitAmount,
         asset_type: spec.assetType
@@ -116,40 +121,53 @@ export default function RiskSimulator() {
       await new Promise(resolve => setTimeout(resolve, 2000));
       setSimulationResult(mockResult);
     } catch (error) {
-      setError('Simulation failed. Please check your inputs and try again.');
+      setError('Educational simulation failed. Please check your inputs and try again.');
     }
     setIsSimulating(false);
   };
+
   const getRiskColor = score => {
     if (score <= 3) return 'text-accent-green';
     if (score <= 6) return 'text-accent-gold';
     return 'text-accent-red';
   };
+
   const getRiskLabel = score => {
-    if (score <= 3) return 'Low Risk';
-    if (score <= 6) return 'Medium Risk';
-    return 'High Risk';
+    if (score <= 3) return 'Low Risk Example';
+    if (score <= 6) return 'Medium Risk Example';
+    return 'High Risk Example';
   };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
       <div className="max-w-6xl mx-auto">
+        {/* Compliance Notice */}
+        <div className="mb-6">
+          <ComplianceNotice type="hypothetical" size="md" />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Pane - Trade Setup */}
+          {/* Left Pane - Educational Setup Analysis */}
           <div className="space-y-6">
             <Card className="bg-card border-border">
               <CardContent className="p-6">
                 <h2 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
                   <Calculator className="w-6 h-6 text-blue-400" />
-                  Trade Setup
+                  Educational Setup Analysis
                 </h2>
+                
+                <div className="space-y-2 mb-4">
+                  <EducationalBadge />
+                  <HypotheticalBadge />
+                </div>
                 
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Asset</label>
+                      <label className="block text-sm font-medium text-foreground mb-2">Educational Asset</label>
                       <div className="relative">
                         <Input 
-                          placeholder="Asset / Ticker (e.g., EURUSD, XAUUSD, BTCUSDT)" 
+                          placeholder="Educational Asset (e.g., EURUSD, XAUUSD, BTCUSDT)" 
                           value={tradeParams.instrument} 
                           onChange={e => handleInputChange('instrument', e.target.value)} 
                           onFocus={handleAssetFocus}
@@ -167,7 +185,7 @@ export default function RiskSimulator() {
                               <div className="p-1">
                                 {!tradeParams.instrument && (
                                   <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
-                                    Recent Assets
+                                    Recent Educational Assets
                                   </div>
                                 )}
                                 {suggestions.map((asset) => {
@@ -197,7 +215,7 @@ export default function RiskSimulator() {
                               </div>
                             ) : (
                               <div className="p-3 text-sm text-muted-foreground text-center">
-                                Start typing to see suggestions
+                                Start typing to see educational suggestions
                               </div>
                             )}
                           </div>
@@ -206,7 +224,7 @@ export default function RiskSimulator() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">
-                        Position Size
+                        Educational Position Size
                         {tradeParams.position_size && tradeParams.instrument && (
                           <span className="ml-2 text-xs text-muted-foreground">
                             ({formatLotSize(parseFloat(tradeParams.position_size) || 0, tradeParams.instrument)})
@@ -216,7 +234,7 @@ export default function RiskSimulator() {
                       <Input 
                         type="number" 
                         step="0.01"
-                        placeholder="0.1" 
+                        placeholder="0.1 (for educational analysis)" 
                         value={tradeParams.position_size} 
                         onChange={e => handleInputChange('position_size', e.target.value)} 
                         className="bg-background" 
@@ -225,11 +243,11 @@ export default function RiskSimulator() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Entry Price</label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Educational Entry Price</label>
                     <Input 
                       type="number" 
                       step="0.00001" 
-                      placeholder="1.0850" 
+                      placeholder="1.0850 (hypothetical)" 
                       value={tradeParams.entry_price} 
                       onChange={e => handleInputChange('entry_price', e.target.value)} 
                       className="bg-background" 
@@ -237,11 +255,11 @@ export default function RiskSimulator() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Stop Loss</label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Educational Stop Loss</label>
                     <Input 
                       type="number" 
                       step="0.00001" 
-                      placeholder="1.0800" 
+                      placeholder="1.0800 (learning example)" 
                       value={tradeParams.stop_loss} 
                       onChange={e => handleInputChange('stop_loss', e.target.value)} 
                       className="bg-background" 
@@ -249,11 +267,11 @@ export default function RiskSimulator() {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Take Profit</label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Educational Take Profit</label>
                     <Input 
                       type="number" 
                       step="0.00001" 
-                      placeholder="1.0950" 
+                      placeholder="1.0950 (educational target)" 
                       value={tradeParams.take_profit} 
                       onChange={e => handleInputChange('take_profit', e.target.value)} 
                       className="bg-background" 
@@ -269,12 +287,12 @@ export default function RiskSimulator() {
                   {isSimulating ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
-                      Running Simulation...
+                      Running Educational Analysis...
                     </>
                   ) : (
                     <>
                       <Target className="w-5 h-5 mr-2" />
-                      Simulate Risk
+                      Analyze Educational Setup
                     </>
                   )}
                 </Button>
@@ -292,7 +310,7 @@ export default function RiskSimulator() {
             </Card>
           </div>
 
-          {/* Right Pane - Simulation Results */}
+          {/* Right Pane - Educational Analysis Results */}
           <div className="space-y-6">
             {simulationResult ? (
               <motion.div
@@ -300,61 +318,76 @@ export default function RiskSimulator() {
                 animate={{ opacity: 1, x: 0 }}
                 className="space-y-6"
               >
-                {/* Core Numbers */}
+                {/* Educational Core Numbers */}
                 <Card className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border-green-500/30">
                   <CardContent className="p-6">
-                    <h3 className="text-xl font-bold text-foreground mb-4">Core Numbers</h3>
-                     <div className="grid grid-cols-3 gap-4 text-center">
+                    <h3 className="text-xl font-bold text-foreground mb-4">Educational Numbers</h3>
+                    <div className="mb-2">
+                      <HypotheticalBadge />
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
                         <DollarSign className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Potential Profit</p>
+                        <p className="text-sm text-muted-foreground">Hypothetical Profit</p>
                         <p className="text-xl font-bold text-green-400">
                           ${simulationResult.calculated_profit?.toFixed(2) || 'N/A'}
                         </p>
                       </div>
                       <div>
                         <TrendingDown className="w-8 h-8 text-red-400 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Potential Loss</p>
+                        <p className="text-sm text-muted-foreground">Educational Loss</p>
                         <p className="text-xl font-bold text-red-400">
                           ${simulationResult.calculated_risk?.toFixed(2) || 'N/A'}
                         </p>
                       </div>
                       <div>
                         <Target className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Risk/Reward</p>
+                        <p className="text-sm text-muted-foreground">Learning R:R</p>
                         <p className="text-xl font-bold text-blue-400">{simulationResult.risk_reward_ratio?.toFixed(1)}:1</p>
                       </div>
                     </div>
+                    <p className="text-xs text-muted-foreground text-center mt-2 italic">
+                      These are hypothetical educational examples only
+                    </p>
                   </CardContent>
                 </Card>
 
-                {/* Probability Cone */}
+                {/* Educational Probability Analysis */}
                 <Card className="bg-card border-border">
                   <CardContent className="p-6">
                     <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
                       <BarChart3 className="w-5 h-5 text-purple-400" />
-                      Probability Analysis
+                      Educational Probability Analysis
                     </h3>
+                    <div className="mb-2">
+                      <HypotheticalBadge />
+                    </div>
                     <div className="space-y-4">
                       <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Take Profit Hit:</span>
+                        <span className="text-muted-foreground">Hypothetical Take Profit Hit:</span>
                         <span className="text-green-400 font-bold">65%</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Stop Loss Hit:</span>
+                        <span className="text-muted-foreground">Educational Stop Loss Hit:</span>
                         <span className="text-red-400 font-bold">{simulationResult.stop_loss_probability}%</span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-3 mt-4">
                         <div className="bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 h-3 rounded-full w-full"></div>
                       </div>
+                      <p className="text-xs text-muted-foreground italic">
+                        Educational probabilities for learning purposes only
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* AI Risk Assessment */}
+                {/* Educational Risk Assessment */}
                 <Card className="bg-card border-border">
                   <CardContent className="p-6">
-                    <h3 className="text-xl font-bold text-foreground mb-4">AI Risk Assessment</h3>
+                    <h3 className="text-xl font-bold text-foreground mb-4">Educational Risk Assessment</h3>
+                    <div className="mb-2">
+                      <EducationalBadge />
+                    </div>
                     <p className="text-muted-foreground mb-4">{simulationResult.market_conditions}</p>
                     <div className="space-y-2">
                       {simulationResult.recommendations?.slice(0, 2).map((rec, index) => (
@@ -364,6 +397,9 @@ export default function RiskSimulator() {
                         </div>
                       ))}
                     </div>
+                    <p className="text-xs text-muted-foreground text-center mt-4 italic">
+                      All assessments are for educational purposes and learning only
+                    </p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -371,8 +407,9 @@ export default function RiskSimulator() {
               <Card className="bg-card/50 border-border/50">
                 <CardContent className="p-8 text-center">
                   <BarChart3 className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Ready to Simulate</h3>
-                  <p className="text-muted-foreground">Enter your trade parameters and click "Simulate Risk" to analyze your setup</p>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">Ready for Educational Analysis</h3>
+                  <p className="text-muted-foreground mb-2">Enter your hypothetical setup parameters and click "Analyze Educational Setup"</p>
+                  <EducationalBadge />
                 </CardContent>
               </Card>
             )}

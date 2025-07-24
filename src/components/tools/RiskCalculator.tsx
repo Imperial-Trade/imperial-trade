@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { Calculator, DollarSign, TrendingUp, AlertTriangle, Bot, Shield, Target, Brain, Search, Percent } from 'lucide-react';
 import { useAssetSearch } from '@/hooks/useAssetSearch';
 import { calculatePositionSize, calculateRiskAmount, calculatePnL, formatLotSize, getLotSizeSpec } from '@/utils/lotSizing';
+import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from '@/components/compliance/ComplianceNotice';
+
 export default function RiskCalculator() {
   const [formData, setFormData] = useState({
     accountBalance: '',
@@ -34,6 +37,7 @@ export default function RiskCalculator() {
   
   const [results, setResults] = useState(null);
   const [aiSanityCheck, setAiSanityCheck] = useState(null);
+
   // Asset selection handlers
   const handleAssetSelect = useCallback((asset: string) => {
     handleInputChange('assetTicker', asset);
@@ -87,6 +91,7 @@ export default function RiskCalculator() {
       calculateRisk();
     }
   }, [formData, riskType]);
+
   const calculateRisk = () => {
     const {
       accountBalance,
@@ -138,36 +143,36 @@ export default function RiskCalculator() {
       formattedLotSize: formatLotSize(positionSize, assetTicker)
     });
 
-    // AI Sanity Check
+    // Educational Sanity Check
     const riskPercentageForAI = riskType === 'percentage' ? riskPercentage[0] : 
       (accountBalance ? (riskAmount / parseFloat(accountBalance)) * 100 : 0);
-    generateAiSanityCheck(entry, stop, riskPercentageForAI, riskReward);
+    generateEducationalSanityCheck(entry, stop, riskPercentageForAI, riskReward);
   };
 
-  const generateAiSanityCheck = (entry, stop, risk, riskReward) => {
+  const generateEducationalSanityCheck = (entry, stop, risk, riskReward) => {
     const stopDistance = Math.abs((entry - stop) / entry * 100);
     let message = "";
     let type = "neutral";
     let confidence = 0;
 
     if (risk > 5) {
-      message = "⚠️ High risk detected! Risking more than 5% per trade significantly increases account blow-up probability.";
+      message = "⚠️ Educational note: Risking more than 5% per setup significantly increases learning curve complexity.";
       type = "warning";
       confidence = 95;
     } else if (stopDistance < 0.5) {
-      message = "🔍 Very tight stop loss detected. This setup has high probability of being stopped out by normal market noise.";
+      message = "🔍 Educational observation: Very tight stop loss detected. This setup may be challenging for learning due to market noise.";
       type = "warning"; 
       confidence = 82;
     } else if (riskReward > 3) {
-      message = "✅ Excellent risk-reward ratio! This setup offers strong profit potential relative to risk.";
+      message = "✅ Excellent educational example! This setup offers strong learning potential with favorable risk-reward structure.";
       type = "positive";
       confidence = 88;
     } else if (riskReward < 1) {
-      message = "❌ Poor risk-reward ratio detected. Consider adjusting your take profit or stop loss levels.";
+      message = "❌ Educational concern: Poor risk-reward ratio detected. Consider adjusting levels for better learning value.";
       type = "negative";
       confidence = 90;
     } else {
-      message = "👍 Solid risk management setup. Risk and reward levels appear well-balanced for this trade.";
+      message = "👍 Solid educational setup. Risk and reward levels appear well-balanced for learning purposes.";
       type = "positive";
       confidence = 75;
     }
@@ -178,24 +183,31 @@ export default function RiskCalculator() {
       confidence
     });
   };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
+        {/* Compliance Notice */}
+        <ComplianceNotice type="educational" size="md" />
 
         <Card className="bg-card/50 border-border/50 shadow-2xl backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5" />
-              Trade Setup Calculator
+              Educational Setup Calculator
             </CardTitle>
+            <div className="flex gap-2">
+              <EducationalBadge />
+              <HypotheticalBadge />
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Asset Selection Section */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Asset / Trading Pair</label>
+              <label className="text-sm font-medium text-foreground">Educational Asset / Learning Pair</label>
               <div className="relative">
                 <Input
-                  placeholder="Asset / Ticker (e.g., EURUSD, XAUUSD, BTCUSDT)"
+                  placeholder="Educational Asset (e.g., EURUSD, XAUUSD, BTCUSDT)"
                   value={formData.assetTicker}
                   onChange={e => handleInputChange('assetTicker', e.target.value)}
                   onFocus={handleAssetFocus}
@@ -213,7 +225,7 @@ export default function RiskCalculator() {
                       <div className="p-1">
                         {!formData.assetTicker && (
                           <div className="px-3 py-2 text-xs text-muted-foreground font-medium border-b border-border/30 mb-1">
-                            Recent Assets
+                            Recent Educational Assets
                           </div>
                         )}
                         {suggestions.map((asset) => {
@@ -243,7 +255,7 @@ export default function RiskCalculator() {
                       </div>
                     ) : (
                       <div className="p-3 text-sm text-muted-foreground text-center">
-                        Start typing to see suggestions
+                        Start typing to see educational suggestions
                       </div>
                     )}
                   </div>
@@ -265,12 +277,12 @@ export default function RiskCalculator() {
                     </div>
                     <div>
                       <h4 className="font-medium text-foreground">
-                        {riskType === 'percentage' ? 'Risk Percentage' : 'Dollar Risk Amount'}
+                        {riskType === 'percentage' ? 'Educational Risk Percentage' : 'Educational Dollar Risk Amount'}
                       </h4>
                       <p className="text-xs text-muted-foreground">
                         {riskType === 'percentage' 
-                          ? 'Calculate risk as % of account balance'
-                          : 'Set a fixed dollar amount to risk'
+                          ? 'Calculate educational risk as % of hypothetical account balance'
+                          : 'Set a fixed educational dollar amount for learning'
                         }
                       </p>
                     </div>
@@ -285,10 +297,10 @@ export default function RiskCalculator() {
               {riskType === 'percentage' ? (
                 <>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Account Balance ($)</label>
+                    <label className="text-sm font-medium text-foreground">Educational Account Balance ($)</label>
                     <Input 
                       type="number" 
-                      placeholder="e.g., 10000" 
+                      placeholder="e.g., 10000 (hypothetical)" 
                       value={formData.accountBalance} 
                       onChange={e => handleInputChange('accountBalance', e.target.value)} 
                       className="bg-background border-border text-foreground h-12 text-lg" 
@@ -296,7 +308,7 @@ export default function RiskCalculator() {
                   </div>
                   
                   <div className="space-y-4">
-                    <label className="text-sm font-medium text-foreground">Risk Percentage: {formData.riskPercentage[0]}%</label>
+                    <label className="text-sm font-medium text-foreground">Educational Risk Percentage: {formData.riskPercentage[0]}%</label>
                     <Slider
                       value={formData.riskPercentage}
                       onValueChange={(value) => handleInputChange('riskPercentage', value)}
@@ -306,33 +318,33 @@ export default function RiskCalculator() {
                       className="w-full"
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Conservative (0.1%)</span>
-                      <span>Aggressive (10%)</span>
+                      <span>Conservative Learning (0.1%)</span>
+                      <span>Aggressive Learning (10%)</span>
                     </div>
                   </div>
                 </>
               ) : (
                 <div className="md:col-span-2 space-y-2">
-                  <label className="text-sm font-medium text-foreground">Dollar Risk Amount ($)</label>
+                  <label className="text-sm font-medium text-foreground">Educational Dollar Risk Amount ($)</label>
                   <Input 
                     type="number" 
-                    placeholder="e.g., 200" 
+                    placeholder="e.g., 200 (hypothetical)" 
                     value={formData.riskDollar} 
                     onChange={e => handleInputChange('riskDollar', e.target.value)} 
                     className="bg-background border-border text-foreground h-12 text-lg" 
                   />
                   <p className="text-xs text-muted-foreground">
-                    Fixed dollar amount you're willing to risk on this trade
+                    Fixed hypothetical dollar amount for educational risk learning
                   </p>
                 </div>
               )}
               
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Entry Price</label>
+                <label className="text-sm font-medium text-foreground">Educational Entry Price</label>
                 <Input 
                   type="number" 
                   step="0.00001" 
-                  placeholder="e.g., 1.1500" 
+                  placeholder="e.g., 1.1500 (hypothetical)" 
                   value={formData.entryPrice} 
                   onChange={e => handleInputChange('entryPrice', e.target.value)} 
                   className="bg-background border-border text-foreground h-12 text-lg" 
@@ -340,11 +352,11 @@ export default function RiskCalculator() {
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Stop Loss</label>
+                <label className="text-sm font-medium text-foreground">Educational Stop Loss</label>
                 <Input 
                   type="number" 
                   step="0.00001" 
-                  placeholder="e.g., 1.1450" 
+                  placeholder="e.g., 1.1450 (learning example)" 
                   value={formData.stopLoss} 
                   onChange={e => handleInputChange('stopLoss', e.target.value)} 
                   className="bg-background border-border text-foreground h-12 text-lg" 
@@ -352,11 +364,11 @@ export default function RiskCalculator() {
               </div>
               
               <div className="md:col-span-2 space-y-2">
-                <label className="text-sm font-medium text-foreground">Take Profit (Optional)</label>
+                <label className="text-sm font-medium text-foreground">Educational Take Profit (Optional)</label>
                 <Input 
                   type="number" 
                   step="0.00001" 
-                  placeholder="e.g., 1.1600" 
+                  placeholder="e.g., 1.1600 (educational target)" 
                   value={formData.takeProfit} 
                   onChange={e => handleInputChange('takeProfit', e.target.value)} 
                   className="bg-background border-border text-foreground h-12 text-lg" 
@@ -364,12 +376,13 @@ export default function RiskCalculator() {
               </div>
             </div>
 
-            {/* Real-time Results */}
+            {/* Real-time Educational Results */}
             {results && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Target className="w-5 h-5 text-primary" />
-                  <h3 className="text-xl font-semibold text-foreground">Instant Risk Analysis</h3>
+                  <h3 className="text-xl font-semibold text-foreground">Instant Educational Risk Analysis</h3>
+                  <HypotheticalBadge />
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -378,8 +391,9 @@ export default function RiskCalculator() {
                       <div className="p-3 rounded-xl bg-accent-red/10 w-fit mx-auto mb-3">
                         <DollarSign className="w-6 h-6 text-accent-red" />
                       </div>
-                      <p className="text-sm text-muted-foreground mb-1">$ Amount at Risk</p>
+                      <p className="text-sm text-muted-foreground mb-1">Educational $ Amount at Risk</p>
                       <p className="text-2xl font-bold text-accent-red">${results.riskAmount}</p>
+                      <p className="text-xs text-muted-foreground italic">Hypothetical only</p>
                     </CardContent>
                   </Card>
                   
@@ -388,9 +402,10 @@ export default function RiskCalculator() {
                       <div className="p-3 rounded-xl bg-primary/10 w-fit mx-auto mb-3">
                         <TrendingUp className="w-6 h-6 text-primary" />
                       </div>
-                          <p className="text-sm text-muted-foreground mb-1">Optimal Position Size</p>
-                          <p className="text-2xl font-bold text-foreground">{results.positionSize}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{results.formattedLotSize}</p>
+                      <p className="text-sm text-muted-foreground mb-1">Educational Position Size</p>
+                      <p className="text-2xl font-bold text-foreground">{results.positionSize}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{results.formattedLotSize}</p>
+                      <p className="text-xs text-muted-foreground italic">Learning example</p>
                     </CardContent>
                   </Card>
                   
@@ -401,8 +416,9 @@ export default function RiskCalculator() {
                           <div className="p-3 rounded-xl bg-accent-green/10 w-fit mx-auto mb-3">
                             <DollarSign className="w-6 h-6 text-accent-green" />
                           </div>
-                          <p className="text-sm text-muted-foreground mb-1">Potential Profit</p>
+                          <p className="text-sm text-muted-foreground mb-1">Educational Potential Profit</p>
                           <p className="text-2xl font-bold text-accent-green">${results.potentialProfit}</p>
+                          <p className="text-xs text-muted-foreground italic">Hypothetical example</p>
                         </CardContent>
                       </Card>
                       
@@ -411,106 +427,29 @@ export default function RiskCalculator() {
                           <div className="p-3 rounded-xl bg-accent-gold/10 w-fit mx-auto mb-3">
                             <Target className="w-6 h-6 text-accent-gold" />
                           </div>
-                          <p className="text-sm text-muted-foreground mb-1">Risk:Reward Ratio</p>
+                          <p className="text-sm text-muted-foreground mb-1">Educational Risk:Reward</p>
                           <p className="text-2xl font-bold text-accent-gold">1:{results.riskReward}</p>
+                          <p className="text-xs text-muted-foreground italic">Learning ratio</p>
                         </CardContent>
                       </Card>
                     </>
                   )}
                 </div>
 
-                {/* AI Sanity Check */}
+                {/* Educational AI Sanity Check */}
                 {aiSanityCheck && (
-                  <Card className={`border-l-4 ${
-                    aiSanityCheck.type === 'positive' ? 'border-l-accent-green bg-accent-green/5' :
-                    aiSanityCheck.type === 'warning' ? 'border-l-accent-gold bg-accent-gold/5' :
-                    aiSanityCheck.type === 'negative' ? 'border-l-accent-red bg-accent-red/5' :
-                    'border-l-primary bg-primary/5'
-                  } bg-card/50 border-border/50 backdrop-blur-sm`}>
+                  <Card className={`border-2 ${aiSanityCheck.type === 'positive' ? 'border-accent-green/30 bg-accent-green/5' : aiSanityCheck.type === 'warning' ? 'border-accent-gold/30 bg-accent-gold/5' : 'border-accent-red/30 bg-accent-red/5'}`}>
                     <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-xl ${
-                          aiSanityCheck.type === 'positive' ? 'bg-accent-green/10' :
-                          aiSanityCheck.type === 'warning' ? 'bg-accent-gold/10' :
-                          aiSanityCheck.type === 'negative' ? 'bg-accent-red/10' :
-                          'bg-primary/10'
-                        }`}>
-                          <Brain className={`w-6 h-6 ${
-                            aiSanityCheck.type === 'positive' ? 'text-accent-green' :
-                            aiSanityCheck.type === 'warning' ? 'text-accent-gold' :
-                            aiSanityCheck.type === 'negative' ? 'text-accent-red' :
-                            'text-primary'
-                          }`} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-semibold text-foreground">AI Risk Assessment</h4>
-                            <Badge className="bg-primary/10 text-primary text-xs">
-                              {aiSanityCheck.confidence}% confidence
-                            </Badge>
-                          </div>
-                          <p className="text-muted-foreground">{aiSanityCheck.message}</p>
-                        </div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <Brain className={`w-6 h-6 ${aiSanityCheck.type === 'positive' ? 'text-accent-green' : aiSanityCheck.type === 'warning' ? 'text-accent-gold' : 'text-accent-red'}`} />
+                        <h3 className="text-lg font-semibold text-foreground">Educational AI Analysis</h3>
+                        <EducationalBadge />
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* How Did I Calculate It Section */}
-                {results && (
-                  <Card className="bg-card/50 border-border/50 backdrop-blur-sm">
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Calculator className="w-5 h-5 text-primary" />
-                        <h3 className="text-lg font-semibold text-foreground">How did I calculate it?</h3>
-                      </div>
-                      
-                      <div className="space-y-4 text-sm">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-3">
-                            <div className="p-3 bg-muted/30 rounded-lg">
-                              <h4 className="font-medium text-foreground mb-2">Risk Amount</h4>
-                              <p className="text-muted-foreground leading-relaxed">
-                                {riskType === 'percentage' 
-                                  ? `Account Balance × Risk % = $${formData.accountBalance} × ${formData.riskPercentage[0]}% = $${results.riskAmount}`
-                                  : `Fixed Dollar Risk = $${formData.riskDollar}`
-                                }
-                              </p>
-                            </div>
-                            
-                            <div className="p-3 bg-muted/30 rounded-lg">
-                              <h4 className="font-medium text-foreground mb-2">Price Movement</h4>
-                              <p className="text-muted-foreground leading-relaxed">
-                                Entry to Stop Loss = |${formData.entryPrice} - ${formData.stopLoss}| = ${results.pipValue}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-3">
-                            <div className="p-3 bg-muted/30 rounded-lg">
-                              <h4 className="font-medium text-foreground mb-2">Position Size</h4>
-                              <p className="text-muted-foreground leading-relaxed">
-                                Risk Amount ÷ (Price Movement × Contract Size) = ${results.riskAmount} ÷ ${results.pipValue} = {results.positionSize} lots
-                              </p>
-                            </div>
-                            
-                            {results.potentialProfit > 0 && (
-                              <div className="p-3 bg-muted/30 rounded-lg">
-                                <h4 className="font-medium text-foreground mb-2">Risk:Reward Ratio</h4>
-                                <p className="text-muted-foreground leading-relaxed">
-                                  Potential Profit ÷ Risk = ${results.potentialProfit} ÷ ${results.riskAmount} = 1:{results.riskReward}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="pt-3 border-t border-border/30">
-                          <p className="text-xs text-muted-foreground">
-                            <strong>Asset Type:</strong> {results.assetType} • 
-                            Contract calculations follow industry standard lot sizing mechanics for optimal accuracy.
-                          </p>
-                        </div>
+                      <p className="text-muted-foreground mb-2">{aiSanityCheck.message}</p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span>Educational Confidence: {aiSanityCheck.confidence}%</span>
+                        <span className="text-xs italic">• For learning purposes only</span>
                       </div>
                     </CardContent>
                   </Card>

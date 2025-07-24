@@ -6,7 +6,7 @@ import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-reac
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
-import usePriceFeed from '@/components/hooks/usePriceFeed';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -146,10 +146,39 @@ export default function SignalStream() {
     return symbolList as string[];
   }, [activeAlerts]);
   const {
-    prices: livePrices,
+    prices: livePricesData,
     connectionStatus: priceConnectionStatus,
-    priceSource
-  } = usePriceFeed(symbols);
+    dataSource: priceSource,
+    subscribe,
+    unsubscribe,
+    getPrice
+  } = useWebSocketPrices();
+
+  // Convert price data to simple number format for compatibility
+  const livePrices = useMemo(() => {
+    const result: Record<string, number> = {};
+    Object.entries(livePricesData).forEach(([symbol, priceData]) => {
+      if (priceData && typeof priceData.price === 'number') {
+        result[symbol] = priceData.price;
+      }
+    });
+    return result;
+  }, [livePricesData]);
+
+  // Subscribe to symbols for live price updates
+  useEffect(() => {
+    if (symbols.length > 0) {
+      console.log('SignalStream - Subscribing to symbols:', symbols);
+      subscribe(symbols);
+    }
+    
+    return () => {
+      if (symbols.length > 0) {
+        console.log('SignalStream - Unsubscribing from symbols:', symbols);
+        unsubscribe(symbols);
+      }
+    };
+  }, [symbols, subscribe, unsubscribe]);
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
 
   // Real-time connection status badge

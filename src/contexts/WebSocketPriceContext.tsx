@@ -145,11 +145,29 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
     setConnectionStatus('connecting');
     
-    // Try HTTP fallback first for better reliability
+    // Try HTTP fallback immediately for better user experience
     if (subscribedSymbolsRef.current.size > 0) {
       const symbols = Array.from(subscribedSymbolsRef.current);
-      console.log('🔄 Attempting HTTP fallback first for symbols:', symbols);
+      console.log('🔄 Starting immediate HTTP fallback for symbols:', symbols);
       fetchPricesHTTP(symbols);
+      
+      // Set a faster timeout for connection state - if WebSocket doesn't connect in 2 seconds, stay with HTTP
+      const quickTimeout = setTimeout(() => {
+        if (socketRef.current?.readyState !== WebSocket.OPEN) {
+          console.log('⚡ Fast timeout: Using HTTP mode, WebSocket took too long');
+          setConnectionStatus('connected'); // Consider HTTP as connected
+          setDataSource('twelve_data_api');
+        }
+      }, 2000); // Very fast 2-second timeout
+      
+      // Clear timeout on successful WebSocket connection
+      const originalOnOpen = () => {
+        clearTimeout(quickTimeout);
+        console.log('✅ WebSocket connected - canceling HTTP-only mode');
+      };
+      
+      // Store timeout reference for cleanup
+      (window as any).wsQuickTimeout = quickTimeout;
     }
     
     try {
@@ -162,6 +180,12 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         console.log('✅ WebSocket connected to live price stream');
         setConnectionStatus('connected');
         reconnectAttemptsRef.current = 0;
+        
+        // Clear the fast timeout since WebSocket connected successfully
+        if ((window as any).wsQuickTimeout) {
+          clearTimeout((window as any).wsQuickTimeout);
+          (window as any).wsQuickTimeout = null;
+        }
         
         // Clear any connection errors
         setErrors(prev => {

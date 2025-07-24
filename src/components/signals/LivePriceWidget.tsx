@@ -361,8 +361,8 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
   }
 
   return (
-    <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
+      <div className="flex items-center justify-between h-6">
         <div className="flex items-center space-x-2">
           <Wifi className="w-4 h-4 text-emerald-400" />
           <span className="text-sm font-medium text-gray-300">Live Price</span>
@@ -370,7 +370,7 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
             <Zap className="w-3 h-3" />
           </Badge>
         </div>
-        <div className="text-right">
+        <div className="text-right min-w-[80px]">
           <div className="text-lg font-mono font-bold text-white">
             ${currentPrice?.toFixed(2) || '--'}
           </div>

@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Calendar, Clock, Filter, AlertTriangle, Zap, TrendingUp, RefreshCw, Bot, Brain, Activity, Globe } from 'lucide-react';
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isToday, isTomorrow, parseISO } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isToday, isTomorrow, parseISO, addDays } from 'date-fns';
+import { economicCalendarService } from '@/services/EconomicCalendarService';
 
 interface EconomicEvent {
   id: string;
@@ -14,8 +15,8 @@ interface EconomicEvent {
   currency: string;
   event: string;
   impact: 'high' | 'medium' | 'low';
-  forecast: string;
-  previous: string;
+  forecast?: string;
+  previous?: string;
   actual?: string;
   description: string;
   aiVolatilityForecast?: {
@@ -122,15 +123,29 @@ export default function EconomicCalendar() {
     setIsLoading(true);
     setError('');
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const today = new Date();
+      const dateFrom = format(today, 'yyyy-MM-dd');
+      const dateTo = format(addDays(today, 7), 'yyyy-MM-dd'); // Get next 7 days of events
+      
+      const eventsData = await economicCalendarService.getEconomicEvents({
+        dateFrom,
+        dateTo,
+        currencies: ['USD', 'EUR', 'GBP', 'JPY', 'CAD'],
+        impacts: ['high', 'medium', 'low']
+      });
+      
+      console.log('Economic events loaded from database:', eventsData);
+      setEvents(eventsData);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error('Failed to load economic events:', err);
+      setError('Failed to load economic events. Using fallback data.');
+      // Fallback to mock data
       setEvents(mockEvents);
       setLastUpdated(new Date());
-    } catch (error) {
-      setError('Failed to load economic events. Using cached data.');
-      setEvents(mockEvents);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const filterEvents = () => {

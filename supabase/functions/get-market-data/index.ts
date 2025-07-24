@@ -165,8 +165,20 @@ function determineEnhancedMarketContext(price: number, indicators: any, changePe
 
 async function fetchFromTwelveData(symbol: string, apiKey: string): Promise<MarketDataPoint | null> {
   try {
-    // Convert symbol format for Twelve Data API
-    const apiSymbol = symbol.replace('/', '');
+    // Enhanced symbol format conversion for Twelve Data API
+    let apiSymbol = symbol.replace('/', '');
+    
+    // Handle special cases for commodities and crypto
+    if (symbol === 'GOLD' || symbol === 'XAU/USD') {
+      apiSymbol = 'XAU/USD';
+    } else if (symbol === 'BTC/USD' || symbol === 'BTCUSD') {
+      apiSymbol = 'BTC/USD';
+    } else if (symbol.includes('/')) {
+      // Keep forex pairs as-is
+      apiSymbol = symbol;
+    }
+    
+    console.log(`🔍 Fetching data for ${symbol} using API symbol: ${apiSymbol}`);
     
     const [quoteResponse, rsiResponse] = await Promise.allSettled([
       fetch(`https://api.twelvedata.com/quote?symbol=${apiSymbol}&apikey=${apiKey}`),
@@ -216,9 +228,9 @@ function generateEnhancedMockData(symbols: string[]): MarketDataPoint[] {
     // Forex
     'EUR/USD': 1.085, 'GBP/USD': 1.25, 'USD/JPY': 150, 'AUD/USD': 0.66,
     'USD/CAD': 1.35, 'NZD/USD': 0.61,
-    // Commodities
-    'GOLD': 2055, 'SILVER': 24.5, 'OIL': 72, 'NATURAL_GAS': 2.8,
-    'COPPER': 3.85, 'WHEAT': 6.2,
+    // Commodities (with current approximate prices)
+    'GOLD': 2665, 'XAU/USD': 2665, 'SILVER': 30.2, 'OIL': 70.5, 'NATURAL_GAS': 3.1,
+    'COPPER': 4.15, 'WHEAT': 5.8,
     // ETFs
     'QQQ': 385, 'IWM': 195, 'DIA': 355, 'VTI': 245, 'GLD': 185, 'USO': 75
   };

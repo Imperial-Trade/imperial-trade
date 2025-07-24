@@ -93,8 +93,8 @@ function setCachedPrice(symbol: string, data: PriceUpdate): void {
 
 function generateMockData(symbols: string[]): PriceUpdate[] {
   const basePrices: Record<string, number> = {
-    'GOLD': 2055,
-    'BTCUSD': 43500
+    'GOLD': 2665,     // Current approximate Gold price
+    'BTCUSD': 102500  // Current approximate Bitcoin price
   };
   
   return symbols.map((symbol: string) => {
@@ -193,8 +193,43 @@ serve(async (req) => {
   const { headers } = req;
   const upgradeHeader = headers.get("upgrade") || "";
 
+  // Handle HTTP requests as fallback to get-market-data
   if (upgradeHeader.toLowerCase() !== "websocket") {
-    return new Response("Expected WebSocket connection", { status: 400 });
+    if (req.method === 'POST') {
+      try {
+        const { symbols } = await req.json();
+        console.log('📊 HTTP fallback request for symbols:', symbols);
+        
+        // Forward to get-market-data function
+        const response = await fetch(`https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/get-market-data`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ symbols })
+        });
+
+        const data = await response.json();
+        return new Response(JSON.stringify(data), { 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          } 
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ 
+          error: 'Failed to process HTTP request',
+          details: error.message 
+        }), { 
+          status: 500,
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          } 
+        });
+      }
+    }
+    return new Response("Expected WebSocket connection or POST request", { status: 400 });
   }
 
   const { socket, response } = Deno.upgradeWebSocket(req);

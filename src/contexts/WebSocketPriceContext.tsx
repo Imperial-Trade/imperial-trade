@@ -60,30 +60,40 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return delay;
   }, []);
 
-  // HTTP fallback for price fetching
+  // HTTP fallback for price fetching with better Gold symbol mapping
   const fetchPricesHTTP = useCallback(async (symbols: string[]) => {
     try {
+      console.log('🔄 HTTP fallback: fetching prices for', symbols);
+      
+      // Map symbols to correct API format (Gold -> GOLD, BTC -> BTC/USD)
+      const mappedSymbols = symbols.map(symbol => {
+        if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'GOLD';
+        if (symbol === 'BTC' || symbol === 'BITCOIN') return 'BTC/USD';
+        return symbol;
+      });
+
       const response = await fetch(`https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/get-market-data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ symbols })
+        body: JSON.stringify({ symbols: mappedSymbols })
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
+        throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('📊 HTTP response data:', data);
       
-      if (data.success && data.data) {
-        const updates: PriceData[] = data.data.map((item: any) => ({
+      if (data.prices && Array.isArray(data.prices)) {
+        const updates: PriceData[] = data.prices.map((item: any) => ({
           symbol: item.symbol,
           price: parseFloat(item.price) || 0,
           change: parseFloat(item.change) || 0,
           changePercent: parseFloat(item.changePercent) || 0,
-          timestamp: new Date().toISOString()
+          timestamp: item.timestamp || new Date().toISOString()
         }));
 
         setPrices(prev => {
@@ -94,7 +104,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           return newPrices;
         });
         
-        setDataSource('twelve_data_api');
+        setDataSource(data.dataQuality === 'simulated' ? 'unavailable' : 'twelve_data_api');
         setLastUpdated(new Date());
         setConnectionStatus('connected');
         
@@ -104,14 +114,22 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           updates.forEach(update => {
             delete newErrors[update.symbol];
           });
+          if (data.warning) {
+            newErrors.global = data.warning;
+          }
           return newErrors;
         });
+
+        console.log('✅ HTTP fallback successful, updated prices for', updates.length, 'symbols');
       }
     } catch (error) {
-      console.error('HTTP price fetch failed:', error);
+      console.error('❌ HTTP price fetch failed:', error);
       setConnectionStatus('error');
       setDataSource('unavailable');
-      setErrors(prev => ({ ...prev, global: 'Failed to fetch price data' }));
+      setErrors(prev => ({ 
+        ...prev, 
+        global: `Failed to fetch live price data: ${error instanceof Error ? error.message : 'Unknown error'}`
+      }));
     }
   }, []);
 
@@ -122,18 +140,34 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
     setConnectionStatus('connecting');
     
+    // Try HTTP fallback first for better reliability
+    if (subscribedSymbolsRef.current.size > 0) {
+      const symbols = Array.from(subscribedSymbolsRef.current);
+      console.log('🔄 Attempting HTTP fallback first for symbols:', symbols);
+      fetchPricesHTTP(symbols);
+    }
+    
     try {
-      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/live-price-stream`;
+      // Correct WebSocket URL format for Supabase Edge Functions  
+      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.functions.supabase.co/live-price-stream`;
+      console.log('🔌 Connecting to WebSocket:', wsUrl);
       socketRef.current = new WebSocket(wsUrl);
 
       socketRef.current.onopen = () => {
-        console.log('WebSocket connected to live price stream');
+        console.log('✅ WebSocket connected to live price stream');
         setConnectionStatus('connected');
         reconnectAttemptsRef.current = 0;
+        
+        // Clear any connection errors
+        setErrors(prev => {
+          const { global, ...rest } = prev;
+          return global?.includes('WebSocket') ? rest : prev;
+        });
         
         // Re-subscribe to symbols after reconnection
         if (subscribedSymbolsRef.current.size > 0) {
           const symbols = Array.from(subscribedSymbolsRef.current);
+          console.log('🔄 Re-subscribing to symbols:', symbols);
           socketRef.current?.send(JSON.stringify({
             type: 'subscribe',
             symbols
@@ -227,6 +261,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, [getReconnectDelay]);
 
   const subscribe = useCallback((symbols: string[]) => {
+    console.log('📡 Subscribing to symbols:', symbols);
     symbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
     
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -235,18 +270,14 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         symbols
       }));
     } else {
-      // Try WebSocket first, then fallback to HTTP
-      connect();
+      // Try HTTP fallback immediately for faster response
+      console.log('🔄 WebSocket not ready, using HTTP fallback immediately');
+      fetchPricesHTTP(symbols);
       
-      // Also try HTTP immediately as fallback
-      setTimeout(() => {
-        if (connectionStatus !== 'connected') {
-          console.log('WebSocket failed, using HTTP fallback for initial load');
-          fetchPricesHTTP(symbols);
-        }
-      }, 2000);
+      // Also try WebSocket connection
+      connect();
     }
-  }, [connect, connectionStatus, fetchPricesHTTP]);
+  }, [connect, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     symbols.forEach(symbol => subscribedSymbolsRef.current.delete(symbol));

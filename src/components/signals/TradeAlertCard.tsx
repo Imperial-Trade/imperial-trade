@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2, User, Crown, GraduationCap } from 'lucide-react';
@@ -350,4 +350,32 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   );
 };
 
-export default TradeAlertCard;
+export default memo(TradeAlertCard, (prevProps, nextProps) => {
+  // Only re-render if non-price related props change
+  return (
+    prevProps.alert.id === nextProps.alert.id &&
+    prevProps.alert.status === nextProps.alert.status &&
+    prevProps.alert.asset_name === nextProps.alert.asset_name &&
+    prevProps.alert.trade_type === nextProps.alert.trade_type &&
+    prevProps.alert.entry_price === nextProps.alert.entry_price &&
+    prevProps.alert.stop_loss === nextProps.alert.stop_loss &&
+    prevProps.alert.tp1 === nextProps.alert.tp1 &&
+    prevProps.alert.tp2 === nextProps.alert.tp2 &&
+    prevProps.alert.tp3 === nextProps.alert.tp3 &&
+    prevProps.alert.tp4 === nextProps.alert.tp4 &&
+    prevProps.alert.tp5 === nextProps.alert.tp5 &&
+    prevProps.alert.notes === nextProps.alert.notes &&
+    prevProps.alert.close_reason === nextProps.alert.close_reason &&
+    prevProps.alert.tp_hits === nextProps.alert.tp_hits &&
+    prevProps.isAdmin === nextProps.isAdmin &&
+    prevProps.isCreator === nextProps.isCreator &&
+    prevProps.connectionStatus === nextProps.connectionStatus &&
+    prevProps.priceSource === nextProps.priceSource &&
+    prevProps.isRecentClosure === nextProps.isRecentClosure &&
+    prevProps.className === nextProps.className &&
+    prevProps.testId === nextProps.testId &&
+    JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator) &&
+    // Allow livePrice to change without blocking re-render, but prevent unnecessary renders for same price
+    prevProps.livePrice === nextProps.livePrice
+  );
+});

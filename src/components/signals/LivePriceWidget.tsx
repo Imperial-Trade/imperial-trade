@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass } from 'lucide-react';
 
@@ -24,7 +24,7 @@ const calculatePips = (entry, current, symbol) => {
 };
 
 
-export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit, onOrderActivation, livePrice, connectionStatus, priceSource }) {
+const LivePriceWidgetComponent = ({ alert, onTakeProfitHit, onStopLossHit, onOrderActivation, livePrice, connectionStatus, priceSource }) => {
   const [priceChange, setPriceChange] = useState(null);
   const [lastProcessedPrice, setLastProcessedPrice] = useState(null);
   const isProcessingRef = useRef(false);
@@ -437,4 +437,7 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
       )}
     </div>
   );
-}
+};
+
+export const LivePriceWidget = memo(LivePriceWidgetComponent);
+export default LivePriceWidget;

@@ -369,8 +369,6 @@ export default memo(TradeAlertCard, (prevProps, nextProps) => {
     prevProps.alert.tp_hits === nextProps.alert.tp_hits &&
     prevProps.isAdmin === nextProps.isAdmin &&
     prevProps.isCreator === nextProps.isCreator &&
-    prevProps.connectionStatus === nextProps.connectionStatus &&
-    prevProps.priceSource === nextProps.priceSource &&
     prevProps.isRecentClosure === nextProps.isRecentClosure &&
     prevProps.className === nextProps.className &&
     prevProps.testId === nextProps.testId &&

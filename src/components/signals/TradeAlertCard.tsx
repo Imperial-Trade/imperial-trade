@@ -310,12 +310,12 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         
         if (!entryPrice || !stopLoss) return null;
         
-        // Calculate proximity to stop loss
+        // Calculate proximity to stop loss (works for both buy and sell trades)
         const totalDistance = Math.abs(entryPrice - stopLoss);
         const currentDistance = Math.abs(currentPrice - stopLoss);
         const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
         
-        // Only show warning if 50% or closer to stop loss
+        // Only show warning if 50% or closer to stop loss, hide if price goes back to 49% or less
         if (proximityPercentage >= 50) {
           return (
             <div className="px-4 pb-4">

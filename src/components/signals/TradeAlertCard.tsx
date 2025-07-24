@@ -324,7 +324,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 <div className="text-xs text-amber-300">
                   <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>
                   <br />
-                  <span className="text-amber-400/80">This trade is {proximityPercentage >= 75 ? 'very close' : 'halfway'} to its invalidation point.</span>
+                  <span className="text-amber-400/80">This trade is more than halfway to its invalidation point.</span>
                 </div>
               </div>
             </div>

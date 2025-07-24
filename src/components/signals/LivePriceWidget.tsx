@@ -296,12 +296,22 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
 
   if (!currentPrice && connectionStatus === 'connected') {
     return (
-      <div className="bg-gray-900/30 rounded-lg p-3 text-center border border-gray-700">
-        <div className="text-sm text-gray-400 mb-2">
-          🔍 Price data not available for {alert.finnhub_symbol}
+      <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
+        <div className="flex items-center justify-between h-6">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 text-yellow-400" />
+            <span className="text-sm font-medium text-gray-300">Price Data</span>
+          </div>
+          <div className="text-right min-w-[80px]">
+            <div className="text-lg font-mono font-bold text-gray-400">
+              --
+            </div>
+          </div>
         </div>
-        <div className="text-xs text-gray-500">
-          Symbol: {alert.finnhub_symbol} | Status: {connectionStatus}
+        <div className="flex items-center justify-center">
+          <div className="text-sm text-gray-400">
+            🔍 No data for {alert.finnhub_symbol}
+          </div>
         </div>
       </div>
     );
@@ -309,22 +319,48 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
 
   if (connectionStatus === 'connecting') {
     return (
-      <div className="bg-gray-900/30 rounded-lg p-3 text-center border border-gray-700">
-        <div className="animate-pulse flex items-center justify-center space-x-2">
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+      <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
+        <div className="flex items-center justify-between h-6">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+            <span className="text-sm font-medium text-gray-300">Connecting</span>
+          </div>
+          <div className="text-right min-w-[80px]">
+            <div className="text-lg font-mono font-bold text-gray-400">
+              --
+            </div>
+          </div>
         </div>
-        <div className="text-sm text-gray-400 mt-2">Connecting to live feed...</div>
+        <div className="flex items-center justify-center">
+          <div className="flex space-x-1">
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (connectionStatus === 'error') {
     return (
-      <div className="bg-red-900/20 rounded-lg p-3 text-center border border-red-500/30">
-        <div className="text-sm text-red-400 mb-1">⚠️ Price feed unavailable</div>
-        <div className="text-xs text-gray-500">Retrying connection...</div>
+      <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
+        <div className="flex items-center justify-between h-6">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 text-red-400" />
+            <span className="text-sm font-medium text-gray-300">Error</span>
+          </div>
+          <div className="text-right min-w-[80px]">
+            <div className="text-lg font-mono font-bold text-gray-400">
+              --
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center">
+          <div className="text-sm text-red-400">
+            ⚠️ Feed unavailable
+          </div>
+        </div>
       </div>
     );
   }

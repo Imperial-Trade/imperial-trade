@@ -319,8 +319,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         if (proximityPercentage >= 50) {
           return (
             <div className="px-4 pb-4">
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-md p-3 flex items-start gap-2">
-                <span className="text-amber-400 mt-0.5">🟡</span>
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-md p-3 flex items-center gap-2">
+                <span className="text-amber-400">🟡</span>
                 <div className="text-xs text-amber-300">
                   <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>
                   <br />

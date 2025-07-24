@@ -31,7 +31,7 @@ import {
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ComplianceNotice } from "@/components/compliance/ComplianceNotice";
 
-import EconomicCalendar from "@/components/tools/EconomicCalendar";
+import OptimizedEconomicCalendar from "@/components/economic/OptimizedEconomicCalendar";
 import RiskCalculator from "@/components/tools/RiskCalculator";
 import TradeAnalyst from "@/components/ai/TradeAnalyst";
 import OpportunityScanner from "@/components/ai/OpportunityScanner";
@@ -48,7 +48,7 @@ const coreTools = [
   {
     name: "Economic Calendar",
     icon: Calendar,
-    component: EconomicCalendar,
+    component: OptimizedEconomicCalendar,
     description: "Stay informed about market-moving events for educational analysis.",
   },
   {
@@ -238,7 +238,7 @@ export default function AdvancedTools() {
                   <TradingJournal />
                 </div>
                 <div style={{ display: activeTool?.name === "Economic Calendar" ? 'block' : 'none' }}>
-                  <EconomicCalendar />
+                  <OptimizedEconomicCalendar />
                 </div>
                 <div style={{ display: activeTool?.name === "Educational Calculator" ? 'block' : 'none' }}>
                   <RiskCalculator />

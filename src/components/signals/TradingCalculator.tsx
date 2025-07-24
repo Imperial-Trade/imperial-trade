@@ -10,17 +10,50 @@ export default function TradingCalculator({ alert, livePrice }) {
   const [accountBalance, setAccountBalance] = useState('');
   const [lotSize, setLotSize] = useState('');
   
-  // Calculate maximum safe lot size based on account balance (max 10% risk)
-  const maxSafeLotSize = useMemo(() => {
+  
+  // Calculate maximum lot size based on 100% margin usage
+  const maxLotSizeByMargin = useMemo(() => {
     const balance = parseFloat(accountBalance) || 0;
-    const entryPrice = alert.entry_price || 0;
-    const stopLoss = alert.stop_loss || 0;
-    
-    if (!balance || !entryPrice || !stopLoss) return null;
-    
-    const maxRiskAmount = balance * 0.10; // Max 10% of account
     const symbol = alert.finnhub_symbol || alert.asset_name || '';
-    const maxLots = calculatePositionSize(maxRiskAmount, entryPrice, stopLoss, symbol);
+    
+    if (!balance || !symbol) return null;
+    
+    // Margin requirements per 1 lot for different assets
+    const getMarginPerLot = (symbol: string): number => {
+      const upperSymbol = symbol.toUpperCase();
+      
+      // Gold/XAU margin requirements
+      if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) {
+        return 333; // $333 margin per 1 lot of Gold
+      }
+      
+      // Major forex pairs (approximate margin requirements)
+      if (upperSymbol.includes('EUR') || upperSymbol.includes('GBP') || 
+          upperSymbol.includes('USD') || upperSymbol.includes('JPY') ||
+          upperSymbol.includes('AUD') || upperSymbol.includes('CAD') ||
+          upperSymbol.includes('CHF') || upperSymbol.includes('NZD')) {
+        return 500; // $500 margin per 1 lot for major pairs
+      }
+      
+      // Crypto (higher margin requirements)
+      if (upperSymbol.includes('BTC') || upperSymbol.includes('ETH') ||
+          upperSymbol.includes('CRYPTO')) {
+        return 1000; // $1000 margin per 1 lot for crypto
+      }
+      
+      // Indices
+      if (upperSymbol.includes('SPX') || upperSymbol.includes('NAS') ||
+          upperSymbol.includes('DOW') || upperSymbol.includes('FTSE') ||
+          upperSymbol.includes('DAX') || upperSymbol.includes('INDEX')) {
+        return 200; // $200 margin per 1 lot for indices
+      }
+      
+      // Default fallback
+      return 500;
+    };
+    
+    const marginPerLot = getMarginPerLot(symbol);
+    const maxLots = Math.floor(balance / marginPerLot * 100) / 100; // Round down to 2 decimals
     
     return Math.max(0.01, maxLots); // Minimum 0.01 lots
   }, [accountBalance, alert]);
@@ -140,9 +173,9 @@ export default function TradingCalculator({ alert, livePrice }) {
                   ({formatLotSize(parseFloat(lotSize) || 0, alert.finnhub_symbol || alert.asset_name || '')})
                 </span>
               )}
-              {maxSafeLotSize && (
+              {maxLotSizeByMargin && (
                 <span className="ml-2 text-xs text-emerald-400">
-                  Max: {maxSafeLotSize.toFixed(2)}
+                  Max: {maxLotSizeByMargin.toFixed(2)}
                 </span>
               )}
             </Label>
@@ -151,30 +184,29 @@ export default function TradingCalculator({ alert, livePrice }) {
               step="any"
               placeholder="0.1"
               value={lotSize}
-              max={maxSafeLotSize || undefined}
+              max={maxLotSizeByMargin || undefined}
               onChange={(e) => {
                 const inputValue = e.target.value;
                 const numValue = parseFloat(inputValue);
                 
-                // Allow input but warn if exceeding max
-                if (maxSafeLotSize && numValue > maxSafeLotSize) {
-                  // Still allow the input but will show warning below
-                  setLotSize(inputValue);
-                } else {
-                  setLotSize(inputValue);
+                // Prevent input if exceeding margin limit
+                if (maxLotSizeByMargin && numValue > maxLotSizeByMargin) {
+                  // Don't allow the input - enforce hard limit
+                  return;
                 }
+                setLotSize(inputValue);
               }}
               onWheel={handleNumberInputWheel}
               className={`bg-gray-800 border-gray-600 text-white h-8 text-sm ${
-                maxSafeLotSize && parseFloat(lotSize) > maxSafeLotSize 
+                maxLotSizeByMargin && parseFloat(lotSize) > maxLotSizeByMargin 
                   ? 'border-red-500 ring-1 ring-red-500' 
                   : ''
               }`}
             />
-            {maxSafeLotSize && parseFloat(lotSize) > maxSafeLotSize && (
+            {maxLotSizeByMargin && parseFloat(lotSize) > maxLotSizeByMargin && (
               <div className="text-xs text-red-400 mt-1 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
-                Position size exceeds safe limit (10% max risk)
+                Position size exceeds margin limit (100% margin used)
               </div>
             )}
           </div>

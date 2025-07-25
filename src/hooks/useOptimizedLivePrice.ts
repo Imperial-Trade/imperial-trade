@@ -25,7 +25,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 1000
+    debounceMs = 500
   } = options;
 
   const {

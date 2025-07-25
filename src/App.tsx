@@ -134,7 +134,7 @@ function App() {
                           element={
                             <ProtectedRoute>
                               <Layout>
-                                <div />
+                                <div></div>
                               </Layout>
                             </ProtectedRoute>
                           }

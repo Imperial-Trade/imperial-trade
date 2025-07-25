@@ -16,6 +16,7 @@ import { RouteRedirectHandler } from "@/components/routing/RouteRedirectHandler"
 // Layout Components
 import LandingLayout from "@/pages/layouts/LandingLayout";
 import Layout from "@/components/Layout";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 
 // Landing Pages
 import Landing from "@/pages/landing-page/landing/Landing";
@@ -133,9 +134,7 @@ function App() {
                           path="/dashboard"
                           element={
                             <ProtectedRoute>
-                              <Layout>
-                                <div>Dashboard Content</div>
-                              </Layout>
+                              <DashboardLayout />
                             </ProtectedRoute>
                           }
                           errorElement={<RouteErrorBoundary />}

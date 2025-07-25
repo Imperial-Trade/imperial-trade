@@ -58,13 +58,7 @@ export default function Forum() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Users className="h-8 w-8 text-primary" />
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">Community Forum</h1>
-                <p className="text-sm text-primary/70 font-medium">Never Trade Alone</p>
-              </div>
-            </div>
+            <h1 className="text-3xl font-bold text-foreground">Community Forum</h1>
             <p className="text-muted-foreground">Connect with fellow traders and share insights</p>
           </div>
           <Button className="bg-primary hover:bg-primary/90">

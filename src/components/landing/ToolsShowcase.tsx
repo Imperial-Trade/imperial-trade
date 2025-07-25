@@ -1,7 +1,66 @@
 
 import React, { useEffect, useRef } from "react";
+import { BarChart3, Brain, Shield, Zap, Target, Smartphone, TrendingUp, DollarSign } from "lucide-react";
 import ContentSection from "./ContentSection";
-import { tools } from "./constants";
+
+const tools = [
+  {
+    icon: BarChart3,
+    title: "Advanced Analytics",
+    description: "Real-time market analysis with AI-powered insights and predictive modeling",
+    color: "hsl(var(--feature-blue))",
+    gradient: "from-blue-500 to-purple-500"
+  },
+  {
+    icon: Brain,
+    title: "AI Trading Assistant", 
+    description: "Personalized trading recommendations and strategy optimization",
+    color: "hsl(var(--feature-purple))",
+    gradient: "from-purple-500 to-pink-500"
+  },
+  {
+    icon: Shield,
+    title: "Risk Management",
+    description: "Automated risk controls with position sizing and portfolio protection",
+    color: "hsl(var(--feature-green))",
+    gradient: "from-green-500 to-emerald-500"
+  },
+  {
+    icon: Zap,
+    title: "Lightning Execution",
+    description: "Ultra-low latency order execution with institutional-grade infrastructure",
+    color: "hsl(var(--feature-orange))",
+    gradient: "from-orange-500 to-red-500"
+  },
+  {
+    icon: Target,
+    title: "Educational Patterns",
+    description: "Pattern recognition algorithms for educational entry and exit analysis",
+    color: "hsl(var(--feature-pink))",
+    gradient: "from-pink-500 to-purple-500"
+  },
+  {
+    icon: Smartphone,
+    title: "Mobile Trading",
+    description: "Full-featured mobile app for educational trading analysis on the go - for educational purposes only",
+    color: "hsl(var(--feature-blue))",
+    gradient: "from-blue-500 to-cyan-500"
+  },
+  {
+    icon: TrendingUp,
+    title: "Market Scanner",
+    description: "Real-time opportunity detection across global markets",
+    color: "hsl(var(--feature-purple))",
+    gradient: "from-purple-500 to-indigo-500"
+  },
+  {
+    icon: DollarSign,
+    title: "Profit Tracker",
+    description: "Comprehensive P&L analysis with tax optimization tools",
+    color: "hsl(var(--feature-green))",
+    gradient: "from-green-500 to-teal-500"
+  }
+];
 
 export default function ToolsShowcase() {
   const sectionRef = useRef<HTMLElement>(null);

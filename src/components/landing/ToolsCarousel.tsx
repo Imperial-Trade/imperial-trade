@@ -1,28 +1,60 @@
 
 import React, { useState, useEffect } from "react";
+import { Brain, Search, Calculator, BookOpen, BarChart, Activity } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import ContentSection from "./ContentSection";
-import { tools } from "./constants";
 
-// Filter to show only the AI-powered tools for carousel
-const aiTools = tools.filter(tool => 
-  ['MECCA', 'KALCU', 'JOURNAL XX'].includes(tool.title)
-).map(tool => ({
-  name: tool.title,
-  brand: tool.brand,
-  tagline: tool.tagline,
-  icon: tool.icon,
-  description: tool.description,
-  color: tool.title === 'MECCA' ? 'text-purple-400' : 
-         tool.title === 'KALCU' ? 'text-cyan-400' : 'text-orange-400'
-}));
+const tools = [
+  {
+    name: "AI Analyst",
+    icon: Brain,
+    description:
+      "Get AI-powered breakdowns of your trade history, identify strengths, and pinpoint areas for improvement.",
+    color: "text-purple-400",
+  },
+  {
+    name: "AI Scanner",
+    icon: Search,
+    description:
+      "Scan markets 24/7 for high-probability setups across various assets. Never miss a potential trade again.",
+    color: "text-blue-400",
+  },
+  {
+    name: "Risk Calculator",
+    icon: Calculator,
+    description:
+      "Calculate the perfect position size in seconds. Manage your risk precisely for any instrument and trade.",
+    color: "text-green-400",
+  },
+  {
+    name: "Trading Journal",
+    icon: BookOpen,
+    description:
+      "Log trades and get AI-powered encouragement and constructive feedback to refine your strategy.",
+    color: "text-orange-400",
+  },
+  {
+    name: "Performance Analytics",
+    icon: BarChart,
+    description:
+      "Visualize your trading performance with in-depth charts, heatmaps, and customizable metrics.",
+    color: "text-pink-400",
+  },
+  {
+    name: "Risk Simulator",
+    icon: Activity,
+    description:
+      "Simulate trade setups to analyze risk before you enter the market, testing different scenarios.",
+    color: "text-red-400",
+  },
+];
 
 export default function ToolsCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveIndex((prevIndex) => (prevIndex + 1) % aiTools.length);
+      setActiveIndex((prevIndex) => (prevIndex + 1) % tools.length);
     }, 4000);
     return () => clearInterval(interval);
   }, []);
@@ -49,22 +81,22 @@ export default function ToolsCarousel() {
               className="relative w-full h-[320px]"
               style={{ perspective: "1500px" }}
             >
-              {aiTools.map((tool, index) => {
+              {tools.map((tool, index) => {
                 const offset = index - activeIndex;
                 const sign = Math.sign(offset);
                 const absOffset = Math.abs(offset);
 
                 // Determine if the item is "behind" in the rotation for seamless looping
-                const isBehind = Math.abs(offset) > aiTools.length / 2;
+                const isBehind = Math.abs(offset) > tools.length / 2;
                 const displayOffset = isBehind
-                  ? (aiTools.length - absOffset) * -sign
+                  ? (tools.length - absOffset) * -sign
                   : offset;
 
                 const transform = {
                   rotateY: displayOffset * -20,
                   translateX: displayOffset * 200,
                   scale: absOffset === 0 ? 1.2 : 0.7,
-                  zIndex: aiTools.length - absOffset,
+                  zIndex: tools.length - absOffset,
                 };
 
                 const opacity = absOffset <= 2 ? 1 : 0;
@@ -98,14 +130,9 @@ export default function ToolsCarousel() {
                           className={`${iconSize} ${tool.color} mx-auto`}
                         />
                       </div>
-                      <h3 className={`${titleSize} font-bold text-primary mb-2`}>
-                        {tool.brand}
+                      <h3 className={`${titleSize} font-bold text-primary mb-3`}>
+                        {tool.name}
                       </h3>
-                      {absOffset === 0 && (
-                        <p className="text-sm text-accent-gold mb-3 font-medium">
-                          {tool.tagline}
-                        </p>
-                      )}
                       <p
                         className={`text-muted-foreground ${descSize} leading-relaxed`}
                       >
@@ -119,7 +146,7 @@ export default function ToolsCarousel() {
             
             {/* Navigation Dots */}
             <div className="absolute -bottom-6 flex gap-3 items-center">
-              {aiTools.map((_, index) => (
+              {tools.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setActiveIndex(index)}

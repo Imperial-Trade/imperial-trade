@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Loader2, Calendar, Clock, User, Video, ExternalLink, Settings, Zap, MonitorPlay, AlertTriangle, BookOpen } from 'lucide-react';
-import { NeoTvLogo } from '@/assets/logos/NeoTvLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLiveSessionManager, LiveSession } from '@/hooks/useLiveSessionManager';
 import { CreateSessionDialog } from '@/components/live/CreateSessionDialog';
@@ -158,15 +157,10 @@ export default function Live() {
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <NeoTvLogo size={32} className="text-primary" />
-                  <div>
-                    <h1 className="text-3xl font-bold text-primary">
-                      NEO TV
-                    </h1>
-                    <p className="text-sm text-primary/70 font-medium">See the Market. Seize the Moment</p>
-                  </div>
-                </div>
+                <h1 className="text-3xl font-bold text-primary mb-2 flex items-center gap-2">
+                  <BookOpen className="h-8 w-8 text-orange-500" />
+                  Educational Live Sessions
+                </h1>
                 <p className="text-muted-foreground">
                   Join educational trading sessions for learning purposes only. Not investment advice.
                 </p>

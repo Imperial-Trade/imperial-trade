@@ -8,7 +8,6 @@ import VideoRow from "@/components/learning/VideoRow";
 import VideoPlayer from "@/components/learning/VideoPlayer";
 import { categoryMap } from "@/components/learning/constants";
 import { AnimatePresence } from "framer-motion";
-import { ImperialAcademyLogo } from '@/assets/logos/ImperialAcademyLogo';
 
 export default function Education() {
   const [user, setUser] = useState<User | null>(null);
@@ -87,17 +86,6 @@ export default function Education() {
 
   return (
     <div className="flex flex-col bg-background text-primary overflow-hidden">
-      {/* Imperial Academy Header */}
-      <div className="relative z-20 bg-background/95 backdrop-blur border-b border-border p-6">
-        <div className="flex items-center gap-3">
-          <ImperialAcademyLogo size={40} className="text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">IMPERIAL ACADEMY</h1>
-            <p className="text-sm text-primary/70 font-medium">Transform Your Mind</p>
-          </div>
-        </div>
-      </div>
-      
       <HeroSection video={featuredVideo} onPlay={handleVideoPlay} />
 
       <div className="relative z-10 -mt-20 overflow-auto flex-1">

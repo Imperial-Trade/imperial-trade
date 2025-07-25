@@ -6,22 +6,13 @@ import {
   MessageSquare,
   Briefcase,
 } from "lucide-react";
-import { XeonLogo } from "@/assets/logos/XeonLogo";
-import { ImperialAcademyLogo } from "@/assets/logos/ImperialAcademyLogo";
-import { NeoTvLogo } from "@/assets/logos/NeoTvLogo";
-import { OrderflowLogo } from "@/assets/logos/OrderflowLogo";
-import { KalcuLogo } from "@/assets/logos/KalcuLogo";
-import { JournalXxLogo } from "@/assets/logos/JournalXxLogo";
-import { MeccaLogo } from "@/assets/logos/MeccaLogo";
 
 export const features = [
   {
-    icon: ImperialAcademyLogo,
-    title: "IMPERIAL ACADEMY: Where Market Principles Become Your Power",
-    brand: "IMPERIAL ACADEMY",
-    tagline: "Where Market Principles Become Your Power.",
+    icon: BookOpen,
+    title: "Education: The Master's Curriculum",
     description:
-      "A structured educational curriculum designed to build a durable framework for market analysis. Progress from foundational mechanics to advanced concepts, empowering you to develop and refine your own unique trading edge.",
+      "Education is not just information; it's the systematic installation of a professional trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned analyst. Our goal is to make you self-sufficient.",
     detailedContext:
       "Transform from beginner to expert trader through our comprehensive education system. Learn from real market professionals who've traded millions in volume. Master structured learning pathways, interactive quizzes with knowledge gates, and downloadable trading arsenals.",
     link: "Education",
@@ -38,12 +29,10 @@ export const features = [
     ]
   },
   {
-    icon: XeonLogo,
-    title: "XEON: Illuminate the Opportunity",
-    brand: "XEON",
-    tagline: "Illuminate the Opportunity",
+    icon: TrendingUp,
+    title: "Signal Stream: Your Professional Trade Blueprint",
     description:
-      "Exclusive stream of live market analysis and trade breakdowns from experienced contributors",
+      "The Signal Stream is your 'over-the-shoulder' view of our professional analysts at work. It's designed to be a dual-purpose tool: generate potential profits for you while simultaneously providing a masterclass in professional trade planning.",
     detailedContext:
       "Never miss a profitable opportunity with our round-the-clock signal service. Get detailed market analysis, risk management guidance, and trade updates in real-time with precision parameters and multi-TP strategy.",
     link: "SignalStream",
@@ -60,12 +49,10 @@ export const features = [
     ]
   },
   {
-    icon: NeoTvLogo,
-    title: "NEO TV: See the Market. Seize the Moment",
-    brand: "NEO TV",
-    tagline: "See the Market. Seize the Moment",
+    icon: Radio,
+    title: "Live Sessions: The Virtual Trading Floor",
     description:
-      "Daily live-streamed market analysis alongside experienced educators with real-time insights",
+      "Direct, unfiltered access to the mind of a professional trader during the most critical hours of the trading day. This is your chance to ask the questions you can't find answers to in books or videos.",
     detailedContext:
       "Experience the thrill of live trading alongside seasoned professionals. See exactly how experts read market sentiment, identify setups, and manage their positions with interactive Q&A and real-time execution.",
     link: "Live",
@@ -82,12 +69,10 @@ export const features = [
     ]
   },
   {
-    icon: OrderflowLogo,
-    title: "ORDERFLOW: Where Traders Converge",
-    brand: "ORDERFLOW",
-    tagline: "Where Traders Converge",
+    icon: MessageSquare,
+    title: "Community Forum: The Collective Intelligence",
     description:
-      "Private collaborative ecosystem for dedicated traders to share analysis and insights",
+      "Trading is a lonely endeavor, but it doesn't have to be. The forum is a curated, professional ecosystem designed to foster collaboration, eliminate bad habits, and keep you connected to a network of serious, like-minded peers.",
     detailedContext:
       "Join a network of 500+ dedicated traders who share your passion for the markets. Collaborate, learn, and grow together in a supportive environment free from noise with structured channels and professional oversight.",
     link: "Forum",
@@ -123,70 +108,4 @@ export const features = [
       "Career Path Integration: Not just referrals - a complete business development opportunity"
     ]
   },
-];
-
-export const tools = [
-  {
-    icon: XeonLogo,
-    title: "XEON",
-    brand: "XEON",
-    tagline: "Illuminate the Opportunity",
-    description: "Exclusive stream of live market analysis and trade breakdowns from experienced contributors",
-    color: "hsl(var(--feature-blue))",
-    gradient: "from-blue-500 to-purple-500"
-  },
-  {
-    icon: ImperialAcademyLogo,
-    title: "IMPERIAL ACADEMY",
-    brand: "IMPERIAL ACADEMY", 
-    tagline: "Where Market Principles Become Your Power",
-    description: "Structured educational curriculum designed to build a durable framework for market analysis",
-    color: "hsl(var(--feature-green))",
-    gradient: "from-green-500 to-emerald-500"
-  },
-  {
-    icon: NeoTvLogo,
-    title: "NEO TV",
-    brand: "NEO TV",
-    tagline: "See the Market. Seize the Moment",
-    description: "Daily live-streamed market analysis alongside experienced educators with real-time insights",
-    color: "hsl(var(--feature-orange))",
-    gradient: "from-orange-500 to-red-500"
-  },
-  {
-    icon: OrderflowLogo,
-    title: "ORDERFLOW",
-    brand: "ORDERFLOW",
-    tagline: "Where Traders Converge",
-    description: "Private collaborative ecosystem for dedicated traders to share analysis and insights",
-    color: "hsl(var(--feature-purple))",
-    gradient: "from-purple-500 to-pink-500"
-  },
-  {
-    icon: KalcuLogo,
-    title: "KALCU",
-    brand: "KALCU",
-    tagline: "Your Edge, Calculated",
-    description: "Precision toolkit for sophisticated risk management and position sizing calculations",
-    color: "hsl(var(--feature-blue))",
-    gradient: "from-blue-500 to-cyan-500"
-  },
-  {
-    icon: JournalXxLogo,
-    title: "JOURNAL XX",
-    brand: "JOURNAL XX",
-    tagline: "Decode Your Data. Evolve Your Edge",
-    description: "Intelligent performance diagnostics tool that transforms trading history into actionable feedback",
-    color: "hsl(var(--feature-orange))",
-    gradient: "from-orange-500 to-yellow-500"
-  },
-  {
-    icon: MeccaLogo,
-    title: "MECCA",
-    brand: "MECCA",
-    tagline: "Processing Infinite Variables. Delivering Singular Clarity",
-    description: "Personal AI research assistant providing objective, data-centric market feedback",
-    color: "hsl(var(--feature-purple))",
-    gradient: "from-purple-500 to-indigo-500"
-  }
 ];

@@ -9,13 +9,33 @@ interface CoachRequest {
   journal_entry_id?: string;
 }
 
-const SYSTEM_PROMPT = `You are an elite performance coach for professional traders. Your tone is composed, encouraging, and insightful. Your primary objective is to cultivate the mindset, discipline, and resilience required for long-term trading success.
-**Core Directives:**
-1.  **Reinforce Process, Not Outcome:** The financial result of any single trade is irrelevant. Your focus is exclusively on the trader's adherence to their documented process. Praise disciplined execution, even on losing trades.
-2.  **Acknowledge the Psychological Game:** Trading is a mental endeavor. Acknowledge the difficulty of managing emotions like fear and greed. Frame journaling as a professional 'debriefing' and a tool for emotional regulation.
-3.  **Build Professional Identity:** Use language that frames the user's actions in a professional context. For example, "That level of disciplined execution is a hallmark of a professional operator," or "You're developing the objective mindset required to manage risk effectively."
-4.  **Recognize Consistency:** Milestones like journaling streaks are evidence of professional habit formation. Highlight these as foundational to building a successful trading career.
-**Execution Rule:** Your feedback should be concise, impactful, and always reinforce the user's journey toward professional mastery.`;
+const SYSTEM_PROMPT = `You are a supportive trading coach who acts like a human mentor. Your role is to analyze trade entries and provide personalized, encouraging feedback that validates the trader's understanding and reinforces good habits.
+
+**Core Analysis Framework:**
+1. **Trade Outcome Analysis**: Determine if this was a winning trade (positive P&L) or losing trade (negative P&L)
+2. **Note Content Analysis**: Carefully analyze the trader's notes for specific trading concepts, strategies, and insights they mention
+3. **Concept Recognition**: Identify and acknowledge advanced trading concepts like:
+   - Market manipulation and liquidity sweeps
+   - Price action analysis and patterns
+   - Risk management techniques
+   - Entry/exit strategies
+   - Market structure analysis
+   - Support/resistance levels
+   - Any other sophisticated trading terminology
+
+**Response Guidelines:**
+- Provide 1-2 sentences of encouraging, tailored feedback
+- Acknowledge specific concepts mentioned in their notes by name
+- Validate their understanding of advanced market behaviors
+- Frame their observations positively as part of professional analysis
+- Encourage continued development of the specific skills they demonstrated
+- Make them feel seen and validated in their learning journey
+
+**Example Response Structure:**
+For winning trades: "Excellent work identifying [specific concept from notes]! Your ability to recognize [trading concept] shows sophisticated market understanding that's crucial for consistent success."
+For losing trades: "Great analysis noting [specific concept from notes]. This level of detailed observation of [trading concept] demonstrates the professional mindset needed to improve and succeed."
+
+**Key Principle**: Act like a mentor who reads their trade notes, understands what they're learning, and gives personalized validation of their specific insights and efforts.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -66,8 +86,45 @@ serve(async (req) => {
     let userReadablePrompt = "";
 
     if (event_type === "LOG_TRADE") {
-      userActionPrompt = `The user (ID: ${user_id}) just logged a trade entry. Praise them for their discipline in journaling. Journal Entry ID: ${journal_entry_id}`;
-      userReadablePrompt = `${userName} just logged a trade entry. Praise them for their discipline in journaling their recent trade.`;
+      // Fetch the actual trade journal entry for detailed analysis
+      console.log("Coach Agent - Fetching trade journal entry...");
+      const { data: journalEntry, error: journalError } = await supabase
+        .from("trade_journal_entries")
+        .select("asset_ticker, pnl, notes, entry_price, exit_price, position_size, trade_type, screenshot_url")
+        .eq("id", journal_entry_id)
+        .eq("user_id", user_id)
+        .single();
+
+      if (journalError) {
+        console.error("Coach Agent - Error fetching journal entry:", journalError);
+        throw new Error("Failed to fetch trade journal entry");
+      }
+
+      const tradeOutcome = journalEntry.pnl > 0 ? "winning trade" : "losing trade";
+      const pnlAmount = Math.abs(journalEntry.pnl);
+      const tradeNotes = journalEntry.notes || "No notes provided";
+      
+      console.log("Coach Agent - Trade analysis:", {
+        outcome: tradeOutcome,
+        pnl: pnlAmount,
+        notes: tradeNotes.substring(0, 100) + "..."
+      });
+
+      userActionPrompt = `The user (ID: ${user_id}) submitted a ${tradeOutcome} with ${pnlAmount} USD ${journalEntry.pnl > 0 ? 'profit' : 'loss'}. 
+      Asset: ${journalEntry.asset_ticker}
+      Trade Type: ${journalEntry.trade_type || 'Not specified'}
+      Their notes: "${tradeNotes}"
+      ${journalEntry.screenshot_url ? 'They also uploaded a screenshot for analysis.' : ''}
+      
+      Analyze their notes for specific trading concepts and provide encouraging feedback that acknowledges the sophisticated analysis they demonstrate.`;
+      
+      userReadablePrompt = `${userName} submitted a ${tradeOutcome} with ${pnlAmount} USD ${journalEntry.pnl > 0 ? 'profit' : 'loss'}.
+      Asset: ${journalEntry.asset_ticker}
+      Trade Type: ${journalEntry.trade_type || 'Not specified'}
+      Their notes: "${tradeNotes}"
+      ${journalEntry.screenshot_url ? 'They also uploaded a screenshot for analysis.' : ''}
+      
+      Provide a supportive coaching response that highlights specific concepts from their notes and validates their trading analysis skills.`;
     } else if (event_type === "MODULE_COMPLETE") {
       userActionPrompt = `The user (ID: ${user_id}) just completed a learning module. Congratulate them on their commitment to education.`;
       userReadablePrompt = `${userName} just completed a learning module. Congratulate them on their commitment to education.`;

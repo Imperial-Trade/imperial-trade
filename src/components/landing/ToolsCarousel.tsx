@@ -2,46 +2,27 @@
 import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import ContentSection from "./ContentSection";
-import { MeccaLogo } from "@/assets/logos/MeccaLogo";
-import { KalcuLogo } from "@/assets/logos/KalcuLogo";
-import { JournalXxLogo } from "@/assets/logos/JournalXxLogo";
+import { tools } from "./constants";
 
-const tools = [
-  {
-    name: "MECCA",
-    brand: "MECCA",
-    tagline: "Processing Infinite Variables. Delivering Singular Clarity.",
-    icon: MeccaLogo,
-    description:
-      "Your personal AI research assistant. Mecca processes market data and your own performance history to provide objective, data-centric feedback. Use it to stress-test your ideas and deepen your analysis before making your own informed decisions.",
-    color: "text-purple-400",
-  },
-  {
-    name: "KALCU",
-    brand: "KALCU", 
-    tagline: "Your Edge, Calculated.",
-    icon: KalcuLogo,
-    description:
-      "A precision toolkit for sophisticated risk management. Calculate position sizes based on your personal risk tolerance across any asset, ensuring you maintain disciplined capital protection in every hypothetical setup you analyze.",
-    color: "text-cyan-400",
-  },
-  {
-    name: "JOURNAL XX",
-    brand: "JOURNAL XX",
-    tagline: "Decode Your Data. Evolve Your Edge.",
-    icon: JournalXxLogo,
-    description:
-      "An intelligent performance diagnostics tool that transforms your trading history into actionable feedback. Log your trades to uncover recurring habits, identify your unique strengths, and systematically optimize your own decision-making process.",
-    color: "text-orange-400",
-  },
-];
+// Filter to show only the AI-powered tools for carousel
+const aiTools = tools.filter(tool => 
+  ['MECCA', 'KALCU', 'JOURNAL XX'].includes(tool.title)
+).map(tool => ({
+  name: tool.title,
+  brand: tool.brand,
+  tagline: tool.tagline,
+  icon: tool.icon,
+  description: tool.description,
+  color: tool.title === 'MECCA' ? 'text-purple-400' : 
+         tool.title === 'KALCU' ? 'text-cyan-400' : 'text-orange-400'
+}));
 
 export default function ToolsCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveIndex((prevIndex) => (prevIndex + 1) % tools.length);
+      setActiveIndex((prevIndex) => (prevIndex + 1) % aiTools.length);
     }, 4000);
     return () => clearInterval(interval);
   }, []);
@@ -68,22 +49,22 @@ export default function ToolsCarousel() {
               className="relative w-full h-[320px]"
               style={{ perspective: "1500px" }}
             >
-              {tools.map((tool, index) => {
+              {aiTools.map((tool, index) => {
                 const offset = index - activeIndex;
                 const sign = Math.sign(offset);
                 const absOffset = Math.abs(offset);
 
                 // Determine if the item is "behind" in the rotation for seamless looping
-                const isBehind = Math.abs(offset) > tools.length / 2;
+                const isBehind = Math.abs(offset) > aiTools.length / 2;
                 const displayOffset = isBehind
-                  ? (tools.length - absOffset) * -sign
+                  ? (aiTools.length - absOffset) * -sign
                   : offset;
 
                 const transform = {
                   rotateY: displayOffset * -20,
                   translateX: displayOffset * 200,
                   scale: absOffset === 0 ? 1.2 : 0.7,
-                  zIndex: tools.length - absOffset,
+                  zIndex: aiTools.length - absOffset,
                 };
 
                 const opacity = absOffset <= 2 ? 1 : 0;
@@ -138,7 +119,7 @@ export default function ToolsCarousel() {
             
             {/* Navigation Dots */}
             <div className="absolute -bottom-6 flex gap-3 items-center">
-              {tools.map((_, index) => (
+              {aiTools.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setActiveIndex(index)}

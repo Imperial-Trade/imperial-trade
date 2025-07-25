@@ -169,27 +169,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async () => {
     try {
-      setLoading(true);
-      
       // Clean up auth state first
       cleanupAuthState();
       
-      // Attempt global sign out
-      await supabase.auth.signOut({ scope: 'global' });
-      
-      // Reset state
+      // Reset state immediately
       setSession(null);
       setUser(null);
       setProfile(null);
       
-      // Navigate to signin page
-      window.location.href = '/signin';
+      // Attempt global sign out
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Small delay to ensure state cleanup completes before redirect
+      setTimeout(() => {
+        window.location.href = '/signin';
+      }, 100);
     } catch (error) {
       console.error('Error signing out:', error);
       // Force redirect even if signout fails
-      window.location.href = '/signin';
-    } finally {
-      setLoading(false);
+      setTimeout(() => {
+        window.location.href = '/signin';
+      }, 100);
     }
   };
 

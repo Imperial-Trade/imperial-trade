@@ -411,7 +411,7 @@ export default function SignalStream() {
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h1 className="text-3xl font-bold text-foreground">
-                  Educational Pattern <span className="text-accent-green">Stream</span>
+                  Xeon <span className="text-accent-green">Stream</span>
                 </h1>
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
                   <Shield className="w-3 h-3 mr-1" />

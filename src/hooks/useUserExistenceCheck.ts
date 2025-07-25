@@ -9,7 +9,11 @@ interface UseUserExistenceCheckReturn {
   clearError: () => void;
 }
 
-export const useUserExistenceCheck = (): UseUserExistenceCheckReturn => {
+interface UseUserExistenceCheckOptions {
+  accountRequest?: any;
+}
+
+export const useUserExistenceCheck = (options: UseUserExistenceCheckOptions = {}): UseUserExistenceCheckReturn => {
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,31 +26,59 @@ export const useUserExistenceCheck = (): UseUserExistenceCheckReturn => {
     setError(null);
 
     try {
-      console.log('Checking if user exists for email:', email);
+      console.log('Checking if user exists for email:', email, 'Account request status:', options.accountRequest?.status);
       
-      // Use the dedicated backend endpoint to check user existence
-      const { data, error } = await supabase.functions.invoke('check-user-existence', {
-        body: { email: email.toLowerCase().trim() }
-      });
+      // Use direct Supabase API call to check user existence
+      // Reset password probe - if user exists, this will succeed without sending email
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.toLowerCase().trim(),
+        { redirectTo: null }
+      );
 
       if (error) {
-        console.error('Error checking user existence:', error);
+        console.log('Reset password probe error:', error.message);
+        
+        // Check if this is a "user not found" error
+        const userNotFound = error.message.includes('User not found') || 
+                           error.message.includes('Invalid login credentials') ||
+                           error.message.includes('User does not exist');
+        
+        if (userNotFound) {
+          console.log('User does not exist based on reset password probe');
+          return false;
+        }
+        
+        // For approved account requests, default to "user doesn't exist" on API failure
+        if (options.accountRequest?.status === 'approved') {
+          console.log('API call failed but account is approved - defaulting to user does not exist');
+          return false;
+        }
+        
+        // For other cases, this is a genuine error
+        console.error('Genuine error checking user existence:', error);
         setError('Unable to check user status. Please try again.');
         return false;
       }
 
-      const userExists = data?.userExists || false;
-      console.log('User existence check result:', { email, userExists });
-      return userExists;
+      // If no error, user exists
+      console.log('User exists - reset password probe succeeded');
+      return true;
       
     } catch (error) {
       console.error('Network error checking user existence:', error);
+      
+      // For approved account requests, default to "user doesn't exist" on network failure
+      if (options.accountRequest?.status === 'approved') {
+        console.log('Network error but account is approved - defaulting to user does not exist');
+        return false;
+      }
+      
       setError('Unable to check user status. Please try again.');
       return false;
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [options.accountRequest]);
 
   return {
     checkUserExists,

@@ -14,7 +14,7 @@ interface UserExistenceCheckProps {
 
 export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({ accountRequest }) => {
   const [userExists, setUserExists] = useState<boolean | null>(null);
-  const { checkUserExists, isChecking, error, clearError } = useUserExistenceCheck();
+  const { checkUserExists, isChecking, error, clearError } = useUserExistenceCheck({ accountRequest });
 
   useEffect(() => {
     const checkUser = async () => {

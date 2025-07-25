@@ -53,6 +53,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const reconnectAttemptsRef = useRef(0);
+  const priceUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const getReconnectDelay = useCallback(() => {
     const baseDelay = 5000;
@@ -306,6 +307,19 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       // Also try WebSocket connection
       connect();
     }
+
+    // Set up automatic price refresh every 6 seconds
+    if (priceUpdateIntervalRef.current) {
+      clearInterval(priceUpdateIntervalRef.current);
+    }
+    
+    priceUpdateIntervalRef.current = setInterval(() => {
+      if (subscribedSymbolsRef.current.size > 0) {
+        const currentSymbols = Array.from(subscribedSymbolsRef.current);
+        console.log('🔄 Auto-refreshing prices every 6 seconds for:', currentSymbols);
+        fetchPricesHTTP(currentSymbols);
+      }
+    }, 6000); // Update every 6 seconds
   }, [connect, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
@@ -325,6 +339,13 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         type: 'unsubscribe',
         symbols
       }));
+    }
+
+    // Clear the interval if no symbols are subscribed
+    if (subscribedSymbolsRef.current.size === 0 && priceUpdateIntervalRef.current) {
+      clearInterval(priceUpdateIntervalRef.current);
+      priceUpdateIntervalRef.current = null;
+      console.log('🔄 Stopped auto-refresh timer - no symbols subscribed');
     }
   }, []);
 
@@ -351,6 +372,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }
       if (socketRef.current) {
         socketRef.current.close();
+      }
+      if (priceUpdateIntervalRef.current) {
+        clearInterval(priceUpdateIntervalRef.current);
       }
     };
   }, []);

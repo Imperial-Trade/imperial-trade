@@ -13,114 +13,37 @@ import { marketDataService, MarketDataPoint } from '@/services/MarketDataService
 
 export default function OpportunityScanner() {
   const { user } = useAuth();
-  const [signals, setSignals] = useState<EducationalSignal[]>([]);
-  const [livePrice, setLivePrice] = useState<Record<string, MarketDataPoint>>({});
-  const [isScanning, setIsScanning] = useState(false);
-  const [lastScan, setLastScan] = useState<Date | null>(null);
-  const [scanError, setScanError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({
+  // Feature disabled - keeping minimal state
+  const [signals] = useState<EducationalSignal[]>([]);
+  const [livePrice] = useState<Record<string, MarketDataPoint>>({});
+  const [isScanning] = useState(false);
+  const [lastScan] = useState<Date | null>(null);
+  const [scanError] = useState<string | null>(null);
+  const [filters] = useState({
     market: 'all',
     strategy: 'all',
     timeframe: 'all'
   });
-  const [sortBy, setSortBy] = useState('probability');
+  const [sortBy] = useState('probability');
 
-  useEffect(() => {
-    loadSignals();
-  }, []);
+  // No automatic signal loading - feature disabled
 
+  // Feature disabled - no live price fetching needed
   const fetchLivePrices = async (symbols: string[]) => {
-    try {
-      const marketData = await marketDataService.getMarketData({ symbols });
-      const priceMap: Record<string, MarketDataPoint> = {};
-      marketData.forEach(data => {
-        priceMap[data.symbol] = data;
-      });
-      setLivePrice(priceMap);
-    } catch (error) {
-      console.error('Error fetching live prices:', error);
-    }
+    return;
   };
 
+  // Feature disabled - no signal loading
   const loadSignals = async () => {
-    if (!user) {
-      console.log('No user available for educational pattern scanning');
-      return;
-    }
-
-    try {
-      setScanError(null);
-      const educationalSignals = await signalProcessingService.scanForEducationalOpportunities(user.id);
-      
-      // Fetch live prices for signals
-      const symbols = educationalSignals.map(s => s.instrument);
-      await fetchLivePrices(symbols);
-      
-      // Apply filters and sorting
-      let filteredSignals = educationalSignals.filter(s => s.status === 'active');
-      
-      if (filters.market !== 'all') {
-        filteredSignals = filteredSignals.filter(s => s.market === filters.market);
-      }
-      if (filters.strategy !== 'all') {
-        filteredSignals = filteredSignals.filter(s => s.strategy.includes(filters.strategy));
-      }
-      if (filters.timeframe !== 'all') {
-        filteredSignals = filteredSignals.filter(s => s.time_frame === filters.timeframe);
-      }
-
-      // Sort signals
-      filteredSignals.sort((a, b) => {
-        switch (sortBy) {
-          case 'probability':
-            return b.probability - a.probability;
-          case 'risk_reward':
-            return b.risk_reward - a.risk_reward;
-          case 'recency':
-            return parseInt(b.id.split('-')[1] || '0') - parseInt(a.id.split('-')[1] || '0');
-          default:
-            return 0;
-        }
-      });
-
-      setSignals(filteredSignals);
-    } catch (error) {
-      console.error('Error loading educational signals:', error);
-      setScanError('Failed to load educational patterns. Using fallback examples.');
-    }
+    return;
   };
 
+  // Feature disabled - no scanning
   const scanForOpportunities = async () => {
-    if (!user) {
-      setScanError('Please sign in to access personalized educational content');
-      return;
-    }
-
-    setIsScanning(true);
-    setScanError(null);
-    
-    try {
-      console.log('Starting educational pattern scan for user:', user.id);
-      
-      // Call signal-finder-agent for AI-powered educational content
-      const educationalSignals = await signalProcessingService.scanForEducationalOpportunities(user.id);
-      
-      // Apply current filters and sorting
-      await loadSignals();
-      setLastScan(new Date());
-      
-      console.log('Educational pattern scan completed successfully');
-    } catch (error) {
-      console.error('Error scanning for educational opportunities:', error);
-      setScanError('Failed to scan for educational patterns. Please try again.');
-    }
-    setIsScanning(false);
+    return;
   };
 
-  // Update signals when filters change
-  useEffect(() => {
-    loadSignals();
-  }, [filters, sortBy, user]);
+  // No filter-based reloading - feature disabled
 
   const getSignalTypeColor = (type: string) => {
     const colors = {
@@ -155,235 +78,91 @@ export default function OpportunityScanner() {
         {/* Header with Controls */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-foreground">AI Pattern Scanner</h1>
-            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+            <h1 className="text-2xl font-bold text-foreground">Educational Pattern Scanner</h1>
+            <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20">
               <Brain className="w-3 h-3 mr-1" />
-              Live Market Data
+              Coming Soon
             </Badge>
           </div>
-          {lastScan && (
-            <div className="text-sm text-muted-foreground flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Last Scan: {lastScan.toLocaleTimeString()}
-            </div>
-          )}
         </div>
 
-        {/* Error Display */}
-        {scanError && (
-          <Card className="bg-orange-500/10 border-orange-500/20">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-orange-400">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-sm">{scanError}</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Authentication Notice */}
-        {!user && (
-          <Card className="bg-blue-500/10 border-blue-500/20">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-blue-400">
-                <Brain className="w-4 h-4" />
-                <span className="text-sm">Sign in to access personalized AI-powered educational content based on your trading patterns</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="bg-card/50 border-border/50">
-          <CardContent className="p-3">
-            <div className="flex flex-wrap gap-2 items-center justify-between">
-              {/* Left side - Filters */}
-              <div className="flex flex-wrap gap-2 items-center">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-foreground">Educational Filters:</span>
-                </div>
-                
-                <Select value={filters.market} onValueChange={(value) => setFilters(prev => ({ ...prev, market: value }))}>
-                  <SelectTrigger className="w-[120px] h-8 bg-background text-xs">
-                    <SelectValue placeholder="Market" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Markets</SelectItem>
-                    <SelectItem value="crypto">Crypto</SelectItem>
-                    <SelectItem value="stocks">Stocks</SelectItem>
-                    <SelectItem value="forex">Forex</SelectItem>
-                    <SelectItem value="commodities">Commodities</SelectItem>
-                    <SelectItem value="educational">Educational</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={filters.strategy} onValueChange={(value) => setFilters(prev => ({ ...prev, strategy: value }))}>
-                  <SelectTrigger className="w-[180px] h-8 bg-background text-xs">
-                    <SelectValue placeholder="Strategy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Educational Patterns</SelectItem>
-                    <SelectItem value="Breakout">Educational Breakout</SelectItem>
-                    <SelectItem value="Momentum">Educational Momentum</SelectItem>
-                    <SelectItem value="Reversal">Educational Reversal</SelectItem>
-                    <SelectItem value="Pattern">Educational Pattern</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={filters.timeframe} onValueChange={(value) => setFilters(prev => ({ ...prev, timeframe: value }))}>
-                  <SelectTrigger className="w-[110px] h-8 bg-background text-xs">
-                    <SelectValue placeholder="Timeframe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Timeframes</SelectItem>
-                    <SelectItem value="1H">1 Hour</SelectItem>
-                    <SelectItem value="4H">4 Hours</SelectItem>
-                    <SelectItem value="1D">1 Day</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Right side - Sort and Scan */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2">
-                  <SortDesc className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-foreground">Sort:</span>
-                </div>
-
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[120px] h-8 bg-background text-xs">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="probability">Educational Probability</SelectItem>
-                    <SelectItem value="risk_reward">Risk/Reward Learning</SelectItem>
-                    <SelectItem value="recency">Latest Examples</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Button 
-                  onClick={scanForOpportunities} 
-                  disabled={isScanning || !user} 
-                  size="sm"
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-8 px-3 text-xs"
-                >
-                  {isScanning ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent mr-1" />
-                      AI Learning Scan...
-                    </>
-                  ) : (
-                    <>
-                      <Brain className="w-3 h-3 mr-1" />
-                      AI Pattern Scan
-                    </>
-                  )}
-                </Button>
-              </div>
+        {/* Coming Soon Content */}
+        <div className="text-center py-16">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-gradient-to-br from-primary/10 to-accent/10 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-8">
+              <Brain className="w-12 h-12 text-primary" />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Signals Grid */}
-        <AnimatePresence>
-          {signals.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-16"
-            >
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border border-blue-500/30 mb-6">
-                <BookOpen className="w-10 h-10 text-blue-400" />
+            
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Educational Pattern Scanner
+            </h2>
+            
+            <p className="text-lg text-muted-foreground mb-8">
+              We're developing an advanced AI-powered pattern recognition system that will analyze market data to identify educational trading opportunities and help you learn market analysis.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <Card className="bg-card/50 border-border/50 p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="bg-blue-500/10 rounded-lg p-2">
+                    <Target className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <h3 className="font-semibold text-foreground">Pattern Recognition</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  AI will identify educational patterns across multiple asset classes for learning purposes
+                </p>
+              </Card>
+              
+              <Card className="bg-card/50 border-border/50 p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="bg-green-500/10 rounded-lg p-2">
+                    <BookOpen className="w-5 h-5 text-green-400" />
+                  </div>
+                  <h3 className="font-semibold text-foreground">Educational Focus</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Learn market analysis through real-world examples and pattern explanations
+                </p>
+              </Card>
+              
+              <Card className="bg-card/50 border-border/50 p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="bg-purple-500/10 rounded-lg p-2">
+                    <BarChart3 className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <h3 className="font-semibold text-foreground">Real-time Analysis</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Live market data integration for current educational opportunities
+                </p>
+              </Card>
+              
+              <Card className="bg-card/50 border-border/50 p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="bg-orange-500/10 rounded-lg p-2">
+                    <Zap className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <h3 className="font-semibold text-foreground">Personalized Learning</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  AI-powered recommendations based on your trading preferences and learning style
+                </p>
+              </Card>
+            </div>
+            
+            <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20 p-6">
+              <div className="flex items-center justify-center gap-2 text-primary mb-2">
+                <Clock className="w-5 h-5" />
+                <span className="font-semibold">Coming Soon</span>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-2">
-                {user ? 'No Educational Patterns Available' : 'Sign In for Personalized Learning'}
-              </h3>
-              <p className="text-muted-foreground">
-                {user 
-                  ? 'Click "AI Pattern Scan" to discover new educational opportunities based on your trading patterns'
-                  : 'Sign in to access AI-powered educational content personalized to your trading style'
-                }
+              <p className="text-sm text-muted-foreground">
+                This feature is currently under development. Stay tuned for advanced AI-powered educational pattern analysis!
               </p>
-            </motion.div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {signals.map((signal, index) => {
-                const confidence = getConfidenceGauge(signal.confidence_score);
-                return (
-                  <motion.div
-                    key={signal.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                     <Card className="bg-card hover:bg-card/80 border-border hover:border-blue-500/50 transition-all duration-300">
-                       <CardContent className="p-6">
-                         {/* Header */}
-                         <div className="flex items-start justify-between mb-4">
-                           <div>
-                             <h3 className="text-lg font-bold text-foreground">{signal.instrument}</h3>
-                             <p className="text-sm text-muted-foreground">{signal.asset_name}</p>
-                           </div>
-                           <Badge className={`${getSignalTypeColor(signal.signal_type)} border`}>
-                             {signal.signal_type.replace('_', ' ')}
-                           </Badge>
-                         </div>
+            </Card>
+          </div>
+        </div>
 
-                         {/* Live Price & Confidence */}
-                         <div className="mb-4 p-3 bg-muted/30 rounded-lg">
-                           <div className="flex items-center justify-between mb-2">
-                             <div>
-                               <div className="text-xl font-bold text-foreground">
-                                 ${livePrice[signal.instrument]?.price || signal.current_price}
-                               </div>
-                               {livePrice[signal.instrument] && (
-                                 <div className={`text-sm flex items-center gap-1 ${
-                                   livePrice[signal.instrument].changePercent >= 0 ? 'text-green-400' : 'text-red-400'
-                                 }`}>
-                                   <TrendingUp className="w-3 h-3" />
-                                   {livePrice[signal.instrument].changePercent.toFixed(2)}%
-                                 </div>
-                               )}
-                             </div>
-                             <div className="text-right">
-                               <div className={`text-xl font-bold ${confidence.color}`}>
-                                 {confidence.percentage}%
-                               </div>
-                               <div className="text-xs text-muted-foreground">Confidence</div>
-                             </div>
-                           </div>
-                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                             <span>{signal.time_frame}</span>
-                             <span>•</span>
-                             <span>R:R {signal.risk_reward}:1</span>
-                           </div>
-                         </div>
-
-                         {/* Analysis */}
-                         <div className="mb-4">
-                           <h4 className="text-sm font-semibold text-foreground mb-2">Analysis</h4>
-                           <p className="text-sm text-muted-foreground">{signal.rationale}</p>
-                         </div>
-
-                         {/* Action Buttons */}
-                         <div className="flex gap-2">
-                           <Button variant="outline" size="sm" className="flex-1">
-                             <Eye className="w-4 h-4 mr-1" />
-                             View
-                           </Button>
-                           <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700">
-                             <Target className="w-4 h-4 mr-1" />
-                             Track
-                           </Button>
-                         </div>
-                       </CardContent>
-                     </Card>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );

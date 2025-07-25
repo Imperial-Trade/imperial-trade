@@ -57,13 +57,8 @@ export default function SignalStream() {
     return canCreate;
   }, [isAdmin, isEducator, profile]);
   const isCreator = useCallback((alertCreatorId: string) => {
-    console.log('SignalStream - Checking creator:', {
-      profileId: profile?.id,
-      alertCreatorId,
-      isCreator: profile?.id === alertCreatorId
-    });
     return profile?.id === alertCreatorId;
-  }, [profile]);
+  }, [profile?.id]);
 
   // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
   const alerts = useMemo(() => {
@@ -137,8 +132,10 @@ export default function SignalStream() {
   const symbols = useMemo(() => {
     const symbolSet = new Set();
     activeAlerts.forEach(alert => {
-      if (alert && alert.finnhubSymbol) {
-        symbolSet.add(alert.finnhubSymbol);
+      if (alert && alert.assetName) {
+        // Map the asset name to the correct symbol for price feed
+        const symbol = alert.assetName.toUpperCase() === 'GOLD' ? 'GOLD' : alert.assetName.toUpperCase();
+        symbolSet.add(symbol);
       }
     });
     const symbolList = Array.from(symbolSet);

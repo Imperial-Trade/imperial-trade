@@ -43,13 +43,8 @@ const coreTools = [
     name: "Educational Journal",
     icon: BookOpen,
     component: TradingJournal,
-    description: "Log and analyze your learning progress with AI-powered educational feedback.",
-  },
-  {
-    name: "Economic Calendar",
-    icon: Calendar,
-    component: OptimizedEconomicCalendar,
-    description: "Stay informed about market-moving events for educational analysis.",
+    description:
+      "Log and analyze your learning progress with AI-powered educational feedback.",
   },
   {
     name: "Educational Calculator",
@@ -57,26 +52,36 @@ const coreTools = [
     component: RiskCalculator,
     description: "Learn position sizing and risk calculation fundamentals.",
   },
-];
-
-const aiTools = [
   {
     name: "Educational Trading Pattern Analysis",
     icon: Brain,
     component: TradeAnalyst,
-    description: "Professional trading performance analysis powered by advanced AI for educational purposes.",
+    description:
+      "Professional trading performance analysis powered by advanced AI for educational purposes.",
+  },
+];
+
+const aiTools = [
+  {
+    name: "Economic Calendar",
+    icon: Calendar,
+    component: OptimizedEconomicCalendar,
+    description:
+      "Stay informed about market-moving events for educational analysis.",
   },
   {
     name: "Educational Pattern Scanner",
     icon: Search,
     component: OpportunityScanner,
-    description: "Scan markets for educational pattern recognition and learning opportunities.",
+    description:
+      "Scan markets for educational pattern recognition and learning opportunities.",
   },
   {
     name: "Educational Risk Calculator",
     icon: Scale,
     component: RiskSimulator,
-    description: "Analyze hypothetical setups to learn risk assessment principles.",
+    description:
+      "Analyze hypothetical setups to learn risk assessment principles.",
   },
 ];
 
@@ -146,8 +151,9 @@ export default function AdvancedTools() {
         Welcome to the Educational Learning Arsenal
       </h2>
       <p className="text-secondary max-w-md">
-        Select an educational tool from the auto-hiding sidebar to begin your learning journey. Hover
-        near the left edge to reveal the educational toolkit.
+        Select an educational tool from the auto-hiding sidebar to begin your
+        learning journey. Hover near the left edge to reveal the educational
+        toolkit.
       </p>
       <div className="flex items-center gap-2 mt-6 text-secondary/80">
         <MousePointerClick className="w-5 h-5" />
@@ -212,13 +218,20 @@ export default function AdvancedTools() {
                           className: "w-3 h-3 flex-shrink-0",
                         })}
                         <span className="text-xs font-medium truncate">
-                          {tool.name === "Educational Journal" ? "Journal" : 
-                           tool.name === "Economic Calendar" ? "Calendar" : 
-                           tool.name === "Educational Calculator" ? "Calculator" : 
-                           tool.name === "Educational Trading Pattern Analysis" ? "Analyst" : 
-                           tool.name === "Educational Pattern Scanner" ? "Scanner" : 
-                           tool.name === "Educational Risk Calculator" ? "Risk Calc" : 
-                           tool.name.split(" ")[0]}
+                          {tool.name === "Educational Journal"
+                            ? "Journal"
+                            : tool.name === "Economic Calendar"
+                            ? "Calendar"
+                            : tool.name === "Educational Calculator"
+                            ? "Calculator"
+                            : tool.name ===
+                              "Educational Trading Pattern Analysis"
+                            ? "Analyst"
+                            : tool.name === "Educational Pattern Scanner"
+                            ? "Scanner"
+                            : tool.name === "Educational Risk Calculator"
+                            ? "Risk Calc"
+                            : tool.name.split(" ")[0]}
                         </span>
                       </div>
                     </button>
@@ -234,22 +247,65 @@ export default function AdvancedTools() {
           <div className="relative h-full">
             <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
               <div className="p-4 bg-transparent">
-                <div style={{ display: activeTool?.name === "Educational Journal" ? 'block' : 'none' }}>
+                <div
+                  style={{
+                    display:
+                      activeTool?.name === "Educational Journal"
+                        ? "block"
+                        : "none",
+                  }}
+                >
                   <TradingJournal />
                 </div>
-                <div style={{ display: activeTool?.name === "Economic Calendar" ? 'block' : 'none' }}>
+                <div
+                  style={{
+                    display:
+                      activeTool?.name === "Economic Calendar"
+                        ? "block"
+                        : "none",
+                  }}
+                >
                   <OptimizedEconomicCalendar />
                 </div>
-                <div style={{ display: activeTool?.name === "Educational Calculator" ? 'block' : 'none' }}>
+                <div
+                  style={{
+                    display:
+                      activeTool?.name === "Educational Calculator"
+                        ? "block"
+                        : "none",
+                  }}
+                >
                   <RiskCalculator />
                 </div>
-                <div style={{ display: activeTool?.name === "Educational Trading Pattern Analysis" ? 'block' : 'none' }}>
+                <div
+                  style={{
+                    display:
+                      activeTool?.name ===
+                      "Educational Trading Pattern Analysis"
+                        ? "block"
+                        : "none",
+                  }}
+                >
                   <TradeAnalyst />
                 </div>
-                <div style={{ display: activeTool?.name === "Educational Pattern Scanner" ? 'block' : 'none' }}>
+                <div
+                  style={{
+                    display:
+                      activeTool?.name === "Educational Pattern Scanner"
+                        ? "block"
+                        : "none",
+                  }}
+                >
                   <OpportunityScanner />
                 </div>
-                <div style={{ display: activeTool?.name === "Educational Risk Calculator" ? 'block' : 'none' }}>
+                <div
+                  style={{
+                    display:
+                      activeTool?.name === "Educational Risk Calculator"
+                        ? "block"
+                        : "none",
+                  }}
+                >
                   <RiskSimulator />
                 </div>
               </div>

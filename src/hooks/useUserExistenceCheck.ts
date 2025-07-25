@@ -28,41 +28,28 @@ export const useUserExistenceCheck = (options: UseUserExistenceCheckOptions = {}
     try {
       console.log('Checking if user exists for email:', email, 'Account request status:', options.accountRequest?.status);
       
-      // Use direct Supabase API call to check user existence
-      // Reset password probe - if user exists, this will succeed without sending email
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        email.toLowerCase().trim(),
-        { redirectTo: null }
-      );
+      // Use the deployed edge function to check user existence
+      const { data, error } = await supabase.functions.invoke('check-user-existence', {
+        body: { email: email.toLowerCase().trim() }
+      });
 
       if (error) {
-        console.log('Reset password probe error:', error.message);
+        console.error('Error calling edge function:', error);
         
-        // Check if this is a "user not found" error
-        const userNotFound = error.message.includes('User not found') || 
-                           error.message.includes('Invalid login credentials') ||
-                           error.message.includes('User does not exist');
-        
-        if (userNotFound) {
-          console.log('User does not exist based on reset password probe');
-          return false;
-        }
-        
-        // For approved account requests, default to "user doesn't exist" on API failure
+        // For approved account requests, default to "user doesn't exist" on edge function failure
         if (options.accountRequest?.status === 'approved') {
-          console.log('API call failed but account is approved - defaulting to user does not exist');
+          console.log('Edge function failed but account is approved - defaulting to user does not exist');
           return false;
         }
         
         // For other cases, this is a genuine error
-        console.error('Genuine error checking user existence:', error);
         setError('Unable to check user status. Please try again.');
         return false;
       }
 
-      // If no error, user exists
-      console.log('User exists - reset password probe succeeded');
-      return true;
+      const userExists = data?.userExists || false;
+      console.log('User existence check result:', { email, userExists });
+      return userExists;
       
     } catch (error) {
       console.error('Network error checking user existence:', error);

@@ -17,6 +17,17 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   onUseCurrentPrice,
   className = ''
 }) => {
+  // Map frontend symbols to API symbols
+  const mapSymbolForAPI = (frontendSymbol: string): string => {
+    const symbolMap: Record<string, string> = {
+      'XAU/USD': 'GOLD',
+      'BTC/USD': 'BTC/USD'
+    };
+    return symbolMap[frontendSymbol] || frontendSymbol;
+  };
+
+  const apiSymbol = mapSymbolForAPI(symbol);
+  
   const {
     price,
     change,
@@ -26,7 +37,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     lastUpdated,
     connectionStatus,
     refreshPrice
-  } = useOptimizedLivePrice(symbol, {
+  } = useOptimizedLivePrice(apiSymbol, {
     enableSmartPausing: false, // Keep connection active for trading signals
     debounceMs: 500, // Faster updates for trading
     pauseOnInput: false

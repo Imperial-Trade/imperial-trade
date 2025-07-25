@@ -184,21 +184,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setProfile(null);
       
-      // Attempt global sign out
+      // Create a promise that waits for the SIGNED_OUT event
+      const signOutPromise = new Promise<void>((resolve) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+          if (event === 'SIGNED_OUT') {
+            subscription.unsubscribe();
+            resolve();
+          }
+        });
+      });
+      
+      // Create timeout promise as fallback
+      const timeoutPromise = new Promise<void>((resolve) => {
+        setTimeout(resolve, 2000); // 2 second timeout
+      });
+      
+      // Start the sign out process
       await supabase.auth.signOut({ scope: 'global' });
       
-      // Small delay to ensure state cleanup completes before redirect
-      setTimeout(() => {
-        window.location.href = '/signin';
-      }, 100);
+      // Wait for either the SIGNED_OUT event or timeout
+      await Promise.race([signOutPromise, timeoutPromise]);
+      
+      // NOW redirect after everything is truly complete
+      window.location.href = '/signin';
+      
     } catch (error) {
       console.error('Error signing out:', error);
       // Reset flag on error
       setIsSigningOut(false);
       // Force redirect even if signout fails
-      setTimeout(() => {
-        window.location.href = '/signin';
-      }, 100);
+      window.location.href = '/signin';
     }
   };
 

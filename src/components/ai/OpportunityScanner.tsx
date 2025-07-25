@@ -263,21 +263,13 @@ export default function OpportunityScanner() {
 
                 <Button 
                   onClick={scanForOpportunities} 
-                  disabled={isScanning || !user} 
+                  disabled={true} 
                   size="sm"
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-8 px-3 text-xs"
+                  className="bg-muted/50 hover:bg-muted/50 text-muted-foreground h-8 px-3 text-xs cursor-not-allowed"
+                  title="Feature temporarily disabled for maintenance"
                 >
-                  {isScanning ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent mr-1" />
-                      AI Learning Scan...
-                    </>
-                  ) : (
-                    <>
-                      <Brain className="w-3 h-3 mr-1" />
-                      AI Pattern Scan
-                    </>
-                  )}
+                  <Brain className="w-3 h-3 mr-1" />
+                  AI Pattern Scan (Disabled)
                 </Button>
               </div>
             </div>
@@ -300,7 +292,7 @@ export default function OpportunityScanner() {
               </h3>
               <p className="text-muted-foreground">
                 {user 
-                  ? 'Click "AI Pattern Scan" to discover new educational opportunities based on your trading patterns'
+                  ? 'The AI Pattern Scanner is temporarily disabled for maintenance. Educational patterns will be available soon.'
                   : 'Sign in to access AI-powered educational content personalized to your trading style'
                 }
               </p>

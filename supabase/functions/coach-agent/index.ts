@@ -90,39 +90,57 @@ serve(async (req) => {
       console.log("Coach Agent - Fetching trade journal entry...");
       const { data: journalEntry, error: journalError } = await supabase
         .from("trade_journal_entries")
-        .select("asset_ticker, pnl, notes, entry_price, exit_price, position_size, trade_type, screenshot_url")
+        .select(
+          "asset_ticker, pnl, notes, entry_price, exit_price, position_size, trade_type, screenshot_url"
+        )
         .eq("id", journal_entry_id)
         .eq("user_id", user_id)
         .single();
 
       if (journalError) {
-        console.error("Coach Agent - Error fetching journal entry:", journalError);
+        console.error(
+          "Coach Agent - Error fetching journal entry:",
+          journalError
+        );
         throw new Error("Failed to fetch trade journal entry");
       }
 
-      const tradeOutcome = journalEntry.pnl > 0 ? "winning trade" : "losing trade";
+      const tradeOutcome =
+        journalEntry.pnl > 0 ? "winning trade" : "losing trade";
       const pnlAmount = Math.abs(journalEntry.pnl);
       const tradeNotes = journalEntry.notes || "No notes provided";
-      
+
       console.log("Coach Agent - Trade analysis:", {
         outcome: tradeOutcome,
         pnl: pnlAmount,
-        notes: tradeNotes.substring(0, 100) + "..."
+        notes: tradeNotes.substring(0, 100) + "...",
       });
 
-      userActionPrompt = `The user (ID: ${user_id}) submitted a ${tradeOutcome} with ${pnlAmount} USD ${journalEntry.pnl > 0 ? 'profit' : 'loss'}. 
+      userActionPrompt = `The user (ID: ${user_id}) submitted a ${tradeOutcome} with ${pnlAmount} USD ${
+        journalEntry.pnl > 0 ? "profit" : "loss"
+      }. 
       Asset: ${journalEntry.asset_ticker}
-      Trade Type: ${journalEntry.trade_type || 'Not specified'}
+      Trade Type: ${journalEntry.trade_type || "Not specified"}
       Their notes: "${tradeNotes}"
-      ${journalEntry.screenshot_url ? 'They also uploaded a screenshot for analysis.' : ''}
+      ${
+        journalEntry.screenshot_url
+          ? "They also uploaded a screenshot for analysis."
+          : ""
+      }
       
       Analyze their notes for specific trading concepts and provide encouraging feedback that acknowledges the sophisticated analysis they demonstrate.`;
-      
-      userReadablePrompt = `${userName} submitted a ${tradeOutcome} with ${pnlAmount} USD ${journalEntry.pnl > 0 ? 'profit' : 'loss'}.
+
+      userReadablePrompt = `${userName} submitted a ${tradeOutcome} with ${pnlAmount} USD ${
+        journalEntry.pnl > 0 ? "profit" : "loss"
+      }.
       Asset: ${journalEntry.asset_ticker}
-      Trade Type: ${journalEntry.trade_type || 'Not specified'}
+      Trade Type: ${journalEntry.trade_type || "Not specified"}
       Their notes: "${tradeNotes}"
-      ${journalEntry.screenshot_url ? 'They also uploaded a screenshot for analysis.' : ''}
+      ${
+        journalEntry.screenshot_url
+          ? "They also uploaded a screenshot for analysis."
+          : ""
+      }
       
       Provide a supportive coaching response that highlights specific concepts from their notes and validates their trading analysis skills.`;
     } else if (event_type === "MODULE_COMPLETE") {
@@ -167,7 +185,10 @@ Return your response in JSON format: {"feedback": "your encouraging message here
         console.log("Coach Agent - Extracted feedback text from JSON");
       }
     } catch (parseError) {
-      console.log("Coach Agent - Failed to parse JSON, using response as-is:", parseError);
+      console.log(
+        "Coach Agent - Failed to parse JSON, using response as-is:",
+        parseError
+      );
       // If JSON parsing fails, use the response as-is
     }
 

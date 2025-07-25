@@ -34,7 +34,8 @@ export const ResetPasswordForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resetComplete, setResetComplete] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [isValidating, setIsValidating] = useState(true);
+  const [isValidLink, setIsValidLink] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -47,19 +48,35 @@ export const ResetPasswordForm: React.FC = () => {
   });
 
   useEffect(() => {
-    // Check if we have the required tokens
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    
-    if (!accessToken || !refreshToken) {
-      toast({
-        variant: "destructive",
-        title: "Invalid Reset Link",
-        description: "This password reset link is invalid or has expired.",
-      });
-      navigate('/signin');
-    }
-  }, [searchParams, navigate, toast]);
+    const validateSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error || !session) {
+          toast({
+            variant: "destructive",
+            title: "Invalid Reset Link",
+            description: "This password reset link is invalid or has expired.",
+          });
+          navigate('/signin');
+        } else {
+          setIsValidLink(true);
+        }
+      } catch (error) {
+        console.error("Session validation error:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Unable to validate reset link. Please try again.",
+        });
+        navigate('/signin');
+      } finally {
+        setIsValidating(false);
+      }
+    };
+
+    validateSession();
+  }, [navigate, toast]);
 
   const onSubmit = async (data: ResetPasswordData) => {
     setIsSubmitting(true);
@@ -100,6 +117,29 @@ export const ResetPasswordForm: React.FC = () => {
     }
   };
 
+  // Show loading state while validating
+  if (isValidating) {
+    return (
+      <Card className="glass-effect border-default">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center text-lime-200">
+            Validating Reset Link
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-lime-300 border-t-transparent" />
+            </div>
+            <p className="text-slate-50">
+              Please wait while we validate your reset link...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (resetComplete) {
     return (
       <Card className="glass-effect border-default">
@@ -123,6 +163,11 @@ export const ResetPasswordForm: React.FC = () => {
         </CardContent>
       </Card>
     );
+  }
+
+  // Don't render the form until we have a valid session
+  if (!isValidLink) {
+    return null;
   }
 
   return (

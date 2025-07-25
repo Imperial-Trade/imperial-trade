@@ -244,7 +244,7 @@ export default function AccountRequestStatusPage() {
           />
         )}
 
-        {viewMode === 'result' && !currentRequest && status?.status === "approved" && (
+        {viewMode === 'result' && status?.status === "approved" && (
           <ApprovedAccountFlow accountRequest={status} />
         )}
 

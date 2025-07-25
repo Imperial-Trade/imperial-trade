@@ -26,41 +26,56 @@ export const useUserExistenceCheck = (options: UseUserExistenceCheckOptions = {}
     setError(null);
 
     try {
-      console.log('Checking if user exists for email:', email, 'Account request status:', options.accountRequest?.status);
+      console.log('=== STARTING USER EXISTENCE CHECK ===');
+      console.log('Email:', email);
+      console.log('Account request status:', options.accountRequest?.status);
+      console.log('Supabase client ready:', !!supabase);
+      console.log('Functions available:', !!supabase.functions);
       
-      // Use the deployed edge function to check user existence
+      console.log('Calling edge function check-user-existence...');
+      const startTime = Date.now();
+      
       const { data, error } = await supabase.functions.invoke('check-user-existence', {
         body: { email: email.toLowerCase().trim() }
       });
+      
+      const endTime = Date.now();
+      console.log('Edge function call completed in:', endTime - startTime, 'ms');
+      console.log('Raw response data:', data);
+      console.log('Raw response error:', error);
 
       if (error) {
-        console.error('Error calling edge function:', error);
+        console.error('=== EDGE FUNCTION ERROR ===');
+        console.error('Error object:', error);
+        console.error('Error message:', error.message);
+        console.error('Error details:', error.details);
+        console.error('Error hint:', error.hint);
+        console.error('Error code:', error.code);
         
-        // For approved account requests, default to "user doesn't exist" on edge function failure
-        if (options.accountRequest?.status === 'approved') {
-          console.log('Edge function failed but account is approved - defaulting to user does not exist');
-          return false;
-        }
-        
-        // For other cases, this is a genuine error
-        setError('Unable to check user status. Please try again.');
+        // NO FALLBACK - Surface the real error
+        setError(`Edge function failed: ${error.message || 'Unknown error'}`);
         return false;
       }
 
+      console.log('=== EDGE FUNCTION SUCCESS ===');
+      console.log('Data received:', data);
+      console.log('User exists value:', data?.userExists);
+      
       const userExists = data?.userExists || false;
-      console.log('User existence check result:', { email, userExists });
+      console.log('Final result - User exists:', userExists);
+      console.log('=== USER EXISTENCE CHECK COMPLETE ===');
+      
       return userExists;
       
     } catch (error) {
-      console.error('Network error checking user existence:', error);
+      console.error('=== NETWORK/UNEXPECTED ERROR ===');
+      console.error('Error type:', typeof error);
+      console.error('Error constructor:', error?.constructor?.name);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       
-      // For approved account requests, default to "user doesn't exist" on network failure
-      if (options.accountRequest?.status === 'approved') {
-        console.log('Network error but account is approved - defaulting to user does not exist');
-        return false;
-      }
-      
-      setError('Unable to check user status. Please try again.');
+      // NO FALLBACK - Surface the real error
+      setError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     } finally {
       setIsChecking(false);

@@ -1,64 +1,77 @@
 
 import React, { useEffect, useRef } from "react";
-import { BarChart3, Brain, Shield, Zap, Target, Smartphone, TrendingUp, DollarSign } from "lucide-react";
 import ContentSection from "./ContentSection";
+import { XeonLogo } from "@/assets/logos/XeonLogo";
+import { ImperialAcademyLogo } from "@/assets/logos/ImperialAcademyLogo";
+import { NeoTvLogo } from "@/assets/logos/NeoTvLogo";
+import { OrderflowLogo } from "@/assets/logos/OrderflowLogo";
+import { KalcuLogo } from "@/assets/logos/KalcuLogo";
+import { JournalXxLogo } from "@/assets/logos/JournalXxLogo";
+import { MeccaLogo } from "@/assets/logos/MeccaLogo";
 
 const tools = [
   {
-    icon: BarChart3,
-    title: "Advanced Analytics",
-    description: "Real-time market analysis with AI-powered insights and predictive modeling",
+    icon: XeonLogo,
+    title: "XEON",
+    brand: "XEON",
+    tagline: "Illuminate the Opportunity",
+    description: "Exclusive stream of live market analysis and trade breakdowns from experienced contributors",
     color: "hsl(var(--feature-blue))",
     gradient: "from-blue-500 to-purple-500"
   },
   {
-    icon: Brain,
-    title: "AI Trading Assistant", 
-    description: "Personalized trading recommendations and strategy optimization",
-    color: "hsl(var(--feature-purple))",
-    gradient: "from-purple-500 to-pink-500"
-  },
-  {
-    icon: Shield,
-    title: "Risk Management",
-    description: "Automated risk controls with position sizing and portfolio protection",
+    icon: ImperialAcademyLogo,
+    title: "IMPERIAL ACADEMY",
+    brand: "IMPERIAL ACADEMY", 
+    tagline: "Where Market Principles Become Your Power",
+    description: "Structured educational curriculum designed to build a durable framework for market analysis",
     color: "hsl(var(--feature-green))",
     gradient: "from-green-500 to-emerald-500"
   },
   {
-    icon: Zap,
-    title: "Lightning Execution",
-    description: "Ultra-low latency order execution with institutional-grade infrastructure",
+    icon: NeoTvLogo,
+    title: "NEO TV",
+    brand: "NEO TV",
+    tagline: "See the Market. Seize the Moment",
+    description: "Daily live-streamed market analysis alongside experienced educators with real-time insights",
     color: "hsl(var(--feature-orange))",
     gradient: "from-orange-500 to-red-500"
   },
   {
-    icon: Target,
-    title: "Educational Patterns",
-    description: "Pattern recognition algorithms for educational entry and exit analysis",
-    color: "hsl(var(--feature-pink))",
-    gradient: "from-pink-500 to-purple-500"
+    icon: OrderflowLogo,
+    title: "ORDERFLOW",
+    brand: "ORDERFLOW",
+    tagline: "Where Traders Converge",
+    description: "Private collaborative ecosystem for dedicated traders to share analysis and insights",
+    color: "hsl(var(--feature-purple))",
+    gradient: "from-purple-500 to-pink-500"
   },
   {
-    icon: Smartphone,
-    title: "Mobile Trading",
-    description: "Full-featured mobile app for educational trading analysis on the go - for educational purposes only",
+    icon: KalcuLogo,
+    title: "KALCU",
+    brand: "KALCU",
+    tagline: "Your Edge, Calculated",
+    description: "Precision toolkit for sophisticated risk management and position sizing calculations",
     color: "hsl(var(--feature-blue))",
     gradient: "from-blue-500 to-cyan-500"
   },
   {
-    icon: TrendingUp,
-    title: "Market Scanner",
-    description: "Real-time opportunity detection across global markets",
-    color: "hsl(var(--feature-purple))",
-    gradient: "from-purple-500 to-indigo-500"
+    icon: JournalXxLogo,
+    title: "JOURNAL XX",
+    brand: "JOURNAL XX",
+    tagline: "Decode Your Data. Evolve Your Edge",
+    description: "Intelligent performance diagnostics tool that transforms trading history into actionable feedback",
+    color: "hsl(var(--feature-orange))",
+    gradient: "from-orange-500 to-yellow-500"
   },
   {
-    icon: DollarSign,
-    title: "Profit Tracker",
-    description: "Comprehensive P&L analysis with tax optimization tools",
-    color: "hsl(var(--feature-green))",
-    gradient: "from-green-500 to-teal-500"
+    icon: MeccaLogo,
+    title: "MECCA",
+    brand: "MECCA",
+    tagline: "Processing Infinite Variables. Delivering Singular Clarity",
+    description: "Personal AI research assistant providing objective, data-centric market feedback",
+    color: "hsl(var(--feature-purple))",
+    gradient: "from-purple-500 to-indigo-500"
   }
 ];
 

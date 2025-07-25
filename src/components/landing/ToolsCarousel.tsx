@@ -1,51 +1,38 @@
 
 import React, { useState, useEffect } from "react";
-import { Brain, Search, Calculator, BookOpen, BarChart, Activity } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import ContentSection from "./ContentSection";
+import { MeccaLogo } from "@/assets/logos/MeccaLogo";
+import { KalcuLogo } from "@/assets/logos/KalcuLogo";
+import { JournalXxLogo } from "@/assets/logos/JournalXxLogo";
 
 const tools = [
   {
-    name: "AI Analyst",
-    icon: Brain,
+    name: "MECCA",
+    brand: "MECCA",
+    tagline: "Processing Infinite Variables. Delivering Singular Clarity.",
+    icon: MeccaLogo,
     description:
-      "Get AI-powered breakdowns of your trade history, identify strengths, and pinpoint areas for improvement.",
+      "Your personal AI research assistant. Mecca processes market data and your own performance history to provide objective, data-centric feedback. Use it to stress-test your ideas and deepen your analysis before making your own informed decisions.",
     color: "text-purple-400",
   },
   {
-    name: "AI Scanner",
-    icon: Search,
+    name: "KALCU",
+    brand: "KALCU", 
+    tagline: "Your Edge, Calculated.",
+    icon: KalcuLogo,
     description:
-      "Scan markets 24/7 for high-probability setups across various assets. Never miss a potential trade again.",
-    color: "text-blue-400",
+      "A precision toolkit for sophisticated risk management. Calculate position sizes based on your personal risk tolerance across any asset, ensuring you maintain disciplined capital protection in every hypothetical setup you analyze.",
+    color: "text-cyan-400",
   },
   {
-    name: "Risk Calculator",
-    icon: Calculator,
+    name: "JOURNAL XX",
+    brand: "JOURNAL XX",
+    tagline: "Decode Your Data. Evolve Your Edge.",
+    icon: JournalXxLogo,
     description:
-      "Calculate the perfect position size in seconds. Manage your risk precisely for any instrument and trade.",
-    color: "text-green-400",
-  },
-  {
-    name: "Trading Journal",
-    icon: BookOpen,
-    description:
-      "Log trades and get AI-powered encouragement and constructive feedback to refine your strategy.",
+      "An intelligent performance diagnostics tool that transforms your trading history into actionable feedback. Log your trades to uncover recurring habits, identify your unique strengths, and systematically optimize your own decision-making process.",
     color: "text-orange-400",
-  },
-  {
-    name: "Performance Analytics",
-    icon: BarChart,
-    description:
-      "Visualize your trading performance with in-depth charts, heatmaps, and customizable metrics.",
-    color: "text-pink-400",
-  },
-  {
-    name: "Risk Simulator",
-    icon: Activity,
-    description:
-      "Simulate trade setups to analyze risk before you enter the market, testing different scenarios.",
-    color: "text-red-400",
   },
 ];
 
@@ -130,9 +117,14 @@ export default function ToolsCarousel() {
                           className={`${iconSize} ${tool.color} mx-auto`}
                         />
                       </div>
-                      <h3 className={`${titleSize} font-bold text-primary mb-3`}>
-                        {tool.name}
+                      <h3 className={`${titleSize} font-bold text-primary mb-2`}>
+                        {tool.brand}
                       </h3>
+                      {absOffset === 0 && (
+                        <p className="text-sm text-accent-gold mb-3 font-medium">
+                          {tool.tagline}
+                        </p>
+                      )}
                       <p
                         className={`text-muted-foreground ${descSize} leading-relaxed`}
                       >

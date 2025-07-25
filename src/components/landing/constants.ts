@@ -6,13 +6,19 @@ import {
   MessageSquare,
   Briefcase,
 } from "lucide-react";
+import { XeonLogo } from "@/assets/logos/XeonLogo";
+import { ImperialAcademyLogo } from "@/assets/logos/ImperialAcademyLogo";
+import { NeoTvLogo } from "@/assets/logos/NeoTvLogo";
+import { OrderflowLogo } from "@/assets/logos/OrderflowLogo";
 
 export const features = [
   {
-    icon: BookOpen,
-    title: "Education: The Master's Curriculum",
+    icon: ImperialAcademyLogo,
+    title: "IMPERIAL ACADEMY: Where Market Principles Become Your Power",
+    brand: "IMPERIAL ACADEMY",
+    tagline: "Where Market Principles Become Your Power.",
     description:
-      "Education is not just information; it's the systematic installation of a professional trading framework into your mind. We don't teach you what to think, we teach you how to think like a seasoned analyst. Our goal is to make you self-sufficient.",
+      "A structured educational curriculum designed to build a durable framework for market analysis. Progress from foundational mechanics to advanced concepts, empowering you to develop and refine your own unique trading edge.",
     detailedContext:
       "Transform from beginner to expert trader through our comprehensive education system. Learn from real market professionals who've traded millions in volume. Master structured learning pathways, interactive quizzes with knowledge gates, and downloadable trading arsenals.",
     link: "Education",
@@ -29,10 +35,12 @@ export const features = [
     ]
   },
   {
-    icon: TrendingUp,
-    title: "Signal Stream: Your Professional Trade Blueprint",
+    icon: XeonLogo,
+    title: "XEON: Illuminate the Opportunity",
+    brand: "XEON",
+    tagline: "Illuminate the Opportunity",
     description:
-      "The Signal Stream is your 'over-the-shoulder' view of our professional analysts at work. It's designed to be a dual-purpose tool: generate potential profits for you while simultaneously providing a masterclass in professional trade planning.",
+      "Tap into the XEON feed for an exclusive stream of live market analysis and trade breakdowns from our experienced contributors. Each post details a contributor's specific viewpoint and strategy, serving as a practical, real-time case study—not a signal to be followed. Use these illustrative examples to compare against your own analysis, deepen your understanding, and see how educational concepts from the Imperial Academy are applied under live market conditions.",
     detailedContext:
       "Never miss a profitable opportunity with our round-the-clock signal service. Get detailed market analysis, risk management guidance, and trade updates in real-time with precision parameters and multi-TP strategy.",
     link: "SignalStream",
@@ -49,10 +57,12 @@ export const features = [
     ]
   },
   {
-    icon: Radio,
-    title: "Live Sessions: The Virtual Trading Floor",
+    icon: NeoTvLogo,
+    title: "NEO TV: See the Market. Seize the Moment.",
+    brand: "NEO TV",
+    tagline: "See the Market. Seize the Moment.",
     description:
-      "Direct, unfiltered access to the mind of a professional trader during the most critical hours of the trading day. This is your chance to ask the questions you can't find answers to in books or videos.",
+      "A daily, live-streamed look into the markets alongside our experienced educators. Watch as they conduct real-time analysis, break down market behavior, and discuss their thought process, providing a transparent view of how strategies are applied.",
     detailedContext:
       "Experience the thrill of live trading alongside seasoned professionals. See exactly how experts read market sentiment, identify setups, and manage their positions with interactive Q&A and real-time execution.",
     link: "Live",
@@ -69,10 +79,12 @@ export const features = [
     ]
   },
   {
-    icon: MessageSquare,
-    title: "Community Forum: The Collective Intelligence",
+    icon: OrderflowLogo,
+    title: "ORDERFLOW: Where Traders Converge",
+    brand: "ORDERFLOW",
+    tagline: "Where Traders Converge.",
     description:
-      "Trading is a lonely endeavor, but it doesn't have to be. The forum is a curated, professional ecosystem designed to foster collaboration, eliminate bad habits, and keep you connected to a network of serious, like-minded peers.",
+      "A private, collaborative ecosystem for dedicated traders. Share your market analysis, exchange data-driven insights, and refine your strategies within a curated community focused on continuous growth and peer-to-peer learning.",
     detailedContext:
       "Join a network of 500+ dedicated traders who share your passion for the markets. Collaborate, learn, and grow together in a supportive environment free from noise with structured channels and professional oversight.",
     link: "Forum",

@@ -14,7 +14,7 @@ interface UserExistenceCheckProps {
 
 export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({ accountRequest }) => {
   const [userExists, setUserExists] = useState<boolean | null>(null);
-  const { checkUserExists, isChecking, error, clearError } = useUserExistenceCheck();
+  const { checkUserExists, isChecking, error, clearError } = useUserExistenceCheck({ accountRequest });
 
   useEffect(() => {
     const checkUser = async () => {
@@ -36,8 +36,8 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({ accountR
   };
 
   const handlePasswordSetupSuccess = () => {
-    // Success handling is managed within PasswordSetup component
     console.log('Password setup completed successfully');
+    // PasswordSetup component handles the dashboard redirect
   };
 
   // Loading state while checking user existence

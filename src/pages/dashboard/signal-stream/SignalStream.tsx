@@ -6,7 +6,7 @@ import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-reac
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
-import usePriceFeed from '@/components/hooks/usePriceFeed';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -57,13 +57,8 @@ export default function SignalStream() {
     return canCreate;
   }, [isAdmin, isEducator, profile]);
   const isCreator = useCallback((alertCreatorId: string) => {
-    console.log('SignalStream - Checking creator:', {
-      profileId: profile?.id,
-      alertCreatorId,
-      isCreator: profile?.id === alertCreatorId
-    });
     return profile?.id === alertCreatorId;
-  }, [profile]);
+  }, [profile?.id]);
 
   // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
   const alerts = useMemo(() => {
@@ -137,8 +132,10 @@ export default function SignalStream() {
   const symbols = useMemo(() => {
     const symbolSet = new Set();
     activeAlerts.forEach(alert => {
-      if (alert && alert.finnhubSymbol) {
-        symbolSet.add(alert.finnhubSymbol);
+      if (alert && alert.assetName) {
+        // Map the asset name to the correct symbol for price feed
+        const symbol = alert.assetName.toUpperCase() === 'GOLD' ? 'GOLD' : alert.assetName.toUpperCase();
+        symbolSet.add(symbol);
       }
     });
     const symbolList = Array.from(symbolSet);
@@ -146,10 +143,39 @@ export default function SignalStream() {
     return symbolList as string[];
   }, [activeAlerts]);
   const {
-    prices: livePrices,
+    prices: livePricesData,
     connectionStatus: priceConnectionStatus,
-    priceSource
-  } = usePriceFeed(symbols);
+    dataSource: priceSource,
+    subscribe,
+    unsubscribe,
+    getPrice
+  } = useWebSocketPrices();
+
+  // Convert price data to simple number format for compatibility
+  const livePrices = useMemo(() => {
+    const result: Record<string, number> = {};
+    Object.entries(livePricesData).forEach(([symbol, priceData]) => {
+      if (priceData && typeof priceData.price === 'number') {
+        result[symbol] = priceData.price;
+      }
+    });
+    return result;
+  }, [livePricesData]);
+
+  // Subscribe to symbols for live price updates
+  useEffect(() => {
+    if (symbols.length > 0) {
+      console.log('SignalStream - Subscribing to symbols:', symbols);
+      subscribe(symbols);
+    }
+    
+    return () => {
+      if (symbols.length > 0) {
+        console.log('SignalStream - Unsubscribing from symbols:', symbols);
+        unsubscribe(symbols);
+      }
+    };
+  }, [symbols, subscribe, unsubscribe]);
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
 
   // Real-time connection status badge
@@ -447,7 +473,7 @@ export default function SignalStream() {
                   close_reason: alert.closeReason,
                   created_date: alert.createdAt,
                   updated_date: alert.updatedAt
-                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices[alert.finnhubSymbol]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} />)}
+                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices['GOLD'] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} />)}
                     </div> : <div className="text-center py-8">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <Shield className="w-8 h-8 text-muted-foreground/50" />

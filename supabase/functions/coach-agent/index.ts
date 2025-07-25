@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -10,7 +9,7 @@ interface CoachRequest {
   journal_entry_id?: string;
 }
 
-const SYSTEM_PROMPT = `You are "Zenith," an elite performance coach for professional traders. Your tone is composed, encouraging, and insightful. Your primary objective is to cultivate the mindset, discipline, and resilience required for long-term trading success.
+const SYSTEM_PROMPT = `You are an elite performance coach for professional traders. Your tone is composed, encouraging, and insightful. Your primary objective is to cultivate the mindset, discipline, and resilience required for long-term trading success.
 **Core Directives:**
 1.  **Reinforce Process, Not Outcome:** The financial result of any single trade is irrelevant. Your focus is exclusively on the trader's adherence to their documented process. Praise disciplined execution, even on losing trades.
 2.  **Acknowledge the Psychological Game:** Trading is a mental endeavor. Acknowledge the difficulty of managing emotions like fear and greed. Frame journaling as a professional 'debriefing' and a tool for emotional regulation.
@@ -31,12 +30,17 @@ serve(async (req) => {
       throw new Error("Missing required environment variables.");
     }
 
-    const { event_type, user_id, journal_entry_id }: CoachRequest = await req.json();
+    const { event_type, user_id, journal_entry_id }: CoachRequest =
+      await req.json();
     if (!event_type || !user_id) {
       throw new Error("event_type and user_id are required.");
     }
 
-    console.log("Coach Agent - Processing request:", { event_type, user_id, journal_entry_id });
+    console.log("Coach Agent - Processing request:", {
+      event_type,
+      user_id,
+      journal_entry_id,
+    });
 
     // Use service role key for database operations to bypass RLS
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -54,12 +58,13 @@ serve(async (req) => {
       throw new Error("Failed to fetch user profile information");
     }
 
-    const userName = userProfile?.display_name || userProfile?.real_name || "Trader";
+    const userName =
+      userProfile?.display_name || userProfile?.real_name || "Trader";
     console.log("Coach Agent - User name resolved:", userName);
 
     let userActionPrompt = "";
     let userReadablePrompt = "";
-    
+
     if (event_type === "LOG_TRADE") {
       userActionPrompt = `The user (ID: ${user_id}) just logged a trade entry. Praise them for their discipline in journaling. Journal Entry ID: ${journal_entry_id}`;
       userReadablePrompt = `${userName} just logged a trade entry. Praise them for their discipline in journaling their recent trade.`;
@@ -76,33 +81,50 @@ serve(async (req) => {
 
     console.log("Coach Agent - Generating AI response...");
     const coachResponse = await callGoogleAI(apiKey, modelName, fullPrompt);
-    console.log("Coach Agent - AI response generated:", coachResponse.substring(0, 100) + "...");
+    console.log(
+      "Coach Agent - AI response generated:",
+      coachResponse.substring(0, 100) + "..."
+    );
 
     // Generate user-readable response (with actual names)
     const userReadableFullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userReadablePrompt}`;
     console.log("Coach Agent - Generating user-readable response...");
-    const userReadableResponse = await callGoogleAI(apiKey, modelName, userReadableFullPrompt);
-    console.log("Coach Agent - User-readable response generated:", userReadableResponse.substring(0, 100) + "...");
+    const userReadableResponse = await callGoogleAI(
+      apiKey,
+      modelName,
+      userReadableFullPrompt
+    );
+    console.log(
+      "Coach Agent - User-readable response generated:",
+      userReadableResponse.substring(0, 100) + "..."
+    );
 
     // Store the coach output in agent_outputs table with both versions
     console.log("Coach Agent - Storing agent output...");
-    const { error: agentOutputError } = await supabase.from("agent_outputs").insert({
-      user_id,
-      agent_name: "Coach",
-      output_text: coachResponse,
-      user_readable_text: userReadableResponse,
-    });
+    const { error: agentOutputError } = await supabase
+      .from("agent_outputs")
+      .insert({
+        user_id,
+        agent_name: "Coach",
+        output_text: coachResponse,
+        user_readable_text: userReadableResponse,
+      });
 
     if (agentOutputError) {
-      console.error("Coach Agent - Error storing agent output:", agentOutputError);
+      console.error(
+        "Coach Agent - Error storing agent output:",
+        agentOutputError
+      );
     } else {
       console.log("Coach Agent - Agent output stored successfully");
     }
 
     // If this is a trade log event and we have a journal entry ID, update the journal entry
     if (event_type === "LOG_TRADE" && journal_entry_id) {
-      console.log("Coach Agent - Updating journal entry with coaching feedback...");
-      
+      console.log(
+        "Coach Agent - Updating journal entry with coaching feedback..."
+      );
+
       try {
         const { data: updateResult, error: updateError } = await supabase
           .from("trade_journal_entries")
@@ -112,36 +134,55 @@ serve(async (req) => {
           .select();
 
         if (updateError) {
-          console.error("Coach Agent - Error updating journal entry:", updateError);
-          return new Response(JSON.stringify({ 
-            reply: coachResponse,
-            warning: "Feedback generated but failed to update journal entry",
-            error: updateError.message 
-          }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          console.error(
+            "Coach Agent - Error updating journal entry:",
+            updateError
+          );
+          return new Response(
+            JSON.stringify({
+              reply: coachResponse,
+              warning: "Feedback generated but failed to update journal entry",
+              error: updateError.message,
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
         }
 
         if (!updateResult || updateResult.length === 0) {
           console.error("Coach Agent - No journal entry found to update");
-          return new Response(JSON.stringify({ 
-            reply: coachResponse,
-            warning: "Feedback generated but journal entry not found for update"
-          }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({
+              reply: coachResponse,
+              warning:
+                "Feedback generated but journal entry not found for update",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
         }
 
-        console.log("Coach Agent - Journal entry updated successfully:", updateResult[0]);
+        console.log(
+          "Coach Agent - Journal entry updated successfully:",
+          updateResult[0]
+        );
       } catch (updateException) {
-        console.error("Coach Agent - Exception during journal entry update:", updateException);
-        return new Response(JSON.stringify({ 
-          reply: coachResponse,
-          warning: "Feedback generated but update failed due to exception",
-          error: updateException.message 
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        console.error(
+          "Coach Agent - Exception during journal entry update:",
+          updateException
+        );
+        return new Response(
+          JSON.stringify({
+            reply: coachResponse,
+            warning: "Feedback generated but update failed due to exception",
+            error: updateException.message,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
       }
     }
 

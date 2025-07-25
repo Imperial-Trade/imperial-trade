@@ -53,6 +53,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const reconnectAttemptsRef = useRef(0);
+  const priceUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const getReconnectDelay = useCallback(() => {
     const baseDelay = 5000;
@@ -68,8 +69,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       
       // Map symbols to correct API format (Gold -> GOLD, BTC -> BTC/USD)
       const mappedSymbols = symbols.map(symbol => {
-        if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'GOLD';
-        if (symbol === 'BTC' || symbol === 'BITCOIN') return 'BTC/USD';
+        if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'GOLD'; // Fixed mapping for Gold
+        if (symbol === 'BTC' || symbol === 'BITCOIN' || symbol === 'BTC/USD') return 'BTC/USD';
         return symbol;
       });
 
@@ -145,11 +146,29 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
     setConnectionStatus('connecting');
     
-    // Try HTTP fallback first for better reliability
+    // Try HTTP fallback immediately for better user experience
     if (subscribedSymbolsRef.current.size > 0) {
       const symbols = Array.from(subscribedSymbolsRef.current);
-      console.log('🔄 Attempting HTTP fallback first for symbols:', symbols);
+      console.log('🔄 Starting immediate HTTP fallback for symbols:', symbols);
       fetchPricesHTTP(symbols);
+      
+      // Set a faster timeout for connection state - if WebSocket doesn't connect in 2 seconds, stay with HTTP
+      const quickTimeout = setTimeout(() => {
+        if (socketRef.current?.readyState !== WebSocket.OPEN) {
+          console.log('⚡ Fast timeout: Using HTTP mode, WebSocket took too long');
+          setConnectionStatus('connected'); // Consider HTTP as connected
+          setDataSource('twelve_data_api');
+        }
+      }, 2000); // Very fast 2-second timeout
+      
+      // Clear timeout on successful WebSocket connection
+      const originalOnOpen = () => {
+        clearTimeout(quickTimeout);
+        console.log('✅ WebSocket connected - canceling HTTP-only mode');
+      };
+      
+      // Store timeout reference for cleanup
+      (window as any).wsQuickTimeout = quickTimeout;
     }
     
     try {
@@ -162,6 +181,12 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         console.log('✅ WebSocket connected to live price stream');
         setConnectionStatus('connected');
         reconnectAttemptsRef.current = 0;
+        
+        // Clear the fast timeout since WebSocket connected successfully
+        if ((window as any).wsQuickTimeout) {
+          clearTimeout((window as any).wsQuickTimeout);
+          (window as any).wsQuickTimeout = null;
+        }
         
         // Clear any connection errors
         setErrors(prev => {
@@ -282,6 +307,19 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       // Also try WebSocket connection
       connect();
     }
+
+    // Set up automatic price refresh every 6 seconds
+    if (priceUpdateIntervalRef.current) {
+      clearInterval(priceUpdateIntervalRef.current);
+    }
+    
+    priceUpdateIntervalRef.current = setInterval(() => {
+      if (subscribedSymbolsRef.current.size > 0) {
+        const currentSymbols = Array.from(subscribedSymbolsRef.current);
+        console.log('🔄 Auto-refreshing prices every 6 seconds for:', currentSymbols);
+        fetchPricesHTTP(currentSymbols);
+      }
+    }, 6000); // Update every 6 seconds
   }, [connect, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
@@ -301,6 +339,13 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         type: 'unsubscribe',
         symbols
       }));
+    }
+
+    // Clear the interval if no symbols are subscribed
+    if (subscribedSymbolsRef.current.size === 0 && priceUpdateIntervalRef.current) {
+      clearInterval(priceUpdateIntervalRef.current);
+      priceUpdateIntervalRef.current = null;
+      console.log('🔄 Stopped auto-refresh timer - no symbols subscribed');
     }
   }, []);
 
@@ -327,6 +372,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }
       if (socketRef.current) {
         socketRef.current.close();
+      }
+      if (priceUpdateIntervalRef.current) {
+        clearInterval(priceUpdateIntervalRef.current);
       }
     };
   }, []);

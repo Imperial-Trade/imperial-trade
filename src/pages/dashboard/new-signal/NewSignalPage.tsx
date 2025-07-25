@@ -5,6 +5,8 @@ import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/components/ui/use-toast';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { supabase } from '@/integrations/supabase/client';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { SUPPORTED_ASSETS } from '@/components/signals/AssetSelector';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
@@ -13,6 +15,24 @@ const NewSignalPage: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Pre-load all supported asset prices for immediate availability
+  const { subscribe, unsubscribe } = useWebSocketPrices();
+
+  // Pre-load all supported asset prices on mount
+  useEffect(() => {
+    const supportedSymbols = SUPPORTED_ASSETS.map(asset => 
+      asset.name === 'Gold' ? 'GOLD' : asset.name.toUpperCase()
+    );
+    
+    console.log('NewSignalPage - Pre-loading asset prices:', supportedSymbols);
+    subscribe(supportedSymbols);
+
+    return () => {
+      console.log('NewSignalPage - Cleaning up asset price subscriptions');
+      unsubscribe(supportedSymbols);
+    };
+  }, [subscribe, unsubscribe]);
 
   // Get user ID
   useEffect(() => {

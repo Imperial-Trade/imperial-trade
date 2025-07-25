@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2, User, Crown, GraduationCap } from 'lucide-react';
@@ -301,6 +301,37 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
             <p className="text-xs text-gray-400 italic bg-gray-900/50 p-2 rounded-md">"{alert.notes}"</p>
         </div>
       )}
+
+      {/* Stop Loss Proximity Warning */}
+      {livePrice && alert.status === 'active' && (() => {
+        const entryPrice = alert.entry_price;
+        const stopLoss = alert.stop_loss;
+        const currentPrice = livePrice;
+        
+        if (!entryPrice || !stopLoss) return null;
+        
+        // Calculate proximity to stop loss (works for both buy and sell trades)
+        const totalDistance = Math.abs(entryPrice - stopLoss);
+        const currentDistance = Math.abs(currentPrice - stopLoss);
+        const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
+        
+        // Only show warning if 50% or closer to stop loss, hide if price goes back to 49% or less
+        if (proximityPercentage >= 50) {
+          return (
+            <div className="px-4 pb-4">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-md p-3 flex items-start gap-2">
+                <span className="text-amber-400 mt-0.5 leading-none">🟡</span>
+                <div className="text-xs text-amber-300">
+                  <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>
+                  <br />
+                  <span className="text-amber-400/80">This trade is more than halfway to its invalidation point.</span>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
       
       {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && (
         <div className="bg-gray-900/50 px-4 py-2 flex justify-end">
@@ -319,4 +350,29 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   );
 };
 
-export default TradeAlertCard;
+export default memo(TradeAlertCard, (prevProps, nextProps) => {
+  // Prevent re-renders when only livePrice changes - let LivePriceWidget handle price updates internally
+  return (
+    prevProps.alert.id === nextProps.alert.id &&
+    prevProps.alert.status === nextProps.alert.status &&
+    prevProps.alert.asset_name === nextProps.alert.asset_name &&
+    prevProps.alert.trade_type === nextProps.alert.trade_type &&
+    prevProps.alert.entry_price === nextProps.alert.entry_price &&
+    prevProps.alert.stop_loss === nextProps.alert.stop_loss &&
+    prevProps.alert.tp1 === nextProps.alert.tp1 &&
+    prevProps.alert.tp2 === nextProps.alert.tp2 &&
+    prevProps.alert.tp3 === nextProps.alert.tp3 &&
+    prevProps.alert.tp4 === nextProps.alert.tp4 &&
+    prevProps.alert.tp5 === nextProps.alert.tp5 &&
+    prevProps.alert.notes === nextProps.alert.notes &&
+    prevProps.alert.close_reason === nextProps.alert.close_reason &&
+    prevProps.alert.tp_hits === nextProps.alert.tp_hits &&
+    prevProps.isAdmin === nextProps.isAdmin &&
+    prevProps.isCreator === nextProps.isCreator &&
+    prevProps.isRecentClosure === nextProps.isRecentClosure &&
+    prevProps.className === nextProps.className &&
+    prevProps.testId === nextProps.testId &&
+    JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator)
+    // Note: livePrice is intentionally excluded to prevent card re-renders on price updates
+  );
+});

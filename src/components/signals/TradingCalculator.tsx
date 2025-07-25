@@ -4,13 +4,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass } from 'lucide-react';
-import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec } from '@/utils/lotSizing';
+import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
 
 export default function TradingCalculator({ alert, livePrice }) {
   const [accountBalance, setAccountBalance] = useState('');
   const [lotSize, setLotSize] = useState('');
   
   const isPending = alert.status === 'pending';
+  
+  // Calculate maximum lot size based on both margin requirements AND risk limit
+  const maxLotSizeByMargin = useMemo(() => {
+    const balance = parseFloat(accountBalance) || 0;
+    const entryPrice = alert.entry_price || 0;
+    const stopLoss = alert.stop_loss || 0;
+    const symbol = alert.finnhub_symbol || alert.asset_name || '';
+    
+    if (!balance || !entryPrice || !stopLoss || !symbol) return null;
+    
+    // Handle livePrice - use current price for active trades, entry price for pending
+    const currentPrice = typeof livePrice === 'number' && livePrice > 0 
+      ? livePrice 
+      : (livePrice?.price && livePrice.price > 0 ? livePrice.price : entryPrice);
+    
+    // Use current price for active trades, entry price for pending orders
+    const basePrice = isPending ? entryPrice : currentPrice;
+    
+    // Calculate max lot size based on risk (100% of account balance)
+    const maxRiskAmount = balance; // Use 100% of account as max risk
+    const maxLotsByRisk = calculatePositionSize(maxRiskAmount, basePrice, stopLoss, symbol);
+    
+    // Return the risk-based limit (this ensures risk never exceeds account balance)
+    return Math.max(0.01, maxLotsByRisk); // Minimum 0.01 lots
+  }, [accountBalance, alert, livePrice, isPending]);
 
   // Prevent scroll wheel from changing number inputs
   const handleNumberInputWheel = (e) => {
@@ -23,7 +48,11 @@ export default function TradingCalculator({ alert, livePrice }) {
     const lots = parseFloat(lotSize) || 0;
     const entryPrice = alert.entry_price || 0;
     const stopLoss = alert.stop_loss || 0;
-    const currentPrice = livePrice || entryPrice;
+    
+    // Handle livePrice - it can be a number or an object with price property
+    const currentPrice = typeof livePrice === 'number' && livePrice > 0 
+      ? livePrice 
+      : (livePrice?.price && livePrice.price > 0 ? livePrice.price : entryPrice);
 
     if (!balance || !lots || !entryPrice || !stopLoss) {
       return null;
@@ -32,15 +61,16 @@ export default function TradingCalculator({ alert, livePrice }) {
     const isBuy = alert.trade_type.includes('buy');
     const symbol = alert.finnhub_symbol || alert.asset_name || '';
     
-    // Calculate risk using proper lot sizing mechanics
-    const totalRisk = calculateRiskAmount(entryPrice, stopLoss, lots, symbol);
+    // Calculate risk using current price for active trades, entry price for pending orders
+    const riskBasePrice = isPending ? entryPrice : currentPrice;
+    const totalRisk = calculateRiskAmount(riskBasePrice, stopLoss, lots, symbol);
     const riskPercentage = (totalRisk / balance) * 100;
 
     // Calculate current P&L using proper lot sizing mechanics
     const currentPnL = calculatePnL(entryPrice, currentPrice, lots, symbol);
     const currentPnLPercentage = (currentPnL / balance) * 100;
 
-    // Calculate potential rewards for each TP level - Always based on entry/limit price.
+    // Calculate potential rewards for each TP level
     const takeProfits = [
       { level: 1, price: alert.tp1 },
       { level: 2, price: alert.tp2 },
@@ -50,7 +80,11 @@ export default function TradingCalculator({ alert, livePrice }) {
     ].filter(tp => tp.price && tp.price > 0);
 
     const rewards = takeProfits.map(tp => {
-      const totalReward = calculatePnL(entryPrice, tp.price, lots, symbol);
+      // For reward calculation: 
+      // - Pending orders: Calculate from entry price to TP (potential reward if entered)
+      // - Active trades: Calculate from CURRENT price to TP (reward from current position)
+      const basePrice = isPending ? entryPrice : currentPrice;
+      const totalReward = calculatePnL(basePrice, tp.price, lots, symbol);
       const rewardRiskRatio = totalRisk > 0 ? Math.abs(totalReward) / totalRisk : 0;
       return {
         level: tp.level,
@@ -111,9 +145,9 @@ export default function TradingCalculator({ alert, livePrice }) {
           <div className="space-y-2">
             <Label className="text-xs text-gray-400">
               Position Size 
-              {lotSize && (
-                <span className="ml-2 text-xs text-gray-500">
-                  ({formatLotSize(parseFloat(lotSize) || 0, alert.finnhub_symbol || alert.asset_name || '')})
+              {maxLotSizeByMargin && (
+                <span className="ml-2 text-xs text-emerald-400">
+                  Max: {maxLotSizeByMargin.toFixed(2)}
                 </span>
               )}
             </Label>
@@ -122,35 +156,39 @@ export default function TradingCalculator({ alert, livePrice }) {
               step="any"
               placeholder="0.1"
               value={lotSize}
-              onChange={(e) => setLotSize(e.target.value)}
+              max={maxLotSizeByMargin || undefined}
+              onChange={(e) => {
+                const inputValue = e.target.value;
+                const numValue = parseFloat(inputValue);
+                
+                // Prevent input if exceeding margin limit
+                if (maxLotSizeByMargin && numValue > maxLotSizeByMargin) {
+                  // Don't allow the input - enforce hard limit
+                  return;
+                }
+                setLotSize(inputValue);
+              }}
               onWheel={handleNumberInputWheel}
-              className="bg-gray-800 border-gray-600 text-white h-8 text-sm"
+              className={`bg-gray-800 border-gray-600 text-white h-8 text-sm ${
+                maxLotSizeByMargin && parseFloat(lotSize) > maxLotSizeByMargin 
+                  ? 'border-red-500 ring-1 ring-red-500' 
+                  : ''
+              }`}
             />
+            {maxLotSizeByMargin && parseFloat(lotSize) > maxLotSizeByMargin && (
+              <div className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Position size exceeds margin limit (100% margin used)
+              </div>
+            )}
           </div>
         </div>
 
         {/* Live Price & P&L Display (Only for Active Trades) */}
         {livePrice && !isPending && (
           <div className="bg-gray-800/50 rounded-md p-3 border border-gray-700">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-400">Current Price</span>
-              <span className="font-mono font-bold text-white">
-                {formatCurrency(livePrice)}
-              </span>
-            </div>
-            {calculations && (
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-xs text-gray-400">Current P&L</span>
-                <div className="text-right">
-                  <div className={`font-bold ${calculations.isCurrentlyProfit ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {formatCurrency(calculations.currentPnL)}
-                  </div>
-                  <div className="text-xs">
-                    {formatPercentage(calculations.currentPnLPercentage)}
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Current price calculation kept for reward target mechanics but not displayed */}
+            {/* Current P&L calculation kept for reward target mechanics but not displayed */}
           </div>
         )}
         

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass } from 'lucide-react';
 
@@ -24,7 +24,7 @@ const calculatePips = (entry, current, symbol) => {
 };
 
 
-export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit, onOrderActivation, livePrice, connectionStatus, priceSource }) {
+const LivePriceWidgetComponent = ({ alert, onTakeProfitHit, onStopLossHit, onOrderActivation, livePrice, connectionStatus, priceSource }) => {
   const [priceChange, setPriceChange] = useState(null);
   const [lastProcessedPrice, setLastProcessedPrice] = useState(null);
   const isProcessingRef = useRef(false);
@@ -35,13 +35,13 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
   
   const processLevelHit = useCallback(async (hitType, data) => {
     if (isProcessingRef.current) {
-      console.log(`Already processing ${hitType}, skipping...`);
+      console.log(`[PROCESSING SKIP] Already processing ${hitType} for alert ${alert.id}, skipping...`);
       return;
     }
 
     const now = Date.now();
     if (now - lastUpdateRef.current < 5000) {
-      console.log(`Rate limiting ${hitType} check`);
+      console.log(`[RATE LIMITED] ${hitType} check for alert ${alert.id} - Last processed ${now - lastUpdateRef.current}ms ago`);
       return;
     }
 
@@ -49,7 +49,17 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
     lastUpdateRef.current = now;
 
     try {
-      console.log(`Processing ${hitType}:`, data);
+      // Enhanced logging with detailed context
+      console.log(`[LEVEL HIT] Processing ${hitType} for alert ${alert.id}:`, {
+        ...data,
+        currentPrice: currentPrice,
+        entryPrice: alert.entry_price,
+        tradeType: alert.trade_type,
+        assetName: alert.asset_name,
+        symbol: alert.finnhub_symbol,
+        timestamp: new Date().toISOString(),
+        alertStatus: alert.status
+      });
       
       if (hitType === 'tp_hit' && onTakeProfitHit) {
         await onTakeProfitHit(alert, data.updatedHits, data.shouldAutoClose, data.autoCloseReason);
@@ -62,11 +72,11 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
       await new Promise(resolve => setTimeout(resolve, 3000));
       
     } catch (error) {
-      console.error(`Error processing ${hitType}:`, error);
+      console.error(`[ERROR] Processing ${hitType} for alert ${alert.id}:`, error);
     } finally {
       isProcessingRef.current = false;
     }
-  }, [alert, onTakeProfitHit, onStopLossHit, onOrderActivation]);
+  }, [alert, currentPrice, onTakeProfitHit, onStopLossHit, onOrderActivation]);
 
   const checkLevels = useCallback((price) => { // Renamed parameter to 'price' to avoid confusion with outer 'currentPrice'
     if (!price || price === lastProcessedPrice || isProcessingRef.current) {
@@ -112,18 +122,51 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
     const currentHits = alert.tp_hits || [];
     const hasAlreadyHitTP = currentHits.length > 0;
 
-    const buffer = alert.entry_price * 0.0001; 
+    const buffer = alert.entry_price * 0.0001;
+    
+    // Enhanced logging for debugging
+    console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.finnhub_symbol}):`, {
+      currentPrice: price,
+      entryPrice: alert.entry_price,
+      tradeType: alert.trade_type,
+      stopLoss: alert.stop_loss,
+      buffer: buffer,
+      currentHits: currentHits,
+      isBuy: isBuy
+    });
+
+    // Priority 1: Check Stop Loss first (highest priority)
     const stopLossHit = isBuy 
       ? price <= (alert.stop_loss - buffer)
       : price >= (alert.stop_loss + buffer);
 
     if (stopLossHit) {
       const closeReason = hasAlreadyHitTP ? 'reversal_after_tp' : 'stop_loss';
-      console.log(`💥 Stop Loss hit for ${alert.asset_name}, reason: ${closeReason}`);
+      console.log(`💥 [STOP LOSS] Hit for ${alert.asset_name}, reason: ${closeReason}`, {
+        currentPrice: price,
+        stopLoss: alert.stop_loss,
+        buffer: buffer,
+        effectiveStopLoss: isBuy ? alert.stop_loss - buffer : alert.stop_loss + buffer
+      });
       processLevelHit('stop_loss', { closeReason });
       return;
     }
 
+    // Priority 2: Validate trade direction before checking TP levels
+    const isPriceInProfitDirection = isBuy ? price > alert.entry_price : price < alert.entry_price;
+    
+    if (!isPriceInProfitDirection) {
+      console.log(`[DIRECTION CHECK] Price not in profit direction for ${alert.asset_name}:`, {
+        currentPrice: price,
+        entryPrice: alert.entry_price,
+        tradeType: alert.trade_type,
+        isPriceInProfitDirection
+      });
+      // Don't process TP levels if price is not moving in profitable direction
+      return;
+    }
+
+    // Priority 3: Check Take Profit levels with enhanced validation
     const takeProfits = [
       { level: 1, price: alert.tp1 },
       { level: 2, price: alert.tp2 },
@@ -132,24 +175,79 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
       { level: 5, price: alert.tp5 }
     ].filter(tp => tp.price && tp.price > 0);
 
+    // Validate TP levels make sense for trade direction
+    const invalidTPs = takeProfits.filter(tp => 
+      isBuy ? tp.price <= alert.entry_price : tp.price >= alert.entry_price
+    );
+    
+    if (invalidTPs.length > 0) {
+      console.warn(`[INVALID TP] Invalid TP levels detected for ${alert.asset_name}:`, invalidTPs);
+    }
+
+    const validTPs = takeProfits.filter(tp => 
+      isBuy ? tp.price > alert.entry_price : tp.price < alert.entry_price
+    );
+
     const newHits = [];
-    takeProfits.forEach(tp => {
+    validTPs.forEach(tp => {
       const hasHit = isBuy 
         ? price >= (tp.price - buffer)
         : price <= (tp.price + buffer);
       
       if (hasHit && !currentHits.includes(tp.level)) {
+        // Sequential TP validation: Can't hit TP2 without hitting TP1 first
+        if (tp.level > 1 && !currentHits.includes(tp.level - 1)) {
+          console.log(`[SEQUENTIAL TP] Skipping TP${tp.level} - TP${tp.level - 1} not hit yet for ${alert.asset_name}`);
+          return;
+        }
+        
+        console.log(`[TP VALIDATION] TP${tp.level} hit for ${alert.asset_name}:`, {
+          tpPrice: tp.price,
+          currentPrice: price,
+          buffer: buffer,
+          effectiveTPPrice: isBuy ? tp.price - buffer : tp.price + buffer,
+          tradeType: alert.trade_type
+        });
+        
         newHits.push(tp.level);
       }
     });
 
     if (newHits.length > 0) {
-      const updatedHits = [...currentHits, ...newHits];
-      const maxAvailableTP = Math.max(...takeProfits.map(tp => tp.level));
+      // Final validation: Ensure price movement makes sense
+      const largestNewHit = Math.max(...newHits);
+      const correspondingTP = validTPs.find(tp => tp.level === largestNewHit);
+      
+      if (correspondingTP) {
+        const priceMovementValid = isBuy 
+          ? price >= correspondingTP.price - buffer
+          : price <= correspondingTP.price + buffer;
+          
+        if (!priceMovementValid) {
+          console.error(`[VALIDATION FAILED] Price movement validation failed for ${alert.asset_name}:`, {
+            currentPrice: price,
+            tpLevel: largestNewHit,
+            tpPrice: correspondingTP.price,
+            expectedCondition: isBuy ? `price >= ${correspondingTP.price - buffer}` : `price <= ${correspondingTP.price + buffer}`
+          });
+          return;
+        }
+      }
+
+      const updatedHits = [...currentHits, ...newHits].sort((a, b) => a - b);
+      const maxAvailableTP = Math.max(...validTPs.map(tp => tp.level));
       const shouldAutoClose = updatedHits.includes(maxAvailableTP);
       const autoCloseReason = shouldAutoClose ? `tp${maxAvailableTP}` : null;
 
-      console.log(`🎯 TP hits detected for ${alert.asset_name}: ${newHits.join(', ')}`);
+      console.log(`🎯 [TP CONFIRMED] Valid TP hits for ${alert.asset_name}: ${newHits.join(', ')}`, {
+        newHits,
+        updatedHits,
+        shouldAutoClose,
+        autoCloseReason,
+        currentPrice: price,
+        entryPrice: alert.entry_price
+      });
+      
       processLevelHit('tp_hit', { updatedHits, shouldAutoClose, autoCloseReason });
     }
   }, [alert, lastProcessedPrice, processLevelHit]);
@@ -198,12 +296,22 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
 
   if (!currentPrice && connectionStatus === 'connected') {
     return (
-      <div className="bg-gray-900/30 rounded-lg p-3 text-center border border-gray-700">
-        <div className="text-sm text-gray-400 mb-2">
-          🔍 Price data not available for {alert.finnhub_symbol}
+      <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
+        <div className="flex items-center justify-between h-6">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 text-yellow-400" />
+            <span className="text-sm font-medium text-gray-300">Price Data</span>
+          </div>
+          <div className="text-right min-w-[80px]">
+            <div className="text-lg font-mono font-bold text-gray-400">
+              --
+            </div>
+          </div>
         </div>
-        <div className="text-xs text-gray-500">
-          Symbol: {alert.finnhub_symbol} | Status: {connectionStatus}
+        <div className="flex items-center justify-center">
+          <div className="text-sm text-gray-400">
+            🔍 No data for {alert.finnhub_symbol}
+          </div>
         </div>
       </div>
     );
@@ -211,22 +319,48 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
 
   if (connectionStatus === 'connecting') {
     return (
-      <div className="bg-gray-900/30 rounded-lg p-3 text-center border border-gray-700">
-        <div className="animate-pulse flex items-center justify-center space-x-2">
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+      <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
+        <div className="flex items-center justify-between h-6">
+          <div className="flex items-center space-x-2">
+            <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+            <span className="text-sm font-medium text-gray-300">Connecting</span>
+          </div>
+          <div className="text-right min-w-[80px]">
+            <div className="text-lg font-mono font-bold text-gray-400">
+              --
+            </div>
+          </div>
         </div>
-        <div className="text-sm text-gray-400 mt-2">Connecting to live feed...</div>
+        <div className="flex items-center justify-center">
+          <div className="flex space-x-1">
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (connectionStatus === 'error') {
     return (
-      <div className="bg-red-900/20 rounded-lg p-3 text-center border border-red-500/30">
-        <div className="text-sm text-red-400 mb-1">⚠️ Price feed unavailable</div>
-        <div className="text-xs text-gray-500">Retrying connection...</div>
+      <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
+        <div className="flex items-center justify-between h-6">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 text-red-400" />
+            <span className="text-sm font-medium text-gray-300">Error</span>
+          </div>
+          <div className="text-right min-w-[80px]">
+            <div className="text-lg font-mono font-bold text-gray-400">
+              --
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center">
+          <div className="text-sm text-red-400">
+            ⚠️ Feed unavailable
+          </div>
+        </div>
       </div>
     );
   }
@@ -263,8 +397,8 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
   }
 
   return (
-    <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
+      <div className="flex items-center justify-between h-6">
         <div className="flex items-center space-x-2">
           <Wifi className="w-4 h-4 text-emerald-400" />
           <span className="text-sm font-medium text-gray-300">Live Price</span>
@@ -272,7 +406,7 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
             <Zap className="w-3 h-3" />
           </Badge>
         </div>
-        <div className="text-right">
+        <div className="text-right min-w-[80px]">
           <div className="text-lg font-mono font-bold text-white">
             ${currentPrice?.toFixed(2) || '--'}
           </div>
@@ -303,4 +437,7 @@ export default function LivePriceWidget({ alert, onTakeProfitHit, onStopLossHit,
       )}
     </div>
   );
-}
+};
+
+export const LivePriceWidget = memo(LivePriceWidgetComponent);
+export default LivePriceWidget;

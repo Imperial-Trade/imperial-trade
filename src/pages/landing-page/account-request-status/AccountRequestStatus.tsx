@@ -56,7 +56,13 @@ export default function AccountRequestStatusPage() {
     const existingReq = await checkForExistingRequest(emailToCheck);
     if (existingReq) {
       setCurrentRequest(existingReq);
-      setViewMode('status');
+      // For approved requests, use result mode to trigger ApprovedAccountFlow
+      if (existingReq.status === 'approved') {
+        setViewMode('result');
+      } else {
+        // For pending/rejected requests, use status mode to show ExistingRequestNotice
+        setViewMode('status');
+      }
     } else {
       // Fall back to original status check for legacy requests
       await checkStatus(emailToCheck);
@@ -244,8 +250,8 @@ export default function AccountRequestStatusPage() {
           />
         )}
 
-        {viewMode === 'result' && !currentRequest && status?.status === "approved" && (
-          <ApprovedAccountFlow accountRequest={status} />
+        {viewMode === 'result' && (status?.status === "approved" || currentRequest?.status === "approved") && (
+          <ApprovedAccountFlow accountRequest={currentRequest || status} />
         )}
 
         {viewMode === 'result' && !currentRequest && status && status.status !== "approved" && (

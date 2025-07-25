@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
   createClient,
@@ -18,8 +17,8 @@ interface EnhancedMarketDataPoint {
   changePercent: number;
   volume?: number;
   timestamp: string;
-  dataSource: 'twelve_data' | 'alpha_vantage' | 'yahoo_finance' | 'mock';
-  dataQuality: 'real_time' | 'delayed' | 'simulated';
+  dataSource: "twelve_data" | "alpha_vantage" | "yahoo_finance" | "mock";
+  dataQuality: "real_time" | "delayed" | "simulated";
   technicalIndicators?: {
     rsi?: number;
     macd?: number;
@@ -34,14 +33,14 @@ interface EnhancedMarketDataPoint {
     resistance?: number;
   };
   marketContext?: {
-    trend: 'bullish' | 'bearish' | 'sideways';
-    volatility: 'low' | 'medium' | 'high';
-    volume_profile: 'above_average' | 'below_average' | 'normal';
-    assetClass: 'stocks' | 'crypto' | 'forex' | 'commodities' | 'etfs';
+    trend: "bullish" | "bearish" | "sideways";
+    volatility: "low" | "medium" | "high";
+    volume_profile: "above_average" | "below_average" | "normal";
+    assetClass: "stocks" | "crypto" | "forex" | "commodities" | "etfs";
   };
 }
 
-const ENHANCED_SYSTEM_PROMPT = `You are "Orion," an elite AI trading pattern analyst with expertise across multiple asset classes. Your mission is to identify the BEST 12-16 high-probability trading opportunities from a universe of 25+ diverse instruments including stocks, crypto, forex, commodities, and ETFs.
+const ENHANCED_SYSTEM_PROMPT = `You are an elite AI trading pattern analyst with expertise across multiple asset classes. Your mission is to identify the BEST 12-16 high-probability trading opportunities from a universe of 25+ diverse instruments including stocks, crypto, forex, commodities, and ETFs.
 
 **CORE ANALYSIS FRAMEWORK:**
 
@@ -118,7 +117,10 @@ Generate EXACTLY 12-16 signals with this distribution:
 - Adjust confidence levels based on data quality
 - Include warnings for delayed or simulated data sources`;
 
-async function getWinningPatterns(supabase: SupabaseClient, userId: string): Promise<any[]> {
+async function getWinningPatterns(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<any[]> {
   try {
     const { data: trades, error } = await supabase
       .from("trade_journal_entries")
@@ -130,11 +132,12 @@ async function getWinningPatterns(supabase: SupabaseClient, userId: string): Pro
       console.error("Error fetching trade journal entries:", error);
       return [];
     }
-    
+
     if (!trades || trades.length === 0) return [];
 
     const strategies = trades.reduce((acc, trade) => {
-      const strategy = extractStrategyFromNotes(trade.notes) || "Pattern Trading";
+      const strategy =
+        extractStrategyFromNotes(trade.notes) || "Pattern Trading";
       if (!acc[strategy]) {
         acc[strategy] = { wins: 0, losses: 0, instruments: new Set() };
       }
@@ -143,7 +146,9 @@ async function getWinningPatterns(supabase: SupabaseClient, userId: string): Pro
       } else {
         acc[strategy].losses++;
       }
-      acc[strategy].instruments.add(trade.symbol || trade.entry_price?.toString() || "Unknown");
+      acc[strategy].instruments.add(
+        trade.symbol || trade.entry_price?.toString() || "Unknown"
+      );
       return acc;
     }, {} as Record<string, { wins: number; losses: number; instruments: Set<string> }>);
 
@@ -151,9 +156,9 @@ async function getWinningPatterns(supabase: SupabaseClient, userId: string): Pro
       .filter(([, stats]) => stats.wins > stats.losses && stats.wins >= 2)
       .map(([name, stats]) => ({
         strategy_name: name,
-        win_rate: (stats.wins / (stats.wins + stats.losses) * 100).toFixed(1),
+        win_rate: ((stats.wins / (stats.wins + stats.losses)) * 100).toFixed(1),
         total_trades: stats.wins + stats.losses,
-        preferred_instruments: Array.from(stats.instruments)
+        preferred_instruments: Array.from(stats.instruments),
       }));
   } catch (error) {
     console.error("Error in getWinningPatterns:", error);
@@ -163,14 +168,25 @@ async function getWinningPatterns(supabase: SupabaseClient, userId: string): Pro
 
 function extractStrategyFromNotes(notes: string | null): string | null {
   if (!notes) return null;
-  
+
   const strategies = [
-    'breakout', 'reversal', 'momentum', 'scalp', 'swing', 
-    'trend following', 'support resistance', 'pattern trading',
-    'technical analysis', 'price action', 'gap play', 'earnings play',
-    'sector rotation', 'carry trade', 'mean reversion'
+    "breakout",
+    "reversal",
+    "momentum",
+    "scalp",
+    "swing",
+    "trend following",
+    "support resistance",
+    "pattern trading",
+    "technical analysis",
+    "price action",
+    "gap play",
+    "earnings play",
+    "sector rotation",
+    "carry trade",
+    "mean reversion",
   ];
-  
+
   for (const strategy of strategies) {
     if (notes.toLowerCase().includes(strategy)) {
       return strategy.charAt(0).toUpperCase() + strategy.slice(1);
@@ -179,17 +195,19 @@ function extractStrategyFromNotes(notes: string | null): string | null {
   return null;
 }
 
-async function fetchEnhancedMarketData(supabase: SupabaseClient): Promise<EnhancedMarketDataPoint[]> {
+async function fetchEnhancedMarketData(
+  supabase: SupabaseClient
+): Promise<EnhancedMarketDataPoint[]> {
   try {
     console.log("Fetching enhanced market data for 25+ instruments...");
-    
+
     // Request all available symbols for comprehensive analysis
-    const { data, error } = await supabase.functions.invoke('get-market-data', {
-      body: { 
+    const { data, error } = await supabase.functions.invoke("get-market-data", {
+      body: {
         symbols: [], // Empty array means get all default symbols
         includeVolume: true,
-        includeTechnicals: true
-      }
+        includeTechnicals: true,
+      },
     });
 
     if (error) {
@@ -199,8 +217,10 @@ async function fetchEnhancedMarketData(supabase: SupabaseClient): Promise<Enhanc
 
     const marketData = data?.prices || [];
     console.log(`Fetched enhanced data for ${marketData.length} instruments`);
-    console.log(`Data quality: ${data?.dataQuality}, Market hours: ${data?.marketHours}`);
-    
+    console.log(
+      `Data quality: ${data?.dataQuality}, Market hours: ${data?.marketHours}`
+    );
+
     return marketData;
   } catch (error) {
     console.error("Failed to fetch enhanced market data:", error);
@@ -224,7 +244,10 @@ serve(async (req) => {
     const { user_id }: SignalFinderRequest = await req.json();
     if (!user_id) throw new Error("user_id is required.");
 
-    console.log("Enhanced Signal Finder Agent - Processing request for user:", user_id);
+    console.log(
+      "Enhanced Signal Finder Agent - Processing request for user:",
+      user_id
+    );
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -241,7 +264,8 @@ serve(async (req) => {
       throw new Error("Failed to fetch user profile information");
     }
 
-    const userName = userProfile?.display_name || userProfile?.real_name || "Trader";
+    const userName =
+      userProfile?.display_name || userProfile?.real_name || "Trader";
     console.log("User name resolved:", userName);
 
     // Get user's winning patterns
@@ -261,10 +285,15 @@ serve(async (req) => {
     // Fetch enhanced market data for 25+ instruments
     console.log("Fetching enhanced market data...");
     const enhancedMarketData = await fetchEnhancedMarketData(supabase);
-    
+
     if (enhancedMarketData.length === 0) {
       return new Response(
-        JSON.stringify({ reply: { status: "NoMarketData", message: "Unable to fetch enhanced market data" } }),
+        JSON.stringify({
+          reply: {
+            status: "NoMarketData",
+            message: "Unable to fetch enhanced market data",
+          },
+        }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
@@ -273,7 +302,7 @@ serve(async (req) => {
 
     // Group market data by asset class for analysis
     const dataByAssetClass = enhancedMarketData.reduce((acc, data) => {
-      const assetClass = data.marketContext?.assetClass || 'stocks';
+      const assetClass = data.marketContext?.assetClass || "stocks";
       if (!acc[assetClass]) acc[assetClass] = [];
       acc[assetClass].push(data);
       return acc;
@@ -286,19 +315,28 @@ serve(async (req) => {
 **Trader Profile:**
 - Name: ${userName}
 - Winning Strategies: ${JSON.stringify(winningPatterns, null, 2)}
-- Recent Analysis: ${latestAnalysis?.output_text || "No recent analysis available"}
+- Recent Analysis: ${
+      latestAnalysis?.output_text || "No recent analysis available"
+    }
 
 **LIVE MARKET DATA (${enhancedMarketData.length} Instruments):**
 
 **Data Quality Information:**
 - Total Instruments: ${enhancedMarketData.length}
-- Data Sources: ${Array.from(new Set(enhancedMarketData.map(d => d.dataSource))).join(', ')}
-- Data Quality: ${Array.from(new Set(enhancedMarketData.map(d => d.dataQuality))).join(', ')}
+- Data Sources: ${Array.from(
+      new Set(enhancedMarketData.map((d) => d.dataSource))
+    ).join(", ")}
+- Data Quality: ${Array.from(
+      new Set(enhancedMarketData.map((d) => d.dataQuality))
+    ).join(", ")}
 
 **Asset Class Breakdown:**
-${Object.entries(dataByAssetClass).map(([assetClass, data]) => 
-  `${assetClass.toUpperCase()}: ${data.length} instruments`
-).join('\n')}
+${Object.entries(dataByAssetClass)
+  .map(
+    ([assetClass, data]) =>
+      `${assetClass.toUpperCase()}: ${data.length} instruments`
+  )
+  .join("\n")}
 
 **DETAILED MARKET DATA:**
 ${JSON.stringify(enhancedMarketData, null, 2)}
@@ -325,17 +363,23 @@ Generate a JSON array of 12-16 high-quality trading signals that represent the b
     const modelName = "gemini-2.5-pro";
 
     console.log("Generating enhanced multi-asset analysis with Gemini AI...");
-    const aiResponse = await callGoogleAI(apiKey, modelName, ENHANCED_SYSTEM_PROMPT + "\n\n" + analysisPrompt);
+    const aiResponse = await callGoogleAI(
+      apiKey,
+      modelName,
+      ENHANCED_SYSTEM_PROMPT + "\n\n" + analysisPrompt
+    );
     console.log("Enhanced AI analysis completed");
 
     // Store the analysis
     console.log("Storing enhanced signal analysis...");
-    const { error: agentOutputError } = await supabase.from("agent_outputs").insert({
-      user_id,
-      agent_name: "Signal Finder",
-      output_text: aiResponse,
-      user_readable_text: aiResponse,
-    });
+    const { error: agentOutputError } = await supabase
+      .from("agent_outputs")
+      .insert({
+        user_id,
+        agent_name: "Signal Finder",
+        output_text: aiResponse,
+        user_readable_text: aiResponse,
+      });
 
     if (agentOutputError) {
       console.error("Error storing agent output:", agentOutputError);
@@ -346,41 +390,55 @@ Generate a JSON array of 12-16 high-quality trading signals that represent the b
     // Parse and return the AI response
     try {
       const parsedResponse = JSON.parse(aiResponse);
-      
+
       // Ensure we have an array of signals
-      const signals = Array.isArray(parsedResponse) ? parsedResponse : [parsedResponse];
-      
+      const signals = Array.isArray(parsedResponse)
+        ? parsedResponse
+        : [parsedResponse];
+
       console.log(`Generated ${signals.length} enhanced trading signals`);
-      
-      return new Response(JSON.stringify({ 
-        reply: {
-          status: "MultipleMatches",
-          signals: signals,
-          totalAnalyzed: enhancedMarketData.length,
-          assetClassBreakdown: Object.entries(dataByAssetClass).reduce((acc, [assetClass, data]) => {
-            acc[assetClass] = data.length;
-            return acc;
-          }, {} as Record<string, number>)
+
+      return new Response(
+        JSON.stringify({
+          reply: {
+            status: "MultipleMatches",
+            signals: signals,
+            totalAnalyzed: enhancedMarketData.length,
+            assetClassBreakdown: Object.entries(dataByAssetClass).reduce(
+              (acc, [assetClass, data]) => {
+                acc[assetClass] = data.length;
+                return acc;
+              },
+              {} as Record<string, number>
+            ),
+          },
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      );
     } catch (parseError) {
       console.error("Failed to parse AI response as JSON:", parseError);
-      return new Response(JSON.stringify({ 
-        reply: { 
-          status: "Error", 
-          message: "Enhanced AI analysis completed but response format was invalid",
-          raw_response: aiResponse.substring(0, 1000) // Truncate for debugging
-        } 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          reply: {
+            status: "Error",
+            message:
+              "Enhanced AI analysis completed but response format was invalid",
+            raw_response: aiResponse.substring(0, 1000), // Truncate for debugging
+          },
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
   } catch (error) {
     console.error("Enhanced Signal Finder Agent Error:", error.message);
     return new Response(
-      JSON.stringify({ error: `Enhanced Signal Finder failed: ${error.message}` }),
+      JSON.stringify({
+        error: `Enhanced Signal Finder failed: ${error.message}`,
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

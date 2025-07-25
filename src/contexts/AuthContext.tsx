@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupAuthState } from '@/utils/authUtils';
@@ -46,11 +47,13 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -142,7 +145,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (event === 'SIGNED_IN') {
           console.log('User signed in successfully');
         } else if (event === 'SIGNED_OUT') {
-          cleanupAuthState();
+          // Skip cleanup if we're manually signing out to prevent race condition
+          if (!isSigningOut) {
+            cleanupAuthState();
+          }
           setProfile(null);
         }
       }
@@ -169,27 +175,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async () => {
     try {
-      setLoading(true);
+      // Set signing out flag to prevent auth handler interference
+      setIsSigningOut(true);
       
       // Clean up auth state first
       cleanupAuthState();
       
-      // Attempt global sign out
-      await supabase.auth.signOut({ scope: 'global' });
-      
-      // Reset state
+      // Reset state immediately
       setSession(null);
       setUser(null);
       setProfile(null);
       
-      // Navigate to signin page
-      window.location.href = '/signin';
+      // Start the sign out process
+      await supabase.auth.signOut({ scope: 'global' });
+      
+      // Use React Router navigation instead of page reload
+      navigate('/signin', { replace: true });
+      
     } catch (error) {
       console.error('Error signing out:', error);
-      // Force redirect even if signout fails
-      window.location.href = '/signin';
+      // Reset flag on error
+      setIsSigningOut(false);
+      // Navigate to signin even if signout fails
+      navigate('/signin', { replace: true });
     } finally {
-      setLoading(false);
+      // Reset the signing out flag
+      setIsSigningOut(false);
     }
   };
 

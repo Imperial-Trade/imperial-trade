@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -25,21 +24,17 @@ interface ErrorMessage {
   code: 'API_KEY_MISSING' | 'API_UNAVAILABLE' | 'SYMBOL_UNSUPPORTED' | 'RATE_LIMIT_EXCEEDED';
 }
 
-// Enhanced symbol mapping to translate between frontend and API formats
+// Symbol mapping between frontend and Twelve Data API
 const SYMBOL_MAPPING: Record<string, string> = {
-  // Frontend -> API mapping
-  'XAU/USD': 'GOLD',
-  'BTC/USD': 'BTCUSD'
+  'XAU/USD': 'XAU/USD', // Twelve Data format for Gold
+  'GOLD': 'XAU/USD',
+  'BTC/USD': 'BTC/USD', // Twelve Data format for Bitcoin
+  'BTCUSD': 'BTC/USD',
+  'BITCOIN': 'BTC/USD'
 };
 
-// Reverse mapping for API -> Frontend
-const REVERSE_SYMBOL_MAPPING: Record<string, string> = {};
-Object.entries(SYMBOL_MAPPING).forEach(([frontend, api]) => {
-  REVERSE_SYMBOL_MAPPING[api] = frontend;
-});
-
-// Supported symbols for validation
-const ALL_SUPPORTED_SYMBOLS = ['GOLD', 'BTCUSD'];
+// Supported symbols for Twelve Data WebSocket
+const SUPPORTED_TWELVE_DATA_SYMBOLS = ['XAU/USD', 'BTC/USD'];
 
 // Simple in-memory cache for price data
 const priceCache = new Map<string, { data: PriceUpdate, expires: number }>();
@@ -69,10 +64,6 @@ function isRateLimited(): boolean {
 
 function translateSymbol(symbol: string): string {
   return SYMBOL_MAPPING[symbol] || symbol;
-}
-
-function reverseTranslateSymbol(symbol: string): string {
-  return REVERSE_SYMBOL_MAPPING[symbol] || symbol;
 }
 
 function getCachedPrice(symbol: string): PriceUpdate | null {
@@ -256,12 +247,91 @@ serve(async (req) => {
   const { socket, response } = Deno.upgradeWebSocket(req);
   
   let subscribedSymbols = new Set<string>();
-  let priceInterval: number | null = null;
+  let twelveDataWs: WebSocket | null = null;
+  let reconnectTimeout: number | null = null;
+
+  // Function to connect to Twelve Data WebSocket
+  const connectToTwelveData = () => {
+    const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
+    if (!apiKey) {
+      console.error('❌ TWELVE_DATA_API_KEY not configured');
+      return;
+    }
+
+    try {
+      console.log('🔌 Connecting to Twelve Data WebSocket...');
+      twelveDataWs = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
+
+      twelveDataWs.onopen = () => {
+        console.log('✅ Connected to Twelve Data WebSocket');
+        
+        // Subscribe to symbols if any
+        if (subscribedSymbols.size > 0) {
+          const symbols = Array.from(subscribedSymbols).map(s => SYMBOL_MAPPING[s] || s);
+          const subscribeMessage = {
+            action: 'subscribe',
+            params: {
+              symbols: symbols.join(',')
+            }
+          };
+          console.log('📡 Subscribing to Twelve Data symbols:', symbols);
+          twelveDataWs?.send(JSON.stringify(subscribeMessage));
+        }
+      };
+
+      twelveDataWs.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('📊 Received from Twelve Data:', data);
+          
+          if (data.event === 'price' && data.symbol && data.price) {
+            // Map back to frontend symbol format
+            const frontendSymbol = Object.keys(SYMBOL_MAPPING).find(key => 
+              SYMBOL_MAPPING[key] === data.symbol
+            ) || data.symbol;
+
+            const priceUpdate: PriceUpdate = {
+              symbol: frontendSymbol,
+              price: parseFloat(data.price),
+              change: parseFloat(data.day_change) || 0,
+              changePercent: parseFloat(data.day_change_percent) || 0,
+              timestamp: new Date().toISOString()
+            };
+
+            // Forward to client
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
+                type: 'price_update',
+                data: [priceUpdate],
+                source: 'twelve_data_websocket',
+                timestamp: new Date().toISOString()
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error parsing Twelve Data message:', error);
+        }
+      };
+
+      twelveDataWs.onclose = () => {
+        console.log('🔌 Twelve Data WebSocket disconnected');
+        // Reconnect after 5 seconds
+        reconnectTimeout = setTimeout(connectToTwelveData, 5000);
+      };
+
+      twelveDataWs.onerror = (error) => {
+        console.error('❌ Twelve Data WebSocket error:', error);
+      };
+
+    } catch (error) {
+      console.error('❌ Failed to connect to Twelve Data:', error);
+    }
+  };
 
   socket.onopen = () => {
-    console.log("🔗 WebSocket connection opened for Gold and Bitcoin pricing");
+    console.log("🔗 Client WebSocket connection opened");
     
-    // Check if API key is available on connection
+    // Check API key and connect to Twelve Data
     const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
     if (!apiKey) {
       const errorMsg: ErrorMessage = {
@@ -270,6 +340,8 @@ serve(async (req) => {
         code: 'API_KEY_MISSING'
       };
       socket.send(JSON.stringify(errorMsg));
+    } else {
+      connectToTwelveData();
     }
   };
 
@@ -278,20 +350,24 @@ serve(async (req) => {
       const message: SubscriptionMessage = JSON.parse(event.data);
       
       if (message.type === 'subscribe') {
-        // Validate symbols before subscribing (only Gold and Bitcoin)
-        const validSymbols = message.symbols.filter(symbol => {
-          const apiSymbol = translateSymbol(symbol);
-          return ALL_SUPPORTED_SYMBOLS.includes(apiSymbol);
+        console.log('📡 Subscribe request for symbols:', message.symbols);
+        
+        // Validate and map symbols
+        const validSymbols: string[] = [];
+        const invalidSymbols: string[] = [];
+        
+        message.symbols.forEach(symbol => {
+          const mappedSymbol = SYMBOL_MAPPING[symbol];
+          if (mappedSymbol && SUPPORTED_TWELVE_DATA_SYMBOLS.includes(mappedSymbol)) {
+            validSymbols.push(symbol);
+            subscribedSymbols.add(symbol);
+          } else {
+            invalidSymbols.push(symbol);
+          }
         });
         
-        const invalidSymbols = message.symbols.filter(symbol => {
-          const apiSymbol = translateSymbol(symbol);
-          return !ALL_SUPPORTED_SYMBOLS.includes(apiSymbol);
-        });
-        
-        // Add valid symbols to subscription
-        validSymbols.forEach(symbol => subscribedSymbols.add(symbol));
-        console.log(`📊 Subscribed to symbols: ${Array.from(subscribedSymbols)}`);
+        console.log('✅ Valid symbols:', validSymbols);
+        console.log('❌ Invalid symbols:', invalidSymbols);
         
         // Send error for invalid symbols
         invalidSymbols.forEach(symbol => {
@@ -303,51 +379,54 @@ serve(async (req) => {
           socket.send(JSON.stringify(errorMsg));
         });
         
-        // Start price updates if not already running
-        if (!priceInterval && subscribedSymbols.size > 0) {
-          priceInterval = setInterval(async () => {
-            const updates: PriceUpdate[] = [];
-            
-            for (const symbol of subscribedSymbols) {
-              // Check cache first
-              let priceData = getCachedPrice(symbol);
-              
-              // If not cached, fetch real data
-              if (!priceData) {
-                priceData = await fetchRealPrice(symbol);
-              }
-              
-              if (priceData) {
-                updates.push(priceData);
-              } else {
-                // Fallback to mock data for failed symbols
-                const mockData = generateMockData([symbol])[0];
-                setCachedPrice(symbol, mockData);
-                updates.push(mockData);
-                console.log(`⚠️ Using mock data for ${symbol}: $${mockData.price}`);
-              }
+        // Subscribe to Twelve Data WebSocket if connected and we have valid symbols
+        if (twelveDataWs?.readyState === WebSocket.OPEN && validSymbols.length > 0) {
+          const twelveDataSymbols = validSymbols.map(s => SYMBOL_MAPPING[s]).filter(Boolean);
+          const subscribeMessage = {
+            action: 'subscribe',
+            params: {
+              symbols: twelveDataSymbols.join(',')
             }
-            
-            // Send updates if we have any
-            if (updates.length > 0) {
+          };
+          console.log('📡 Subscribing to Twelve Data:', twelveDataSymbols);
+          twelveDataWs.send(JSON.stringify(subscribeMessage));
+        } else if (validSymbols.length > 0) {
+          // If Twelve Data isn't connected, try HTTP fallback
+          console.log('🔄 Twelve Data not connected, using HTTP fallback');
+          for (const symbol of validSymbols) {
+            const priceData = await fetchRealPrice(symbol);
+            if (priceData && socket.readyState === WebSocket.OPEN) {
               socket.send(JSON.stringify({
                 type: 'price_update',
-                data: updates,
+                data: [priceData],
                 source: 'twelve_data_api',
                 timestamp: new Date().toISOString()
               }));
             }
-            
-          }, 8000); // Update every 8 seconds for WebSocket efficiency
+          }
         }
-      } else if (message.type === 'unsubscribe') {
-        message.symbols.forEach(symbol => subscribedSymbols.delete(symbol));
-        console.log(`📤 Unsubscribed from symbols: ${message.symbols}`);
         
-        // Stop updates if no symbols subscribed
-        if (subscribedSymbols.size === 0 && priceInterval) {
-          clearInterval(priceInterval);
-          priceInterval = null;
+      } else if (message.type === 'unsubscribe') {
+        console.log('📤 Unsubscribe request for symbols:', message.symbols);
+        
+        message.symbols.forEach(symbol => subscribedSymbols.delete(symbol));
+        
+        // Unsubscribe from Twelve Data if connected
+        if (twelveDataWs?.readyState === WebSocket.OPEN) {
+          const twelveDataSymbols = message.symbols
+            .map(s => SYMBOL_MAPPING[s])
+            .filter(Boolean);
+          
+          if (twelveDataSymbols.length > 0) {
+            const unsubscribeMessage = {
+              action: 'unsubscribe',
+              params: {
+                symbols: twelveDataSymbols.join(',')
+              }
+            };
+            console.log('📤 Unsubscribing from Twelve Data:', twelveDataSymbols);
+            twelveDataWs.send(JSON.stringify(unsubscribeMessage));
+          }
         }
       }
     } catch (error) {
@@ -362,14 +441,23 @@ serve(async (req) => {
   };
 
   socket.onclose = () => {
-    console.log("🔌 WebSocket connection closed");
-    if (priceInterval) {
-      clearInterval(priceInterval);
+    console.log("🔌 Client WebSocket connection closed");
+    
+    // Close Twelve Data connection
+    if (twelveDataWs) {
+      twelveDataWs.close();
+      twelveDataWs = null;
+    }
+    
+    // Clear reconnect timeout
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
     }
   };
 
   socket.onerror = (error) => {
-    console.error("❌ WebSocket error:", error);
+    console.error("❌ Client WebSocket error:", error);
   };
 
   return response;

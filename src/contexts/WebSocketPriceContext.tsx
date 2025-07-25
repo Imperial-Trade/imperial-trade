@@ -69,8 +69,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       
       // Map symbols to correct API format (Gold -> GOLD, BTC -> BTC/USD)
       const mappedSymbols = symbols.map(symbol => {
-        if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'GOLD';
-        if (symbol === 'BTC' || symbol === 'BITCOIN') return 'BTC/USD';
+        if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'GOLD'; // Fixed mapping for Gold
+        if (symbol === 'BTC' || symbol === 'BITCOIN' || symbol === 'BTC/USD') return 'BTC/USD';
         return symbol;
       });
 

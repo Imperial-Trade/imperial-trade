@@ -144,17 +144,32 @@ serve(async (req) => {
     );
 
     // Generate user-readable response (with actual names)
-    const userReadableFullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userReadablePrompt}`;
+    const userReadableFullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userReadablePrompt}
+
+Return your response in JSON format: {"feedback": "your encouraging message here"}`;
     console.log("Coach Agent - Generating user-readable response...");
-    const userReadableResponse = await callGoogleAI(
+    const rawUserReadableResponse = await callGoogleAI(
       apiKey,
       modelName,
       userReadableFullPrompt
     );
     console.log(
       "Coach Agent - User-readable response generated:",
-      userReadableResponse.substring(0, 100) + "..."
+      rawUserReadableResponse.substring(0, 100) + "..."
     );
+
+    // Parse the JSON response to extract the feedback text
+    let userReadableResponse = rawUserReadableResponse;
+    try {
+      const parsedResponse = JSON.parse(rawUserReadableResponse);
+      if (parsedResponse.feedback) {
+        userReadableResponse = parsedResponse.feedback;
+        console.log("Coach Agent - Extracted feedback text from JSON");
+      }
+    } catch (parseError) {
+      console.log("Coach Agent - Failed to parse JSON, using response as-is:", parseError);
+      // If JSON parsing fails, use the response as-is
+    }
 
     // Store the coach output in agent_outputs table with both versions
     console.log("Coach Agent - Storing agent output...");

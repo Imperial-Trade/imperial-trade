@@ -24,35 +24,19 @@ export const useUserExistenceCheck = (): UseUserExistenceCheckReturn => {
     try {
       console.log('Checking if user exists for email:', email);
       
-      // Use admin API to check if user exists
-      const { data, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) {
-        console.error('Error checking user existence:', authError);
-        // Fallback: try to sign in with a dummy password to check if user exists
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: 'dummy-password-for-checking'
-        });
-        
-        // If error contains "Invalid login credentials", user exists but password is wrong
-        // If error contains "User not found" or similar, user doesn't exist
-        if (signInError?.message?.includes('Invalid login credentials')) {
-          return true;
-        }
-        
-        // For other errors or if user not found, assume user doesn't exist
+      // Use the dedicated backend endpoint to check user existence
+      const { data, error } = await supabase.functions.invoke('check-user-existence', {
+        body: { email: email.toLowerCase().trim() }
+      });
+
+      if (error) {
+        console.error('Error checking user existence:', error);
+        setError('Unable to check user status. Please try again.');
         return false;
       }
 
-      // Check if user with this email exists in the auth users list
-      const userExists = data?.users?.some((user: any) => {
-        // Properly handle the user type and email property with type assertion
-        return user?.email && typeof user.email === 'string' && 
-               user.email.toLowerCase().trim() === email.toLowerCase().trim();
-      }) || false;
-      
-      console.log('User existence check result:', userExists);
+      const userExists = data?.userExists || false;
+      console.log('User existence check result:', { email, userExists });
       return userExists;
       
     } catch (error) {

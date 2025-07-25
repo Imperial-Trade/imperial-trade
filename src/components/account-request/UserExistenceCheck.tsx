@@ -36,8 +36,9 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({ accountR
   };
 
   const handlePasswordSetupSuccess = () => {
-    // Success handling is managed within PasswordSetup component
     console.log('Password setup completed successfully');
+    // Redirect to login page after successful account creation
+    window.location.href = '/auth';
   };
 
   // Loading state while checking user existence

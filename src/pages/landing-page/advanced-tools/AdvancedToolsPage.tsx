@@ -22,8 +22,8 @@ const AdvancedToolsPage: React.FC = () => {
   const tools = [
     {
       icon: FileText,
-      title: "Educational Journal",
-      subtitle: "Ultimate Learning Optimizer",
+      title: "JOURNAL XX",
+      subtitle: "Decode Your Data. Evolve Your Edge",
       description: "Transform your learning journey into actionable educational data with the ultimate tool for self-reflection and skill development.",
       detailedFeatures: [
         "Effortless Educational Logging: Quickly log learning progress with asset analysis, outcomes, and personal educational notes",

@@ -297,7 +297,7 @@ export default function Athena({ isOpen, onClose, autoListen }) {
         setMessages([
           {
             sender: "ai",
-            text: "Hello! I'm Athena, your advanced trading intelligence. I'm ready to provide deep market analysis and insights. What would you like to explore?",
+            text: "Hello! I'm MECCA - your advanced trading intelligence that turns possibilities into clarity. I'm ready to provide deep market analysis and insights. What would you like to explore?",
           },
         ]);
       }
@@ -421,7 +421,7 @@ export default function Athena({ isOpen, onClose, autoListen }) {
 
       // Gemini 2.5 Pro-level intelligent prompt
       const prompt = `
-        You are Athena, an advanced AI trading oracle with capabilities rivaling the most sophisticated AI systems. You have access to:
+        You are MECCA, an advanced AI trading oracle that "turns possibilities into clarity" with capabilities rivaling the most sophisticated AI systems. You have access to:
         - Real-time market data and news
         - Massive contextual memory of our conversation
         - Advanced reasoning and pattern recognition
@@ -627,7 +627,7 @@ export default function Athena({ isOpen, onClose, autoListen }) {
                 </motion.div>
                 <div>
                   <CardTitle className="text-primary text-lg flex items-center gap-2">
-                    Athena AI
+                    MECCA
                     {messages.length > 2 && (
                       <Heart className="w-4 h-4 text-red-400 animate-pulse" />
                     )}

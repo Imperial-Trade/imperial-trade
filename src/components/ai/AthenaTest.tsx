@@ -153,7 +153,7 @@ export default function AthenaTest() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-primary flex items-center justify-center gap-2">
             <Brain className="w-8 h-8 text-accent-gold" />
-            Athena AI Model Analysis
+            MECCA - AI Model Analysis
           </CardTitle>
           <p className="text-secondary">
             Comprehensive testing of InvokeLLM capabilities and model identification

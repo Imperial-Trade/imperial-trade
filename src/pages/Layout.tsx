@@ -50,14 +50,14 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
 
   const menuItems = [
     { title: 'Home', url: '/', accessLevel: 'free' },
-    { title: 'Education', url: '/Education', accessLevel: 'user' },
-    { title: 'Signal Stream', url: '/SignalStream', accessLevel: 'user' },
-    { title: 'Live Sessions', url: '/Live', accessLevel: 'user' },
+    { title: 'IMPERIAL ACADEMY', url: '/Education', accessLevel: 'user' },
+    { title: 'XEON', url: '/SignalStream', accessLevel: 'user' },
+    { title: 'NEO TV', url: '/Live', accessLevel: 'user' },
     { title: 'Forum', url: '/Forum', accessLevel: 'user' },
     { title: 'IB Partnership', url: '/IBPartnership', accessLevel: 'free' },
     { title: 'Advanced Tools', url: '/AdvancedTools', accessLevel: 'user' },
     { title: 'My Progress', url: '/MyProgress', accessLevel: 'user' },
-    { title: 'Athena AI', url: '/AthenaTest', accessLevel: 'user' },
+    { title: 'MECCA', url: '/AthenaTest', accessLevel: 'user' },
     { title: 'Admin Panel', url: '/AdminPanel', accessLevel: 'admin' },
     { title: 'Account Request', url: '/AccountRequest', accessLevel: 'free' },
     { title: 'Access Portal', url: '/AccessPortal', accessLevel: 'free' },

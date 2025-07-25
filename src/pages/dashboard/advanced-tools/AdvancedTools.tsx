@@ -40,24 +40,24 @@ import TradingJournal from "@/components/tools/TradingJournal";
 
 const coreTools = [
   {
-    name: "Educational Journal",
+    name: "JOURNAL XX",
     icon: BookOpen,
     component: TradingJournal,
     description:
-      "Log and analyze your learning progress with AI-powered educational feedback.",
+      "Decode Your Data. Evolve Your Edge - AI-powered educational feedback.",
   },
   {
-    name: "Educational Calculator",
+    name: "KALCU",
     icon: Calculator,
     component: RiskCalculator,
-    description: "Learn position sizing and risk calculation fundamentals.",
+    description: "Precision in Every Position - Risk calculation fundamentals.",
   },
   {
-    name: "Educational Trading Pattern Analysis",
+    name: "ORDERFLOW",
     icon: Brain,
     component: TradeAnalyst,
     description:
-      "Professional trading performance analysis powered by advanced AI for educational purposes.",
+      "Reading Market Intentions - Professional trading performance analysis.",
   },
 ];
 
@@ -70,14 +70,14 @@ const aiTools = [
       "Stay informed about market-moving events for educational analysis.",
   },
   {
-    name: "Educational Pattern Scanner",
+    name: "Pattern Scanner",
     icon: Search,
     component: OpportunityScanner,
     description:
       "Scan markets for educational pattern recognition and learning opportunities.",
   },
   {
-    name: "Educational Risk Calculator",
+    name: "Risk Simulator",
     icon: Scale,
     component: RiskSimulator,
     description:
@@ -111,12 +111,12 @@ export default function AdvancedTools() {
     const toolParam = params.get("tool");
 
     const toolMap = {
-      journal: "Educational Journal",
+      journal: "JOURNAL XX",
       calendar: "Economic Calendar",
-      calculator: "Educational Calculator",
-      analyst: "Setup Learning Analyzer",
-      scanner: "Educational Pattern Scanner",
-      simulator: "Educational Risk Calculator",
+      calculator: "KALCU",
+      analyst: "ORDERFLOW",
+      scanner: "Pattern Scanner",
+      simulator: "Risk Simulator",
     };
 
     const toolName = toolMap[toolParam];
@@ -129,7 +129,7 @@ export default function AdvancedTools() {
     if (toolFromQuery) {
       setActiveTool(toolFromQuery);
     } else {
-      // Default to Educational Journal if no query parameter
+      // Default to JOURNAL XX if no query parameter
       setActiveTool(coreTools[0]);
     }
   }, [getToolFromQuery]);
@@ -218,18 +218,17 @@ export default function AdvancedTools() {
                           className: "w-3 h-3 flex-shrink-0",
                         })}
                         <span className="text-xs font-medium truncate">
-                          {tool.name === "Educational Journal"
+                          {tool.name === "JOURNAL XX"
                             ? "Journal"
                             : tool.name === "Economic Calendar"
                             ? "Calendar"
-                            : tool.name === "Educational Calculator"
+                            : tool.name === "KALCU"
                             ? "Calculator"
-                            : tool.name ===
-                              "Educational Trading Pattern Analysis"
-                            ? "Analyst"
-                            : tool.name === "Educational Pattern Scanner"
+                            : tool.name === "ORDERFLOW"
+                            ? "Orderflow"
+                            : tool.name === "Pattern Scanner"
                             ? "Scanner"
-                            : tool.name === "Educational Risk Calculator"
+                            : tool.name === "Risk Simulator"
                             ? "Risk Calc"
                             : tool.name.split(" ")[0]}
                         </span>
@@ -250,7 +249,7 @@ export default function AdvancedTools() {
                 <div
                   style={{
                     display:
-                      activeTool?.name === "Educational Journal"
+                      activeTool?.name === "JOURNAL XX"
                         ? "block"
                         : "none",
                   }}
@@ -270,7 +269,7 @@ export default function AdvancedTools() {
                 <div
                   style={{
                     display:
-                      activeTool?.name === "Educational Calculator"
+                      activeTool?.name === "KALCU"
                         ? "block"
                         : "none",
                   }}
@@ -280,8 +279,7 @@ export default function AdvancedTools() {
                 <div
                   style={{
                     display:
-                      activeTool?.name ===
-                      "Educational Trading Pattern Analysis"
+                      activeTool?.name === "ORDERFLOW"
                         ? "block"
                         : "none",
                   }}
@@ -291,7 +289,7 @@ export default function AdvancedTools() {
                 <div
                   style={{
                     display:
-                      activeTool?.name === "Educational Pattern Scanner"
+                      activeTool?.name === "Pattern Scanner"
                         ? "block"
                         : "none",
                   }}
@@ -301,7 +299,7 @@ export default function AdvancedTools() {
                 <div
                   style={{
                     display:
-                      activeTool?.name === "Educational Risk Calculator"
+                      activeTool?.name === "Risk Simulator"
                         ? "block"
                         : "none",
                   }}

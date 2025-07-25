@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
+import { XeonLogo } from '@/assets/logos/XeonLogo';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
@@ -410,9 +411,13 @@ export default function SignalStream() {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-3xl font-bold text-foreground">
-                  Educational Pattern <span className="text-accent-green">Stream</span>
-                </h1>
+                <XeonLogo size={32} className="text-primary" />
+                <div>
+                  <h1 className="text-3xl font-bold text-foreground">
+                    <span className="text-primary">XEON</span>
+                  </h1>
+                  <p className="text-sm text-primary/70 font-medium">Illuminate the Opportunity</p>
+                </div>
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
                   <Shield className="w-3 h-3 mr-1" />
                   Educational Contributors

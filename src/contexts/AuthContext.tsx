@@ -51,6 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -142,7 +143,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (event === 'SIGNED_IN') {
           console.log('User signed in successfully');
         } else if (event === 'SIGNED_OUT') {
-          cleanupAuthState();
+          // Skip cleanup if we're manually signing out to prevent race condition
+          if (!isSigningOut) {
+            cleanupAuthState();
+          }
           setProfile(null);
         }
       }
@@ -169,6 +173,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async () => {
     try {
+      // Set signing out flag to prevent auth handler interference
+      setIsSigningOut(true);
+      
       // Clean up auth state first
       cleanupAuthState();
       
@@ -186,6 +193,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }, 100);
     } catch (error) {
       console.error('Error signing out:', error);
+      // Reset flag on error
+      setIsSigningOut(false);
       // Force redirect even if signout fails
       setTimeout(() => {
         window.location.href = '/signin';

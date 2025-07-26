@@ -423,10 +423,6 @@ export default function SignalStream() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {canCreateSignals && <Button onClick={() => navigate('/dashboard/new-signal')} className="bg-foreground text-background hover:bg-foreground/90 border border-border">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Pattern
-                </Button>}
               {getConnectionStatusBadge()}
               {lastUpdated && <span className="text-xs text-muted-foreground">
                   Last update: {lastUpdated.toLocaleTimeString()}
@@ -441,7 +437,14 @@ export default function SignalStream() {
         <div className="max-w-none w-full">
           <div className="w-full">
             {/* Enhanced Filters */}
-            <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} />
+            <SignalStreamFilters 
+              filters={filters} 
+              onFiltersChange={setFilters} 
+              educatorOptions={educatorOptions} 
+              signalCounts={signalCounts}
+              canCreateSignals={canCreateSignals}
+              onCreateSignal={() => navigate('/dashboard/new-signal')}
+            />
             {isLoading ? <div className="flex justify-center items-center h-64 flex-col space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
                 <div className="text-center">

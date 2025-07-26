@@ -182,8 +182,8 @@ export default function AdvancedTools() {
           {activeTool && (
             <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-lg sm:rounded-xl p-2 shadow-lg shadow-primary/5 w-full max-w-full overflow-hidden">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                {/* Active Tool Info */}
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                {/* Active Tool Info - Hidden on mobile */}
+                <div className="hidden sm:flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                   <div className="p-1 sm:p-1.5 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
                     {React.createElement(activeTool.icon, {
                       className: "w-3 h-3 sm:w-4 sm:h-4 text-primary",
@@ -198,10 +198,10 @@ export default function AdvancedTools() {
                   </p>
                 </div>
 
-                {/* Separator */}
-                <div className="w-full h-px sm:w-px sm:h-6 bg-border/20 sm:bg-border/20"></div>
+                {/* Separator - Hidden on mobile */}
+                <div className="hidden sm:block w-full h-px sm:w-px sm:h-6 bg-border/20 sm:bg-border/20"></div>
 
-                {/* Tools Selection Grid - Mobile Optimized */}
+                {/* Tools Selection Grid - Full width on mobile */}
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 sm:gap-1.5 w-full sm:w-auto">
                   {[...coreTools, ...aiTools].map((tool) => (
                     <button

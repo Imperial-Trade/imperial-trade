@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, BarChart3, Eye, EyeOff, TrendingUp, TrendingDown, Target, DollarSign, Activity, PieChart, Clock, Filter } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Calendar, BarChart3, Eye, EyeOff, TrendingUp, TrendingDown, Target, DollarSign, Activity, PieChart, Clock, Filter, Brain, Star, Lightbulb, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TradeJournalEntry } from "@/api/entities";
 import { supabase } from "@/integrations/supabase/client";
@@ -76,6 +76,7 @@ const TradingJournalApp = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<string>('all');
+  const [showAiAnalytics, setShowAiAnalytics] = useState(false);
 
   const loadEntries = async () => {
     setIsLoading(true);
@@ -244,6 +245,47 @@ const TradingJournalApp = () => {
       ],
     };
   }, [analytics.assetBreakdown]);
+
+  const aiAnalytics = useMemo(() => {
+    if (entries.length === 0) return null;
+
+    // Calculate AI-based insights
+    const patterns = {
+      consistentWinner: analytics.winRate > 60,
+      riskManaged: Math.abs(analytics.avgLoss) < analytics.avgWin * 2,
+      trendFollower: entries.filter(e => e.pnl > 0).length > entries.filter(e => e.pnl < 0).length,
+      overTrader: entries.length > 100,
+    };
+
+    const insights = [];
+    if (patterns.consistentWinner) insights.push("Consistent Winner");
+    if (patterns.riskManaged) insights.push("Good Risk Management");
+    if (patterns.trendFollower) insights.push("Trend Follower");
+    if (patterns.overTrader) insights.push("High Volume Trader");
+
+    const overallScore = Math.min(10, Math.round(
+      (analytics.winRate / 10) + 
+      (patterns.riskManaged ? 2 : 0) + 
+      (patterns.consistentWinner ? 2 : 0) + 
+      (analytics.totalPnL > 0 ? 2 : 0)
+    ));
+
+    return {
+      overallScore,
+      insights,
+      strengths: patterns.consistentWinner 
+        ? "Strong win rate indicates good trade selection" 
+        : "Focus on improving trade selection criteria",
+      improvements: patterns.riskManaged 
+        ? "Consider scaling position sizes for better returns"
+        : "Implement stricter risk management rules",
+      recommendations: [
+        "Continue following your current strategy",
+        "Document setup criteria for winning trades",
+        "Review losing trades for pattern recognition"
+      ]
+    };
+  }, [entries, analytics]);
 
   const chartOptions = {
     responsive: true,
@@ -586,50 +628,142 @@ const TradingJournalApp = () => {
             </Card>
           </TabsContent>
 
-          {/* Assets Tab */}
+          {/* Assets Tab with Toggle */}
           <TabsContent value="assets" className="space-y-4">
             <Card className="bg-card/30 backdrop-blur-sm border-border/20">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-                  <PieChart className="w-4 h-4" />
-                  Asset Performance
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                    {showAiAnalytics ? <Brain className="w-4 h-4" /> : <PieChart className="w-4 h-4" />}
+                    {showAiAnalytics ? 'AI Analytics' : 'Asset Performance'}
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Assets</span>
+                    <Switch
+                      checked={showAiAnalytics}
+                      onCheckedChange={setShowAiAnalytics}
+                      className="data-[state=checked]:bg-primary"
+                    />
+                    <span className="text-xs text-muted-foreground">AI</span>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
-                {assetChartData ? (
-                  <div className="space-y-4">
-                    <div className="h-48">
-                      <Doughnut data={assetChartData} options={doughnutOptions} />
-                    </div>
-                    <div className="space-y-2">
-                      {Object.entries(analytics.assetBreakdown)
-                        .sort(([,a], [,b]) => Math.abs(b) - Math.abs(a))
-                        .slice(0, 6)
-                        .map(([asset, pnl]) => (
-                          <div key={asset} className="flex items-center justify-between p-2 bg-background/50 rounded-md">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {asset}
-                              </Badge>
+                <AnimatePresence mode="wait">
+                  {showAiAnalytics ? (
+                    <motion.div
+                      key="ai-analytics"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-4"
+                    >
+                      {aiAnalytics ? (
+                        <>
+                          {/* AI Score Card */}
+                          <div className="text-center p-4 bg-gradient-to-r from-primary/10 via-primary/5 to-secondary/10 rounded-lg border border-primary/20">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <Brain className="w-5 h-5 text-primary" />
+                              <span className="text-lg font-bold">AI Trading Score</span>
                             </div>
-                            <span className={`text-sm font-medium ${
-                              pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
+                            <div className={`text-3xl font-bold mb-2 ${
+                              aiAnalytics.overallScore >= 8 ? 'text-emerald-400' :
+                              aiAnalytics.overallScore >= 6 ? 'text-yellow-400' :
+                              'text-red-400'
                             }`}>
-                              {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
-                            </span>
+                              {aiAnalytics.overallScore}/10
+                            </div>
+                            <div className="flex flex-wrap gap-1 justify-center">
+                              {aiAnalytics.insights.map((insight, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {insight}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
-                        ))
-                      }
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-48 flex items-center justify-center">
-                    <div className="text-center space-y-2">
-                      <PieChart className="w-8 h-8 text-muted-foreground/50 mx-auto" />
-                      <p className="text-sm text-muted-foreground">No asset data available</p>
-                    </div>
-                  </div>
-                )}
+
+                          {/* AI Insights */}
+                          <div className="space-y-3">
+                            <div className="p-3 bg-background/30 rounded-lg border border-border/20">
+                              <div className="flex items-center gap-2 mb-2">
+                                <TrendingUp className="w-4 h-4 text-emerald-400" />
+                                <span className="text-sm font-medium">Strengths</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">{aiAnalytics.strengths}</p>
+                            </div>
+
+                            <div className="p-3 bg-background/30 rounded-lg border border-border/20">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Lightbulb className="w-4 h-4 text-blue-400" />
+                                <span className="text-sm font-medium">Improvements</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">{aiAnalytics.improvements}</p>
+                            </div>
+
+                            <div className="p-3 bg-background/30 rounded-lg border border-border/20">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Star className="w-4 h-4 text-yellow-400" />
+                                <span className="text-sm font-medium">Recommendations</span>
+                              </div>
+                              <div className="space-y-1">
+                                {aiAnalytics.recommendations.map((rec, index) => (
+                                  <p key={index} className="text-xs text-muted-foreground">• {rec}</p>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Brain className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">No trading data for AI analysis</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="asset-chart"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                    >
+                      {assetChartData ? (
+                        <div className="space-y-4">
+                          <div className="h-48">
+                            <Doughnut data={assetChartData} options={doughnutOptions} />
+                          </div>
+                          <div className="space-y-2">
+                            {Object.entries(analytics.assetBreakdown)
+                              .sort(([,a], [,b]) => Math.abs(b) - Math.abs(a))
+                              .slice(0, 6)
+                              .map(([asset, pnl]) => (
+                                <div key={asset} className="flex items-center justify-between p-2 bg-background/50 rounded-md">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      {asset}
+                                    </Badge>
+                                  </div>
+                                  <span className={`text-sm font-medium ${
+                                    pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
+                                  }`}>
+                                    {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                                  </span>
+                                </div>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-48 flex items-center justify-center">
+                          <div className="text-center space-y-2">
+                            <PieChart className="w-8 h-8 text-muted-foreground/50 mx-auto" />
+                            <p className="text-sm text-muted-foreground">No asset data available</p>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </CardContent>
             </Card>
           </TabsContent>

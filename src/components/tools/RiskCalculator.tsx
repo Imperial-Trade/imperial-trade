@@ -185,23 +185,23 @@ export default function RiskCalculator() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-2 sm:p-4 lg:p-6">
+      <div className="max-w-6xl mx-auto space-y-3 sm:space-y-6">
         {/* Compliance Notice */}
-        <ComplianceNotice type="educational" size="md" />
+        <ComplianceNotice type="educational" size="sm" />
 
-        <Card className="bg-card/50 border-border/50 shadow-2xl backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Educational Setup Calculator
+        <Card className="bg-card/50 border-border/50 shadow-xl sm:shadow-2xl backdrop-blur-sm">
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="truncate">Educational Setup Calculator</span>
             </CardTitle>
-            <div className="flex gap-2">
+            <div className="flex gap-1 sm:gap-2 flex-wrap">
               <EducationalBadge />
               <HypotheticalBadge />
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="p-3 sm:p-6 space-y-4 sm:space-y-6">
             {/* Asset Selection Section */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Educational Asset / Learning Pair</label>
@@ -263,20 +263,20 @@ export default function RiskCalculator() {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Risk Type Toggle */}
-              <div className="md:col-span-2 space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border/50">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
+              <div className="lg:col-span-2 space-y-3 sm:space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-muted/30 rounded-lg border border-border/50 gap-3 sm:gap-0">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 flex-shrink-0">
                       {riskType === 'percentage' ? (
-                        <Percent className="w-4 h-4 text-primary" />
+                        <Percent className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
                       ) : (
-                        <DollarSign className="w-4 h-4 text-primary" />
+                        <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
                       )}
                     </div>
-                    <div>
-                      <h4 className="font-medium text-foreground">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-medium text-foreground text-sm sm:text-base truncate">
                         {riskType === 'percentage' ? 'Educational Risk Percentage' : 'Educational Dollar Risk Amount'}
                       </h4>
                       <p className="text-xs text-muted-foreground">
@@ -290,6 +290,7 @@ export default function RiskCalculator() {
                   <Switch
                     checked={riskType === 'dollar'}
                     onCheckedChange={(checked) => setRiskType(checked ? 'dollar' : 'percentage')}
+                    className="flex-shrink-0"
                   />
                 </div>
               </div>
@@ -385,14 +386,14 @@ export default function RiskCalculator() {
                   <HypotheticalBadge />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   <Card className="bg-card/50 border-border/50 backdrop-blur-sm hover:shadow-lg transition-all duration-300">
-                    <CardContent className="p-6 text-center">
-                      <div className="p-3 rounded-xl bg-accent-red/10 w-fit mx-auto mb-3">
-                        <DollarSign className="w-6 h-6 text-accent-red" />
+                    <CardContent className="p-3 sm:p-4 lg:p-6 text-center">
+                      <div className="p-2 sm:p-3 rounded-xl bg-accent-red/10 w-fit mx-auto mb-2 sm:mb-3">
+                        <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-accent-red" />
                       </div>
-                      <p className="text-sm text-muted-foreground mb-1">Educational $ Amount at Risk</p>
-                      <p className="text-2xl font-bold text-accent-red">${results.riskAmount}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-1">Educational $ Amount at Risk</p>
+                      <p className="text-lg sm:text-xl lg:text-2xl font-bold text-accent-red">${results.riskAmount}</p>
                       <p className="text-xs text-muted-foreground italic">Hypothetical only</p>
                     </CardContent>
                   </Card>

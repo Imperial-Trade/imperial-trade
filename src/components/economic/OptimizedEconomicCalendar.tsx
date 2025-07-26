@@ -161,8 +161,8 @@ export default function OptimizedEconomicCalendar({
   */
 
   return (
-    <div className={`min-h-screen bg-background/95 p-6 ${className}`}>
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className={`min-h-screen bg-background/95 p-2 sm:p-4 lg:p-6 ${className}`}>
+      <div className="max-w-7xl mx-auto space-y-3 sm:space-y-6">
         
         {/* ========================================
              FUNCTIONAL COMPONENT UI - UNCOMMENT TO ENABLE
@@ -469,42 +469,42 @@ export default function OptimizedEconomicCalendar({
              ======================================== */}
         
         <Card className="bg-card/50 border-border/30 shadow-xl backdrop-blur-sm">
-          <CardHeader className="text-center pb-8">
-            <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <Calendar className="w-8 h-8 text-primary" />
+          <CardHeader className="text-center p-3 sm:p-6 pb-4 sm:pb-8">
+            <div className="mx-auto mb-3 sm:mb-4 w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             </div>
-            <CardTitle className="text-3xl font-bold text-foreground mb-2">
+            <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-2">
               Economic Calendar
             </CardTitle>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-muted-foreground text-sm sm:text-base lg:text-lg px-2">
               Advanced market event tracking and analysis
             </p>
           </CardHeader>
-          <CardContent className="text-center pb-12">
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium">
-                <Clock className="w-4 h-4" />
+          <CardContent className="text-center p-3 sm:p-6 pb-8 sm:pb-12">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary/10 text-primary rounded-full text-xs sm:text-sm font-medium">
+                <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                 Coming Soon
               </div>
               
-              <div className="max-w-md mx-auto space-y-4">
-                <p className="text-muted-foreground">
+              <div className="max-w-md mx-auto space-y-3 sm:space-y-4 px-2">
+                <p className="text-muted-foreground text-sm sm:text-base">
                   We're building an advanced economic calendar with real-time market data, 
                   AI-powered volatility forecasts, and comprehensive event analysis.
                 </p>
                 
-                <div className="grid grid-cols-1 gap-3 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                    Real-time economic events
+                <div className="grid grid-cols-1 gap-2 sm:gap-3 text-xs sm:text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground justify-center sm:justify-start">
+                    <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-primary flex-shrink-0" />
+                    <span>Real-time economic events</span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                    AI volatility predictions
+                  <div className="flex items-center gap-2 text-muted-foreground justify-center sm:justify-start">
+                    <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-primary flex-shrink-0" />
+                    <span>AI volatility predictions</span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                    Multi-currency support
+                  <div className="flex items-center gap-2 text-muted-foreground justify-center sm:justify-start">
+                    <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-primary flex-shrink-0" />
+                    <span>Multi-currency support</span>
                   </div>
                 </div>
               </div>

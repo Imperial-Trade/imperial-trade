@@ -165,59 +165,59 @@ export default function AdvancedTools() {
   return (
     <div className="min-h-screen bg-background">
       {/* Compliance Notice */}
-      <div className="p-4">
+      <div className="p-2 sm:p-4">
         <ComplianceNotice type="educational" size="sm" />
       </div>
 
-      {/* Main Content Area - Full Width */}
-      <div className="w-full min-h-screen p-6 bg-background">
+      {/* Main Content Area - Responsive Width */}
+      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 bg-background">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="mb-4 flex items-center justify-center"
+          className="mb-2 sm:mb-4 flex items-center justify-center"
         >
           {/* Combined Tool Info and Selection Panel */}
           {activeTool && (
-            <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-2 shadow-lg shadow-primary/5 w-fit">
-              <div className="flex items-center gap-4">
+            <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-lg sm:rounded-xl p-2 shadow-lg shadow-primary/5 w-full max-w-full overflow-hidden">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
                 {/* Active Tool Info */}
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className="p-1 sm:p-1.5 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
                     {React.createElement(activeTool.icon, {
-                      className: "w-4 h-4 text-primary",
+                      className: "w-3 h-3 sm:w-4 sm:h-4 text-primary",
                     })}
                   </div>
-                  <h2 className="font-semibold text-base text-foreground tracking-tight">
+                  <h2 className="font-semibold text-sm sm:text-base text-foreground tracking-tight truncate">
                     {activeTool.name}
                   </h2>
-                  <span className="text-sm text-muted-foreground">•</span>
-                  <p className="text-sm text-muted-foreground">
+                  <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">•</span>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate hidden sm:block">
                     {activeTool.description}
                   </p>
                 </div>
 
                 {/* Separator */}
-                <div className="w-px h-6 bg-border/20"></div>
+                <div className="w-full h-px sm:w-px sm:h-6 bg-border/20 sm:bg-border/20"></div>
 
-                {/* Tools Selection Grid */}
-                <div className="grid grid-cols-6 gap-1.5">
+                {/* Tools Selection Grid - Mobile Optimized */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 sm:gap-1.5 w-full sm:w-auto">
                   {[...coreTools, ...aiTools].map((tool) => (
                     <button
                       key={tool.name}
                       onClick={() => setActiveTool(tool)}
-                      className={`p-2 rounded-lg border transition-all text-left ${
+                      className={`p-2 sm:p-2 rounded-lg border transition-all text-left min-h-[44px] touch-manipulation ${
                         activeTool?.name === tool.name
                           ? "bg-primary/10 border-primary/20 text-primary"
-                          : "bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40"
+                          : "bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40 active:bg-surface/90"
                       }`}
                     >
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-1.5">
                         {React.createElement(tool.icon, {
-                          className: "w-3 h-3 flex-shrink-0",
+                          className: "w-3 h-3 sm:w-3 sm:h-3 flex-shrink-0",
                         })}
-                        <span className="text-xs font-medium truncate">
+                        <span className="text-xs font-medium truncate text-center sm:text-left">
                           {tool.name === "Educational Journal"
                             ? "Journal"
                             : tool.name === "Economic Calendar"
@@ -242,11 +242,11 @@ export default function AdvancedTools() {
           )}
         </motion.div>
 
-        {/* Tool Display */}
-        <div className="min-h-[600px]">
+        {/* Tool Display - Mobile Optimized */}
+        <div className="min-h-[500px] sm:min-h-[600px]">
           <div className="relative h-full">
-            <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
-              <div className="p-4 bg-transparent">
+            <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg sm:rounded-2xl h-full overflow-y-auto">
+              <div className="p-1 sm:p-2 lg:p-4 bg-transparent">
                 <div
                   style={{
                     display:

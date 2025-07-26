@@ -275,24 +275,24 @@ export default function TradeAnalyst() {
   };
 
   const renderUploadView = () => (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
       {/* Main Header */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-3">
-          <div className="p-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30">
-            <Brain className="w-8 h-8 text-purple-400" />
+      <div className="text-center space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+          <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30">
+            <Brain className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-purple-400" />
           </div>
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+          <div className="text-center sm:text-left">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
               Educational Trading Pattern Analysis
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Professional trading performance analysis powered by advanced AI
             </p>
           </div>
         </div>
         
-        <div className="flex justify-center gap-2">
+        <div className="flex justify-center gap-1 sm:gap-2 flex-wrap">
           <EducationalBadge />
           <HypotheticalBadge />
         </div>
@@ -300,28 +300,28 @@ export default function TradeAnalyst() {
 
       {/* Upload Section */}
       <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5 text-purple-400" />
-            Upload Trading Screenshots
+        <CardHeader className="p-3 sm:p-4 lg:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
+            <span className="truncate">Upload Trading Screenshots</span>
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Upload up to 5 trading screenshots for comprehensive visual analysis
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
           {/* Upload Area */}
           <div 
-            className="border-2 border-dashed border-purple-500/30 rounded-xl p-12 text-center hover:border-purple-500/50 transition-colors cursor-pointer bg-gradient-to-br from-purple-500/5 to-blue-500/5"
+            className="border-2 border-dashed border-purple-500/30 rounded-xl p-6 sm:p-8 lg:p-12 text-center hover:border-purple-500/50 transition-colors cursor-pointer bg-gradient-to-br from-purple-500/5 to-blue-500/5 touch-manipulation"
             onClick={() => fileInputRef.current?.click()}
           >
-            <div className="flex flex-col items-center gap-4">
-              <div className="p-4 rounded-full bg-purple-500/20 border border-purple-500/30">
-                <Upload className="w-8 h-8 text-purple-400" />
+            <div className="flex flex-col items-center gap-3 sm:gap-4">
+              <div className="p-3 sm:p-4 rounded-full bg-purple-500/20 border border-purple-500/30">
+                <Upload className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-purple-400" />
               </div>
               <div>
-                <p className="text-xl font-semibold mb-2">Drop screenshots here or click to upload</p>
-                <p className="text-muted-foreground">
+                <p className="text-lg sm:text-xl font-semibold mb-2">Drop screenshots here or click to upload</p>
+                <p className="text-sm text-muted-foreground">
                   PNG, JPG, JPEG up to 10MB each • Maximum 5 files
                 </p>
               </div>
@@ -339,23 +339,23 @@ export default function TradeAnalyst() {
 
           {/* Uploaded Files */}
           {uploadedFiles.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Uploaded Screenshots ({uploadedFiles.length}/5)</h3>
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+                <h3 className="font-semibold text-sm sm:text-base">Uploaded Screenshots ({uploadedFiles.length}/5)</h3>
                 {uploadedFiles.length < 5 && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 self-start sm:self-auto"
                   >
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
                     Add More
                   </Button>
                 )}
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {uploadedFiles.map((file, index) => (
                   <div key={file.preview} className="relative">
                     <div className="aspect-video bg-background rounded-lg border border-border overflow-hidden">
@@ -368,25 +368,25 @@ export default function TradeAnalyst() {
                     
                     <button
                       onClick={() => removeFile(file.preview)}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors touch-manipulation"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
 
                     <div className="absolute bottom-2 right-2">
                       {file.uploading && (
-                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                          <Loader2 className="w-4 h-4 text-white animate-spin" />
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                          <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 text-white animate-spin" />
                         </div>
                       )}
                       {file.uploaded && (
-                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                          <CheckCircle className="w-4 h-4 text-white" />
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-500 rounded-full flex items-center justify-center">
+                          <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                         </div>
                       )}
                       {file.error && (
-                        <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                          <AlertCircle className="w-4 h-4 text-white" />
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 rounded-full flex items-center justify-center">
+                          <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                         </div>
                       )}
                     </div>
@@ -400,16 +400,16 @@ export default function TradeAnalyst() {
           <Button 
             onClick={() => analyzeTradePerformance(false)} 
             disabled={!user || isAnalyzing || uploadedFiles.length === 0 || uploadedFiles.some(file => file.uploading)}
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-4 text-lg font-semibold"
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-3 sm:py-4 text-base sm:text-lg font-semibold min-h-[44px] touch-manipulation"
           >
             {isAnalyzing ? (
               <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
                 Analyzing Trading Performance...
               </>
             ) : (
               <>
-                <Brain className="w-5 h-5 mr-2" />
+                <Brain className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 Analyze Trading Performance
               </>
             )}
@@ -419,22 +419,22 @@ export default function TradeAnalyst() {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg"
+              className="p-3 sm:p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg"
             >
               <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="w-4 h-4" />
-                <span className="font-medium">Analysis Failed</span>
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="font-medium text-sm sm:text-base">Analysis Failed</span>
               </div>
-              <p className="text-sm mb-3">{error}</p>
+              <p className="text-xs sm:text-sm mb-3">{error}</p>
               {retryCount < 3 && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => analyzeTradePerformance(true)}
                   disabled={isAnalyzing}
-                  className="border-red-500/20 text-red-400 hover:bg-red-500/10"
+                  className="border-red-500/20 text-red-400 hover:bg-red-500/10 min-h-[44px] touch-manipulation"
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" />
+                  <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
                   Try Again {retryCount > 0 && `(${retryCount}/3)`}
                 </Button>
               )}
@@ -445,36 +445,36 @@ export default function TradeAnalyst() {
 
       {/* Recent Analyses */}
       <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-400" />
-            Recent Analyses
+        <CardHeader className="p-3 sm:p-4 lg:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 flex-shrink-0" />
+            <span className="truncate">Recent Analyses</span>
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             View your previous trading pattern analyses
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-4 lg:p-6">
           {historyLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+            <div className="flex items-center justify-center py-6 sm:py-8">
+              <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin text-purple-400" />
             </div>
           ) : analysisHistory && analysisHistory.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {analysisHistory.map((item) => (
                 <div 
                   key={item.id}
-                  className="flex items-center justify-between p-4 bg-background rounded-lg border border-border hover:border-purple-500/30 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-background rounded-lg border border-border hover:border-purple-500/30 transition-colors gap-2 sm:gap-3 touch-manipulation"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-purple-500/20 border border-purple-500/30">
-                      <BarChart3 className="w-4 h-4 text-purple-400" />
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div className="p-1.5 sm:p-2 rounded-lg bg-purple-500/20 border border-purple-500/30 flex-shrink-0">
+                      <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400" />
                     </div>
-                    <div>
-                      <p className="font-medium">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm sm:text-base truncate">
                         Analysis from {formatDate(item.created_at)}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         {(item.metadata as any)?.screenshots_analyzed || 0} screenshots • {(item.metadata as any)?.trades_analyzed || 0} trades
                       </p>
                     </div>

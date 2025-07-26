@@ -207,10 +207,10 @@ const RiskSimulator: React.FC = () => {
   */
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       <ComplianceNotice 
         type="educational" 
-        className="mb-6"
+        className="mb-3 sm:mb-6"
       />
       
       {/* ========================================

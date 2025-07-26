@@ -85,10 +85,10 @@ export default function Education() {
   }
 
   return (
-    <div className="flex flex-col bg-background text-primary overflow-hidden">
+    <div className="flex flex-col bg-background text-primary overflow-hidden min-h-screen">
       <HeroSection video={featuredVideo} onPlay={handleVideoPlay} />
 
-      <div className="relative z-10 -mt-20 overflow-auto flex-1">
+      <div className="relative z-10 -mt-10 sm:-mt-16 lg:-mt-20 overflow-auto flex-1 px-2 sm:px-4 lg:px-6">
         {groupedVideos.map((group) => (
           <VideoRow
             key={group.category}

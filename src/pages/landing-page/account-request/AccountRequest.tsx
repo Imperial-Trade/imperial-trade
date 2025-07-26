@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Search, LogIn } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowRight, Crown } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAccountRequestForm } from "@/hooks/useAccountRequestForm";
 import { StatusMessage } from "@/components/account-request/StatusMessage";
 import { AccountRequestForm } from "@/components/account-request/AccountRequestForm";
@@ -56,103 +56,99 @@ export default function AccountRequestPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="w-full max-w-md">
-          <Card className="backdrop-blur-xl bg-background/95 border border-border/50 shadow-xl">
-            <CardHeader className="text-center space-y-4 px-4 sm:px-6">
-              <div className="flex justify-center">
-                <div className="p-3 rounded-full bg-primary/10 border border-primary/20">
-                  <UserPlus className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-foreground">Join Our Community</h1>
-                <p className="text-sm sm:text-base text-muted-foreground mt-2">
-                  Request access to our exclusive trading platform and education content.
-                </p>
-              </div>
+    <div className="min-h-screen flex">
+      {/* Left Side - Dark with Form */}
+      <div className="w-1/2 bg-white flex items-center justify-center px-8 py-24">
+        <div className="w-full max-w-sm">
+          {/* Form Card */}
+          <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
+            <CardHeader className="bg-slate-50">
+              <CardTitle className="text-xl font-semibold text-center text-gray-900">
+                Request Community Access
+              </CardTitle>
+              <p className="text-center text-sm text-slate-900">
+                Fill out the form below. An admin will review your request
+                shortly.
+              </p>
             </CardHeader>
-            <CardContent className="space-y-6 px-4 sm:px-6">
-              <ErrorBoundary fallback={<div>Error loading form</div>}>
-                <AccountRequestForm
-                  form={form}
-                  onSubmit={handleFormSubmit}
-                  isSubmitting={isSubmitting}
-                  canSubmit={canSubmit}
-                />
-              </ErrorBoundary>
-
-              <ErrorBoundary fallback={<div>Error loading status</div>}>
+            <CardContent className="bg-slate-50 rounded-none">
+              <ErrorBoundary componentName="Status Message">
                 <StatusMessage
                   type={status.type as "success" | "error" | ""}
                   message={status.message}
                 />
               </ErrorBoundary>
 
-              <div className="space-y-3 pt-4 border-t border-border/20">
-                <Button
-                  variant="outline"
-                  className="w-full min-h-[44px] touch-manipulation"
-                  onClick={() => navigate('/account-request-status')}
-                >
-                  <Search className="h-4 w-4 mr-2 flex-shrink-0" />
-                  Check Request Status
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  className="w-full min-h-[44px] touch-manipulation"
-                  onClick={() => navigate('/signin')}
-                >
-                  <LogIn className="h-4 w-4 mr-2 flex-shrink-0" />
-                  Already have access? Sign In
-                </Button>
+              {status.type !== "success" && (
+                <ErrorBoundary componentName="Account Request Form">
+                  <AccountRequestForm
+                    form={form}
+                    onSubmit={handleFormSubmit}
+                    isSubmitting={isSubmitting}
+                    canSubmit={canSubmit}
+                  />
+                </ErrorBoundary>
+              )}
+
+              <div className="pt-4 space-y-3">
+                <Link to="/account-request-status">
+                  <Button
+                    variant="outline"
+                    className="w-full border-gray-600 bg-slate-50 text-slate-950"
+                  >
+                    Check Request Status
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+
+                <Link to="/signin">
+                  <Button
+                    variant="outline"
+                    className="w-full border-gray-600 text-gray-950 bg-slate-50 mt-4"
+                  >
+                    Already Have Access? Sign In
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Right Side - Background - Hidden on mobile, visible on large screens */}
-      <div className="hidden lg:flex flex-1 relative overflow-hidden">
+      {/* Right Side - Trading Background */}
+      <div className="w-1/2 bg-white relative overflow-hidden flex items-center justify-center">
         <TradingBackground />
-        
-        {/* Overlay Content */}
-        <div className="absolute inset-0 bg-gradient-to-l from-background/80 to-transparent"></div>
-        <div className="absolute inset-0 flex flex-col justify-between p-12">
-          <div className="space-y-6">
-            <h2 className="text-4xl font-bold text-foreground">
-              Elite Trading Platform
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-md">
-              Access professional-grade trading signals, educational content, and live sessions from verified traders.
+
+        {/* Content overlay */}
+        <div className="relative z-10 text-center">
+          <h1 className="text-6xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-4">
+            Imperial
+          </h1>
+          <p className="text-xl text-gray-700 mb-8">
+            Professional Trading Community
+          </p>
+
+          {/* Contact info */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 max-w-sm mx-auto">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              Corporate Inquiry Form
+            </h3>
+            <p className="text-sm text-gray-600">
+              Can't get access to your account?
+              <Link
+                to="/account-request-status"
+                className="text-teal-600 hover:underline ml-1"
+              >
+                Contact Us
+              </Link>
             </p>
           </div>
-          
-          <div className="space-y-4">
-            <div className="text-sm text-muted-foreground">
-              <p className="mb-2">For corporate inquiries:</p>
-              <p className="font-medium text-foreground">partnerships@imperialtrading.com</p>
-            </div>
-            
-            <div className="text-xs text-muted-foreground border-t border-border/20 pt-4">
-              <p>© 2024 Imperial Trading. All rights reserved.</p>
-            </div>
-          </div>
         </div>
-      </div>
 
-      {/* Mobile Footer Info */}
-      <div className="lg:hidden px-4 py-6 bg-muted/30 border-t border-border/20">
-        <div className="text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            For corporate inquiries: partnerships@imperialtrading.com
-          </p>
-          <p className="text-xs text-muted-foreground">
-            © 2024 Imperial Trading. All rights reserved.
-          </p>
+        {/* Copyright */}
+        <div className="absolute bottom-4 right-6 text-xs text-gray-500">
+          © Copyright 2025 Imperial. All Rights Reserved
         </div>
       </div>
     </div>

@@ -252,65 +252,53 @@ const DashboardNav: React.FC = () => {
         {/* Mobile Menu */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="lg:hidden min-h-[44px] min-w-[44px] p-2"
-              aria-label="Open navigation menu"
-            >
-              <Menu className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="lg:hidden text-primary hover:text-primary/80">
+              <Menu className="h-6 w-6" />
+              <span className="sr-only">Open navigation menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent 
-            side="right" 
-            className="w-[85vw] max-w-sm p-0"
-          >
-            <SheetHeader className="border-b border-border/50 pb-6 p-6">
+          <SheetContent side="left" className="w-80 bg-background/95 backdrop-blur-xl">
+            <SheetHeader className="border-b border-border/50 pb-6">
               <SheetTitle className="flex items-center gap-2 text-left">
                 <Crown className="h-6 w-6 text-primary" />
                 <span className="text-xl imperial-tech-font">IMPERIAL</span>
               </SheetTitle>
             </SheetHeader>
 
-            <div className="flex flex-col h-full overflow-y-auto">
-              {/* Navigation Items */}
-              <nav className="flex-1 space-y-2 p-6">
-                {allNavigationItems.map(item => {
-                  const isActive = location.pathname === item.to;
-                  return (
-                    <Link 
-                      key={item.to} 
-                      to={item.to} 
-                      onClick={closeMobileMenu} 
-                      className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 border min-h-[44px] touch-manipulation ${
-                        isActive 
-                          ? 'bg-primary/10 border-primary/20 text-primary' 
-                          : 'hover:bg-primary/10 text-foreground border-border/50'
-                      }`}
-                    >
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      <span className="text-base font-medium">{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
+            <nav className="flex flex-col gap-2 mt-8">
+              {allNavigationItems.map(item => {
+                const isActive = location.pathname === item.to;
+                return (
+                  <Link 
+                    key={item.to} 
+                    to={item.to} 
+                    onClick={closeMobileMenu} 
+                    className={`flex items-center gap-3 p-4 rounded-xl transition-all duration-200 border ${
+                      isActive 
+                        ? 'bg-primary/10 border-primary/20 text-primary' 
+                        : 'hover:bg-primary/10 text-foreground border-border/50'
+                    }`}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span className="text-base font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
 
-              {/* Footer Actions */}
-              <div className="border-t border-border/50 p-6 space-y-4 mt-auto">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Theme</span>
+              <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
+                <div className="flex justify-center">
                   <ThemeToggle />
                 </div>
                 <Button 
                   onClick={handleSignOut} 
                   size="lg" 
                   variant="outline" 
-                  className="w-full min-h-[44px] touch-manipulation"
+                  className="w-full"
                 >
                   Sign Out
                 </Button>
               </div>
-            </div>
+            </nav>
           </SheetContent>
         </Sheet>
       </div>

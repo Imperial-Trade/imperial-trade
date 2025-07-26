@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Crown,
@@ -13,7 +13,6 @@ import {
   Video,
   Users,
   Handshake,
-  Droplets,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,11 +33,6 @@ const AppBar: React.FC = () => {
   const isSigninPage = location.pathname === "/signin";
   const { user, loading } = useAuth();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-
-  // Close mobile menu when route changes
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname]);
   const navigationItems = [
     {
       to: "/advanced-tools",
@@ -156,8 +150,8 @@ const AppBar: React.FC = () => {
         {/* Logo - hide on signin page */}
         {!isSigninPage && (
           <Link to="/" className="flex items-center gap-2">
-            <Droplets className="h-6 w-6 text-primary" />
-            <span className="text-xl imperial-tech-font bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">ORDERFLOW</span>
+            <Crown className="h-6 w-6 text-primary" />
+            <span className="text-xl imperial-tech-font">IMPERIAL</span>
           </Link>
         )}
 
@@ -243,30 +237,30 @@ const AppBar: React.FC = () => {
       </div>
 
       {/* Mobile & Tablet Navigation */}
-      {isMobile && (
+      {(isMobile || window.innerWidth < 1024) && (
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button
               variant="ghost"
-              size="sm"
-              className="lg:hidden min-h-[44px] min-w-[44px] p-2"
-              aria-label="Open mobile menu"
+              size="icon"
+              className="lg:hidden text-primary hover:text-primary/80"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-6 w-6" />
+              <span className="sr-only">Open navigation menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent
-            side="right"
-            className="w-[85vw] max-w-sm bg-background/95 backdrop-blur-xl p-0"
+            side="left"
+            className="w-80 bg-background/95 backdrop-blur-xl"
           >
-            <SheetHeader className="border-b border-border/50 pb-6 p-6">
+            <SheetHeader className="border-b border-border/50 pb-6">
               <SheetTitle className="flex items-center gap-2 text-left">
-                <Droplets className="h-6 w-6 text-primary" />
-                <span className="text-xl imperial-tech-font bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">ORDERFLOW</span>
+                <Crown className="h-6 w-6 text-primary" />
+                <span className="text-xl imperial-tech-font">IMPERIAL</span>
               </SheetTitle>
             </SheetHeader>
 
-            <nav className="flex flex-col gap-2 p-6">
+            <nav className="flex flex-col gap-2 mt-8">
               {/* Hide navigation items on signin page */}
               {!isSigninPage &&
                 navigationItems.map((item) => (
@@ -274,9 +268,9 @@ const AppBar: React.FC = () => {
                     <Link
                       to={item.to}
                       onClick={closeMobileMenu}
-                      className="flex items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 min-h-[44px] touch-manipulation"
+                      className="flex items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50"
                     >
-                      <item.icon className="h-5 w-5 text-primary flex-shrink-0" />
+                      <item.icon className="h-5 w-5 text-primary" />
                       <div>
                         <span className="text-base font-medium block">
                           {item.label}
@@ -289,16 +283,15 @@ const AppBar: React.FC = () => {
                   </div>
                 ))}
 
-              <div className="mt-6 pt-6 border-t border-border/50 space-y-4 px-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Theme</span>
+              <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
+                <div className="flex justify-center">
                   <ThemeToggle />
                 </div>
                 {user ? (
                   <Link to="/dashboard/home" onClick={closeMobileMenu}>
                     <Button
                       size="lg"
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2 min-h-[44px] touch-manipulation"
+                      className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold flex items-center gap-2"
                     >
                       <LayoutDashboard className="h-4 w-4" />
                       Dashboard
@@ -307,25 +300,14 @@ const AppBar: React.FC = () => {
                 ) : (
                   !isAccountRequestPage &&
                   !isSigninPage && (
-                    <div className="space-y-3">
-                      <Link to="/signin" onClick={closeMobileMenu}>
-                        <Button
-                          size="lg"
-                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold min-h-[44px] touch-manipulation"
-                        >
-                          Sign In
-                        </Button>
-                      </Link>
-                      <Link to="/account-request" onClick={closeMobileMenu}>
-                        <Button
-                          size="lg"
-                          variant="outline"
-                          className="w-full font-semibold min-h-[44px] touch-manipulation"
-                        >
-                          Get Started
-                        </Button>
-                      </Link>
-                    </div>
+                    <Link to="/account-request" onClick={closeMobileMenu}>
+                      <Button
+                        size="lg"
+                        className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold"
+                      >
+                        Get Started
+                      </Button>
+                    </Link>
                   )
                 )}
               </div>

@@ -39,26 +39,26 @@ export default function SigninPage() {
       });
     }
   };
-  return <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
+  return <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
       <ErrorBoundary componentName="Video Background">
         <VideoBackground />
       </ErrorBoundary>
 
-      <div className="relative z-20 max-w-md w-full">
+      <div className="relative z-20 max-w-md w-full mx-auto">
         <ErrorBoundary componentName="Brand Header">
           <BrandHeader />
         </ErrorBoundary>
 
-        <Card className="glass-effect border-default">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center text-lime-200">
+        <Card className="glass-effect border-default shadow-2xl">
+          <CardHeader className="px-4 sm:px-6">
+            <CardTitle className="text-xl sm:text-2xl font-bold text-center text-lime-200">
               Welcome Back
             </CardTitle>
-            <p className="text-center text-slate-50">
+            <p className="text-center text-slate-50 text-sm sm:text-base">
               Sign in to access your Imperial Trading account
             </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             <ErrorBoundary componentName="Status Message">
               <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
             </ErrorBoundary>
@@ -79,16 +79,24 @@ export default function SigninPage() {
               </ErrorBoundary>
             )}
 
-            <div className="pt-4 space-y-3 grid grid-cols">
+            <div className="pt-4 space-y-3">
               <Link to="/account-request">
-                <Button variant="outline" className="w-full border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95">
+                <Button 
+                  variant="outline" 
+                  className="w-full min-h-[48px] border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95 touch-manipulation"
+                  aria-label="Request new account access"
+                >
                   Need an Account? Request Access
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
 
               <Link to="/account-request-status">
-                <Button variant="outline" className="w-full border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95">
+                <Button 
+                  variant="outline" 
+                  className="w-full min-h-[48px] border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95 touch-manipulation"
+                  aria-label="Check your request status"
+                >
                   Check Request Status
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>

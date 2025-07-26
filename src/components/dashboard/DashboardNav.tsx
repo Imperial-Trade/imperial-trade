@@ -250,14 +250,19 @@ const DashboardNav: React.FC = () => {
         </div>
 
         {/* Mobile Menu */}
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="lg:hidden text-primary hover:text-primary/80">
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Open navigation menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-80 bg-background/95 backdrop-blur-xl">
+        <div className="lg:hidden">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-11 w-11 text-primary hover:text-primary/80 active:scale-95 transition-all duration-200"
+                aria-label="Open navigation menu"
+              >
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[85vw] max-w-sm bg-background/98 backdrop-blur-xl border-r border-border/50">
             <SheetHeader className="border-b border-border/50 pb-6">
               <SheetTitle className="flex items-center gap-2 text-left">
                 <Crown className="h-6 w-6 text-primary" />
@@ -265,7 +270,7 @@ const DashboardNav: React.FC = () => {
               </SheetTitle>
             </SheetHeader>
 
-            <nav className="flex flex-col gap-2 mt-8">
+            <nav className="flex flex-col gap-3 mt-8 pb-4">
               {allNavigationItems.map(item => {
                 const isActive = location.pathname === item.to;
                 return (
@@ -273,19 +278,20 @@ const DashboardNav: React.FC = () => {
                     key={item.to} 
                     to={item.to} 
                     onClick={closeMobileMenu} 
-                    className={`flex items-center gap-3 p-4 rounded-xl transition-all duration-200 border ${
+                    className={`flex items-center gap-4 p-4 min-h-[56px] rounded-xl transition-all duration-200 border touch-manipulation active:scale-98 ${
                       isActive 
                         ? 'bg-primary/10 border-primary/20 text-primary' 
                         : 'hover:bg-primary/10 text-foreground border-border/50'
                     }`}
+                    aria-label={`Navigate to ${item.label}`}
                   >
-                    <item.icon className="h-5 w-5" />
-                    <span className="text-base font-medium">{item.label}</span>
+                    <item.icon className="h-6 w-6 flex-shrink-0" />
+                    <span className="text-base font-medium flex-1">{item.label}</span>
                   </Link>
                 );
               })}
 
-              <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
+              <div className="mt-8 pt-6 border-t border-border/50 space-y-4">
                 <div className="flex justify-center">
                   <ThemeToggle />
                 </div>
@@ -293,7 +299,8 @@ const DashboardNav: React.FC = () => {
                   onClick={handleSignOut} 
                   size="lg" 
                   variant="outline" 
-                  className="w-full"
+                  className="w-full min-h-[48px] touch-manipulation active:scale-98 transition-all duration-200"
+                  aria-label="Sign out of account"
                 >
                   Sign Out
                 </Button>
@@ -301,6 +308,7 @@ const DashboardNav: React.FC = () => {
             </nav>
           </SheetContent>
         </Sheet>
+        </div>
       </div>
 
       <style>{`

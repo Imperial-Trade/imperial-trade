@@ -236,22 +236,22 @@ const AppBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile & Tablet Navigation */}
-      {(isMobile || window.innerWidth < 1024) && (
+  {/* Mobile & Tablet Navigation */}
+      <div className="lg:hidden">
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden text-primary hover:text-primary/80"
+              className="h-11 w-11 text-primary hover:text-primary/80 active:scale-95 transition-all duration-200"
+              aria-label="Open navigation menu"
             >
               <Menu className="h-6 w-6" />
-              <span className="sr-only">Open navigation menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-80 bg-background/95 backdrop-blur-xl"
+            className="w-[85vw] max-w-sm bg-background/98 backdrop-blur-xl border-r border-border/50"
           >
             <SheetHeader className="border-b border-border/50 pb-6">
               <SheetTitle className="flex items-center gap-2 text-left">
@@ -260,30 +260,30 @@ const AppBar: React.FC = () => {
               </SheetTitle>
             </SheetHeader>
 
-            <nav className="flex flex-col gap-2 mt-8">
+            <nav className="flex flex-col gap-3 mt-8 pb-4">
               {/* Hide navigation items on signin page */}
               {!isSigninPage &&
                 navigationItems.map((item) => (
-                  <div key={item.to} className="space-y-2">
-                    <Link
-                      to={item.to}
-                      onClick={closeMobileMenu}
-                      className="flex items-center gap-3 p-4 rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50"
-                    >
-                      <item.icon className="h-5 w-5 text-primary" />
-                      <div>
-                        <span className="text-base font-medium block">
-                          {item.label}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {item.description}
-                        </span>
-                      </div>
-                    </Link>
-                  </div>
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={closeMobileMenu}
+                    className="flex items-center gap-4 p-4 min-h-[56px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
+                    aria-label={`Navigate to ${item.label}`}
+                  >
+                    <item.icon className="h-6 w-6 text-primary flex-shrink-0" />
+                    <div className="flex-1">
+                      <span className="text-base font-medium block leading-tight">
+                        {item.label}
+                      </span>
+                      <span className="text-sm text-muted-foreground leading-tight">
+                        {item.description}
+                      </span>
+                    </div>
+                  </Link>
                 ))}
 
-              <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
+              <div className="mt-8 pt-6 border-t border-border/50 space-y-4">
                 <div className="flex justify-center">
                   <ThemeToggle />
                 </div>
@@ -291,30 +291,45 @@ const AppBar: React.FC = () => {
                   <Link to="/dashboard/home" onClick={closeMobileMenu}>
                     <Button
                       size="lg"
-                      className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold flex items-center gap-2"
+                      className="w-full min-h-[48px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2 touch-manipulation active:scale-98 transition-all duration-200"
+                      aria-label="Go to Dashboard"
                     >
-                      <LayoutDashboard className="h-4 w-4" />
+                      <LayoutDashboard className="h-5 w-5" />
                       Dashboard
                     </Button>
                   </Link>
                 ) : (
-                  !isAccountRequestPage &&
-                  !isSigninPage && (
-                    <Link to="/account-request" onClick={closeMobileMenu}>
-                      <Button
-                        size="lg"
-                        className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold"
-                      >
-                        Get Started
-                      </Button>
-                    </Link>
-                  )
+                  <div className="space-y-3">
+                    {!isAccountRequestPage && !isSigninPage && (
+                      <Link to="/account-request" onClick={closeMobileMenu}>
+                        <Button
+                          size="lg"
+                          className="w-full min-h-[48px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                          aria-label="Get Started - Request Account"
+                        >
+                          Get Started
+                        </Button>
+                      </Link>
+                    )}
+                    {!isSigninPage && !isAccountRequestPage && (
+                      <Link to="/signin" onClick={closeMobileMenu}>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          className="w-full min-h-[48px] border-primary text-primary hover:bg-primary/10 font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                          aria-label="Sign In to Account"
+                        >
+                          Sign In
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 )}
               </div>
             </nav>
           </SheetContent>
         </Sheet>
-      )}
+      </div>
 
       <style>{`
         /* AI Tech Font Styles */

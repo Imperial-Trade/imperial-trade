@@ -56,22 +56,22 @@ export default function AccountRequestPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Side - Dark with Form */}
-      <div className="w-1/2 bg-white flex items-center justify-center px-8 py-24">
-        <div className="w-full max-w-sm">
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Left Side - Form */}
+      <div className="w-full lg:w-1/2 bg-white flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8 lg:py-24">
+        <div className="w-full max-w-md lg:max-w-sm">
           {/* Form Card */}
-          <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm">
-            <CardHeader className="bg-slate-50">
-              <CardTitle className="text-xl font-semibold text-center text-gray-900">
+          <Card className="bg-gray-800/50 border-gray-700 backdrop-blur-sm shadow-xl">
+            <CardHeader className="bg-slate-50 px-4 sm:px-6">
+              <CardTitle className="text-lg sm:text-xl font-semibold text-center text-gray-900">
                 Request Community Access
               </CardTitle>
-              <p className="text-center text-sm text-slate-900">
+              <p className="text-center text-sm text-slate-900 leading-relaxed">
                 Fill out the form below. An admin will review your request
                 shortly.
               </p>
             </CardHeader>
-            <CardContent className="bg-slate-50 rounded-none">
+            <CardContent className="bg-slate-50 rounded-none px-4 sm:px-6">
               <ErrorBoundary componentName="Status Message">
                 <StatusMessage
                   type={status.type as "success" | "error" | ""}
@@ -94,7 +94,8 @@ export default function AccountRequestPage() {
                 <Link to="/account-request-status">
                   <Button
                     variant="outline"
-                    className="w-full border-gray-600 bg-slate-50 text-slate-950"
+                    className="w-full min-h-[48px] border-gray-600 bg-slate-50 text-slate-950 touch-manipulation active:scale-98 transition-all duration-200"
+                    aria-label="Check your request status"
                   >
                     Check Request Status
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -104,7 +105,8 @@ export default function AccountRequestPage() {
                 <Link to="/signin">
                   <Button
                     variant="outline"
-                    className="w-full border-gray-600 text-gray-950 bg-slate-50 mt-4"
+                    className="w-full min-h-[48px] border-gray-600 text-gray-950 bg-slate-50 touch-manipulation active:scale-98 transition-all duration-200"
+                    aria-label="Sign in to existing account"
                   >
                     Already Have Access? Sign In
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -117,28 +119,29 @@ export default function AccountRequestPage() {
       </div>
 
       {/* Right Side - Trading Background */}
-      <div className="w-1/2 bg-white relative overflow-hidden flex items-center justify-center">
+      <div className="w-full lg:w-1/2 bg-white relative overflow-hidden flex items-center justify-center min-h-[40vh] lg:min-h-screen">
         <TradingBackground />
 
         {/* Content overlay */}
-        <div className="relative z-10 text-center">
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-4">
+        <div className="relative z-10 text-center px-4 sm:px-6">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-4">
             Imperial
           </h1>
-          <p className="text-xl text-gray-700 mb-8">
+          <p className="text-lg sm:text-xl text-gray-700 mb-6 lg:mb-8">
             Professional Trading Community
           </p>
 
           {/* Contact info */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 max-w-sm mx-auto">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 sm:p-6 max-w-sm mx-auto">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">
               Corporate Inquiry Form
             </h3>
             <p className="text-sm text-gray-600">
               Can't get access to your account?
               <Link
                 to="/account-request-status"
-                className="text-teal-600 hover:underline ml-1"
+                className="text-teal-600 hover:underline ml-1 touch-manipulation"
+                aria-label="Contact us for account access help"
               >
                 Contact Us
               </Link>
@@ -147,7 +150,7 @@ export default function AccountRequestPage() {
         </div>
 
         {/* Copyright */}
-        <div className="absolute bottom-4 right-6 text-xs text-gray-500">
+        <div className="absolute bottom-4 right-4 sm:right-6 text-xs text-gray-500">
           © Copyright 2025 Imperial. All Rights Reserved
         </div>
       </div>

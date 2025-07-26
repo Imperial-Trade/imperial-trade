@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -181,43 +182,83 @@ export default function AdvancedTools() {
           {/* Combined Tool Info and Selection Panel */}
           {activeTool && (
             <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-lg sm:rounded-xl p-2 shadow-lg shadow-primary/5 w-full max-w-full overflow-hidden">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                {/* Active Tool Info - Hidden on mobile */}
-                <div className="hidden sm:flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                  <div className="p-1 sm:p-1.5 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
+              {/* Desktop Layout */}
+              <div className="hidden sm:flex items-center gap-4">
+                {/* Active Tool Info - Desktop only */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
                     {React.createElement(activeTool.icon, {
-                      className: "w-3 h-3 sm:w-4 sm:h-4 text-primary",
+                      className: "w-4 h-4 text-primary",
                     })}
                   </div>
-                  <h2 className="font-semibold text-sm sm:text-base text-foreground tracking-tight truncate">
+                  <h2 className="font-semibold text-base text-foreground tracking-tight truncate">
                     {activeTool.name}
                   </h2>
-                  <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">•</span>
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate hidden sm:block">
+                  <span className="text-sm text-muted-foreground">•</span>
+                  <p className="text-sm text-muted-foreground truncate">
                     {activeTool.description}
                   </p>
                 </div>
 
-                {/* Separator - Hidden on mobile */}
-                <div className="hidden sm:block w-full h-px sm:w-px sm:h-6 bg-border/20 sm:bg-border/20"></div>
+                {/* Separator - Desktop only */}
+                <div className="w-px h-6 bg-border/20"></div>
 
-                {/* Tools Selection Grid - Full width on mobile */}
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 sm:gap-1.5 w-full sm:w-auto">
+                {/* Tools Selection Grid - Desktop */}
+                <div className="grid grid-cols-6 gap-1.5">
                   {[...coreTools, ...aiTools].map((tool) => (
                     <button
                       key={tool.name}
                       onClick={() => setActiveTool(tool)}
-                      className={`p-2 sm:p-2 rounded-lg border transition-all text-left min-h-[44px] touch-manipulation ${
+                      className={`p-2 rounded-lg border transition-all text-left min-h-[44px] ${
                         activeTool?.name === tool.name
                           ? "bg-primary/10 border-primary/20 text-primary"
-                          : "bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40 active:bg-surface/90"
+                          : "bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40"
                       }`}
                     >
-                      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-1.5">
+                      <div className="flex items-center justify-start gap-1.5">
                         {React.createElement(tool.icon, {
-                          className: "w-3 h-3 sm:w-3 sm:h-3 flex-shrink-0",
+                          className: "w-3 h-3 flex-shrink-0",
                         })}
-                        <span className="text-xs font-medium truncate text-center sm:text-left">
+                        <span className="text-xs font-medium truncate">
+                          {tool.name === "Educational Journal"
+                            ? "Journal"
+                            : tool.name === "Economic Calendar"
+                            ? "Calendar"
+                            : tool.name === "Educational Calculator"
+                            ? "Calculator"
+                            : tool.name ===
+                              "Educational Trading Pattern Analysis"
+                            ? "Analyst"
+                            : tool.name === "Educational Pattern Scanner"
+                            ? "Scanner"
+                            : tool.name === "Educational Risk Calculator"
+                            ? "Risk Calc"
+                            : tool.name.split(" ")[0]}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mobile Layout - Centered Tools Grid */}
+              <div className="sm:hidden flex justify-center">
+                <div className="grid grid-cols-3 gap-1 max-w-xs">
+                  {[...coreTools, ...aiTools].map((tool) => (
+                    <button
+                      key={tool.name}
+                      onClick={() => setActiveTool(tool)}
+                      className={`p-2 rounded-lg border transition-all min-h-[44px] touch-manipulation ${
+                        activeTool?.name === tool.name
+                          ? "bg-primary/10 border-primary/20 text-primary"
+                          : "bg-surface/50 border-border/20 active:bg-surface/90"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        {React.createElement(tool.icon, {
+                          className: "w-3 h-3 flex-shrink-0",
+                        })}
+                        <span className="text-xs font-medium truncate text-center">
                           {tool.name === "Educational Journal"
                             ? "Journal"
                             : tool.name === "Economic Calendar"

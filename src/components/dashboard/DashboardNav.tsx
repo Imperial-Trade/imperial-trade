@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Crown, Bell, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare, ChevronDown, Grid3X3, ChevronUp, Minimize2 } from "lucide-react";
@@ -250,8 +251,8 @@ const DashboardNav: React.FC = () => {
           </DropdownMenu>
         </div>
 
-        {/* Mobile Menu - Fixed positioning to the right */}
-        <div className="lg:hidden flex items-center">
+        {/* Mobile Menu - Positioned to the far right */}
+        <div className="lg:hidden ml-auto">
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button 
@@ -334,3 +335,4 @@ const DashboardNav: React.FC = () => {
 };
 
 export default DashboardNav;
+

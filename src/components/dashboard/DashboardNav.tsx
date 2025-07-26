@@ -251,8 +251,8 @@ const DashboardNav: React.FC = () => {
           </DropdownMenu>
         </div>
 
-        {/* Mobile Menu - Positioned to the far right */}
-        <div className="lg:hidden ml-auto">
+        {/* Mobile Menu - Positioned at the far right edge */}
+        <div className="lg:hidden">
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button 

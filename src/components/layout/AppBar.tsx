@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -25,6 +26,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+
 const AppBar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -33,6 +35,7 @@ const AppBar: React.FC = () => {
   const isSigninPage = location.pathname === "/signin";
   const { user, loading } = useAuth();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
   const navigationItems = [
     {
       to: "/advanced-tools",
@@ -77,6 +80,7 @@ const AppBar: React.FC = () => {
       features: ["Revenue Share", "White Label", "API Access"],
     },
   ];
+
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   // Show "Get Started" by default, "Dashboard" when authenticated
@@ -122,6 +126,7 @@ const AppBar: React.FC = () => {
       </div>
     );
   };
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-center px-6 ${
@@ -147,6 +152,7 @@ const AppBar: React.FC = () => {
             <span className="text-sm font-medium">Go back</span>
           </Link>
         )}
+
         {/* Logo - hide on signin page */}
         {!isSigninPage && (
           <Link to="/" className="flex items-center gap-2">
@@ -234,101 +240,127 @@ const AppBar: React.FC = () => {
           <ThemeToggle />
           {renderAuthButton()}
         </div>
-      </div>
 
-  {/* Mobile & Tablet Navigation */}
-      <div className="lg:hidden">
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-11 w-11 text-primary hover:text-primary/80 active:scale-95 transition-all duration-200"
-              aria-label="Open navigation menu"
+        {/* Mobile & Tablet Navigation */}
+        <div className="lg:hidden">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 text-primary hover:text-primary/80 active:scale-95 transition-all duration-200"
+                aria-label="Open navigation menu"
+              >
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-[90vw] max-w-md bg-background/98 backdrop-blur-xl border-r border-border/50 overflow-y-auto"
             >
-              <Menu className="h-6 w-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            className="w-[85vw] max-w-sm bg-background/98 backdrop-blur-xl border-r border-border/50"
-          >
-            <SheetHeader className="border-b border-border/50 pb-6">
-              <SheetTitle className="flex items-center gap-2 text-left">
-                <Crown className="h-6 w-6 text-primary" />
-                <span className="text-xl imperial-tech-font">IMPERIAL</span>
-              </SheetTitle>
-            </SheetHeader>
+              <SheetHeader className="border-b border-border/50 pb-6">
+                <SheetTitle className="flex items-center gap-2 text-left">
+                  <Crown className="h-6 w-6 text-primary" />
+                  <span className="text-xl imperial-tech-font">IMPERIAL</span>
+                </SheetTitle>
+              </SheetHeader>
 
-            <nav className="flex flex-col gap-3 mt-8 pb-4">
-              {/* Hide navigation items on signin page */}
-              {!isSigninPage &&
-                navigationItems.map((item) => (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    onClick={closeMobileMenu}
-                    className="flex items-center gap-4 p-4 min-h-[56px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
-                    aria-label={`Navigate to ${item.label}`}
-                  >
-                    <item.icon className="h-6 w-6 text-primary flex-shrink-0" />
-                    <div className="flex-1">
-                      <span className="text-base font-medium block leading-tight">
-                        {item.label}
-                      </span>
-                      <span className="text-sm text-muted-foreground leading-tight">
-                        {item.description}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-
-              <div className="mt-8 pt-6 border-t border-border/50 space-y-4">
-                <div className="flex justify-center">
-                  <ThemeToggle />
-                </div>
-                {user ? (
-                  <Link to="/dashboard/home" onClick={closeMobileMenu}>
-                    <Button
-                      size="lg"
-                      className="w-full min-h-[48px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2 touch-manipulation active:scale-98 transition-all duration-200"
-                      aria-label="Go to Dashboard"
+              <nav className="flex flex-col gap-3 mt-8 pb-8">
+                {/* Main Navigation Items */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground px-2">
+                    Platform Features
+                  </h3>
+                  {navigationItems.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={closeMobileMenu}
+                      className="flex items-center gap-4 p-4 min-h-[64px] rounded-xl transition-all duration-200 hover:bg-primary/10 text-foreground border border-border/50 active:scale-98 touch-manipulation"
+                      aria-label={`Navigate to ${item.label}`}
                     >
-                      <LayoutDashboard className="h-5 w-5" />
-                      Dashboard
-                    </Button>
-                  </Link>
-                ) : (
-                  <div className="space-y-3">
-                    {!isAccountRequestPage && !isSigninPage && (
-                      <Link to="/account-request" onClick={closeMobileMenu}>
+                      <item.icon className="h-6 w-6 text-primary flex-shrink-0" />
+                      <div className="flex-1 text-left">
+                        <span className="text-base font-medium block leading-tight">
+                          {item.label}
+                        </span>
+                        <span className="text-sm text-muted-foreground leading-tight">
+                          {item.description}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Authentication Section */}
+                <div className="mt-8 pt-6 border-t border-border/50 space-y-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground px-2">
+                    Account Access
+                  </h3>
+                  
+                  {user ? (
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+                            {user.email?.[0]?.toUpperCase() || 'U'}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{user.email}</p>
+                            <p className="text-xs text-muted-foreground">Welcome back!</p>
+                          </div>
+                        </div>
+                      </div>
+                      <Link to="/dashboard/home" onClick={closeMobileMenu}>
                         <Button
                           size="lg"
-                          className="w-full min-h-[48px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                          aria-label="Get Started - Request Account"
+                          className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-3 touch-manipulation active:scale-98 transition-all duration-200"
+                          aria-label="Go to Dashboard"
                         >
-                          Get Started
+                          <LayoutDashboard className="h-5 w-5 flex-shrink-0" />
+                          Go to Dashboard
                         </Button>
                       </Link>
-                    )}
-                    {!isSigninPage && !isAccountRequestPage && (
-                      <Link to="/signin" onClick={closeMobileMenu}>
-                        <Button
-                          size="lg"
-                          variant="outline"
-                          className="w-full min-h-[48px] border-primary text-primary hover:bg-primary/10 font-semibold touch-manipulation active:scale-98 transition-all duration-200"
-                          aria-label="Sign In to Account"
-                        >
-                          Sign In
-                        </Button>
-                      </Link>
-                    )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {!isAccountRequestPage && (
+                        <Link to="/account-request" onClick={closeMobileMenu}>
+                          <Button
+                            size="lg"
+                            className="w-full min-h-[56px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                            aria-label="Get Started - Request Account"
+                          >
+                            Get Started
+                          </Button>
+                        </Link>
+                      )}
+                      {!isSigninPage && (
+                        <Link to="/signin" onClick={closeMobileMenu}>
+                          <Button
+                            size="lg"
+                            variant="outline"
+                            className="w-full min-h-[56px] border-primary text-primary hover:bg-primary/10 font-semibold touch-manipulation active:scale-98 transition-all duration-200"
+                            aria-label="Sign In to Account"
+                          >
+                            Sign In
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Theme Toggle Section */}
+                <div className="mt-6 pt-4 border-t border-border/50">
+                  <div className="flex justify-center">
+                    <ThemeToggle />
                   </div>
-                )}
-              </div>
-            </nav>
-          </SheetContent>
-        </Sheet>
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
 
       <style>{`
@@ -367,4 +399,5 @@ const AppBar: React.FC = () => {
     </header>
   );
 };
+
 export default AppBar;

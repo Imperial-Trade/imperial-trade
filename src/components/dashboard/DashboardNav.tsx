@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Crown, Bell, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare, ChevronDown, Grid3X3, ChevronUp, Minimize2 } from "lucide-react";
@@ -249,8 +250,8 @@ const DashboardNav: React.FC = () => {
           </DropdownMenu>
         </div>
 
-        {/* Mobile Menu */}
-        <div className="lg:hidden">
+        {/* Mobile Menu - Fixed positioning to the right */}
+        <div className="lg:hidden flex items-center">
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button 
@@ -262,7 +263,7 @@ const DashboardNav: React.FC = () => {
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[85vw] max-w-sm bg-background/98 backdrop-blur-xl border-r border-border/50">
+            <SheetContent side="right" className="w-[85vw] max-w-sm bg-background/98 backdrop-blur-xl border-l border-border/50">
             <SheetHeader className="border-b border-border/50 pb-6">
               <SheetTitle className="flex items-center gap-2 text-left">
                 <Crown className="h-6 w-6 text-primary" />

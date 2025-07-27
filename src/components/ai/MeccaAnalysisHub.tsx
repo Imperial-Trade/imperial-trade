@@ -161,6 +161,14 @@ const MeccaAnalysisHub: React.FC = () => {
       // Show immediate feedback
       addInsight("🚀 Starting MECCA analysis engine...");
       
+      // Calculate background metrics for enhanced AI analysis
+      const userMetrics = analysisHistory?.length > 0 ? {
+        totalAnalyses: analysisHistory.length,
+        recentActivity: analysisHistory.slice(0, 3).map(h => h.metadata),
+        tradingPattern: analysisHistory[0]?.metadata?.trader_behavior || {},
+        riskProfile: analysisHistory[0]?.metadata?.risk_assessment || {}
+      } : null;
+      
       // First upload files to get URLs
       const uploadPromises = uploadedFiles.map(async ({ file }) => {
         const uploadResult = await UploadFile({ file });
@@ -171,12 +179,14 @@ const MeccaAnalysisHub: React.FC = () => {
       const fileUrls = await Promise.all(uploadPromises);
       
       addInsight(`✅ Successfully uploaded ${fileUrls.length} files`);
-      addInsight("🧠 Initializing AI analysis with advanced neural networks...");
+      addInsight("🧠 Analyzing with personalized AI intelligence...");
       
-      // Then analyze with the uploaded URLs
+      // Then analyze with the uploaded URLs and enhanced context
       const result = await AnalyzeSetup({
         user_id: user?.id,
-        file_urls: fileUrls
+        file_urls: fileUrls,
+        // Pass metrics as metadata for internal use by AI
+        analysis_context: userMetrics
       });
       
       addInsight("📊 Processing trading patterns and performance metrics...");

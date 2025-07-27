@@ -285,19 +285,24 @@ export default function TradeAnalyst() {
           >
             {/* Premium SVG Background Effect */}
             <svg 
-              className="absolute inset-0 w-full h-full opacity-10 group-hover:opacity-20 transition-opacity duration-300" 
+              className="absolute inset-0 w-full h-full opacity-20 group-hover:opacity-30 transition-opacity duration-500" 
               xmlns="http://www.w3.org/2000/svg" 
               viewBox="0 0 400 400"
               preserveAspectRatio="xMidYMid slice"
             >
               <defs>
-                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0.3" />
-                  <stop offset="50%" stopColor="hsl(217.2 91.2% 59.8%)" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0.1" />
+                <linearGradient id="brainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0.6" />
+                  <stop offset="50%" stopColor="hsl(271.5 81% 56%)" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0.2" />
                 </linearGradient>
-                <filter id="glow">
-                  <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <linearGradient id="particleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0" />
+                  <stop offset="50%" stopColor="hsl(271.5 81% 56%)" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0" />
+                </linearGradient>
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
                   <feMerge> 
                     <feMergeNode in="coloredBlur"/>
                     <feMergeNode in="SourceGraphic"/>
@@ -305,26 +310,96 @@ export default function TradeAnalyst() {
                 </filter>
               </defs>
               
-              {/* Animated Circles */}
-              <circle cx="100" cy="100" r="40" fill="url(#grad1)" filter="url(#glow)">
-                <animate attributeName="cy" values="100;120;100" dur="4s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.3;0.6;0.3" dur="4s" repeatCount="indefinite" />
+              {/* Animated Brain SVG */}
+              <g transform="translate(200, 200)" filter="url(#glow)">
+                {/* Brain Path */}
+                <path 
+                  d="M-30,-40 C-45,-35 -50,-20 -45,-5 C-50,10 -40,25 -25,30 C-15,35 0,32 10,28 C25,35 40,30 50,15 C55,0 50,-15 45,-25 C40,-40 25,-45 10,-40 C0,-45 -15,-45 -30,-40 Z" 
+                  fill="url(#brainGrad)" 
+                  stroke="hsl(262.1 83.3% 57.8%)" 
+                  strokeWidth="1" 
+                  opacity="0.7"
+                >
+                  <animateTransform 
+                    attributeName="transform" 
+                    type="scale" 
+                    values="1;1.05;1" 
+                    dur="3s" 
+                    repeatCount="indefinite"
+                  />
+                  <animate 
+                    attributeName="opacity" 
+                    values="0.7;0.9;0.7" 
+                    dur="3s" 
+                    repeatCount="indefinite"
+                  />
+                </path>
+                
+                {/* Brain Details */}
+                <path 
+                  d="M-20,-20 Q-10,-25 0,-20 Q10,-15 20,-20" 
+                  fill="none" 
+                  stroke="hsl(271.5 81% 56%)" 
+                  strokeWidth="1.5" 
+                  opacity="0.8"
+                >
+                  <animate 
+                    attributeName="stroke-dasharray" 
+                    values="0,50;25,25;50,0;25,25;0,50" 
+                    dur="4s" 
+                    repeatCount="indefinite"
+                  />
+                </path>
+                <path 
+                  d="M-25,0 Q-15,5 -5,0 Q5,5 15,0 Q25,-5 30,5" 
+                  fill="none" 
+                  stroke="hsl(271.5 81% 56%)" 
+                  strokeWidth="1.5" 
+                  opacity="0.8"
+                >
+                  <animate 
+                    attributeName="stroke-dasharray" 
+                    values="0,40;20,20;40,0;20,20;0,40" 
+                    dur="5s" 
+                    repeatCount="indefinite"
+                  />
+                </path>
+                
+                {/* Neural Connections */}
+                <circle cx="-15" cy="-10" r="2" fill="hsl(262.1 83.3% 57.8%)" opacity="0.9">
+                  <animate attributeName="r" values="2;3;2" dur="2s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite" />
+                </circle>
+                <circle cx="15" cy="-5" r="2" fill="hsl(271.5 81% 56%)" opacity="0.9">
+                  <animate attributeName="r" values="2;3;2" dur="2.5s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2.5s" repeatCount="indefinite" />
+                </circle>
+                <circle cx="0" cy="10" r="2" fill="hsl(262.1 83.3% 57.8%)" opacity="0.9">
+                  <animate attributeName="r" values="2;3;2" dur="3s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.9;0.4;0.9" dur="3s" repeatCount="indefinite" />
+                </circle>
+              </g>
+              
+              {/* Floating Particles */}
+              <circle cx="100" cy="150" r="3" fill="url(#particleGrad)" opacity="0.6">
+                <animate attributeName="cy" values="150;100;150" dur="6s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.6;0.2;0.6" dur="6s" repeatCount="indefinite" />
               </circle>
-              <circle cx="300" cy="150" r="30" fill="url(#grad1)" filter="url(#glow)">
-                <animate attributeName="cx" values="300;280;300" dur="3s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" repeatCount="indefinite" />
+              <circle cx="300" cy="120" r="2" fill="url(#particleGrad)" opacity="0.5">
+                <animate attributeName="cx" values="300;250;300" dur="4s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.5;0.1;0.5" dur="4s" repeatCount="indefinite" />
               </circle>
-              <circle cx="200" cy="300" r="35" fill="url(#grad1)" filter="url(#glow)">
-                <animate attributeName="r" values="35;45;35" dur="5s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.4;0.7;0.4" dur="5s" repeatCount="indefinite" />
+              <circle cx="150" cy="300" r="2.5" fill="url(#particleGrad)" opacity="0.7">
+                <animate attributeName="cy" values="300;280;300" dur="5s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.7;0.3;0.7" dur="5s" repeatCount="indefinite" />
               </circle>
               
-              {/* Flowing Lines */}
-              <path d="M50,200 Q200,150 350,200 T650,200" stroke="url(#grad1)" strokeWidth="2" fill="none" opacity="0.4">
-                <animate attributeName="d" values="M50,200 Q200,150 350,200 T650,200;M50,200 Q200,180 350,160 T650,200;M50,200 Q200,150 350,200 T650,200" dur="6s" repeatCount="indefinite" />
+              {/* Data Streams */}
+              <path d="M50,100 Q150,80 250,100 Q350,120 450,100" stroke="url(#particleGrad)" strokeWidth="1" fill="none" opacity="0.4">
+                <animate attributeName="stroke-dasharray" values="0,200;100,100;200,0;100,100;0,200" dur="8s" repeatCount="indefinite" />
               </path>
-              <path d="M0,100 Q150,80 300,100 T600,100" stroke="url(#grad1)" strokeWidth="1.5" fill="none" opacity="0.3">
-                <animate attributeName="d" values="M0,100 Q150,80 300,100 T600,100;M0,100 Q150,120 300,140 T600,100;M0,100 Q150,80 300,100 T600,100" dur="8s" repeatCount="indefinite" />
+              <path d="M0,250 Q100,230 200,250 Q300,270 400,250" stroke="url(#particleGrad)" strokeWidth="1" fill="none" opacity="0.3">
+                <animate attributeName="stroke-dasharray" values="0,150;75,75;150,0;75,75;0,150" dur="10s" repeatCount="indefinite" />
               </path>
             </svg>
 

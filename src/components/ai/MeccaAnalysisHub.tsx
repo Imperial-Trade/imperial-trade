@@ -48,6 +48,7 @@ const MeccaAnalysisHub: React.FC = () => {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [showResultsModal, setShowResultsModal] = useState(false);
   const [insightStream, setInsightStream] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('strengths');
   const [scanlinePosition, setScanlinePosition] = useState(0);
@@ -187,6 +188,7 @@ const MeccaAnalysisHub: React.FC = () => {
       addInsight("🎯 Analysis complete! Generating insights...");
       
       setAnalysisResult(parsedResult);
+      setShowResultsModal(true);
       
       toast({
         title: "🎉 Analysis Complete!",
@@ -747,6 +749,288 @@ const MeccaAnalysisHub: React.FC = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Premium Analysis Results Modal */}
+      <AnimatePresence>
+        {showResultsModal && analysisResult && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowResultsModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="relative w-full max-w-6xl max-h-[90vh] bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl shadow-2xl border border-violet-200/50 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header with animated background */}
+              <div className="relative bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 text-white p-6 overflow-hidden">
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                  initial={{ x: '-100%' }}
+                  animate={{ x: '100%' }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+                
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                      className="p-3 bg-white/20 rounded-full"
+                    >
+                      <Brain className="w-8 h-8" />
+                    </motion.div>
+                    <div>
+                      <h2 className="text-2xl font-bold tracking-wide">MECCA Analysis Complete</h2>
+                      <p className="text-violet-100 opacity-90">AI-Powered Trading Performance Insights</p>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowResultsModal(false)}
+                    className="text-white hover:bg-white/20 rounded-full p-2"
+                  >
+                    <X className="w-6 h-6" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Scrollable Content Area */}
+              <div className="max-h-[calc(90vh-120px)] overflow-y-auto p-6">
+                
+                {/* Performance Metrics Dashboard */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  {[
+                    { 
+                      label: 'Win Rate', 
+                      value: `${analysisResult.performance_metrics?.win_rate || 0}%`, 
+                      icon: TrendingUp, 
+                      color: 'emerald',
+                      gradient: 'from-emerald-500 to-green-600'
+                    },
+                    { 
+                      label: 'Total P&L', 
+                      value: `$${analysisResult.performance_metrics?.total_pnl || 0}`, 
+                      icon: Target, 
+                      color: (analysisResult.performance_metrics?.total_pnl || 0) >= 0 ? 'emerald' : 'red',
+                      gradient: (analysisResult.performance_metrics?.total_pnl || 0) >= 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600'
+                    },
+                    { 
+                      label: 'Risk Score', 
+                      value: `${analysisResult.performance_metrics?.risk_score || 0}/10`, 
+                      icon: Shield, 
+                      color: 'violet',
+                      gradient: 'from-violet-500 to-purple-600'
+                    },
+                    { 
+                      label: 'Trades Analyzed', 
+                      value: (analysisResult.performance_metrics?.trades_analyzed || 0).toString(), 
+                      icon: Activity, 
+                      color: 'blue',
+                      gradient: 'from-blue-500 to-indigo-600'
+                    },
+                  ].map((metric, index) => (
+                    <motion.div
+                      key={metric.label}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="relative group"
+                    >
+                      <Card className="p-4 bg-white/80 backdrop-blur-sm border border-violet-200/30 hover:border-violet-300/50 transition-all duration-300 hover:shadow-lg group-hover:scale-105">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-3 rounded-xl bg-gradient-to-br ${metric.gradient} shadow-lg`}>
+                            <metric.icon className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 font-medium">{metric.label}</p>
+                            <p className="text-2xl font-bold text-gray-800">{metric.value}</p>
+                          </div>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Overall Analysis */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="mb-8"
+                >
+                  <Card className="p-6 bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200/30">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <div className="p-2 bg-violet-500 rounded-lg">
+                        <Brain className="w-5 h-5 text-white" />
+                      </div>
+                      Overall Performance Analysis
+                    </h3>
+                    <p className="text-gray-700 leading-relaxed">{analysisResult.overall_analysis}</p>
+                  </Card>
+                </motion.div>
+
+                {/* Analysis Sections Grid */}
+                <div className="grid lg:grid-cols-3 gap-6">
+                  
+                  {/* Strengths */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.6 }}
+                  >
+                    <Card className="p-6 bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200/30 h-full">
+                      <h4 className="text-lg font-bold text-emerald-800 mb-4 flex items-center gap-2">
+                        <div className="p-2 bg-emerald-500 rounded-lg">
+                          <TrendingUp className="w-5 h-5 text-white" />
+                        </div>
+                        Strengths
+                      </h4>
+                      <div className="space-y-3">
+                        {analysisResult.strengths.map((strength, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.7 + index * 0.1 }}
+                            className="p-3 bg-white/60 rounded-lg border border-emerald-200/30"
+                          >
+                            <p className="text-emerald-800 text-sm leading-relaxed">{strength}</p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </Card>
+                  </motion.div>
+
+                  {/* Improvements */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7 }}
+                  >
+                    <Card className="p-6 bg-gradient-to-br from-orange-50 to-yellow-50 border border-orange-200/30 h-full">
+                      <h4 className="text-lg font-bold text-orange-800 mb-4 flex items-center gap-2">
+                        <div className="p-2 bg-orange-500 rounded-lg">
+                          <Target className="w-5 h-5 text-white" />
+                        </div>
+                        Areas for Improvement
+                      </h4>
+                      <div className="space-y-3">
+                        {analysisResult.improvements.map((improvement, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.8 + index * 0.1 }}
+                            className="p-3 bg-white/60 rounded-lg border border-orange-200/30"
+                          >
+                            <p className="text-orange-800 text-sm leading-relaxed">{improvement}</p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </Card>
+                  </motion.div>
+
+                  {/* Recommendations */}
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.8 }}
+                  >
+                    <Card className="p-6 bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200/30 h-full">
+                      <h4 className="text-lg font-bold text-violet-800 mb-4 flex items-center gap-2">
+                        <div className="p-2 bg-violet-500 rounded-lg">
+                          <Zap className="w-5 h-5 text-white" />
+                        </div>
+                        AI Recommendations
+                      </h4>
+                      <div className="space-y-3">
+                        {analysisResult.recommendations.map((recommendation, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.9 + index * 0.1 }}
+                            className="p-3 bg-white/60 rounded-lg border border-violet-200/30"
+                          >
+                            <p className="text-violet-800 text-sm leading-relaxed">{recommendation}</p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </Card>
+                  </motion.div>
+                </div>
+
+                {/* Key Insights */}
+                {analysisResult.key_insights && analysisResult.key_insights.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.2 }}
+                    className="mt-8"
+                  >
+                    <Card className="p-6 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200/30">
+                      <h4 className="text-lg font-bold text-indigo-800 mb-4 flex items-center gap-2">
+                        <div className="p-2 bg-indigo-500 rounded-lg">
+                          <Brain className="w-5 h-5 text-white" />
+                        </div>
+                        Key AI Insights
+                      </h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {analysisResult.key_insights.map((insight, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 1.3 + index * 0.1 }}
+                            className="p-4 bg-white/60 rounded-lg border border-indigo-200/30"
+                          >
+                            <p className="text-indigo-800 text-sm leading-relaxed font-medium">{insight}</p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </Card>
+                  </motion.div>
+                )}
+
+                {/* Action Buttons */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.5 }}
+                  className="flex flex-col sm:flex-row gap-4 mt-8 pt-6 border-t border-violet-200/30"
+                >
+                  <Button
+                    onClick={() => setShowResultsModal(false)}
+                    className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    Continue Trading
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowResultsModal(false);
+                      setUploadedFiles([]);
+                      setAnalysisResult(null);
+                    }}
+                    className="flex-1 border-violet-300 text-violet-700 hover:bg-violet-50 font-semibold py-3 px-6 rounded-lg transition-all duration-300"
+                  >
+                    New Analysis
+                  </Button>
+                </motion.div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

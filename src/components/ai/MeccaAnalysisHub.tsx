@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
+import './MeccaResponsive.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Brain, Zap, TrendingUp, Target, Shield, ChevronRight, Scan, Activity, Menu, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -11,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { AnalyzeSetup, UploadFile } from '@/api/integrations';
-import './MeccaResponsive.css';
 
 interface AnalysisResult {
   overall_analysis: string;

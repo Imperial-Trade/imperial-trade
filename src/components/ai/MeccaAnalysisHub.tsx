@@ -185,49 +185,46 @@ const MeccaAnalysisHub: React.FC = () => {
       
       // Validate and ensure required properties exist with defaults
       const validatedResult = {
-        analysis_metadata: parsedResult.analysis_metadata || {
-          screenshots_analyzed: fileUrls.length,
+        screenshot_analysis: parsedResult.screenshot_analysis || {
+          images_processed: fileUrls.length,
           platform_detected: "Unknown",
-          account_type: "unknown",
-          analysis_confidence: 85,
-          market_context: "unknown"
+          data_quality: "good",
+          visible_timeframe: "unknown",
+          account_type: "unknown"
         },
-        trader_profile: parsedResult.trader_profile || {
-          experience_level: "intermediate",
-          trading_style: "day_trader",
-          risk_appetite: "moderate",
-          discipline_score: 7,
-          emotional_state: "disciplined"
+        extracted_metrics: parsedResult.extracted_metrics || {
+          account_balance: "not visible",
+          equity: "not visible", 
+          total_pnl: "not visible",
+          win_count: "not visible",
+          loss_count: "not visible",
+          win_rate: "cannot calculate"
         },
-        performance_metrics: parsedResult.performance_metrics || {},
+        visual_patterns: parsedResult.visual_patterns || {
+          chart_patterns_seen: ["Analysis in progress"],
+          support_resistance: ["Analysis in progress"],
+          trend_direction: "mixed"
+        },
+        risk_assessment: parsedResult.risk_assessment || {
+          position_sizing: "unknown",
+          stop_losses: "not visible",
+          leverage_usage: "unknown",
+          risk_score: "5"
+        },
+        trader_behavior: parsedResult.trader_behavior || {
+          discipline_signs: ["Screenshot analysis completed"],
+          warning_signs: ["None identified"],
+          emotional_indicators: ["Analysis pending"],
+          experience_level: "intermediate"
+        },
         strengths: Array.isArray(parsedResult.strengths) ? parsedResult.strengths : 
-          ["Data collection is active", "Trading screenshots captured", "Performance tracking enabled"],
+          ["Screenshot data captured successfully", "Visual analysis initiated", "Trading activity documented"],
         improvements: Array.isArray(parsedResult.improvements) ? parsedResult.improvements : 
-          ["Focus on consistent risk management", "Improve entry timing", "Enhance position sizing discipline"],
+          ["Upload clearer screenshots for better analysis", "Include more trading history screenshots", "Provide chart screenshots for pattern analysis"],
         recommendations: Array.isArray(parsedResult.recommendations) ? parsedResult.recommendations : 
-          ["Maintain detailed trading journal", "Review and adjust risk parameters", "Focus on high-probability setups"],
-        risk_management: parsedResult.risk_management || {
-          overall_score: 6,
-          position_sizing: "fair",
-          stop_loss_usage: "inconsistent",
-          leverage_management: "appropriate"
-        },
-        strategy_analysis: parsedResult.strategy_analysis || {},
-        psychological_insights: Array.isArray(parsedResult.psychological_insights) ? parsedResult.psychological_insights : 
-          ["Trading discipline shows room for improvement"],
+          ["Capture full trading platform screenshots", "Include P&L statements in screenshots", "Take screenshots during active trading sessions"],
         key_insights: Array.isArray(parsedResult.key_insights) ? parsedResult.key_insights : 
-          ["Performance data successfully captured", "Visual analysis completed", "Areas for improvement identified"],
-        immediate_actions: Array.isArray(parsedResult.immediate_actions) ? parsedResult.immediate_actions : 
-          ["Review recent trades", "Adjust position sizing", "Focus on risk management"],
-        weekly_goals: Array.isArray(parsedResult.weekly_goals) ? parsedResult.weekly_goals : 
-          ["Improve win rate", "Reduce maximum loss", "Increase consistency"],
-        monthly_objectives: Array.isArray(parsedResult.monthly_objectives) ? parsedResult.monthly_objectives : 
-          ["Achieve positive ROI", "Develop systematic approach", "Build trading confidence"],
-        performance_prediction: parsedResult.performance_prediction || {
-          trend: "stable",
-          confidence: 75,
-          key_factors: ["Risk management", "Strategy consistency", "Market conditions"]
-        }
+          ["Visual data successfully processed", "Screenshot analysis framework active", "Trading performance metrics extractable from images"]
       };
       
       parsedResult = validatedResult;

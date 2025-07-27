@@ -71,7 +71,6 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -100,44 +99,6 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
       document.removeEventListener("mouseleave", handleMouseLeave);
     };
   }, [isVisible, isHovering]);
-
-  // Touch event handlers for swipe gestures
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    setTouchStart({ x: touch.clientX, y: touch.clientY });
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStart) return;
-    
-    // Prevent scrolling during horizontal swipe
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - touchStart.x;
-    const deltaY = touch.clientY - touchStart.y;
-    
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStart) return;
-
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - touchStart.x;
-    const deltaY = touch.clientY - touchStart.y;
-
-    // Check if it's a horizontal swipe (more horizontal than vertical)
-    const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY);
-    const isLeftSwipe = deltaX < -30; // Reduced threshold for easier swiping
-
-    if (isHorizontalSwipe && isLeftSwipe) {
-      setIsVisible(false);
-      setShowProfileDropdown(false);
-    }
-
-    setTouchStart(null);
-  };
 
   const handleToolClick = (tool: (typeof tradingTools)[0]) => {
     setActiveTool(tool.name);
@@ -354,9 +315,9 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
       }}
       transition={{
         type: "spring",
-        stiffness: 400,
-        damping: 25,
-        mass: 0.6,
+        stiffness: 300,
+        damping: 30,
+        mass: 0.8,
       }}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => {
@@ -364,18 +325,12 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
         setIsVisible(false);
         setShowProfileDropdown(false);
       }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
       whileHover={{
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
         scale: 1.01,
       }}
     >
-      <div 
-        className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border"
-        style={{ touchAction: 'pan-y' }} // Allow vertical scrolling but handle horizontal swipes
-      >
+      <div className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
         {/* Header */}
         <div className="mb-3 sm:mb-4 md:mb-6">
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1">

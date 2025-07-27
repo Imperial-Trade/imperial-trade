@@ -261,7 +261,7 @@ export default function TradeAnalyst() {
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
               Trading performance analysis powered by advanced AI
             </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">Trading performance analysis powered by advanced AI</p>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Processing Infinite Variables. Delivering Singular Clarity.</p>
           </div>
         </div>
         

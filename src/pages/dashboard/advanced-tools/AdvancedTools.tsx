@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { ComplianceNotice } from "@/components/compliance/ComplianceNotice";
 
 import OptimizedEconomicCalendar from "@/components/economic/OptimizedEconomicCalendar";
 import RiskCalculator from "@/components/tools/RiskCalculator";

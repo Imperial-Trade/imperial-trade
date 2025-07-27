@@ -72,8 +72,6 @@ export default function OpportunityScanner() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-2 sm:p-4 lg:p-6">
       <div className="max-w-7xl mx-auto space-y-3 sm:space-y-6">
-        {/* Compliance Notice */}
-        <ComplianceNotice type="educational" size="sm" />
 
         {/* Header with Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">

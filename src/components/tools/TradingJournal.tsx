@@ -214,7 +214,7 @@ export default function TradingJournal() {
       opacity: 1,
       y: 0
     }} className="space-y-6">
-      <ComplianceNotice type="educational" size="sm" />
+      
       <JournalFormCard onSubmit={handleSubmit} isSubmitting={isSubmitting} />
       <JournalLogList entries={entries} isLoading={isLoading} onDelete={handleDelete} />
     </motion.div>, [handleSubmit, isSubmitting, entries, isLoading, handleDelete]);
@@ -227,7 +227,7 @@ export default function TradingJournal() {
       opacity: 1,
       y: 0
     }} className="space-y-6">
-      <ComplianceNotice type="hypothetical" size="sm" />
+      
       <JournalAnalytics entries={entries} />
     </motion.div>, [entries]);
 

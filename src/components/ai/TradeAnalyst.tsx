@@ -649,8 +649,6 @@ export default function TradeAnalyst() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-500/5 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <ComplianceNotice type="educational" size="md" />
-        
         <AnimatePresence mode="wait">
           {currentView === 'upload' && (
             <motion.div

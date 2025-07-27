@@ -136,7 +136,7 @@ export default function JournalFormCard({ onSubmit, isSubmitting }: JournalFormC
         </div>
       </CardHeader>
       <CardContent>
-        <ComplianceNotice type="educational" size="sm" className="mb-6" />
+        
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

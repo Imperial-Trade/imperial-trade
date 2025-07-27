@@ -187,8 +187,6 @@ export default function RiskCalculator() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-2 sm:p-4 lg:p-6">
       <div className="max-w-6xl mx-auto space-y-3 sm:space-y-6">
-        {/* Compliance Notice */}
-        <ComplianceNotice type="educational" size="sm" />
 
         <Card className="bg-card/50 border-border/50 shadow-xl sm:shadow-2xl backdrop-blur-sm">
           <CardHeader className="p-3 sm:p-6">

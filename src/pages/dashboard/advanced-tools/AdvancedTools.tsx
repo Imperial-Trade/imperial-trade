@@ -34,7 +34,7 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 import OptimizedEconomicCalendar from "@/components/economic/OptimizedEconomicCalendar";
 import RiskCalculator from "@/components/tools/RiskCalculator";
-import TradeAnalyst from "@/components/ai/TradeAnalyst";
+import MeccaAnalysisHub from "@/components/ai/MeccaAnalysisHub";
 import OpportunityScanner from "@/components/ai/OpportunityScanner";
 import RiskSimulator from "@/components/ai/RiskSimulator";
 import TradingJournal from "@/components/tools/TradingJournal";
@@ -54,11 +54,11 @@ const coreTools = [
     description: "Learn position sizing and risk calculation fundamentals.",
   },
   {
-    name: "Educational Trading Pattern Analysis",
+    name: "MECCA",
     icon: Brain,
-    component: TradeAnalyst,
+    component: MeccaAnalysisHub,
     description:
-      "Professional trading performance analysis powered by advanced AI for educational purposes.",
+      "Premium AI-powered trading analysis hub with advanced visual insights and performance tracking.",
   },
 ];
 
@@ -222,9 +222,8 @@ export default function AdvancedTools() {
                             ? "Calendar"
                             : tool.name === "Educational Calculator"
                             ? "Calculator"
-                            : tool.name ===
-                              "Educational Trading Pattern Analysis"
-                            ? "Analyst"
+                            : tool.name === "MECCA"
+                            ? "MECCA"
                             : tool.name === "Educational Pattern Scanner"
                             ? "Scanner"
                             : tool.name === "Educational Risk Calculator"
@@ -279,9 +278,8 @@ export default function AdvancedTools() {
                                   ? "Calendar"
                                   : tool.name === "Educational Calculator"
                                   ? "Calculator"
-                                  : tool.name ===
-                                    "Educational Trading Pattern Analysis"
-                                  ? "Analyst"
+                                  : tool.name === "MECCA"
+                                  ? "MECCA"
                                   : tool.name === "Educational Pattern Scanner"
                                   ? "Scanner"
                                   : tool.name === "Educational Risk Calculator"
@@ -338,13 +336,12 @@ export default function AdvancedTools() {
                 <div
                   style={{
                     display:
-                      activeTool?.name ===
-                      "Educational Trading Pattern Analysis"
+                      activeTool?.name === "MECCA"
                         ? "block"
                         : "none",
                   }}
                 >
-                  <TradeAnalyst />
+                  <MeccaAnalysisHub />
                 </div>
                 <div
                   style={{

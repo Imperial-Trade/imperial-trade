@@ -107,6 +107,19 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     setTouchStart({ x: touch.clientX, y: touch.clientY });
   };
 
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+    
+    // Prevent scrolling during horizontal swipe
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStart.x;
+    const deltaY = touch.clientY - touchStart.y;
+    
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      e.preventDefault();
+    }
+  };
+
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!touchStart) return;
 
@@ -116,7 +129,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
     // Check if it's a horizontal swipe (more horizontal than vertical)
     const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY);
-    const isLeftSwipe = deltaX < -50; // Swipe left with at least 50px distance
+    const isLeftSwipe = deltaX < -30; // Reduced threshold for easier swiping
 
     if (isHorizontalSwipe && isLeftSwipe) {
       setIsVisible(false);
@@ -341,9 +354,9 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
       }}
       transition={{
         type: "spring",
-        stiffness: 300,
-        damping: 30,
-        mass: 0.8,
+        stiffness: 400,
+        damping: 25,
+        mass: 0.6,
       }}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => {
@@ -352,13 +365,17 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
         setShowProfileDropdown(false);
       }}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       whileHover={{
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
         scale: 1.01,
       }}
     >
-      <div className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+      <div 
+        className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border"
+        style={{ touchAction: 'pan-y' }} // Allow vertical scrolling but handle horizontal swipes
+      >
         {/* Header */}
         <div className="mb-3 sm:mb-4 md:mb-6">
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1">

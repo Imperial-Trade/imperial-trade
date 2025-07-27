@@ -340,13 +340,35 @@ serve(async (req) => {
     // Use service role key for database operations to bypass RLS
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch user profile information for personalized feedback
+    // Fetch user profile and personalization data for enhanced analysis
     console.log("Deconstructor Agent - Fetching user profile...");
     const { data: userProfile, error: profileError } = await supabase
       .from("profiles")
-      .select("real_name, display_name")
+      .select("real_name, display_name, trader_level")
       .eq("id", user_id)
       .single();
+
+    // Fetch user trading profile for personalization
+    const { data: tradingProfile, error: tradingProfileError } = await supabase
+      .from("user_trading_profiles")
+      .select("*")
+      .eq("user_id", user_id)
+      .maybeSingle();
+
+    // Fetch user preferences
+    const { data: userPreferences, error: preferencesError } = await supabase
+      .from("user_personalization_preferences")
+      .select("*")
+      .eq("user_id", user_id)
+      .maybeSingle();
+
+    // Fetch recent analysis history for context
+    const { data: analysisHistory, error: historyError } = await supabase
+      .from("screenshot_analysis_history")
+      .select("patterns_detected, trading_style_indicators, performance_metrics, platform_identified")
+      .eq("user_id", user_id)
+      .order("created_at", { ascending: false })
+      .limit(3);
 
     if (profileError) {
       console.error(
@@ -358,7 +380,12 @@ serve(async (req) => {
 
     const userName =
       userProfile?.display_name || userProfile?.real_name || "Trader";
+    const traderLevel = userProfile?.trader_level || "Beginner";
+    
     console.log("Deconstructor Agent - User name resolved:", userName);
+    console.log("Deconstructor Agent - Trading profile loaded:", !!tradingProfile);
+    console.log("Deconstructor Agent - User preferences loaded:", !!userPreferences);
+    console.log("Deconstructor Agent - Analysis history entries:", analysisHistory?.length || 0);
 
     // Fetch trading journal data
     console.log("Deconstructor Agent - Fetching trading journal data...");
@@ -390,13 +417,44 @@ serve(async (req) => {
     // Build the contents array for Google AI API - PRIORITIZE VISUAL ANALYSIS
     const contents = [];
 
-    // Create optimized main content with focus on screenshots
+    // Create personalized prompt based on user data
     let mainContent = SYSTEM_PROMPT;
+
+    // Add personalization context
+    let personalizationContext = `\n\n--- PERSONALIZED ANALYSIS FOR ${userName.toUpperCase()} ---\n`;
+    personalizationContext += `Trader Level: ${traderLevel}\n`;
+    
+    if (tradingProfile) {
+      personalizationContext += `Known Trading Style: ${tradingProfile.trading_style || 'Unknown'}\n`;
+      personalizationContext += `Risk Tolerance: ${tradingProfile.risk_tolerance}\n`;
+      personalizationContext += `Preferred Assets: ${JSON.stringify(tradingProfile.preferred_assets)}\n`;
+      personalizationContext += `Platform History: ${tradingProfile.platform_detected || 'Unknown'}\n`;
+    }
+
+    if (userPreferences) {
+      personalizationContext += `Analysis Depth Preference: ${userPreferences.analysis_depth}\n`;
+      personalizationContext += `Focus Areas: ${JSON.stringify(userPreferences.focus_areas)}\n`;
+      personalizationContext += `Feedback Style: ${userPreferences.feedback_style}\n`;
+    }
+
+    if (analysisHistory && analysisHistory.length > 0) {
+      personalizationContext += `\nPrevious Analysis Patterns:\n`;
+      analysisHistory.forEach((history, index) => {
+        personalizationContext += `- Session ${index + 1}: Platform ${history.platform_identified || 'Unknown'}\n`;
+        if (history.patterns_detected) {
+          personalizationContext += `  Patterns: ${JSON.stringify(history.patterns_detected).slice(0, 100)}...\n`;
+        }
+      });
+    }
+
+    personalizationContext += `\nTailor your analysis to ${userName}'s specific experience level and provide insights that build on their previous sessions.\n`;
+    
+    mainContent += personalizationContext;
 
     // Add screenshot analysis section if images are provided (PRIMARY FOCUS)
     if (file_urls.length > 0) {
       mainContent += `\n\n--- PRIMARY VISUAL ANALYSIS ---\nFocus your analysis on these ${file_urls.length} trading screenshots for ${userName}. Extract all visible trading data, patterns, and behaviors from the images.`;
-      mainContent += `\n\nSCREENSHOT ANALYSIS INSTRUCTIONS:\n- Examine each image for trading platform data, P&L, position sizes, chart patterns\n- Calculate performance metrics from visible trades\n- Identify risk management practices visible in the screenshots\n- Note any emotional trading patterns visible in execution data`;
+      mainContent += `\n\nSCREENSHOT ANALYSIS INSTRUCTIONS:\n- Examine each image for trading platform data, P&L, position sizes, chart patterns\n- Calculate performance metrics from visible trades\n- Identify risk management practices visible in the screenshots\n- Note any emotional trading patterns visible in execution data\n- Compare current performance with ${userName}'s historical patterns if available`;
     } else {
       mainContent += `\n\n--- NO SCREENSHOTS PROVIDED ---\nNo visual data available for analysis. Provide recommendations for capturing screenshots for future analysis.`;
     }
@@ -522,6 +580,51 @@ serve(async (req) => {
       );
     } else {
       console.log("Deconstructor Agent - Agent output stored successfully");
+    }
+
+    // Store screenshot analysis history for personalization learning
+    if (file_urls.length > 0) {
+      try {
+        const analysisData = JSON.parse(analysisResponse);
+        
+        const { error: historyError } = await supabase
+          .from("screenshot_analysis_history")
+          .insert({
+            user_id,
+            analysis_session_id: crypto.randomUUID(),
+            screenshot_urls: file_urls,
+            extracted_data: analysisData.extracted_metrics || {},
+            patterns_detected: analysisData.visual_patterns || {},
+            platform_identified: analysisData.screenshot_analysis?.platform_detected,
+            timeframe_detected: analysisData.screenshot_analysis?.visible_timeframe,
+            assets_identified: sanitizedTrades.map(t => t.asset_ticker).filter((v, i, a) => a.indexOf(v) === i),
+            trading_style_indicators: analysisData.trader_behavior || {},
+            performance_metrics: {
+              win_rate: analysisData.extracted_metrics?.win_rate,
+              risk_score: analysisData.risk_assessment?.risk_score,
+              experience_level: analysisData.trader_behavior?.experience_level
+            }
+          });
+
+        if (!historyError) {
+          console.log("Deconstructor Agent - Analysis history stored for learning");
+          
+          // Update user trading profile based on new analysis
+          if (analysisData.screenshot_analysis?.platform_detected || analysisData.trader_behavior?.experience_level) {
+            await supabase.rpc('update_trading_profile_from_analysis', {
+              p_user_id: user_id,
+              p_analysis_data: {
+                trading_style: analysisData.trader_behavior?.experience_level,
+                platform_detected: analysisData.screenshot_analysis?.platform_detected,
+                performance_metrics: analysisData.extracted_metrics
+              }
+            });
+            console.log("Deconstructor Agent - Trading profile updated");
+          }
+        }
+      } catch (parseError) {
+        console.error("Deconstructor Agent - Error parsing analysis for history:", parseError);
+      }
     }
 
     return new Response(JSON.stringify({ reply: analysisResponse }), {

@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { AnalyzeSetup, UploadFile } from '@/api/integrations';
+import { PersonalizedInsights } from './PersonalizedInsights';
 
 interface AnalysisResult {
   overall_analysis: string;
@@ -763,6 +764,9 @@ const MeccaAnalysisHub: React.FC = () => {
                 )}
               </div>
             </Card>
+
+            {/* Personalized Insights */}
+            <PersonalizedInsights />
 
             {/* Recent Analysis History */}
             {analysisHistory.length > 0 && (

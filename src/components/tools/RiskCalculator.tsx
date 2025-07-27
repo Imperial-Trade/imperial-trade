@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Calculator, DollarSign, TrendingUp, AlertTriangle, Bot, Shield, Target, Brain, Search, Percent } from 'lucide-react';
 import { useAssetSearch } from '@/hooks/useAssetSearch';
 import { calculatePositionSize, calculateRiskAmount, calculatePnL, formatLotSize, getLotSizeSpec } from '@/utils/lotSizing';
-import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from '@/components/compliance/ComplianceNotice';
+
 
 export default function RiskCalculator() {
   const [formData, setFormData] = useState({
@@ -194,10 +194,6 @@ export default function RiskCalculator() {
               <Shield className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
               <span className="truncate">Educational Setup Calculator</span>
             </CardTitle>
-            <div className="flex gap-1 sm:gap-2 flex-wrap">
-              <EducationalBadge />
-              <HypotheticalBadge />
-            </div>
           </CardHeader>
           <CardContent className="p-3 sm:p-6 space-y-4 sm:space-y-6">
             {/* Asset Selection Section */}
@@ -381,7 +377,7 @@ export default function RiskCalculator() {
                 <div className="flex items-center gap-2 mb-4">
                   <Target className="w-5 h-5 text-primary" />
                   <h3 className="text-xl font-semibold text-foreground">Instant Educational Risk Analysis</h3>
-                  <HypotheticalBadge />
+                  
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -442,7 +438,7 @@ export default function RiskCalculator() {
                       <div className="flex items-center gap-3 mb-3">
                         <Brain className={`w-6 h-6 ${aiSanityCheck.type === 'positive' ? 'text-accent-green' : aiSanityCheck.type === 'warning' ? 'text-accent-gold' : 'text-accent-red'}`} />
                         <h3 className="text-lg font-semibold text-foreground">Educational AI Analysis</h3>
-                        <EducationalBadge />
+                        
                       </div>
                       <p className="text-muted-foreground mb-2">{aiSanityCheck.message}</p>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">

@@ -12,7 +12,7 @@ import JournalAnalytics from "../trading/JournalAnalytics";
 import JournalLogList from "../trading/JournalLogList";
 import { compressImage, validateImageFile } from "@/utils/imageCompression";
 import { toast } from "sonner";
-import { ComplianceNotice, EducationalBadge } from "@/components/compliance/ComplianceNotice";
+
 
 export default function TradingJournal() {
   const [entries, setEntries] = useState<TradeJournalEntry[]>([]);

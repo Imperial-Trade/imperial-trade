@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEconomicCalendar, EconomicEvent } from '@/hooks/useEconomicCalendar';
 import { format, isToday, isTomorrow, isYesterday, startOfWeek, endOfWeek } from 'date-fns';
 import { Filter, Search, RefreshCw, AlertTriangle, Zap, Globe, BarChart3 } from 'lucide-react';
-import { ComplianceNotice } from '@/components/compliance/ComplianceNotice';
+
 import { toast } from 'sonner';
 */
 

@@ -9,7 +9,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calculator, TrendingUp, AlertTriangle, Target, BarChart3, Activity } from 'lucide-react';
-import { ComplianceNotice, EducationalBadge } from '@/components/compliance/ComplianceNotice';
+
 
 /* FUNCTIONAL IMPORTS - UNCOMMENT TO ENABLE:
 import { useState, useEffect, useCallback } from 'react';
@@ -221,7 +221,6 @@ const RiskSimulator: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Calculator className="w-5 h-5 text-primary" />
                 <CardTitle>Educational Risk Calculator</CardTitle>
-                <EducationalBadge />
               </div>
             </div>
             <CardDescription>
@@ -519,7 +518,7 @@ const RiskSimulator: React.FC = () => {
         <div className="space-y-2">
           <div className="flex items-center justify-center gap-2">
             <h1 className="text-2xl font-bold">Educational Risk Calculator</h1>
-            <EducationalBadge />
+            
           </div>
           <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
             Coming Soon

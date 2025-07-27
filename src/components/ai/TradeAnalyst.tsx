@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AnalyzeSetup, UploadFile } from '@/api/integrations';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from '@/components/compliance/ComplianceNotice';
+
 import { validateImageFile, compressImage } from '@/utils/imageCompression';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -263,11 +263,6 @@ export default function TradeAnalyst() {
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">Processing Infinite Variables. Delivering Singular Clarity.</p>
           </div>
-        </div>
-        
-        <div className="flex justify-center gap-1 sm:gap-2 flex-wrap">
-          <EducationalBadge />
-          <HypotheticalBadge />
         </div>
       </div>
 
@@ -528,8 +523,6 @@ export default function TradeAnalyst() {
     </div>;
   return <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-500/5 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <ComplianceNotice type="educational" size="md" />
-        
         <AnimatePresence mode="wait">
           {currentView === 'upload' && <motion.div key="upload" initial={{
           opacity: 0,

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, TrendingUp, Clock, RefreshCw, AlertCircle, Target, Zap, BarChart3, Filter, SortDesc, Eye, Bell, Play, Brain, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from '@/components/compliance/ComplianceNotice';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { signalProcessingService, EducationalSignal } from '@/services/signalProcessingService';
 import { marketDataService, MarketDataPoint } from '@/services/MarketDataService';

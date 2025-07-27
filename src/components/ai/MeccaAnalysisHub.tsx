@@ -68,7 +68,7 @@ const MeccaAnalysisHub: React.FC = () => {
         .from('agent_outputs')
         .select('*')
         .eq('user_id', user.id)
-        .eq('agent_name', 'deconstructor-agent')
+        .eq('agent_name', 'Deconstructor')
         .order('created_at', { ascending: false })
         .limit(5);
       
@@ -77,6 +77,68 @@ const MeccaAnalysisHub: React.FC = () => {
     },
     enabled: !!user?.id,
   });
+
+  // Fetch screenshot analysis history for metrics
+  const { data: screenshotAnalysis } = useQuery({
+    queryKey: ['screenshot-analysis', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('screenshot_analysis_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Calculate metrics from analysis data
+  const getMetrics = () => {
+    const latestAnalysis = analysisHistory[0];
+    const latestScreenshot = screenshotAnalysis;
+    
+    if (!latestAnalysis && !latestScreenshot) {
+      return {
+        winRate: 0,
+        totalPnl: 0,
+        riskScore: 0,
+        tradesAnalyzed: 0
+      };
+    }
+
+    let parsedData;
+    try {
+      parsedData = typeof latestAnalysis?.output_text === 'string' 
+        ? JSON.parse(latestAnalysis.output_text) 
+        : latestAnalysis?.output_text;
+    } catch {
+      parsedData = {};
+    }
+
+    const extractedMetrics = parsedData?.extracted_metrics || latestScreenshot?.extracted_data || {};
+    const riskAssessment = parsedData?.risk_assessment || latestScreenshot?.performance_metrics || {};
+    
+    return {
+      winRate: extractedMetrics.win_rate === 'cannot calculate' ? 0 : 
+               typeof extractedMetrics.win_rate === 'string' ? 0 : 
+               extractedMetrics.win_rate || 0,
+      totalPnl: extractedMetrics.total_pnl ? 
+                (typeof extractedMetrics.total_pnl === 'string' ? 
+                 parseFloat(extractedMetrics.total_pnl.replace(/[^-0-9.]/g, '')) || 0 : 
+                 extractedMetrics.total_pnl) : 0,
+      riskScore: riskAssessment.risk_score ? 
+                (typeof riskAssessment.risk_score === 'string' ? 
+                 parseInt(riskAssessment.risk_score) || 0 : 
+                 riskAssessment.risk_score) : 0,
+      tradesAnalyzed: analysisHistory.length
+    };
+  };
+
+  const metrics = getMetrics();
 
   const addInsight = useCallback((insight: string) => {
     setInsightStream(prev => [...prev, insight]);
@@ -704,15 +766,73 @@ const MeccaAnalysisHub: React.FC = () => {
                 </Card>
               </>
             ) : (
-              <Card className="mecca-panel mecca-glass text-center p-6 sm:p-12">
-                <div className="mecca-neural-brain mx-auto mb-4">
-                  <NeuralBrain />
+              <>
+                {/* Always Show KPI Section with Real Data */}
+                <div className="mecca-kpi-grid">
+                  {[
+                    { 
+                      label: 'Win Rate', 
+                      value: metrics.winRate > 0 ? `${metrics.winRate.toFixed(0)}%` : '0%', 
+                      icon: TrendingUp, 
+                      color: 'emerald' 
+                    },
+                    { 
+                      label: 'Total P&L', 
+                      value: `$${metrics.totalPnl.toFixed(0)}`, 
+                      icon: Target, 
+                      color: metrics.totalPnl >= 0 ? 'emerald' : 'red' 
+                    },
+                    { 
+                      label: 'Risk Score', 
+                      value: `${metrics.riskScore}/10`, 
+                      icon: Shield, 
+                      color: 'violet' 
+                    },
+                    { 
+                      label: 'Trades Analyzed', 
+                      value: metrics.tradesAnalyzed.toString(), 
+                      icon: Activity, 
+                      color: 'blue' 
+                    },
+                  ].map((kpi, index) => (
+                    <motion.div
+                      key={kpi.label}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <Card className="mecca-panel mecca-glass p-3 sm:p-4 mecca-violet-glow">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className={`p-1.5 sm:p-2 rounded-lg bg-${kpi.color}-500/10`}>
+                            <kpi.icon className={`w-4 h-4 sm:w-5 sm:h-5 text-${kpi.color}-500`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">{kpi.label}</p>
+                            <motion.p 
+                              className="text-sm sm:text-xl font-bold truncate"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.5 }}
+                            >
+                              {kpi.value}
+                            </motion.p>
+                          </div>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  ))}
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold mb-2 mecca-gradient-text">Ready for Analysis</h3>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Upload your trading screenshots and let MECCA analyze your performance with AI-powered insights.
-                </p>
-              </Card>
+
+                <Card className="mecca-panel mecca-glass text-center p-6 sm:p-12">
+                  <div className="mecca-neural-brain mx-auto mb-4">
+                    <NeuralBrain />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-semibold mb-2 mecca-gradient-text">Ready for Analysis</h3>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Upload your trading screenshots and let MECCA analyze your performance with AI-powered insights.
+                  </p>
+                </Card>
+              </>
             )}
           </motion.div>
 

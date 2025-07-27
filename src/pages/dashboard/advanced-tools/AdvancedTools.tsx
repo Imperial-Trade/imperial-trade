@@ -165,10 +165,6 @@ export default function AdvancedTools() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Compliance Notice */}
-      <div className="p-2 sm:p-4">
-        <ComplianceNotice type="educational" size="sm" />
-      </div>
 
       {/* Main Content Area - Responsive Width */}
       <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 bg-background">

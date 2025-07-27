@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import {
   BookOpen,
   Calendar,
@@ -236,43 +237,64 @@ export default function AdvancedTools() {
                 </div>
               </div>
 
-              {/* Mobile Layout - Centered Tools Grid */}
-              <div className="sm:hidden flex justify-center">
-                <div className="grid grid-cols-3 gap-1 max-w-xs">
-                  {[...coreTools, ...aiTools].map((tool) => (
-                    <button
-                      key={tool.name}
-                      onClick={() => setActiveTool(tool)}
-                      className={`p-2 rounded-lg border transition-all min-h-[44px] touch-manipulation ${
-                        activeTool?.name === tool.name
-                          ? "bg-primary/10 border-primary/20 text-primary"
-                          : "bg-surface/50 border-border/20 active:bg-surface/90"
-                      }`}
-                    >
-                      <div className="flex flex-col items-center justify-center gap-1">
-                        {React.createElement(tool.icon, {
-                          className: "w-3 h-3 flex-shrink-0",
-                        })}
-                        <span className="text-xs font-medium truncate text-center">
-                          {tool.name === "Educational Journal"
-                            ? "Journal"
-                            : tool.name === "Economic Calendar"
-                            ? "Calendar"
-                            : tool.name === "Educational Calculator"
-                            ? "Calculator"
-                            : tool.name ===
-                              "Educational Trading Pattern Analysis"
-                            ? "Analyst"
-                            : tool.name === "Educational Pattern Scanner"
-                            ? "Scanner"
-                            : tool.name === "Educational Risk Calculator"
-                            ? "Risk Calc"
-                            : tool.name.split(" ")[0]}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+              {/* Mobile Layout - Swipe Carousel */}
+              <div className="sm:hidden">
+                <Carousel
+                  opts={{
+                    align: "center",
+                    loop: true,
+                    dragFree: true,
+                  }}
+                  className="w-full max-w-sm mx-auto"
+                >
+                  <CarouselContent className="-ml-2">
+                    {[...coreTools, ...aiTools].map((tool, index) => (
+                      <CarouselItem key={tool.name} className="basis-1/3 pl-2">
+                        <div className="relative">
+                          <button
+                            onClick={() => setActiveTool(tool)}
+                            className={`w-full p-2 rounded-lg border transition-all min-h-[36px] touch-manipulation relative overflow-hidden ${
+                              activeTool?.name === tool.name
+                                ? "bg-primary/10 border-primary/20 text-primary shadow-lg shadow-primary/10 scale-105"
+                                : "bg-surface/50 border-border/20 active:bg-surface/90 hover:shadow-md"
+                            }`}
+                          >
+                            {/* Shadow gradient for next/prev items */}
+                            {activeTool?.name !== tool.name && (
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-background/20 pointer-events-none" />
+                            )}
+                            
+                            <div className="flex flex-col items-center justify-center gap-1 relative z-10">
+                              {React.createElement(tool.icon, {
+                                className: `flex-shrink-0 ${
+                                  activeTool?.name === tool.name ? "w-4 h-4" : "w-3 h-3"
+                                }`,
+                              })}
+                              <span className={`font-medium truncate text-center leading-tight ${
+                                activeTool?.name === tool.name ? "text-xs" : "text-[10px]"
+                              }`}>
+                                {tool.name === "Educational Journal"
+                                  ? "Journal"
+                                  : tool.name === "Economic Calendar"
+                                  ? "Calendar"
+                                  : tool.name === "Educational Calculator"
+                                  ? "Calculator"
+                                  : tool.name ===
+                                    "Educational Trading Pattern Analysis"
+                                  ? "Analyst"
+                                  : tool.name === "Educational Pattern Scanner"
+                                  ? "Scanner"
+                                  : tool.name === "Educational Risk Calculator"
+                                  ? "Risk Calc"
+                                  : tool.name.split(" ")[0]}
+                              </span>
+                            </div>
+                          </button>
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                </Carousel>
               </div>
             </div>
           )}

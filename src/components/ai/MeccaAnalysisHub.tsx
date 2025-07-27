@@ -117,27 +117,32 @@ const MeccaAnalysisHub: React.FC = () => {
 
     setUploadedFiles(newFiles);
 
-    // Simulate upload progress
+    // Simulate upload progress with more reliable completion
     newFiles.forEach((_, index) => {
+      let progress = 0;
       const interval = setInterval(() => {
+        progress += 20; // Faster progress increments
+        
         setUploadedFiles(prev => prev.map((file, i) => 
           i === index ? { 
             ...file, 
-            progress: Math.min(file.progress + 10, 100),
-            status: file.progress >= 90 ? 'uploaded' : 'uploading'
+            progress: Math.min(progress, 100),
+            status: progress >= 100 ? 'uploaded' : 'uploading'
           } : file
         ));
-      }, 100);
 
-      setTimeout(() => clearInterval(interval), 1000);
+        if (progress >= 100) {
+          clearInterval(interval);
+        }
+      }, 150); // Faster intervals for smoother experience
     });
   }, []);
 
   const handleAnalyze = useCallback(async () => {
-    if (uploadedFiles.length === 0) {
+    if (uploadedFiles.length === 0 || !uploadedFiles.every(f => f.status === 'uploaded')) {
       toast({
-        title: "No files uploaded",
-        description: "Please upload at least one trading screenshot.",
+        title: "Upload Required",
+        description: "Please upload at least one trading screenshot and wait for upload to complete.",
         variant: "destructive",
       });
       return;
@@ -151,13 +156,20 @@ const MeccaAnalysisHub: React.FC = () => {
     const cleanup = simulateAnalysisStream();
 
     try {
+      // Show immediate feedback
+      addInsight("🚀 Starting MECCA analysis engine...");
+      
       // First upload files to get URLs
       const uploadPromises = uploadedFiles.map(async ({ file }) => {
         const uploadResult = await UploadFile({ file });
         return uploadResult.file_url;
       });
 
+      addInsight("📤 Uploading files to secure cloud storage...");
       const fileUrls = await Promise.all(uploadPromises);
+      
+      addInsight(`✅ Successfully uploaded ${fileUrls.length} files`);
+      addInsight("🧠 Initializing AI analysis with advanced neural networks...");
       
       // Then analyze with the uploaded URLs
       const result = await AnalyzeSetup({
@@ -165,16 +177,24 @@ const MeccaAnalysisHub: React.FC = () => {
         file_urls: fileUrls
       });
       
+      addInsight("📊 Processing trading patterns and performance metrics...");
+      
       // Parse the JSON result
       const parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
+      
+      // Simulate more detailed processing
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      addInsight("🎯 Analysis complete! Generating insights...");
+      
       setAnalysisResult(parsedResult);
       
       toast({
-        title: "Analysis Complete!",
-        description: "Your trading performance has been analyzed successfully.",
+        title: "🎉 Analysis Complete!",
+        description: "Your trading performance has been analyzed successfully by MECCA AI.",
       });
     } catch (error) {
       console.error('Analysis failed:', error);
+      addInsight("❌ Analysis failed. Please try again.");
       toast({
         title: "Analysis Failed",
         description: "There was an error analyzing your trades. Please try again.",
@@ -184,7 +204,7 @@ const MeccaAnalysisHub: React.FC = () => {
       setIsAnalyzing(false);
       cleanup();
     }
-  }, [uploadedFiles, toast, simulateAnalysisStream]);
+  }, [uploadedFiles, toast, simulateAnalysisStream, addInsight, user?.id]);
 
   const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -311,32 +331,67 @@ const MeccaAnalysisHub: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            <Card className="mecca-panel mecca-glass">
+            <Card className="mecca-panel mecca-glass border-2 border-violet-200/30 hover:border-violet-300/50 transition-colors">
               <h3 className="font-semibold text-base sm:text-lg mb-3 sm:mb-4 flex items-center gap-2">
-                <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500" />
+                <div className="p-2 rounded-full bg-violet-500/10">
+                  <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500" />
+                </div>
                 <span className="hidden sm:inline">Upload Evidence</span>
                 <span className="sm:hidden">Upload</span>
+                {uploadedFiles.length > 0 && (
+                  <Badge variant="secondary" className="ml-auto">
+                    {uploadedFiles.filter(f => f.status === 'uploaded').length}/{uploadedFiles.length}
+                  </Badge>
+                )}
               </h3>
               
               {/* Upload Zone */}
               <div
-                className="mecca-upload-zone"
+                className="mecca-upload-zone group relative"
                 onDrop={onDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => fileInputRef.current?.click()}
               >
+                {/* Upload Icon Animation */}
                 <motion.div
-                  animate={{ y: [0, -5, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative"
                 >
                   <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-violet-500 mx-auto mb-2" />
+                  {/* Floating particles around upload icon */}
+                  {[...Array(3)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute w-1 h-1 bg-violet-400 rounded-full"
+                      style={{
+                        left: `${-10 + i * 10}px`,
+                        top: `${-5 + i * 3}px`,
+                      }}
+                      animate={{
+                        opacity: [0.3, 1, 0.3],
+                        scale: [0.8, 1.2, 0.8],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        delay: i * 0.5,
+                      }}
+                    />
+                  ))}
                 </motion.div>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Drop screenshots or tap to upload
-                </p>
-                <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
-                  Up to 5 files, max 10MB each
-                </p>
+                
+                <div className="space-y-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+                    Drop screenshots or tap to upload
+                  </p>
+                  <p className="text-xs text-muted-foreground hidden sm:block">
+                    Up to 5 files, max 10MB each • PNG, JPG, WebP supported
+                  </p>
+                  <p className="text-xs text-violet-600 font-medium">
+                    🧠 AI-powered analysis ready
+                  </p>
+                </div>
               </div>
               
               <input
@@ -361,7 +416,7 @@ const MeccaAnalysisHub: React.FC = () => {
                   {uploadedFiles.map((file, index) => (
                     <motion.div
                       key={index}
-                      className="relative rounded-lg overflow-hidden border border-violet-200/30"
+                      className="relative rounded-lg overflow-hidden border border-violet-200/30 group hover:border-violet-400/50 transition-colors"
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.1 }}
@@ -371,35 +426,99 @@ const MeccaAnalysisHub: React.FC = () => {
                         alt={`Upload ${index + 1}`}
                         className="w-full h-12 sm:h-16 object-cover"
                       />
-                      {isAnalyzing && (
+                      
+                      {/* Upload Progress Overlay */}
+                      {file.status === 'uploading' && (
                         <motion.div
-                          className="absolute inset-0 bg-violet-500/20 flex items-center justify-center"
-                          initial={{ scaleX: 0 }}
-                          animate={{ scaleX: 1 }}
-                          transition={{ duration: 0.5, delay: index * 0.2 }}
+                          className="absolute inset-0 bg-violet-500/20 flex items-center justify-center backdrop-blur-sm"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
                         >
-                          <Scan className="w-3 h-3 sm:w-4 sm:h-4 text-violet-400 animate-pulse" />
+                          <div className="text-center">
+                            <Scan className="w-3 h-3 sm:w-4 sm:h-4 text-violet-400 animate-spin mx-auto mb-1" />
+                            <span className="text-xs text-violet-200">{file.progress}%</span>
+                          </div>
                         </motion.div>
                       )}
+                      
+                      {/* Analysis Scanning Effect */}
+                      {isAnalyzing && file.status === 'uploaded' && (
+                        <motion.div
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-violet-400/30 to-transparent"
+                          initial={{ x: '-100%' }}
+                          animate={{ x: '100%' }}
+                          transition={{ 
+                            duration: 1.5, 
+                            repeat: Infinity, 
+                            delay: index * 0.3,
+                            ease: "easeInOut"
+                          }}
+                        />
+                      )}
+                      
                       <Badge 
                         variant={file.status === 'uploaded' ? 'default' : 'secondary'}
-                        className="mecca-badge"
+                        className={`mecca-badge ${file.status === 'uploaded' ? 'bg-emerald-500 text-white' : 'bg-violet-200 text-violet-800'}`}
                       >
-                        {file.status === 'uploaded' ? '✓' : '...'}
+                        {file.status === 'uploaded' ? '✓' : `${file.progress}%`}
                       </Badge>
                     </motion.div>
                   ))}
                 </div>
                 
-                {uploadedFiles.every(f => f.status === 'uploaded') && !isAnalyzing && (
-                  <Button 
-                    onClick={handleAnalyze}
-                    className="w-full mt-3 sm:mt-4 mecca-touch-button bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
-                  >
-                    <Brain className="w-4 h-4 mr-2" />
-                    <span className="hidden sm:inline">Analyze with MECCA</span>
-                    <span className="sm:hidden">Analyze</span>
-                  </Button>
+                {/* Premium Analysis Button */}
+                <AnimatePresence>
+                  {uploadedFiles.length > 0 && uploadedFiles.every(f => f.status === 'uploaded') && !isAnalyzing && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Button 
+                        onClick={handleAnalyze}
+                        className="w-full mt-4 mecca-touch-button bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 
+                                 hover:from-violet-700 hover:via-purple-700 hover:to-violet-700 
+                                 shadow-lg hover:shadow-violet-500/25 transition-all duration-300
+                                 text-white font-semibold py-3 px-6 rounded-lg
+                                 border border-violet-400/30 hover:border-violet-300/50
+                                 backdrop-blur-sm relative overflow-hidden group"
+                        disabled={isAnalyzing}
+                      >
+                        {/* Button shine effect */}
+                        <motion.div
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                          initial={{ x: '-100%' }}
+                          whileHover={{ x: '100%' }}
+                          transition={{ duration: 0.6 }}
+                        />
+                        
+                        <div className="relative flex items-center justify-center gap-2">
+                          <motion.div
+                            animate={{ rotate: isAnalyzing ? 360 : 0 }}
+                            transition={{ duration: 2, repeat: isAnalyzing ? Infinity : 0, ease: "linear" }}
+                          >
+                            <Brain className="w-5 h-5" />
+                          </motion.div>
+                          <span className="hidden sm:inline font-medium tracking-wide">
+                            Analyze with MECCA AI
+                          </span>
+                          <span className="sm:hidden font-medium">
+                            Analyze
+                          </span>
+                        </div>
+                      </Button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                
+                {/* Upload Status Indicator */}
+                {uploadedFiles.length > 0 && (
+                  <div className="mt-3 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      {uploadedFiles.filter(f => f.status === 'uploaded').length} of {uploadedFiles.length} files ready
+                    </p>
+                  </div>
                 )}
               </Card>
             )}

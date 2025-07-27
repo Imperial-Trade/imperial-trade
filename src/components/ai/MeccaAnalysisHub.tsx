@@ -828,9 +828,36 @@ const MeccaAnalysisHub: React.FC = () => {
                     <NeuralBrain />
                   </div>
                   <h3 className="text-lg sm:text-xl font-semibold mb-2 mecca-gradient-text">Ready for Analysis</h3>
-                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
                     Upload your trading screenshots and let MECCA analyze your performance with AI-powered insights.
                   </p>
+                  {(metrics.totalPnl !== 0 || metrics.riskScore !== 0 || metrics.tradesAnalyzed > 0) && (
+                    <div className="mt-4 pt-4 border-t border-border/30">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Showing data from your previous analysis sessions
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (user?.id) {
+                            try {
+                              await supabase.from('agent_outputs').delete().eq('user_id', user.id);
+                              await supabase.from('screenshot_analysis_history').delete().eq('user_id', user.id);
+                              await supabase.from('user_trading_profiles').delete().eq('user_id', user.id);
+                              toast({ title: "Data cleared", description: "Your analysis history has been reset." });
+                              window.location.reload();
+                            } catch (error) {
+                              toast({ title: "Error", description: "Failed to clear data.", variant: "destructive" });
+                            }
+                          }
+                        }}
+                        className="text-xs"
+                      >
+                        Clear Previous Data
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               </>
             )}

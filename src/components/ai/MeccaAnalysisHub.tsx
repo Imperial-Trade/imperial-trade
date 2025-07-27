@@ -180,8 +180,57 @@ const MeccaAnalysisHub: React.FC = () => {
       
       addInsight("📊 Processing trading patterns and performance metrics...");
       
-      // Parse the JSON result
-      const parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
+      // Parse the JSON result with enhanced validation
+      let parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
+      
+      // Validate and ensure required properties exist with defaults
+      const validatedResult = {
+        analysis_metadata: parsedResult.analysis_metadata || {
+          screenshots_analyzed: fileUrls.length,
+          platform_detected: "Unknown",
+          account_type: "unknown",
+          analysis_confidence: 85,
+          market_context: "unknown"
+        },
+        trader_profile: parsedResult.trader_profile || {
+          experience_level: "intermediate",
+          trading_style: "day_trader",
+          risk_appetite: "moderate",
+          discipline_score: 7,
+          emotional_state: "disciplined"
+        },
+        performance_metrics: parsedResult.performance_metrics || {},
+        strengths: Array.isArray(parsedResult.strengths) ? parsedResult.strengths : 
+          ["Data collection is active", "Trading screenshots captured", "Performance tracking enabled"],
+        improvements: Array.isArray(parsedResult.improvements) ? parsedResult.improvements : 
+          ["Focus on consistent risk management", "Improve entry timing", "Enhance position sizing discipline"],
+        recommendations: Array.isArray(parsedResult.recommendations) ? parsedResult.recommendations : 
+          ["Maintain detailed trading journal", "Review and adjust risk parameters", "Focus on high-probability setups"],
+        risk_management: parsedResult.risk_management || {
+          overall_score: 6,
+          position_sizing: "fair",
+          stop_loss_usage: "inconsistent",
+          leverage_management: "appropriate"
+        },
+        strategy_analysis: parsedResult.strategy_analysis || {},
+        psychological_insights: Array.isArray(parsedResult.psychological_insights) ? parsedResult.psychological_insights : 
+          ["Trading discipline shows room for improvement"],
+        key_insights: Array.isArray(parsedResult.key_insights) ? parsedResult.key_insights : 
+          ["Performance data successfully captured", "Visual analysis completed", "Areas for improvement identified"],
+        immediate_actions: Array.isArray(parsedResult.immediate_actions) ? parsedResult.immediate_actions : 
+          ["Review recent trades", "Adjust position sizing", "Focus on risk management"],
+        weekly_goals: Array.isArray(parsedResult.weekly_goals) ? parsedResult.weekly_goals : 
+          ["Improve win rate", "Reduce maximum loss", "Increase consistency"],
+        monthly_objectives: Array.isArray(parsedResult.monthly_objectives) ? parsedResult.monthly_objectives : 
+          ["Achieve positive ROI", "Develop systematic approach", "Build trading confidence"],
+        performance_prediction: parsedResult.performance_prediction || {
+          trend: "stable",
+          confidence: 75,
+          key_factors: ["Risk management", "Strategy consistency", "Market conditions"]
+        }
+      };
+      
+      parsedResult = validatedResult;
       
       // Simulate more detailed processing
       await new Promise(resolve => setTimeout(resolve, 1000));

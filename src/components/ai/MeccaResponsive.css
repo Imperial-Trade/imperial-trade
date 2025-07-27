@@ -1,86 +1,285 @@
-/* MECCA Analysis Hub - Responsive Design System */
+/* MECCA Analysis Hub - Advanced Mobile-First Responsive Design System */
 
-/* Base component styles */
+/* Base application styles */
 .mecca-hub {
-  @apply min-h-screen bg-gradient-to-br from-background via-background/95 to-violet-500/5;
+  @apply min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5;
+  position: relative;
+  overflow-x: hidden;
 }
 
 .mecca-header {
-  @apply border-b border-border/50 bg-card/30 backdrop-blur-sm;
+  @apply border-b border-border/50 bg-card/40 backdrop-blur-md sticky top-0 z-40;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
 
-/* Responsive grid layout */
+/* Advanced responsive grid layout with mobile-first approach */
 .mecca-main-grid {
-  @apply grid grid-cols-1 gap-4 min-h-[600px] md:gap-6 lg:grid-cols-12;
+  @apply grid grid-cols-1 gap-3 min-h-[calc(100vh-120px)] p-3;
+  grid-template-rows: auto auto 1fr;
 }
 
+@media (min-width: 640px) {
+  .mecca-main-grid {
+    @apply gap-4 p-4;
+  }
+}
+
+@media (min-width: 768px) {
+  .mecca-main-grid {
+    @apply gap-6 p-6;
+    grid-template-columns: 280px 1fr 260px;
+    grid-template-rows: 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mecca-main-grid {
+    grid-template-columns: 320px 1fr 300px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .mecca-main-grid {
+    grid-template-columns: 360px 1fr 340px;
+  }
+}
+
+/* Panel ordering for mobile */
 .mecca-left-panel {
-  @apply md:col-span-2 lg:col-span-3;
+  order: 1;
 }
 
 .mecca-center-panel {
-  @apply md:col-span-2 lg:col-span-6;
+  order: 2;
 }
 
 .mecca-right-panel {
-  @apply md:col-span-2 lg:col-span-3;
+  order: 3;
 }
 
-/* Panel styles */
+@media (min-width: 768px) {
+  .mecca-left-panel {
+    order: 1;
+  }
+  
+  .mecca-center-panel {
+    order: 2;
+  }
+  
+  .mecca-right-panel {
+    order: 3;
+  }
+}
+
+/* Enhanced panel styles with glass morphism */
 .mecca-panel {
-  @apply bg-card/50 backdrop-blur-sm border-violet-200/20 rounded-lg p-3 sm:p-4 lg:p-6;
+  @apply bg-card/60 backdrop-blur-sm border-border/30 rounded-xl p-4;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Upload zone */
+@media (min-width: 640px) {
+  .mecca-panel {
+    @apply p-5 rounded-2xl;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mecca-panel {
+    @apply p-6;
+  }
+}
+
+.mecca-panel:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Enhanced upload zone with better mobile interaction */
 .mecca-upload-zone {
-  @apply border-2 border-dashed border-violet-300/50 rounded-lg text-center cursor-pointer 
-         hover:border-violet-400/70 transition-colors bg-gradient-to-br from-violet-50/10 to-purple-50/10
-         p-4 sm:p-6;
+  @apply border-2 border-dashed border-border rounded-xl text-center cursor-pointer 
+         transition-all duration-300 bg-gradient-to-br from-muted/20 to-muted/10
+         p-6 min-h-[120px] flex flex-col items-center justify-center;
+  position: relative;
+  overflow: hidden;
 }
 
-/* KPI Grid */
+@media (min-width: 640px) {
+  .mecca-upload-zone {
+    @apply p-8 min-h-[140px] rounded-2xl;
+  }
+}
+
+.mecca-upload-zone:hover {
+  @apply border-primary/50 bg-gradient-to-br from-primary/5 to-primary/2;
+  transform: translateY(-2px);
+}
+
+.mecca-upload-zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.mecca-upload-zone:hover::before {
+  transform: translateX(100%);
+}
+
+/* Responsive KPI grid */
 .mecca-kpi-grid {
-  @apply grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4;
+  @apply grid grid-cols-2 gap-3;
 }
 
-/* File gallery */
+@media (min-width: 640px) {
+  .mecca-kpi-grid {
+    @apply gap-4;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mecca-kpi-grid {
+    @apply grid-cols-4;
+  }
+}
+
+/* Advanced file gallery with proper aspect ratios */
 .mecca-file-gallery {
-  @apply grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2;
+  @apply grid gap-3;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
 
-/* Insight stream */
+@media (min-width: 480px) {
+  .mecca-file-gallery {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .mecca-file-gallery {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .mecca-file-gallery {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+}
+
+/* Insight stream with custom scrollbar */
 .mecca-insight-stream {
-  @apply space-y-2 overflow-y-auto max-h-[300px] sm:max-h-[400px] lg:max-h-[500px];
+  @apply space-y-3 overflow-y-auto pr-2;
+  max-height: 300px;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary)/0.3) transparent;
 }
 
-/* Tab content */
+@media (min-width: 640px) {
+  .mecca-insight-stream {
+    max-height: 400px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mecca-insight-stream {
+    max-height: 500px;
+  }
+}
+
+.mecca-insight-stream::-webkit-scrollbar {
+  width: 4px;
+}
+
+.mecca-insight-stream::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mecca-insight-stream::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary)/0.3);
+  border-radius: 2px;
+}
+
+.mecca-insight-stream::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary)/0.5);
+}
+
+/* Tab content with proper spacing */
 .mecca-tab-content {
-  @apply space-y-2 sm:space-y-3;
+  @apply space-y-3;
 }
 
-/* Analysis cards */
+@media (min-width: 640px) {
+  .mecca-tab-content {
+    @apply space-y-4;
+  }
+}
+
+/* Analysis cards with word wrapping */
 .mecca-analysis-card {
-  @apply p-3 sm:p-4 rounded-lg border;
+  @apply p-3 rounded-lg border bg-card;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
-/* Touch-friendly buttons */
+@media (min-width: 640px) {
+  .mecca-analysis-card {
+    @apply p-4 rounded-xl;
+  }
+}
+
+/* Touch-friendly interactive elements */
 .mecca-touch-button {
-  @apply transition-all min-h-[44px] lg:min-h-0;
+  @apply transition-all duration-200 active:scale-95;
+  min-height: 44px;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Neural brain sizing */
+@media (min-width: 640px) {
+  .mecca-touch-button {
+    min-height: 40px;
+  }
+}
+
+/* Neural brain responsive sizing */
 .mecca-neural-brain {
-  @apply relative w-12 h-12 sm:w-16 sm:h-16;
+  @apply relative;
+  width: 48px;
+  height: 48px;
 }
 
-/* Progress bars */
+@media (min-width: 640px) {
+  .mecca-neural-brain {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+/* Progress bars with smooth animation */
 .mecca-progress {
-  @apply h-2 lg:h-3;
+  @apply h-2 bg-muted rounded-full overflow-hidden;
 }
 
-/* Badge positioning */
+@media (min-width: 1024px) {
+  .mecca-progress {
+    @apply h-3;
+  }
+}
+
+.mecca-progress > div {
+  @apply bg-gradient-to-r from-primary to-primary/80 transition-all duration-300;
+}
+
+/* Badge positioning with proper sizing */
 .mecca-badge {
-  @apply absolute text-xs bottom-1 right-1 px-2 py-1 lg:bottom-0.5 lg:right-0.5 lg:px-1 lg:py-0.5;
+  @apply absolute text-xs px-2 py-1 rounded-md font-medium z-10;
+  top: 0.5rem;
+  right: 0.5rem;
 }
 
 /* Premium glassmorphism effects */

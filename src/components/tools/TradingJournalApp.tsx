@@ -10,6 +10,7 @@ import { TradeJournalEntry } from "@/api/entities";
 import { supabase } from "@/integrations/supabase/client";
 import { Line, Doughnut } from 'react-chartjs-2';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { useIsMobile, useIsDesktop } from "@/hooks/use-mobile";
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -44,7 +45,8 @@ interface StatCardProps {
   className?: string;
 }
 
-const StatCard = ({ title, value, icon: Icon, isPositive, subtitle, className = "" }: StatCardProps) => (
+// Mobile-optimized StatCard
+const MobileStatCard = ({ title, value, icon: Icon, isPositive, subtitle, className = "" }: StatCardProps) => (
   <Card className={`bg-card/50 backdrop-blur-sm border-border/20 hover:bg-card/70 transition-all duration-200 ${className}`}>
     <CardContent className="p-3">
       <div className="flex items-center justify-between mb-2">
@@ -69,6 +71,32 @@ const StatCard = ({ title, value, icon: Icon, isPositive, subtitle, className = 
   </Card>
 );
 
+// Desktop-optimized StatCard
+const DesktopStatCard = ({ title, value, icon: Icon, isPositive, subtitle, className = "" }: StatCardProps) => (
+  <Card className={`bg-card/50 backdrop-blur-sm border-border/20 hover:bg-card/70 transition-all duration-200 ${className}`}>
+    <CardContent className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
+            <Icon className="w-6 h-6 text-primary" />
+          </div>
+          <span className="text-sm font-medium text-muted-foreground">{title}</span>
+        </div>
+      </div>
+      <div className={`text-2xl font-bold mb-2 ${
+        isPositive === true ? 'text-emerald-400' : 
+        isPositive === false ? 'text-red-400' : 
+        'text-foreground'
+      }`}>
+        {value}
+      </div>
+      {subtitle && (
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
+      )}
+    </CardContent>
+  </Card>
+);
+
 const TradingJournalApp = () => {
   const [entries, setEntries] = useState<TradeJournalEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,6 +105,10 @@ const TradingJournalApp = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<string>('all');
   const [showAiAnalytics, setShowAiAnalytics] = useState(false);
+  
+  // Responsive hooks
+  const isMobile = useIsMobile();
+  const isDesktop = useIsDesktop();
 
   const loadEntries = async () => {
     setIsLoading(true);
@@ -423,10 +455,15 @@ const TradingJournalApp = () => {
     );
   }
 
+  // Component selection based on device type
+  const StatCard = isMobile ? MobileStatCard : DesktopStatCard;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/10 p-2 sm:p-4">
+    <div className={`min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/10 ${
+      isMobile ? 'p-2 sm:p-4' : 'p-6 lg:p-8'
+    }`}>
       <div className="max-w-7xl mx-auto space-y-4">
-        {/* Mobile-optimized Header */}
+        {/* Responsive Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -434,27 +471,37 @@ const TradingJournalApp = () => {
         >
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-primary via-primary/80 to-secondary bg-clip-text text-transparent truncate">
+              <h1 className={`font-bold bg-gradient-to-r from-primary via-primary/80 to-secondary bg-clip-text text-transparent truncate ${
+                isMobile ? 'text-xl sm:text-2xl' : 'text-3xl lg:text-4xl'
+              }`}>
                 Journal XX
               </h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">
+              <p className={`text-muted-foreground ${
+                isMobile ? 'text-xs sm:text-sm' : 'text-base'
+              }`}>
                 Your intelligent trading companion
               </p>
             </div>
             
             <Button
               variant="outline"
-              size="sm"
+              size={isMobile ? "sm" : "default"}
               onClick={() => setShowStats(!showStats)}
               className="shrink-0 bg-background/50 backdrop-blur-sm border-border/20 hover:bg-background/70"
             >
-              {showStats ? <EyeOff className="w-3 h-3 sm:w-4 sm:h-4" /> : <Eye className="w-3 h-3 sm:w-4 sm:h-4" />}
-              <span className="hidden sm:inline ml-2">{showStats ? 'Hide' : 'Show'} Stats</span>
+              {showStats ? (
+                <EyeOff className={isMobile ? "w-3 h-3 sm:w-4 sm:h-4" : "w-5 h-5"} />
+              ) : (
+                <Eye className={isMobile ? "w-3 h-3 sm:w-4 sm:h-4" : "w-5 h-5"} />
+              )}
+              <span className={`${isMobile ? 'hidden sm:inline' : 'inline'} ml-2`}>
+                {showStats ? 'Hide' : 'Show'} Stats
+              </span>
             </Button>
           </div>
         </motion.div>
 
-        {/* Mobile-optimized Stats Cards */}
+        {/* Responsive Stats Cards */}
         <AnimatePresence>
           {showStats && (
             <motion.div
@@ -463,92 +510,177 @@ const TradingJournalApp = () => {
               exit={{ opacity: 0, height: 0 }}
               className="space-y-3"
             >
-              {/* Primary Stats Row */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <StatCard
-                  title="Total P/L"
-                  value={`$${analytics.totalPnL.toFixed(2)}`}
-                  icon={DollarSign}
-                  isPositive={analytics.totalPnL >= 0}
-                  subtitle={`${analytics.totalTrades} trades`}
-                />
-                <StatCard
-                  title="Win Rate"
-                  value={`${analytics.winRate.toFixed(1)}%`}
-                  icon={Target}
-                  subtitle={`${Math.round((analytics.winRate / 100) * analytics.totalTrades)} wins`}
-                />
-              </div>
-              
-              {/* Secondary Stats Row */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <StatCard
-                  title="Monthly P/L"
-                  value={`$${analytics.monthlyPnL.toFixed(2)}`}
-                  icon={Calendar}
-                  isPositive={analytics.monthlyPnL >= 0}
-                  subtitle={format(new Date(), 'MMM yyyy')}
-                />
-                <StatCard
-                  title="Win Streak"
-                  value={`${analytics.currentStreak}`}
-                  icon={TrendingUp}
-                  subtitle={`${analytics.profitableDays} profitable days`}
-                />
-              </div>
+              {isMobile ? (
+                // Mobile layout: 2x2 grid
+                <>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <StatCard
+                      title="Total P/L"
+                      value={`$${analytics.totalPnL.toFixed(2)}`}
+                      icon={DollarSign}
+                      isPositive={analytics.totalPnL >= 0}
+                      subtitle={`${analytics.totalTrades} trades`}
+                    />
+                    <StatCard
+                      title="Win Rate"
+                      value={`${analytics.winRate.toFixed(1)}%`}
+                      icon={Target}
+                      subtitle={`${Math.round((analytics.winRate / 100) * analytics.totalTrades)} wins`}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <StatCard
+                      title="Monthly P/L"
+                      value={`$${analytics.monthlyPnL.toFixed(2)}`}
+                      icon={Calendar}
+                      isPositive={analytics.monthlyPnL >= 0}
+                      subtitle={format(new Date(), 'MMM yyyy')}
+                    />
+                    <StatCard
+                      title="Win Streak"
+                      value={`${analytics.currentStreak}`}
+                      icon={TrendingUp}
+                      subtitle={`${analytics.profitableDays} profitable days`}
+                    />
+                  </div>
+                </>
+              ) : (
+                // Desktop layout: 6-column grid
+                <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                  <StatCard
+                    title="Total P/L"
+                    value={`$${analytics.totalPnL.toFixed(2)}`}
+                    icon={DollarSign}
+                    isPositive={analytics.totalPnL >= 0}
+                    subtitle={`${analytics.totalTrades} trades`}
+                  />
+                  <StatCard
+                    title="Win Rate"
+                    value={`${analytics.winRate.toFixed(1)}%`}
+                    icon={Target}
+                    subtitle={`${Math.round((analytics.winRate / 100) * analytics.totalTrades)} wins`}
+                  />
+                  <StatCard
+                    title="Monthly P/L"
+                    value={`$${analytics.monthlyPnL.toFixed(2)}`}
+                    icon={Calendar}
+                    isPositive={analytics.monthlyPnL >= 0}
+                    subtitle={format(new Date(), 'MMM yyyy')}
+                  />
+                  <StatCard
+                    title="Win Streak"
+                    value={`${analytics.currentStreak}`}
+                    icon={TrendingUp}
+                    subtitle={`${analytics.profitableDays} profitable days`}
+                  />
+                  <StatCard
+                    title="Best Trade"
+                    value={`$${analytics.bestTrade.toFixed(2)}`}
+                    icon={Star}
+                    isPositive={analytics.bestTrade >= 0}
+                    subtitle="Highest single profit"
+                  />
+                  <StatCard
+                    title="Avg Win"
+                    value={`$${analytics.avgWin.toFixed(2)}`}
+                    icon={TrendingUp}
+                    isPositive={analytics.avgWin >= 0}
+                    subtitle="Average winning trade"
+                  />
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Mobile-optimized Tabs */}
+        {/* Responsive Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 bg-card/50 backdrop-blur-sm border border-border/20 h-auto">
-            <TabsTrigger 
-              value="overview" 
-              className="text-xs p-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex flex-col items-center gap-1"
-            >
-              <Activity className="w-3 h-3" />
-              <span>Chart</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="calendar" 
-              className="text-xs p-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex flex-col items-center gap-1"
-            >
-              <Calendar className="w-3 h-3" />
-              <span>Calendar</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="assets" 
-              className="text-xs p-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex flex-col items-center gap-1"
-            >
-              <PieChart className="w-3 h-3" />
-              <span>Assets</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="trades" 
-              className="text-xs p-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex flex-col items-center gap-1"
-            >
-              <BarChart3 className="w-3 h-3" />
-              <span>Trades</span>
-            </TabsTrigger>
-          </TabsList>
+          {isMobile ? (
+            // Mobile tabs: 4-column compact
+            <TabsList className="grid w-full grid-cols-4 bg-card/50 backdrop-blur-sm border border-border/20 h-auto">
+              <TabsTrigger 
+                value="overview" 
+                className="text-xs p-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex flex-col items-center gap-1"
+              >
+                <Activity className="w-3 h-3" />
+                <span>Chart</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="calendar" 
+                className="text-xs p-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex flex-col items-center gap-1"
+              >
+                <Calendar className="w-3 h-3" />
+                <span>Calendar</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="assets" 
+                className="text-xs p-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex flex-col items-center gap-1"
+              >
+                <PieChart className="w-3 h-3" />
+                <span>Assets</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="trades" 
+                className="text-xs p-2 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex flex-col items-center gap-1"
+              >
+                <BarChart3 className="w-3 h-3" />
+                <span>Trades</span>
+              </TabsTrigger>
+            </TabsList>
+          ) : (
+            // Desktop tabs: horizontal with full labels
+            <TabsList className="bg-card/50 backdrop-blur-sm border border-border/20 h-auto p-1">
+              <TabsTrigger 
+                value="overview" 
+                className="text-sm px-6 py-3 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex items-center gap-2"
+              >
+                <Activity className="w-4 h-4" />
+                <span>Equity Curve</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="calendar" 
+                className="text-sm px-6 py-3 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex items-center gap-2"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Trading Calendar</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="assets" 
+                className="text-sm px-6 py-3 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex items-center gap-2"
+              >
+                <PieChart className="w-4 h-4" />
+                <span>Assets & AI</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="trades" 
+                className="text-sm px-6 py-3 data-[state=active]:bg-primary/20 data-[state=active]:text-primary flex items-center gap-2"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Recent Trades</span>
+              </TabsTrigger>
+            </TabsList>
+          )}
 
           {/* Equity Curve Tab */}
           <TabsContent value="overview" className="space-y-4">
             <Card className="bg-card/30 backdrop-blur-sm border-border/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4" />
+              <CardHeader className={isMobile ? "pb-3" : "pb-6"}>
+                <CardTitle className={`flex items-center gap-2 ${
+                  isMobile ? "text-sm sm:text-base" : "text-lg"
+                }`}>
+                  <BarChart3 className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
                   Equity Curve
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {chartData && chartData.datasets[0].data.length > 0 ? (
-                  <div className="h-48 sm:h-64">
+                  <div className={isMobile ? "h-48 sm:h-64" : "h-80 lg:h-96"}>
                     <Line data={chartData} options={chartOptions} />
                   </div>
                 ) : (
-                  <div className="h-48 sm:h-64 flex items-center justify-center">
+                  <div className={`flex items-center justify-center ${
+                    isMobile ? "h-48 sm:h-64" : "h-80 lg:h-96"
+                  }`}>
                     <div className="text-center space-y-2">
                       <BarChart3 className="w-8 h-8 text-muted-foreground/50 mx-auto" />
                       <p className="text-sm text-muted-foreground">No trades to display</p>
@@ -562,27 +694,39 @@ const TradingJournalApp = () => {
           {/* Calendar Tab */}
           <TabsContent value="calendar" className="space-y-4">
             <Card className="bg-card/30 backdrop-blur-sm border-border/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
+              <CardHeader className={isMobile ? "pb-3" : "pb-6"}>
+                <CardTitle className={`flex items-center gap-2 ${
+                  isMobile ? "text-sm sm:text-base" : "text-lg"
+                }`}>
+                  <Calendar className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
                   Trading Calendar - {format(new Date(), 'MMMM yyyy')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-7 gap-1 mb-4">
+                <div className={`grid grid-cols-7 gap-1 mb-4 ${
+                  isMobile ? "" : "gap-2"
+                }`}>
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="text-center text-xs font-medium text-muted-foreground p-2">
+                    <div key={day} className={`text-center font-medium text-muted-foreground ${
+                      isMobile ? "text-xs p-2" : "text-sm p-3"
+                    }`}>
                       {day}
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-1">
+                <div className={`grid grid-cols-7 gap-1 ${
+                  isMobile ? "" : "gap-2"
+                }`}>
                   {calendarDays.map(({ date, dateKey, trades }) => (
                     <button
                       key={dateKey}
                       onClick={() => setSelectedDate(isSameDay(date, selectedDate || new Date()) ? null : date)}
                       className={`
-                        aspect-square p-1 rounded-md text-xs transition-all duration-200 relative
+                        aspect-square transition-all duration-200 relative rounded-md
+                        ${isMobile 
+                          ? "p-1 text-xs" 
+                          : "p-2 text-sm hover:scale-105"
+                        }
                         ${isSameDay(date, selectedDate || new Date()) 
                           ? 'bg-primary text-primary-foreground' 
                           : 'hover:bg-muted/50'
@@ -597,14 +741,20 @@ const TradingJournalApp = () => {
                     >
                       <span className="block">{format(date, 'd')}</span>
                       {trades && (
-                        <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-current opacity-60" />
+                        <div className={`absolute -top-1 -right-1 rounded-full bg-current opacity-60 ${
+                          isMobile ? "w-2 h-2" : "w-3 h-3"
+                        }`} />
                       )}
                     </button>
                   ))}
                 </div>
                 {selectedDate && (
-                  <div className="mt-4 p-3 bg-background/50 rounded-lg border border-border/20">
-                    <p className="text-sm font-medium text-foreground mb-2">
+                  <div className={`mt-4 bg-background/50 rounded-lg border border-border/20 ${
+                    isMobile ? "p-3" : "p-4"
+                  }`}>
+                    <p className={`font-medium text-foreground mb-2 ${
+                      isMobile ? "text-sm" : "text-base"
+                    }`}>
                       {format(selectedDate, 'MMMM dd, yyyy')}
                     </p>
                     {calendarDays.find(d => isSameDay(d.date, selectedDate))?.trades ? (
@@ -630,26 +780,134 @@ const TradingJournalApp = () => {
 
           {/* Assets Tab with Toggle */}
           <TabsContent value="assets" className="space-y-4">
-            <Card className="bg-card/30 backdrop-blur-sm border-border/20">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-                    {showAiAnalytics ? <Brain className="w-4 h-4" /> : <PieChart className="w-4 h-4" />}
-                    {showAiAnalytics ? 'AI Analytics' : 'Asset Performance'}
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Assets</span>
-                    <Switch
-                      checked={showAiAnalytics}
-                      onCheckedChange={setShowAiAnalytics}
-                      className="data-[state=checked]:bg-primary"
-                    />
-                    <span className="text-xs text-muted-foreground">AI</span>
+            {isDesktop && assetChartData && showAiAnalytics ? (
+              // Desktop: Side-by-side layout for Assets and AI
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="bg-card/30 backdrop-blur-sm border-border/20">
+                  <CardHeader className="pb-6">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <PieChart className="w-5 h-5" />
+                      Asset Performance
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="h-64">
+                        <Doughnut data={assetChartData} options={doughnutOptions} />
+                      </div>
+                      <div className="space-y-2">
+                        {Object.entries(analytics.assetBreakdown)
+                          .sort(([,a], [,b]) => Math.abs(b) - Math.abs(a))
+                          .slice(0, 6)
+                          .map(([asset, pnl]) => (
+                            <div key={asset} className="flex items-center justify-between p-3 bg-background/50 rounded-md">
+                              <Badge variant="outline" className="text-sm">
+                                {asset}
+                              </Badge>
+                              <span className={`text-sm font-medium ${
+                                pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
+                              }`}>
+                                {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                              </span>
+                            </div>
+                          ))
+                        }
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-card/30 backdrop-blur-sm border-border/20">
+                  <CardHeader className="pb-6">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Brain className="w-5 h-5" />
+                      AI Analytics
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {aiAnalytics ? (
+                      <div className="space-y-6">
+                        {/* AI Score Card */}
+                        <div className="text-center p-6 bg-gradient-to-r from-primary/10 via-primary/5 to-secondary/10 rounded-lg border border-primary/20">
+                          <div className="flex items-center justify-center gap-3 mb-3">
+                            <Brain className="w-6 h-6 text-primary" />
+                            <span className="text-xl font-bold">AI Trading Score</span>
+                          </div>
+                          <div className={`text-4xl font-bold mb-3 ${
+                            aiAnalytics.overallScore >= 8 ? 'text-emerald-400' :
+                            aiAnalytics.overallScore >= 6 ? 'text-yellow-400' :
+                            'text-red-400'
+                          }`}>
+                            {aiAnalytics.overallScore}/10
+                          </div>
+                          <div className="flex flex-wrap gap-2 justify-center">
+                            {aiAnalytics.insights.map((insight, index) => (
+                              <Badge key={index} variant="outline" className="text-sm">
+                                {insight}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* AI Insights */}
+                        <div className="space-y-4">
+                          <div className="p-4 bg-background/30 rounded-lg border border-border/20">
+                            <div className="flex items-center gap-3 mb-3">
+                              <TrendingUp className="w-5 h-5 text-emerald-400" />
+                              <span className="text-base font-medium">Strengths</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{aiAnalytics.strengths}</p>
+                          </div>
+
+                          <div className="p-4 bg-background/30 rounded-lg border border-border/20">
+                            <div className="flex items-center gap-3 mb-3">
+                              <Lightbulb className="w-5 h-5 text-blue-400" />
+                              <span className="text-base font-medium">Improvements</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{aiAnalytics.improvements}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Brain className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">No trading data for AI analysis</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              // Mobile and single view layout
+              <Card className="bg-card/30 backdrop-blur-sm border-border/20">
+                <CardHeader className={isMobile ? "pb-3" : "pb-6"}>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className={`flex items-center gap-2 ${
+                      isMobile ? "text-sm sm:text-base" : "text-lg"
+                    }`}>
+                      {showAiAnalytics ? (
+                        <Brain className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
+                      ) : (
+                        <PieChart className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
+                      )}
+                      {showAiAnalytics ? 'AI Analytics' : 'Asset Performance'}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-muted-foreground ${
+                        isMobile ? "text-xs" : "text-sm"
+                      }`}>Assets</span>
+                      <Switch
+                        checked={showAiAnalytics}
+                        onCheckedChange={setShowAiAnalytics}
+                        className="data-[state=checked]:bg-primary"
+                      />
+                      <span className={`text-muted-foreground ${
+                        isMobile ? "text-xs" : "text-sm"
+                      }`}>AI</span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <AnimatePresence mode="wait">
+                </CardHeader>
+                <CardContent>
+                  <AnimatePresence mode="wait">
                   {showAiAnalytics ? (
                     <motion.div
                       key="ai-analytics"
@@ -660,27 +918,41 @@ const TradingJournalApp = () => {
                     >
                       {aiAnalytics ? (
                         <>
-                          {/* AI Score Card */}
-                          <div className="text-center p-4 bg-gradient-to-r from-primary/10 via-primary/5 to-secondary/10 rounded-lg border border-primary/20">
-                            <div className="flex items-center justify-center gap-2 mb-2">
-                              <Brain className="w-5 h-5 text-primary" />
-                              <span className="text-lg font-bold">AI Trading Score</span>
-                            </div>
-                            <div className={`text-3xl font-bold mb-2 ${
-                              aiAnalytics.overallScore >= 8 ? 'text-emerald-400' :
-                              aiAnalytics.overallScore >= 6 ? 'text-yellow-400' :
-                              'text-red-400'
+                            {/* AI Score Card */}
+                            <div className={`text-center bg-gradient-to-r from-primary/10 via-primary/5 to-secondary/10 rounded-lg border border-primary/20 ${
+                              isMobile ? "p-4" : "p-6"
                             }`}>
-                              {aiAnalytics.overallScore}/10
+                              <div className={`flex items-center justify-center gap-2 mb-2 ${
+                                isMobile ? "gap-2" : "gap-3"
+                              }`}>
+                                <Brain className={`text-primary ${
+                                  isMobile ? "w-5 h-5" : "w-6 h-6"
+                                }`} />
+                                <span className={`font-bold ${
+                                  isMobile ? "text-lg" : "text-xl"
+                                }`}>AI Trading Score</span>
+                              </div>
+                              <div className={`font-bold mb-2 ${
+                                isMobile ? "text-3xl" : "text-4xl"
+                              } ${
+                                aiAnalytics.overallScore >= 8 ? 'text-emerald-400' :
+                                aiAnalytics.overallScore >= 6 ? 'text-yellow-400' :
+                                'text-red-400'
+                              }`}>
+                                {aiAnalytics.overallScore}/10
+                              </div>
+                              <div className={`flex flex-wrap justify-center ${
+                                isMobile ? "gap-1" : "gap-2"
+                              }`}>
+                                {aiAnalytics.insights.map((insight, index) => (
+                                  <Badge key={index} variant="outline" className={
+                                    isMobile ? "text-xs" : "text-sm"
+                                  }>
+                                    {insight}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
-                            <div className="flex flex-wrap gap-1 justify-center">
-                              {aiAnalytics.insights.map((insight, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {insight}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
 
                           {/* AI Insights */}
                           <div className="space-y-3">
@@ -728,10 +1000,10 @@ const TradingJournalApp = () => {
                       exit={{ opacity: 0, x: 20 }}
                     >
                       {assetChartData ? (
-                        <div className="space-y-4">
-                          <div className="h-48">
-                            <Doughnut data={assetChartData} options={doughnutOptions} />
-                          </div>
+                          <div className="space-y-4">
+                            <div className={isMobile ? "h-48" : "h-64"}>
+                              <Doughnut data={assetChartData} options={doughnutOptions} />
+                            </div>
                           <div className="space-y-2">
                             {Object.entries(analytics.assetBreakdown)
                               .sort(([,a], [,b]) => Math.abs(b) - Math.abs(a))
@@ -763,25 +1035,34 @@ const TradingJournalApp = () => {
                       )}
                     </motion.div>
                   )}
-                </AnimatePresence>
-              </CardContent>
-            </Card>
+                  </AnimatePresence>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Trades Tab */}
           <TabsContent value="trades" className="space-y-4">
             <Card className="bg-card/30 backdrop-blur-sm border-border/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4" />
+              <CardHeader className={isMobile ? "pb-3" : "pb-6"}>
+                <CardTitle className={`flex items-center gap-2 ${
+                  isMobile ? "text-sm sm:text-base" : "text-lg"
+                }`}>
+                  <BarChart3 className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
                   Recent Trades
                 </CardTitle>
-                {/* Mobile Filters */}
-                <div className="flex flex-wrap gap-2 mt-2">
+                {/* Responsive Filters */}
+                <div className={`flex flex-wrap gap-2 mt-2 ${
+                  isMobile ? "" : "mt-4"
+                }`}>
                   <select
                     value={selectedAsset}
                     onChange={(e) => setSelectedAsset(e.target.value)}
-                    className="text-xs bg-background border border-border rounded px-2 py-1"
+                    className={`bg-background border border-border rounded ${
+                      isMobile 
+                        ? "text-xs px-2 py-1" 
+                        : "text-sm px-3 py-2"
+                    }`}
                   >
                     <option value="all">All Assets</option>
                     {availableAssets.map(asset => (
@@ -791,9 +1072,9 @@ const TradingJournalApp = () => {
                   {selectedDate && (
                     <Button
                       variant="outline"
-                      size="sm"
+                      size={isMobile ? "sm" : "default"}
                       onClick={() => setSelectedDate(null)}
-                      className="text-xs h-7"
+                      className={isMobile ? "text-xs h-7" : "text-sm"}
                     >
                       Clear Date
                     </Button>
@@ -809,7 +1090,9 @@ const TradingJournalApp = () => {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="flex items-center justify-between p-3 bg-background/30 backdrop-blur-sm rounded-lg border border-border/10 hover:bg-background/50 transition-all duration-200"
+                        className={`flex items-center justify-between bg-background/30 backdrop-blur-sm rounded-lg border border-border/10 hover:bg-background/50 transition-all duration-200 ${
+                          isMobile ? "p-3" : "p-4"
+                        }`}
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <Badge variant="outline" className="text-xs shrink-0">

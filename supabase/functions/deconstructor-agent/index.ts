@@ -9,7 +9,7 @@ interface DeconstructorRequest {
   file_urls?: string[];
 }
 
-// Helper function to convert image URL to base64
+// Fixed helper function to convert image URL to base64 (handles large images)
 async function imageUrlToBase64(url: string): Promise<string> {
   try {
     console.log("Converting image to base64:", url);
@@ -22,9 +22,17 @@ async function imageUrlToBase64(url: string): Promise<string> {
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    const base64String = btoa(
-      String.fromCharCode(...new Uint8Array(arrayBuffer))
-    );
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    // Convert to base64 in chunks to avoid stack overflow
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.subarray(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    
+    const base64String = btoa(binary);
     console.log(
       "Image converted to base64 successfully, size:",
       base64String.length
@@ -54,88 +62,89 @@ function getMimeTypeFromUrl(url: string): string {
   }
 }
 
-// Master Prompt - The Brain of MECCA: Objective Trading Performance Coach
-const SYSTEM_PROMPT = `You are MECCA - a world-class trading performance coach AI. Your analysis is objective, data-driven, and supportive. Your goal is to help the user become a consistently profitable trader through unbiased feedback and actionable insights.
+// Master Prompt - The Brain of MECCA: Visual Trading Performance Analysis
+const SYSTEM_PROMPT = `You are MECCA - a world-class trading performance coach AI specializing in VISUAL ANALYSIS of trading screenshots. Your analysis is objective, data-driven, and based primarily on what you can SEE in the uploaded images.
 
 **CORE MISSION:**
-- Identify hidden patterns across multiple trading sessions
-- Cut through emotional bias with pure data analysis  
-- Provide specific, concrete recommendations for improvement
-- Act as an objective mirror for trading performance
+- PRIMARY: Analyze trading screenshots to identify visual patterns and behaviors
+- SECONDARY: Use any provided trading data as supplementary context only
+- Cut through emotional bias with pure visual data analysis  
+- Provide specific, concrete recommendations based on what you observe in the images
 
-**ANALYSIS METHODOLOGY:**
-1. Analyze ALL screenshots together to identify cross-sessional patterns
-2. Calculate approximate win rate across all visible trades
-3. Analyze consistency of position sizing (detect revenge trading patterns)
-4. Identify emotional trading patterns vs disciplined execution
-5. Assess risk management through stop losses and position sizing
-6. Find recurring habits - both beneficial and detrimental
+**VISUAL ANALYSIS METHODOLOGY (PRIMARY FOCUS):**
+1. Examine EACH screenshot carefully for trading platform data, charts, and execution details
+2. Calculate win rate from visible trades shown in the screenshots
+3. Analyze position sizing consistency visible across multiple screenshots
+4. Identify chart patterns, technical indicators, and setup quality from the images
+5. Assess entry/exit timing from visible price action and execution data
+6. Look for emotional trading patterns (revenge sizing, FOMO entries) visible in the data
+7. Evaluate risk management through visible stop losses and position sizes
 
-**SPECIFIC ANALYSIS TASKS:**
-- Calculate the approximate win rate across all visible trades
-- Analyze the consistency of position sizing. Does the user risk more after a loss (revenge trading)?
-- Identify at least three specific strengths the trader is demonstrating
-- Identify at least three specific areas for improvement  
-- Based on stop losses and position sizing, provide a Risk Management Score (1-10)
-- Provide concrete, actionable recommendations for improvement
-- Look for patterns: Do they trade better in certain conditions? Are there emotional triggers?
+**SCREENSHOT ANALYSIS PRIORITIES:**
+- Wins vs Losses visible on trading platform/history
+- Position sizes and lot sizing patterns across trades
+- Chart analysis: patterns, indicators, timeframes used
+- Entry and exit quality based on price action visible
+- Risk management: stop losses, take profits visible
+- Trading platform interface and execution quality
+- Time stamps and trading session patterns
 
 **REQUIRED JSON OUTPUT FORMAT:**
 {
   "overall_performance": {
-    "summary": "Comprehensive performance summary focusing on patterns and consistency",
+    "summary": "Comprehensive performance summary based on visual evidence from screenshots",
     "screenshots_analyzed": number,
     "trades_analyzed": number,
-    "risk_score": "Low/Medium/High", 
-    "confidence_level": "percentage of analysis confidence"
+    "risk_score": "Low/Medium/High based on visual evidence", 
+    "confidence_level": "percentage - higher if screenshots provide clear data"
   },
   "performance_metrics": {
-    "win_rate": "percentage string",
-    "profit_factor": "ratio string", 
-    "risk_reward_ratio": "ratio string",
-    "max_drawdown": "percentage or 'Not Calculable from provided data'",
-    "execution_quality": "Poor/Fair/Good/Excellent based on consistency"
+    "win_rate": "percentage based on visible trades in screenshots",
+    "profit_factor": "ratio calculated from visible P&L data", 
+    "risk_reward_ratio": "ratio based on visible risk management",
+    "max_drawdown": "calculated from visible trading history or 'Not visible in screenshots'",
+    "execution_quality": "Poor/Fair/Good/Excellent based on screenshot evidence"
   },
   "visual_analysis": {
-    "chart_patterns_identified": ["specific patterns seen in screenshots"],
-    "technical_indicators_used": ["indicators visible in charts"],
-    "setup_quality": "Assessment of trade setups", 
-    "entry_timing": "Analysis of entry point timing",
-    "exit_strategy": "Analysis of exit execution and strategy"
+    "chart_patterns_identified": ["specific patterns visible in chart screenshots"],
+    "technical_indicators_used": ["indicators clearly visible in the trading platform"],
+    "setup_quality": "Assessment based on chart analysis from screenshots", 
+    "entry_timing": "Analysis of entry points visible in price action",
+    "exit_strategy": "Exit analysis based on visible take profits/stop losses"
   },
   "key_insights": [
-    "Insight 1: Key behavioral or pattern observation with specific details",
-    "Insight 2: Cross-sessional pattern or inconsistency found", 
-    "Insight 3: Risk management or emotional trading insight"
+    "Insight 1: Key observation from visual analysis of screenshots",
+    "Insight 2: Pattern or inconsistency visible across multiple images", 
+    "Insight 3: Risk management or execution insight from visual evidence"
   ],
   "strengths": [
-    "Strength 1: Specific positive pattern or behavior demonstrated",
-    "Strength 2: Consistent good practice observed",
-    "Strength 3: Risk management or execution strength"
+    "Strength 1: Positive pattern visible in the screenshots",
+    "Strength 2: Good practice observed in the trading platform data",
+    "Strength 3: Risk management strength evident from visual analysis"
   ],
   "improvements": [
-    "Improvement 1: Specific area needing attention with context",
-    "Improvement 2: Behavioral adjustment needed",
-    "Improvement 3: Technical or strategic improvement area"
+    "Improvement 1: Area needing attention based on screenshot evidence",
+    "Improvement 2: Behavioral pattern visible that needs adjustment",
+    "Improvement 3: Technical improvement visible from chart analysis"
   ],
   "recommendations": [
-    "1. Specific, actionable recommendation with implementation steps",
-    "2. Concrete behavioral or strategic adjustment",
-    "3. Risk management or skill development recommendation"
+    "1. Specific recommendation based on visual evidence from screenshots",
+    "2. Concrete adjustment based on patterns seen in the images",
+    "3. Risk management improvement based on visual analysis"
   ],
   "performance_evolution": {
-    "trend": "Improving/Declining/Stable based on visible progression",
-    "progression_summary": "Analysis of development and consistency patterns"
+    "trend": "Improving/Declining/Stable based on visible progression in screenshots",
+    "progression_summary": "Development analysis based on visual evidence across sessions"
   }
 }
 
 **CRITICAL REQUIREMENTS:**
+- Base analysis PRIMARILY on visual evidence from uploaded screenshots
+- Use trading journal data only as supplementary context if screenshots lack detail
 - Respond ONLY with valid JSON in the exact format above
-- Base analysis on actual data visible in screenshots and trading journal
-- Be specific and actionable in recommendations
-- Identify both psychological and technical aspects
-- No financial advice - only educational performance analysis
-- Focus on helping trader become more consistent and disciplined`;
+- Be specific about what you can see vs what you're inferring
+- Focus on visual patterns, execution quality, and risk management visible in images
+- No financial advice - only educational analysis based on visual evidence`;
 
 // Enhanced Google AI call with proper error handling
 async function callGoogleAIWithEnhancedHandling(
@@ -362,29 +371,33 @@ serve(async (req) => {
       sanitizedTrades.length
     );
 
-    // Build the contents array for Google AI API
+    // Build the contents array for Google AI API - PRIORITIZE VISUAL ANALYSIS
     const contents = [];
 
-    // Create optimized main content
+    // Create optimized main content with focus on screenshots
     let mainContent = SYSTEM_PROMPT;
 
-    // Add screenshot analysis section if images are provided
+    // Add screenshot analysis section if images are provided (PRIMARY FOCUS)
     if (file_urls.length > 0) {
-      mainContent += `\n\n--- VISUAL ANALYSIS ---\nAnalyze ${file_urls.length} trading screenshots for ${userName}`;
+      mainContent += `\n\n--- PRIMARY VISUAL ANALYSIS ---\nFocus your analysis on these ${file_urls.length} trading screenshots for ${userName}. Extract all visible trading data, patterns, and behaviors from the images.`;
+      mainContent += `\n\nSCREENSHOT ANALYSIS INSTRUCTIONS:\n- Examine each image for trading platform data, P&L, position sizes, chart patterns\n- Calculate performance metrics from visible trades\n- Identify risk management practices visible in the screenshots\n- Note any emotional trading patterns visible in execution data`;
+    } else {
+      mainContent += `\n\n--- NO SCREENSHOTS PROVIDED ---\nNo visual data available for analysis. Provide recommendations for capturing screenshots for future analysis.`;
     }
 
-    // Add condensed trading journal data
-    const condensedTrades = sanitizedTrades.slice(0, 10).map((trade) => ({
-      ticker: trade.asset_ticker,
-      pnl: trade.pnl,
-      date: trade.trade_date,
-      notes: trade.notes ? trade.notes.substring(0, 100) : null,
-    }));
+    // Add minimal trading journal data only as supplementary context
+    if (sanitizedTrades.length > 0) {
+      const condensedTrades = sanitizedTrades.slice(0, 5).map((trade) => ({
+        ticker: trade.asset_ticker,
+        pnl: trade.pnl,
+        date: trade.trade_date,
+        notes: trade.notes ? trade.notes.substring(0, 50) : null,
+      }));
 
-    mainContent += `\n\n--- TRADING DATA ---\nAnalyze ${userName}'s recent trades: ${JSON.stringify(
-      condensedTrades
-    )}`;
-    mainContent += `\n\nProvide comprehensive analysis in the specified JSON format.`;
+      mainContent += `\n\n--- SUPPLEMENTARY CONTEXT ---\nIf screenshots lack detail, use this minimal trading data as context only: ${JSON.stringify(condensedTrades)}`;
+    }
+
+    mainContent += `\n\nProvide comprehensive visual analysis in the specified JSON format, focusing primarily on what you can see in the uploaded screenshots.`;
 
     // Start with the text part
     const parts = [{ text: mainContent }];

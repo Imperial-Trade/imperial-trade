@@ -597,7 +597,7 @@ const MeccaAnalysisHub: React.FC = () => {
                           exit={{ opacity: 0, x: 20 }}
                           className="mecca-tab-content"
                         >
-                          {analysisResult.strengths.map((strength, index) => (
+                          {(analysisResult.strengths || []).map((strength, index) => (
                             <motion.div
                               key={index}
                               className="mecca-analysis-card bg-emerald-50/50 border-emerald-200/30"
@@ -618,7 +618,7 @@ const MeccaAnalysisHub: React.FC = () => {
                           exit={{ opacity: 0, x: 20 }}
                           className="space-y-3"
                         >
-                          {analysisResult.improvements.map((improvement, index) => (
+                          {(analysisResult.improvements || []).map((improvement, index) => (
                             <motion.div
                               key={index}
                               className="p-4 rounded-lg bg-orange-50/50 border border-orange-200/30"
@@ -895,7 +895,7 @@ const MeccaAnalysisHub: React.FC = () => {
                         Strengths
                       </h4>
                       <div className="space-y-3">
-                        {analysisResult.strengths.map((strength, index) => (
+                        {(analysisResult.strengths || []).map((strength, index) => (
                           <motion.div
                             key={index}
                             initial={{ opacity: 0, y: 10 }}
@@ -924,7 +924,7 @@ const MeccaAnalysisHub: React.FC = () => {
                         Areas for Improvement
                       </h4>
                       <div className="space-y-3">
-                        {analysisResult.improvements.map((improvement, index) => (
+                        {(analysisResult.improvements || []).map((improvement, index) => (
                           <motion.div
                             key={index}
                             initial={{ opacity: 0, y: 10 }}
@@ -953,17 +953,17 @@ const MeccaAnalysisHub: React.FC = () => {
                         AI Recommendations
                       </h4>
                       <div className="space-y-3">
-                        {analysisResult.recommendations.map((recommendation, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.9 + index * 0.1 }}
-                            className="p-3 bg-white/60 rounded-lg border border-violet-200/30"
-                          >
-                            <p className="text-violet-800 text-sm leading-relaxed">{recommendation}</p>
-                          </motion.div>
-                        ))}
+                          {(analysisResult.recommendations || []).map((recommendation, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.9 + index * 0.1 }}
+                              className="p-3 bg-white/60 rounded-lg border border-violet-200/30"
+                            >
+                              <p className="text-violet-800 text-sm leading-relaxed">{recommendation}</p>
+                            </motion.div>
+                          ))}
                       </div>
                     </Card>
                   </motion.div>
@@ -985,7 +985,7 @@ const MeccaAnalysisHub: React.FC = () => {
                         Key AI Insights
                       </h4>
                       <div className="grid md:grid-cols-2 gap-4">
-                        {analysisResult.key_insights.map((insight, index) => (
+                        {(analysisResult.key_insights || []).map((insight, index) => (
                           <motion.div
                             key={index}
                             initial={{ opacity: 0, scale: 0.9 }}

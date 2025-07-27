@@ -414,11 +414,11 @@ const MeccaAnalysisHub: React.FC = () => {
                   <span className="hidden sm:inline">Evidence Gallery</span>
                   <span className="sm:hidden">Gallery</span>
                 </h4>
-                <div className="mecca-file-gallery">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                   {uploadedFiles.map((file, index) => (
                     <motion.div
                       key={index}
-                      className="relative rounded-lg overflow-hidden border border-violet-200/30 group hover:border-violet-400/50 transition-colors"
+                      className="relative rounded-lg overflow-hidden border border-violet-200/30 group hover:border-violet-400/50 transition-colors aspect-video"
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: index * 0.1 }}
@@ -426,7 +426,7 @@ const MeccaAnalysisHub: React.FC = () => {
                       <img
                         src={file.preview}
                         alt={`Upload ${index + 1}`}
-                        className="w-full h-12 sm:h-16 object-cover"
+                        className="w-full h-full object-cover"
                       />
                       
                       {/* Upload Progress Overlay */}

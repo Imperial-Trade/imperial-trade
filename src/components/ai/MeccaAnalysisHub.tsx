@@ -766,100 +766,42 @@ const MeccaAnalysisHub: React.FC = () => {
                 </Card>
               </>
             ) : (
-              <>
-                {/* Always Show KPI Section with Real Data */}
-                <div className="mecca-kpi-grid">
-                  {[
-                    { 
-                      label: 'Win Rate', 
-                      value: metrics.winRate > 0 ? `${metrics.winRate.toFixed(0)}%` : '0%', 
-                      icon: TrendingUp, 
-                      color: 'emerald' 
-                    },
-                    { 
-                      label: 'Total P&L', 
-                      value: `$${metrics.totalPnl.toFixed(0)}`, 
-                      icon: Target, 
-                      color: metrics.totalPnl >= 0 ? 'emerald' : 'red' 
-                    },
-                    { 
-                      label: 'Risk Score', 
-                      value: `${metrics.riskScore}/10`, 
-                      icon: Shield, 
-                      color: 'violet' 
-                    },
-                    { 
-                      label: 'Trades Analyzed', 
-                      value: metrics.tradesAnalyzed.toString(), 
-                      icon: Activity, 
-                      color: 'blue' 
-                    },
-                  ].map((kpi, index) => (
-                    <motion.div
-                      key={kpi.label}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <Card className="mecca-panel mecca-glass p-3 sm:p-4 mecca-violet-glow">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div className={`p-1.5 sm:p-2 rounded-lg bg-${kpi.color}-500/10`}>
-                            <kpi.icon className={`w-4 h-4 sm:w-5 sm:h-5 text-${kpi.color}-500`} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs sm:text-sm text-muted-foreground truncate">{kpi.label}</p>
-                            <motion.p 
-                              className="text-sm sm:text-xl font-bold truncate"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: 0.5 }}
-                            >
-                              {kpi.value}
-                            </motion.p>
-                          </div>
-                        </div>
-                      </Card>
-                    </motion.div>
-                  ))}
+              <Card className="mecca-panel mecca-glass text-center p-6 sm:p-12">
+                <div className="mecca-neural-brain mx-auto mb-4">
+                  <NeuralBrain />
                 </div>
-
-                <Card className="mecca-panel mecca-glass text-center p-6 sm:p-12">
-                  <div className="mecca-neural-brain mx-auto mb-4">
-                    <NeuralBrain />
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-semibold mb-2 mecca-gradient-text">Ready for Analysis</h3>
-                  <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
-                    Upload your trading screenshots and let MECCA analyze your performance with AI-powered insights.
-                  </p>
-                  {(metrics.totalPnl !== 0 || metrics.riskScore !== 0 || metrics.tradesAnalyzed > 0) && (
-                    <div className="mt-4 pt-4 border-t border-border/30">
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Showing data from your previous analysis sessions
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          if (user?.id) {
-                            try {
-                              await supabase.from('agent_outputs').delete().eq('user_id', user.id);
-                              await supabase.from('screenshot_analysis_history').delete().eq('user_id', user.id);
-                              await supabase.from('user_trading_profiles').delete().eq('user_id', user.id);
-                              toast({ title: "Data cleared", description: "Your analysis history has been reset." });
-                              window.location.reload();
-                            } catch (error) {
-                              toast({ title: "Error", description: "Failed to clear data.", variant: "destructive" });
-                            }
+                <h3 className="text-lg sm:text-xl font-semibold mb-2 mecca-gradient-text">Ready for Analysis</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
+                  Upload your trading screenshots and let MECCA analyze your performance with AI-powered insights.
+                </p>
+                {(metrics.totalPnl !== 0 || metrics.riskScore !== 0 || metrics.tradesAnalyzed > 0) && (
+                  <div className="mt-4 pt-4 border-t border-border/30">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      You have previous analysis data. Analyze new screenshots to see updated metrics.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        if (user?.id) {
+                          try {
+                            await supabase.from('agent_outputs').delete().eq('user_id', user.id);
+                            await supabase.from('screenshot_analysis_history').delete().eq('user_id', user.id);
+                            await supabase.from('user_trading_profiles').delete().eq('user_id', user.id);
+                            toast({ title: "Data cleared", description: "Your analysis history has been reset." });
+                            window.location.reload();
+                          } catch (error) {
+                            toast({ title: "Error", description: "Failed to clear data.", variant: "destructive" });
                           }
-                        }}
-                        className="text-xs"
-                      >
-                        Clear Previous Data
-                      </Button>
-                    </div>
-                  )}
-                </Card>
-              </>
+                        }
+                      }}
+                      className="text-xs"
+                    >
+                      Clear Previous Data
+                    </Button>
+                  </div>
+                )}
+              </Card>
             )}
           </motion.div>
 

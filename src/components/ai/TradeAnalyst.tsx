@@ -279,14 +279,62 @@ export default function TradeAnalyst() {
         </CardHeader>
         <CardContent className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
           {/* Upload Area */}
-          <div className="border-2 border-dashed border-purple-500/30 rounded-xl p-6 sm:p-8 lg:p-12 text-center hover:border-purple-500/50 transition-colors cursor-pointer bg-gradient-to-br from-purple-500/5 to-blue-500/5 touch-manipulation" onClick={() => fileInputRef.current?.click()}>
-            <div className="flex flex-col items-center gap-3 sm:gap-4">
-              <div className="p-3 sm:p-4 rounded-full bg-purple-500/20 border border-purple-500/30">
-                <Upload className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-purple-400" />
+          <div 
+            className="relative border-2 border-dashed border-purple-500/30 rounded-xl p-6 sm:p-8 lg:p-12 text-center hover:border-purple-500/50 transition-all duration-300 cursor-pointer bg-gradient-to-br from-purple-500/5 to-blue-500/5 touch-manipulation overflow-hidden group"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {/* Premium SVG Background Effect */}
+            <svg 
+              className="absolute inset-0 w-full h-full opacity-10 group-hover:opacity-20 transition-opacity duration-300" 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 400 400"
+              preserveAspectRatio="xMidYMid slice"
+            >
+              <defs>
+                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0.3" />
+                  <stop offset="50%" stopColor="hsl(217.2 91.2% 59.8%)" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0.1" />
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                  <feMerge> 
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+              
+              {/* Animated Circles */}
+              <circle cx="100" cy="100" r="40" fill="url(#grad1)" filter="url(#glow)">
+                <animate attributeName="cy" values="100;120;100" dur="4s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.3;0.6;0.3" dur="4s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="300" cy="150" r="30" fill="url(#grad1)" filter="url(#glow)">
+                <animate attributeName="cx" values="300;280;300" dur="3s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.2;0.5;0.2" dur="3s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="200" cy="300" r="35" fill="url(#grad1)" filter="url(#glow)">
+                <animate attributeName="r" values="35;45;35" dur="5s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.4;0.7;0.4" dur="5s" repeatCount="indefinite" />
+              </circle>
+              
+              {/* Flowing Lines */}
+              <path d="M50,200 Q200,150 350,200 T650,200" stroke="url(#grad1)" strokeWidth="2" fill="none" opacity="0.4">
+                <animate attributeName="d" values="M50,200 Q200,150 350,200 T650,200;M50,200 Q200,180 350,160 T650,200;M50,200 Q200,150 350,200 T650,200" dur="6s" repeatCount="indefinite" />
+              </path>
+              <path d="M0,100 Q150,80 300,100 T600,100" stroke="url(#grad1)" strokeWidth="1.5" fill="none" opacity="0.3">
+                <animate attributeName="d" values="M0,100 Q150,80 300,100 T600,100;M0,100 Q150,120 300,140 T600,100;M0,100 Q150,80 300,100 T600,100" dur="8s" repeatCount="indefinite" />
+              </path>
+            </svg>
+
+            <div className="relative z-10 flex flex-col items-center gap-3 sm:gap-4">
+              <div className="p-3 sm:p-4 rounded-full bg-purple-500/20 border border-purple-500/30 group-hover:bg-purple-500/30 group-hover:border-purple-500/50 transition-all duration-300 group-hover:scale-110">
+                <Upload className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-purple-400 group-hover:text-purple-300 transition-colors duration-300" />
               </div>
               <div>
-                <p className="text-lg sm:text-xl font-semibold mb-2">Drop screenshots here or click to upload</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-lg sm:text-xl font-semibold mb-2 group-hover:text-purple-300 transition-colors duration-300">Drop screenshots here or click to upload</p>
+                <p className="text-sm text-muted-foreground group-hover:text-muted-foreground/80 transition-colors duration-300">
                   PNG, JPG, JPEG up to 10MB each • Maximum 5 files
                 </p>
               </div>

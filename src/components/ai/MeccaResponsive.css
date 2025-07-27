@@ -65,7 +65,7 @@
 
 /* Touch-friendly buttons */
 .mecca-touch-button {
-  @apply transition-all min-h-[44px] lg:min-h-auto;
+  @apply transition-all min-h-[44px] lg:min-h-0;
 }
 
 /* Neural brain sizing */

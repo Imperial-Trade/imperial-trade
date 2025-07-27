@@ -536,10 +536,10 @@ const MeccaAnalysisHub: React.FC = () => {
                 {/* KPI Section */}
                 <div className="mecca-kpi-grid">
                   {[
-                    { label: 'Win Rate', value: `${analysisResult.performance_metrics.win_rate}%`, icon: TrendingUp, color: 'emerald' },
-                    { label: 'Total P&L', value: `$${analysisResult.performance_metrics.total_pnl}`, icon: Target, color: analysisResult.performance_metrics.total_pnl >= 0 ? 'emerald' : 'red' },
-                    { label: 'Risk Score', value: `${analysisResult.performance_metrics.risk_score}/10`, icon: Shield, color: 'violet' },
-                    { label: 'Trades', value: analysisResult.performance_metrics.trades_analyzed.toString(), icon: Activity, color: 'blue' },
+                    { label: 'Win Rate', value: `${analysisResult.performance_metrics?.win_rate || 0}%`, icon: TrendingUp, color: 'emerald' },
+                    { label: 'Total P&L', value: `$${analysisResult.performance_metrics?.total_pnl || 0}`, icon: Target, color: (analysisResult.performance_metrics?.total_pnl || 0) >= 0 ? 'emerald' : 'red' },
+                    { label: 'Risk Score', value: `${analysisResult.performance_metrics?.risk_score || 0}/10`, icon: Shield, color: 'violet' },
+                    { label: 'Trades', value: (analysisResult.performance_metrics?.trades_analyzed || 0).toString(), icon: Activity, color: 'blue' },
                   ].map((kpi, index) => (
                     <motion.div
                       key={kpi.label}

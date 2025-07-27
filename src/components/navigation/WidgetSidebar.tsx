@@ -71,6 +71,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -99,6 +100,31 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
       document.removeEventListener("mouseleave", handleMouseLeave);
     };
   }, [isVisible, isHovering]);
+
+  // Touch event handlers for swipe gestures
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setTouchStart({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStart.x;
+    const deltaY = touch.clientY - touchStart.y;
+
+    // Check if it's a horizontal swipe (more horizontal than vertical)
+    const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY);
+    const isLeftSwipe = deltaX < -50; // Swipe left with at least 50px distance
+
+    if (isHorizontalSwipe && isLeftSwipe) {
+      setIsVisible(false);
+      setShowProfileDropdown(false);
+    }
+
+    setTouchStart(null);
+  };
 
   const handleToolClick = (tool: (typeof tradingTools)[0]) => {
     setActiveTool(tool.name);
@@ -325,6 +351,8 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
         setIsVisible(false);
         setShowProfileDropdown(false);
       }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       whileHover={{
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
         scale: 1.01,

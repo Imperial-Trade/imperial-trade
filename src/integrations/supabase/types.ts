@@ -337,6 +337,42 @@ export type Database = {
         }
         Relationships: []
       }
+      collection_posts: {
+        Row: {
+          added_at: string
+          collection_id: string
+          id: string
+          post_id: string
+        }
+        Insert: {
+          added_at?: string
+          collection_id: string
+          id?: string
+          post_id: string
+        }
+        Update: {
+          added_at?: string
+          collection_id?: string
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_posts_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "post_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_posts_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           course_id: string
@@ -560,6 +596,7 @@ export type Database = {
           category: Database["public"]["Enums"]["post_category"]
           content: string
           created_at: string
+          difficulty: string | null
           id: string
           images: string[] | null
           likes: number
@@ -573,6 +610,7 @@ export type Database = {
           category?: Database["public"]["Enums"]["post_category"]
           content: string
           created_at?: string
+          difficulty?: string | null
           id?: string
           images?: string[] | null
           likes?: number
@@ -586,6 +624,7 @@ export type Database = {
           category?: Database["public"]["Enums"]["post_category"]
           content?: string
           created_at?: string
+          difficulty?: string | null
           id?: string
           images?: string[] | null
           likes?: number
@@ -972,6 +1011,33 @@ export type Database = {
         }
         Relationships: []
       }
+      post_collections: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       post_likes: {
         Row: {
           created_at: string | null
@@ -1325,6 +1391,54 @@ export type Database = {
           stop_loss?: number
           take_profit?: number
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      screenshot_analysis_history: {
+        Row: {
+          analysis_session_id: string | null
+          assets_identified: string[] | null
+          created_at: string
+          extracted_data: Json | null
+          id: string
+          patterns_detected: Json | null
+          performance_metrics: Json | null
+          platform_identified: string | null
+          screenshot_urls: string[]
+          timeframe_detected: string | null
+          trading_style_indicators: Json | null
+          user_feedback_score: number | null
+          user_id: string
+        }
+        Insert: {
+          analysis_session_id?: string | null
+          assets_identified?: string[] | null
+          created_at?: string
+          extracted_data?: Json | null
+          id?: string
+          patterns_detected?: Json | null
+          performance_metrics?: Json | null
+          platform_identified?: string | null
+          screenshot_urls: string[]
+          timeframe_detected?: string | null
+          trading_style_indicators?: Json | null
+          user_feedback_score?: number | null
+          user_id: string
+        }
+        Update: {
+          analysis_session_id?: string | null
+          assets_identified?: string[] | null
+          created_at?: string
+          extracted_data?: Json | null
+          id?: string
+          patterns_detected?: Json | null
+          performance_metrics?: Json | null
+          platform_identified?: string | null
+          screenshot_urls?: string[]
+          timeframe_detected?: string | null
+          trading_style_indicators?: Json | null
+          user_feedback_score?: number | null
           user_id?: string
         }
         Relationships: []
@@ -1768,6 +1882,51 @@ export type Database = {
           },
         ]
       }
+      user_personalization_preferences: {
+        Row: {
+          analysis_depth: string | null
+          benchmark_comparisons: boolean | null
+          created_at: string
+          feedback_style: string | null
+          focus_areas: string[] | null
+          historical_context: boolean | null
+          id: string
+          notification_preferences: Json | null
+          preferred_charts: string[] | null
+          progressive_difficulty: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_depth?: string | null
+          benchmark_comparisons?: boolean | null
+          created_at?: string
+          feedback_style?: string | null
+          focus_areas?: string[] | null
+          historical_context?: boolean | null
+          id?: string
+          notification_preferences?: Json | null
+          preferred_charts?: string[] | null
+          progressive_difficulty?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_depth?: string | null
+          benchmark_comparisons?: boolean | null
+          created_at?: string
+          feedback_style?: string | null
+          focus_areas?: string[] | null
+          historical_context?: boolean | null
+          id?: string
+          notification_preferences?: Json | null
+          preferred_charts?: string[] | null
+          progressive_difficulty?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_progress: {
         Row: {
           created_at: string
@@ -1777,6 +1936,7 @@ export type Database = {
           user_email: string
           user_id: string
           video_id: string
+          watch_time_minutes: number | null
         }
         Insert: {
           created_at?: string
@@ -1786,6 +1946,7 @@ export type Database = {
           user_email: string
           user_id: string
           video_id: string
+          watch_time_minutes?: number | null
         }
         Update: {
           created_at?: string
@@ -1795,6 +1956,7 @@ export type Database = {
           user_email?: string
           user_id?: string
           video_id?: string
+          watch_time_minutes?: number | null
         }
         Relationships: []
       }
@@ -1870,6 +2032,57 @@ export type Database = {
         }
         Relationships: []
       }
+      user_trading_profiles: {
+        Row: {
+          chart_preferences: Json | null
+          created_at: string
+          entry_patterns: Json | null
+          exit_patterns: Json | null
+          id: string
+          learning_progress: Json | null
+          performance_benchmarks: Json | null
+          platform_detected: string | null
+          preferred_assets: Json | null
+          risk_tolerance: string | null
+          session_patterns: Json | null
+          trading_style: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chart_preferences?: Json | null
+          created_at?: string
+          entry_patterns?: Json | null
+          exit_patterns?: Json | null
+          id?: string
+          learning_progress?: Json | null
+          performance_benchmarks?: Json | null
+          platform_detected?: string | null
+          preferred_assets?: Json | null
+          risk_tolerance?: string | null
+          session_patterns?: Json | null
+          trading_style?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chart_preferences?: Json | null
+          created_at?: string
+          entry_patterns?: Json | null
+          exit_patterns?: Json | null
+          id?: string
+          learning_progress?: Json | null
+          performance_benchmarks?: Json | null
+          platform_detected?: string | null
+          preferred_assets?: Json | null
+          risk_tolerance?: string | null
+          session_patterns?: Json | null
+          trading_style?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       verified_traders: {
         Row: {
           created_at: string
@@ -1927,6 +2140,7 @@ export type Database = {
           description: string | null
           difficulty: string | null
           duration: number | null
+          duration_minutes: number | null
           embed_code: string | null
           id: string
           is_active: boolean | null
@@ -1948,6 +2162,7 @@ export type Database = {
           description?: string | null
           difficulty?: string | null
           duration?: number | null
+          duration_minutes?: number | null
           embed_code?: string | null
           id?: string
           is_active?: boolean | null
@@ -1969,6 +2184,7 @@ export type Database = {
           description?: string | null
           difficulty?: string | null
           duration?: number | null
+          duration_minutes?: number | null
           embed_code?: string | null
           id?: string
           is_active?: boolean | null
@@ -2009,6 +2225,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      update_trading_profile_from_analysis: {
+        Args: { p_user_id: string; p_analysis_data: Json }
+        Returns: undefined
+      }
     }
     Enums: {
       access_level_enum: "user" | "moderator" | "admin"
@@ -2040,7 +2260,7 @@ export type Database = {
         | "analysis"
         | "news"
         | "strategy"
-      progress_status: "completed" | "in_progress"
+      progress_status: "completed" | "in_progress" | "started"
       registration_source_enum:
         | "direct"
         | "account_request"
@@ -2216,7 +2436,7 @@ export const Constants = {
       impact_level: ["High", "Medium", "Low"],
       mood_type: ["Confident", "Anxious", "Greedy", "Fearful", "Neutral"],
       post_category: ["discussion", "question", "analysis", "news", "strategy"],
-      progress_status: ["completed", "in_progress"],
+      progress_status: ["completed", "in_progress", "started"],
       registration_source_enum: [
         "direct",
         "account_request",

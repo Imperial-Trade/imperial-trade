@@ -1,6 +1,6 @@
 /* MECCA Analysis Hub - Responsive Design System */
 
-/* Mobile First Approach - Base styles for mobile devices */
+/* Base component styles */
 .mecca-hub {
   @apply min-h-screen bg-gradient-to-br from-background via-background/95 to-violet-500/5;
 }
@@ -9,224 +9,78 @@
   @apply border-b border-border/50 bg-card/30 backdrop-blur-sm;
 }
 
+/* Responsive grid layout */
 .mecca-main-grid {
-  @apply grid grid-cols-1 gap-4 min-h-[600px];
-  
-  /* Mobile: Stack all panels vertically */
-  @screen sm {
-    @apply gap-6;
-  }
-  
-  /* Tablet: 2 panels side by side, one stacked */
-  @screen md {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-    
-    .mecca-left-panel {
-      grid-column: 1 / -1;
-      grid-row: 1;
-    }
-    
-    .mecca-center-panel {
-      grid-column: 1;
-      grid-row: 2;
-    }
-    
-    .mecca-right-panel {
-      grid-column: 2;
-      grid-row: 2;
-    }
-  }
-  
-  /* Desktop: Full 3-panel layout */
-  @screen lg {
-    @apply grid-cols-12;
-    grid-template-rows: none;
-    
-    .mecca-left-panel {
-      @apply col-span-3;
-      grid-row: auto;
-    }
-    
-    .mecca-center-panel {
-      @apply col-span-6;
-      grid-row: auto;
-    }
-    
-    .mecca-right-panel {
-      @apply col-span-3;
-      grid-row: auto;
-    }
-  }
+  @apply grid grid-cols-1 gap-4 min-h-[600px] md:gap-6 lg:grid-cols-12;
 }
 
-/* Panel specific styles */
+.mecca-left-panel {
+  @apply md:col-span-2 lg:col-span-3;
+}
+
+.mecca-center-panel {
+  @apply md:col-span-2 lg:col-span-6;
+}
+
+.mecca-right-panel {
+  @apply md:col-span-2 lg:col-span-3;
+}
+
+/* Panel styles */
 .mecca-panel {
-  @apply bg-card/50 backdrop-blur-sm border-violet-200/20 rounded-lg;
-  
-  /* Mobile: Smaller padding */
-  @apply p-3;
-  
-  /* Tablet and up: More padding */
-  @screen sm {
-    @apply p-4;
-  }
-  
-  /* Desktop: Full padding */
-  @screen lg {
-    @apply p-6;
-  }
+  @apply bg-card/50 backdrop-blur-sm border-violet-200/20 rounded-lg p-3 sm:p-4 lg:p-6;
 }
 
-/* Upload zone responsive sizing */
+/* Upload zone */
 .mecca-upload-zone {
   @apply border-2 border-dashed border-violet-300/50 rounded-lg text-center cursor-pointer 
-         hover:border-violet-400/70 transition-colors bg-gradient-to-br from-violet-50/10 to-purple-50/10;
-  
-  /* Mobile: Compact upload area */
-  @apply p-4;
-  
-  /* Tablet and up: More spacious */
-  @screen sm {
-    @apply p-6;
-  }
+         hover:border-violet-400/70 transition-colors bg-gradient-to-br from-violet-50/10 to-purple-50/10
+         p-4 sm:p-6;
 }
 
-/* KPI Grid responsive layout */
+/* KPI Grid */
 .mecca-kpi-grid {
-  @apply grid gap-3;
-  
-  /* Mobile: 2 columns */
-  grid-template-columns: repeat(2, 1fr);
-  
-  /* Tablet: 2 columns */
-  @screen sm {
-    grid-template-columns: repeat(2, 1fr);
-    @apply gap-4;
-  }
-  
-  /* Desktop: 4 columns */
-  @screen md {
-    grid-template-columns: repeat(4, 1fr);
-  }
+  @apply grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4;
 }
 
-/* File gallery responsive grid */
+/* File gallery */
 .mecca-file-gallery {
-  @apply grid gap-2;
-  
-  /* Mobile: 2 columns */
-  grid-template-columns: repeat(2, 1fr);
-  
-  /* Tablet: 3 columns */
-  @screen sm {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  
-  /* Desktop: 2 columns in sidebar */
-  @screen lg {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  @apply grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2;
 }
 
-/* Insight stream scrollable area */
+/* Insight stream */
 .mecca-insight-stream {
-  @apply space-y-2 overflow-y-auto;
-  
-  /* Mobile: Limited height */
-  max-height: 300px;
-  
-  /* Tablet and up: More height */
-  @screen sm {
-    max-height: 400px;
-  }
-  
-  /* Desktop: Full height */
-  @screen lg {
-    max-height: 500px;
-  }
+  @apply space-y-2 overflow-y-auto max-h-[300px] sm:max-h-[400px] lg:max-h-[500px];
 }
 
-/* Tab content responsive spacing */
+/* Tab content */
 .mecca-tab-content {
-  @apply space-y-2;
-  
-  /* Tablet and up: More spacing */
-  @screen sm {
-    @apply space-y-3;
-  }
+  @apply space-y-2 sm:space-y-3;
 }
 
-/* Analysis cards responsive padding */
+/* Analysis cards */
 .mecca-analysis-card {
-  @apply p-3 rounded-lg border;
-  
-  /* Tablet and up: More padding */
-  @screen sm {
-    @apply p-4;
-  }
+  @apply p-3 sm:p-4 rounded-lg border;
 }
 
-/* Touch-friendly button sizing */
+/* Touch-friendly buttons */
 .mecca-touch-button {
-  @apply transition-all;
-  
-  /* Mobile: Larger touch targets */
-  min-height: 44px;
-  
-  /* Desktop: Standard sizing */
-  @screen lg {
-    min-height: auto;
-  }
+  @apply transition-all min-h-[44px] lg:min-h-auto;
 }
 
-/* Neural brain scaling */
+/* Neural brain sizing */
 .mecca-neural-brain {
-  @apply relative;
-  
-  /* Mobile: Smaller brain */
-  width: 48px;
-  height: 48px;
-  
-  /* Tablet and up: Standard size */
-  @screen sm {
-    width: 64px;
-    height: 64px;
-  }
+  @apply relative w-12 h-12 sm:w-16 sm:h-16;
 }
 
-/* Progress indicators responsive sizing */
+/* Progress bars */
 .mecca-progress {
-  @apply h-2;
-  
-  /* Desktop: Slightly thicker */
-  @screen lg {
-    @apply h-3;
-  }
+  @apply h-2 lg:h-3;
 }
 
-/* Floating particles responsive density */
-.mecca-particles {
-  /* Mobile: Fewer particles for performance */
-  --particle-count: 3;
-  
-  /* Desktop: More particles for premium feel */
-  @screen lg {
-    --particle-count: 6;
-  }
-}
-
-/* Badge positioning responsive */
+/* Badge positioning */
 .mecca-badge {
-  @apply absolute text-xs;
-  
-  /* Mobile: Larger badges for touch */
-  @apply bottom-1 right-1 px-2 py-1;
-  
-  /* Desktop: Smaller, refined badges */
-  @screen lg {
-    @apply bottom-0.5 right-0.5 px-1 py-0.5;
-  }
+  @apply absolute text-xs bottom-1 right-1 px-2 py-1 lg:bottom-0.5 lg:right-0.5 lg:px-1 lg:py-0.5;
 }
 
 /* Premium glassmorphism effects */
@@ -237,35 +91,38 @@
   box-shadow: 0 8px 32px rgba(139, 92, 246, 0.1);
 }
 
-/* Violet accent colors using CSS variables */
+/* Violet glow effect */
 .mecca-violet-glow {
-  box-shadow: 0 0 20px hsl(var(--violet-500) / 0.3);
+  box-shadow: 0 0 20px hsl(262 83% 58% / 0.3);
 }
 
+/* Gradient text */
 .mecca-gradient-text {
-  background: linear-gradient(135deg, hsl(var(--violet-600)), hsl(var(--purple-600)));
+  background: linear-gradient(135deg, hsl(262 83% 58%), hsl(270 91% 65%));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Animation performance optimizations */
+/* Animation performance */
 .mecca-animate {
   transform: translateZ(0);
   backface-visibility: hidden;
   perspective: 1000px;
 }
 
-/* Dark mode specific adjustments */
-.dark .mecca-panel {
-  @apply bg-card/30 border-violet-400/20;
-}
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .mecca-panel {
+    @apply bg-card/30 border-violet-400/20;
+  }
 
-.dark .mecca-upload-zone {
-  @apply border-violet-400/50 bg-gradient-to-br from-violet-500/10 to-purple-500/10;
-}
+  .mecca-upload-zone {
+    @apply border-violet-400/50 bg-gradient-to-br from-violet-500/10 to-purple-500/10;
+  }
 
-.dark .mecca-glass {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  .mecca-glass {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+  }
 }

@@ -54,6 +54,7 @@ const MeccaAnalysisHub: React.FC = () => {
   const [activeTab, setActiveTab] = useState('strengths');
   const [scanlinePosition, setScanlinePosition] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<AgentOutput | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -774,27 +775,52 @@ const MeccaAnalysisHub: React.FC = () => {
               <Card className="mecca-panel mecca-glass">
                 <h4 className="font-medium mb-3 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-violet-500" />
-                  <span className="hidden sm:inline">Recent Analysis</span>
+                  <span className="hidden sm:inline">Analysis History</span>
                   <span className="sm:hidden">History</span>
                 </h4>
-                <div className="space-y-2">
-                  {analysisHistory.slice(0, 3).map((analysis, index) => (
-                    <motion.div
-                      key={analysis.id}
-                      className="p-2 sm:p-3 rounded-lg bg-muted/30 border border-muted-foreground/10 cursor-pointer hover:bg-muted/50 transition-colors mecca-touch-button"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(analysis.created_at).toLocaleDateString()}
-                        </span>
-                        <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                      </div>
-                    </motion.div>
-                  ))}
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {analysisHistory.slice(0, 5).map((analysis, index) => {
+                    const analysisData = typeof analysis.output_text === 'string' 
+                      ? JSON.parse(analysis.output_text) 
+                      : analysis.output_text;
+                    
+                    return (
+                      <motion.div
+                        key={analysis.id}
+                        className="p-3 rounded-lg bg-muted/30 border border-muted-foreground/10 cursor-pointer hover:bg-violet-50/50 hover:border-violet-200/50 transition-all duration-200 mecca-touch-button group"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        onClick={() => setSelectedHistoryItem(analysis)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium text-violet-600">
+                                {new Date(analysis.created_at).toLocaleDateString()}
+                              </span>
+                              <Badge variant="secondary" className="text-xs px-2 py-0">
+                                {analysisData?.screenshot_analysis?.images_processed || 'N/A'} images
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {analysisData?.trader_behavior?.experience_level || 'Analysis'} • {analysisData?.risk_assessment?.risk_score || 'N/A'}/10 risk
+                            </p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-violet-500 transition-colors" />
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
+                
+                {analysisHistory.length > 5 && (
+                  <div className="mt-3 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      Showing recent 5 of {analysisHistory.length} analyses
+                    </p>
+                  </div>
+                )}
               </Card>
             )}
           </motion.div>
@@ -1077,6 +1103,186 @@ const MeccaAnalysisHub: React.FC = () => {
                     New Analysis
                   </Button>
                 </motion.div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Previous Analysis Modal */}
+      <AnimatePresence>
+        {selectedHistoryItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSelectedHistoryItem(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="relative w-full max-w-4xl max-h-[90vh] bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl shadow-2xl border border-violet-200/50 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="relative bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 text-white p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white/20 rounded-full">
+                      <Activity className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">Previous Analysis</h2>
+                      <p className="text-violet-100 opacity-90">
+                        {new Date(selectedHistoryItem.created_at).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedHistoryItem(null)}
+                    className="text-white hover:bg-white/20 rounded-full p-2"
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="max-h-[calc(90vh-120px)] overflow-y-auto p-6">
+                {(() => {
+                  try {
+                    const analysisData = typeof selectedHistoryItem.output_text === 'string' 
+                      ? JSON.parse(selectedHistoryItem.output_text) 
+                      : selectedHistoryItem.output_text;
+
+                    return (
+                      <div className="space-y-6">
+                        {/* Analysis Overview */}
+                        <Card className="p-6 bg-white/80 backdrop-blur-sm border border-violet-200/30">
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                            <div className="text-center">
+                              <p className="text-sm text-muted-foreground">Images Processed</p>
+                              <p className="text-2xl font-bold text-violet-600">
+                                {analysisData?.screenshot_analysis?.images_processed || 'N/A'}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm text-muted-foreground">Platform</p>
+                              <p className="text-lg font-semibold text-gray-700">
+                                {analysisData?.screenshot_analysis?.platform_detected || 'Unknown'}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm text-muted-foreground">Experience Level</p>
+                              <p className="text-lg font-semibold text-blue-600">
+                                {analysisData?.trader_behavior?.experience_level || 'N/A'}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm text-muted-foreground">Risk Score</p>
+                              <p className="text-2xl font-bold text-orange-600">
+                                {analysisData?.risk_assessment?.risk_score || 'N/A'}/10
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+
+                        {/* Analysis Sections */}
+                        <div className="grid md:grid-cols-3 gap-6">
+                          {/* Strengths */}
+                          <Card className="p-4 bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200/30">
+                            <h4 className="font-semibold text-emerald-800 mb-3 flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4" />
+                              Strengths
+                            </h4>
+                            <div className="space-y-2">
+                              {(analysisData?.strengths || []).slice(0, 3).map((strength: string, index: number) => (
+                                <div key={index} className="p-2 bg-white/60 rounded text-xs text-emerald-800">
+                                  {strength}
+                                </div>
+                              ))}
+                            </div>
+                          </Card>
+
+                          {/* Improvements */}
+                          <Card className="p-4 bg-gradient-to-br from-orange-50 to-yellow-50 border border-orange-200/30">
+                            <h4 className="font-semibold text-orange-800 mb-3 flex items-center gap-2">
+                              <Target className="w-4 h-4" />
+                              Improvements
+                            </h4>
+                            <div className="space-y-2">
+                              {(analysisData?.improvements || []).slice(0, 3).map((improvement: string, index: number) => (
+                                <div key={index} className="p-2 bg-white/60 rounded text-xs text-orange-800">
+                                  {improvement}
+                                </div>
+                              ))}
+                            </div>
+                          </Card>
+
+                          {/* Recommendations */}
+                          <Card className="p-4 bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200/30">
+                            <h4 className="font-semibold text-violet-800 mb-3 flex items-center gap-2">
+                              <Zap className="w-4 h-4" />
+                              Recommendations
+                            </h4>
+                            <div className="space-y-2">
+                              {(analysisData?.recommendations || []).slice(0, 3).map((recommendation: string, index: number) => (
+                                <div key={index} className="p-2 bg-white/60 rounded text-xs text-violet-800">
+                                  {recommendation}
+                                </div>
+                              ))}
+                            </div>
+                          </Card>
+                        </div>
+
+                        {/* Trading Behavior Insights */}
+                        {analysisData?.trader_behavior && (
+                          <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/30">
+                            <h4 className="font-semibold text-blue-800 mb-4 flex items-center gap-2">
+                              <Brain className="w-5 h-5" />
+                              Trading Behavior Analysis
+                            </h4>
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-sm font-medium text-blue-700 mb-2">Discipline Signs:</p>
+                                <div className="space-y-1">
+                                  {(analysisData.trader_behavior.discipline_signs || []).slice(0, 2).map((sign: string, index: number) => (
+                                    <p key={index} className="text-xs text-blue-600 bg-white/60 p-2 rounded">{sign}</p>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-blue-700 mb-2">Warning Signs:</p>
+                                <div className="space-y-1">
+                                  {(analysisData.trader_behavior.warning_signs || []).slice(0, 2).map((warning: string, index: number) => (
+                                    <p key={index} className="text-xs text-blue-600 bg-white/60 p-2 rounded">{warning}</p>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        )}
+                      </div>
+                    );
+                  } catch (error) {
+                    return (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">Unable to display analysis data</p>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
             </motion.div>
           </motion.div>

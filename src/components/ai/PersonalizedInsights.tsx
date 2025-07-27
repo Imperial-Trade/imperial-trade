@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Brain, TrendingUp, Target, Award, BarChart3, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TradingProfile {
   trading_style: string;
@@ -24,29 +25,37 @@ interface AnalysisHistory {
 }
 
 export const PersonalizedInsights: React.FC = () => {
+  const { user } = useAuth();
+
   const { data: tradingProfile } = useQuery({
-    queryKey: ['user-trading-profile'],
+    queryKey: ['user-trading-profile', user?.id],
     queryFn: async () => {
+      if (!user?.id) return null;
       const { data, error } = await supabase
         .from('user_trading_profiles')
         .select('*')
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle();
       if (error) throw error;
-      return data as TradingProfile;
-    }
+      return data as TradingProfile | null;
+    },
+    enabled: !!user?.id
   });
 
   const { data: analysisHistory } = useQuery({
-    queryKey: ['analysis-history'],
+    queryKey: ['analysis-history', user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
       const { data, error } = await supabase
         .from('screenshot_analysis_history')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(10);
       if (error) throw error;
       return data as AnalysisHistory[];
-    }
+    },
+    enabled: !!user?.id
   });
 
   const getPersonalizationLevel = () => {

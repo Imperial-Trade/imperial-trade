@@ -150,17 +150,12 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         {/* Signal Creator Attribution */}
         {creator && (
           <div className="flex items-start justify-between mb-3 pb-3 border-b border-border/30">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                {getRoleIcon(creator.role)}
-                <span>Posted by</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">{creator.display_name}</span>
-                <Badge className={getRoleBadgeClass(creator.role)}>
-                  {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
-                </Badge>
-              </div>
+            <div className="flex items-center gap-2">
+              {getRoleIcon(creator.role)}
+              <span className="font-semibold text-foreground">{creator.display_name}</span>
+              <Badge className={getRoleBadgeClass(creator.role)}>
+                {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
+              </Badge>
             </div>
             <div className="flex flex-col items-end gap-1">
               {isCreator && (

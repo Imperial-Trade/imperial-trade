@@ -809,7 +809,18 @@ const MeccaAnalysisHub: React.FC = () => {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs font-medium text-violet-600">
-                                {new Date(analysis.created_at).toLocaleDateString()}
+                                {new Date(analysis.created_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(analysis.created_at).toLocaleTimeString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
                               </span>
                               <Badge variant="secondary" className="text-xs px-2 py-0">
                                 {analysisData?.screenshot_analysis?.images_processed || 'N/A'} images
@@ -1127,35 +1138,6 @@ const MeccaAnalysisHub: React.FC = () => {
 
                     return (
                       <div className="space-y-6">
-                        {/* Analysis Overview */}
-                        <Card className="p-6 bg-white/80 backdrop-blur-sm border border-violet-200/30">
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                            <div className="text-center">
-                              <p className="text-sm text-muted-foreground">Images Processed</p>
-                              <p className="text-2xl font-bold text-violet-600">
-                                {analysisData?.screenshot_analysis?.images_processed || 'N/A'}
-                              </p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-sm text-muted-foreground">Platform</p>
-                              <p className="text-lg font-semibold text-gray-700">
-                                {analysisData?.screenshot_analysis?.platform_detected || 'Unknown'}
-                              </p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-sm text-muted-foreground">Experience Level</p>
-                              <p className="text-lg font-semibold text-blue-600">
-                                {analysisData?.trader_behavior?.experience_level || 'N/A'}
-                              </p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-sm text-muted-foreground">Risk Score</p>
-                              <p className="text-2xl font-bold text-orange-600">
-                                {analysisData?.risk_assessment?.risk_score || 'N/A'}/10
-                              </p>
-                            </div>
-                          </div>
-                        </Card>
 
                         {/* Analysis Sections */}
                         <div className="grid md:grid-cols-3 gap-6">

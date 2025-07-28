@@ -1,3 +1,4 @@
+
 import React, { useState, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -165,70 +166,76 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           </div>
         )}
 
-        <div className="flex justify-between items-start">
+        {/* Currency Pair and Status */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold">{alert.asset_name}</h3>
-                <TradeStatusBadge 
-                  alert={alert} 
-                  updatedDate={alert.updated_date} 
-                  isRecentClosure={isRecentClosure} 
-                />
-                {alert.status === 'active' && (
-                  <Badge className={`${isBuy ? 'bg-accent-green/20 text-accent-green border-accent-green/30' : 'bg-accent-red/20 text-accent-red border-accent-red/30'}`}>
-                    {isBuy ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-                    {alert.trade_type.replace('_', ' ').toUpperCase()}
-                  </Badge>
-                )}
+              <h3 className="text-lg font-bold">{alert.asset_name}</h3>
+              <TradeStatusBadge 
+                alert={alert} 
+                updatedDate={alert.updated_date} 
+                isRecentClosure={isRecentClosure} 
+              />
             </div>
-            <div className="flex items-center gap-2 flex-col items-end">
-                <div className="flex gap-1">
-                  <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-                      <CollapsibleTrigger asChild>
-                           <Button 
-                             variant="ghost" 
-                             size="sm" 
-                             className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                             onClick={handleCopyPanelToggle}
-                           >
-                              <Copy className="w-4 h-4 mr-1" />
-                              {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                          </Button>
-                      </CollapsibleTrigger>
-                  </Collapsible>
-                  
-                  {/* Share Button */}
-                  <SignalSharingModal 
-                    signal={tradeSignal}
-                    trigger={
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                      >
-                        <Share2 className="w-4 h-4 mr-1" />
-                        <ChevronDown className="w-3 h-3" />
-                      </Button>
-                    }
-                  />
-                  
-                  {/* Calculator Toggle - Only for active/pending trades */}
-                  {(alert.status === 'active' || alert.status === 'pending') && (
-                    <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
-                        <CollapsibleTrigger asChild>
-                             <Button 
-                               variant="ghost" 
-                               size="sm" 
-                               className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
-                               onClick={handleCalculatorToggle}
-                             >
-                                <Calculator className="w-4 h-4 mr-1" />
-                                {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                            </Button>
-                        </CollapsibleTrigger>
-                    </Collapsible>
-                  )}
-                </div>
+            
+            {/* Action buttons below currency pair */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Active Badge */}
+              {alert.status === 'active' && (
+                <Badge className={`${isBuy ? 'bg-accent-green/20 text-accent-green border-accent-green/30' : 'bg-accent-red/20 text-accent-red border-accent-red/30'}`}>
+                  {isBuy ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
+                  {alert.trade_type.replace('_', ' ').toUpperCase()}
+                </Badge>
+              )}
+
+              {/* Copy Button */}
+              <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                    onClick={handleCopyPanelToggle}
+                  >
+                    <Copy className="w-4 h-4 mr-1" />
+                    {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </Button>
+                </CollapsibleTrigger>
+              </Collapsible>
+              
+              {/* Share Button */}
+              <SignalSharingModal 
+                signal={tradeSignal}
+                trigger={
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                  >
+                    <Share2 className="w-4 h-4 mr-1" />
+                    <ChevronDown className="w-3 h-3" />
+                  </Button>
+                }
+              />
+              
+              {/* Calculator Toggle - Only for active/pending trades */}
+              {(alert.status === 'active' || alert.status === 'pending') && (
+                <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
+                  <CollapsibleTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
+                      onClick={handleCalculatorToggle}
+                    >
+                      <Calculator className="w-4 h-4 mr-1" />
+                      {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                </Collapsible>
+              )}
             </div>
+          </div>
         </div>
       </div>
 

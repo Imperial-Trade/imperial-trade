@@ -47,6 +47,7 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const priceUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const isConnectingRef = useRef(false);
 
   const getReconnectDelay = useCallback(() => {
     const baseDelay = 3000;
@@ -100,10 +101,12 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const connect = useCallback(() => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
+    // Prevent multiple simultaneous connections
+    if (isConnectingRef.current || socketRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
 
+    isConnectingRef.current = true;
     setConnectionStatus('connecting');
     
     // Try HTTP fallback immediately for better user experience
@@ -121,6 +124,7 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
         console.log('✅ Unified WebSocket connected');
         setConnectionStatus('connected');
         reconnectAttemptsRef.current = 0;
+        isConnectingRef.current = false;
         setError(null);
         
         // Subscribe to symbols
@@ -136,13 +140,11 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
       socketRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          console.log('📡 Unified WebSocket message:', message);
           
           if (message.type === 'price_update' && message.data) {
             setPrices(prevPrices => {
               const newPrices = new Map(prevPrices);
               message.data.forEach((priceData: PriceData) => {
-                console.log(`🔥 Real-time update: ${priceData.symbol} = $${priceData.price} (${priceData.dataSource})`);
                 newPrices.set(priceData.symbol, priceData);
               });
               return newPrices;
@@ -157,18 +159,23 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
 
       socketRef.current.onclose = () => {
         console.log('🔌 Unified WebSocket disconnected');
+        isConnectingRef.current = false;
         setConnectionStatus('disconnected');
         
-        const delay = getReconnectDelay();
-        reconnectAttemptsRef.current++;
-        
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, delay);
+        // Only reconnect if we have subscribed symbols and haven't exceeded max attempts
+        if (subscribedSymbolsRef.current.size > 0 && reconnectAttemptsRef.current < 5) {
+          const delay = getReconnectDelay();
+          reconnectAttemptsRef.current++;
+          
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connect();
+          }, delay);
+        }
       };
 
       socketRef.current.onerror = (error) => {
         console.error('🔌 Unified WebSocket error:', error);
+        isConnectingRef.current = false;
         setConnectionStatus('error');
         reconnectAttemptsRef.current++;
         
@@ -180,6 +187,7 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
       };
     } catch (error) {
       console.error('🔌 Failed to create WebSocket connection:', error);
+      isConnectingRef.current = false;
       setConnectionStatus('error');
     }
   }, [getReconnectDelay, fetchPricesHTTP]);
@@ -194,13 +202,13 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
         type: 'subscribe',
         symbols
       }));
-    } else {
+    } else if (!isConnectingRef.current) {
       // Try HTTP fallback immediately
       fetchPricesHTTP(symbols);
       connect();
     }
 
-    // Set up automatic price refresh every 30 seconds as backup to WebSocket
+    // Set up automatic price refresh every 60 seconds as backup to WebSocket
     if (priceUpdateIntervalRef.current) {
       clearInterval(priceUpdateIntervalRef.current);
     }
@@ -213,7 +221,7 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
           fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
         }
       }
-    }, 30000); // 30-second backup for when WebSocket fails
+    }, 60000); // 60-second backup for when WebSocket fails
   }, [connect, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
@@ -248,6 +256,8 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
 
   useEffect(() => {
     return () => {
+      // Clean up all resources
+      isConnectingRef.current = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }

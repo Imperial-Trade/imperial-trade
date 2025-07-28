@@ -200,7 +200,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
       </div>
 
       {/* Live Price Widget - Show for active and pending trades */}
-      {(alert.status === 'active' || alert.status === 'pending') && <div className="px-4 pb-4">
+      {(alert.status === 'active' || alert.status === 'pending') && <div className="px-4 pb-4 bg-emerald-25 dark:bg-transparent">
           <LivePriceWidget alert={alert} onTakeProfitHit={onTakeProfitHit} onStopLossHit={onStopLossHit} onOrderActivation={onOrderActivation} livePrice={livePrice} connectionStatus={connectionStatus} priceSource={priceSource} />
         </div>}
 

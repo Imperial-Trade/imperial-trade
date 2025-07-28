@@ -312,7 +312,7 @@ function generateEnhancedMockData(symbols: string[]): MarketDataPoint[] {
     'EUR/USD': 1.032, 'GBP/USD': 1.241, 'USD/JPY': 157, 'AUD/USD': 0.618,
     'USD/CAD': 1.412, 'NZD/USD': 0.558,
     // Commodities - CURRENT TRADINGVIEW PRICES
-    'GOLD': 3317.20, 'XAU/USD': 3317.20, 'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
+    'GOLD': 3312.565, 'XAU/USD': 3312.565, 'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
     'COPPER': 4.55, 'WHEAT': 5.4,
     // ETFs
     'QQQ': 515, 'IWM': 238, 'DIA': 445, 'VTI': 295, 'GLD': 325, 'USO': 85

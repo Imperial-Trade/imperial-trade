@@ -168,9 +168,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                   Your Signal
                 </Badge>
               )}
-              <div className="text-xs text-muted-foreground">
-                {formatTimeAgo(alert.created_date)}
-              </div>
             </div>
           </div>
         )}
@@ -178,6 +175,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         <div className="flex justify-between items-start">
             <div>
                 <h3 className="text-lg font-bold">{alert.asset_name}</h3>
+                <div className="text-xs text-muted-foreground">
+                  {formatTimeAgo(alert.created_date)}
+                </div>
             </div>
             <div className="flex items-center gap-2 flex-col items-end">
                 <div className="flex items-center gap-2">

@@ -14,10 +14,7 @@ const SUPPORTED_ASSETS: AssetOption[] = [
   { symbol: 'XAU/USD', name: 'Gold', category: 'commodities' },
   
   // Tier 2: Standard optimized symbol
-  { symbol: 'EUR/USD', name: 'Euro/Dollar', category: 'forex' },
-  
-  // Legacy support
-  { symbol: 'GOLD', name: 'Gold (Legacy)', category: 'commodities' }
+  { symbol: 'EUR/USD', name: 'Euro/Dollar', category: 'forex' }
 ];
 
 interface AssetSelectorProps {

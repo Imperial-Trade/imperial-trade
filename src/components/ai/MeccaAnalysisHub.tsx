@@ -379,15 +379,6 @@ const MeccaAnalysisHub: React.FC = () => {
               </div>
             </div>
             
-            {/* Mobile Menu Toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </Button>
           </div>
         </div>
       </motion.div>

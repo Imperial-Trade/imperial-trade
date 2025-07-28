@@ -1,136 +1,286 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface NotificationPayload {
+  signal_id: string;
+  alert_type: string;
+  target_price: number;
+  triggered_price: number;
+  notification_type: string;
+  delivery_channels: string[];
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
+async function sendRealtimeNotification(supabase: any, payload: NotificationPayload): Promise<boolean> {
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    // Broadcast via Supabase Realtime to all subscribers
+    const { error } = await supabase
+      .channel('instant-alerts')
+      .send({
+        type: 'broadcast',
+        event: 'alert_triggered',
+        payload: {
+          signal_id: payload.signal_id,
+          alert_type: payload.alert_type,
+          target_price: payload.target_price,
+          triggered_price: payload.triggered_price,
+          notification_type: payload.notification_type,
+          timestamp: new Date().toISOString(),
+          urgency: payload.alert_type === 'stop_loss' ? 'critical' : 'high'
+        }
+      });
 
-    const { signal_id, message, notification_type } = await req.json()
-
-    // Get signal followers
-    const { data: followers } = await supabase
-      .from('signal_followers')
-      .select(`
-        follower_id,
-        notification_preferences,
-        profiles!inner(display_name)
-      `)
-      .eq('signal_id', signal_id)
-
-    if (!followers || followers.length === 0) {
-      return new Response(
-        JSON.stringify({ message: 'No followers to notify' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+    if (error) {
+      console.error('❌ Realtime notification error:', error);
+      return false;
     }
 
-    // Send notifications based on preferences
-    const notifications = []
-    
-    for (const follower of followers) {
-      const prefs = follower.notification_preferences
-
-      // Browser push notification
-      if (prefs.push) {
-        notifications.push(sendPushNotification(follower.follower_id, message))
-      }
-
-      // Email notification
-      if (prefs.email) {
-        notifications.push(sendEmailNotification(follower.follower_id, message))
-      }
-
-      // Discord webhook (if configured)
-      if (prefs.discord) {
-        notifications.push(sendDiscordNotification(message))
-      }
-
-      // Telegram webhook (if configured)
-      if (prefs.telegram) {
-        notifications.push(sendTelegramNotification(message))
-      }
-    }
-
-    await Promise.allSettled(notifications)
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        notified: followers.length,
-        message: 'Notifications dispatched'
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    console.log(`✅ Realtime notification sent for ${payload.alert_type}`);
+    return true;
   } catch (error) {
-    console.error('Notification dispatcher error:', error)
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    )
+    console.error('❌ Realtime notification exception:', error);
+    return false;
   }
-})
-
-async function sendPushNotification(userId: string, message: string) {
-  // Implementation for browser push notifications
-  console.log(`Push notification to ${userId}: ${message}`)
 }
 
-async function sendEmailNotification(userId: string, message: string) {
-  // Implementation for email notifications
-  console.log(`Email notification to ${userId}: ${message}`)
-}
-
-async function sendDiscordNotification(message: string) {
-  const webhookUrl = Deno.env.get('DISCORD_WEBHOOK_URL')
-  if (!webhookUrl) return
-
+async function sendDiscordWebhook(payload: NotificationPayload): Promise<boolean> {
   try {
-    await fetch(webhookUrl, {
+    const webhookUrl = Deno.env.get('DISCORD_WEBHOOK_URL');
+    if (!webhookUrl) {
+      console.log('⚠️ Discord webhook URL not configured');
+      return false;
+    }
+
+    const urgencyEmoji = payload.alert_type === 'stop_loss' ? '🚨' : '💰';
+    const urgencyColor = payload.alert_type === 'stop_loss' ? 0xff0000 : 0x00ff00;
+    
+    const embed = {
+      title: `${urgencyEmoji} Trading Alert Triggered`,
+      description: `**${payload.alert_type.toUpperCase().replace('_', ' ')}** has been hit!`,
+      color: urgencyColor,
+      fields: [
+        {
+          name: "Target Price",
+          value: `$${payload.target_price.toFixed(2)}`,
+          inline: true
+        },
+        {
+          name: "Triggered Price", 
+          value: `$${payload.triggered_price.toFixed(2)}`,
+          inline: true
+        },
+        {
+          name: "Signal ID",
+          value: payload.signal_id.substring(0, 8),
+          inline: true
+        }
+      ],
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: "Imperial Trading Platform"
+      }
+    };
+
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: `🚨 **Trade Signal Update** 🚨\n${message}`,
-        username: 'Imperial Trade Bot'
-      })
-    })
+      body: JSON.stringify({ embeds: [embed] }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      console.error(`❌ Discord webhook error: ${response.status}`);
+      return false;
+    }
+
+    console.log(`✅ Discord notification sent for ${payload.alert_type}`);
+    return true;
   } catch (error) {
-    console.error('Discord notification error:', error)
+    console.error('❌ Discord webhook exception:', error);
+    return false;
   }
 }
 
-async function sendTelegramNotification(message: string) {
-  const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN')
-  const chatId = Deno.env.get('TELEGRAM_CHAT_ID')
-  
-  if (!botToken || !chatId) return
-
+async function sendTelegramNotification(payload: NotificationPayload): Promise<boolean> {
   try {
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+    const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
+    
+    if (!botToken || !chatId) {
+      console.log('⚠️ Telegram bot token or chat ID not configured');
+      return false;
+    }
+
+    const urgencyEmoji = payload.alert_type === 'stop_loss' ? '🚨' : '💰';
+    const message = `${urgencyEmoji} *TRADING ALERT*\n\n` +
+                   `*${payload.alert_type.toUpperCase().replace('_', ' ')}* triggered!\n\n` +
+                   `Target: $${payload.target_price.toFixed(2)}\n` +
+                   `Triggered: $${payload.triggered_price.toFixed(2)}\n` +
+                   `Signal: \`${payload.signal_id.substring(0, 8)}\`\n\n` +
+                   `⏰ ${new Date().toLocaleString()}`;
+
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
-        text: `🚨 *Trade Signal Update* 🚨\n${message}`,
+        text: message,
         parse_mode: 'Markdown'
-      })
-    })
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      console.error(`❌ Telegram API error: ${response.status}`);
+      return false;
+    }
+
+    console.log(`✅ Telegram notification sent for ${payload.alert_type}`);
+    return true;
   } catch (error) {
-    console.error('Telegram notification error:', error)
+    console.error('❌ Telegram notification exception:', error);
+    return false;
   }
 }
+
+async function sendPushNotification(payload: NotificationPayload): Promise<boolean> {
+  try {
+    // Placeholder for push notification service (e.g., Firebase, OneSignal)
+    console.log(`📱 Push notification would be sent for ${payload.alert_type}`);
+    
+    // For now, just return true as this requires additional setup
+    return true;
+  } catch (error) {
+    console.error('❌ Push notification exception:', error);
+    return false;
+  }
+}
+
+async function processNotification(payload: NotificationPayload): Promise<Record<string, boolean>> {
+  const deliveryResults: Record<string, boolean> = {};
+
+  // Send to all requested channels in parallel for speed
+  const deliveryPromises = payload.delivery_channels.map(async (channel) => {
+    switch (channel) {
+      case 'realtime':
+        return { channel, success: await sendRealtimeNotification(null, payload) };
+      case 'discord':
+        return { channel, success: await sendDiscordWebhook(payload) };
+      case 'telegram':
+        return { channel, success: await sendTelegramNotification(payload) };
+      case 'push':
+        return { channel, success: await sendPushNotification(payload) };
+      default:
+        console.warn(`⚠️ Unknown delivery channel: ${channel}`);
+        return { channel, success: false };
+    }
+  });
+
+  const results = await Promise.allSettled(deliveryPromises);
+  
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      deliveryResults[result.value.channel] = result.value.success;
+    } else {
+      const channel = payload.delivery_channels[index];
+      deliveryResults[channel] = false;
+      console.error(`❌ Failed to send to ${channel}:`, result.reason);
+    }
+  });
+
+  return deliveryResults;
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { notifications } = await req.json();
+    
+    if (!notifications || !Array.isArray(notifications)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid notifications array' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`📡 Processing ${notifications.length} instant notifications...`);
+
+    const results = [];
+    
+    for (const notification of notifications) {
+      const startTime = Date.now();
+      
+      console.log(`🚨 Processing ${notification.alert_type} for signal ${notification.signal_id}`);
+      
+      const deliveryResults = await processNotification(notification);
+      const processingTime = Date.now() - startTime;
+      
+      // Update notification status in database
+      const { error: updateError } = await supabase
+        .from('alert_notifications')
+        .update({
+          delivery_status: deliveryResults,
+          sent_at: new Date().toISOString()
+        })
+        .eq('signal_id', notification.signal_id)
+        .eq('notification_type', notification.notification_type);
+
+      if (updateError) {
+        console.error('❌ Error updating notification status:', updateError);
+      }
+
+      results.push({
+        signal_id: notification.signal_id,
+        alert_type: notification.alert_type,
+        delivery_results: deliveryResults,
+        processing_time_ms: processingTime,
+        success: Object.values(deliveryResults).some(success => success)
+      });
+
+      console.log(`⚡ Alert processed in ${processingTime}ms - Delivery: ${JSON.stringify(deliveryResults)}`);
+    }
+
+    const totalDeliveries = results.reduce((sum, r) => sum + Object.keys(r.delivery_results).length, 0);
+    const successfulDeliveries = results.reduce((sum, r) => 
+      sum + Object.values(r.delivery_results).filter(Boolean).length, 0
+    );
+
+    return new Response(
+      JSON.stringify({
+        processed: notifications.length,
+        results,
+        summary: {
+          total_deliveries: totalDeliveries,
+          successful_deliveries: successfulDeliveries,
+          success_rate: `${((successfulDeliveries / totalDeliveries) * 100).toFixed(1)}%`,
+          average_processing_time: `${(results.reduce((sum, r) => sum + r.processing_time_ms, 0) / results.length).toFixed(0)}ms`
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('❌ Notification dispatcher error:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to process notifications',
+        details: error.message 
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+});

@@ -48,9 +48,14 @@ const TRADING_UNIVERSE = {
 
 const ALL_SYMBOLS = Object.values(TRADING_UNIVERSE).flat();
 
-// Enhanced cache with 5-second TTL for real-time performance
-const cache = new Map<string, { data: MarketDataPoint, expires: number }>();
-const CACHE_TTL = 5000; // 5 seconds for real-time data
+// Dual-speed cache: 30 seconds for regular symbols, 1 second for priority alerts
+const cache = new Map<string, { data: MarketDataPoint, expires: number, isPriority: boolean }>();
+const PRIORITY_CACHE_TTL = 1000; // 1 second for active alert symbols
+const REGULAR_CACHE_TTL = 30000; // 30 seconds for regular symbols
+
+// Track priority symbols (symbols with active alerts)
+let prioritySymbols = new Set<string>();
+let lastPriorityRefresh = 0;
 
 // Rate limiting with higher quotas for expanded universe
 const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
@@ -78,6 +83,10 @@ function isRateLimited(key: string): boolean {
   return false;
 }
 
+function isPrioritySymbol(symbol: string): boolean {
+  return prioritySymbols.has(symbol);
+}
+
 function getCachedData(symbol: string): MarketDataPoint | null {
   const cached = cache.get(symbol);
   if (cached && Date.now() < cached.expires) {
@@ -87,11 +96,46 @@ function getCachedData(symbol: string): MarketDataPoint | null {
   return null;
 }
 
-function setCachedData(symbol: string, data: MarketDataPoint): void {
+function setCachedData(symbol: string, data: MarketDataPoint, isPriority: boolean = false): void {
+  const ttl = isPriority ? PRIORITY_CACHE_TTL : REGULAR_CACHE_TTL;
   cache.set(symbol, {
     data,
-    expires: Date.now() + CACHE_TTL
+    expires: Date.now() + ttl,
+    isPriority
   });
+}
+
+async function refreshPrioritySymbols(): Promise<void> {
+  // Refresh priority symbols every 10 seconds
+  if (Date.now() - lastPriorityRefresh < 10000) {
+    return;
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      return;
+    }
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/alert_monitoring?select=symbol&is_active=eq.true`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      const activeAlerts = await response.json();
+      prioritySymbols = new Set(activeAlerts.map((alert: any) => alert.symbol));
+      lastPriorityRefresh = Date.now();
+      console.log(`🎯 Priority symbols updated: ${Array.from(prioritySymbols).join(', ')}`);
+    }
+  } catch (error) {
+    console.error('❌ Error refreshing priority symbols:', error);
+  }
 }
 
 function isMarketHours(): boolean {
@@ -308,6 +352,9 @@ serve(async (req) => {
     );
   }
 
+  // Refresh priority symbols for dual-speed caching
+  await refreshPrioritySymbols();
+
   try {
     const { symbols, includeVolume = true, includeTechnicals = true } = await req.json();
     
@@ -354,8 +401,8 @@ serve(async (req) => {
       
       const mockData = generateEnhancedMockData(uncachedSymbols);
       
-      // Cache the mock data
-      mockData.forEach(dataPoint => setCachedData(dataPoint.symbol, dataPoint));
+      // Cache the mock data with priority awareness
+      mockData.forEach(dataPoint => setCachedData(dataPoint.symbol, dataPoint, isPrioritySymbol(dataPoint.symbol)));
 
       return new Response(
         JSON.stringify({ 
@@ -387,14 +434,17 @@ serve(async (req) => {
       const batchResults = await Promise.allSettled(batchPromises);
       
       batchResults.forEach((result, index) => {
+        const symbol = batch[index];
+        const isPriority = isPrioritySymbol(symbol);
+        
         if (result.status === 'fulfilled' && result.value) {
-          setCachedData(result.value.symbol, result.value);
+          setCachedData(result.value.symbol, result.value, isPriority);
           marketData.push(result.value);
+          console.log(`💾 Cached ${symbol} for ${isPriority ? '1 second' : '30 seconds'} (${isPriority ? 'priority' : 'regular'})`);
         } else {
           // Fallback to mock data for failed symbols
-          const symbol = batch[index];
           const mockData = generateEnhancedMockData([symbol])[0];
-          setCachedData(symbol, mockData);
+          setCachedData(symbol, mockData, isPriority);
           marketData.push(mockData);
         }
       });
@@ -405,7 +455,10 @@ serve(async (req) => {
       }
     }
 
-    console.log('Returning enhanced market data for', marketData.length, 'symbols');
+    const prioritySymbolsCount = requestedSymbols.filter(s => isPrioritySymbol(s)).length;
+    const regularSymbolsCount = requestedSymbols.length - prioritySymbolsCount;
+    
+    console.log(`📊 Returning data for ${marketData.length} symbols (${prioritySymbolsCount} priority, ${regularSymbolsCount} regular)`);
 
     return new Response(
       JSON.stringify({ 
@@ -413,6 +466,9 @@ serve(async (req) => {
         dataQuality: apiKey ? 'real_time' : 'simulated',
         marketHours: isMarketHours(),
         totalSymbols: requestedSymbols.length,
+        prioritySymbols: prioritySymbolsCount,
+        regularSymbols: regularSymbolsCount,
+        cacheStrategy: 'dual-speed',
         cacheHitRatio: cachedResults.length / requestedSymbols.length
       }),
       { 

@@ -25,13 +25,13 @@ const PriceRow: React.FC<PriceRowProps> = ({
   icon: Icon,
   colorClass,
   isHit = false
-}) => <div className={`flex justify-between items-center text-sm py-3 border-b border-emerald-200/30 dark:border-gray-700/50 last:border-b-0 ${isHit ? 'bg-emerald-100/50 dark:bg-emerald-900/20' : ''} transition-colors duration-200`}>
-        <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
+}) => <div className={`flex justify-between items-center text-sm py-2 border-b border-gray-700/50 last:border-b-0 ${isHit ? 'bg-emerald-900/20' : ''}`}>
+        <div className="flex items-center space-x-2 text-gray-400">
             <Icon className={`w-4 h-4 ${colorClass}`} />
-            <span>{label}</span>
+            <span className="text-zinc-50">{label}</span>
             {isHit && <Check className="w-4 h-4 text-emerald-400" />}
         </div>
-        <span className={`font-mono font-semibold text-gray-900 dark:text-gray-100 ${isHit ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
+        <span className={`font-mono font-semibold ${isHit ? 'text-emerald-400' : ''}`}>
           {value ? `$${value.toFixed(2)}` : '-'}
         </span>
     </div>;
@@ -134,13 +134,13 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
     if (isCreator) return 'Close My Signal';
     return 'Close Trade';
   };
-  return <div className={`bg-white dark:bg-gray-800/50 rounded-xl border border-emerald-200 dark:border-gray-700 shadow-xl shadow-emerald-500/10 dark:shadow-emerald-500/10 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/20 dark:hover:shadow-emerald-500/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-amber-400/50 hover:border-amber-400' : 'hover:border-emerald-400/70 dark:hover:border-emerald-400/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-red-500/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-emerald-500/30' : 'ring-2 ring-gray-500/30')} ${className || ''}`} data-testid={testId}>
+  return <div className={`bg-gray-800/50 rounded-lg border border-gray-700 shadow-lg overflow-hidden transition-all duration-300 hover:shadow-emerald-500/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-amber-400/50 hover:border-amber-400' : 'hover:border-emerald-400/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-red-500/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-emerald-500/30' : 'ring-2 ring-gray-500/30')} ${className || ''}`} data-testid={testId}>
       {/* Glowing top indicator for closed trades */}
       {isClosed && <div className={`h-1 w-full ${alert.close_reason === 'stop_loss' ? 'bg-gradient-to-r from-red-500/50 via-red-400/70 to-red-500/50 shadow-lg shadow-red-500/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'bg-gradient-to-r from-emerald-500/50 via-emerald-400/70 to-emerald-500/50 shadow-lg shadow-emerald-500/30' : 'bg-gradient-to-r from-gray-500/50 via-gray-400/70 to-gray-500/50 shadow-lg shadow-gray-500/30'} animate-pulse`} />}
 
-      <div className="p-4 bg-gradient-to-r from-emerald-50 to-emerald-100 border-l-4 border-emerald-500 shadow-md shadow-emerald-500/20 dark:bg-card/50 dark:backdrop-blur-sm dark:border-border/30 dark:from-transparent dark:to-transparent dark:border-l-0 dark:shadow-none">
+      <div className="p-4 bg-green-300">
         {/* Signal Creator Attribution */}
-        {creator && <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3 pb-3 border-b border-emerald-200/30 dark:border-gray-700/30">
+        {creator && <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-700/30">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 text-sm text-gray-400">
                 {getRoleIcon(creator.role)}
@@ -200,7 +200,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
       </div>
 
       {/* Live Price Widget - Show for active and pending trades */}
-      {(alert.status === 'active' || alert.status === 'pending') && <div className="px-4 pb-4 bg-gradient-to-b from-emerald-50/80 to-emerald-100/60 dark:bg-transparent">
+      {(alert.status === 'active' || alert.status === 'pending') && <div className="px-4 pb-4 bg-green-300">
           <LivePriceWidget alert={alert} onTakeProfitHit={onTakeProfitHit} onStopLossHit={onStopLossHit} onOrderActivation={onOrderActivation} livePrice={livePrice} connectionStatus={connectionStatus} priceSource={priceSource} />
         </div>}
 
@@ -217,8 +217,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="px-4 pb-4 space-y-2 bg-gradient-to-b from-emerald-100/60 to-emerald-150/80 dark:bg-transparent">
-        <div className="bg-white/90 backdrop-blur-sm border border-emerald-200/50 dark:bg-gray-900/50 dark:border-gray-700/50 rounded-lg p-4 shadow-sm">
+      <div className="px-4 pb-4 space-y-2 bg-green-300">
+        <div className="rounded-md p-3 bg-green-950">
             <PriceRow label="Entry Price" value={alert.entry_price} icon={isBuy ? ArrowUp : ArrowDown} colorClass={isBuy ? "text-emerald-400" : "text-red-400"} />
             <PriceRow label="Stop Loss" value={alert.stop_loss} icon={XOctagon} colorClass={alert.close_reason === 'stop_loss' ? "text-red-300" : "text-red-400"} isHit={alert.close_reason === 'stop_loss'} />
             {takeProfits.map((tp, index) => {
@@ -229,8 +229,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
         </div>
       </div>
       
-      {alert.notes && <div className="px-4 pb-4 bg-gradient-to-b from-emerald-150/80 to-emerald-200/60 dark:bg-transparent">
-            <p className="text-xs text-gray-600 dark:text-gray-400 italic bg-white/80 backdrop-blur-sm border border-emerald-200/30 dark:bg-gray-900/50 dark:border-gray-700/50 p-3 rounded-lg shadow-sm">"{alert.notes}"</p>
+      {alert.notes && <div className="px-4 pb-4 bg-green-300">
+            <p className="text-xs italic bg-gray-900/50 p-2 rounded-md text-gray-50">"{alert.notes}"</p>
         </div>}
 
       {/* Stop Loss Proximity Warning */}
@@ -261,7 +261,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
       return null;
     })()}
       
-      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && <div className="bg-gradient-to-r from-emerald-200/40 to-emerald-300/50 backdrop-blur-sm border-t border-emerald-200/30 dark:bg-gray-900/50 dark:border-gray-700/50 px-4 py-3 flex justify-end">
+      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && <div className="px-4 py-2 flex justify-end bg-stone-800">
             <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/20 hover:text-red-300" onClick={() => handleStatusUpdate('closed')}>
                 <Lock className="w-4 h-4 mr-2" />
                 {isPending ? 'Cancel Order' : getCloseButtonText()}

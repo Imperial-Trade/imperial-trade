@@ -140,7 +140,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
 
       <div className="p-4 bg-gradient-to-r from-emerald-50 to-emerald-100 border-l-4 border-emerald-500 shadow-md shadow-emerald-500/20 dark:bg-card/50 dark:backdrop-blur-sm dark:border-border/30 dark:from-transparent dark:to-transparent dark:border-l-0 dark:shadow-none">
         {/* Signal Creator Attribution */}
-        {creator && <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-700/30">
+        {creator && <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3 pb-3 border-b border-emerald-200/30 dark:border-gray-700/30">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 text-sm text-gray-400">
                 {getRoleIcon(creator.role)}

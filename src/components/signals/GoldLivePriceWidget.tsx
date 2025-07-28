@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
 import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useGoldPrice } from '@/contexts/GoldPriceContext';
+import { useOptimizedPrice } from '@/hooks/useOptimizedPrice';
+import { Badge } from '@/components/ui/badge';
 
 interface GoldLivePriceWidgetProps {
   symbol: string;
@@ -12,7 +13,21 @@ const GoldLivePriceWidget: React.FC<GoldLivePriceWidgetProps> = memo(({
   symbol, 
   className = "" 
 }) => {
-  const { price, connectionStatus, dataSource, lastUpdated, error, refreshPrice } = useGoldPrice();
+  // Use optimized pricing for gold symbols
+  const { 
+    price, 
+    change, 
+    changePercent, 
+    isLoading, 
+    error, 
+    lastUpdated, 
+    connectionStatus, 
+    dataSource, 
+    refreshPrice 
+  } = useOptimizedPrice(symbol === 'GOLD' ? 'XAU/USD' : symbol, {
+    enableSmartPausing: true,
+    debounceMs: 300
+  });
 
   // Only show widget for gold symbols
   const isGoldSymbol = ['GOLD', 'XAU/USD', 'XAUUSD'].includes(symbol);
@@ -96,7 +111,7 @@ const GoldLivePriceWidget: React.FC<GoldLivePriceWidgetProps> = memo(({
     );
   }
 
-  const isPositive = price.changePercent >= 0;
+  const isPositive = changePercent >= 0;
 
   return (
     <div className={`p-3 bg-card border rounded-lg space-y-2 ${className}`}>
@@ -121,7 +136,7 @@ const GoldLivePriceWidget: React.FC<GoldLivePriceWidgetProps> = memo(({
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="text-lg font-bold text-foreground">
-            {formatPrice(price.price)}
+            {formatPrice(price)}
           </div>
           <div className={`flex items-center space-x-1 text-sm ${
             isPositive ? 'text-green-600' : 'text-red-600'
@@ -131,7 +146,7 @@ const GoldLivePriceWidget: React.FC<GoldLivePriceWidgetProps> = memo(({
             ) : (
               <TrendingDown className="w-4 h-4" />
             )}
-            <span>{formatChange(price.change, price.changePercent)}</span>
+            <span>{formatChange(change, changePercent)}</span>
           </div>
         </div>
       </div>

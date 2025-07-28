@@ -5,12 +5,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 export interface AssetOption {
   symbol: string;
   name: string;
-  category: 'crypto' | 'commodities';
+  category: 'crypto' | 'commodities' | 'forex';
 }
 
 const SUPPORTED_ASSETS: AssetOption[] = [
-  { symbol: 'GOLD', name: 'Gold', category: 'commodities' },
-  { symbol: 'BTC/USD', name: 'Bitcoin', category: 'crypto' }
+  // Tier 1: High-frequency optimized symbols
+  { symbol: 'BTC/USD', name: 'Bitcoin', category: 'crypto' },
+  { symbol: 'XAU/USD', name: 'Gold', category: 'commodities' },
+  
+  // Tier 2: Standard optimized symbol
+  { symbol: 'EUR/USD', name: 'Euro/Dollar', category: 'forex' },
+  
+  // Legacy support
+  { symbol: 'GOLD', name: 'Gold (Legacy)', category: 'commodities' }
 ];
 
 interface AssetSelectorProps {

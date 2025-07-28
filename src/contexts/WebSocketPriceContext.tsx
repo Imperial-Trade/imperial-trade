@@ -62,12 +62,12 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return delay;
   }, []);
 
-  // HTTP fallback for price fetching with better Gold symbol mapping
+  // HTTP fallback for price fetching with standardized symbol mapping
   const fetchPricesHTTP = useCallback(async (symbols: string[]) => {
     try {
       console.log('🔄 HTTP fallback: fetching prices for', symbols);
       
-      // Map symbols to standardized API format
+      // Ensure all symbols are properly formatted for API
       const mappedSymbols = symbols.map(symbol => {
         if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'XAU/USD';
         if (symbol === 'BTC' || symbol === 'BITCOIN' || symbol === 'BTC/USD') return 'BTC/USD';

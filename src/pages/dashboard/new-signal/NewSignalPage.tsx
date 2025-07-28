@@ -22,7 +22,7 @@ const NewSignalPage: React.FC = () => {
   // Pre-load all supported asset prices on mount
   useEffect(() => {
     const supportedSymbols = SUPPORTED_ASSETS.map(asset => 
-      asset.name === 'Gold' ? 'GOLD' : asset.name.toUpperCase()
+      asset.name === 'Gold' ? 'XAU/USD' : asset.symbol // Use standardized symbols
     );
     
     console.log('NewSignalPage - Pre-loading asset prices:', supportedSymbols);

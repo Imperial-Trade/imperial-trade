@@ -378,6 +378,14 @@ serve(async (req) => {
     const requestedSymbols = symbols && symbols.length > 0 ? symbols : ALL_SYMBOLS.slice(0, 12);
     
     console.log('Enhanced market data request for symbols:', requestedSymbols);
+    
+    // Add specific logging for XAU/USD requests
+    if (requestedSymbols.includes('XAU/USD')) {
+      console.log('🥇 XAU/USD (Gold) price specifically requested');
+    }
+    if (requestedSymbols.includes('GOLD')) {
+      console.log('🥇 GOLD symbol requested - will map to XAU/USD');
+    }
 
     // Check cache first
     const cachedResults: MarketDataPoint[] = [];

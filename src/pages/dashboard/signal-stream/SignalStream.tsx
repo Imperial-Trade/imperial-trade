@@ -133,9 +133,15 @@ export default function SignalStream() {
     const symbolSet = new Set();
     activeAlerts.forEach(alert => {
       if (alert && alert.assetName) {
-        // Map the asset name to the correct symbol for price feed
-        const symbol = alert.assetName.toUpperCase() === 'GOLD' ? 'GOLD' : alert.assetName.toUpperCase();
+        // Standardize symbol mapping - always use XAU/USD for Gold
+        let symbol = alert.assetName.toUpperCase();
+        if (symbol === 'GOLD') {
+          symbol = 'XAU/USD';
+        }
         symbolSet.add(symbol);
+        
+        // Also log for debugging
+        console.log(`SignalStream - Mapped asset ${alert.assetName} to symbol ${symbol}`);
       }
     });
     const symbolList = Array.from(symbolSet);
@@ -476,7 +482,7 @@ export default function SignalStream() {
                   close_reason: alert.closeReason,
                   created_date: alert.createdAt,
                   updated_date: alert.updatedAt
-                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices['GOLD'] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} />)}
+                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices['XAU/USD'] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} />)}
                     </div> : <div className="text-center py-8">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <Shield className="w-8 h-8 text-muted-foreground/50" />

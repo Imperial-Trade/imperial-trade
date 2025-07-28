@@ -6,6 +6,20 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface AnalysisResult {
+  screenshot_urls?: string[];
+  platform_identified?: string;
+  timeframe_detected?: string;
+  user_feedback_score?: number;
+  extracted_data?: {
+    account_balance?: string;
+    equity?: string;
+    total_pnl?: string;
+  };
+  trading_style_indicators?: {
+    warning_signs?: string[];
+    discipline_signs?: string[];
+    experience_level?: string;
+  };
   performance_metrics?: {
     win_rate?: number;
     total_pnl?: number;
@@ -107,52 +121,52 @@ export const MeccaKpiDashboard: React.FC<MeccaKpiDashboardProps> = ({
 
   const kpiData = [
     {
-      icon: Target,
-      label: 'Win Rate',
-      value: `${metrics?.win_rate || 0}%`,
-      trend: (metrics?.win_rate || 0) >= 60 ? 'up' : (metrics?.win_rate || 0) < 40 ? 'down' : 'neutral',
-      color: (metrics?.win_rate || 0) >= 60 ? 'emerald' : (metrics?.win_rate || 0) < 40 ? 'red' : 'violet',
-      gradient: (metrics?.win_rate || 0) >= 60 ? 'from-emerald-500 to-green-600' : (metrics?.win_rate || 0) < 40 ? 'from-red-500 to-rose-600' : 'from-violet-500 to-purple-600'
-    },
-    {
-      icon: DollarSign,
-      label: 'Total P&L',
-      value: `$${metrics?.total_pnl || 0}`,
-      trend: (metrics?.total_pnl || 0) > 0 ? 'up' : (metrics?.total_pnl || 0) < 0 ? 'down' : 'neutral',
-      color: (metrics?.total_pnl || 0) >= 0 ? 'emerald' : 'red',
-      gradient: (metrics?.total_pnl || 0) >= 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600'
-    },
-    {
-      icon: Shield,
-      label: 'Risk Score',
-      value: `${metrics?.risk_score || 0}/10`,
-      trend: (metrics?.risk_score || 0) <= 3 ? 'up' : (metrics?.risk_score || 0) >= 7 ? 'down' : 'neutral',
-      color: (metrics?.risk_score || 0) <= 3 ? 'emerald' : (metrics?.risk_score || 0) >= 7 ? 'red' : 'amber',
-      gradient: (metrics?.risk_score || 0) <= 3 ? 'from-emerald-500 to-green-600' : (metrics?.risk_score || 0) >= 7 ? 'from-red-500 to-rose-600' : 'from-amber-500 to-orange-600'
-    },
-    {
       icon: Activity,
-      label: 'Trades Analyzed',
-      value: (metrics?.trades_analyzed || 0).toString(),
+      label: 'Screenshots Analyzed',
+      value: (analysisResult?.screenshot_urls?.length || 0).toString(),
       trend: 'neutral',
       color: 'blue',
       gradient: 'from-blue-500 to-cyan-600'
     },
     {
-      icon: Zap,
-      label: 'Profit Factor',
-      value: `${metrics?.profit_factor || 0}x`,
-      trend: (metrics?.profit_factor || 0) > 1.5 ? 'up' : (metrics?.profit_factor || 0) < 1 ? 'down' : 'neutral',
-      color: (metrics?.profit_factor || 0) > 1.5 ? 'emerald' : (metrics?.profit_factor || 0) < 1 ? 'red' : 'violet',
-      gradient: (metrics?.profit_factor || 0) > 1.5 ? 'from-emerald-500 to-green-600' : (metrics?.profit_factor || 0) < 1 ? 'from-red-500 to-rose-600' : 'from-violet-500 to-purple-600'
-    },
-    {
       icon: BarChart3,
-      label: 'Portfolio Value',
-      value: `$${metrics?.portfolio_value || 0}`,
+      label: 'Platform Detected',
+      value: analysisResult?.platform_identified || 'Unknown',
       trend: 'neutral',
       color: 'violet',
       gradient: 'from-violet-500 to-purple-600'
+    },
+    {
+      icon: Target,
+      label: 'Analysis Quality',
+      value: analysisResult?.user_feedback_score ? `${analysisResult.user_feedback_score}/5` : 'Pending',
+      trend: 'neutral',
+      color: 'emerald',
+      gradient: 'from-emerald-500 to-green-600'
+    },
+    {
+      icon: DollarSign,
+      label: 'Visual Balance',
+      value: analysisResult?.extracted_data?.account_balance ? `$${analysisResult.extracted_data.account_balance}` : 'N/A',
+      trend: 'neutral',
+      color: 'amber',
+      gradient: 'from-amber-500 to-orange-600'
+    },
+    {
+      icon: Shield,
+      label: 'Risk Indicators',
+      value: (analysisResult?.trading_style_indicators?.warning_signs?.length || 0).toString(),
+      trend: (analysisResult?.trading_style_indicators?.warning_signs?.length || 0) === 0 ? 'up' : 'down',
+      color: (analysisResult?.trading_style_indicators?.warning_signs?.length || 0) === 0 ? 'emerald' : 'red',
+      gradient: (analysisResult?.trading_style_indicators?.warning_signs?.length || 0) === 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600'
+    },
+    {
+      icon: Zap,
+      label: 'Timeframe Coverage',
+      value: analysisResult?.timeframe_detected || 'Unknown',
+      trend: 'neutral',
+      color: 'blue',
+      gradient: 'from-blue-500 to-cyan-600'
     }
   ] as const;
 

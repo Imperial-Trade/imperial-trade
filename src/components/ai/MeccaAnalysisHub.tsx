@@ -895,59 +895,6 @@ const MeccaAnalysisHub: React.FC = () => {
               {/* Scrollable Content Area */}
               <div className="max-h-[calc(90vh-120px)] overflow-y-auto p-6">
                 
-                {/* Performance Metrics Dashboard */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                  {[
-                    { 
-                      label: 'Win Rate', 
-                      value: `${analysisResult.performance_metrics?.win_rate || 0}%`, 
-                      icon: TrendingUp, 
-                      color: 'emerald',
-                      gradient: 'from-emerald-500 to-green-600'
-                    },
-                    { 
-                      label: 'Total P&L', 
-                      value: `$${analysisResult.performance_metrics?.total_pnl || 0}`, 
-                      icon: Target, 
-                      color: (analysisResult.performance_metrics?.total_pnl || 0) >= 0 ? 'emerald' : 'red',
-                      gradient: (analysisResult.performance_metrics?.total_pnl || 0) >= 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600'
-                    },
-                    { 
-                      label: 'Risk Score', 
-                      value: `${analysisResult.performance_metrics?.risk_score || 0}/10`, 
-                      icon: Shield, 
-                      color: 'violet',
-                      gradient: 'from-violet-500 to-purple-600'
-                    },
-                    { 
-                      label: 'Trades Analyzed', 
-                      value: (analysisResult.performance_metrics?.trades_analyzed || 0).toString(), 
-                      icon: Activity, 
-                      color: 'blue',
-                      gradient: 'from-blue-500 to-indigo-600'
-                    },
-                  ].map((metric, index) => (
-                    <motion.div
-                      key={metric.label}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="relative group"
-                    >
-                      <Card className="p-4 bg-white/80 backdrop-blur-sm border border-violet-200/30 hover:border-violet-300/50 transition-all duration-300 hover:shadow-lg group-hover:scale-105">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-3 rounded-xl bg-gradient-to-br ${metric.gradient} shadow-lg`}>
-                            <metric.icon className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600 font-medium">{metric.label}</p>
-                            <p className="text-2xl font-bold text-gray-800">{metric.value}</p>
-                          </div>
-                        </div>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
 
                 {/* Overall Analysis */}
                 <motion.div

@@ -242,10 +242,10 @@ export const GoldPriceProvider: React.FC<Props> = ({ children }) => {
     
     priceUpdateIntervalRef.current = setInterval(() => {
       if (isSubscribedRef.current) {
-        console.log('🥇 Auto-refreshing gold price every 4 seconds');
+        console.log('🥇 Auto-refreshing gold price every 2 seconds');
         fetchGoldPriceHTTP();
       }
-    }, 4000);
+    }, 2000); // Update every 2 seconds for real-time feel
   }, [connect, fetchGoldPriceHTTP]);
 
   const unsubscribe = useCallback(() => {

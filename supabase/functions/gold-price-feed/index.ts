@@ -29,12 +29,12 @@ const SUPPORTED_GOLD_SYMBOLS = ['GOLD', 'XAU/USD', 'XAUUSD'];
 
 // Cache for gold price data
 const goldPriceCache = new Map<string, { data: GoldPriceUpdate, expires: number }>();
-const GOLD_CACHE_TTL = 3000; // 3 seconds cache for gold
+const GOLD_CACHE_TTL = 10000; // 10 seconds cache as requested
 
-// Rate limiting for gold prices
+// Rate limiting for gold prices  
 const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const RATE_LIMIT_MAX = 30;
+const RATE_LIMIT_MAX = 60; // Higher limit for real-time usage
 
 function isRateLimited(): boolean {
   const now = Date.now();
@@ -69,33 +69,74 @@ function setCachedGoldPrice(symbol: string, data: GoldPriceUpdate): void {
   });
 }
 
-// Generate mock gold price data
-function generateGoldMockData(): GoldPriceUpdate {
-  console.log('🥇 Generating mock gold price data');
+// Fetch real gold price from Twelve Data API
+async function fetchRealGoldPrice(): Promise<GoldPriceUpdate | null> {
+  const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
   
-  const basePrice = 3240; // Current gold price
-  const volatility = 0.02; // 2% volatility for gold
+  console.log('🥇 Fetching real gold price from Twelve Data API');
+  console.log(`🔑 API Key available: ${apiKey ? 'YES' : 'NO'}`);
   
-  const changePercent = (Math.random() - 0.5) * 2 * volatility * 100;
-  const price = basePrice * (1 + changePercent / 100);
-  
-  return {
-    symbol: 'XAU/USD',
-    price: Math.round(price * 100) / 100,
-    change: Math.round((price - basePrice) * 100) / 100,
-    changePercent: Math.round(changePercent * 100) / 100,
-    timestamp: new Date().toISOString()
-  };
-}
-
-async function fetchGoldPrice(): Promise<GoldPriceUpdate | null> {
-  console.log('🥇 Fetching gold price data');
-  
-  if (isRateLimited()) {
-    console.warn('⚠️ Rate limit exceeded for gold price API');
+  if (!apiKey) {
+    console.error('❌ TWELVE_DATA_API_KEY not configured - cannot fetch real gold prices');
     return null;
   }
 
+  if (isRateLimited()) {
+    console.warn('⚠️ Rate limit exceeded for Twelve Data gold API');
+    return null;
+  }
+
+  try {
+    const url = `https://api.twelvedata.com/quote?symbol=XAU/USD&apikey=${apiKey}`;
+    console.log(`🌐 Making Gold API request to: ${url}`);
+    
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(8000) // 8 second timeout
+    });
+    
+    console.log(`📊 Gold API Response Status: ${response.status}`);
+    
+    if (!response.ok) {
+      console.error(`❌ Twelve Data Gold API HTTP error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    console.log(`📊 Gold API Response Data:`, JSON.stringify(data, null, 2));
+    
+    if (data.status === 'error') {
+      console.error(`❌ Twelve Data Gold API error:`, data.message || data);
+      return null;
+    }
+    
+    if (!data.close) {
+      console.error(`❌ No gold price data returned:`, data);
+      return null;
+    }
+    
+    const goldUpdate: GoldPriceUpdate = {
+      symbol: 'XAU/USD',
+      price: parseFloat(data.close) || 0,
+      change: parseFloat(data.change) || 0,
+      changePercent: parseFloat(data.percent_change) || 0,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log(`✅ SUCCESS: Real gold price: $${goldUpdate.price.toFixed(2)} (${goldUpdate.changePercent >= 0 ? '+' : ''}${goldUpdate.changePercent}%)`);
+    return goldUpdate;
+    
+  } catch (error) {
+    console.error(`❌ Exception during gold API fetch:`, error);
+    return null;
+  }
+}
+
+async function fetchGoldPrice(): Promise<GoldPriceUpdate | null> {
+  console.log('🥇 Fetching gold price with caching');
+  
   // Check cache first
   const cached = getCachedGoldPrice('XAU/USD');
   if (cached) {
@@ -103,16 +144,15 @@ async function fetchGoldPrice(): Promise<GoldPriceUpdate | null> {
     return cached;
   }
 
-  try {
-    // For now, generate mock data - can be replaced with real API later
-    const goldData = generateGoldMockData();
+  // Fetch real price from Twelve Data
+  const goldData = await fetchRealGoldPrice();
+  if (goldData) {
     setCachedGoldPrice('XAU/USD', goldData);
-    console.log(`✅ Gold price generated: $${goldData.price.toFixed(2)} (${goldData.changePercent >= 0 ? '+' : ''}${goldData.changePercent}%)`);
     return goldData;
-  } catch (error) {
-    console.error('❌ Exception during gold price fetch:', error);
-    return null;
   }
+  
+  console.warn('⚠️ Could not fetch real gold price, no fallback');
+  return null;
 }
 
 serve(async (req) => {
@@ -192,9 +232,89 @@ serve(async (req) => {
   
   let subscribedSymbols = new Set<string>();
   let priceUpdateInterval: number | null = null;
+  let twelveDataWs: WebSocket | null = null;
+  let reconnectTimeout: number | null = null;
+
+  // Function to connect to Twelve Data WebSocket for Gold
+  const connectToTwelveDataGold = () => {
+    const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
+    if (!apiKey) {
+      console.error('❌ TWELVE_DATA_API_KEY not configured for gold WebSocket');
+      return;
+    }
+
+    try {
+      console.log('🥇 Connecting to Twelve Data WebSocket for Gold...');
+      twelveDataWs = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
+
+      twelveDataWs.onopen = () => {
+        console.log('✅ Connected to Twelve Data Gold WebSocket');
+        
+        // Subscribe to XAU/USD if we have subscribed clients
+        if (subscribedSymbols.size > 0) {
+          const subscribeMessage = {
+            action: 'subscribe',
+            params: {
+              symbols: 'XAU/USD'
+            }
+          };
+          console.log('📡 Subscribing to Twelve Data Gold symbols: XAU/USD');
+          twelveDataWs?.send(JSON.stringify(subscribeMessage));
+        }
+      };
+
+      twelveDataWs.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('📊 Received Gold data from Twelve Data:', data);
+          
+          if (data.event === 'price' && data.symbol === 'XAU/USD' && data.price) {
+            const goldUpdate: GoldPriceUpdate = {
+              symbol: 'XAU/USD',
+              price: parseFloat(data.price),
+              change: parseFloat(data.day_change) || 0,
+              changePercent: parseFloat(data.day_change_percent) || 0,
+              timestamp: new Date().toISOString()
+            };
+
+            // Cache the update
+            setCachedGoldPrice('XAU/USD', goldUpdate);
+
+            // Forward to client
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
+                type: 'price_update',
+                data: [goldUpdate],
+                source: 'twelve_data_websocket',
+                timestamp: new Date().toISOString()
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error parsing Twelve Data Gold message:', error);
+        }
+      };
+
+      twelveDataWs.onclose = () => {
+        console.log('🥇 Twelve Data Gold WebSocket disconnected');
+        // Reconnect after 3 seconds
+        reconnectTimeout = setTimeout(connectToTwelveDataGold, 3000);
+      };
+
+      twelveDataWs.onerror = (error) => {
+        console.error('❌ Twelve Data Gold WebSocket error:', error);
+      };
+
+    } catch (error) {
+      console.error('❌ Failed to connect to Twelve Data Gold:', error);
+    }
+  };
 
   socket.onopen = () => {
     console.log("🥇 Gold price WebSocket connection opened");
+    
+    // Connect to Twelve Data WebSocket
+    connectToTwelveDataGold();
   };
 
   socket.onmessage = async (event) => {
@@ -228,41 +348,69 @@ serve(async (req) => {
         if (validGoldSymbols.length > 0) {
           validGoldSymbols.forEach(symbol => subscribedSymbols.add(symbol));
           
-          // Send initial gold price
-          const goldPrice = await fetchGoldPrice();
-          if (goldPrice && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-              type: 'price_update',
-              data: [goldPrice],
-              source: 'gold_price_feed',
-              timestamp: new Date().toISOString()
-            }));
+          // Subscribe to Twelve Data WebSocket if connected
+          if (twelveDataWs?.readyState === WebSocket.OPEN) {
+            const subscribeMessage = {
+              action: 'subscribe',
+              params: {
+                symbols: 'XAU/USD'
+              }
+            };
+            console.log('📡 Subscribing to Twelve Data Gold WebSocket');
+            twelveDataWs.send(JSON.stringify(subscribeMessage));
+          } else {
+            // If WebSocket not connected, use HTTP fallback for initial data
+            console.log('🔄 Twelve Data Gold WebSocket not ready, using HTTP fallback');
+            const goldPrice = await fetchGoldPrice();
+            if (goldPrice && socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
+                type: 'price_update',
+                data: [goldPrice],
+                source: 'twelve_data_api',
+                timestamp: new Date().toISOString()
+              }));
+            }
           }
           
-          // Set up regular price updates every 3 seconds
+          // Set up regular price updates every 1 second for real-time feel
           if (priceUpdateInterval) {
             clearInterval(priceUpdateInterval);
           }
           
           priceUpdateInterval = setInterval(async () => {
             if (subscribedSymbols.size > 0) {
-              const goldPrice = await fetchGoldPrice();
-              if (goldPrice && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                  type: 'price_update',
-                  data: [goldPrice],
-                  source: 'gold_price_feed',
-                  timestamp: new Date().toISOString()
-                }));
+              // Only use HTTP fallback if WebSocket is not working
+              if (!twelveDataWs || twelveDataWs.readyState !== WebSocket.OPEN) {
+                const goldPrice = await fetchGoldPrice();
+                if (goldPrice && socket.readyState === WebSocket.OPEN) {
+                  socket.send(JSON.stringify({
+                    type: 'price_update',
+                    data: [goldPrice],
+                    source: 'twelve_data_api',
+                    timestamp: new Date().toISOString()
+                  }));
+                }
               }
             }
-          }, 3000); // Update every 3 seconds
+          }, 1000); // Update every 1 second for per-second live data
         }
         
       } else if (message.type === 'unsubscribe') {
         console.log('🥇 Gold price unsubscribe request for symbols:', message.symbols);
         
         message.symbols.forEach(symbol => subscribedSymbols.delete(symbol));
+        
+        // Unsubscribe from Twelve Data if connected
+        if (twelveDataWs?.readyState === WebSocket.OPEN) {
+          const unsubscribeMessage = {
+            action: 'unsubscribe',
+            params: {
+              symbols: 'XAU/USD'
+            }
+          };
+          console.log('📤 Unsubscribing from Twelve Data Gold');
+          twelveDataWs.send(JSON.stringify(unsubscribeMessage));
+        }
         
         // Clear interval if no symbols are subscribed
         if (subscribedSymbols.size === 0 && priceUpdateInterval) {
@@ -284,6 +432,18 @@ serve(async (req) => {
 
   socket.onclose = () => {
     console.log("🥇 Gold price WebSocket connection closed");
+    
+    // Close Twelve Data connection
+    if (twelveDataWs) {
+      twelveDataWs.close();
+      twelveDataWs = null;
+    }
+    
+    // Clear reconnect timeout
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
     
     if (priceUpdateInterval) {
       clearInterval(priceUpdateInterval);

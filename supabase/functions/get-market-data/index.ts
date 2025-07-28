@@ -59,7 +59,7 @@ const ALL_SYMBOLS = Object.values(TRADING_UNIVERSE).flat();
 
 // Multi-tier cache: Fast for Gold, priority for alerts, regular for others
 const cache = new Map<string, { data: MarketDataPoint, expires: number, isPriority: boolean }>();
-const GOLD_CACHE_TTL = 5000; // 5 seconds for Gold (XAU/USD)
+const GOLD_CACHE_TTL = 2000; // 2 seconds for Gold (XAU/USD) - faster updates
 const PRIORITY_CACHE_TTL = 1000; // 1 second for active alert symbols
 const REGULAR_CACHE_TTL = 30000; // 30 seconds for regular symbols
 
@@ -311,8 +311,8 @@ function generateEnhancedMockData(symbols: string[]): MarketDataPoint[] {
     // Forex
     'EUR/USD': 1.032, 'GBP/USD': 1.241, 'USD/JPY': 157, 'AUD/USD': 0.618,
     'USD/CAD': 1.412, 'NZD/USD': 0.558,
-    // Commodities - CURRENT GOOGLE FINANCE PRICES
-    'GOLD': 3396.70, 'XAU/USD': 3396.70, 'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
+    // Commodities - CURRENT TRADINGVIEW PRICES
+    'GOLD': 3317.20, 'XAU/USD': 3317.20, 'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
     'COPPER': 4.55, 'WHEAT': 5.4,
     // ETFs
     'QQQ': 515, 'IWM': 238, 'DIA': 445, 'VTI': 295, 'GLD': 325, 'USO': 85

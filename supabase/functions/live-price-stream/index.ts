@@ -94,8 +94,8 @@ function generateMockData(symbols: string[]): PriceUpdate[] {
   console.log('🚨 API is not working - real prices should be fetched instead');
   
   const basePrices: Record<string, number> = {
-    'XAU/USD': 3396.70,  // CURRENT GOOGLE FINANCE PRICE
-    'GOLD': 3396.70,     // Legacy symbol mapping
+    'XAU/USD': 3317.20,  // CURRENT TRADINGVIEW PRICE - UPDATED
+    'GOLD': 3317.20,     // Legacy symbol mapping
     'BTC/USD': 117881.00, // CURRENT GOOGLE FINANCE PRICE  
     'BTCUSD': 117881.00, // Alternative Bitcoin symbol
     'BTC': 117881.00     // Short Bitcoin symbol

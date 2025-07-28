@@ -322,7 +322,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       {/* Data Source Info */}
       <div className="mt-2 pt-2 border-t border-gray-600">
         <div className="text-xs text-gray-500">
-          {connectionStatusInfo.description} • Symbol: {symbol}
+          {connectionStatusInfo.description} • Symbol: {symbol} • Source: Twelve Data API
         </div>
       </div>
     </div>

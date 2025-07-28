@@ -158,11 +158,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               </Badge>
             </div>
             <div className="flex flex-col items-end gap-1">
-              {isCreator && (
-                <Badge className="bg-accent-green/20 text-accent-green border-accent-green/30 text-xs">
-                  Your Signal
-                </Badge>
-              )}
               <div className="text-xs text-muted-foreground">
                 {formatTimeAgo(alert.created_date)}
               </div>

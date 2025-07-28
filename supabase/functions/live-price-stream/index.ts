@@ -103,37 +103,13 @@ function setCachedPrice(symbol: string, data: PriceUpdate): void {
   });
 }
 
-// ⚠️ EMERGENCY MOCK DATA ONLY - Current Google Finance prices
+// 🚫 DISABLED MOCK DATA - FORCE REAL API USAGE ONLY
 function generateMockData(symbols: string[]): PriceUpdate[] {
-  console.log('🚨 WARNING: Generating mock data for symbols:', symbols);
-  console.log('🚨 API is not working - real prices should be fetched instead');
+  console.log('🚫 MOCK DATA DISABLED - Must use real Twelve Data API');
+  console.log('❌ Returning empty array to force real API usage');
   
-  const basePrices: Record<string, number> = {
-    'XAU/USD': 3312.565,  // CURRENT TRADINGVIEW PRICE - UPDATED
-    'GOLD': 3312.565,     // Legacy symbol mapping
-    'BTC/USD': 117881.00, // CURRENT GOOGLE FINANCE PRICE  
-    'BTCUSD': 117881.00, // Alternative Bitcoin symbol
-    'BTC': 117881.00     // Short Bitcoin symbol
-  };
-  
-  return symbols.map((symbol: string) => {
-    const apiSymbol = translateSymbol(symbol);
-    const basePrice = basePrices[apiSymbol] || 150;
-    
-    // Asset-specific volatility
-    const volatilityRange = apiSymbol === 'BTCUSD' ? 0.08 : 0.04;
-    
-    const changePercent = (Math.random() - 0.5) * 2 * volatilityRange * 100;
-    const price = basePrice * (1 + changePercent / 100);
-    
-    return {
-      symbol: symbol, // Return original symbol format
-      price: Math.round(price * 100) / 100,
-      change: Math.round((price - basePrice) * 100) / 100,
-      changePercent: Math.round(changePercent * 100) / 100,
-      timestamp: new Date().toISOString()
-    };
-  });
+  // Return empty array to force real API calls
+  return [];
 }
 
 async function fetchRealPrice(symbol: string): Promise<PriceUpdate | null> {

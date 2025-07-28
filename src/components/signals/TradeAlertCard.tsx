@@ -149,21 +149,23 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       <div className="p-4">
         {/* Signal Creator Attribution */}
         {creator && (
-          <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
-            <div className="flex items-center gap-2">
+          <div className="flex items-start justify-between mb-3 pb-3 border-b border-border/30">
+            <div className="flex flex-col gap-1">
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 {getRoleIcon(creator.role)}
                 <span>Posted by</span>
               </div>
-              <span className="font-semibold text-foreground">{creator.display_name}</span>
-              <Badge className={getRoleBadgeClass(creator.role)}>
-                {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
-              </Badge>
-              {isCreator && (
-                <Badge className="bg-accent-green/20 text-accent-green border-accent-green/30 text-xs">
-                  Your Signal
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-foreground">{creator.display_name}</span>
+                <Badge className={getRoleBadgeClass(creator.role)}>
+                  {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
                 </Badge>
-              )}
+                {isCreator && (
+                  <Badge className="bg-accent-green/20 text-accent-green border-accent-green/30 text-xs">
+                    Your Signal
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="text-xs text-muted-foreground">
               {formatTimeAgo(alert.created_date)}

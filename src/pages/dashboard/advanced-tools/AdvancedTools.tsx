@@ -252,7 +252,7 @@ export default function AdvancedTools() {
                         <div className="relative">
                           <button
                             onClick={() => setActiveTool(tool)}
-                            className={`w-full p-2 rounded-lg border transition-all min-h-[36px] touch-manipulation relative overflow-hidden ${
+                            className={`w-full p-2 rounded-lg border transition-all min-h-[36px] touch-manipulation relative overflow-hidden flex items-center justify-center ${
                               activeTool?.name === tool.name
                                 ? "bg-primary/10 border-primary/20 text-primary shadow-lg shadow-primary/10 scale-105"
                                 : "bg-surface/50 border-border/20 active:bg-surface/90 hover:shadow-md"

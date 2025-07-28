@@ -365,24 +365,32 @@ serve(async (req) => {
       };
 
       twelveDataWs.onclose = () => {
-        console.log('🔌 Twelve Data WebSocket disconnected');
-        // Reconnect after 5 seconds
-        reconnectTimeout = setTimeout(connectToTwelveData, 5000);
+        console.log('🔌 Twelve Data WebSocket disconnected - RECONNECTING IMMEDIATELY');
+        // Immediate reconnect for critical connection
+        reconnectTimeout = setTimeout(connectToTwelveData, 1000); // Faster reconnect
       };
 
       twelveDataWs.onerror = (error) => {
         console.error('❌ Twelve Data WebSocket error:', error);
+        console.log('🔄 Force reconnecting due to error...');
+        // Force reconnect on any error
+        setTimeout(connectToTwelveData, 2000);
       };
 
     } catch (error) {
       console.error('❌ Failed to connect to Twelve Data:', error);
+      console.log('🔄 Retrying connection in 3 seconds...');
+      // Retry connection after short delay
+      setTimeout(connectToTwelveData, 3000);
     }
   };
 
+  // FORCE IMMEDIATE CONNECTION on socket open
   socket.onopen = () => {
     console.log("🔗 Client WebSocket connection opened");
+    console.log("🚀 FORCE CONNECTING TO TWELVE DATA IMMEDIATELY");
     
-    // Check API key and connect to Twelve Data
+    // Check API key and connect to Twelve Data IMMEDIATELY
     const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
     if (!apiKey) {
       const errorMsg: ErrorMessage = {
@@ -392,6 +400,7 @@ serve(async (req) => {
       };
       socket.send(JSON.stringify(errorMsg));
     } else {
+      // FORCE CONNECT WITHOUT DELAY
       connectToTwelveData();
     }
   };
@@ -430,7 +439,7 @@ serve(async (req) => {
           socket.send(JSON.stringify(errorMsg));
         });
         
-        // Subscribe to Twelve Data WebSocket if connected and we have valid symbols
+        // FORCE SUBSCRIBE TO TWELVE DATA - ENSURE CONNECTION
         if (twelveDataWs?.readyState === WebSocket.OPEN && validSymbols.length > 0) {
           const normalizedSymbols = validSymbols.map(s => normalizeSymbol(s));
           const subscribeMessage = {
@@ -439,8 +448,24 @@ serve(async (req) => {
               symbols: normalizedSymbols.join(',')
             }
           };
-          console.log('📡 Subscribing to Twelve Data:', normalizedSymbols);
+          console.log('📡 FORCE SUBSCRIBING to Twelve Data:', normalizedSymbols);
           twelveDataWs.send(JSON.stringify(subscribeMessage));
+        } else if (validSymbols.length > 0) {
+          console.log('⚠️ Twelve Data WebSocket not ready - waiting for connection...');
+          // Wait for connection and retry
+          setTimeout(() => {
+            if (twelveDataWs?.readyState === WebSocket.OPEN) {
+              const normalizedSymbols = validSymbols.map(s => normalizeSymbol(s));
+              const subscribeMessage = {
+                action: 'subscribe',
+                params: {
+                  symbols: normalizedSymbols.join(',')
+                }
+              };
+              console.log('📡 RETRY SUBSCRIBING to Twelve Data:', normalizedSymbols);
+              twelveDataWs.send(JSON.stringify(subscribeMessage));
+            }
+          }, 2000);
         }
         
       } else if (message.type === 'unsubscribe') {

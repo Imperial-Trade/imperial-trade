@@ -404,29 +404,25 @@ export default function SignalStream() {
   return <div className="min-h-screen bg-background w-full">
       <NotificationSystem />
       
-      {/* Header - Optimized spacing */}
+      {/* Header - Mobile Optimized spacing */}
       <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="w-full px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-3xl font-bold text-foreground">
-                  Educational Pattern <span className="text-accent-green">Stream</span>
+        <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1">
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                  Xeon <span className="text-accent-green">Stream</span>
                 </h1>
-                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
-                  <Shield className="w-3 h-3 mr-1" />
-                  Educational Contributors
+                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs w-fit">
+                  <Shield className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <span className="truncate">Educational Contributors</span>
                 </Badge>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Educational market analysis patterns with reference pricing from verified educational contributors
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              {canCreateSignals && <Button onClick={() => navigate('/dashboard/new-signal')} className="bg-foreground text-background hover:bg-foreground/90 border border-border">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Pattern
-                </Button>}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
               {getConnectionStatusBadge()}
               {lastUpdated && <span className="text-xs text-muted-foreground">
                   Last update: {lastUpdated.toLocaleTimeString()}
@@ -436,12 +432,19 @@ export default function SignalStream() {
         </div>
       </div>
 
-      {/* Main Content - Improved grid layout */}
-      <div className="w-full px-4 py-6">
+      {/* Main Content - Mobile Optimized grid layout */}
+      <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
         <div className="max-w-none w-full">
           <div className="w-full">
             {/* Enhanced Filters */}
-            <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} />
+            <SignalStreamFilters 
+              filters={filters} 
+              onFiltersChange={setFilters} 
+              educatorOptions={educatorOptions} 
+              signalCounts={signalCounts}
+              canCreateSignals={canCreateSignals}
+              onCreateSignal={() => navigate('/dashboard/new-signal')}
+            />
             {isLoading ? <div className="flex justify-center items-center h-64 flex-col space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
                 <div className="text-center">

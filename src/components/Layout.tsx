@@ -1,4 +1,3 @@
-
 import React, { useState } from "react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
@@ -172,66 +171,68 @@ function DashboardHeader() {
           </Button>
         </div>
 
-        {/* Mobile Menu */}
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="lg:hidden text-primary hover:text-primary/80">
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Open navigation menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-80 bg-background/95 backdrop-blur-xl">
-            <SheetHeader className="border-b border-border/50 pb-6">
-              <SheetTitle className="flex items-center gap-2 text-left">
-                <Crown className="h-6 w-6 text-primary" />
-                <span className="text-xl imperial-tech-font">IMPERIAL</span>
-              </SheetTitle>
-            </SheetHeader>
+        {/* Mobile Menu - Fixed to the far right edge */}
+        <div className="fixed top-4 right-6 z-60 lg:hidden">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-primary hover:text-primary/80">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Open navigation menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-80 bg-background/95 backdrop-blur-xl">
+              <SheetHeader className="border-b border-border/50 pb-6">
+                <SheetTitle className="flex items-center gap-2 text-left">
+                  <Crown className="h-6 w-6 text-primary" />
+                  <span className="text-xl imperial-tech-font">IMPERIAL</span>
+                </SheetTitle>
+              </SheetHeader>
 
-            <nav className="flex flex-col gap-2 mt-8">
-              {navigationItems.map(item => {
-                const isActive = location.pathname === item.to;
-                return (
-                  <div key={item.to} className="space-y-2">
-                    <Link 
-                      to={item.to} 
-                      onClick={closeMobileMenu} 
-                      className={`flex items-center gap-3 p-4 rounded-xl transition-all duration-200 border ${
-                        isActive 
-                          ? 'bg-primary/10 border-primary/20 text-primary' 
-                          : 'hover:bg-primary/10 text-foreground border-border/50'
-                      }`}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      <div>
-                        <span className="text-base font-medium block">{item.label}</span>
-                        <span className="text-sm text-muted-foreground">{item.description}</span>
-                      </div>
-                    </Link>
+              <nav className="flex flex-col gap-2 mt-8">
+                {navigationItems.map(item => {
+                  const isActive = location.pathname === item.to;
+                  return (
+                    <div key={item.to} className="space-y-2">
+                      <Link 
+                        to={item.to} 
+                        onClick={closeMobileMenu} 
+                        className={`flex items-center gap-3 p-4 rounded-xl transition-all duration-200 border ${
+                          isActive 
+                            ? 'bg-primary/10 border-primary/20 text-primary' 
+                            : 'hover:bg-primary/10 text-foreground border-border/50'
+                        }`}
+                      >
+                        <item.icon className="h-5 w-5" />
+                        <div>
+                          <span className="text-base font-medium block">{item.label}</span>
+                          <span className="text-sm text-muted-foreground">{item.description}</span>
+                        </div>
+                      </Link>
+                    </div>
+                  );
+                })}
+
+                <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
+                  <div className="flex justify-center">
+                    <ThemeToggle />
                   </div>
-                );
-              })}
-
-              <div className="mt-6 pt-6 border-t border-border/50 space-y-4">
-                <div className="flex justify-center">
-                  <ThemeToggle />
+                  {user && (
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-foreground">
+                        {user.user_metadata?.first_name && user.user_metadata?.last_name 
+                          ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                          : user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'}
+                      </p>
+                      <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-xs font-medium mt-1 border-0 bg-transparent px-0`}>
+                        {getAccessLevelDisplay(getUserAccessLevel()).label}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
-                {user && (
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-foreground">
-                      {user.user_metadata?.first_name && user.user_metadata?.last_name 
-                        ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
-                        : user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'}
-                    </p>
-                    <Badge className={`${getAccessLevelDisplay(getUserAccessLevel()).color} text-xs font-medium mt-1 border-0 bg-transparent px-0`}>
-                      {getAccessLevelDisplay(getUserAccessLevel()).label}
-                    </Badge>
-                  </div>
-                )}
-              </div>
-            </nav>
-          </SheetContent>
-        </Sheet>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
 
       <style>{`

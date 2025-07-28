@@ -3,7 +3,7 @@ import Layout from "@/components/Layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, TrendingDown, Clock, Target, Shield } from "lucide-react"
-import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from "@/components/compliance/ComplianceNotice"
+
 
 const Signals = () => {
   const signals = [
@@ -78,23 +78,11 @@ const Signals = () => {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-amber-300 bg-clip-text text-transparent">
               Educational Market Patterns
             </h1>
-            <EducationalBadge />
+            
           </div>
           <p className="text-lg text-muted-foreground">
             Real-time educational opportunities from our verified market educators and contributors.
           </p>
-          
-          {/* Compliance Notices */}
-          <div className="mt-6 space-y-3">
-            <ComplianceNotice 
-              type="educational" 
-              size="md"
-            />
-            <ComplianceNotice 
-              type="hypothetical" 
-              size="sm"
-            />
-          </div>
         </div>
 
         {/* Statistics Cards */}

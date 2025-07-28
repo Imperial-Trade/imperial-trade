@@ -9,7 +9,7 @@ interface DeconstructorRequest {
   file_urls?: string[];
 }
 
-// Helper function to convert image URL to base64
+// Fixed helper function to convert image URL to base64 (handles large images)
 async function imageUrlToBase64(url: string): Promise<string> {
   try {
     console.log("Converting image to base64:", url);
@@ -22,9 +22,17 @@ async function imageUrlToBase64(url: string): Promise<string> {
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    const base64String = btoa(
-      String.fromCharCode(...new Uint8Array(arrayBuffer))
-    );
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    // Convert to base64 in chunks to avoid stack overflow
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.subarray(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    
+    const base64String = btoa(binary);
     console.log(
       "Image converted to base64 successfully, size:",
       base64String.length
@@ -54,64 +62,105 @@ function getMimeTypeFromUrl(url: string): string {
   }
 }
 
-// Optimized system prompt with clearer structure and reduced token usage
-const SYSTEM_PROMPT = `You are a quantitative performance analyst AI. Provide objective, data-driven trading analysis in JSON format only.
+// Master Prompt - The Brain of MECCA: Screenshot-Focused Trading Analysis
+const SYSTEM_PROMPT = `You are MECCA (Master Elite Cognitive Coach & Analyzer), an AI specialized in VISUAL ANALYSIS of trading screenshots. Your primary function is to extract precise data and insights directly from trading platform images.
 
-**Analysis Requirements:**
-- Analyze visual screenshots (if provided) and trading journal data
-- Focus on performance metrics and behavioral patterns
-- Provide educational insights for learning purposes only
+**CRITICAL MISSION: SCREENSHOT-FIRST ANALYSIS**
+You MUST base your analysis primarily on what you can SEE in the provided screenshots. Ignore theoretical assumptions - focus on visible evidence only.
 
-**Required JSON Structure:**
+**VISUAL DATA EXTRACTION PROTOCOL:**
+
+1. **IMMEDIATE SCREENSHOT SCAN:**
+   - Read ALL visible numbers: account balance, equity, P&L, margin levels
+   - Count exact wins/losses from trading history if visible
+   - Extract position sizes, lot sizes, and leverage from visible trades
+   - Identify trading platform (MT4, MT5, TradingView, cTrader, etc.)
+   - Note time zones and trading sessions visible
+
+2. **TRADING PERFORMANCE METRICS (From Screenshots):**
+   - Calculate win rate from visible trade counts
+   - Extract profit factor if gross profit/loss visible
+   - Identify maximum drawdown from equity curves
+   - Note consecutive wins/losses patterns
+   - Analyze risk-reward ratios from individual trades
+
+3. **CHART PATTERN RECOGNITION:**
+   - Identify support/resistance levels and price action
+   - Recognize chart patterns (triangles, flags, head & shoulders)
+   - Assess entry/exit timing quality relative to price movements
+   - Note technical indicators visible on charts
+   - Evaluate trend following vs counter-trend approaches
+
+4. **BEHAVIORAL PATTERN DETECTION:**
+   - Spot revenge trading (increasing position size after losses)
+   - Identify FOMO entries (chasing price, poor timing)
+   - Assess position sizing consistency across trades
+   - Note emotional trading patterns from execution timing
+
+**RESPONSE FORMAT - SCREENSHOT-BASED JSON:**
 {
-  "overall_performance": {
-    "summary": "Brief performance summary",
-    "screenshots_analyzed": number,
-    "trades_analyzed": number,
-    "risk_score": "Low/Medium/High",
-    "confidence_level": "percentage"
+  "screenshot_analysis": {
+    "images_processed": number,
+    "platform_detected": "specific trading platform name",
+    "data_quality": "excellent|good|fair|poor",
+    "visible_timeframe": "timeframe if identifiable",
+    "account_type": "demo|live|prop|unknown"
   },
-  "performance_metrics": {
-    "win_rate": "percentage",
-    "profit_factor": "ratio",
-    "risk_reward_ratio": "ratio",
-    "max_drawdown": "percentage",
-    "execution_quality": "Poor/Fair/Good/Excellent"
+  "extracted_metrics": {
+    "account_balance": "exact number from screenshot or 'not visible'",
+    "equity": "exact number from screenshot or 'not visible'",
+    "total_pnl": "exact P&L figure or 'not visible'",
+    "win_count": "number of winning trades visible",
+    "loss_count": "number of losing trades visible",
+    "win_rate": "calculated percentage or 'cannot calculate'",
+    "largest_win": "biggest profit visible",
+    "largest_loss": "biggest loss visible",
+    "position_sizes": "range of lot sizes observed"
   },
-  "visual_analysis": {
-    "chart_patterns_identified": ["pattern1", "pattern2"],
-    "technical_indicators_used": ["indicator1", "indicator2"],
-    "setup_quality": "Poor/Fair/Good/Excellent",
-    "entry_timing": "Early/Optimal/Late",
-    "exit_strategy": "brief analysis"
+  "visual_patterns": {
+    "chart_patterns_seen": ["list specific patterns visible in charts"],
+    "support_resistance": ["key levels visible in screenshots"],
+    "trend_direction": "up|down|sideways|mixed",
+    "entry_quality": "excellent|good|fair|poor based on visible entries",
+    "exit_timing": "excellent|good|fair|poor based on visible exits"
   },
-  "key_insights": [
-    "Insight 1: Key behavioral observation",
-    "Insight 2: Pattern recognition finding",
-    "Insight 3: Decision-making analysis"
-  ],
+  "risk_assessment": {
+    "position_sizing": "consistent|inconsistent|aggressive|conservative",
+    "stop_losses": "visible|not visible|inconsistent",
+    "leverage_usage": "conservative|moderate|high|excessive",
+    "risk_score": "1-10 based on visible evidence"
+  },
+  "trader_behavior": {
+    "discipline_signs": ["positive behaviors observed"],
+    "warning_signs": ["concerning patterns visible"],
+    "emotional_indicators": ["signs of emotional trading"],
+    "experience_level": "beginner|intermediate|advanced|expert"
+  },
   "strengths": [
-    "Strength 1: Positive pattern",
-    "Strength 2: Good behavior",
-    "Strength 3: Consistent execution"
+    "Specific strength with screenshot evidence",
+    "Another strength backed by visible data"
   ],
   "improvements": [
-    "Improvement 1: Area needing attention",
-    "Improvement 2: Behavioral adjustment",
-    "Improvement 3: Skill development"
+    "Improvement area with specific visual evidence",
+    "Another area needing attention with screenshot proof"
   ],
   "recommendations": [
-    "1. Specific actionable recommendation",
-    "2. Educational development suggestion",
-    "3. Risk management improvement"
+    "Actionable recommendation based on what you see",
+    "Specific next step derived from screenshot analysis"
   ],
-  "performance_evolution": {
-    "trend": "Improving/Declining/Stable",
-    "progression_summary": "Brief development analysis"
-  }
+  "key_insights": [
+    "Critical insight from visual analysis",
+    "Important observation from screenshots"
+  ]
 }
 
-**Critical:** Respond ONLY with valid JSON. No financial advice or predictions.`;
+**CRITICAL INSTRUCTIONS:**
+- Base analysis ONLY on what you can see in screenshots
+- If you cannot see specific data, state "not visible" 
+- Extract exact numbers when possible
+- Focus on visual evidence, not assumptions
+- Provide specific screenshot-based insights
+- No generic advice - only data-driven observations`;
 
 // Enhanced Google AI call with proper error handling
 async function callGoogleAIWithEnhancedHandling(
@@ -291,13 +340,35 @@ serve(async (req) => {
     // Use service role key for database operations to bypass RLS
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch user profile information for personalized feedback
+    // Fetch user profile and personalization data for enhanced analysis
     console.log("Deconstructor Agent - Fetching user profile...");
     const { data: userProfile, error: profileError } = await supabase
       .from("profiles")
-      .select("real_name, display_name")
+      .select("real_name, display_name, trader_level")
       .eq("id", user_id)
       .single();
+
+    // Fetch user trading profile for personalization
+    const { data: tradingProfile, error: tradingProfileError } = await supabase
+      .from("user_trading_profiles")
+      .select("*")
+      .eq("user_id", user_id)
+      .maybeSingle();
+
+    // Fetch user preferences
+    const { data: userPreferences, error: preferencesError } = await supabase
+      .from("user_personalization_preferences")
+      .select("*")
+      .eq("user_id", user_id)
+      .maybeSingle();
+
+    // Fetch recent analysis history for context
+    const { data: analysisHistory, error: historyError } = await supabase
+      .from("screenshot_analysis_history")
+      .select("patterns_detected, trading_style_indicators, performance_metrics, platform_identified")
+      .eq("user_id", user_id)
+      .order("created_at", { ascending: false })
+      .limit(3);
 
     if (profileError) {
       console.error(
@@ -309,7 +380,12 @@ serve(async (req) => {
 
     const userName =
       userProfile?.display_name || userProfile?.real_name || "Trader";
+    const traderLevel = userProfile?.trader_level || "Beginner";
+    
     console.log("Deconstructor Agent - User name resolved:", userName);
+    console.log("Deconstructor Agent - Trading profile loaded:", !!tradingProfile);
+    console.log("Deconstructor Agent - User preferences loaded:", !!userPreferences);
+    console.log("Deconstructor Agent - Analysis history entries:", analysisHistory?.length || 0);
 
     // Fetch trading journal data
     console.log("Deconstructor Agent - Fetching trading journal data...");
@@ -338,29 +414,64 @@ serve(async (req) => {
       sanitizedTrades.length
     );
 
-    // Build the contents array for Google AI API
+    // Build the contents array for Google AI API - PRIORITIZE VISUAL ANALYSIS
     const contents = [];
 
-    // Create optimized main content
+    // Create personalized prompt based on user data
     let mainContent = SYSTEM_PROMPT;
 
-    // Add screenshot analysis section if images are provided
-    if (file_urls.length > 0) {
-      mainContent += `\n\n--- VISUAL ANALYSIS ---\nAnalyze ${file_urls.length} trading screenshots for ${userName}`;
+    // Add personalization context
+    let personalizationContext = `\n\n--- PERSONALIZED ANALYSIS FOR ${userName.toUpperCase()} ---\n`;
+    personalizationContext += `Trader Level: ${traderLevel}\n`;
+    
+    if (tradingProfile) {
+      personalizationContext += `Known Trading Style: ${tradingProfile.trading_style || 'Unknown'}\n`;
+      personalizationContext += `Risk Tolerance: ${tradingProfile.risk_tolerance}\n`;
+      personalizationContext += `Preferred Assets: ${JSON.stringify(tradingProfile.preferred_assets)}\n`;
+      personalizationContext += `Platform History: ${tradingProfile.platform_detected || 'Unknown'}\n`;
     }
 
-    // Add condensed trading journal data
-    const condensedTrades = sanitizedTrades.slice(0, 10).map((trade) => ({
-      ticker: trade.asset_ticker,
-      pnl: trade.pnl,
-      date: trade.trade_date,
-      notes: trade.notes ? trade.notes.substring(0, 100) : null,
-    }));
+    if (userPreferences) {
+      personalizationContext += `Analysis Depth Preference: ${userPreferences.analysis_depth}\n`;
+      personalizationContext += `Focus Areas: ${JSON.stringify(userPreferences.focus_areas)}\n`;
+      personalizationContext += `Feedback Style: ${userPreferences.feedback_style}\n`;
+    }
 
-    mainContent += `\n\n--- TRADING DATA ---\nAnalyze ${userName}'s recent trades: ${JSON.stringify(
-      condensedTrades
-    )}`;
-    mainContent += `\n\nProvide comprehensive analysis in the specified JSON format.`;
+    if (analysisHistory && analysisHistory.length > 0) {
+      personalizationContext += `\nPrevious Analysis Patterns:\n`;
+      analysisHistory.forEach((history, index) => {
+        personalizationContext += `- Session ${index + 1}: Platform ${history.platform_identified || 'Unknown'}\n`;
+        if (history.patterns_detected) {
+          personalizationContext += `  Patterns: ${JSON.stringify(history.patterns_detected).slice(0, 100)}...\n`;
+        }
+      });
+    }
+
+    personalizationContext += `\nTailor your analysis to ${userName}'s specific experience level and provide insights that build on their previous sessions.\n`;
+    
+    mainContent += personalizationContext;
+
+    // Add screenshot analysis section if images are provided (PRIMARY FOCUS)
+    if (file_urls.length > 0) {
+      mainContent += `\n\n--- PRIMARY VISUAL ANALYSIS ---\nFocus your analysis on these ${file_urls.length} trading screenshots for ${userName}. Extract all visible trading data, patterns, and behaviors from the images.`;
+      mainContent += `\n\nSCREENSHOT ANALYSIS INSTRUCTIONS:\n- Examine each image for trading platform data, P&L, position sizes, chart patterns\n- Calculate performance metrics from visible trades\n- Identify risk management practices visible in the screenshots\n- Note any emotional trading patterns visible in execution data\n- Compare current performance with ${userName}'s historical patterns if available`;
+    } else {
+      mainContent += `\n\n--- NO SCREENSHOTS PROVIDED ---\nNo visual data available for analysis. Provide recommendations for capturing screenshots for future analysis.`;
+    }
+
+    // Add minimal trading journal data only as supplementary context
+    if (sanitizedTrades.length > 0) {
+      const condensedTrades = sanitizedTrades.slice(0, 5).map((trade) => ({
+        ticker: trade.asset_ticker,
+        pnl: trade.pnl,
+        date: trade.trade_date,
+        notes: trade.notes ? trade.notes.substring(0, 50) : null,
+      }));
+
+      mainContent += `\n\n--- SUPPLEMENTARY CONTEXT ---\nIf screenshots lack detail, use this minimal trading data as context only: ${JSON.stringify(condensedTrades)}`;
+    }
+
+    mainContent += `\n\nProvide comprehensive visual analysis in the specified JSON format, focusing primarily on what you can see in the uploaded screenshots.`;
 
     // Start with the text part
     const parts = [{ text: mainContent }];
@@ -469,6 +580,51 @@ serve(async (req) => {
       );
     } else {
       console.log("Deconstructor Agent - Agent output stored successfully");
+    }
+
+    // Store screenshot analysis history for personalization learning
+    if (file_urls.length > 0) {
+      try {
+        const analysisData = JSON.parse(analysisResponse);
+        
+        const { error: historyError } = await supabase
+          .from("screenshot_analysis_history")
+          .insert({
+            user_id,
+            analysis_session_id: crypto.randomUUID(),
+            screenshot_urls: file_urls,
+            extracted_data: analysisData.extracted_metrics || {},
+            patterns_detected: analysisData.visual_patterns || {},
+            platform_identified: analysisData.screenshot_analysis?.platform_detected,
+            timeframe_detected: analysisData.screenshot_analysis?.visible_timeframe,
+            assets_identified: sanitizedTrades.map(t => t.asset_ticker).filter((v, i, a) => a.indexOf(v) === i),
+            trading_style_indicators: analysisData.trader_behavior || {},
+            performance_metrics: {
+              win_rate: analysisData.extracted_metrics?.win_rate,
+              risk_score: analysisData.risk_assessment?.risk_score,
+              experience_level: analysisData.trader_behavior?.experience_level
+            }
+          });
+
+        if (!historyError) {
+          console.log("Deconstructor Agent - Analysis history stored for learning");
+          
+          // Update user trading profile based on new analysis
+          if (analysisData.screenshot_analysis?.platform_detected || analysisData.trader_behavior?.experience_level) {
+            await supabase.rpc('update_trading_profile_from_analysis', {
+              p_user_id: user_id,
+              p_analysis_data: {
+                trading_style: analysisData.trader_behavior?.experience_level,
+                platform_detected: analysisData.screenshot_analysis?.platform_detected,
+                performance_metrics: analysisData.extracted_metrics
+              }
+            });
+            console.log("Deconstructor Agent - Trading profile updated");
+          }
+        }
+      } catch (parseError) {
+        console.error("Deconstructor Agent - Error parsing analysis for history:", parseError);
+      }
     }
 
     return new Response(JSON.stringify({ reply: analysisResponse }), {

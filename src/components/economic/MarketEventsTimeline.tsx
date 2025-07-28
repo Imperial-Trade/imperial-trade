@@ -20,7 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEconomicCalendar, EconomicEvent } from '@/hooks/useEconomicCalendar';
 import { format, startOfDay, endOfDay, addDays, subDays, isToday, isFuture, isPast } from 'date-fns';
 import { Timeline, Search, RefreshCw, AlertTriangle, Zap, Activity, Filter, Eye } from 'lucide-react';
-import { ComplianceNotice } from '@/components/compliance/ComplianceNotice';
+
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 */

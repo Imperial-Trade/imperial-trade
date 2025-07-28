@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Upload, DollarSign, FileImage, X, Search } from 'lucide-react';
 import { useAssetSearch } from '@/hooks/useAssetSearch';
 import { motion } from 'framer-motion';
-import { ComplianceNotice, EducationalBadge } from '@/components/compliance/ComplianceNotice';
+
 
 interface JournalFormCardProps {
   onSubmit: (data: {
@@ -132,11 +132,11 @@ export default function JournalFormCard({ onSubmit, isSubmitting }: JournalFormC
           Log Educational Entry
         </CardTitle>
         <div className="flex gap-2">
-          <EducationalBadge />
+          
         </div>
       </CardHeader>
       <CardContent>
-        <ComplianceNotice type="educational" size="sm" className="mb-6" />
+        
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

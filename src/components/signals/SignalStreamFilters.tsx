@@ -11,7 +11,8 @@ import {
   TrendingDown,
   Clock,
   CheckCircle,
-  Users
+  Users,
+  Plus
 } from 'lucide-react';
 
 interface FilterState {
@@ -32,13 +33,17 @@ interface SignalStreamFiltersProps {
     buy: number;
     sell: number;
   };
+  canCreateSignals?: boolean;
+  onCreateSignal?: () => void;
 }
 
 export function SignalStreamFilters({
   filters,
   onFiltersChange,
   educatorOptions,
-  signalCounts
+  signalCounts,
+  canCreateSignals,
+  onCreateSignal
 }: SignalStreamFiltersProps) {
   const updateFilter = (key: keyof FilterState, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
@@ -91,17 +96,28 @@ export function SignalStreamFilters({
             )}
           </div>
           
-          {hasActiveFilters && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearAllFilters}
-              className="h-8 px-3 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/30"
-            >
-              <X className="w-3 h-3 mr-1" />
-              Clear All
-            </Button>
-          )}
+          <div className="flex items-center gap-2 ml-auto">
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllFilters}
+                className="h-8 px-3 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/30"
+              >
+                <X className="w-3 h-3 mr-1" />
+                Clear All
+              </Button>
+            )}
+            {canCreateSignals && (
+              <Button 
+                onClick={onCreateSignal} 
+                className="h-8 px-3 text-xs bg-foreground text-background hover:bg-foreground/90 border border-border"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Create Pattern
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Premium Filter Grid */}

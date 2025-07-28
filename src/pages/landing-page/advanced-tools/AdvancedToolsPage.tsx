@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ComplianceNotice, EducationalBadge } from "@/components/compliance/ComplianceNotice";
+
 
 const AdvancedToolsPage: React.FC = () => {
   // Clear any potential reference errors
@@ -138,10 +138,6 @@ const AdvancedToolsPage: React.FC = () => {
 
   return (
     <div className="bg-background min-h-screen font-sans">
-      {/* Compliance Notice */}
-      <div className="p-6">
-        <ComplianceNotice type="educational" size="md" />
-      </div>
 
       {/* Hero Section */}
       <section className="relative py-24 px-6 overflow-hidden">
@@ -150,7 +146,6 @@ const AdvancedToolsPage: React.FC = () => {
           <div className="text-center space-y-8">
             <div className="space-y-6">
               <div className="flex justify-center gap-2 mb-4">
-                <EducationalBadge />
                 <Badge variant="outline" className="inline-flex items-center gap-2 border-primary/20 text-primary bg-primary/5">
                   <Target className="h-4 w-4" />
                   Educational Learning Arsenal
@@ -205,7 +200,6 @@ const AdvancedToolsPage: React.FC = () => {
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto mb-4">
               Six precision-engineered educational tools that transform how you analyze, learn, and optimize your educational performance.
             </p>
-            <EducationalBadge />
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
@@ -230,9 +224,6 @@ const AdvancedToolsPage: React.FC = () => {
                         <CardDescription className="text-muted-foreground mt-3 leading-relaxed">
                           {tool.description}
                         </CardDescription>
-                        <div className="mt-3">
-                          <EducationalBadge className="text-xs" />
-                        </div>
                       </div>
                     </div>
                   </CardHeader>
@@ -293,9 +284,6 @@ const AdvancedToolsPage: React.FC = () => {
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 Join the ranks of educational learners who use these learning-grade tools to gain their educational edge in market understanding.
               </p>
-              <div className="flex justify-center">
-                <EducationalBadge />
-              </div>
             </div>
             
             <div className="flex items-center justify-center gap-4">

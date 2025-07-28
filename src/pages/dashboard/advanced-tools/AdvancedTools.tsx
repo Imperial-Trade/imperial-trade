@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import {
   BookOpen,
   Calendar,
@@ -29,11 +31,10 @@ import {
 } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { ComplianceNotice } from "@/components/compliance/ComplianceNotice";
 
 import OptimizedEconomicCalendar from "@/components/economic/OptimizedEconomicCalendar";
 import RiskCalculator from "@/components/tools/RiskCalculator";
-import TradeAnalyst from "@/components/ai/TradeAnalyst";
+import MeccaAnalysisHub from "@/components/ai/MeccaAnalysisHub";
 import OpportunityScanner from "@/components/ai/OpportunityScanner";
 import RiskSimulator from "@/components/ai/RiskSimulator";
 import TradingJournal from "@/components/tools/TradingJournal";
@@ -53,11 +54,11 @@ const coreTools = [
     description: "Learn position sizing and risk calculation fundamentals.",
   },
   {
-    name: "Educational Trading Pattern Analysis",
+    name: "MECCA",
     icon: Brain,
-    component: TradeAnalyst,
+    component: MeccaAnalysisHub,
     description:
-      "Professional trading performance analysis powered by advanced AI for educational purposes.",
+      "Premium AI-powered trading analysis hub with advanced visual insights and performance tracking.",
   },
 ];
 
@@ -164,56 +165,53 @@ export default function AdvancedTools() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Compliance Notice */}
-      <div className="p-4">
-        <ComplianceNotice type="educational" size="sm" />
-      </div>
 
-      {/* Main Content Area - Full Width */}
-      <div className="w-full min-h-screen p-6 bg-background">
+      {/* Main Content Area - Responsive Width */}
+      <div className="w-full min-h-screen p-2 sm:p-4 lg:p-6 bg-background">
         {/* Header with Tool Info and Selection Panel */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="mb-4 flex items-center justify-center"
+          className="mb-2 sm:mb-4 flex items-center justify-center"
         >
           {/* Combined Tool Info and Selection Panel */}
           {activeTool && (
-            <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-xl p-2 shadow-lg shadow-primary/5 w-fit">
-              <div className="flex items-center gap-4">
-                {/* Active Tool Info */}
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20">
+            <div className="bg-surface/20 backdrop-blur-md border border-border/10 rounded-lg sm:rounded-xl p-2 shadow-lg shadow-primary/5 w-full max-w-full overflow-hidden">
+              {/* Desktop Layout */}
+              <div className="hidden sm:flex items-center gap-4">
+                {/* Active Tool Info - Desktop only */}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
                     {React.createElement(activeTool.icon, {
                       className: "w-4 h-4 text-primary",
                     })}
                   </div>
-                  <h2 className="font-semibold text-base text-foreground tracking-tight">
+                  <h2 className="font-semibold text-base text-foreground tracking-tight truncate">
                     {activeTool.name}
                   </h2>
                   <span className="text-sm text-muted-foreground">•</span>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground truncate">
                     {activeTool.description}
                   </p>
                 </div>
 
-                {/* Separator */}
+                {/* Separator - Desktop only */}
                 <div className="w-px h-6 bg-border/20"></div>
 
-                {/* Tools Selection Grid */}
+                {/* Tools Selection Grid - Desktop */}
                 <div className="grid grid-cols-6 gap-1.5">
                   {[...coreTools, ...aiTools].map((tool) => (
                     <button
                       key={tool.name}
                       onClick={() => setActiveTool(tool)}
-                      className={`p-2 rounded-lg border transition-all text-left ${
+                      className={`p-2 rounded-lg border transition-all text-left min-h-[44px] ${
                         activeTool?.name === tool.name
                           ? "bg-primary/10 border-primary/20 text-primary"
                           : "bg-surface/50 border-border/20 hover:bg-surface/80 hover:border-border/40"
                       }`}
                     >
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center justify-start gap-1.5">
                         {React.createElement(tool.icon, {
                           className: "w-3 h-3 flex-shrink-0",
                         })}
@@ -224,9 +222,8 @@ export default function AdvancedTools() {
                             ? "Calendar"
                             : tool.name === "Educational Calculator"
                             ? "Calculator"
-                            : tool.name ===
-                              "Educational Trading Pattern Analysis"
-                            ? "Analyst"
+                            : tool.name === "MECCA"
+                            ? "MECCA"
                             : tool.name === "Educational Pattern Scanner"
                             ? "Scanner"
                             : tool.name === "Educational Risk Calculator"
@@ -238,15 +235,74 @@ export default function AdvancedTools() {
                   ))}
                 </div>
               </div>
+
+              {/* Mobile Layout - Swipe Carousel */}
+              <div className="sm:hidden">
+                <Carousel
+                  opts={{
+                    align: "center",
+                    loop: true,
+                    dragFree: true,
+                  }}
+                  className="w-full max-w-sm mx-auto"
+                >
+                  <CarouselContent className="-ml-2">
+                    {[...coreTools, ...aiTools].map((tool, index) => (
+                      <CarouselItem key={tool.name} className="basis-1/3 pl-2">
+                        <div className="relative">
+                          <button
+                            onClick={() => setActiveTool(tool)}
+                            className={`w-full p-2 rounded-lg border transition-all min-h-[36px] touch-manipulation relative overflow-hidden flex items-center justify-center ${
+                              activeTool?.name === tool.name
+                                ? "bg-primary/10 border-primary/20 text-primary shadow-lg shadow-primary/10 scale-105"
+                                : "bg-surface/50 border-border/20 active:bg-surface/90 hover:shadow-md"
+                            }`}
+                          >
+                            {/* Shadow gradient for next/prev items */}
+                            {activeTool?.name !== tool.name && (
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-background/20 pointer-events-none" />
+                            )}
+                            
+                            <div className="flex flex-col items-center justify-center gap-1 relative z-10">
+                              {React.createElement(tool.icon, {
+                                className: `flex-shrink-0 ${
+                                  activeTool?.name === tool.name ? "w-4 h-4" : "w-3 h-3"
+                                }`,
+                              })}
+                              <span className={`font-medium truncate text-center leading-tight ${
+                                activeTool?.name === tool.name ? "text-xs" : "text-[10px]"
+                              }`}>
+                                {tool.name === "Educational Journal"
+                                  ? "Journal"
+                                  : tool.name === "Economic Calendar"
+                                  ? "Calendar"
+                                  : tool.name === "Educational Calculator"
+                                  ? "Calculator"
+                                  : tool.name === "MECCA"
+                                  ? "MECCA"
+                                  : tool.name === "Educational Pattern Scanner"
+                                  ? "Scanner"
+                                  : tool.name === "Educational Risk Calculator"
+                                  ? "Risk Calc"
+                                  : tool.name.split(" ")[0]}
+                              </span>
+                            </div>
+                          </button>
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                </Carousel>
+              </div>
             </div>
           )}
         </motion.div>
 
-        {/* Tool Display */}
-        <div className="min-h-[600px]">
+        {/* Tool Display - Mobile Optimized */}
+        <div className="min-h-[500px] sm:min-h-[600px]">
           <div className="relative h-full">
-            <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-2xl h-full overflow-y-auto">
-              <div className="p-4 bg-transparent">
+            <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg sm:rounded-2xl h-full overflow-y-auto">
+              <div className="p-1 sm:p-2 lg:p-4 bg-transparent">
                 <div
                   style={{
                     display:
@@ -280,13 +336,12 @@ export default function AdvancedTools() {
                 <div
                   style={{
                     display:
-                      activeTool?.name ===
-                      "Educational Trading Pattern Analysis"
+                      activeTool?.name === "MECCA"
                         ? "block"
                         : "none",
                   }}
                 >
-                  <TradeAnalyst />
+                  <MeccaAnalysisHub />
                 </div>
                 <div
                   style={{

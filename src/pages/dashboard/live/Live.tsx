@@ -151,17 +151,17 @@ export default function Live() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background p-4 md:p-6">
+      <div className="min-h-screen bg-background p-2 sm:p-4 lg:p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold text-primary mb-2 flex items-center gap-2">
-                  <BookOpen className="h-8 w-8 text-orange-500" />
-                  Educational Live Sessions
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-2 flex items-center gap-2">
+                  <BookOpen className="h-6 h-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-orange-500 flex-shrink-0" />
+                  <span className="truncate">Educational Live Sessions</span>
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-sm sm:text-base text-muted-foreground">
                   Join educational trading sessions for learning purposes only. Not investment advice.
                 </p>
                 <LiveSessionEducationalBanner />
@@ -169,11 +169,11 @@ export default function Live() {
               
               {/* Management Controls for Admins/Educators */}
               {canManageSessions && (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center text-sm text-muted-foreground">
-                        <Settings className="w-4 h-4 mr-1" />
+                        <Settings className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                         Session Manager
                       </div>
                     </TooltipTrigger>
@@ -192,12 +192,12 @@ export default function Live() {
 
           {/* Live Sessions */}
           {liveSessions.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold text-primary mb-4 flex items-center">
-                <div className="w-3 h-3 bg-red-500 rounded-full mr-3 animate-pulse"></div>
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-3 sm:mb-4 flex items-center">
+                <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full mr-2 sm:mr-3 animate-pulse"></div>
                 Currently Live
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {liveSessions.map((session) => (
                   <Card key={session.id} className="bg-card border-red-200 shadow-lg hover:shadow-xl transition-shadow">
                     <CardHeader>

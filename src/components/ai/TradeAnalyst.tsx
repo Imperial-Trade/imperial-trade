@@ -6,11 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AnalyzeSetup, UploadFile } from '@/api/integrations';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { ComplianceNotice, EducationalBadge, HypotheticalBadge } from '@/components/compliance/ComplianceNotice';
+
 import { validateImageFile, compressImage } from '@/utils/imageCompression';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-
 interface AnalysisResult {
   overall_performance?: {
     summary?: string;
@@ -42,7 +41,6 @@ interface AnalysisResult {
     progression_summary?: string;
   };
 }
-
 interface UploadedFile {
   file: File;
   url: string;
@@ -51,14 +49,12 @@ interface UploadedFile {
   uploaded: boolean;
   error?: string;
 }
-
 interface AgentOutput {
   id: string;
   created_at: string;
   output_text: string;
   metadata: any;
 }
-
 export default function TradeAnalyst() {
   const [currentView, setCurrentView] = useState<'upload' | 'results' | 'history'>('upload');
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -68,48 +64,45 @@ export default function TradeAnalyst() {
   const [error, setError] = useState('');
   const [retryCount, setRetryCount] = useState(0);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<AgentOutput | null>(null);
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch analysis history
-  const { data: analysisHistory, isLoading: historyLoading } = useQuery({
+  const {
+    data: analysisHistory,
+    isLoading: historyLoading
+  } = useQuery({
     queryKey: ['analysis-history', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      
-      const { data, error } = await supabase
-        .from('agent_outputs')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('agent_name', 'Deconstructor')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
+      const {
+        data,
+        error
+      } = await supabase.from('agent_outputs').select('*').eq('user_id', user.id).eq('agent_name', 'Deconstructor').order('created_at', {
+        ascending: false
+      }).limit(10);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id
   });
-
   const handleFileSelect = useCallback(async (files: FileList) => {
     const maxFiles = 5;
     const currentCount = uploadedFiles.length;
-    
     if (currentCount >= maxFiles) {
       toast.error(`Maximum ${maxFiles} screenshots allowed`);
       return;
     }
-
     const newFiles = Array.from(files).slice(0, maxFiles - currentCount);
-    
     for (const file of newFiles) {
       const validationError = validateImageFile(file);
       if (validationError) {
         toast.error(validationError);
         continue;
       }
-
       const preview = URL.createObjectURL(file);
       const fileData: UploadedFile = {
         file,
@@ -118,37 +111,37 @@ export default function TradeAnalyst() {
         uploading: true,
         uploaded: false
       };
-
       setUploadedFiles(prev => [...prev, fileData]);
-
       try {
         const compressedFile = await compressImage(file, {
           maxWidth: 1920,
           maxHeight: 1080,
           quality: 0.8
         });
-
-        const { file_url } = await UploadFile({ file: compressedFile });
-        
-        setUploadedFiles(prev => prev.map(f => 
-          f.preview === preview 
-            ? { ...f, url: file_url, uploading: false, uploaded: true }
-            : f
-        ));
-
+        const {
+          file_url
+        } = await UploadFile({
+          file: compressedFile
+        });
+        setUploadedFiles(prev => prev.map(f => f.preview === preview ? {
+          ...f,
+          url: file_url,
+          uploading: false,
+          uploaded: true
+        } : f));
         toast.success('Screenshot uploaded successfully');
       } catch (error) {
         console.error('Upload error:', error);
-        setUploadedFiles(prev => prev.map(f => 
-          f.preview === preview 
-            ? { ...f, uploading: false, uploaded: false, error: 'Upload failed' }
-            : f
-        ));
+        setUploadedFiles(prev => prev.map(f => f.preview === preview ? {
+          ...f,
+          uploading: false,
+          uploaded: false,
+          error: 'Upload failed'
+        } : f));
         toast.error('Failed to upload screenshot');
       }
     }
   }, [uploadedFiles]);
-
   const removeFile = useCallback((preview: string) => {
     setUploadedFiles(prev => {
       const file = prev.find(f => f.preview === preview);
@@ -158,37 +151,27 @@ export default function TradeAnalyst() {
       return prev.filter(f => f.preview !== preview);
     });
   }, []);
-
   const analyzeTradePerformance = async (isRetry = false) => {
     if (!user) {
       setError('Please sign in to access educational analysis');
       return;
     }
-
     setIsAnalyzing(true);
     setError('');
-    
     try {
-      const uploadedFileUrls = uploadedFiles
-        .filter(f => f.uploaded && f.url)
-        .map(f => f.url);
-
+      const uploadedFileUrls = uploadedFiles.filter(f => f.uploaded && f.url).map(f => f.url);
       console.log('Starting analysis with files:', uploadedFileUrls);
-      
       if (uploadedFileUrls.length === 0) {
         toast.info("Analyzing your trading journal data...");
       } else {
         toast.info(`Analyzing your trading patterns with ${uploadedFileUrls.length} screenshot(s)...`);
       }
-
-      const analysisResult = await AnalyzeSetup({ 
-        user_id: user.id, 
-        file_urls: uploadedFileUrls 
+      const analysisResult = await AnalyzeSetup({
+        user_id: user.id,
+        file_urls: uploadedFileUrls
       });
-
       console.log('Analysis result received:', analysisResult);
       setRawResult(analysisResult);
-
       try {
         const parsedResult = JSON.parse(analysisResult);
         setResult(parsedResult);
@@ -209,17 +192,16 @@ export default function TradeAnalyst() {
       }
 
       // Invalidate the analysis history query to refresh the Recent Analyses list
-      queryClient.invalidateQueries({ queryKey: ['analysis-history', user?.id] });
-
+      queryClient.invalidateQueries({
+        queryKey: ['analysis-history', user?.id]
+      });
       setCurrentView('results');
       setRetryCount(0);
       toast.success("Educational pattern analysis completed!");
-      
     } catch (error) {
       console.error('Educational analysis error:', error);
       const errorMessage = error.message || 'Educational analysis failed. Please try again.';
       setError(errorMessage);
-      
       if (isRetry) {
         setRetryCount(prev => prev + 1);
         toast.error(`Analysis failed (Attempt ${retryCount + 1}): ${errorMessage}`);
@@ -227,14 +209,11 @@ export default function TradeAnalyst() {
         toast.error("Educational analysis failed");
       }
     }
-    
     setIsAnalyzing(false);
   };
-
   const viewHistoryItem = (item: AgentOutput) => {
     setSelectedHistoryItem(item);
     setRawResult(item.output_text);
-    
     try {
       const parsedResult = JSON.parse(item.output_text);
       setResult(parsedResult);
@@ -251,10 +230,8 @@ export default function TradeAnalyst() {
         recommendations: ['Review the complete analysis below for detailed insights']
       });
     }
-    
     setCurrentView('results');
   };
-
   const backToUpload = () => {
     setCurrentView('upload');
     setResult(null);
@@ -262,8 +239,15 @@ export default function TradeAnalyst() {
     setError('');
     setRetryCount(0);
     setSelectedHistoryItem(null);
+    
+    // Clear uploaded files to start fresh
+    uploadedFiles.forEach(file => {
+      if (file.preview) {
+        URL.revokeObjectURL(file.preview);
+      }
+    });
+    setUploadedFiles([]);
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -273,248 +257,292 @@ export default function TradeAnalyst() {
       minute: '2-digit'
     });
   };
-
-  const renderUploadView = () => (
-    <div className="space-y-8">
+  const renderUploadView = () => <div className="space-y-4 sm:space-y-6 lg:space-y-8">
       {/* Main Header */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-3">
-          <div className="p-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30">
-            <Brain className="w-8 h-8 text-purple-400" />
+      <div className="text-center space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3 p-2 sm:p-3 rounded-xl bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30">
+            <Brain className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-purple-400" />
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-400">MECCA</span>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              Educational Trading Pattern Analysis
+          <div className="text-center sm:text-left">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+              Trading performance analysis powered by advanced AI
             </h1>
-            <p className="text-muted-foreground mt-1">
-              Professional trading performance analysis powered by advanced AI
-            </p>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Processing Infinite Variables. Delivering Singular Clarity.</p>
           </div>
-        </div>
-        
-        <div className="flex justify-center gap-2">
-          <EducationalBadge />
-          <HypotheticalBadge />
         </div>
       </div>
 
       {/* Upload Section */}
       <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5 text-purple-400" />
-            Upload Trading Screenshots
+        <CardHeader className="p-3 sm:p-4 lg:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
+            <span className="truncate">Upload Trading Screenshots</span>
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Upload up to 5 trading screenshots for comprehensive visual analysis
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
           {/* Upload Area */}
           <div 
-            className="border-2 border-dashed border-purple-500/30 rounded-xl p-12 text-center hover:border-purple-500/50 transition-colors cursor-pointer bg-gradient-to-br from-purple-500/5 to-blue-500/5"
+            className="relative border-2 border-dashed border-purple-500/30 rounded-xl p-6 sm:p-8 lg:p-12 text-center hover:border-purple-500/50 transition-all duration-300 cursor-pointer bg-gradient-to-br from-purple-500/5 to-blue-500/5 touch-manipulation overflow-hidden group"
             onClick={() => fileInputRef.current?.click()}
           >
-            <div className="flex flex-col items-center gap-4">
-              <div className="p-4 rounded-full bg-purple-500/20 border border-purple-500/30">
-                <Upload className="w-8 h-8 text-purple-400" />
+            {/* Premium SVG Background Effect */}
+            <svg 
+              className="absolute inset-0 w-full h-full opacity-20 group-hover:opacity-30 transition-opacity duration-500" 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 400 400"
+              preserveAspectRatio="xMidYMid slice"
+            >
+              <defs>
+                <linearGradient id="brainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0.6" />
+                  <stop offset="50%" stopColor="hsl(271.5 81% 56%)" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0.2" />
+                </linearGradient>
+                <linearGradient id="particleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0" />
+                  <stop offset="50%" stopColor="hsl(271.5 81% 56%)" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="hsl(262.1 83.3% 57.8%)" stopOpacity="0" />
+                </linearGradient>
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                  <feMerge> 
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+              
+              {/* Animated Brain SVG */}
+              <g transform="translate(200, 200)" filter="url(#glow)">
+                {/* Brain Path */}
+                <path 
+                  d="M-30,-40 C-45,-35 -50,-20 -45,-5 C-50,10 -40,25 -25,30 C-15,35 0,32 10,28 C25,35 40,30 50,15 C55,0 50,-15 45,-25 C40,-40 25,-45 10,-40 C0,-45 -15,-45 -30,-40 Z" 
+                  fill="url(#brainGrad)" 
+                  stroke="hsl(262.1 83.3% 57.8%)" 
+                  strokeWidth="1" 
+                  opacity="0.7"
+                >
+                  <animateTransform 
+                    attributeName="transform" 
+                    type="scale" 
+                    values="1;1.05;1" 
+                    dur="3s" 
+                    repeatCount="indefinite"
+                  />
+                  <animate 
+                    attributeName="opacity" 
+                    values="0.7;0.9;0.7" 
+                    dur="3s" 
+                    repeatCount="indefinite"
+                  />
+                </path>
+                
+                {/* Brain Details */}
+                <path 
+                  d="M-20,-20 Q-10,-25 0,-20 Q10,-15 20,-20" 
+                  fill="none" 
+                  stroke="hsl(271.5 81% 56%)" 
+                  strokeWidth="1.5" 
+                  opacity="0.8"
+                >
+                  <animate 
+                    attributeName="stroke-dasharray" 
+                    values="0,50;25,25;50,0;25,25;0,50" 
+                    dur="4s" 
+                    repeatCount="indefinite"
+                  />
+                </path>
+                <path 
+                  d="M-25,0 Q-15,5 -5,0 Q5,5 15,0 Q25,-5 30,5" 
+                  fill="none" 
+                  stroke="hsl(271.5 81% 56%)" 
+                  strokeWidth="1.5" 
+                  opacity="0.8"
+                >
+                  <animate 
+                    attributeName="stroke-dasharray" 
+                    values="0,40;20,20;40,0;20,20;0,40" 
+                    dur="5s" 
+                    repeatCount="indefinite"
+                  />
+                </path>
+                
+                {/* Neural Connections */}
+                <circle cx="-15" cy="-10" r="2" fill="hsl(262.1 83.3% 57.8%)" opacity="0.9">
+                  <animate attributeName="r" values="2;3;2" dur="2s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite" />
+                </circle>
+                <circle cx="15" cy="-5" r="2" fill="hsl(271.5 81% 56%)" opacity="0.9">
+                  <animate attributeName="r" values="2;3;2" dur="2.5s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2.5s" repeatCount="indefinite" />
+                </circle>
+                <circle cx="0" cy="10" r="2" fill="hsl(262.1 83.3% 57.8%)" opacity="0.9">
+                  <animate attributeName="r" values="2;3;2" dur="3s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.9;0.4;0.9" dur="3s" repeatCount="indefinite" />
+                </circle>
+              </g>
+              
+              {/* Floating Particles */}
+              <circle cx="100" cy="150" r="3" fill="url(#particleGrad)" opacity="0.6">
+                <animate attributeName="cy" values="150;100;150" dur="6s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.6;0.2;0.6" dur="6s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="300" cy="120" r="2" fill="url(#particleGrad)" opacity="0.5">
+                <animate attributeName="cx" values="300;250;300" dur="4s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.5;0.1;0.5" dur="4s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="150" cy="300" r="2.5" fill="url(#particleGrad)" opacity="0.7">
+                <animate attributeName="cy" values="300;280;300" dur="5s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.7;0.3;0.7" dur="5s" repeatCount="indefinite" />
+              </circle>
+              
+              {/* Data Streams */}
+              <path d="M50,100 Q150,80 250,100 Q350,120 450,100" stroke="url(#particleGrad)" strokeWidth="1" fill="none" opacity="0.4">
+                <animate attributeName="stroke-dasharray" values="0,200;100,100;200,0;100,100;0,200" dur="8s" repeatCount="indefinite" />
+              </path>
+              <path d="M0,250 Q100,230 200,250 Q300,270 400,250" stroke="url(#particleGrad)" strokeWidth="1" fill="none" opacity="0.3">
+                <animate attributeName="stroke-dasharray" values="0,150;75,75;150,0;75,75;0,150" dur="10s" repeatCount="indefinite" />
+              </path>
+            </svg>
+
+            <div className="relative z-10 flex flex-col items-center gap-3 sm:gap-4">
+              <div className="p-3 sm:p-4 rounded-full bg-purple-500/20 border border-purple-500/30 group-hover:bg-purple-500/30 group-hover:border-purple-500/50 transition-all duration-300 group-hover:scale-110">
+                <Upload className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-purple-400 group-hover:text-purple-300 transition-colors duration-300" />
               </div>
               <div>
-                <p className="text-xl font-semibold mb-2">Drop screenshots here or click to upload</p>
-                <p className="text-muted-foreground">
+                <p className="text-lg sm:text-xl font-semibold mb-2 group-hover:text-purple-300 transition-colors duration-300">Drop screenshots here or click to upload</p>
+                <p className="text-sm text-muted-foreground group-hover:text-muted-foreground/80 transition-colors duration-300">
                   PNG, JPG, JPEG up to 10MB each • Maximum 5 files
                 </p>
               </div>
             </div>
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
-            className="hidden"
-          />
+          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={e => e.target.files && handleFileSelect(e.target.files)} className="hidden" />
 
           {/* Uploaded Files */}
-          {uploadedFiles.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Uploaded Screenshots ({uploadedFiles.length}/5)</h3>
-                {uploadedFiles.length < 5 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
+          {uploadedFiles.length > 0 && <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+                <h3 className="font-semibold text-sm sm:text-base">Uploaded Screenshots ({uploadedFiles.length}/5)</h3>
+                {uploadedFiles.length < 5 && <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 self-start sm:self-auto">
+                    <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
                     Add More
-                  </Button>
-                )}
+                  </Button>}
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {uploadedFiles.map((file, index) => (
-                  <div key={file.preview} className="relative">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {uploadedFiles.map((file, index) => <div key={file.preview} className="relative">
                     <div className="aspect-video bg-background rounded-lg border border-border overflow-hidden">
-                      <img
-                        src={file.preview}
-                        alt={`Screenshot ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={file.preview} alt={`Screenshot ${index + 1}`} className="w-full h-full object-cover" />
                     </div>
                     
-                    <button
-                      onClick={() => removeFile(file.preview)}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
+                    <button onClick={() => removeFile(file.preview)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors touch-manipulation">
+                      <X className="w-3 h-3 sm:w-4 sm:h-4" />
                     </button>
 
                     <div className="absolute bottom-2 right-2">
-                      {file.uploading && (
-                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                          <Loader2 className="w-4 h-4 text-white animate-spin" />
-                        </div>
-                      )}
-                      {file.uploaded && (
-                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                          <CheckCircle className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                      {file.error && (
-                        <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                          <AlertCircle className="w-4 h-4 text-white" />
-                        </div>
-                      )}
+                      {file.uploading && <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                          <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 text-white animate-spin" />
+                        </div>}
+                      {file.uploaded && <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-500 rounded-full flex items-center justify-center">
+                          <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                        </div>}
+                      {file.error && <div className="w-5 h-5 sm:w-6 sm:h-6 bg-red-500 rounded-full flex items-center justify-center">
+                          <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                        </div>}
                     </div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
-            </div>
-          )}
+            </div>}
 
           {/* Analysis Button */}
-          <Button 
-            onClick={() => analyzeTradePerformance(false)} 
-            disabled={!user || isAnalyzing || uploadedFiles.length === 0 || uploadedFiles.some(file => file.uploading)}
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-4 text-lg font-semibold"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+          <Button onClick={() => analyzeTradePerformance(false)} disabled={!user || isAnalyzing || uploadedFiles.length === 0 || uploadedFiles.some(file => file.uploading)} className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-3 sm:py-4 text-base sm:text-lg font-semibold min-h-[44px] touch-manipulation">
+            {isAnalyzing ? <>
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
                 Analyzing Trading Performance...
-              </>
-            ) : (
-              <>
-                <Brain className="w-5 h-5 mr-2" />
+              </> : <>
+                <Brain className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 Analyze Trading Performance
-              </>
-            )}
+              </>}
           </Button>
 
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg"
-            >
+          {error && <motion.div initial={{
+          opacity: 0,
+          y: -10
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} className="p-3 sm:p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="w-4 h-4" />
-                <span className="font-medium">Analysis Failed</span>
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="font-medium text-sm sm:text-base">Analysis Failed</span>
               </div>
-              <p className="text-sm mb-3">{error}</p>
-              {retryCount < 3 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => analyzeTradePerformance(true)}
-                  disabled={isAnalyzing}
-                  className="border-red-500/20 text-red-400 hover:bg-red-500/10"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
+              <p className="text-xs sm:text-sm mb-3">{error}</p>
+              {retryCount < 3 && <Button variant="outline" size="sm" onClick={() => analyzeTradePerformance(true)} disabled={isAnalyzing} className="border-red-500/20 text-red-400 hover:bg-red-500/10 min-h-[44px] touch-manipulation">
+                  <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
                   Try Again {retryCount > 0 && `(${retryCount}/3)`}
-                </Button>
-              )}
-            </motion.div>
-          )}
+                </Button>}
+            </motion.div>}
         </CardContent>
       </Card>
 
       {/* Recent Analyses */}
       <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-blue-400" />
-            Recent Analyses
+        <CardHeader className="p-3 sm:p-4 lg:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 flex-shrink-0" />
+            <span className="truncate">Recent Analyses</span>
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             View your previous trading pattern analyses
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {historyLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
-            </div>
-          ) : analysisHistory && analysisHistory.length > 0 ? (
-            <div className="space-y-3">
-              {analysisHistory.map((item) => (
-                <div 
-                  key={item.id}
-                  className="flex items-center justify-between p-4 bg-background rounded-lg border border-border hover:border-purple-500/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-purple-500/20 border border-purple-500/30">
-                      <BarChart3 className="w-4 h-4 text-purple-400" />
+        <CardContent className="p-3 sm:p-4 lg:p-6">
+          {historyLoading ? <div className="flex items-center justify-center py-6 sm:py-8">
+              <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin text-purple-400" />
+            </div> : analysisHistory && analysisHistory.length > 0 ? <div className="space-y-2 sm:space-y-3">
+              {analysisHistory.map(item => <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-background rounded-lg border border-border hover:border-purple-500/30 transition-colors gap-2 sm:gap-3 touch-manipulation">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div className="p-1.5 sm:p-2 rounded-lg bg-purple-500/20 border border-purple-500/30 flex-shrink-0">
+                      <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400" />
                     </div>
-                    <div>
-                      <p className="font-medium">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm sm:text-base truncate">
                         Analysis from {formatDate(item.created_at)}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         {(item.metadata as any)?.screenshots_analyzed || 0} screenshots • {(item.metadata as any)?.trades_analyzed || 0} trades
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => viewHistoryItem(item)}
-                    className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => viewHistoryItem(item)} className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
                     <Eye className="w-4 h-4 mr-2" />
                     View
                   </Button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
+                </div>)}
+            </div> : <div className="text-center py-8 text-muted-foreground">
               <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No previous analyses found</p>
               <p className="text-sm">Upload screenshots to get started</p>
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
-    </div>
-  );
-
-  const renderResultsView = () => (
-    <div className="space-y-6">
+    </div>;
+  const renderResultsView = () => <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
             Educational Analysis Results
           </h2>
-          {selectedHistoryItem && (
-            <p className="text-sm text-muted-foreground mt-1">
+          {selectedHistoryItem && <p className="text-sm text-muted-foreground mt-1">
               Analysis from {formatDate(selectedHistoryItem.created_at)}
-            </p>
-          )}
+            </p>}
         </div>
         <Button variant="outline" onClick={backToUpload} className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
           <Camera className="w-4 h-4 mr-2" />
@@ -522,8 +550,7 @@ export default function TradeAnalyst() {
         </Button>
       </div>
 
-      {result?.overall_performance && (
-        <Card className="bg-card border-border">
+      {result?.overall_performance && <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-blue-400" />
@@ -549,15 +576,11 @@ export default function TradeAnalyst() {
                 <div className="text-sm text-muted-foreground">Confidence</div>
               </div>
             </div>
-            {result.overall_performance.summary && (
-              <p className="mt-4 text-muted-foreground">{result.overall_performance.summary}</p>
-            )}
+            {result.overall_performance.summary && <p className="mt-4 text-muted-foreground">{result.overall_performance.summary}</p>}
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
-      {result?.performance_metrics && (
-        <Card className="bg-card border-border">
+      {result?.performance_metrics && <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="w-5 h-5 text-green-400" />
@@ -566,21 +589,17 @@ export default function TradeAnalyst() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(result.performance_metrics).map(([key, value]) => (
-                <div key={key} className="p-3 bg-background rounded-lg border border-border">
+              {Object.entries(result.performance_metrics).map(([key, value]) => <div key={key} className="p-3 bg-background rounded-lg border border-border">
                   <div className="text-sm text-muted-foreground mb-1">
                     {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </div>
                   <div className="text-lg font-semibold text-purple-400">{value || 'N/A'}</div>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
-      {result?.strengths && result.strengths.length > 0 && (
-        <Card className="bg-card border-border">
+      {result?.strengths && result.strengths.length > 0 && <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Award className="w-5 h-5 text-yellow-400" />
@@ -589,19 +608,15 @@ export default function TradeAnalyst() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {result.strengths.map((strength, index) => (
-                <div key={index} className="flex items-start gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+              {result.strengths.map((strength, index) => <div key={index} className="flex items-start gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
                   <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
                   <span className="text-sm">{strength}</span>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
-      {result?.improvements && result.improvements.length > 0 && (
-        <Card className="bg-card border-border">
+      {result?.improvements && result.improvements.length > 0 && <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-orange-400" />
@@ -610,19 +625,15 @@ export default function TradeAnalyst() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {result.improvements.map((improvement, index) => (
-                <div key={index} className="flex items-start gap-2 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+              {result.improvements.map((improvement, index) => <div key={index} className="flex items-start gap-2 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
                   <AlertCircle className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
                   <span className="text-sm">{improvement}</span>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
-      {result?.recommendations && result.recommendations.length > 0 && (
-        <Card className="bg-card border-border">
+      {result?.recommendations && result.recommendations.length > 0 && <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lightbulb className="w-5 h-5 text-blue-400" />
@@ -631,52 +642,49 @@ export default function TradeAnalyst() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {result.recommendations.map((recommendation, index) => (
-                <div key={index} className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              {result.recommendations.map((recommendation, index) => <div key={index} className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                   <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold mt-0.5 flex-shrink-0">
                     {index + 1}
                   </div>
                   <span className="text-sm">{recommendation}</span>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-500/5 p-6">
+        </Card>}
+    </div>;
+  return <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-500/5 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <ComplianceNotice type="educational" size="md" />
-        
         <AnimatePresence mode="wait">
-          {currentView === 'upload' && (
-            <motion.div
-              key="upload"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.3 }}
-            >
+          {currentView === 'upload' && <motion.div key="upload" initial={{
+          opacity: 0,
+          x: -20
+        }} animate={{
+          opacity: 1,
+          x: 0
+        }} exit={{
+          opacity: 0,
+          x: 20
+        }} transition={{
+          duration: 0.3
+        }}>
               {renderUploadView()}
-            </motion.div>
-          )}
+            </motion.div>}
           
-          {currentView === 'results' && (
-            <motion.div
-              key="results"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
+          {currentView === 'results' && <motion.div key="results" initial={{
+          opacity: 0,
+          x: 20
+        }} animate={{
+          opacity: 1,
+          x: 0
+        }} exit={{
+          opacity: 0,
+          x: -20
+        }} transition={{
+          duration: 0.3
+        }}>
               {renderResultsView()}
-            </motion.div>
-          )}
+            </motion.div>}
         </AnimatePresence>
       </div>
-    </div>
-  );
+    </div>;
 }

@@ -12,7 +12,7 @@ import JournalAnalytics from "../trading/JournalAnalytics";
 import JournalLogList from "../trading/JournalLogList";
 import { compressImage, validateImageFile } from "@/utils/imageCompression";
 import { toast } from "sonner";
-import { ComplianceNotice, EducationalBadge } from "@/components/compliance/ComplianceNotice";
+
 
 export default function TradingJournal() {
   const [entries, setEntries] = useState<TradeJournalEntry[]>([]);
@@ -214,7 +214,7 @@ export default function TradingJournal() {
       opacity: 1,
       y: 0
     }} className="space-y-6">
-      <ComplianceNotice type="educational" size="sm" />
+      
       <JournalFormCard onSubmit={handleSubmit} isSubmitting={isSubmitting} />
       <JournalLogList entries={entries} isLoading={isLoading} onDelete={handleDelete} />
     </motion.div>, [handleSubmit, isSubmitting, entries, isLoading, handleDelete]);
@@ -227,26 +227,26 @@ export default function TradingJournal() {
       opacity: 1,
       y: 0
     }} className="space-y-6">
-      <ComplianceNotice type="hypothetical" size="sm" />
+      
       <JournalAnalytics entries={entries} />
     </motion.div>, [entries]);
 
-  return <div className={`min-h-screen p-6 transition-all duration-700 ${activeTab === 'advanced' ? 'bg-transparent' : 'bg-gradient-to-br from-background via-background to-muted/20'}`}>
-      <div className={`mx-auto transition-all duration-500 ${activeTab === 'advanced' ? 'max-w-full px-4' : 'max-w-6xl'}`}>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+  return <div className={`min-h-screen p-2 sm:p-4 lg:p-6 transition-all duration-700 ${activeTab === 'advanced' ? 'bg-transparent' : 'bg-gradient-to-br from-background via-background to-muted/20'}`}>
+      <div className={`mx-auto transition-all duration-500 ${activeTab === 'advanced' ? 'max-w-full px-2 sm:px-4' : 'max-w-6xl'}`}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 sm:space-y-6">
           <TabsList className={`grid w-full grid-cols-3 transition-all duration-500 ${activeTab === 'advanced' ? 'bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl' : 'bg-card'}`}>
-            <TabsTrigger value="log" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
-              <Calendar className="w-4 h-4" />
-              Educational Log
+            <TabsTrigger value="log" className={`flex items-center gap-1 sm:gap-2 transition-all duration-300 text-xs sm:text-sm min-h-[44px] ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
+              <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Educational</span> Log
             </TabsTrigger>
-            <TabsTrigger value="analytics" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
-              <BarChart3 className="w-4 h-4" />
-              Educational Analytics
+            <TabsTrigger value="analytics" className={`flex items-center gap-1 sm:gap-2 transition-all duration-300 text-xs sm:text-sm min-h-[44px] ${activeTab === 'advanced' ? 'text-white/80 hover:text-white hover:bg-white/10 data-[state=active]:bg-white/20 data-[state=active]:text-white' : ''}`}>
+              <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Educational</span> Analytics
             </TabsTrigger>
-            <TabsTrigger value="advanced" className={`flex items-center gap-2 transition-all duration-300 ${activeTab === 'advanced' ? 'text-white hover:text-white hover:bg-white/10 data-[state=active]:bg-gradient-to-r data-[state=active]:from-white/30 data-[state=active]:to-white/20 data-[state=active]:text-white data-[state=active]:shadow-lg' : ''}`}>
-              <Sparkles className="w-4 h-4" />
-              <span className={`font-semibold ${activeTab === 'advanced' ? 'text-white' : 'bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent'}`}>
-                Advanced Educational Journal
+            <TabsTrigger value="advanced" className={`flex items-center gap-1 sm:gap-2 transition-all duration-300 text-xs sm:text-sm min-h-[44px] ${activeTab === 'advanced' ? 'text-white hover:text-white hover:bg-white/10 data-[state=active]:bg-gradient-to-r data-[state=active]:from-white/30 data-[state=active]:to-white/20 data-[state=active]:text-white data-[state=active]:shadow-lg' : ''}`}>
+              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className={`font-semibold truncate ${activeTab === 'advanced' ? 'text-white' : 'bg-gradient-to-r from-secondary via-primary to-accent bg-clip-text text-transparent'}`}>
+                <span className="hidden sm:inline">Advanced Educational</span> Journal
               </span>
             </TabsTrigger>
           </TabsList>

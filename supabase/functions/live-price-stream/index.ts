@@ -258,6 +258,8 @@ serve(async (req) => {
 
     try {
       console.log('🔌 Connecting to Twelve Data WebSocket...');
+      console.log('🔑 Using API Key:', apiKey ? 'YES (length: ' + apiKey.length + ')' : 'NO');
+      
       twelveDataWs = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
 
       twelveDataWs.onopen = () => {
@@ -265,14 +267,19 @@ serve(async (req) => {
         
         // Subscribe to symbols if any
         if (subscribedSymbols.size > 0) {
-          const symbols = Array.from(subscribedSymbols).map(s => SYMBOL_MAPPING[s] || s);
+          const originalSymbols = Array.from(subscribedSymbols);
+          const mappedSymbols = originalSymbols.map(s => SYMBOL_MAPPING[s] || s);
+          
+          console.log('🔍 Original symbols:', originalSymbols);
+          console.log('🔍 Mapped symbols:', mappedSymbols);
+          
           const subscribeMessage = {
             action: 'subscribe',
             params: {
-              symbols: symbols.join(',')
+              symbols: mappedSymbols.join(',')
             }
           };
-          console.log('📡 Subscribing to Twelve Data symbols:', symbols);
+          console.log('📡 Full subscription message:', JSON.stringify(subscribeMessage, null, 2));
           twelveDataWs?.send(JSON.stringify(subscribeMessage));
         }
       };
@@ -282,7 +289,40 @@ serve(async (req) => {
           const data = JSON.parse(event.data);
           console.log('📊 Received from Twelve Data:', data);
           
+          // Handle subscription status responses
+          if (data.event === 'subscribe-status') {
+            console.log('📋 Subscription status:', data.status);
+            if (data.success && data.success.length > 0) {
+              console.log('✅ Successfully subscribed to:', data.success);
+            }
+            if (data.fails && data.fails.length > 0) {
+              console.log('❌ Failed to subscribe to:', data.fails);
+              console.log('❌ Failure details:', JSON.stringify(data.fails, null, 2));
+              
+              // Try alternative formats for failed symbols
+              data.fails.forEach((fail: any) => {
+                if (fail.symbol === 'XAU/USD') {
+                  console.log('🔄 Trying alternative Gold symbol formats...');
+                  // Try different Gold symbol formats
+                  const alternativeFormats = ['GOLD', 'XAU', 'XAUUSD', 'Gold'];
+                  alternativeFormats.forEach(altSymbol => {
+                    const retryMessage = {
+                      action: 'subscribe',
+                      params: { symbols: altSymbol }
+                    };
+                    console.log('🔄 Retrying with:', altSymbol);
+                    twelveDataWs?.send(JSON.stringify(retryMessage));
+                  });
+                }
+              });
+            }
+            return;
+          }
+          
+          // Handle price updates
           if (data.event === 'price' && data.symbol && data.price) {
+            console.log('💰 Price update for:', data.symbol, 'Price:', data.price);
+            
             // Map back to frontend symbol format
             const frontendSymbol = Object.keys(SYMBOL_MAPPING).find(key => 
               SYMBOL_MAPPING[key] === data.symbol
@@ -295,6 +335,8 @@ serve(async (req) => {
               changePercent: parseFloat(data.day_change_percent) || 0,
               timestamp: new Date().toISOString()
             };
+
+            console.log('📤 Sending price update:', priceUpdate);
 
             // Forward to client
             if (socket.readyState === WebSocket.OPEN) {

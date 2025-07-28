@@ -176,6 +176,11 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 updatedDate={alert.updated_date} 
                 isRecentClosure={isRecentClosure} 
               />
+              {alert.status === 'active' && (
+                <div className={`${isBuy ? 'text-accent-green' : 'text-accent-red'}`}>
+                  {isBuy ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+                </div>
+              )}
             </div>
             
             {/* Action buttons below currency pair */}

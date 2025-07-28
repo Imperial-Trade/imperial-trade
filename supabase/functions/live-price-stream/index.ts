@@ -251,6 +251,7 @@ serve(async (req) => {
       console.log('🔌 Connecting to Twelve Data WebSocket...');
       console.log('🔑 Using API Key:', apiKey ? 'YES (length: ' + apiKey.length + ')' : 'NO');
       
+      // Connect to Twelve Data WebSocket with enhanced real-time endpoint
       twelveDataWs = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
 
       twelveDataWs.onopen = () => {
@@ -291,29 +292,36 @@ serve(async (req) => {
               console.log('❌ Failed to subscribe to:', data.fails);
               console.log('❌ Failure details:', JSON.stringify(data.fails, null, 2));
               
-              // Send error for failed symbols
-              data.fails.forEach((fail: any) => {
-                const errorMsg: ErrorMessage = {
-                  type: 'error',
-                  message: `Failed to subscribe to ${fail.symbol}: ${fail.message || 'Unknown error'}`,
-                  code: 'SYMBOL_UNSUPPORTED'
-                };
-                if (socket.readyState === WebSocket.OPEN) {
-                  socket.send(JSON.stringify(errorMsg));
+              // HYBRID FALLBACK: If WebSocket fails, fetch real prices via HTTP
+              data.fails.forEach(async (fail: any) => {
+                console.log(`🔄 WebSocket failed for ${fail.symbol}, trying HTTP...`);
+                const realPrice = await fetchRealPrice(fail.symbol);
+                if (realPrice && socket.readyState === WebSocket.OPEN) {
+                  socket.send(JSON.stringify({
+                    type: 'price_update',
+                    data: [realPrice],
+                    source: 'twelve_data_http_fallback',
+                    timestamp: new Date().toISOString()
+                  }));
                 }
               });
             }
             return;
           }
           
-          // Handle price updates
+          // Handle REAL-TIME price updates
           if (data.event === 'price' && data.symbol && data.price) {
-            console.log('💰 Price update for:', data.symbol, 'Price:', data.price);
+            console.log('💰 LIVE PRICE UPDATE for:', data.symbol, 'Price:', data.price);
             
-            // Map back to frontend symbol format
-            const frontendSymbol = Object.keys(SYMBOL_MAPPING).find(key => 
-              SYMBOL_MAPPING[key] === data.symbol
-            ) || data.symbol;
+            // Map back to frontend symbol format  
+            let frontendSymbol = data.symbol;
+            
+            // Handle symbol mapping for frontend display
+            if (data.symbol === 'XAU/USD') {
+              frontendSymbol = 'GOLD'; // Map back to frontend format
+            } else if (data.symbol === 'BTC/USD') {
+              frontendSymbol = 'BITCOIN'; // Map back to frontend format  
+            }
 
             const priceUpdate: PriceUpdate = {
               symbol: frontendSymbol,
@@ -323,17 +331,21 @@ serve(async (req) => {
               timestamp: new Date().toISOString()
             };
 
-            console.log('📤 Sending price update:', priceUpdate);
+            console.log('📤 Sending LIVE price update:', priceUpdate);
 
-            // Forward to client
+            // Forward to client with enhanced data
             if (socket.readyState === WebSocket.OPEN) {
               socket.send(JSON.stringify({
                 type: 'price_update',
                 data: [priceUpdate],
-                source: 'twelve_data_websocket',
+                source: 'twelve_data_websocket_live',
+                dataQuality: 'real_time',
                 timestamp: new Date().toISOString()
               }));
             }
+            
+            // Cache for backup
+            setCachedPrice(frontendSymbol, priceUpdate);
           }
         } catch (error) {
           console.error('❌ Error parsing Twelve Data message:', error);

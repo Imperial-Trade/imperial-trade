@@ -178,15 +178,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       socketRef.current = new WebSocket(wsUrl);
 
       socketRef.current.onopen = () => {
-        console.log('✅ WebSocket connected to live price stream');
-        setConnectionStatus('connected');
-        reconnectAttemptsRef.current = 0;
-        
-        // Clear the fast timeout since WebSocket connected successfully
+        // Clear any existing quick timeout
         if ((window as any).wsQuickTimeout) {
           clearTimeout((window as any).wsQuickTimeout);
-          (window as any).wsQuickTimeout = null;
         }
+        
+        console.log('✅ WebSocket connected to live price stream');
+        setConnectionStatus('connected');
+        setDataSource('twelve_data_api');
+        reconnectAttemptsRef.current = 0;
         
         // Clear any connection errors
         setErrors(prev => {
@@ -194,13 +194,13 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           return global?.includes('WebSocket') ? rest : prev;
         });
         
-        // Re-subscribe to symbols after reconnection
+        // Immediately subscribe to any pending symbols
         if (subscribedSymbolsRef.current.size > 0) {
           const symbols = Array.from(subscribedSymbolsRef.current);
-          console.log('🔄 Re-subscribing to symbols:', symbols);
+          console.log('📡 Subscribing to live prices for:', symbols);
           socketRef.current?.send(JSON.stringify({
             type: 'subscribe',
-            symbols
+            symbols: symbols
           }));
         }
       };

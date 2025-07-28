@@ -5,7 +5,7 @@ import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/components/ui/use-toast';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { supabase } from '@/integrations/supabase/client';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useUnifiedPrice } from '@/contexts/UnifiedPriceContext';
 import { SUPPORTED_ASSETS } from '@/components/signals/AssetSelector';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -17,13 +17,15 @@ const NewSignalPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Pre-load all supported asset prices for immediate availability
-  const { subscribe, unsubscribe } = useWebSocketPrices();
+  const { subscribe, unsubscribe } = useUnifiedPrice();
 
   // Pre-load all supported asset prices on mount
   useEffect(() => {
-    const supportedSymbols = SUPPORTED_ASSETS.map(asset => 
-      asset.name === 'Gold' ? 'XAU/USD' : asset.symbol // Use standardized symbols
-    );
+    const supportedSymbols = SUPPORTED_ASSETS.map(asset => {
+      // Map legacy GOLD to XAU/USD for the unified system
+      if (asset.symbol === 'GOLD') return 'XAU/USD';
+      return asset.symbol;
+    });
     
     console.log('NewSignalPage - Pre-loading asset prices:', supportedSymbols);
     subscribe(supportedSymbols);

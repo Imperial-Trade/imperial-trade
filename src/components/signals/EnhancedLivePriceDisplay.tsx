@@ -1,7 +1,7 @@
 
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { useOptimizedPrice } from '@/hooks/useOptimizedPrice';
 import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 
 interface EnhancedLivePriceDisplayProps {
@@ -38,7 +38,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     lastUpdated,
     connectionStatus,
     refreshPrice
-  } = useOptimizedLivePrice(apiSymbol, {
+  } = useOptimizedPrice(apiSymbol, {
     enableSmartPausing: false, // Keep connection active for trading signals
     debounceMs: 500, // Faster updates for trading
     pauseOnInput: false

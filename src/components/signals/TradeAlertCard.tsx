@@ -20,13 +20,13 @@ interface PriceRowProps {
 }
 
 const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false }) => (
-    <div className={`flex justify-between items-center text-sm py-2 border-b border-gray-700/50 last:border-b-0 ${isHit ? 'bg-emerald-900/20' : ''}`}>
-        <div className="flex items-center space-x-2 text-gray-400">
+    <div className={`flex justify-between items-center text-sm py-2 border-b border-border/50 last:border-b-0 ${isHit ? 'bg-accent-green/20' : ''}`}>
+        <div className="flex items-center space-x-2 text-muted-foreground">
             <Icon className={`w-4 h-4 ${colorClass}`} />
             <span>{label}</span>
-            {isHit && <Check className="w-4 h-4 text-emerald-400" />}
+            {isHit && <Check className="w-4 h-4 text-accent-green" />}
         </div>
-        <span className={`font-mono font-semibold ${isHit ? 'text-emerald-400' : ''}`}>
+        <span className={`font-mono font-semibold text-foreground ${isHit ? 'text-accent-green' : ''}`}>
           {value ? `$${value.toFixed(2)}` : '-'}
         </span>
     </div>
@@ -91,22 +91,22 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const getRoleIcon = (role: string) => {
     switch (role.toLowerCase()) {
       case 'admin':
-        return <Crown className="w-4 h-4 text-yellow-400" />;
+        return <Crown className="w-4 h-4 text-accent-gold" />;
       case 'educator':
-        return <GraduationCap className="w-4 h-4 text-blue-400" />;
+        return <GraduationCap className="w-4 h-4 text-accent-blue" />;
       default:
-        return <User className="w-4 h-4 text-gray-400" />;
+        return <User className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
   const getRoleBadgeClass = (role: string) => {
     switch (role.toLowerCase()) {
       case 'admin':
-        return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30';
+        return 'bg-accent-gold/20 text-accent-gold border-accent-gold/30';
       case 'educator':
-        return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+        return 'bg-accent-blue/20 text-accent-blue border-accent-blue/30';
       default:
-        return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
+        return 'bg-muted/20 text-muted-foreground border-border/30';
     }
   };
 
@@ -132,40 +132,40 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
   return (
     <div 
-      className={`bg-gray-800/50 rounded-lg border border-gray-700 shadow-lg overflow-hidden transition-all duration-300 hover:shadow-emerald-500/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-amber-400/50 hover:border-amber-400' : 'hover:border-emerald-400/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-red-500/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-emerald-500/30' : 'ring-2 ring-gray-500/30')} ${className || ''}`}
+      className={`bg-card rounded-lg border border-border shadow-lg overflow-hidden transition-all duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${className || ''}`}
       data-testid={testId}
     >
       {/* Glowing top indicator for closed trades */}
       {isClosed && (
         <div className={`h-1 w-full ${
           alert.close_reason === 'stop_loss' 
-            ? 'bg-gradient-to-r from-red-500/50 via-red-400/70 to-red-500/50 shadow-lg shadow-red-500/30' 
+            ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
             : (hitTPs.length > 0 || alert.close_reason?.startsWith('tp'))
-              ? 'bg-gradient-to-r from-emerald-500/50 via-emerald-400/70 to-emerald-500/50 shadow-lg shadow-emerald-500/30'
-              : 'bg-gradient-to-r from-gray-500/50 via-gray-400/70 to-gray-500/50 shadow-lg shadow-gray-500/30'
+              ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
+              : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
         } animate-pulse`} />
       )}
 
       <div className="p-4">
         {/* Signal Creator Attribution */}
         {creator && (
-          <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-700/30">
+          <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 text-sm text-gray-400">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 {getRoleIcon(creator.role)}
                 <span>Posted by</span>
               </div>
-              <span className="font-semibold text-gray-200">{creator.display_name}</span>
+              <span className="font-semibold text-foreground">{creator.display_name}</span>
               <Badge className={getRoleBadgeClass(creator.role)}>
                 {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
               </Badge>
               {isCreator && (
-                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">
+                <Badge className="bg-accent-green/20 text-accent-green border-accent-green/30 text-xs">
                   Your Signal
                 </Badge>
               )}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-muted-foreground">
               {formatTimeAgo(alert.created_date)}
             </div>
           </div>
@@ -174,7 +174,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         <div className="flex justify-between items-start">
             <div>
                 <h3 className="text-lg font-bold">{alert.asset_name}</h3>
-                <Badge className={`${isBuy ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'} mt-1`}>
+                <Badge className={`${isBuy ? 'bg-accent-green/20 text-accent-green border-accent-green/30' : 'bg-accent-red/20 text-accent-red border-accent-red/30'} mt-1`}>
                     {isBuy ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
                     {alert.trade_type.replace('_', ' ').toUpperCase()}
                 </Badge>
@@ -188,12 +188,12 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 <div className="flex gap-1">
                   <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
                       <CollapsibleTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-sky-400 hover:bg-sky-500/20 hover:text-sky-300"
-                            onClick={handleCopyPanelToggle}
-                          >
+                           <Button 
+                             variant="ghost" 
+                             size="sm" 
+                             className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                             onClick={handleCopyPanelToggle}
+                           >
                               <Copy className="w-4 h-4 mr-1" />
                               {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                           </Button>
@@ -207,7 +207,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-blue-400 hover:bg-blue-500/20 hover:text-blue-300"
+                        className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
                       >
                         <Share2 className="w-4 h-4 mr-1" />
                         <ChevronDown className="w-3 h-3" />
@@ -219,12 +219,12 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                   {(alert.status === 'active' || alert.status === 'pending') && (
                     <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
                         <CollapsibleTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
-                              onClick={handleCalculatorToggle}
-                            >
+                             <Button 
+                               variant="ghost" 
+                               size="sm" 
+                               className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
+                               onClick={handleCalculatorToggle}
+                             >
                                 <Calculator className="w-4 h-4 mr-1" />
                                 {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             </Button>
@@ -265,18 +265,18 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       </Collapsible>
 
       <div className="px-4 pb-4 space-y-2">
-        <div className="bg-gray-900/50 rounded-md p-3">
+        <div className="bg-muted/50 rounded-md p-3">
             <PriceRow 
               label="Entry Price" 
               value={alert.entry_price} 
               icon={isBuy ? ArrowUp : ArrowDown} 
-              colorClass={isBuy ? "text-emerald-400" : "text-red-400"} 
+              colorClass={isBuy ? "text-accent-green" : "text-accent-red"} 
             />
             <PriceRow 
               label="Stop Loss" 
               value={alert.stop_loss} 
               icon={XOctagon} 
-              colorClass={alert.close_reason === 'stop_loss' ? "text-red-300" : "text-red-400"}
+              colorClass={alert.close_reason === 'stop_loss' ? "text-accent-red" : "text-accent-red"}
               isHit={alert.close_reason === 'stop_loss'}
             />
             {takeProfits.map((tp, index) => {
@@ -288,7 +288,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                   label={`Take Profit ${tpLevel}`} 
                   value={tp} 
                   icon={Target} 
-                  colorClass={isHit ? "text-emerald-400" : "text-sky-400"}
+                  colorClass={isHit ? "text-accent-green" : "text-accent-blue"}
                   isHit={isHit}
                 />
               );
@@ -298,7 +298,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       
       {alert.notes && (
         <div className="px-4 pb-4">
-            <p className="text-xs text-gray-400 italic bg-gray-900/50 p-2 rounded-md">"{alert.notes}"</p>
+            <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded-md">"{alert.notes}"</p>
         </div>
       )}
 
@@ -319,12 +319,12 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         if (proximityPercentage >= 50) {
           return (
             <div className="px-4 pb-4">
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-md p-3 flex items-start gap-2">
-                <span className="text-amber-400 mt-0.5 leading-none">🟡</span>
-                <div className="text-xs text-amber-300">
+              <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-3 flex items-start gap-2">
+                <span className="text-accent-gold mt-0.5 leading-none">🟡</span>
+                <div className="text-xs text-accent-gold">
                   <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>
                   <br />
-                  <span className="text-amber-400/80">This trade is more than halfway to its invalidation point.</span>
+                  <span className="text-accent-gold/80">This trade is more than halfway to its invalidation point.</span>
                 </div>
               </div>
             </div>
@@ -334,11 +334,11 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       })()}
       
       {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && (
-        <div className="bg-gray-900/50 px-4 py-2 flex justify-end">
+        <div className="bg-muted/50 px-4 py-2 flex justify-end">
             <Button 
               size="sm" 
               variant="ghost" 
-              className="text-red-400 hover:bg-red-500/20 hover:text-red-300" 
+              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red" 
               onClick={() => handleStatusUpdate('closed')}
             >
                 <Lock className="w-4 h-4 mr-2" />

@@ -37,21 +37,34 @@ interface MarketDataPoint {
   };
 }
 
-// Enhanced universe of 25+ diverse instruments
+// Enhanced universe of 25+ diverse instruments with standardized Gold symbol
 const TRADING_UNIVERSE = {
   stocks: ['TSLA', 'NVDA', 'SPY', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'JPM', 'BAC', 'JNJ', 'PFE', 'XOM', 'CVX'],
   crypto: ['BTC/USD', 'ETH/USD', 'ADA/USD', 'SOL/USD', 'MATIC/USD', 'DOT/USD'],
   forex: ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'NZD/USD'],
-  commodities: ['GOLD', 'SILVER', 'OIL', 'NATURAL_GAS', 'COPPER', 'WHEAT'],
+  commodities: ['XAU/USD', 'SILVER', 'OIL', 'NATURAL_GAS', 'COPPER', 'WHEAT'],
   etfs: ['QQQ', 'IWM', 'DIA', 'VTI', 'GLD', 'USO']
+};
+
+// Symbol mapping for Gold standardization
+const SYMBOL_MAPPING: Record<string, string> = {
+  'GOLD': 'XAU/USD',
+  'XAU/USD': 'XAU/USD',
+  'XAUUSD': 'XAU/USD',
+  'BTC/USD': 'BTC/USD',
+  'BTCUSD': 'BTC/USD'
 };
 
 const ALL_SYMBOLS = Object.values(TRADING_UNIVERSE).flat();
 
-// Dual-speed cache: 30 seconds for regular symbols, 1 second for priority alerts
+// Multi-tier cache: Fast for Gold, priority for alerts, regular for others
 const cache = new Map<string, { data: MarketDataPoint, expires: number, isPriority: boolean }>();
+const GOLD_CACHE_TTL = 5000; // 5 seconds for Gold (XAU/USD)
 const PRIORITY_CACHE_TTL = 1000; // 1 second for active alert symbols
 const REGULAR_CACHE_TTL = 30000; // 30 seconds for regular symbols
+
+// High-priority symbols that need faster updates
+const HIGH_PRIORITY_SYMBOLS = new Set(['XAU/USD', 'BTC/USD']);
 
 // Track priority symbols (symbols with active alerts)
 let prioritySymbols = new Set<string>();
@@ -97,7 +110,17 @@ function getCachedData(symbol: string): MarketDataPoint | null {
 }
 
 function setCachedData(symbol: string, data: MarketDataPoint, isPriority: boolean = false): void {
-  const ttl = isPriority ? PRIORITY_CACHE_TTL : REGULAR_CACHE_TTL;
+  // Determine cache TTL based on symbol priority
+  let ttl: number;
+  if (symbol === 'XAU/USD') {
+    ttl = GOLD_CACHE_TTL; // 5 seconds for Gold
+  } else if (isPriority) {
+    ttl = PRIORITY_CACHE_TTL; // 1 second for active alerts
+  } else if (HIGH_PRIORITY_SYMBOLS.has(symbol)) {
+    ttl = GOLD_CACHE_TTL; // 5 seconds for high-priority symbols
+  } else {
+    ttl = REGULAR_CACHE_TTL; // 30 seconds for regular symbols
+  }
   cache.set(symbol, {
     data,
     expires: Date.now() + ttl,
@@ -106,10 +129,13 @@ function setCachedData(symbol: string, data: MarketDataPoint, isPriority: boolea
 }
 
 async function refreshPrioritySymbols(): Promise<void> {
-  // Refresh priority symbols every 10 seconds
+  // Only refresh every 10 seconds to avoid excessive DB calls
   if (Date.now() - lastPriorityRefresh < 10000) {
     return;
   }
+
+  // Always include Gold as priority symbol
+  prioritySymbols.add('XAU/USD');
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -212,18 +238,8 @@ async function fetchFromTwelveData(symbol: string, apiKey: string): Promise<Mark
     console.log(`🚀 API FETCH STARTED for symbol: ${symbol}`);
     console.log(`🔑 API Key present: ${apiKey ? 'YES' : 'NO'}`);
     
-    // Enhanced symbol format conversion for Twelve Data API
-    let apiSymbol = symbol.replace('/', '');
-    
-    // Handle special cases for commodities and crypto with better mapping
-    if (symbol === 'GOLD' || symbol === 'XAU/USD') {
-      apiSymbol = 'XAU/USD';
-    } else if (symbol === 'BTC/USD' || symbol === 'BTCUSD' || symbol === 'BTC') {
-      apiSymbol = 'BTC/USD';
-    } else if (symbol.includes('/')) {
-      // Keep forex pairs as-is
-      apiSymbol = symbol;
-    }
+    // Use standardized symbol mapping
+    const apiSymbol = SYMBOL_MAPPING[symbol] || symbol;
     
     console.log(`📡 Making API call for ${symbol} -> ${apiSymbol}`);
     

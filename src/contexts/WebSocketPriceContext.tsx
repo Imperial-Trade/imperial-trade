@@ -67,9 +67,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     try {
       console.log('🔄 HTTP fallback: fetching prices for', symbols);
       
-      // Map symbols to correct API format (Gold -> GOLD, BTC -> BTC/USD)
+      // Map symbols to standardized API format
       const mappedSymbols = symbols.map(symbol => {
-        if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'GOLD'; // Fixed mapping for Gold
+        if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'XAU/USD';
         if (symbol === 'BTC' || symbol === 'BITCOIN' || symbol === 'BTC/USD') return 'BTC/USD';
         return symbol;
       });
@@ -292,12 +292,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribing to symbols:', symbols);
-    symbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
+    
+    // Normalize symbols (convert GOLD to XAU/USD for consistency)
+    const normalizedSymbols = symbols.map(symbol => 
+      symbol === 'GOLD' ? 'XAU/USD' : symbol
+    );
+    
+    normalizedSymbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
     
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify({
         type: 'subscribe',
-        symbols
+        symbols: normalizedSymbols
       }));
     } else {
       // Try HTTP fallback immediately for faster response

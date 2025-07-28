@@ -24,11 +24,12 @@ interface ErrorMessage {
   code: 'API_KEY_MISSING' | 'API_UNAVAILABLE' | 'SYMBOL_UNSUPPORTED' | 'RATE_LIMIT_EXCEEDED';
 }
 
-// Symbol mapping between frontend and Twelve Data API
+// Standardized symbol mapping between frontend and Twelve Data API
 const SYMBOL_MAPPING: Record<string, string> = {
-  'XAU/USD': 'XAU/USD', // Twelve Data format for Gold
   'GOLD': 'XAU/USD',
-  'BTC/USD': 'BTC/USD', // Twelve Data format for Bitcoin
+  'XAU/USD': 'XAU/USD',
+  'XAUUSD': 'XAU/USD',
+  'BTC/USD': 'BTC/USD',
   'BTCUSD': 'BTC/USD',
   'BITCOIN': 'BTC/USD'
 };
@@ -36,9 +37,13 @@ const SYMBOL_MAPPING: Record<string, string> = {
 // Supported symbols for Twelve Data WebSocket
 const SUPPORTED_TWELVE_DATA_SYMBOLS = ['XAU/USD', 'BTC/USD'];
 
-// Simple in-memory cache for price data
+// Multi-tier cache for price data with Gold priority
 const priceCache = new Map<string, { data: PriceUpdate, expires: number }>();
-const CACHE_TTL = 8000; // 8 seconds cache
+const GOLD_CACHE_TTL = 2000; // 2 seconds cache for Gold
+const REGULAR_CACHE_TTL = 8000; // 8 seconds cache for others
+
+// High-priority symbols for faster caching
+const HIGH_PRIORITY_SYMBOLS = new Set(['XAU/USD', 'BTC/USD']);
 
 // Rate limiting
 const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
@@ -76,9 +81,10 @@ function getCachedPrice(symbol: string): PriceUpdate | null {
 }
 
 function setCachedPrice(symbol: string, data: PriceUpdate): void {
+  const ttl = (symbol === 'XAU/USD' || HIGH_PRIORITY_SYMBOLS.has(symbol)) ? GOLD_CACHE_TTL : REGULAR_CACHE_TTL;
   priceCache.set(symbol, {
     data,
-    expires: Date.now() + CACHE_TTL
+    expires: Date.now() + ttl
   });
 }
 
@@ -88,10 +94,10 @@ function generateMockData(symbols: string[]): PriceUpdate[] {
   console.log('🚨 API is not working - real prices should be fetched instead');
   
   const basePrices: Record<string, number> = {
-    'GOLD': 3396.70,     // CURRENT GOOGLE FINANCE PRICE
-    'XAU/USD': 3396.70,  // Alternative Gold symbol
-    'BTCUSD': 117881.00, // CURRENT GOOGLE FINANCE PRICE  
-    'BTC/USD': 117881.00, // Alternative Bitcoin symbol
+    'XAU/USD': 3396.70,  // CURRENT GOOGLE FINANCE PRICE
+    'GOLD': 3396.70,     // Legacy symbol mapping
+    'BTC/USD': 117881.00, // CURRENT GOOGLE FINANCE PRICE  
+    'BTCUSD': 117881.00, // Alternative Bitcoin symbol
     'BTC': 117881.00     // Short Bitcoin symbol
   };
   
@@ -132,17 +138,9 @@ async function fetchRealPrice(symbol: string): Promise<PriceUpdate | null> {
   }
 
   try {
-    const apiSymbol = translateSymbol(symbol);
+    const formattedSymbol = translateSymbol(symbol);
     
-    // Enhanced symbol formatting for Twelve Data API
-    let formattedSymbol = apiSymbol;
-    if (apiSymbol === 'GOLD' || symbol === 'XAU/USD') {
-      formattedSymbol = 'XAU/USD';
-    } else if (apiSymbol === 'BTCUSD' || symbol === 'BTC/USD' || symbol === 'BTC') {
-      formattedSymbol = 'BTC/USD';
-    }
-    
-    console.log(`📡 API call mapping: ${symbol} -> ${apiSymbol} -> ${formattedSymbol}`);
+    console.log(`📡 API call mapping: ${symbol} -> ${formattedSymbol}`);
     
     const url = `https://api.twelvedata.com/quote?symbol=${formattedSymbol}&apikey=${apiKey}`;
     console.log(`🌐 Making API request to: ${url}`);

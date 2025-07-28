@@ -17,10 +17,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   onUseCurrentPrice,
   className = ''
 }) => {
-  // Map frontend symbols to API symbols
+  // Map frontend symbols to standardized API symbols
   const mapSymbolForAPI = (frontendSymbol: string): string => {
     const symbolMap: Record<string, string> = {
-      'XAU/USD': 'GOLD',
+      'GOLD': 'XAU/USD',
+      'XAU/USD': 'XAU/USD',
       'BTC/USD': 'BTC/USD'
     };
     return symbolMap[frontendSymbol] || frontendSymbol;

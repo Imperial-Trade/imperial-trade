@@ -3,8 +3,18 @@ import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, Target, Shield, Zap, Activity, DollarSign, BarChart3 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useTradingMetrics } from '@/hooks/useTradingMetrics';
 import { Skeleton } from '@/components/ui/skeleton';
+
+interface AnalysisResult {
+  performance_metrics?: {
+    win_rate?: number;
+    total_pnl?: number;
+    risk_score?: number;
+    trades_analyzed?: number;
+    profit_factor?: number;
+    portfolio_value?: number;
+  };
+}
 
 interface KpiCardProps {
   icon: React.ElementType;
@@ -82,48 +92,48 @@ const KpiCard: React.FC<KpiCardProps> = ({
   );
 };
 
-export const MeccaKpiDashboard: React.FC = () => {
-  const { data: metrics, isLoading, error } = useTradingMetrics();
+interface MeccaKpiDashboardProps {
+  analysisResult?: AnalysisResult;
+  isAnalyzing?: boolean;
+}
 
-  if (error) {
-    return (
-      <Card className="p-4 bg-card/60 backdrop-blur-sm border-border/30">
-        <p className="text-sm text-muted-foreground text-center">
-          Unable to load trading metrics. Please try again.
-        </p>
-      </Card>
-    );
-  }
+export const MeccaKpiDashboard: React.FC<MeccaKpiDashboardProps> = ({ 
+  analysisResult, 
+  isAnalyzing = false 
+}) => {
+
+  // Extract metrics from screenshot analysis results
+  const metrics = analysisResult?.performance_metrics;
 
   const kpiData = [
     {
       icon: Target,
       label: 'Win Rate',
-      value: `${metrics?.winRate || 0}%`,
-      trend: (metrics?.winRate || 0) >= 60 ? 'up' : (metrics?.winRate || 0) < 40 ? 'down' : 'neutral',
-      color: (metrics?.winRate || 0) >= 60 ? 'emerald' : (metrics?.winRate || 0) < 40 ? 'red' : 'violet',
-      gradient: (metrics?.winRate || 0) >= 60 ? 'from-emerald-500 to-green-600' : (metrics?.winRate || 0) < 40 ? 'from-red-500 to-rose-600' : 'from-violet-500 to-purple-600'
+      value: `${metrics?.win_rate || 0}%`,
+      trend: (metrics?.win_rate || 0) >= 60 ? 'up' : (metrics?.win_rate || 0) < 40 ? 'down' : 'neutral',
+      color: (metrics?.win_rate || 0) >= 60 ? 'emerald' : (metrics?.win_rate || 0) < 40 ? 'red' : 'violet',
+      gradient: (metrics?.win_rate || 0) >= 60 ? 'from-emerald-500 to-green-600' : (metrics?.win_rate || 0) < 40 ? 'from-red-500 to-rose-600' : 'from-violet-500 to-purple-600'
     },
     {
       icon: DollarSign,
       label: 'Total P&L',
-      value: `$${metrics?.totalPnL || 0}`,
-      trend: (metrics?.totalPnL || 0) > 0 ? 'up' : (metrics?.totalPnL || 0) < 0 ? 'down' : 'neutral',
-      color: (metrics?.totalPnL || 0) >= 0 ? 'emerald' : 'red',
-      gradient: (metrics?.totalPnL || 0) >= 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600'
+      value: `$${metrics?.total_pnl || 0}`,
+      trend: (metrics?.total_pnl || 0) > 0 ? 'up' : (metrics?.total_pnl || 0) < 0 ? 'down' : 'neutral',
+      color: (metrics?.total_pnl || 0) >= 0 ? 'emerald' : 'red',
+      gradient: (metrics?.total_pnl || 0) >= 0 ? 'from-emerald-500 to-green-600' : 'from-red-500 to-rose-600'
     },
     {
       icon: Shield,
       label: 'Risk Score',
-      value: `${metrics?.riskScore || 0}/10`,
-      trend: (metrics?.riskScore || 0) <= 3 ? 'up' : (metrics?.riskScore || 0) >= 7 ? 'down' : 'neutral',
-      color: (metrics?.riskScore || 0) <= 3 ? 'emerald' : (metrics?.riskScore || 0) >= 7 ? 'red' : 'amber',
-      gradient: (metrics?.riskScore || 0) <= 3 ? 'from-emerald-500 to-green-600' : (metrics?.riskScore || 0) >= 7 ? 'from-red-500 to-rose-600' : 'from-amber-500 to-orange-600'
+      value: `${metrics?.risk_score || 0}/10`,
+      trend: (metrics?.risk_score || 0) <= 3 ? 'up' : (metrics?.risk_score || 0) >= 7 ? 'down' : 'neutral',
+      color: (metrics?.risk_score || 0) <= 3 ? 'emerald' : (metrics?.risk_score || 0) >= 7 ? 'red' : 'amber',
+      gradient: (metrics?.risk_score || 0) <= 3 ? 'from-emerald-500 to-green-600' : (metrics?.risk_score || 0) >= 7 ? 'from-red-500 to-rose-600' : 'from-amber-500 to-orange-600'
     },
     {
       icon: Activity,
-      label: 'Total Trades',
-      value: (metrics?.totalTrades || 0).toString(),
+      label: 'Trades Analyzed',
+      value: (metrics?.trades_analyzed || 0).toString(),
       trend: 'neutral',
       color: 'blue',
       gradient: 'from-blue-500 to-cyan-600'
@@ -131,15 +141,15 @@ export const MeccaKpiDashboard: React.FC = () => {
     {
       icon: Zap,
       label: 'Profit Factor',
-      value: `${metrics?.profitFactor || 0}x`,
-      trend: (metrics?.profitFactor || 0) > 1.5 ? 'up' : (metrics?.profitFactor || 0) < 1 ? 'down' : 'neutral',
-      color: (metrics?.profitFactor || 0) > 1.5 ? 'emerald' : (metrics?.profitFactor || 0) < 1 ? 'red' : 'violet',
-      gradient: (metrics?.profitFactor || 0) > 1.5 ? 'from-emerald-500 to-green-600' : (metrics?.profitFactor || 0) < 1 ? 'from-red-500 to-rose-600' : 'from-violet-500 to-purple-600'
+      value: `${metrics?.profit_factor || 0}x`,
+      trend: (metrics?.profit_factor || 0) > 1.5 ? 'up' : (metrics?.profit_factor || 0) < 1 ? 'down' : 'neutral',
+      color: (metrics?.profit_factor || 0) > 1.5 ? 'emerald' : (metrics?.profit_factor || 0) < 1 ? 'red' : 'violet',
+      gradient: (metrics?.profit_factor || 0) > 1.5 ? 'from-emerald-500 to-green-600' : (metrics?.profit_factor || 0) < 1 ? 'from-red-500 to-rose-600' : 'from-violet-500 to-purple-600'
     },
     {
       icon: BarChart3,
       label: 'Portfolio Value',
-      value: `$${metrics?.portfolioValue || 0}`,
+      value: `$${metrics?.portfolio_value || 0}`,
       trend: 'neutral',
       color: 'violet',
       gradient: 'from-violet-500 to-purple-600'
@@ -162,7 +172,7 @@ export const MeccaKpiDashboard: React.FC = () => {
           trend={kpi.trend}
           color={kpi.color}
           gradient={kpi.gradient}
-          isLoading={isLoading}
+          isLoading={isAnalyzing}
         />
       ))}
     </motion.div>

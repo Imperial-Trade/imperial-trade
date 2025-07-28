@@ -272,8 +272,8 @@ serve(async (req) => {
       console.log('🔌 Connecting to Twelve Data WebSocket...');
       console.log('🔑 Using API Key:', apiKey ? 'YES (length: ' + apiKey.length + ')' : 'NO');
       
-      // Connect to Twelve Data WebSocket with enhanced real-time endpoint
-      twelveDataWs = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
+      // Connect to Twelve Data PRO WebSocket endpoint for real-time streaming
+      twelveDataWs = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}&plan=pro`);
 
       twelveDataWs.onopen = () => {
         console.log('✅ Connected to Twelve Data WebSocket');

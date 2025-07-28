@@ -311,8 +311,8 @@ function generateEnhancedMockData(symbols: string[]): MarketDataPoint[] {
     // Forex
     'EUR/USD': 1.032, 'GBP/USD': 1.241, 'USD/JPY': 157, 'AUD/USD': 0.618,
     'USD/CAD': 1.412, 'NZD/USD': 0.558,
-// Commodities - UPDATED CURRENT PRICES (Jan 29, 2025)
-    'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
+    // Commodities - CURRENT GOOGLE FINANCE PRICES
+    'GOLD': 3396.70, 'XAU/USD': 3396.70, 'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
     'COPPER': 4.55, 'WHEAT': 5.4,
     // ETFs
     'QQQ': 515, 'IWM': 238, 'DIA': 445, 'VTI': 295, 'GLD': 325, 'USO': 85
@@ -378,11 +378,6 @@ serve(async (req) => {
     const requestedSymbols = symbols && symbols.length > 0 ? symbols : ALL_SYMBOLS.slice(0, 12);
     
     console.log('Enhanced market data request for symbols:', requestedSymbols);
-    
-    // Process Bitcoin requests
-    if (requestedSymbols.includes('BTC/USD')) {
-      console.log('₿ BTC/USD (Bitcoin) price specifically requested');
-    }
 
     // Check cache first
     const cachedResults: MarketDataPoint[] = [];

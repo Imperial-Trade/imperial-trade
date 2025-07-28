@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
-import { UnifiedPriceProvider } from "@/contexts/UnifiedPriceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
@@ -49,7 +48,6 @@ import Settings from "@/pages/dashboard/settings/Settings";
 import AdminPanel from "@/pages/dashboard/admin-panel/AdminPanel";
 import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
 import DevTests from "@/pages/dashboard/dev-tests/DevTests";
-import OptimizedPricingDemo from "@/pages/dashboard/demo/OptimizedPricingDemo";
 
 // Educator Pages
 import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
@@ -85,8 +83,7 @@ function App() {
                 <NavigationGuard>
                   <SignalRealtimeProvider>
                     <WebSocketPriceProvider>
-                      <UnifiedPriceProvider>
-                        <Routes>
+                      <Routes>
                         {/* Landing Routes */}
                         <Route
                           path="/"
@@ -179,10 +176,9 @@ function App() {
                           />
                           <Route path="my-progress" element={<MyProgress />} />
                           <Route path="progress" element={<Progress />} />
-                           <Route path="settings" element={<Settings />} />
-                           <Route path="athena" element={<AthenaTest />} />
-                           <Route path="dev-tests" element={<DevTests />} />
-                           <Route path="pricing-demo" element={<OptimizedPricingDemo />} />
+                          <Route path="settings" element={<Settings />} />
+                          <Route path="athena" element={<AthenaTest />} />
+                          <Route path="dev-tests" element={<DevTests />} />
 
                           <Route
                             path="administration"
@@ -273,8 +269,7 @@ function App() {
                           element={<AccessDenied />}
                         />
                         <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </UnifiedPriceProvider>
+                      </Routes>
                     </WebSocketPriceProvider>
                   </SignalRealtimeProvider>
                 </NavigationGuard>

@@ -1,6 +1,7 @@
 
 // Enhanced WebSocket live price hook with performance optimizations
-import { useOptimizedPrice } from './useOptimizedPrice';
+import { useOptimizedLivePrice } from './useOptimizedLivePrice';
+import { logLegacyUsage } from '@/utils/legacyCleanup';
 import { useEffect } from 'react';
 
 interface LivePriceData {
@@ -19,7 +20,7 @@ export function useWebSocketLivePrice(symbol: string): LivePriceData {
     console.log('✅ Using WebSocket-based live pricing for', symbol);
   }, [symbol]);
 
-  const optimizedData = useOptimizedPrice(symbol, {
+  const optimizedData = useOptimizedLivePrice(symbol, {
     enableSmartPausing: true,
     debounceMs: 500,
     pauseOnInput: false

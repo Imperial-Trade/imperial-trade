@@ -69,7 +69,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       
       // Ensure all symbols are properly formatted for API
       const mappedSymbols = symbols.map(symbol => {
-        if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'XAU/USD';
         if (symbol === 'BTC' || symbol === 'BITCOIN' || symbol === 'BTC/USD') return 'BTC/USD';
         return symbol;
       });
@@ -293,9 +292,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribing to symbols:', symbols);
     
-    // Normalize symbols (convert GOLD to XAU/USD for consistency)
+    // Normalize symbols for BTC only
     const normalizedSymbols = symbols.map(symbol => 
-      symbol === 'GOLD' ? 'XAU/USD' : symbol
+      symbol === 'BITCOIN' ? 'BTC/USD' : symbol
     );
     
     normalizedSymbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));

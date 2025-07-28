@@ -26,24 +26,20 @@ interface ErrorMessage {
 
 // Standardized symbol mapping between frontend and Twelve Data API
 const SYMBOL_MAPPING: Record<string, string> = {
-  'GOLD': 'XAU/USD',
-  'XAU/USD': 'XAU/USD',
-  'XAUUSD': 'XAU/USD',
   'BTC/USD': 'BTC/USD',
   'BTCUSD': 'BTC/USD',
   'BITCOIN': 'BTC/USD'
 };
 
 // Supported symbols for Twelve Data WebSocket
-const SUPPORTED_TWELVE_DATA_SYMBOLS = ['XAU/USD', 'BTC/USD'];
+const SUPPORTED_TWELVE_DATA_SYMBOLS = ['BTC/USD'];
 
-// Multi-tier cache for price data with Gold priority
+// Multi-tier cache for price data
 const priceCache = new Map<string, { data: PriceUpdate, expires: number }>();
-const GOLD_CACHE_TTL = 2000; // 2 seconds cache for Gold
-const REGULAR_CACHE_TTL = 8000; // 8 seconds cache for others
+const REGULAR_CACHE_TTL = 8000; // 8 seconds cache for BTC
 
 // High-priority symbols for faster caching
-const HIGH_PRIORITY_SYMBOLS = new Set(['XAU/USD', 'BTC/USD']);
+const HIGH_PRIORITY_SYMBOLS = new Set(['BTC/USD']);
 
 // Rate limiting
 const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
@@ -81,7 +77,7 @@ function getCachedPrice(symbol: string): PriceUpdate | null {
 }
 
 function setCachedPrice(symbol: string, data: PriceUpdate): void {
-  const ttl = (symbol === 'XAU/USD' || HIGH_PRIORITY_SYMBOLS.has(symbol)) ? GOLD_CACHE_TTL : REGULAR_CACHE_TTL;
+  const ttl = HIGH_PRIORITY_SYMBOLS.has(symbol) ? REGULAR_CACHE_TTL : REGULAR_CACHE_TTL;
   priceCache.set(symbol, {
     data,
     expires: Date.now() + ttl
@@ -94,8 +90,6 @@ function generateMockData(symbols: string[]): PriceUpdate[] {
   console.log('🚨 API is not working - real prices should be fetched instead');
   
   const basePrices: Record<string, number> = {
-    'XAU/USD': 3396.70,  // CURRENT GOOGLE FINANCE PRICE
-    'GOLD': 3396.70,     // Legacy symbol mapping
     'BTC/USD': 117881.00, // CURRENT GOOGLE FINANCE PRICE  
     'BTCUSD': 117881.00, // Alternative Bitcoin symbol
     'BTC': 117881.00     // Short Bitcoin symbol
@@ -371,7 +365,7 @@ serve(async (req) => {
         invalidSymbols.forEach(symbol => {
           const errorMsg: ErrorMessage = {
             type: 'error',
-            message: `Symbol ${symbol} is not supported. Only Gold (XAU/USD) and Bitcoin (BTC/USD) are available.`,
+            message: `Symbol ${symbol} is not supported. Only Bitcoin (BTC/USD) is available.`,
             code: 'SYMBOL_UNSUPPORTED'
           };
           socket.send(JSON.stringify(errorMsg));

@@ -9,7 +9,7 @@ export interface AssetOption {
 }
 
 const SUPPORTED_ASSETS: AssetOption[] = [
-  { symbol: 'XAU/USD', name: 'Gold', category: 'commodities' },
+  { symbol: 'GOLD', name: 'Gold', category: 'commodities' },
   { symbol: 'BTC/USD', name: 'Bitcoin', category: 'crypto' }
 ];
 

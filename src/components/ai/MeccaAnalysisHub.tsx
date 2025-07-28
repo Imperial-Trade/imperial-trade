@@ -773,6 +773,70 @@ const MeccaAnalysisHub: React.FC = () => {
             {/* Personalized Insights */}
             <PersonalizedInsights />
 
+            {/* Recent Analysis History */}
+            {analysisHistory.length > 0 && (
+              <Card className="mecca-panel mecca-glass">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-violet-500" />
+                  <span className="hidden sm:inline">Analysis History</span>
+                  <span className="sm:hidden">History</span>
+                </h4>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {analysisHistory.slice(0, 5).map((analysis, index) => {
+                    const analysisData = typeof analysis.output_text === 'string' 
+                      ? JSON.parse(analysis.output_text) 
+                      : analysis.output_text;
+                    
+                    return (
+                      <motion.div
+                        key={analysis.id}
+                        className="p-3 rounded-lg bg-muted/30 border border-muted-foreground/10 cursor-pointer hover:bg-violet-50/50 hover:border-violet-200/50 transition-all duration-200 mecca-touch-button group"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        onClick={() => setSelectedHistoryItem(analysis)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium text-violet-600">
+                                {new Date(analysis.created_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(analysis.created_at).toLocaleTimeString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
+                              </span>
+                              <Badge variant="secondary" className="text-xs px-2 py-0">
+                                {analysisData?.screenshot_analysis?.images_processed || 'N/A'} images
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {analysisData?.trader_behavior?.experience_level || 'Analysis'} • {analysisData?.risk_assessment?.risk_score || 'N/A'}/10 risk
+                            </p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-violet-500 transition-colors" />
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+                
+                {analysisHistory.length > 5 && (
+                  <div className="mt-3 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      Showing recent 5 of {analysisHistory.length} analyses
+                    </p>
+                  </div>
+                )}
+              </Card>
+            )}
           </motion.div>
         </div>
       </div>

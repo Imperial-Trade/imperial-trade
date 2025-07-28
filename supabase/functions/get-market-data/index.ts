@@ -311,8 +311,8 @@ function generateEnhancedMockData(symbols: string[]): MarketDataPoint[] {
     // Forex
     'EUR/USD': 1.032, 'GBP/USD': 1.241, 'USD/JPY': 157, 'AUD/USD': 0.618,
     'USD/CAD': 1.412, 'NZD/USD': 0.558,
-    // Commodities - CURRENT GOOGLE FINANCE PRICES
-    'GOLD': 3396.70, 'XAU/USD': 3396.70, 'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
+    // Commodities - UPDATED CURRENT PRICES (Jan 29, 2025)
+    'GOLD': 3240, 'XAU/USD': 3240, 'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
     'COPPER': 4.55, 'WHEAT': 5.4,
     // ETFs
     'QQQ': 515, 'IWM': 238, 'DIA': 445, 'VTI': 295, 'GLD': 325, 'USO': 85
@@ -379,12 +379,16 @@ serve(async (req) => {
     
     console.log('Enhanced market data request for symbols:', requestedSymbols);
     
-    // Add specific logging for XAU/USD requests
+      // Add specific logging for XAU/USD requests
     if (requestedSymbols.includes('XAU/USD')) {
       console.log('🥇 XAU/USD (Gold) price specifically requested');
+      console.log('🔍 Clearing any cached Gold data to force fresh fetch...');
+      // Clear cache for Gold to force fresh data
+      cache.delete('XAU/USD');
     }
     if (requestedSymbols.includes('GOLD')) {
       console.log('🥇 GOLD symbol requested - will map to XAU/USD');
+      cache.delete('XAU/USD');
     }
 
     // Check cache first

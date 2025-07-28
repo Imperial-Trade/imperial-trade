@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ASSET_REGISTRY, AssetDefinition } from '@/types/assets';
 
 export interface AssetOption {
   symbol: string;
@@ -8,10 +9,12 @@ export interface AssetOption {
   category: 'crypto' | 'commodities';
 }
 
-const SUPPORTED_ASSETS: AssetOption[] = [
-  { symbol: 'XAU/USD', name: 'Gold', category: 'commodities' },
-  { symbol: 'BTC/USD', name: 'Bitcoin', category: 'crypto' }
-];
+// Use centralized asset registry for consistent symbol handling
+const SUPPORTED_ASSETS: AssetOption[] = Object.values(ASSET_REGISTRY).map(asset => ({
+  symbol: asset.symbol,
+  name: asset.name,
+  category: asset.category
+}));
 
 interface AssetSelectorProps {
   value: string;

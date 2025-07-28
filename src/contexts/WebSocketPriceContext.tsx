@@ -67,11 +67,12 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     try {
       console.log('🔄 HTTP fallback: fetching prices for', symbols);
       
-      // Map symbols to standardized API format
+      // Standardized symbol mapping for distinct assets
       const mappedSymbols = symbols.map(symbol => {
-        if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'XAU/USD';
-        if (symbol === 'BTC' || symbol === 'BITCOIN' || symbol === 'BTC/USD') return 'BTC/USD';
-        return symbol;
+        const upperSymbol = symbol.toUpperCase();
+        if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAU/USD';
+        if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTC/USD';
+        return symbol; // Keep original for unsupported symbols
       });
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -197,7 +198,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         // Immediately subscribe to any pending symbols
         if (subscribedSymbolsRef.current.size > 0) {
           const symbols = Array.from(subscribedSymbolsRef.current);
-          console.log('📡 Subscribing to live prices for:', symbols);
+          console.log('📡 Subscribing to validated symbols:', symbols);
           socketRef.current?.send(JSON.stringify({
             type: 'subscribe',
             symbols: symbols
@@ -293,22 +294,26 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribing to symbols:', symbols);
     
-    // Normalize symbols (convert GOLD to XAU/USD for consistency)
-    const normalizedSymbols = symbols.map(symbol => 
-      symbol === 'GOLD' ? 'XAU/USD' : symbol
-    );
+    // Validate and normalize symbols for distinct asset handling
+    const validatedSymbols = symbols.map(symbol => {
+      const upperSymbol = symbol.toUpperCase();
+      if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAU/USD';
+      if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTC/USD';
+      return symbol;
+    }).filter(symbol => symbol === 'XAU/USD' || symbol === 'BTC/USD');
     
-    normalizedSymbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
+    console.log('✅ Validated symbols for subscription:', validatedSymbols);
+    validatedSymbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
     
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify({
         type: 'subscribe',
-        symbols: normalizedSymbols
+        symbols: validatedSymbols
       }));
     } else {
       // Try HTTP fallback immediately for faster response
       console.log('🔄 WebSocket not ready, using HTTP fallback immediately');
-      fetchPricesHTTP(symbols);
+      fetchPricesHTTP(validatedSymbols);
       
       // Also try WebSocket connection
       connect();

@@ -217,8 +217,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="px-4 pb-4 space-y-2">
-        <div className="bg-gray-900/50 rounded-md p-3">
+      <div className="px-4 pb-4 space-y-2 bg-emerald-25 dark:bg-transparent">
+        <div className="bg-emerald-100/80 dark:bg-gray-900/50 rounded-md p-3">
             <PriceRow label="Entry Price" value={alert.entry_price} icon={isBuy ? ArrowUp : ArrowDown} colorClass={isBuy ? "text-emerald-400" : "text-red-400"} />
             <PriceRow label="Stop Loss" value={alert.stop_loss} icon={XOctagon} colorClass={alert.close_reason === 'stop_loss' ? "text-red-300" : "text-red-400"} isHit={alert.close_reason === 'stop_loss'} />
             {takeProfits.map((tp, index) => {
@@ -229,8 +229,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
         </div>
       </div>
       
-      {alert.notes && <div className="px-4 pb-4">
-            <p className="text-xs text-gray-400 italic bg-gray-900/50 p-2 rounded-md">"{alert.notes}"</p>
+      {alert.notes && <div className="px-4 pb-4 bg-emerald-25 dark:bg-transparent">
+            <p className="text-xs text-gray-400 italic bg-emerald-100/80 dark:bg-gray-900/50 p-2 rounded-md">"{alert.notes}"</p>
         </div>}
 
       {/* Stop Loss Proximity Warning */}
@@ -261,7 +261,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
       return null;
     })()}
       
-      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && <div className="bg-gray-900/50 px-4 py-2 flex justify-end">
+      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && <div className="bg-emerald-100/60 dark:bg-gray-900/50 px-4 py-2 flex justify-end">
             <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/20 hover:text-red-300" onClick={() => handleStatusUpdate('closed')}>
                 <Lock className="w-4 h-4 mr-2" />
                 {isPending ? 'Cancel Order' : getCloseButtonText()}

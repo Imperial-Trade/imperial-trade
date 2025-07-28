@@ -31,7 +31,7 @@ const PriceRow: React.FC<PriceRowProps> = ({
             <span className="text-zinc-50">{label}</span>
             {isHit && <Check className="w-4 h-4 text-emerald-400" />}
         </div>
-        <span className={`font-mono font-semibold text-white ${isHit ? 'text-emerald-400' : ''}`}>
+        <span className={`font-mono font-semibold ${isHit ? 'text-emerald-400' : ''}`}>
           {value ? `$${value.toFixed(2)}` : '-'}
         </span>
     </div>;
@@ -172,7 +172,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
                 <div className="flex gap-1">
                   <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
                       <CollapsibleTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-sky-400 hover:bg-sky-500/20 hover:text-sky-300" onClick={handleCopyPanelToggle}>
+                          <Button variant="ghost" size="sm" onClick={handleCopyPanelToggle} className="hover:bg-sky-500/20 text-green-950">
                               <Copy className="w-4 h-4 mr-1" />
                               {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                           </Button>

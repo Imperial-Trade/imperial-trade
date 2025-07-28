@@ -24,17 +24,31 @@ interface ErrorMessage {
   code: 'API_KEY_MISSING' | 'API_UNAVAILABLE' | 'SYMBOL_UNSUPPORTED' | 'RATE_LIMIT_EXCEEDED';
 }
 
-// Standardized symbol mapping between frontend and Twelve Data API
+// Auto-detect and normalize currency symbols to remove redundancy
+function normalizeSymbol(symbol: string): string {
+  const normalized = symbol.toUpperCase().replace(/[^A-Z]/g, '');
+  
+  // Auto-detect Gold variations
+  if (normalized.includes('GOLD') || normalized === 'XAU' || normalized === 'XAUUSD') {
+    return 'XAU/USD';
+  }
+  
+  // Auto-detect Bitcoin variations  
+  if (normalized.includes('BITCOIN') || normalized === 'BTC' || normalized === 'BTCUSD') {
+    return 'BTC/USD';
+  }
+  
+  // Return original if no auto-detection needed
+  return symbol;
+}
+
+// Simplified symbol mapping - auto-detection handles redundancy
 const SYMBOL_MAPPING: Record<string, string> = {
-  'GOLD': 'XAU/USD',
   'XAU/USD': 'XAU/USD',
-  'XAUUSD': 'XAU/USD',
-  'BTC/USD': 'BTC/USD',
-  'BTCUSD': 'BTC/USD',
-  'BITCOIN': 'BTC/USD'
+  'BTC/USD': 'BTC/USD'
 };
 
-// Supported symbols for Twelve Data WebSocket
+// Supported symbols for Twelve Data WebSocket - simplified list
 const SUPPORTED_TWELVE_DATA_SYMBOLS = ['XAU/USD', 'BTC/USD'];
 
 // Multi-tier cache for price data with Gold priority
@@ -68,7 +82,8 @@ function isRateLimited(): boolean {
 }
 
 function translateSymbol(symbol: string): string {
-  return SYMBOL_MAPPING[symbol] || symbol;
+  const normalized = normalizeSymbol(symbol);
+  return SYMBOL_MAPPING[normalized] || normalized;
 }
 
 function getCachedPrice(symbol: string): PriceUpdate | null {
@@ -268,17 +283,18 @@ serve(async (req) => {
         // Subscribe to symbols if any
         if (subscribedSymbols.size > 0) {
           const originalSymbols = Array.from(subscribedSymbols);
-          const mappedSymbols = originalSymbols.map(s => SYMBOL_MAPPING[s] || s);
+          const normalizedSymbols = originalSymbols.map(s => normalizeSymbol(s));
           
           console.log('🔍 Original symbols:', originalSymbols);
-          console.log('🔍 Mapped symbols:', mappedSymbols);
+          console.log('🔍 Auto-detected normalized symbols:', normalizedSymbols);
           
           const subscribeMessage = {
             action: 'subscribe',
             params: {
-              symbols: mappedSymbols.join(',')
+              symbols: normalizedSymbols.join(',')
             }
           };
+          console.log('📡 Subscribing to Twelve Data with normalized symbols:', normalizedSymbols);
           console.log('📡 Full subscription message:', JSON.stringify(subscribeMessage, null, 2));
           twelveDataWs?.send(JSON.stringify(subscribeMessage));
         }
@@ -299,20 +315,15 @@ serve(async (req) => {
               console.log('❌ Failed to subscribe to:', data.fails);
               console.log('❌ Failure details:', JSON.stringify(data.fails, null, 2));
               
-              // Try alternative formats for failed symbols
+              // Send error for failed symbols
               data.fails.forEach((fail: any) => {
-                if (fail.symbol === 'XAU/USD') {
-                  console.log('🔄 Trying alternative Gold symbol formats...');
-                  // Try different Gold symbol formats
-                  const alternativeFormats = ['GOLD', 'XAU', 'XAUUSD', 'Gold'];
-                  alternativeFormats.forEach(altSymbol => {
-                    const retryMessage = {
-                      action: 'subscribe',
-                      params: { symbols: altSymbol }
-                    };
-                    console.log('🔄 Retrying with:', altSymbol);
-                    twelveDataWs?.send(JSON.stringify(retryMessage));
-                  });
+                const errorMsg: ErrorMessage = {
+                  type: 'error',
+                  message: `Failed to subscribe to ${fail.symbol}: ${fail.message || 'Unknown error'}`,
+                  code: 'SYMBOL_UNSUPPORTED'
+                };
+                if (socket.readyState === WebSocket.OPEN) {
+                  socket.send(JSON.stringify(errorMsg));
                 }
               });
             }
@@ -392,14 +403,14 @@ serve(async (req) => {
       if (message.type === 'subscribe') {
         console.log('📡 Subscribe request for symbols:', message.symbols);
         
-        // Validate and map symbols
+        // Validate and normalize symbols
         const validSymbols: string[] = [];
         const invalidSymbols: string[] = [];
         
         message.symbols.forEach(symbol => {
-          const mappedSymbol = SYMBOL_MAPPING[symbol];
-          if (mappedSymbol && SUPPORTED_TWELVE_DATA_SYMBOLS.includes(mappedSymbol)) {
-            validSymbols.push(symbol);
+          const normalizedSymbol = normalizeSymbol(symbol);
+          if (SUPPORTED_TWELVE_DATA_SYMBOLS.includes(normalizedSymbol)) {
+            validSymbols.push(symbol); // Keep original for subscription tracking
             subscribedSymbols.add(symbol);
           } else {
             invalidSymbols.push(symbol);
@@ -421,14 +432,14 @@ serve(async (req) => {
         
         // Subscribe to Twelve Data WebSocket if connected and we have valid symbols
         if (twelveDataWs?.readyState === WebSocket.OPEN && validSymbols.length > 0) {
-          const twelveDataSymbols = validSymbols.map(s => SYMBOL_MAPPING[s]).filter(Boolean);
+          const normalizedSymbols = validSymbols.map(s => normalizeSymbol(s));
           const subscribeMessage = {
             action: 'subscribe',
             params: {
-              symbols: twelveDataSymbols.join(',')
+              symbols: normalizedSymbols.join(',')
             }
           };
-          console.log('📡 Subscribing to Twelve Data:', twelveDataSymbols);
+          console.log('📡 Subscribing to Twelve Data:', normalizedSymbols);
           twelveDataWs.send(JSON.stringify(subscribeMessage));
         }
         
@@ -439,18 +450,18 @@ serve(async (req) => {
         
         // Unsubscribe from Twelve Data if connected
         if (twelveDataWs?.readyState === WebSocket.OPEN) {
-          const twelveDataSymbols = message.symbols
-            .map(s => SYMBOL_MAPPING[s])
-            .filter(Boolean);
+          const normalizedSymbols = message.symbols
+            .map(s => normalizeSymbol(s))
+            .filter(s => SUPPORTED_TWELVE_DATA_SYMBOLS.includes(s));
           
-          if (twelveDataSymbols.length > 0) {
+          if (normalizedSymbols.length > 0) {
             const unsubscribeMessage = {
               action: 'unsubscribe',
               params: {
-                symbols: twelveDataSymbols.join(',')
+                symbols: normalizedSymbols.join(',')
               }
             };
-            console.log('📤 Unsubscribing from Twelve Data:', twelveDataSymbols);
+            console.log('📤 Unsubscribing from Twelve Data:', normalizedSymbols);
             twelveDataWs.send(JSON.stringify(unsubscribeMessage));
           }
         }

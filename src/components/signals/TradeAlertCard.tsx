@@ -160,15 +160,17 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 <Badge className={getRoleBadgeClass(creator.role)}>
                   {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
                 </Badge>
-                {isCreator && (
-                  <Badge className="bg-accent-green/20 text-accent-green border-accent-green/30 text-xs">
-                    Your Signal
-                  </Badge>
-                )}
               </div>
             </div>
-            <div className="text-xs text-muted-foreground">
-              {formatTimeAgo(alert.created_date)}
+            <div className="flex flex-col items-end gap-1">
+              {isCreator && (
+                <Badge className="bg-accent-green/20 text-accent-green border-accent-green/30 text-xs">
+                  Your Signal
+                </Badge>
+              )}
+              <div className="text-xs text-muted-foreground">
+                {formatTimeAgo(alert.created_date)}
+              </div>
             </div>
           </div>
         )}

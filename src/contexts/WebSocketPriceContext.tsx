@@ -306,15 +306,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         symbols: normalizedSymbols
       }));
     } else {
-      // Try HTTP fallback immediately for faster response
-      console.log('🔄 WebSocket not ready, using HTTP fallback immediately');
-      fetchPricesHTTP(symbols);
+      // For Gold (XAU/USD), try HTTP fallback immediately for faster response
+      console.log('🔄 WebSocket not ready, using HTTP fallback immediately for:', normalizedSymbols);
+      fetchPricesHTTP(normalizedSymbols);
       
       // Also try WebSocket connection
       connect();
     }
 
-    // Set up automatic price refresh every 6 seconds
+    // Set up automatic price refresh every 3 seconds for faster Gold updates
     if (priceUpdateIntervalRef.current) {
       clearInterval(priceUpdateIntervalRef.current);
     }
@@ -322,10 +322,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     priceUpdateIntervalRef.current = setInterval(() => {
       if (subscribedSymbolsRef.current.size > 0) {
         const currentSymbols = Array.from(subscribedSymbolsRef.current);
-        console.log('🔄 Auto-refreshing prices every 6 seconds for:', currentSymbols);
+        console.log('🔄 Auto-refreshing prices every 3 seconds for:', currentSymbols);
         fetchPricesHTTP(currentSymbols);
       }
-    }, 6000); // Update every 6 seconds
+    }, 3000); // Reduced from 6000ms to 3000ms for faster Gold updates
   }, [connect, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {

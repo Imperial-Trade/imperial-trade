@@ -31,7 +31,7 @@ const PriceRow: React.FC<PriceRowProps> = ({
             <span className="text-zinc-50">{label}</span>
             {isHit && <Check className="w-4 h-4 text-emerald-400" />}
         </div>
-        <span className={`font-mono font-semibold ${isHit ? 'text-emerald-400' : ''}`}>
+        <span className={`font-mono font-semibold text-white ${isHit ? 'text-emerald-400' : ''}`}>
           {value ? `$${value.toFixed(2)}` : '-'}
         </span>
     </div>;

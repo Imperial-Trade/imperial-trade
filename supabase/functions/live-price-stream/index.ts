@@ -247,6 +247,7 @@ serve(async (req) => {
   let subscribedSymbols = new Set<string>();
   let twelveDataWs: WebSocket | null = null;
   let reconnectTimeout: number | null = null;
+  let goldPriceInterval: number | null = null; // For periodic Gold price updates
 
   // Function to connect to Twelve Data WebSocket
   const connectToTwelveData = () => {
@@ -389,7 +390,7 @@ serve(async (req) => {
           console.log('📡 Subscribing to Twelve Data:', twelveDataSymbols);
           twelveDataWs.send(JSON.stringify(subscribeMessage));
         } else if (validSymbols.length > 0) {
-          // If Twelve Data isn't connected, try HTTP fallback
+          // If Twelve Data isn't connected, use HTTP fallback
           console.log('🔄 Twelve Data not connected, using HTTP fallback');
           for (const symbol of validSymbols) {
             const priceData = await fetchRealPrice(symbol);
@@ -403,11 +404,38 @@ serve(async (req) => {
             }
           }
         }
+
+        // Set up periodic updates for Gold if subscribed (since WebSocket often fails for XAU/USD)
+        const hasGold = validSymbols.some(s => s === 'XAU/USD' || s === 'GOLD');
+        if (hasGold && !goldPriceInterval) {
+          console.log('⏰ Setting up periodic Gold price updates (every 3 seconds)');
+          goldPriceInterval = setInterval(async () => {
+            if (subscribedSymbols.has('XAU/USD') || subscribedSymbols.has('GOLD')) {
+              const goldPrice = await fetchRealPrice('XAU/USD');
+              if (goldPrice && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                  type: 'price_update',
+                  data: [goldPrice],
+                  source: 'twelve_data_api_periodic',
+                  timestamp: new Date().toISOString()
+                }));
+              }
+            }
+          }, 3000); // Update every 3 seconds
+        }
         
       } else if (message.type === 'unsubscribe') {
         console.log('📤 Unsubscribe request for symbols:', message.symbols);
         
         message.symbols.forEach(symbol => subscribedSymbols.delete(symbol));
+        
+        // Clear Gold interval if no more Gold symbols
+        const hasGold = Array.from(subscribedSymbols).some(s => s === 'XAU/USD' || s === 'GOLD');
+        if (!hasGold && goldPriceInterval) {
+          console.log('⏰ Clearing Gold price interval');
+          clearInterval(goldPriceInterval);
+          goldPriceInterval = null;
+        }
         
         // Unsubscribe from Twelve Data if connected
         if (twelveDataWs?.readyState === WebSocket.OPEN) {
@@ -447,10 +475,15 @@ serve(async (req) => {
       twelveDataWs = null;
     }
     
-    // Clear reconnect timeout
+    // Clear all intervals and timeouts
     if (reconnectTimeout) {
       clearTimeout(reconnectTimeout);
       reconnectTimeout = null;
+    }
+    
+    if (goldPriceInterval) {
+      clearInterval(goldPriceInterval);
+      goldPriceInterval = null;
     }
   };
 

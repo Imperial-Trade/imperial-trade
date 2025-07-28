@@ -138,7 +138,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & {
       {/* Glowing top indicator for closed trades */}
       {isClosed && <div className={`h-1 w-full ${alert.close_reason === 'stop_loss' ? 'bg-gradient-to-r from-red-500/50 via-red-400/70 to-red-500/50 shadow-lg shadow-red-500/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'bg-gradient-to-r from-emerald-500/50 via-emerald-400/70 to-emerald-500/50 shadow-lg shadow-emerald-500/30' : 'bg-gradient-to-r from-gray-500/50 via-gray-400/70 to-gray-500/50 shadow-lg shadow-gray-500/30'} animate-pulse`} />}
 
-      <div className="p-4 bg-slate-600">
+      <div className="p-4 bg-card/50 backdrop-blur-sm border-b border-border/30">
         {/* Signal Creator Attribution */}
         {creator && <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-700/30">
             <div className="flex items-center gap-2">

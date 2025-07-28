@@ -60,11 +60,15 @@ export function useOptimizedLivePrice(
     };
   }, [symbol, subscribe, unsubscribe]);
 
-  // Debounced price updates
+  // Optimized price updates with smart debouncing
   useEffect(() => {
     const currentPrice = getPrice(symbol);
     
     if (!currentPrice) return;
+
+    // Smart debouncing: shorter delay for price changes, longer for same price
+    const isSignificantChange = Math.abs(currentPrice.price - debouncedPrice.price) > (currentPrice.price * 0.001); // 0.1% change
+    const dynamicDelay = isSignificantChange ? Math.min(debounceMs, 200) : debounceMs;
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
@@ -77,14 +81,14 @@ export function useOptimizedLivePrice(
         changePercent: currentPrice.changePercent
       });
       setLastUpdated(new Date(currentPrice.timestamp));
-    }, debounceMs);
+    }, dynamicDelay);
 
     return () => {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [prices, symbol, debounceMs, getPrice]);
+  }, [prices, symbol, debounceMs, getPrice, debouncedPrice.price]);
 
   const refreshPrice = useCallback(() => {
     contextRefreshPrice(symbol);

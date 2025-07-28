@@ -260,7 +260,12 @@ serve(async (req) => {
   let twelveDataWs: WebSocket | null = null;
   let reconnectTimeout: number | null = null;
 
-  // Function to connect to Twelve Data WebSocket
+  // Connection retry state
+  let reconnectAttempts = 0;
+  const maxReconnectAttempts = 5;
+  const baseDelay = 5000;
+
+  // Function to connect to Twelve Data WebSocket with optimizations for Pro plan
   const connectToTwelveData = () => {
     const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
     if (!apiKey) {
@@ -268,17 +273,31 @@ serve(async (req) => {
       return;
     }
 
+    // Circuit breaker: stop if too many failures
+    if (reconnectAttempts >= maxReconnectAttempts) {
+      console.error('🚫 Circuit breaker: Max reconnection attempts reached');
+      return;
+    }
+
     try {
       console.log('🔌 Connecting to Twelve Data WebSocket...');
       console.log('🔑 Using API Key:', apiKey ? 'YES (length: ' + apiKey.length + ')' : 'NO');
+      console.log('🔄 Reconnect attempt:', reconnectAttempts + 1);
       
-      // Connect to Twelve Data WebSocket - pro plans get real-time access automatically
+      // Connect to Twelve Data WebSocket - Pro plan optimized
       twelveDataWs = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
 
       twelveDataWs.onopen = () => {
         console.log('✅ Connected to Twelve Data WebSocket');
+        reconnectAttempts = 0; // Reset on successful connection
         
-        // Subscribe to validated symbols if any
+        // Clear any existing reconnection timeout
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+          reconnectTimeout = null;
+        }
+        
+        // Subscribe to validated symbols if any (batch subscription for efficiency)
         if (subscribedSymbols.size > 0) {
           const symbols = Array.from(subscribedSymbols);
           
@@ -293,6 +312,13 @@ serve(async (req) => {
           console.log('📡 Subscription message:', JSON.stringify(subscribeMessage, null, 2));
           twelveDataWs?.send(JSON.stringify(subscribeMessage));
         }
+        
+        // Send heartbeat every 30 seconds to maintain connection
+        setInterval(() => {
+          if (twelveDataWs?.readyState === WebSocket.OPEN) {
+            twelveDataWs.send(JSON.stringify({ action: 'heartbeat' }));
+          }
+        }, 30000);
       };
 
       twelveDataWs.onmessage = (event) => {
@@ -367,16 +393,21 @@ serve(async (req) => {
       };
 
       twelveDataWs.onclose = () => {
-        console.log('🔌 Twelve Data WebSocket disconnected - RECONNECTING IMMEDIATELY');
-        // Immediate reconnect for critical connection
-        reconnectTimeout = setTimeout(connectToTwelveData, 1000); // Faster reconnect
+        console.log('🔌 Twelve Data WebSocket disconnected');
+        reconnectAttempts++;
+        
+        if (reconnectAttempts < maxReconnectAttempts) {
+          const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempts - 1), 30000);
+          console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+          reconnectTimeout = setTimeout(connectToTwelveData, delay);
+        } else {
+          console.error('🚫 Max reconnection attempts reached, stopping reconnection');
+        }
       };
 
       twelveDataWs.onerror = (error) => {
         console.error('❌ Twelve Data WebSocket error:', error);
-        console.log('🔄 Force reconnecting due to error...');
-        // Force reconnect on any error
-        setTimeout(connectToTwelveData, 2000);
+        // Let onclose handle the reconnection
       };
 
     } catch (error) {

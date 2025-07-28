@@ -53,7 +53,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const reconnectAttemptsRef = useRef(0);
-  const priceUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const requestDeduplicationRef = useRef<Map<string, Promise<any>>>(new Map());
+  const lastRequestTimeRef = useRef<Map<string, number>>(new Map());
+  const circuitBreakerRef = useRef<{ failures: number, nextAttempt: number }>({ failures: 0, nextAttempt: 0 });
 
   const getReconnectDelay = useCallback(() => {
     const baseDelay = 5000;
@@ -62,8 +64,31 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return delay;
   }, []);
 
-  // HTTP fallback for price fetching with better Gold symbol mapping
+  // Optimized HTTP fallback with circuit breaker and request deduplication
   const fetchPricesHTTP = useCallback(async (symbols: string[]) => {
+    // Circuit breaker check
+    const now = Date.now();
+    if (circuitBreakerRef.current.failures >= 3 && now < circuitBreakerRef.current.nextAttempt) {
+      console.log('🚫 Circuit breaker active, skipping HTTP request');
+      return;
+    }
+
+    // Request deduplication key
+    const requestKey = symbols.sort().join(',');
+    
+    // Check if same request is already in progress
+    if (requestDeduplicationRef.current.has(requestKey)) {
+      console.log('⚡ Deduplicating request for symbols:', symbols);
+      return requestDeduplicationRef.current.get(requestKey);
+    }
+
+    // Check rate limiting (max 1 request per 5 seconds per symbol group)
+    const lastRequestTime = lastRequestTimeRef.current.get(requestKey) || 0;
+    if (now - lastRequestTime < 5000) {
+      console.log('⏳ Rate limiting: skipping request (too frequent)');
+      return;
+    }
+
     try {
       console.log('🔄 HTTP fallback: fetching prices for', symbols);
       
@@ -77,7 +102,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch(`https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/get-market-data`, {
+      // Create deduplication promise
+      const requestPromise = fetch(`https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/get-market-data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,12 +113,21 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         body: JSON.stringify({ symbols: mappedSymbols })
       });
 
+      // Store for deduplication
+      requestDeduplicationRef.current.set(requestKey, requestPromise);
+      lastRequestTimeRef.current.set(requestKey, now);
+
+      const response = await requestPromise;
+
       if (!response.ok) {
         throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
       }
 
       const data = await response.json();
       console.log('📊 HTTP response data:', data);
+      
+      // Reset circuit breaker on success
+      circuitBreakerRef.current = { failures: 0, nextAttempt: 0 };
       
       if (data.prices && Array.isArray(data.prices)) {
         const updates: PriceData[] = data.prices.map((item: any) => ({
@@ -319,18 +354,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       connect();
     }
 
-    // Set up automatic price refresh every 6 seconds
-    if (priceUpdateIntervalRef.current) {
-      clearInterval(priceUpdateIntervalRef.current);
-    }
-    
-    priceUpdateIntervalRef.current = setInterval(() => {
-      if (subscribedSymbolsRef.current.size > 0) {
-        const currentSymbols = Array.from(subscribedSymbolsRef.current);
-        console.log('🔄 Auto-refreshing prices every 6 seconds for:', currentSymbols);
-        fetchPricesHTTP(currentSymbols);
-      }
-    }, 6000); // Update every 6 seconds
+    // No automatic polling - rely on WebSocket real-time updates only
+    // HTTP is only used as fallback when WebSocket fails
   }, [connect, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
@@ -352,12 +377,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }));
     }
 
-    // Clear the interval if no symbols are subscribed
-    if (subscribedSymbolsRef.current.size === 0 && priceUpdateIntervalRef.current) {
-      clearInterval(priceUpdateIntervalRef.current);
-      priceUpdateIntervalRef.current = null;
-      console.log('🔄 Stopped auto-refresh timer - no symbols subscribed');
-    }
+    // No automatic polling to clear - we rely on WebSocket real-time updates
   }, []);
 
   const refreshPrice = useCallback((symbol: string) => {
@@ -384,9 +404,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       if (socketRef.current) {
         socketRef.current.close();
       }
-      if (priceUpdateIntervalRef.current) {
-        clearInterval(priceUpdateIntervalRef.current);
-      }
+      // No polling intervals to clean up
     };
   }, []);
 

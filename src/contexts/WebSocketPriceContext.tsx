@@ -244,12 +244,29 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       socketRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          console.log('📦 Received WebSocket message:', message);
           
           if (message.type === 'price_update') {
             const updates: PriceData[] = message.data;
+            
+            // Special logging for Gold updates
+            const goldUpdate = updates.find(update => update.symbol === 'XAU/USD');
+            if (goldUpdate) {
+              console.log('🥇 GOLD FRONTEND UPDATE: Received Gold price update');
+              console.log('🥇 GOLD PRICE DATA:', {
+                symbol: goldUpdate.symbol,
+                price: goldUpdate.price,
+                change: goldUpdate.change,
+                source: message.source
+              });
+            }
+            
             setPrices(prev => {
               const newPrices = { ...prev };
               updates.forEach(update => {
+                if (update.symbol === 'XAU/USD') {
+                  console.log('🥇 GOLD STATE UPDATE: Updating Gold price in state to', update.price);
+                }
                 newPrices[update.symbol] = update;
               });
               return newPrices;
@@ -263,6 +280,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
               const newErrors = { ...prev };
               updates.forEach(update => {
                 delete newErrors[update.symbol];
+                if (update.symbol === 'XAU/USD') {
+                  console.log('🥇 GOLD ERROR CLEARED: Cleared any previous Gold errors');
+                }
               });
               return newErrors;
             });
@@ -270,6 +290,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           } else if (message.type === 'error') {
             const errorData = message as ErrorData;
             console.error('WebSocket price error:', errorData.message);
+            
+            // Special Gold error logging
+            if (errorData.message.includes('XAU/USD') || errorData.message.includes('Gold')) {
+              console.error('🥇 GOLD ERROR:', errorData.message);
+            }
             
             // Set global error or symbol-specific error
             if (errorData.code === 'API_KEY_MISSING') {
@@ -332,22 +357,44 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     // Validate and normalize symbols for distinct asset handling
     const validatedSymbols = symbols.map(symbol => {
       const upperSymbol = symbol.toUpperCase();
-      if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAU/USD';
-      if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTC/USD';
+      console.log(`🔍 Frontend validation: ${symbol} -> ${upperSymbol}`);
+      
+      if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') {
+        console.log(`🥇 FRONTEND GOLD: ${symbol} -> XAU/USD`);
+        return 'XAU/USD';
+      }
+      if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') {
+        console.log(`₿ FRONTEND BITCOIN: ${symbol} -> BTC/USD`);
+        return 'BTC/USD';
+      }
       return symbol;
     }).filter(symbol => symbol === 'XAU/USD' || symbol === 'BTC/USD');
     
     console.log('✅ Validated symbols for subscription:', validatedSymbols);
+    
+    // Special Gold tracking
+    if (validatedSymbols.includes('XAU/USD')) {
+      console.log('🥇 GOLD SUBSCRIBE: Adding XAU/USD to subscription list');
+    }
+    
     validatedSymbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
     
     if (socketRef.current?.readyState === WebSocket.OPEN) {
+      console.log('📤 WebSocket ready, sending subscription message');
+      if (validatedSymbols.includes('XAU/USD')) {
+        console.log('🥇 GOLD WEBSOCKET: Sending Gold subscription via WebSocket');
+      }
+      
       socketRef.current.send(JSON.stringify({
         type: 'subscribe',
         symbols: validatedSymbols
       }));
     } else {
-      // Try HTTP fallback immediately for faster response
       console.log('🔄 WebSocket not ready, using HTTP fallback immediately');
+      if (validatedSymbols.includes('XAU/USD')) {
+        console.log('🥇 GOLD HTTP: Using HTTP fallback for Gold');
+      }
+      
       fetchPricesHTTP(validatedSymbols);
       
       // Also try WebSocket connection

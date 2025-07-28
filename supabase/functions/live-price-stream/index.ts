@@ -40,21 +40,25 @@ const ASSET_REGISTRY = {
   }
 } as const;
 
-// Strict symbol validation - no auto-detection to prevent conflicts
+// Enhanced symbol validation with Gold-specific debugging
 function validateAndNormalizeSymbol(symbol: string): string | null {
   const upperSymbol = symbol.toUpperCase();
   
-  // Exact mapping for Gold variations
+  console.log(`🔍 Symbol validation: ${symbol} -> ${upperSymbol}`);
+  
+  // Exact mapping for Gold variations with debugging
   if (upperSymbol === 'XAU/USD' || upperSymbol === 'GOLD') {
+    console.log(`🥇 GOLD SYMBOL VALIDATED: ${symbol} -> XAU/USD`);
     return 'XAU/USD';
   }
   
   // Exact mapping for Bitcoin variations
   if (upperSymbol === 'BTC/USD' || upperSymbol === 'BITCOIN') {
+    console.log(`₿ BITCOIN SYMBOL VALIDATED: ${symbol} -> BTC/USD`);
     return 'BTC/USD';
   }
   
-  // Return null for unsupported symbols
+  console.log(`❌ UNSUPPORTED SYMBOL: ${symbol}`);
   return null;
 }
 
@@ -259,11 +263,14 @@ serve(async (req) => {
   let subscribedSymbols = new Set<string>();
   let twelveDataWs: WebSocket | null = null;
   let reconnectTimeout: number | null = null;
+  let heartbeatInterval: number | null = null;
+  let goldRetryTimeout: number | null = null;
 
-  // Connection retry state
+  // Connection retry state with Gold-specific tracking
   let reconnectAttempts = 0;
   const maxReconnectAttempts = 5;
   const baseDelay = 5000;
+  let goldSubscriptionFailed = false;
 
   // Function to connect to Twelve Data WebSocket with optimizations for Pro plan
   const connectToTwelveData = () => {
@@ -290,18 +297,37 @@ serve(async (req) => {
       twelveDataWs.onopen = () => {
         console.log('✅ Connected to Twelve Data WebSocket');
         reconnectAttempts = 0; // Reset on successful connection
+        goldSubscriptionFailed = false;
         
-        // Clear any existing reconnection timeout
+        // Clear any existing timeouts
         if (reconnectTimeout) {
           clearTimeout(reconnectTimeout);
           reconnectTimeout = null;
         }
+        if (goldRetryTimeout) {
+          clearTimeout(goldRetryTimeout);
+          goldRetryTimeout = null;
+        }
+        
+        // Start heartbeat to maintain connection stability
+        heartbeatInterval = setInterval(() => {
+          if (twelveDataWs?.readyState === WebSocket.OPEN) {
+            console.log('💓 Sending WebSocket heartbeat');
+            twelveDataWs.send(JSON.stringify({ action: 'heartbeat' }));
+          }
+        }, 30000);
         
         // Subscribe to validated symbols if any (batch subscription for efficiency)
         if (subscribedSymbols.size > 0) {
           const symbols = Array.from(subscribedSymbols);
           
           console.log('📡 Subscribing to symbols:', symbols);
+          
+          // Special Gold logging
+          if (symbols.includes('XAU/USD')) {
+            console.log('🥇 GOLD SUBSCRIPTION ATTEMPT: Attempting to subscribe to XAU/USD via WebSocket');
+            console.log('🥇 GOLD CONNECTION STATE: WebSocket readyState =', twelveDataWs?.readyState);
+          }
           
           const subscribeMessage = {
             action: 'subscribe',
@@ -312,13 +338,6 @@ serve(async (req) => {
           console.log('📡 Subscription message:', JSON.stringify(subscribeMessage, null, 2));
           twelveDataWs?.send(JSON.stringify(subscribeMessage));
         }
-        
-        // Send heartbeat every 30 seconds to maintain connection
-        setInterval(() => {
-          if (twelveDataWs?.readyState === WebSocket.OPEN) {
-            twelveDataWs.send(JSON.stringify({ action: 'heartbeat' }));
-          }
-        }, 30000);
       };
 
       twelveDataWs.onmessage = (event) => {
@@ -326,36 +345,114 @@ serve(async (req) => {
           const data = JSON.parse(event.data);
           console.log('📊 Received from Twelve Data:', data);
           
-          // Handle subscription status responses
+          // Handle subscription status responses with Gold-specific debugging
           if (data.event === 'subscribe-status') {
             console.log('📋 Subscription status:', data.status);
+            
             if (data.success && data.success.length > 0) {
               console.log('✅ Successfully subscribed to:', data.success);
+              
+              // Check if Gold was successfully subscribed
+              const goldSuccess = data.success.find((s: any) => 
+                (typeof s === 'object' && s.symbol === 'XAU/USD') || s === 'XAU/USD'
+              );
+              if (goldSuccess) {
+                console.log('🥇 GOLD SUCCESS: XAU/USD subscription confirmed via WebSocket');
+                goldSubscriptionFailed = false;
+                if (goldRetryTimeout) {
+                  clearTimeout(goldRetryTimeout);
+                  goldRetryTimeout = null;
+                }
+              }
             }
+            
             if (data.fails && data.fails.length > 0) {
               console.log('❌ Failed to subscribe to:', data.fails);
               console.log('❌ Failure details:', JSON.stringify(data.fails, null, 2));
               
-              // HYBRID FALLBACK: If WebSocket fails, fetch real prices via HTTP
-              data.fails.forEach(async (fail: any) => {
-                console.log(`🔄 WebSocket failed for ${fail.symbol}, trying HTTP...`);
-                const realPrice = await fetchRealPrice(fail.symbol);
-                if (realPrice && socket.readyState === WebSocket.OPEN) {
+              // Special handling for Gold subscription failures
+              const goldFailed = data.fails.find((f: any) => 
+                (typeof f === 'object' && f.symbol === 'XAU/USD') || f === 'XAU/USD'
+              );
+              
+              if (goldFailed) {
+                console.log('🥇 GOLD FAILURE: XAU/USD WebSocket subscription failed');
+                console.log('🥇 GOLD FALLBACK: Implementing HTTP fallback strategy');
+                goldSubscriptionFailed = true;
+                
+                // Immediate HTTP fallback for Gold
+                const goldPrice = await fetchRealPrice('XAU/USD');
+                if (goldPrice && socket.readyState === WebSocket.OPEN) {
+                  console.log('🥇 GOLD HTTP SUCCESS: Sending Gold price via HTTP fallback');
                   socket.send(JSON.stringify({
                     type: 'price_update',
-                    data: [realPrice],
-                    source: 'twelve_data_http_fallback',
+                    data: [goldPrice],
+                    source: 'twelve_data_http_fallback_gold',
                     timestamp: new Date().toISOString()
                   }));
+                }
+                
+                // Set up periodic HTTP polling for Gold as backup
+                const pollGoldPrice = async () => {
+                  if (goldSubscriptionFailed) {
+                    console.log('🥇 GOLD POLLING: Fetching Gold price via HTTP');
+                    const price = await fetchRealPrice('XAU/USD');
+                    if (price && socket.readyState === WebSocket.OPEN) {
+                      socket.send(JSON.stringify({
+                        type: 'price_update',
+                        data: [price],
+                        source: 'twelve_data_http_polling_gold',
+                        timestamp: new Date().toISOString()
+                      }));
+                    }
+                  }
+                };
+                
+                // Poll every 10 seconds for Gold
+                goldRetryTimeout = setInterval(pollGoldPrice, 10000);
+              }
+              
+              // Handle other failed symbols with HTTP fallback
+              data.fails.forEach(async (fail: any) => {
+                const failSymbol = typeof fail === 'object' ? fail.symbol : fail;
+                if (failSymbol && failSymbol !== 'XAU/USD') {
+                  console.log(`🔄 WebSocket failed for ${failSymbol}, trying HTTP...`);
+                  const realPrice = await fetchRealPrice(failSymbol);
+                  if (realPrice && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                      type: 'price_update',
+                      data: [realPrice],
+                      source: 'twelve_data_http_fallback',
+                      timestamp: new Date().toISOString()
+                    }));
+                  }
                 }
               });
             }
             return;
           }
           
-          // Handle REAL-TIME price updates
+          // Handle REAL-TIME price updates with Gold-specific logging
           if (data.event === 'price' && data.symbol && data.price) {
             console.log('💰 LIVE PRICE UPDATE for:', data.symbol, 'Price:', data.price);
+            
+            // Special logging for Gold updates
+            if (data.symbol === 'XAU/USD') {
+              console.log('🥇 GOLD LIVE UPDATE: Received real-time Gold price via WebSocket');
+              console.log('🥇 GOLD DATA:', {
+                symbol: data.symbol,
+                price: data.price,
+                change: data.day_change,
+                timestamp: new Date().toISOString()
+              });
+              // Gold is working via WebSocket, stop HTTP polling
+              goldSubscriptionFailed = false;
+              if (goldRetryTimeout) {
+                clearInterval(goldRetryTimeout);
+                goldRetryTimeout = null;
+                console.log('🥇 GOLD WEBSOCKET RESUMED: Stopping HTTP polling');
+              }
+            }
             
             // Map back to frontend symbol format  
             let frontendSymbol = data.symbol;
@@ -394,6 +491,13 @@ serve(async (req) => {
 
       twelveDataWs.onclose = () => {
         console.log('🔌 Twelve Data WebSocket disconnected');
+        
+        // Clear heartbeat interval
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+        
         reconnectAttempts++;
         
         if (reconnectAttempts < maxReconnectAttempts) {
@@ -401,7 +505,31 @@ serve(async (req) => {
           console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
           reconnectTimeout = setTimeout(connectToTwelveData, delay);
         } else {
-          console.error('🚫 Max reconnection attempts reached, stopping reconnection');
+          console.error('🚫 Max reconnection attempts reached, implementing full HTTP fallback');
+          
+          // Implement full HTTP fallback for all symbols
+          if (subscribedSymbols.size > 0) {
+            const symbols = Array.from(subscribedSymbols);
+            console.log('🔄 FULL HTTP FALLBACK: Starting polling for all symbols:', symbols);
+            
+            const pollAllPrices = async () => {
+              for (const symbol of symbols) {
+                const price = await fetchRealPrice(symbol);
+                if (price && socket.readyState === WebSocket.OPEN) {
+                  socket.send(JSON.stringify({
+                    type: 'price_update',
+                    data: [price],
+                    source: 'twelve_data_http_fallback_full',
+                    timestamp: new Date().toISOString()
+                  }));
+                }
+              }
+            };
+            
+            // Poll every 15 seconds as full fallback
+            setInterval(pollAllPrices, 15000);
+            pollAllPrices(); // Initial call
+          }
         }
       };
 

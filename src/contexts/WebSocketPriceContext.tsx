@@ -173,7 +173,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     
     try {
       // Correct WebSocket URL format for Supabase Edge Functions  
-      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.functions.supabase.co/live-price-stream`;
+      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/live-price-stream`;
       console.log('🔌 Connecting to WebSocket:', wsUrl);
       socketRef.current = new WebSocket(wsUrl);
 

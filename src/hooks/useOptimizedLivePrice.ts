@@ -11,6 +11,7 @@ interface OptimizedLivePriceData {
   lastUpdated: Date | null;
   connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error';
   dataSource: 'twelve_data_api' | 'unavailable';
+  priceUpdateSource: 'websocket' | 'http' | 'unknown';
   refreshPrice: () => void;
 }
 
@@ -34,6 +35,7 @@ export function useOptimizedLivePrice(
     dataSource,
     lastUpdated: contextLastUpdated,
     errors,
+    priceUpdateSources,
     subscribe,
     unsubscribe,
     getPrice,
@@ -106,6 +108,7 @@ export function useOptimizedLivePrice(
     lastUpdated: lastUpdated || contextLastUpdated,
     connectionStatus,
     dataSource,
+    priceUpdateSource: priceUpdateSources[symbol] || 'unknown',
     refreshPrice
   };
 }

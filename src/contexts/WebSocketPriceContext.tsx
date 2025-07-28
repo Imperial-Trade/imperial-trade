@@ -22,6 +22,7 @@ interface WebSocketContextType {
   dataSource: 'twelve_data_api' | 'unavailable';
   lastUpdated: Date | null;
   errors: Record<string, string>;
+  priceUpdateSources: Record<string, 'websocket' | 'http'>;
   subscribe: (symbols: string[]) => void;
   unsubscribe: (symbols: string[]) => void;
   getPrice: (symbol: string) => PriceData | null;
@@ -48,6 +49,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const [dataSource, setDataSource] = useState<'twelve_data_api' | 'unavailable'>('unavailable');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [priceUpdateSources, setPriceUpdateSources] = useState<Record<string, 'websocket' | 'http'>>({});
   
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -56,6 +58,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const requestDeduplicationRef = useRef<Map<string, Promise<any>>>(new Map());
   const lastRequestTimeRef = useRef<Map<string, number>>(new Map());
   const circuitBreakerRef = useRef<{ failures: number, nextAttempt: number }>({ failures: 0, nextAttempt: 0 });
+  const websocketHealthRef = useRef<{ lastSuccessfulMessage: number, isHealthy: boolean }>({ lastSuccessfulMessage: 0, isHealthy: false });
 
   const getReconnectDelay = useCallback(() => {
     const baseDelay = 5000;
@@ -146,6 +149,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           return newPrices;
         });
         
+        // Track data source for each symbol
+        setPriceUpdateSources(prev => {
+          const newSources = { ...prev };
+          updates.forEach(update => {
+            newSources[update.symbol] = 'http';
+          });
+          return newSources;
+        });
+        
         setDataSource(data.dataQuality === 'simulated' ? 'unavailable' : 'twelve_data_api');
         setLastUpdated(new Date());
         setConnectionStatus('connected');
@@ -182,29 +194,19 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
     setConnectionStatus('connecting');
     
-    // Try HTTP fallback immediately for better user experience
+    // Only use HTTP fallback if WebSocket has been unhealthy for 30+ seconds
     if (subscribedSymbolsRef.current.size > 0) {
       const symbols = Array.from(subscribedSymbolsRef.current);
-      console.log('🔄 Starting immediate HTTP fallback for symbols:', symbols);
-      fetchPricesHTTP(symbols);
+      const now = Date.now();
+      const shouldUseHttpFallback = !websocketHealthRef.current.isHealthy && 
+        (now - websocketHealthRef.current.lastSuccessfulMessage) > 30000;
       
-      // Set a faster timeout for connection state - if WebSocket doesn't connect in 2 seconds, stay with HTTP
-      const quickTimeout = setTimeout(() => {
-        if (socketRef.current?.readyState !== WebSocket.OPEN) {
-          console.log('⚡ Fast timeout: Using HTTP mode, WebSocket took too long');
-          setConnectionStatus('connected'); // Consider HTTP as connected
-          setDataSource('twelve_data_api');
-        }
-      }, 2000); // Very fast 2-second timeout
-      
-      // Clear timeout on successful WebSocket connection
-      const originalOnOpen = () => {
-        clearTimeout(quickTimeout);
-        console.log('✅ WebSocket connected - canceling HTTP-only mode');
-      };
-      
-      // Store timeout reference for cleanup
-      (window as any).wsQuickTimeout = quickTimeout;
+      if (shouldUseHttpFallback) {
+        console.log('🔄 WebSocket unhealthy for 30s+, starting HTTP fallback for symbols:', symbols);
+        fetchPricesHTTP(symbols);
+      } else {
+        console.log('⚡ WebSocket should be healthy, skipping immediate HTTP fallback');
+      }
     }
     
     try {
@@ -214,15 +216,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       socketRef.current = new WebSocket(wsUrl);
 
       socketRef.current.onopen = () => {
-        // Clear any existing quick timeout
-        if ((window as any).wsQuickTimeout) {
-          clearTimeout((window as any).wsQuickTimeout);
-        }
-        
         console.log('✅ WebSocket connected to live price stream');
         setConnectionStatus('connected');
         setDataSource('twelve_data_api');
         reconnectAttemptsRef.current = 0;
+        websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
         
         // Clear any connection errors
         setErrors(prev => {
@@ -249,15 +247,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           if (message.type === 'price_update') {
             const updates: PriceData[] = message.data;
             
+            // Mark WebSocket as healthy
+            websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
+            
             // Special logging for Gold updates
             const goldUpdate = updates.find(update => update.symbol === 'XAU/USD');
             if (goldUpdate) {
-              console.log('🥇 GOLD FRONTEND UPDATE: Received Gold price update');
+              console.log('🥇 GOLD WEBSOCKET: Received real-time Gold price update via WebSocket');
               console.log('🥇 GOLD PRICE DATA:', {
                 symbol: goldUpdate.symbol,
                 price: goldUpdate.price,
                 change: goldUpdate.change,
-                source: message.source
+                source: 'websocket'
               });
             }
             
@@ -265,11 +266,23 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
               const newPrices = { ...prev };
               updates.forEach(update => {
                 if (update.symbol === 'XAU/USD') {
-                  console.log('🥇 GOLD STATE UPDATE: Updating Gold price in state to', update.price);
+                  console.log('🥇 GOLD STATE UPDATE: Updating Gold price in state to', update.price, 'from WebSocket');
                 }
                 newPrices[update.symbol] = update;
               });
               return newPrices;
+            });
+            
+            // Track data source for each symbol as WebSocket
+            setPriceUpdateSources(prev => {
+              const newSources = { ...prev };
+              updates.forEach(update => {
+                newSources[update.symbol] = 'websocket';
+                if (update.symbol === 'XAU/USD') {
+                  console.log('🥇 GOLD SOURCE: Marked Gold as WebSocket source');
+                }
+              });
+              return newSources;
             });
             
             setDataSource(message.source || 'twelve_data_api');
@@ -321,7 +334,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       socketRef.current.onclose = () => {
         console.log('WebSocket disconnected');
         setConnectionStatus('disconnected');
-        setDataSource('unavailable');
+        websocketHealthRef.current.isHealthy = false;
+        
+        // Start intelligent HTTP fallback after 30 seconds
+        setTimeout(() => {
+          if (!websocketHealthRef.current.isHealthy && subscribedSymbolsRef.current.size > 0) {
+            console.log('⚡ Starting intelligent HTTP fallback after WebSocket disconnect');
+            fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
+          }
+        }, 30000);
         
         // Implement exponential backoff for reconnection
         const delay = getReconnectDelay();
@@ -333,16 +354,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       };
 
       socketRef.current.onerror = (error) => {
-        console.error('WebSocket error, falling back to HTTP:', error);
+        console.error('WebSocket error:', error);
         setConnectionStatus('error');
-        setDataSource('unavailable');
+        websocketHealthRef.current.isHealthy = false;
         reconnectAttemptsRef.current++;
         
-        // Fallback to HTTP if WebSocket fails
-        if (subscribedSymbolsRef.current.size > 0) {
-          console.log('Attempting HTTP fallback...');
-          fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
-        }
+        // Only fallback to HTTP after 30 seconds of failed WebSocket
+        setTimeout(() => {
+          if (!websocketHealthRef.current.isHealthy && subscribedSymbolsRef.current.size > 0) {
+            console.log('⚡ Starting HTTP fallback after WebSocket error (30s delay)');
+            fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
+          }
+        }, 30000);
       };
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
@@ -390,19 +413,24 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         symbols: validatedSymbols
       }));
     } else {
-      console.log('🔄 WebSocket not ready, using HTTP fallback immediately');
+      console.log('🔄 WebSocket not ready, attempting connection');
       if (validatedSymbols.includes('XAU/USD')) {
-        console.log('🥇 GOLD HTTP: Using HTTP fallback for Gold');
+        console.log('🥇 GOLD CONNECT: Attempting WebSocket connection for Gold');
       }
       
-      fetchPricesHTTP(validatedSymbols);
-      
-      // Also try WebSocket connection
+      // Try WebSocket connection first
       connect();
+      
+      // Only use HTTP fallback if WebSocket fails for 30+ seconds
+      setTimeout(() => {
+        if (!websocketHealthRef.current.isHealthy && subscribedSymbolsRef.current.size > 0) {
+          console.log('⚡ WebSocket failed to connect within 30s, using HTTP fallback');
+          fetchPricesHTTP(validatedSymbols);
+        }
+      }, 30000);
     }
 
-    // No automatic polling - rely on WebSocket real-time updates only
-    // HTTP is only used as fallback when WebSocket fails
+    // No automatic polling - rely on WebSocket real-time updates with intelligent fallback
   }, [connect, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
@@ -461,6 +489,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     dataSource,
     lastUpdated,
     errors,
+    priceUpdateSources,
     subscribe,
     unsubscribe,
     getPrice,

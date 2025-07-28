@@ -157,25 +157,31 @@ async function fetchRealPrice(symbol: string): Promise<PriceUpdate | null> {
 }
 
 // WebSocket management per symbol
-function connectWebSocket(symbol: string): WebSocket | null {
+function connectWebSocket(symbol: string, clientSocket: WebSocket): WebSocket | null {
   const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.error('❌ TWELVE_DATA_API_KEY not configured for WebSocket');
+    return null;
+  }
 
   try {
-    console.log(`🔌 Connecting WebSocket for ${symbol}`);
+    console.log(`🔌 Connecting Twelve Data WebSocket for ${symbol}`);
     const ws = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
     
     ws.onopen = () => {
-      console.log(`✅ WebSocket connected for ${symbol}`);
+      console.log(`✅ Twelve Data WebSocket connected for ${symbol}`);
       ws.send(JSON.stringify({
         action: 'subscribe',
         params: { symbols: symbol }
       }));
+      console.log(`📡 Subscribed to Twelve Data WebSocket for ${symbol}`);
     };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log(`📊 Twelve Data WebSocket data for ${symbol}:`, data);
+        
         if (data.event === 'price' && data.symbol === symbol && data.price) {
           const priceUpdate: PriceUpdate = {
             symbol,
@@ -183,11 +189,23 @@ function connectWebSocket(symbol: string): WebSocket | null {
             change: parseFloat(data.day_change) || 0,
             changePercent: parseFloat(data.day_change_percent) || 0,
             timestamp: new Date().toISOString(),
-            dataSource: 'twelve_data_ws'
+            dataSource: 'twelve_data_websocket'
           };
           
           setCachedPrice(symbol, priceUpdate);
-          console.log(`📡 WebSocket update ${symbol}: $${priceUpdate.price}`);
+          console.log(`🔥 Live WebSocket update ${symbol}: $${priceUpdate.price} (${priceUpdate.changePercent >= 0 ? '+' : ''}${priceUpdate.changePercent}%)`);
+          
+          // Forward to client if connected
+          if (clientSocket.readyState === WebSocket.OPEN) {
+            clientSocket.send(JSON.stringify({
+              type: 'price_update',
+              data: [priceUpdate],
+              source: 'twelve_data_websocket',
+              timestamp: new Date().toISOString()
+            }));
+          }
+        } else if (data.event === 'subscribe-status') {
+          console.log(`📋 Twelve Data subscription status for ${symbol}:`, data);
         }
       } catch (error) {
         console.error(`❌ WebSocket message error for ${symbol}:`, error);
@@ -195,21 +213,19 @@ function connectWebSocket(symbol: string): WebSocket | null {
     };
 
     ws.onclose = () => {
-      console.log(`🔌 WebSocket disconnected for ${symbol}`);
-      wsConnections.delete(symbol);
+      console.log(`🔌 Twelve Data WebSocket disconnected for ${symbol}`);
       // Reconnect after 3 seconds
-      setTimeout(() => connectWebSocket(symbol), 3000);
+      setTimeout(() => connectWebSocket(symbol, clientSocket), 3000);
     };
 
     ws.onerror = (error) => {
-      console.error(`❌ WebSocket error for ${symbol}:`, error);
+      console.error(`❌ Twelve Data WebSocket error for ${symbol}:`, error);
     };
 
-    wsConnections.set(symbol, ws);
     return ws;
 
   } catch (error) {
-    console.error(`❌ Failed to create WebSocket for ${symbol}:`, error);
+    console.error(`❌ Failed to create Twelve Data WebSocket for ${symbol}:`, error);
     return null;
   }
 }
@@ -304,7 +320,10 @@ serve(async (req) => {
           
           // Connect WebSocket for this symbol if not already connected
           if (!wsConnections.has(symbol)) {
-            connectWebSocket(symbol);
+            const ws = connectWebSocket(symbol, socket);
+            if (ws) {
+              wsConnections.set(symbol, ws);
+            }
           }
           
           // Send initial cached data if available

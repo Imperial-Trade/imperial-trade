@@ -136,11 +136,13 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
       socketRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          console.log('📡 Unified WebSocket message:', message);
           
           if (message.type === 'price_update' && message.data) {
             setPrices(prevPrices => {
               const newPrices = new Map(prevPrices);
               message.data.forEach((priceData: PriceData) => {
+                console.log(`🔥 Real-time update: ${priceData.symbol} = $${priceData.price} (${priceData.dataSource})`);
                 newPrices.set(priceData.symbol, priceData);
               });
               return newPrices;
@@ -198,16 +200,20 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
       connect();
     }
 
-    // Set up automatic price refresh every 3 seconds
+    // Set up automatic price refresh every 30 seconds as backup to WebSocket
     if (priceUpdateIntervalRef.current) {
       clearInterval(priceUpdateIntervalRef.current);
     }
     
     priceUpdateIntervalRef.current = setInterval(() => {
       if (subscribedSymbolsRef.current.size > 0) {
-        fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
+        // Only use HTTP backup if WebSocket is not connected
+        if (socketRef.current?.readyState !== WebSocket.OPEN) {
+          console.log('📊 WebSocket disconnected, using HTTP backup');
+          fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
+        }
       }
-    }, 3000); // 3-second updates for smooth UX
+    }, 30000); // 30-second backup for when WebSocket fails
   }, [connect, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {

@@ -239,6 +239,14 @@ export default function TradeAnalyst() {
     setError('');
     setRetryCount(0);
     setSelectedHistoryItem(null);
+    
+    // Clear uploaded files to start fresh
+    uploadedFiles.forEach(file => {
+      if (file.preview) {
+        URL.revokeObjectURL(file.preview);
+      }
+    });
+    setUploadedFiles([]);
   };
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {

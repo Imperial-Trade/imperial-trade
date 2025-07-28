@@ -22,22 +22,22 @@ interface SubscriptionMessage {
 
 // Optimized symbol configuration for 610 calls/minute
 const SYMBOL_CONFIG = {
-  // Tier 1: High-frequency symbols (5-second cache, WebSocket priority)
+  // Tier 1: High-frequency symbols (2-second cache, WebSocket priority)
   'BTC/USD': { 
-    cacheTTL: 5000, 
+    cacheTTL: 2000, 
     priority: 1, 
     wsSymbol: 'BTC/USD',
     maxCallsPerMinute: 200 
   },
   'XAU/USD': { 
-    cacheTTL: 5000, 
+    cacheTTL: 2000, 
     priority: 1, 
     wsSymbol: 'XAU/USD',
     maxCallsPerMinute: 200 
   },
-  // Tier 2: Standard frequency (15-second cache)
+  // Tier 2: Standard frequency (5-second cache)
   'EUR/USD': { 
-    cacheTTL: 15000, 
+    cacheTTL: 5000, 
     priority: 2, 
     wsSymbol: 'EUR/USD',
     maxCallsPerMinute: 100 
@@ -83,14 +83,19 @@ async function fetchPriceWithDeduplication(symbol: string): Promise<PriceUpdate 
     return await requestQueue.get(symbol)!;
   }
 
-  // Check rate limiting per symbol
+  // Check rate limiting per symbol - be more aggressive with fresh data
   const config = SYMBOL_CONFIG[symbol];
   const lastCall = lastApiCall.get(symbol) || 0;
   const minInterval = 60000 / config.maxCallsPerMinute; // ms between calls
   
   if (Date.now() - lastCall < minInterval) {
-    console.log(`⏱️ Rate limiting ${symbol}, using cache`);
-    return getCachedPrice(symbol);
+    console.log(`⏱️ Rate limiting ${symbol}, checking cache freshness`);
+    const cached = getCachedPrice(symbol);
+    // Only return cache if it's very fresh (less than half TTL)
+    if (cached && (Date.now() - new Date(cached.timestamp).getTime()) < (config.cacheTTL / 2)) {
+      return cached;
+    }
+    console.log(`🔄 Cache stale for ${symbol}, forcing fresh API call`);
   }
 
   // Create and queue the request
@@ -231,6 +236,7 @@ function connectWebSocket(symbol: string, clientSocket: WebSocket): WebSocket | 
 }
 
 serve(async (req) => {
+  // Always enable CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -296,71 +302,15 @@ serve(async (req) => {
     return new Response("Expected WebSocket connection or POST request", { status: 400 });
   }
 
-  // WebSocket handling
-  const { socket, response } = Deno.upgradeWebSocket(req);
-  let subscribedSymbols = new Set<string>();
+  // WebSocket handling - temporarily disabled due to connection issues
+  if (false && upgradeHeader.toLowerCase() === "websocket") {
+    const { socket, response } = Deno.upgradeWebSocket(req);
+    return response;
+  }
 
-  socket.onopen = () => {
-    console.log("🔗 Unified price WebSocket connection opened");
-  };
-
-  socket.onmessage = async (event) => {
-    try {
-      const message: SubscriptionMessage = JSON.parse(event.data);
-      
-      if (message.type === 'subscribe') {
-        console.log('📡 Subscribe request for symbols:', message.symbols);
-        
-        const validSymbols = message.symbols.filter(symbol => 
-          SUPPORTED_SYMBOLS.includes(symbol)
-        );
-        
-        validSymbols.forEach(symbol => {
-          subscribedSymbols.add(symbol);
-          
-          // Connect WebSocket for this symbol if not already connected
-          if (!wsConnections.has(symbol)) {
-            const ws = connectWebSocket(symbol, socket);
-            if (ws) {
-              wsConnections.set(symbol, ws);
-            }
-          }
-          
-          // Send initial cached data if available
-          const cachedPrice = getCachedPrice(symbol);
-          if (cachedPrice && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-              type: 'price_update',
-              data: [cachedPrice],
-              source: 'cache',
-              timestamp: new Date().toISOString()
-            }));
-          }
-        });
-        
-      } else if (message.type === 'unsubscribe') {
-        console.log('📤 Unsubscribe request for symbols:', message.symbols);
-        
-        message.symbols.forEach(symbol => {
-          subscribedSymbols.delete(symbol);
-          
-          // Close WebSocket if no other clients need it
-          const ws = wsConnections.get(symbol);
-          if (ws && subscribedSymbols.size === 0) {
-            ws.close();
-            wsConnections.delete(symbol);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error processing WebSocket message:', error);
-    }
-  };
-
-  socket.onclose = () => {
-    console.log("🔗 Unified price WebSocket connection closed");
-    subscribedSymbols.clear();
-  };
-
-  return response;
+  // Default response for non-POST, non-WebSocket requests
+  return new Response("Expected POST request for price data", { 
+    status: 400,
+    headers: corsHeaders 
+  });
 });

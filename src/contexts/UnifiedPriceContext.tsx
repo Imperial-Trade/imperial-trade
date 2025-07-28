@@ -101,127 +101,31 @@ export const UnifiedPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const connect = useCallback(() => {
-    // Prevent multiple simultaneous connections
-    if (isConnectingRef.current || socketRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
-    isConnectingRef.current = true;
-    setConnectionStatus('connecting');
-    
-    // Try HTTP fallback immediately for better user experience
-    if (subscribedSymbolsRef.current.size > 0) {
-      console.log('📊 Starting immediate HTTP fallback');
-      fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
-    }
-    
-    try {
-      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.functions.supabase.co/unified-price-stream`;
-      console.log('🔌 Connecting to Unified WebSocket:', wsUrl);
-      socketRef.current = new WebSocket(wsUrl);
-
-      socketRef.current.onopen = () => {
-        console.log('✅ Unified WebSocket connected');
-        setConnectionStatus('connected');
-        reconnectAttemptsRef.current = 0;
-        isConnectingRef.current = false;
-        setError(null);
-        
-        // Subscribe to symbols
-        if (subscribedSymbolsRef.current.size > 0) {
-          console.log('📡 Subscribing to symbols:', Array.from(subscribedSymbolsRef.current));
-          socketRef.current?.send(JSON.stringify({
-            type: 'subscribe',
-            symbols: Array.from(subscribedSymbolsRef.current)
-          }));
-        }
-      };
-
-      socketRef.current.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          
-          if (message.type === 'price_update' && message.data) {
-            setPrices(prevPrices => {
-              const newPrices = new Map(prevPrices);
-              message.data.forEach((priceData: PriceData) => {
-                newPrices.set(priceData.symbol, priceData);
-              });
-              return newPrices;
-            });
-            setLastUpdated(new Date());
-            setError(null);
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-
-      socketRef.current.onclose = () => {
-        console.log('🔌 Unified WebSocket disconnected');
-        isConnectingRef.current = false;
-        setConnectionStatus('disconnected');
-        
-        // Only reconnect if we have subscribed symbols and haven't exceeded max attempts
-        if (subscribedSymbolsRef.current.size > 0 && reconnectAttemptsRef.current < 5) {
-          const delay = getReconnectDelay();
-          reconnectAttemptsRef.current++;
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, delay);
-        }
-      };
-
-      socketRef.current.onerror = (error) => {
-        console.error('🔌 Unified WebSocket error:', error);
-        isConnectingRef.current = false;
-        setConnectionStatus('error');
-        reconnectAttemptsRef.current++;
-        
-        // Fallback to HTTP if WebSocket fails
-        if (subscribedSymbolsRef.current.size > 0) {
-          console.log('📊 Attempting HTTP fallback...');
-          fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
-        }
-      };
-    } catch (error) {
-      console.error('🔌 Failed to create WebSocket connection:', error);
-      isConnectingRef.current = false;
-      setConnectionStatus('error');
-    }
-  }, [getReconnectDelay, fetchPricesHTTP]);
+    console.log('🔌 WebSocket temporarily disabled, using HTTP polling only');
+    // WebSocket connections are failing, so we'll rely on HTTP polling
+    return;
+  }, []);
 
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribing to symbols:', symbols);
     
     symbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
     
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({
-        type: 'subscribe',
-        symbols
-      }));
-    } else if (!isConnectingRef.current) {
-      // Try HTTP fallback immediately
-      fetchPricesHTTP(symbols);
-      connect();
-    }
+    // Use HTTP polling only (WebSocket disabled)
+    fetchPricesHTTP(symbols);
+    setConnectionStatus('connected');
 
-    // Set up automatic price refresh every 60 seconds as backup to WebSocket
+    // Set up frequent polling for real-time updates
     if (priceUpdateIntervalRef.current) {
       clearInterval(priceUpdateIntervalRef.current);
     }
     
     priceUpdateIntervalRef.current = setInterval(() => {
       if (subscribedSymbolsRef.current.size > 0) {
-        // Only use HTTP backup if WebSocket is not connected
-        if (socketRef.current?.readyState !== WebSocket.OPEN) {
-          console.log('📊 WebSocket disconnected, using HTTP backup');
-          fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
-        }
+        console.log('🔄 Polling for fresh prices');
+        fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
       }
-    }, 60000); // 60-second backup for when WebSocket fails
+    }, 3000); // Poll every 3 seconds for live updates
   }, [connect, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {

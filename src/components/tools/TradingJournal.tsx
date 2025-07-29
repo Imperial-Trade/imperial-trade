@@ -6,7 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { UploadFile } from "@/api/integrations";
 import { Calendar, BarChart3, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import TradingJournalApp from "./TradingJournalApp";
+import MobileTradingJournal from "./MobileTradingJournal";
 import JournalFormCard from "../trading/JournalFormCard";
 import JournalAnalytics from "../trading/JournalAnalytics";
 import JournalLogList from "../trading/JournalLogList";
@@ -20,6 +22,10 @@ export default function TradingJournal() {
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("log");
+  
+  // Mobile detection
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
 
   const loadUserProfile = useCallback(async () => {
     try {
@@ -231,6 +237,21 @@ export default function TradingJournal() {
       <JournalAnalytics entries={entries} />
     </motion.div>, [entries]);
 
+  // Mobile/Tablet optimized view
+  if (isMobile || isTablet) {
+    return (
+      <MobileTradingJournal
+        entries={entries}
+        isSubmitting={isSubmitting}
+        isLoading={isLoading}
+        onSubmit={handleSubmit}
+        onDelete={handleDelete}
+        userProfile={userProfile}
+      />
+    );
+  }
+
+  // Desktop view
   return <div className={`min-h-screen p-2 sm:p-4 lg:p-6 transition-all duration-700 ${activeTab === 'advanced' ? 'bg-transparent' : 'bg-gradient-to-br from-background via-background to-muted/20'}`}>
       <div className={`mx-auto transition-all duration-500 ${activeTab === 'advanced' ? 'max-w-full px-2 sm:px-4' : 'max-w-6xl'}`}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 sm:space-y-6">

@@ -99,28 +99,28 @@ export default function MobileCalendarView({
         onClick={() => onDateSelect(date)}
         whileTap={{ scale: 0.95 }}
         className={`
-          relative p-1 h-20 w-full text-left border border-border/30 transition-all rounded-md
+          relative p-1 h-16 w-full text-left border border-border/30 transition-all
           ${isSelected ? 'bg-primary/20 border-primary' : 'hover:bg-muted/50'}
-          ${isCurrentDay ? 'ring-1 ring-primary/50' : ''}
+          ${isCurrentDay ? 'ring-2 ring-primary/50' : ''}
           ${dayData.tradeCount > 0 ? 'bg-card' : ''}
         `}
       >
-        <div className="flex flex-col h-full justify-between overflow-hidden">
-          <span className={`text-sm font-semibold leading-none ${isCurrentDay ? 'text-primary' : 'text-foreground'}`}>
+        <div className="flex flex-col h-full">
+          <span className={`text-xs font-medium ${isCurrentDay ? 'text-primary' : 'text-foreground'}`}>
             {format(date, 'd')}
           </span>
           
           {dayData.tradeCount > 0 && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-1">
+            <>
+              <div className="flex items-center gap-0.5 mt-0.5">
                 {dayData.totalPnL > 0 ? (
-                  <TrendingUp className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                  <TrendingUp className="w-2.5 h-2.5 text-emerald-500" />
                 ) : dayData.totalPnL < 0 ? (
-                  <TrendingDown className="w-3 h-3 text-red-500 flex-shrink-0" />
+                  <TrendingDown className="w-2.5 h-2.5 text-red-500" />
                 ) : (
-                  <Target className="w-3 h-3 text-yellow-500 flex-shrink-0" />
+                  <Target className="w-2.5 h-2.5 text-yellow-500" />
                 )}
-                <span className={`text-[11px] font-bold truncate ${
+                <span className={`text-[10px] font-bold ${
                   dayData.totalPnL > 0 ? 'text-emerald-500' : 
                   dayData.totalPnL < 0 ? 'text-red-500' : 'text-yellow-500'
                 }`}>
@@ -128,18 +128,15 @@ export default function MobileCalendarView({
                 </span>
               </div>
               
-              <div className="flex gap-1 items-center">
+              <div className="flex gap-0.5 mt-1">
                 {dayData.winCount > 0 && (
-                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full flex-shrink-0" />
+                  <div className="w-1 h-1 bg-emerald-500 rounded-full" />
                 )}
                 {dayData.lossCount > 0 && (
-                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full flex-shrink-0" />
+                  <div className="w-1 h-1 bg-red-500 rounded-full" />
                 )}
-                <span className="text-[10px] text-muted-foreground">
-                  {dayData.tradeCount}
-                </span>
               </div>
-            </div>
+            </>
           )}
         </div>
       </motion.button>
@@ -152,8 +149,6 @@ export default function MobileCalendarView({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       className="space-y-4"
-      style={{ scrollBehavior: 'smooth' }}
-      onAnimationComplete={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
     >
       {/* Header */}
       <Card>

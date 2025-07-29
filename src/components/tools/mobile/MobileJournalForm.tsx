@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { Upload, DollarSign, FileImage, X, Search, Camera, CheckCircle } from 'lucide-react';
+import { Upload, DollarSign, FileImage, X, Search, Camera, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useAssetSearch } from '@/hooks/useAssetSearch';
 
 interface MobileJournalFormProps {
@@ -17,9 +17,10 @@ interface MobileJournalFormProps {
     screenshotFile?: File;
   }) => void;
   isSubmitting: boolean;
+  onBack: () => void;
 }
 
-export default function MobileJournalForm({ onSubmit, isSubmitting }: MobileJournalFormProps) {
+export default function MobileJournalForm({ onSubmit, isSubmitting, onBack }: MobileJournalFormProps) {
   const [formData, setFormData] = useState({
     asset_ticker: '',
     pnl: '',
@@ -144,10 +145,22 @@ export default function MobileJournalForm({ onSubmit, isSubmitting }: MobileJour
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <DollarSign className="w-5 h-5 text-primary" />
-          Add Trading Entry
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <DollarSign className="w-5 h-5 text-primary" />
+            Add Trading Entry
+          </CardTitle>
+          <div></div> {/* Spacer for centering */}
+        </div>
         <StepIndicator />
       </CardHeader>
       

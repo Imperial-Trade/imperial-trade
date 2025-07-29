@@ -246,6 +246,7 @@ export default function MobileTradingJournal({
           <MobileJournalForm
             onSubmit={onSubmit}
             isSubmitting={isSubmitting}
+            onBack={() => setActiveTab('overview')}
           />
         );
       case 'history':

@@ -205,6 +205,107 @@ export type Database = {
           },
         ]
       }
+      alert_monitoring: {
+        Row: {
+          alert_type: string
+          created_at: string
+          current_price: number | null
+          id: string
+          is_active: boolean | null
+          last_checked_at: string | null
+          priority_level: number | null
+          signal_id: string
+          symbol: string
+          target_price: number
+          updated_at: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          current_price?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_checked_at?: string | null
+          priority_level?: number | null
+          signal_id: string
+          symbol: string
+          target_price: number
+          updated_at?: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          current_price?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_checked_at?: string | null
+          priority_level?: number | null
+          signal_id?: string
+          symbol?: string
+          target_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_monitoring_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "trade_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alert_notifications: {
+        Row: {
+          alert_monitoring_id: string
+          delivery_channels: string[] | null
+          delivery_status: Json | null
+          id: string
+          notification_type: string
+          sent_at: string
+          signal_id: string
+          target_price: number
+          triggered_price: number
+        }
+        Insert: {
+          alert_monitoring_id: string
+          delivery_channels?: string[] | null
+          delivery_status?: Json | null
+          id?: string
+          notification_type: string
+          sent_at?: string
+          signal_id: string
+          target_price: number
+          triggered_price: number
+        }
+        Update: {
+          alert_monitoring_id?: string
+          delivery_channels?: string[] | null
+          delivery_status?: Json | null
+          id?: string
+          notification_type?: string
+          sent_at?: string
+          signal_id?: string
+          target_price?: number
+          triggered_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_notifications_alert_monitoring_id_fkey"
+            columns: ["alert_monitoring_id"]
+            isOneToOne: false
+            referencedRelation: "alert_monitoring"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_notifications_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "trade_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athena_interactions: {
         Row: {
           context: string | null
@@ -777,6 +878,10 @@ export type Database = {
           status: Database["public"]["Enums"]["session_status"]
           stream_embed_url: string | null
           updated_at: string
+          vimeo_event_id: string | null
+          vimeo_playback_url: string | null
+          vimeo_rtmp_url: string | null
+          vimeo_stream_key: string | null
           zoom_meeting_id: string | null
           zoom_meeting_number: string | null
           zoom_meeting_url: string
@@ -794,6 +899,10 @@ export type Database = {
           status?: Database["public"]["Enums"]["session_status"]
           stream_embed_url?: string | null
           updated_at?: string
+          vimeo_event_id?: string | null
+          vimeo_playback_url?: string | null
+          vimeo_rtmp_url?: string | null
+          vimeo_stream_key?: string | null
           zoom_meeting_id?: string | null
           zoom_meeting_number?: string | null
           zoom_meeting_url: string
@@ -811,6 +920,10 @@ export type Database = {
           status?: Database["public"]["Enums"]["session_status"]
           stream_embed_url?: string | null
           updated_at?: string
+          vimeo_event_id?: string | null
+          vimeo_playback_url?: string | null
+          vimeo_rtmp_url?: string | null
+          vimeo_stream_key?: string | null
           zoom_meeting_id?: string | null
           zoom_meeting_number?: string | null
           zoom_meeting_url?: string
@@ -1442,6 +1555,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      session_chat_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message_source: string
+          message_text: string
+          message_type: string
+          session_id: string
+          sync_status: string | null
+          updated_at: string
+          user_id: string
+          zoom_message_id: string | null
+          zoom_participant_id: string | null
+          zoom_participant_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_source?: string
+          message_text: string
+          message_type?: string
+          session_id: string
+          sync_status?: string | null
+          updated_at?: string
+          user_id: string
+          zoom_message_id?: string | null
+          zoom_participant_id?: string | null
+          zoom_participant_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_source?: string
+          message_text?: string
+          message_type?: string
+          session_id?: string
+          sync_status?: string | null
+          updated_at?: string
+          user_id?: string
+          zoom_message_id?: string | null
+          zoom_participant_id?: string | null
+          zoom_participant_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trade_alerts: {
         Row: {
@@ -2144,6 +2310,12 @@ export type Database = {
           embed_code: string | null
           id: string
           is_active: boolean | null
+          key_concepts: string[] | null
+          learning_outcomes: string[] | null
+          next_steps: string[] | null
+          practical_applications: string[] | null
+          prerequisites: string[] | null
+          skills_mastered: string[] | null
           source_type: Database["public"]["Enums"]["video_source_type"]
           source_url: string | null
           storage_bucket: string | null
@@ -2152,6 +2324,7 @@ export type Database = {
           title: string
           updated_at: string
           video_metadata: Json | null
+          video_segments: Json | null
           video_url: string
         }
         Insert: {
@@ -2166,6 +2339,12 @@ export type Database = {
           embed_code?: string | null
           id?: string
           is_active?: boolean | null
+          key_concepts?: string[] | null
+          learning_outcomes?: string[] | null
+          next_steps?: string[] | null
+          practical_applications?: string[] | null
+          prerequisites?: string[] | null
+          skills_mastered?: string[] | null
           source_type?: Database["public"]["Enums"]["video_source_type"]
           source_url?: string | null
           storage_bucket?: string | null
@@ -2174,6 +2353,7 @@ export type Database = {
           title: string
           updated_at?: string
           video_metadata?: Json | null
+          video_segments?: Json | null
           video_url: string
         }
         Update: {
@@ -2188,6 +2368,12 @@ export type Database = {
           embed_code?: string | null
           id?: string
           is_active?: boolean | null
+          key_concepts?: string[] | null
+          learning_outcomes?: string[] | null
+          next_steps?: string[] | null
+          practical_applications?: string[] | null
+          prerequisites?: string[] | null
+          skills_mastered?: string[] | null
           source_type?: Database["public"]["Enums"]["video_source_type"]
           source_url?: string | null
           storage_bucket?: string | null
@@ -2196,6 +2382,7 @@ export type Database = {
           title?: string
           updated_at?: string
           video_metadata?: Json | null
+          video_segments?: Json | null
           video_url?: string
         }
         Relationships: []
@@ -2220,6 +2407,16 @@ export type Database = {
       get_community_tier_info: {
         Args: { tier_level: number }
         Returns: Json
+      }
+      process_price_alerts: {
+        Args: { p_symbol: string; p_current_price: number }
+        Returns: {
+          alert_id: string
+          signal_id: string
+          alert_type: string
+          target_price: number
+          triggered: boolean
+        }[]
       }
       update_expired_sessions: {
         Args: Record<PropertyKey, never>

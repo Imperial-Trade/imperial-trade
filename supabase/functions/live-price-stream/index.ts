@@ -24,21 +24,60 @@ interface ErrorMessage {
   code: 'API_KEY_MISSING' | 'API_UNAVAILABLE' | 'SYMBOL_UNSUPPORTED' | 'RATE_LIMIT_EXCEEDED';
 }
 
-// Symbol mapping between frontend and Twelve Data API
-const SYMBOL_MAPPING: Record<string, string> = {
-  'XAU/USD': 'XAU/USD', // Twelve Data format for Gold
-  'GOLD': 'XAU/USD',
-  'BTC/USD': 'BTC/USD', // Twelve Data format for Bitcoin
-  'BTCUSD': 'BTC/USD',
-  'BITCOIN': 'BTC/USD'
+// Standard symbol definitions for Gold and Bitcoin as distinct assets
+const ASSET_REGISTRY = {
+  GOLD: {
+    symbol: 'XAU/USD',
+    category: 'commodities',
+    name: 'Gold',
+    displaySymbol: 'XAU/USD'
+  },
+  BITCOIN: {
+    symbol: 'BTC/USD', 
+    category: 'crypto',
+    name: 'Bitcoin',
+    displaySymbol: 'BTC/USD'
+  }
+} as const;
+
+// Enhanced symbol validation with Gold-specific debugging
+function validateAndNormalizeSymbol(symbol: string): string | null {
+  const upperSymbol = symbol.toUpperCase();
+  
+  console.log(`🔍 Symbol validation: ${symbol} -> ${upperSymbol}`);
+  
+  // Exact mapping for Gold variations with debugging
+  if (upperSymbol === 'XAU/USD' || upperSymbol === 'GOLD') {
+    console.log(`🥇 GOLD SYMBOL VALIDATED: ${symbol} -> XAU/USD`);
+    return 'XAU/USD';
+  }
+  
+  // Exact mapping for Bitcoin variations
+  if (upperSymbol === 'BTC/USD' || upperSymbol === 'BITCOIN') {
+    console.log(`₿ BITCOIN SYMBOL VALIDATED: ${symbol} -> BTC/USD`);
+    return 'BTC/USD';
+  }
+  
+  console.log(`❌ UNSUPPORTED SYMBOL: ${symbol}`);
+  return null;
+}
+
+// Symbol mapping for API calls - strict mapping only
+const TWELVE_DATA_SYMBOL_MAP: Record<string, string> = {
+  'XAU/USD': 'XAU/USD',
+  'BTC/USD': 'BTC/USD'
 };
 
-// Supported symbols for Twelve Data WebSocket
-const SUPPORTED_TWELVE_DATA_SYMBOLS = ['XAU/USD', 'BTC/USD'];
+// Supported symbols - only these two distinct assets
+const SUPPORTED_SYMBOLS = ['XAU/USD', 'BTC/USD'];
 
-// Simple in-memory cache for price data
+// Multi-tier cache for price data with Gold priority
 const priceCache = new Map<string, { data: PriceUpdate, expires: number }>();
-const CACHE_TTL = 8000; // 8 seconds cache
+const GOLD_CACHE_TTL = 2000; // 2 seconds cache for Gold
+const REGULAR_CACHE_TTL = 8000; // 8 seconds cache for others
+
+// High-priority symbols for faster caching
+const HIGH_PRIORITY_SYMBOLS = new Set(['XAU/USD', 'BTC/USD']);
 
 // Rate limiting
 const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
@@ -62,8 +101,9 @@ function isRateLimited(): boolean {
   return false;
 }
 
-function translateSymbol(symbol: string): string {
-  return SYMBOL_MAPPING[symbol] || symbol;
+function getApiSymbol(symbol: string): string {
+  const normalized = validateAndNormalizeSymbol(symbol);
+  return normalized ? TWELVE_DATA_SYMBOL_MAP[normalized] : symbol;
 }
 
 function getCachedPrice(symbol: string): PriceUpdate | null {
@@ -76,43 +116,20 @@ function getCachedPrice(symbol: string): PriceUpdate | null {
 }
 
 function setCachedPrice(symbol: string, data: PriceUpdate): void {
+  const ttl = (symbol === 'XAU/USD' || HIGH_PRIORITY_SYMBOLS.has(symbol)) ? GOLD_CACHE_TTL : REGULAR_CACHE_TTL;
   priceCache.set(symbol, {
     data,
-    expires: Date.now() + CACHE_TTL
+    expires: Date.now() + ttl
   });
 }
 
-// ⚠️ EMERGENCY MOCK DATA ONLY - Current Google Finance prices
+// 🚫 DISABLED MOCK DATA - FORCE REAL API USAGE ONLY
 function generateMockData(symbols: string[]): PriceUpdate[] {
-  console.log('🚨 WARNING: Generating mock data for symbols:', symbols);
-  console.log('🚨 API is not working - real prices should be fetched instead');
+  console.log('🚫 MOCK DATA DISABLED - Must use real Twelve Data API');
+  console.log('❌ Returning empty array to force real API usage');
   
-  const basePrices: Record<string, number> = {
-    'GOLD': 3396.70,     // CURRENT GOOGLE FINANCE PRICE
-    'XAU/USD': 3396.70,  // Alternative Gold symbol
-    'BTCUSD': 117881.00, // CURRENT GOOGLE FINANCE PRICE  
-    'BTC/USD': 117881.00, // Alternative Bitcoin symbol
-    'BTC': 117881.00     // Short Bitcoin symbol
-  };
-  
-  return symbols.map((symbol: string) => {
-    const apiSymbol = translateSymbol(symbol);
-    const basePrice = basePrices[apiSymbol] || 150;
-    
-    // Asset-specific volatility
-    const volatilityRange = apiSymbol === 'BTCUSD' ? 0.08 : 0.04;
-    
-    const changePercent = (Math.random() - 0.5) * 2 * volatilityRange * 100;
-    const price = basePrice * (1 + changePercent / 100);
-    
-    return {
-      symbol: symbol, // Return original symbol format
-      price: Math.round(price * 100) / 100,
-      change: Math.round((price - basePrice) * 100) / 100,
-      changePercent: Math.round(changePercent * 100) / 100,
-      timestamp: new Date().toISOString()
-    };
-  });
+  // Return empty array to force real API calls
+  return [];
 }
 
 async function fetchRealPrice(symbol: string): Promise<PriceUpdate | null> {
@@ -132,19 +149,16 @@ async function fetchRealPrice(symbol: string): Promise<PriceUpdate | null> {
   }
 
   try {
-    const apiSymbol = translateSymbol(symbol);
+    const apiSymbol = getApiSymbol(symbol);
     
-    // Enhanced symbol formatting for Twelve Data API
-    let formattedSymbol = apiSymbol;
-    if (apiSymbol === 'GOLD' || symbol === 'XAU/USD') {
-      formattedSymbol = 'XAU/USD';
-    } else if (apiSymbol === 'BTCUSD' || symbol === 'BTC/USD' || symbol === 'BTC') {
-      formattedSymbol = 'BTC/USD';
+    if (!apiSymbol || !SUPPORTED_SYMBOLS.includes(apiSymbol)) {
+      console.error(`❌ Unsupported symbol: ${symbol}`);
+      return null;
     }
     
-    console.log(`📡 API call mapping: ${symbol} -> ${apiSymbol} -> ${formattedSymbol}`);
+    console.log(`📡 Symbol validation: ${symbol} -> ${apiSymbol}`);
     
-    const url = `https://api.twelvedata.com/quote?symbol=${formattedSymbol}&apikey=${apiKey}`;
+    const url = `https://api.twelvedata.com/quote?symbol=${apiSymbol}&apikey=${apiKey}`;
     console.log(`🌐 Making API request to: ${url}`);
     
     const response = await fetch(url, {
@@ -249,8 +263,16 @@ serve(async (req) => {
   let subscribedSymbols = new Set<string>();
   let twelveDataWs: WebSocket | null = null;
   let reconnectTimeout: number | null = null;
+  let heartbeatInterval: number | null = null;
+  let goldRetryTimeout: number | null = null;
 
-  // Function to connect to Twelve Data WebSocket
+  // Connection retry state with Gold-specific tracking
+  let reconnectAttempts = 0;
+  const maxReconnectAttempts = 5;
+  const baseDelay = 5000;
+  let goldSubscriptionFailed = false;
+
+  // Function to connect to Twelve Data WebSocket with optimizations for Pro plan
   const connectToTwelveData = () => {
     const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
     if (!apiKey) {
@@ -258,23 +280,62 @@ serve(async (req) => {
       return;
     }
 
+    // Circuit breaker: stop if too many failures
+    if (reconnectAttempts >= maxReconnectAttempts) {
+      console.error('🚫 Circuit breaker: Max reconnection attempts reached');
+      return;
+    }
+
     try {
       console.log('🔌 Connecting to Twelve Data WebSocket...');
+      console.log('🔑 Using API Key:', apiKey ? 'YES (length: ' + apiKey.length + ')' : 'NO');
+      console.log('🔄 Reconnect attempt:', reconnectAttempts + 1);
+      
+      // Connect to Twelve Data WebSocket - Pro plan optimized
       twelveDataWs = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
 
       twelveDataWs.onopen = () => {
         console.log('✅ Connected to Twelve Data WebSocket');
+        reconnectAttempts = 0; // Reset on successful connection
+        goldSubscriptionFailed = false;
         
-        // Subscribe to symbols if any
+        // Clear any existing timeouts
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+          reconnectTimeout = null;
+        }
+        if (goldRetryTimeout) {
+          clearTimeout(goldRetryTimeout);
+          goldRetryTimeout = null;
+        }
+        
+        // Start heartbeat to maintain connection stability
+        heartbeatInterval = setInterval(() => {
+          if (twelveDataWs?.readyState === WebSocket.OPEN) {
+            console.log('💓 Sending WebSocket heartbeat');
+            twelveDataWs.send(JSON.stringify({ action: 'heartbeat' }));
+          }
+        }, 30000);
+        
+        // Subscribe to validated symbols if any (batch subscription for efficiency)
         if (subscribedSymbols.size > 0) {
-          const symbols = Array.from(subscribedSymbols).map(s => SYMBOL_MAPPING[s] || s);
+          const symbols = Array.from(subscribedSymbols);
+          
+          console.log('📡 Subscribing to symbols:', symbols);
+          
+          // Special Gold logging
+          if (symbols.includes('XAU/USD')) {
+            console.log('🥇 GOLD SUBSCRIPTION ATTEMPT: Attempting to subscribe to XAU/USD via WebSocket');
+            console.log('🥇 GOLD CONNECTION STATE: WebSocket readyState =', twelveDataWs?.readyState);
+          }
+          
           const subscribeMessage = {
             action: 'subscribe',
             params: {
               symbols: symbols.join(',')
             }
           };
-          console.log('📡 Subscribing to Twelve Data symbols:', symbols);
+          console.log('📡 Subscription message:', JSON.stringify(subscribeMessage, null, 2));
           twelveDataWs?.send(JSON.stringify(subscribeMessage));
         }
       };
@@ -284,11 +345,120 @@ serve(async (req) => {
           const data = JSON.parse(event.data);
           console.log('📊 Received from Twelve Data:', data);
           
+          // Handle subscription status responses with Gold-specific debugging
+          if (data.event === 'subscribe-status') {
+            console.log('📋 Subscription status:', data.status);
+            
+            if (data.success && data.success.length > 0) {
+              console.log('✅ Successfully subscribed to:', data.success);
+              
+              // Check if Gold was successfully subscribed
+              const goldSuccess = data.success.find((s: any) => 
+                (typeof s === 'object' && s.symbol === 'XAU/USD') || s === 'XAU/USD'
+              );
+              if (goldSuccess) {
+                console.log('🥇 GOLD SUCCESS: XAU/USD subscription confirmed via WebSocket');
+                goldSubscriptionFailed = false;
+                if (goldRetryTimeout) {
+                  clearTimeout(goldRetryTimeout);
+                  goldRetryTimeout = null;
+                }
+              }
+            }
+            
+            if (data.fails && data.fails.length > 0) {
+              console.log('❌ Failed to subscribe to:', data.fails);
+              console.log('❌ Failure details:', JSON.stringify(data.fails, null, 2));
+              
+              // Special handling for Gold subscription failures
+              const goldFailed = data.fails.find((f: any) => 
+                (typeof f === 'object' && f.symbol === 'XAU/USD') || f === 'XAU/USD'
+              );
+              
+              if (goldFailed) {
+                console.log('🥇 GOLD FAILURE: XAU/USD WebSocket subscription failed');
+                console.log('🥇 GOLD FALLBACK: Implementing HTTP fallback strategy');
+                goldSubscriptionFailed = true;
+                
+                // Immediate HTTP fallback for Gold
+                const goldPrice = await fetchRealPrice('XAU/USD');
+                if (goldPrice && socket.readyState === WebSocket.OPEN) {
+                  console.log('🥇 GOLD HTTP SUCCESS: Sending Gold price via HTTP fallback');
+                  socket.send(JSON.stringify({
+                    type: 'price_update',
+                    data: [goldPrice],
+                    source: 'twelve_data_http_fallback_gold',
+                    timestamp: new Date().toISOString()
+                  }));
+                }
+                
+                // Set up periodic HTTP polling for Gold as backup
+                const pollGoldPrice = async () => {
+                  if (goldSubscriptionFailed) {
+                    console.log('🥇 GOLD POLLING: Fetching Gold price via HTTP');
+                    const price = await fetchRealPrice('XAU/USD');
+                    if (price && socket.readyState === WebSocket.OPEN) {
+                      socket.send(JSON.stringify({
+                        type: 'price_update',
+                        data: [price],
+                        source: 'twelve_data_http_polling_gold',
+                        timestamp: new Date().toISOString()
+                      }));
+                    }
+                  }
+                };
+                
+                // Poll every 10 seconds for Gold
+                goldRetryTimeout = setInterval(pollGoldPrice, 10000);
+              }
+              
+              // Handle other failed symbols with HTTP fallback
+              data.fails.forEach(async (fail: any) => {
+                const failSymbol = typeof fail === 'object' ? fail.symbol : fail;
+                if (failSymbol && failSymbol !== 'XAU/USD') {
+                  console.log(`🔄 WebSocket failed for ${failSymbol}, trying HTTP...`);
+                  const realPrice = await fetchRealPrice(failSymbol);
+                  if (realPrice && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                      type: 'price_update',
+                      data: [realPrice],
+                      source: 'twelve_data_http_fallback',
+                      timestamp: new Date().toISOString()
+                    }));
+                  }
+                }
+              });
+            }
+            return;
+          }
+          
+          // Handle REAL-TIME price updates with Gold-specific logging
           if (data.event === 'price' && data.symbol && data.price) {
-            // Map back to frontend symbol format
-            const frontendSymbol = Object.keys(SYMBOL_MAPPING).find(key => 
-              SYMBOL_MAPPING[key] === data.symbol
-            ) || data.symbol;
+            console.log('💰 LIVE PRICE UPDATE for:', data.symbol, 'Price:', data.price);
+            
+            // Special logging for Gold updates
+            if (data.symbol === 'XAU/USD') {
+              console.log('🥇 GOLD LIVE UPDATE: Received real-time Gold price via WebSocket');
+              console.log('🥇 GOLD DATA:', {
+                symbol: data.symbol,
+                price: data.price,
+                change: data.day_change,
+                timestamp: new Date().toISOString()
+              });
+              // Gold is working via WebSocket, stop HTTP polling
+              goldSubscriptionFailed = false;
+              if (goldRetryTimeout) {
+                clearInterval(goldRetryTimeout);
+                goldRetryTimeout = null;
+                console.log('🥇 GOLD WEBSOCKET RESUMED: Stopping HTTP polling');
+              }
+            }
+            
+            // Map back to frontend symbol format  
+            let frontendSymbol = data.symbol;
+            
+            // Keep standardized symbol format for consistency
+            frontendSymbol = data.symbol; // XAU/USD or BTC/USD
 
             const priceUpdate: PriceUpdate = {
               symbol: frontendSymbol,
@@ -298,15 +468,21 @@ serve(async (req) => {
               timestamp: new Date().toISOString()
             };
 
-            // Forward to client
+            console.log('📤 Sending LIVE price update:', priceUpdate);
+
+            // Forward to client with enhanced data
             if (socket.readyState === WebSocket.OPEN) {
               socket.send(JSON.stringify({
                 type: 'price_update',
                 data: [priceUpdate],
-                source: 'twelve_data_websocket',
+                source: 'twelve_data_websocket_live',
+                dataQuality: 'real_time',
                 timestamp: new Date().toISOString()
               }));
             }
+            
+            // Cache for backup
+            setCachedPrice(frontendSymbol, priceUpdate);
           }
         } catch (error) {
           console.error('❌ Error parsing Twelve Data message:', error);
@@ -315,23 +491,67 @@ serve(async (req) => {
 
       twelveDataWs.onclose = () => {
         console.log('🔌 Twelve Data WebSocket disconnected');
-        // Reconnect after 5 seconds
-        reconnectTimeout = setTimeout(connectToTwelveData, 5000);
+        
+        // Clear heartbeat interval
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+        
+        reconnectAttempts++;
+        
+        if (reconnectAttempts < maxReconnectAttempts) {
+          const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempts - 1), 30000);
+          console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+          reconnectTimeout = setTimeout(connectToTwelveData, delay);
+        } else {
+          console.error('🚫 Max reconnection attempts reached, implementing full HTTP fallback');
+          
+          // Implement full HTTP fallback for all symbols
+          if (subscribedSymbols.size > 0) {
+            const symbols = Array.from(subscribedSymbols);
+            console.log('🔄 FULL HTTP FALLBACK: Starting polling for all symbols:', symbols);
+            
+            const pollAllPrices = async () => {
+              for (const symbol of symbols) {
+                const price = await fetchRealPrice(symbol);
+                if (price && socket.readyState === WebSocket.OPEN) {
+                  socket.send(JSON.stringify({
+                    type: 'price_update',
+                    data: [price],
+                    source: 'twelve_data_http_fallback_full',
+                    timestamp: new Date().toISOString()
+                  }));
+                }
+              }
+            };
+            
+            // Poll every 15 seconds as full fallback
+            setInterval(pollAllPrices, 15000);
+            pollAllPrices(); // Initial call
+          }
+        }
       };
 
       twelveDataWs.onerror = (error) => {
         console.error('❌ Twelve Data WebSocket error:', error);
+        // Let onclose handle the reconnection
       };
 
     } catch (error) {
       console.error('❌ Failed to connect to Twelve Data:', error);
+      console.log('🔄 Retrying connection in 3 seconds...');
+      // Retry connection after short delay
+      setTimeout(connectToTwelveData, 3000);
     }
   };
 
+  // FORCE IMMEDIATE CONNECTION on socket open
   socket.onopen = () => {
     console.log("🔗 Client WebSocket connection opened");
+    console.log("🚀 FORCE CONNECTING TO TWELVE DATA IMMEDIATELY");
     
-    // Check API key and connect to Twelve Data
+    // Check API key and connect to Twelve Data IMMEDIATELY
     const apiKey = Deno.env.get('TWELVE_DATA_API_KEY');
     if (!apiKey) {
       const errorMsg: ErrorMessage = {
@@ -341,6 +561,7 @@ serve(async (req) => {
       };
       socket.send(JSON.stringify(errorMsg));
     } else {
+      // FORCE CONNECT WITHOUT DELAY
       connectToTwelveData();
     }
   };
@@ -352,15 +573,15 @@ serve(async (req) => {
       if (message.type === 'subscribe') {
         console.log('📡 Subscribe request for symbols:', message.symbols);
         
-        // Validate and map symbols
+        // Strict symbol validation - Gold and Bitcoin only
         const validSymbols: string[] = [];
         const invalidSymbols: string[] = [];
         
         message.symbols.forEach(symbol => {
-          const mappedSymbol = SYMBOL_MAPPING[symbol];
-          if (mappedSymbol && SUPPORTED_TWELVE_DATA_SYMBOLS.includes(mappedSymbol)) {
-            validSymbols.push(symbol);
-            subscribedSymbols.add(symbol);
+          const normalizedSymbol = validateAndNormalizeSymbol(symbol);
+          if (normalizedSymbol && SUPPORTED_SYMBOLS.includes(normalizedSymbol)) {
+            validSymbols.push(normalizedSymbol); // Use normalized symbol
+            subscribedSymbols.add(normalizedSymbol);
           } else {
             invalidSymbols.push(symbol);
           }
@@ -379,31 +600,31 @@ serve(async (req) => {
           socket.send(JSON.stringify(errorMsg));
         });
         
-        // Subscribe to Twelve Data WebSocket if connected and we have valid symbols
+        // Subscribe to Twelve Data WebSocket with validated symbols
         if (twelveDataWs?.readyState === WebSocket.OPEN && validSymbols.length > 0) {
-          const twelveDataSymbols = validSymbols.map(s => SYMBOL_MAPPING[s]).filter(Boolean);
           const subscribeMessage = {
             action: 'subscribe',
             params: {
-              symbols: twelveDataSymbols.join(',')
+              symbols: validSymbols.join(',')
             }
           };
-          console.log('📡 Subscribing to Twelve Data:', twelveDataSymbols);
+          console.log('📡 Subscribing to validated symbols:', validSymbols);
           twelveDataWs.send(JSON.stringify(subscribeMessage));
         } else if (validSymbols.length > 0) {
-          // If Twelve Data isn't connected, try HTTP fallback
-          console.log('🔄 Twelve Data not connected, using HTTP fallback');
-          for (const symbol of validSymbols) {
-            const priceData = await fetchRealPrice(symbol);
-            if (priceData && socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({
-                type: 'price_update',
-                data: [priceData],
-                source: 'twelve_data_api',
-                timestamp: new Date().toISOString()
-              }));
+          console.log('⚠️ Twelve Data WebSocket not ready - waiting for connection...');
+          // Wait for connection and retry
+          setTimeout(() => {
+            if (twelveDataWs?.readyState === WebSocket.OPEN) {
+              const subscribeMessage = {
+                action: 'subscribe',
+                params: {
+                  symbols: validSymbols.join(',')
+                }
+              };
+              console.log('📡 RETRY subscribing to validated symbols:', validSymbols);
+              twelveDataWs.send(JSON.stringify(subscribeMessage));
             }
-          }
+          }, 2000);
         }
         
       } else if (message.type === 'unsubscribe') {
@@ -413,18 +634,18 @@ serve(async (req) => {
         
         // Unsubscribe from Twelve Data if connected
         if (twelveDataWs?.readyState === WebSocket.OPEN) {
-          const twelveDataSymbols = message.symbols
-            .map(s => SYMBOL_MAPPING[s])
-            .filter(Boolean);
+          const validSymbols = message.symbols
+            .map(s => validateAndNormalizeSymbol(s))
+            .filter(s => s && SUPPORTED_SYMBOLS.includes(s));
           
-          if (twelveDataSymbols.length > 0) {
+          if (validSymbols.length > 0) {
             const unsubscribeMessage = {
               action: 'unsubscribe',
               params: {
-                symbols: twelveDataSymbols.join(',')
+                symbols: validSymbols.join(',')
               }
             };
-            console.log('📤 Unsubscribing from Twelve Data:', twelveDataSymbols);
+            console.log('📤 Unsubscribing from Twelve Data:', validSymbols);
             twelveDataWs.send(JSON.stringify(unsubscribeMessage));
           }
         }

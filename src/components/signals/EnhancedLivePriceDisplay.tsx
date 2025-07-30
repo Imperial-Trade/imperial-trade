@@ -17,10 +17,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   onUseCurrentPrice,
   className = ''
 }) => {
-  // Map frontend symbols to API symbols
+  // Map frontend symbols to standardized API symbols
   const mapSymbolForAPI = (frontendSymbol: string): string => {
     const symbolMap: Record<string, string> = {
-      'XAU/USD': 'GOLD',
+      'GOLD': 'XAU/USD',
+      'XAU/USD': 'XAU/USD',
       'BTC/USD': 'BTC/USD'
     };
     return symbolMap[frontendSymbol] || frontendSymbol;
@@ -36,6 +37,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     error,
     lastUpdated,
     connectionStatus,
+    dataSource,
+    priceUpdateSource,
     refreshPrice
   } = useOptimizedLivePrice(apiSymbol, {
     enableSmartPausing: false, // Keep connection active for trading signals
@@ -128,24 +131,44 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       };
     }
     
-    if (connectionStatus === 'connected' && dataFreshness < 30) {
-      return { 
-        color: 'text-green-400', 
-        icon: Wifi, 
-        text: 'Live',
-        description: 'Real-time price updates active',
-        animate: false
-      };
-    }
-    
-    if (connectionStatus === 'connected' && dataFreshness < 60) {
-      return { 
-        color: 'text-yellow-400', 
-        icon: Wifi, 
-        text: 'Delayed',
-        description: 'Price data is slightly delayed',
-        animate: false
-      };
+    if (connectionStatus === 'connected') {
+      // Distinguish between real-time WebSocket and HTTP fallback
+      switch (priceUpdateSource) {
+        case 'websocket':
+          return { 
+            color: 'text-green-400', 
+            icon: Wifi, 
+            text: '⚡ Real-time',
+            description: 'Live WebSocket updates active',
+            animate: false
+          };
+        case 'http':
+          return { 
+            color: 'text-blue-400', 
+            icon: RefreshCw, 
+            text: '🔄 HTTP Fallback',
+            description: 'Using HTTP API fallback mode',
+            animate: false
+          };
+        default:
+          if (dataFreshness < 30) {
+            return { 
+              color: 'text-green-400', 
+              icon: Wifi, 
+              text: 'Live',
+              description: 'Real-time price updates active',
+              animate: false
+            };
+          } else if (dataFreshness < 60) {
+            return { 
+              color: 'text-yellow-400', 
+              icon: Wifi, 
+              text: 'Delayed',
+              description: 'Price data is slightly delayed',
+              animate: false
+            };
+          }
+      }
     }
     
     if (connectionStatus === 'disconnected' || dataFreshness >= 60) {
@@ -165,7 +188,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       description: 'Connection status unknown',
       animate: false
     };
-  }, [connectionStatus, isLoading, error, lastUpdated]);
+  }, [connectionStatus, isLoading, error, lastUpdated, priceUpdateSource]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -321,7 +344,10 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       {/* Data Source Info */}
       <div className="mt-2 pt-2 border-t border-gray-600">
         <div className="text-xs text-gray-500">
-          {connectionStatusInfo.description} • Symbol: {symbol}
+          {connectionStatusInfo.description} • 
+          Source: {priceUpdateSource === 'websocket' ? 'Real-time WebSocket' : 
+                   priceUpdateSource === 'http' ? 'HTTP API' : 'Twelve Data API'} • 
+          Symbol: {symbol}
         </div>
       </div>
     </div>

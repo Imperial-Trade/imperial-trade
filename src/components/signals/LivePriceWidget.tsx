@@ -381,7 +381,7 @@ const LivePriceWidgetComponent = ({
         </div>
       </div>;
   }
-  return <div className="rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px] bg-green-950">
+  return <div className="p-3 border border-gray-700 space-y-3 min-h-[80px] bg-slate-950 rounded-sm">
       <div className="flex items-center justify-between h-6">
         <div className="flex items-center space-x-2">
           <Wifi className="w-4 h-4 text-emerald-400" />

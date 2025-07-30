@@ -22,6 +22,7 @@ interface WebSocketContextType {
   dataSource: 'twelve_data_api' | 'unavailable';
   lastUpdated: Date | null;
   errors: Record<string, string>;
+  priceUpdateSources: Record<string, 'websocket' | 'http'>;
   subscribe: (symbols: string[]) => void;
   unsubscribe: (symbols: string[]) => void;
   getPrice: (symbol: string) => PriceData | null;
@@ -48,12 +49,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const [dataSource, setDataSource] = useState<'twelve_data_api' | 'unavailable'>('unavailable');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [priceUpdateSources, setPriceUpdateSources] = useState<Record<string, 'websocket' | 'http'>>({});
   
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const reconnectAttemptsRef = useRef(0);
-  const priceUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const requestDeduplicationRef = useRef<Map<string, Promise<any>>>(new Map());
+  const lastRequestTimeRef = useRef<Map<string, number>>(new Map());
+  const circuitBreakerRef = useRef<{ failures: number, nextAttempt: number }>({ failures: 0, nextAttempt: 0 });
+  const websocketHealthRef = useRef<{ lastSuccessfulMessage: number, isHealthy: boolean }>({ lastSuccessfulMessage: 0, isHealthy: false });
 
   const getReconnectDelay = useCallback(() => {
     const baseDelay = 5000;
@@ -62,21 +67,46 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return delay;
   }, []);
 
-  // HTTP fallback for price fetching with better Gold symbol mapping
+  // Optimized HTTP fallback with circuit breaker and request deduplication
   const fetchPricesHTTP = useCallback(async (symbols: string[]) => {
+    // Circuit breaker check
+    const now = Date.now();
+    if (circuitBreakerRef.current.failures >= 3 && now < circuitBreakerRef.current.nextAttempt) {
+      console.log('🚫 Circuit breaker active, skipping HTTP request');
+      return;
+    }
+
+    // Request deduplication key
+    const requestKey = symbols.sort().join(',');
+    
+    // Check if same request is already in progress
+    if (requestDeduplicationRef.current.has(requestKey)) {
+      console.log('⚡ Deduplicating request for symbols:', symbols);
+      return requestDeduplicationRef.current.get(requestKey);
+    }
+
+    // Check rate limiting (max 1 request per 5 seconds per symbol group)
+    const lastRequestTime = lastRequestTimeRef.current.get(requestKey) || 0;
+    if (now - lastRequestTime < 5000) {
+      console.log('⏳ Rate limiting: skipping request (too frequent)');
+      return;
+    }
+
     try {
       console.log('🔄 HTTP fallback: fetching prices for', symbols);
       
-      // Map symbols to correct API format (Gold -> GOLD, BTC -> BTC/USD)
+      // Standardized symbol mapping for distinct assets
       const mappedSymbols = symbols.map(symbol => {
-        if (symbol === 'GOLD' || symbol === 'XAU/USD') return 'GOLD'; // Fixed mapping for Gold
-        if (symbol === 'BTC' || symbol === 'BITCOIN' || symbol === 'BTC/USD') return 'BTC/USD';
-        return symbol;
+        const upperSymbol = symbol.toUpperCase();
+        if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAU/USD';
+        if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTC/USD';
+        return symbol; // Keep original for unsupported symbols
       });
 
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch(`https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/get-market-data`, {
+      // Create deduplication promise
+      const requestPromise = fetch(`https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/get-market-data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,12 +116,21 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         body: JSON.stringify({ symbols: mappedSymbols })
       });
 
+      // Store for deduplication
+      requestDeduplicationRef.current.set(requestKey, requestPromise);
+      lastRequestTimeRef.current.set(requestKey, now);
+
+      const response = await requestPromise;
+
       if (!response.ok) {
         throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
       }
 
       const data = await response.json();
       console.log('📊 HTTP response data:', data);
+      
+      // Reset circuit breaker on success
+      circuitBreakerRef.current = { failures: 0, nextAttempt: 0 };
       
       if (data.prices && Array.isArray(data.prices)) {
         const updates: PriceData[] = data.prices.map((item: any) => ({
@@ -108,6 +147,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             newPrices[update.symbol] = update;
           });
           return newPrices;
+        });
+        
+        // Track data source for each symbol
+        setPriceUpdateSources(prev => {
+          const newSources = { ...prev };
+          updates.forEach(update => {
+            newSources[update.symbol] = 'http';
+          });
+          return newSources;
         });
         
         setDataSource(data.dataQuality === 'simulated' ? 'unavailable' : 'twelve_data_api');
@@ -146,47 +194,33 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
     setConnectionStatus('connecting');
     
-    // Try HTTP fallback immediately for better user experience
+    // Only use HTTP fallback if WebSocket has been unhealthy for 30+ seconds
     if (subscribedSymbolsRef.current.size > 0) {
       const symbols = Array.from(subscribedSymbolsRef.current);
-      console.log('🔄 Starting immediate HTTP fallback for symbols:', symbols);
-      fetchPricesHTTP(symbols);
+      const now = Date.now();
+      const shouldUseHttpFallback = !websocketHealthRef.current.isHealthy && 
+        (now - websocketHealthRef.current.lastSuccessfulMessage) > 30000;
       
-      // Set a faster timeout for connection state - if WebSocket doesn't connect in 2 seconds, stay with HTTP
-      const quickTimeout = setTimeout(() => {
-        if (socketRef.current?.readyState !== WebSocket.OPEN) {
-          console.log('⚡ Fast timeout: Using HTTP mode, WebSocket took too long');
-          setConnectionStatus('connected'); // Consider HTTP as connected
-          setDataSource('twelve_data_api');
-        }
-      }, 2000); // Very fast 2-second timeout
-      
-      // Clear timeout on successful WebSocket connection
-      const originalOnOpen = () => {
-        clearTimeout(quickTimeout);
-        console.log('✅ WebSocket connected - canceling HTTP-only mode');
-      };
-      
-      // Store timeout reference for cleanup
-      (window as any).wsQuickTimeout = quickTimeout;
+      if (shouldUseHttpFallback) {
+        console.log('🔄 WebSocket unhealthy for 30s+, starting HTTP fallback for symbols:', symbols);
+        fetchPricesHTTP(symbols);
+      } else {
+        console.log('⚡ WebSocket should be healthy, skipping immediate HTTP fallback');
+      }
     }
     
     try {
       // Correct WebSocket URL format for Supabase Edge Functions  
-      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.functions.supabase.co/live-price-stream`;
+      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/live-price-stream`;
       console.log('🔌 Connecting to WebSocket:', wsUrl);
       socketRef.current = new WebSocket(wsUrl);
 
       socketRef.current.onopen = () => {
         console.log('✅ WebSocket connected to live price stream');
         setConnectionStatus('connected');
+        setDataSource('twelve_data_api');
         reconnectAttemptsRef.current = 0;
-        
-        // Clear the fast timeout since WebSocket connected successfully
-        if ((window as any).wsQuickTimeout) {
-          clearTimeout((window as any).wsQuickTimeout);
-          (window as any).wsQuickTimeout = null;
-        }
+        websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
         
         // Clear any connection errors
         setErrors(prev => {
@@ -194,13 +228,13 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           return global?.includes('WebSocket') ? rest : prev;
         });
         
-        // Re-subscribe to symbols after reconnection
+        // Immediately subscribe to any pending symbols
         if (subscribedSymbolsRef.current.size > 0) {
           const symbols = Array.from(subscribedSymbolsRef.current);
-          console.log('🔄 Re-subscribing to symbols:', symbols);
+          console.log('📡 Subscribing to validated symbols:', symbols);
           socketRef.current?.send(JSON.stringify({
             type: 'subscribe',
-            symbols
+            symbols: symbols
           }));
         }
       };
@@ -208,15 +242,47 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       socketRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          console.log('📦 Received WebSocket message:', message);
           
           if (message.type === 'price_update') {
             const updates: PriceData[] = message.data;
+            
+            // Mark WebSocket as healthy
+            websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
+            
+            // Special logging for Gold updates
+            const goldUpdate = updates.find(update => update.symbol === 'XAU/USD');
+            if (goldUpdate) {
+              console.log('🥇 GOLD WEBSOCKET: Received real-time Gold price update via WebSocket');
+              console.log('🥇 GOLD PRICE DATA:', {
+                symbol: goldUpdate.symbol,
+                price: goldUpdate.price,
+                change: goldUpdate.change,
+                source: 'websocket'
+              });
+            }
+            
             setPrices(prev => {
               const newPrices = { ...prev };
               updates.forEach(update => {
+                if (update.symbol === 'XAU/USD') {
+                  console.log('🥇 GOLD STATE UPDATE: Updating Gold price in state to', update.price, 'from WebSocket');
+                }
                 newPrices[update.symbol] = update;
               });
               return newPrices;
+            });
+            
+            // Track data source for each symbol as WebSocket
+            setPriceUpdateSources(prev => {
+              const newSources = { ...prev };
+              updates.forEach(update => {
+                newSources[update.symbol] = 'websocket';
+                if (update.symbol === 'XAU/USD') {
+                  console.log('🥇 GOLD SOURCE: Marked Gold as WebSocket source');
+                }
+              });
+              return newSources;
             });
             
             setDataSource(message.source || 'twelve_data_api');
@@ -227,6 +293,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
               const newErrors = { ...prev };
               updates.forEach(update => {
                 delete newErrors[update.symbol];
+                if (update.symbol === 'XAU/USD') {
+                  console.log('🥇 GOLD ERROR CLEARED: Cleared any previous Gold errors');
+                }
               });
               return newErrors;
             });
@@ -234,6 +303,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           } else if (message.type === 'error') {
             const errorData = message as ErrorData;
             console.error('WebSocket price error:', errorData.message);
+            
+            // Special Gold error logging
+            if (errorData.message.includes('XAU/USD') || errorData.message.includes('Gold')) {
+              console.error('🥇 GOLD ERROR:', errorData.message);
+            }
             
             // Set global error or symbol-specific error
             if (errorData.code === 'API_KEY_MISSING') {
@@ -260,7 +334,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       socketRef.current.onclose = () => {
         console.log('WebSocket disconnected');
         setConnectionStatus('disconnected');
-        setDataSource('unavailable');
+        websocketHealthRef.current.isHealthy = false;
+        
+        // Start intelligent HTTP fallback after 30 seconds
+        setTimeout(() => {
+          if (!websocketHealthRef.current.isHealthy && subscribedSymbolsRef.current.size > 0) {
+            console.log('⚡ Starting intelligent HTTP fallback after WebSocket disconnect');
+            fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
+          }
+        }, 30000);
         
         // Implement exponential backoff for reconnection
         const delay = getReconnectDelay();
@@ -272,16 +354,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       };
 
       socketRef.current.onerror = (error) => {
-        console.error('WebSocket error, falling back to HTTP:', error);
+        console.error('WebSocket error:', error);
         setConnectionStatus('error');
-        setDataSource('unavailable');
+        websocketHealthRef.current.isHealthy = false;
         reconnectAttemptsRef.current++;
         
-        // Fallback to HTTP if WebSocket fails
-        if (subscribedSymbolsRef.current.size > 0) {
-          console.log('Attempting HTTP fallback...');
-          fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
-        }
+        // Only fallback to HTTP after 30 seconds of failed WebSocket
+        setTimeout(() => {
+          if (!websocketHealthRef.current.isHealthy && subscribedSymbolsRef.current.size > 0) {
+            console.log('⚡ Starting HTTP fallback after WebSocket error (30s delay)');
+            fetchPricesHTTP(Array.from(subscribedSymbolsRef.current));
+          }
+        }, 30000);
       };
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
@@ -292,34 +376,61 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribing to symbols:', symbols);
-    symbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
+    
+    // Validate and normalize symbols for distinct asset handling
+    const validatedSymbols = symbols.map(symbol => {
+      const upperSymbol = symbol.toUpperCase();
+      console.log(`🔍 Frontend validation: ${symbol} -> ${upperSymbol}`);
+      
+      if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') {
+        console.log(`🥇 FRONTEND GOLD: ${symbol} -> XAU/USD`);
+        return 'XAU/USD';
+      }
+      if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') {
+        console.log(`₿ FRONTEND BITCOIN: ${symbol} -> BTC/USD`);
+        return 'BTC/USD';
+      }
+      return symbol;
+    }).filter(symbol => symbol === 'XAU/USD' || symbol === 'BTC/USD');
+    
+    console.log('✅ Validated symbols for subscription:', validatedSymbols);
+    
+    // Special Gold tracking
+    if (validatedSymbols.includes('XAU/USD')) {
+      console.log('🥇 GOLD SUBSCRIBE: Adding XAU/USD to subscription list');
+    }
+    
+    validatedSymbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
     
     if (socketRef.current?.readyState === WebSocket.OPEN) {
+      console.log('📤 WebSocket ready, sending subscription message');
+      if (validatedSymbols.includes('XAU/USD')) {
+        console.log('🥇 GOLD WEBSOCKET: Sending Gold subscription via WebSocket');
+      }
+      
       socketRef.current.send(JSON.stringify({
         type: 'subscribe',
-        symbols
+        symbols: validatedSymbols
       }));
     } else {
-      // Try HTTP fallback immediately for faster response
-      console.log('🔄 WebSocket not ready, using HTTP fallback immediately');
-      fetchPricesHTTP(symbols);
+      console.log('🔄 WebSocket not ready, attempting connection');
+      if (validatedSymbols.includes('XAU/USD')) {
+        console.log('🥇 GOLD CONNECT: Attempting WebSocket connection for Gold');
+      }
       
-      // Also try WebSocket connection
+      // Try WebSocket connection first
       connect();
+      
+      // Only use HTTP fallback if WebSocket fails for 30+ seconds
+      setTimeout(() => {
+        if (!websocketHealthRef.current.isHealthy && subscribedSymbolsRef.current.size > 0) {
+          console.log('⚡ WebSocket failed to connect within 30s, using HTTP fallback');
+          fetchPricesHTTP(validatedSymbols);
+        }
+      }, 30000);
     }
 
-    // Set up automatic price refresh every 6 seconds
-    if (priceUpdateIntervalRef.current) {
-      clearInterval(priceUpdateIntervalRef.current);
-    }
-    
-    priceUpdateIntervalRef.current = setInterval(() => {
-      if (subscribedSymbolsRef.current.size > 0) {
-        const currentSymbols = Array.from(subscribedSymbolsRef.current);
-        console.log('🔄 Auto-refreshing prices every 6 seconds for:', currentSymbols);
-        fetchPricesHTTP(currentSymbols);
-      }
-    }, 6000); // Update every 6 seconds
+    // No automatic polling - rely on WebSocket real-time updates with intelligent fallback
   }, [connect, fetchPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
@@ -341,12 +452,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }));
     }
 
-    // Clear the interval if no symbols are subscribed
-    if (subscribedSymbolsRef.current.size === 0 && priceUpdateIntervalRef.current) {
-      clearInterval(priceUpdateIntervalRef.current);
-      priceUpdateIntervalRef.current = null;
-      console.log('🔄 Stopped auto-refresh timer - no symbols subscribed');
-    }
+    // No automatic polling to clear - we rely on WebSocket real-time updates
   }, []);
 
   const refreshPrice = useCallback((symbol: string) => {
@@ -373,9 +479,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       if (socketRef.current) {
         socketRef.current.close();
       }
-      if (priceUpdateIntervalRef.current) {
-        clearInterval(priceUpdateIntervalRef.current);
-      }
+      // No polling intervals to clean up
     };
   }, []);
 
@@ -385,6 +489,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     dataSource,
     lastUpdated,
     errors,
+    priceUpdateSources,
     subscribe,
     unsubscribe,
     getPrice,

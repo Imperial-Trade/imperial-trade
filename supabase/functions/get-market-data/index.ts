@@ -37,20 +37,38 @@ interface MarketDataPoint {
   };
 }
 
-// Enhanced universe of 25+ diverse instruments
+// Enhanced universe of 25+ diverse instruments with standardized Gold symbol
 const TRADING_UNIVERSE = {
   stocks: ['TSLA', 'NVDA', 'SPY', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'JPM', 'BAC', 'JNJ', 'PFE', 'XOM', 'CVX'],
   crypto: ['BTC/USD', 'ETH/USD', 'ADA/USD', 'SOL/USD', 'MATIC/USD', 'DOT/USD'],
   forex: ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'NZD/USD'],
-  commodities: ['GOLD', 'SILVER', 'OIL', 'NATURAL_GAS', 'COPPER', 'WHEAT'],
+  commodities: ['XAU/USD', 'SILVER', 'OIL', 'NATURAL_GAS', 'COPPER', 'WHEAT'],
   etfs: ['QQQ', 'IWM', 'DIA', 'VTI', 'GLD', 'USO']
+};
+
+// Symbol mapping for Gold standardization
+const SYMBOL_MAPPING: Record<string, string> = {
+  'GOLD': 'XAU/USD',
+  'XAU/USD': 'XAU/USD',
+  'XAUUSD': 'XAU/USD',
+  'BTC/USD': 'BTC/USD',
+  'BTCUSD': 'BTC/USD'
 };
 
 const ALL_SYMBOLS = Object.values(TRADING_UNIVERSE).flat();
 
-// Enhanced cache with 5-second TTL for real-time performance
-const cache = new Map<string, { data: MarketDataPoint, expires: number }>();
-const CACHE_TTL = 5000; // 5 seconds for real-time data
+// Multi-tier cache: Fast for Gold, priority for alerts, regular for others
+const cache = new Map<string, { data: MarketDataPoint, expires: number, isPriority: boolean }>();
+const GOLD_CACHE_TTL = 2000; // 2 seconds for Gold (XAU/USD) - faster updates
+const PRIORITY_CACHE_TTL = 1000; // 1 second for active alert symbols
+const REGULAR_CACHE_TTL = 30000; // 30 seconds for regular symbols
+
+// High-priority symbols that need faster updates
+const HIGH_PRIORITY_SYMBOLS = new Set(['XAU/USD', 'BTC/USD']);
+
+// Track priority symbols (symbols with active alerts)
+let prioritySymbols = new Set<string>();
+let lastPriorityRefresh = 0;
 
 // Rate limiting with higher quotas for expanded universe
 const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
@@ -78,6 +96,10 @@ function isRateLimited(key: string): boolean {
   return false;
 }
 
+function isPrioritySymbol(symbol: string): boolean {
+  return prioritySymbols.has(symbol);
+}
+
 function getCachedData(symbol: string): MarketDataPoint | null {
   const cached = cache.get(symbol);
   if (cached && Date.now() < cached.expires) {
@@ -87,11 +109,59 @@ function getCachedData(symbol: string): MarketDataPoint | null {
   return null;
 }
 
-function setCachedData(symbol: string, data: MarketDataPoint): void {
+function setCachedData(symbol: string, data: MarketDataPoint, isPriority: boolean = false): void {
+  // Determine cache TTL based on symbol priority
+  let ttl: number;
+  if (symbol === 'XAU/USD') {
+    ttl = GOLD_CACHE_TTL; // 5 seconds for Gold
+  } else if (isPriority) {
+    ttl = PRIORITY_CACHE_TTL; // 1 second for active alerts
+  } else if (HIGH_PRIORITY_SYMBOLS.has(symbol)) {
+    ttl = GOLD_CACHE_TTL; // 5 seconds for high-priority symbols
+  } else {
+    ttl = REGULAR_CACHE_TTL; // 30 seconds for regular symbols
+  }
   cache.set(symbol, {
     data,
-    expires: Date.now() + CACHE_TTL
+    expires: Date.now() + ttl,
+    isPriority
   });
+}
+
+async function refreshPrioritySymbols(): Promise<void> {
+  // Only refresh every 10 seconds to avoid excessive DB calls
+  if (Date.now() - lastPriorityRefresh < 10000) {
+    return;
+  }
+
+  // Always include Gold as priority symbol
+  prioritySymbols.add('XAU/USD');
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      return;
+    }
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/alert_monitoring?select=symbol&is_active=eq.true`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      const activeAlerts = await response.json();
+      prioritySymbols = new Set(activeAlerts.map((alert: any) => alert.symbol));
+      lastPriorityRefresh = Date.now();
+      console.log(`🎯 Priority symbols updated: ${Array.from(prioritySymbols).join(', ')}`);
+    }
+  } catch (error) {
+    console.error('❌ Error refreshing priority symbols:', error);
+  }
 }
 
 function isMarketHours(): boolean {
@@ -168,18 +238,8 @@ async function fetchFromTwelveData(symbol: string, apiKey: string): Promise<Mark
     console.log(`🚀 API FETCH STARTED for symbol: ${symbol}`);
     console.log(`🔑 API Key present: ${apiKey ? 'YES' : 'NO'}`);
     
-    // Enhanced symbol format conversion for Twelve Data API
-    let apiSymbol = symbol.replace('/', '');
-    
-    // Handle special cases for commodities and crypto with better mapping
-    if (symbol === 'GOLD' || symbol === 'XAU/USD') {
-      apiSymbol = 'XAU/USD';
-    } else if (symbol === 'BTC/USD' || symbol === 'BTCUSD' || symbol === 'BTC') {
-      apiSymbol = 'BTC/USD';
-    } else if (symbol.includes('/')) {
-      // Keep forex pairs as-is
-      apiSymbol = symbol;
-    }
+    // Use standardized symbol mapping
+    const apiSymbol = SYMBOL_MAPPING[symbol] || symbol;
     
     console.log(`📡 Making API call for ${symbol} -> ${apiSymbol}`);
     
@@ -251,8 +311,8 @@ function generateEnhancedMockData(symbols: string[]): MarketDataPoint[] {
     // Forex
     'EUR/USD': 1.032, 'GBP/USD': 1.241, 'USD/JPY': 157, 'AUD/USD': 0.618,
     'USD/CAD': 1.412, 'NZD/USD': 0.558,
-    // Commodities - CURRENT GOOGLE FINANCE PRICES
-    'GOLD': 3396.70, 'XAU/USD': 3396.70, 'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
+    // Commodities - CURRENT TRADINGVIEW PRICES
+    'GOLD': 3312.565, 'XAU/USD': 3312.565, 'SILVER': 42.85, 'OIL': 78.5, 'NATURAL_GAS': 3.85,
     'COPPER': 4.55, 'WHEAT': 5.4,
     // ETFs
     'QQQ': 515, 'IWM': 238, 'DIA': 445, 'VTI': 295, 'GLD': 325, 'USO': 85
@@ -308,6 +368,9 @@ serve(async (req) => {
     );
   }
 
+  // Refresh priority symbols for dual-speed caching
+  await refreshPrioritySymbols();
+
   try {
     const { symbols, includeVolume = true, includeTechnicals = true } = await req.json();
     
@@ -354,8 +417,8 @@ serve(async (req) => {
       
       const mockData = generateEnhancedMockData(uncachedSymbols);
       
-      // Cache the mock data
-      mockData.forEach(dataPoint => setCachedData(dataPoint.symbol, dataPoint));
+      // Cache the mock data with priority awareness
+      mockData.forEach(dataPoint => setCachedData(dataPoint.symbol, dataPoint, isPrioritySymbol(dataPoint.symbol)));
 
       return new Response(
         JSON.stringify({ 
@@ -387,14 +450,17 @@ serve(async (req) => {
       const batchResults = await Promise.allSettled(batchPromises);
       
       batchResults.forEach((result, index) => {
+        const symbol = batch[index];
+        const isPriority = isPrioritySymbol(symbol);
+        
         if (result.status === 'fulfilled' && result.value) {
-          setCachedData(result.value.symbol, result.value);
+          setCachedData(result.value.symbol, result.value, isPriority);
           marketData.push(result.value);
+          console.log(`💾 Cached ${symbol} for ${isPriority ? '1 second' : '30 seconds'} (${isPriority ? 'priority' : 'regular'})`);
         } else {
           // Fallback to mock data for failed symbols
-          const symbol = batch[index];
           const mockData = generateEnhancedMockData([symbol])[0];
-          setCachedData(symbol, mockData);
+          setCachedData(symbol, mockData, isPriority);
           marketData.push(mockData);
         }
       });
@@ -405,7 +471,10 @@ serve(async (req) => {
       }
     }
 
-    console.log('Returning enhanced market data for', marketData.length, 'symbols');
+    const prioritySymbolsCount = requestedSymbols.filter(s => isPrioritySymbol(s)).length;
+    const regularSymbolsCount = requestedSymbols.length - prioritySymbolsCount;
+    
+    console.log(`📊 Returning data for ${marketData.length} symbols (${prioritySymbolsCount} priority, ${regularSymbolsCount} regular)`);
 
     return new Response(
       JSON.stringify({ 
@@ -413,6 +482,9 @@ serve(async (req) => {
         dataQuality: apiKey ? 'real_time' : 'simulated',
         marketHours: isMarketHours(),
         totalSymbols: requestedSymbols.length,
+        prioritySymbols: prioritySymbolsCount,
+        regularSymbols: regularSymbolsCount,
+        cacheStrategy: 'dual-speed',
         cacheHitRatio: cachedResults.length / requestedSymbols.length
       }),
       { 

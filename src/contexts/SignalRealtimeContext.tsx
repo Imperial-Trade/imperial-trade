@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { supabase } from '@/integrations/supabase/client';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { useInstantAlerts } from '@/hooks/useInstantAlerts';
 
 interface SignalRealtimeContextType {
   signals: TradeAlertWithProfile[];
@@ -30,6 +31,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
+
+  // Initialize instant alerts for zero-delay notifications
+  useInstantAlerts();
 
   const refreshSignals = useCallback(async () => {
     try {

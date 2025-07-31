@@ -1,6 +1,4 @@
-
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface PriceData {
   symbol: string;
@@ -8,12 +6,14 @@ interface PriceData {
   change: number;
   changePercent: number;
   timestamp: string;
+  bid?: number;
+  ask?: number;
 }
 
 interface ErrorData {
   type: 'error';
   message: string;
-  code: 'API_KEY_MISSING' | 'API_UNAVAILABLE' | 'SYMBOL_UNSUPPORTED' | 'RATE_LIMIT_EXCEEDED';
+  code?: 'API_KEY_MISSING' | 'API_UNAVAILABLE' | 'SYMBOL_UNSUPPORTED' | 'RATE_LIMIT_EXCEEDED';
 }
 
 interface WebSocketContextType {
@@ -55,9 +55,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const reconnectAttemptsRef = useRef(0);
-  const requestDeduplicationRef = useRef<Map<string, Promise<any>>>(new Map());
-  const lastRequestTimeRef = useRef<Map<string, number>>(new Map());
-  const circuitBreakerRef = useRef<{ failures: number, nextAttempt: number }>({ failures: 0, nextAttempt: 0 });
   const websocketHealthRef = useRef<{ lastSuccessfulMessage: number, isHealthy: boolean }>({ lastSuccessfulMessage: 0, isHealthy: false });
 
   const getReconnectDelay = useCallback(() => {
@@ -67,8 +64,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return delay;
   }, []);
 
-  // Remove HTTP fallback - rely on WebSocket streaming only
-
   const connect = useCallback(() => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       return;
@@ -77,9 +72,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     setConnectionStatus('connecting');
     
     try {
-      // Connect to Tradermade streaming WebSocket  
+      // Connect to Tradermade streaming WebSocket
       const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming`;
       console.log('🔌 Connecting to Tradermade WebSocket:', wsUrl);
+      
       socketRef.current = new WebSocket(wsUrl);
 
       socketRef.current.onopen = () => {
@@ -98,7 +94,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         // Immediately subscribe to any pending symbols
         if (subscribedSymbolsRef.current.size > 0) {
           const symbols = Array.from(subscribedSymbolsRef.current);
-          console.log('📡 Subscribing to Tradermade symbols:', symbols);
+          console.log('📡 Subscribing to symbols:', symbols);
           socketRef.current?.send(JSON.stringify({
             action: 'subscribe',
             symbols: symbols
@@ -107,79 +103,70 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       };
 
       socketRef.current.onmessage = (event) => {
+        console.log('📨 Raw WebSocket message:', event.data);
+        
         try {
-          const message = JSON.parse(event.data);
-          console.log('📦 Received WebSocket message:', message);
+          const data = JSON.parse(event.data);
+          console.log('📊 Parsed message:', data);
           
-          if (message.type === 'price_update') {
-            // Handle single symbol updates from Tradermade
-            const priceUpdate: PriceData = {
-              symbol: message.symbol,
-              price: message.price,
-              change: message.change || 0,
-              changePercent: message.changePercent || 0,
-              timestamp: message.timestamp
-            };
+          if (data.type === 'connection_status') {
+            console.log('🔗 Connection status update:', data.status);
+            const status = data.status === 'connected' ? 'connected' : 
+                          data.status === 'connecting' ? 'connecting' : 'disconnected';
+            setConnectionStatus(status);
+            setDataSource(data.dataSource || 'tradermade');
+            return;
+          }
+          
+          if (data.type === 'price_update' && data.symbol && typeof data.price === 'number') {
+            const symbol = data.symbol;
+            console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${data.price}`);
             
-            // Mark WebSocket as healthy
-            websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
-            
-            console.log(`💰 Tradermade Price Update: ${priceUpdate.symbol} = ${priceUpdate.price}`);
+            // Calculate percentage change if we have previous price
+            const prevPrice = prices[symbol]?.price || data.price;
+            const change = data.price - prevPrice;
+            const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
             
             setPrices(prev => ({
               ...prev,
-              [priceUpdate.symbol]: priceUpdate
-            }));
-            
-            // Track data source as WebSocket
-            setPriceUpdateSources(prev => ({
-              ...prev,
-              [priceUpdate.symbol]: 'websocket'
-            }));
-            
-            setDataSource('tradermade');
-            setLastUpdated(new Date(priceUpdate.timestamp));
-            
-            // Clear any previous errors for this symbol
-            setErrors(prev => {
-              const newErrors = { ...prev };
-              delete newErrors[priceUpdate.symbol];
-              return newErrors;
-            });
-            
-          } else if (message.type === 'error') {
-            const errorData = message as ErrorData;
-            console.error('WebSocket price error:', errorData.message);
-            
-            // Special Gold error logging
-            if (errorData.message.includes('XAU/USD') || errorData.message.includes('Gold')) {
-              console.error('🥇 GOLD ERROR:', errorData.message);
-            }
-            
-            // Set global error or symbol-specific error
-            if (errorData.code === 'API_KEY_MISSING') {
-              setDataSource('unavailable');
-              setErrors({ global: errorData.message });
-            } else {
-              // Try to extract symbol from error message
-              const symbolMatch = errorData.message.match(/for (\w+\/\w+)/);
-              if (symbolMatch) {
-                setErrors(prev => ({
-                  ...prev,
-                  [symbolMatch[1]]: errorData.message
-                }));
-              } else {
-                setErrors(prev => ({ ...prev, global: errorData.message }));
+              [symbol]: {
+                symbol: data.symbol,
+                price: data.price,
+                change: data.change || change,
+                changePercent: data.changePercent || changePercent,
+                timestamp: data.timestamp || new Date().toISOString(),
+                bid: data.bid,
+                ask: data.ask
               }
-            }
+            }));
+            
+            setPriceUpdateSources(prev => ({ ...prev, [symbol]: 'websocket' }));
+            setLastUpdated(new Date());
+            websocketHealthRef.current.lastSuccessfulMessage = Date.now();
+            websocketHealthRef.current.isHealthy = true;
+            
+            // Clear any symbol-specific errors
+            setErrors(prev => {
+              const { [symbol]: removed, ...rest } = prev;
+              return rest;
+            });
+          } else if (data.type === 'error') {
+            console.error('❌ WebSocket error message:', data.message);
+            setErrors(prev => ({
+              ...prev,
+              global: data.message || 'WebSocket connection error'
+            }));
+            setConnectionStatus('error');
+          } else {
+            console.log('ℹ️ Unhandled message type:', data.type, data);
           }
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error('❌ Error parsing WebSocket message:', error);
         }
       };
 
-      socketRef.current.onclose = () => {
-        console.log('Tradermade WebSocket disconnected');
+      socketRef.current.onclose = (event) => {
+        console.log(`🔌 WebSocket disconnected: ${event.code} ${event.reason}`);
         setConnectionStatus('disconnected');
         websocketHealthRef.current.isHealthy = false;
         
@@ -187,23 +174,26 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         const delay = getReconnectDelay();
         reconnectAttemptsRef.current++;
         
+        console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
+        
         reconnectTimeoutRef.current = setTimeout(() => {
+          console.log('🔄 Attempting reconnection...');
           connect();
         }, delay);
       };
 
       socketRef.current.onerror = (error) => {
-        console.error('Tradermade WebSocket error:', error);
+        console.error('❌ WebSocket error:', error);
         setConnectionStatus('error');
         websocketHealthRef.current.isHealthy = false;
         reconnectAttemptsRef.current++;
       };
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      console.error('❌ Failed to create WebSocket connection:', error);
       setConnectionStatus('error');
       setDataSource('unavailable');
     }
-  }, [getReconnectDelay]);
+  }, [getReconnectDelay, prices]);
 
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribing to symbols:', symbols);
@@ -237,20 +227,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     validatedSymbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
     
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      console.log('📤 WebSocket ready, sending Tradermade subscription');
+      console.log('📤 WebSocket ready, sending subscription');
       
       socketRef.current.send(JSON.stringify({
         action: 'subscribe',
         symbols: validatedSymbols
       }));
     } else {
-      console.log('🔄 WebSocket not ready, attempting Tradermade connection');
-      
-      // Try WebSocket connection first
+      console.log('🔄 WebSocket not ready, attempting connection');
       connect();
     }
-
-    // Rely on WebSocket real-time updates only
   }, [connect]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
@@ -271,8 +257,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         symbols
       }));
     }
-
-    // No automatic polling to clear - we rely on WebSocket real-time updates
   }, []);
 
   const refreshPrice = useCallback((symbol: string) => {
@@ -299,7 +283,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       if (socketRef.current) {
         socketRef.current.close();
       }
-      // No polling intervals to clean up
     };
   }, []);
 

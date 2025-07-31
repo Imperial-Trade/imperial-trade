@@ -136,6 +136,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log(`📞 Incoming request: ${req.method} from ${req.headers.get('origin')}`);
+  console.log(`📝 Request headers:`, Object.fromEntries(req.headers.entries()));
+
   // Handle HTTP POST requests for direct price fetching
   if (req.method === 'POST') {
     try {
@@ -190,7 +193,10 @@ serve(async (req) => {
   const { headers } = req;
   const upgradeHeader = headers.get("upgrade") || "";
 
+  console.log(`🔌 WebSocket upgrade request: ${upgradeHeader}`);
+
   if (upgradeHeader.toLowerCase() !== "websocket") {
+    console.log(`❌ Expected WebSocket, got: ${upgradeHeader}`);
     return new Response("Expected WebSocket connection", { 
       status: 400,
       headers: corsHeaders 
@@ -360,6 +366,15 @@ serve(async (req) => {
   // Client WebSocket handlers
   socket.onopen = () => {
     console.log('🎯 Client connected to Tradermade streaming');
+    
+    // Immediately send connection status
+    socket.send(JSON.stringify({
+      type: 'connection_status',
+      status: 'connecting',
+      dataSource: 'tradermade',
+      timestamp: new Date().toISOString()
+    }));
+    
     connectToTradermade();
   };
 

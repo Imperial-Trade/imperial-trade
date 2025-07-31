@@ -17,5 +17,8 @@ verify_jwt = false
 [functions.live-price-stream]
 verify_jwt = false
 
+[functions.tradermade-streaming]
+verify_jwt = false
+
 [functions.check-user-existence]
 verify_jwt = false

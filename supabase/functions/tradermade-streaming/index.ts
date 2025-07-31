@@ -133,13 +133,14 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
 }
 
 serve(async (req) => {
+  console.log(`📞 Incoming request: ${req.method} from ${req.headers.get('origin')}`);
+  console.log(`📝 Headers:`, Object.fromEntries(req.headers.entries()));
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('✅ Handling CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
-
-  console.log(`📞 Incoming request: ${req.method} from ${req.headers.get('origin')}`);
-  console.log(`📝 Request headers:`, Object.fromEntries(req.headers.entries()));
 
   // Handle HTTP POST requests for direct price fetching
   if (req.method === 'POST') {

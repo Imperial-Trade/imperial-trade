@@ -78,7 +78,7 @@ const NewSignalPage: React.FC = () => {
       // Convert form data to CreateTradeAlertDto
       const createDto: CreateTradeAlertDto = {
         assetName: data.asset_name,
-        finnhubSymbol: data.finnhub_symbol,
+        tradermadeSymbol: data.tradermade_symbol,
         tradeType: data.trade_type,
         entryPrice: data.entry_price,
         stopLoss: data.stop_loss,

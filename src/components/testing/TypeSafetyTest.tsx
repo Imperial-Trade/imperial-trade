@@ -57,7 +57,7 @@ export const TypeSafetyTest: React.FC<TypeSafetyTestProps> = ({ userId }) => {
     // Test 3: DTO Validation
     const validCreateDto: CreateTradeAlertDto = {
       assetName: 'Bitcoin',
-      finnhubSymbol: 'BTC/USD',
+      tradermadeSymbol: 'BTCUSD',
       tradeType: 'buy',
       entryPrice: 50000,
       stopLoss: 48000,

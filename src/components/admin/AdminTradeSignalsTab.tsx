@@ -79,7 +79,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
       // Create the signal using the trading API service
       const result = await tradingApiService.createAlert({
         assetName: signalData.assetName,
-        finnhubSymbol: signalData.finnhubSymbol,
+        tradermadeSymbol: signalData.tradermadeSymbol,
         tradeType: signalData.tradeType,
         entryPrice: signalData.entryPrice,
         stopLoss: signalData.stopLoss,
@@ -340,7 +340,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       alert={{
                         ...alert,
                         asset_name: alert.assetName,
-                        finnhub_symbol: alert.finnhubSymbol,
+                        tradermade_symbol: alert.tradermadeSymbol,
                         trade_type: alert.tradeType,
                         entry_price: alert.entryPrice,
                         stop_loss: alert.stopLoss,
@@ -382,7 +382,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     alert={{
                       ...alert,
                       asset_name: alert.assetName,
-                      finnhub_symbol: alert.finnhubSymbol,
+                       tradermade_symbol: alert.tradermadeSymbol,
                       trade_type: alert.tradeType,
                       entry_price: alert.entryPrice,
                       stop_loss: alert.stopLoss,
@@ -413,7 +413,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     alert={{
                       ...alert,
                       asset_name: alert.assetName,
-                      finnhub_symbol: alert.finnhubSymbol,
+                      tradermade_symbol: alert.tradermadeSymbol,
                       trade_type: alert.tradeType,
                       entry_price: alert.entryPrice,
                       stop_loss: alert.stopLoss,

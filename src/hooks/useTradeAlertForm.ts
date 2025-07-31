@@ -40,7 +40,7 @@ export function useTradeAlertForm(options: UseTradeAlertFormOptions = {}) {
     resolver: zodResolver(tradeAlertSchema),
     defaultValues: {
       asset_name: '',
-      finnhub_symbol: '',
+      tradermade_symbol: '',
       trade_type: 'buy',
       entry_price: 0,
       stop_loss: 0,

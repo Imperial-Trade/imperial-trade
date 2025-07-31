@@ -10,7 +10,7 @@ export class TradingService {
       id: alert.id,
       userId: alert.userId,
       assetName: alert.assetName,
-      finnhubSymbol: alert.finnhubSymbol,
+      tradermadeSymbol: alert.tradermadeSymbol,
       tradeType: alert.tradeType,
       entryPrice: alert.entryPrice,
       stopLoss: alert.stopLoss,
@@ -34,7 +34,7 @@ export class TradingService {
       id: alert.id,
       userId: alert.userId,
       assetName: alert.assetName,
-      finnhubSymbol: alert.finnhubSymbol,
+      tradermadeSymbol: alert.tradermadeSymbol,
       tradeType: alert.tradeType,
       entryPrice: alert.entryPrice,
       stopLoss: alert.stopLoss,
@@ -57,7 +57,7 @@ export class TradingService {
     if (!dto.assetName?.trim()) {
       throw new Error('Asset name is required');
     }
-    if (!dto.finnhubSymbol?.trim()) {
+    if (!dto.tradermadeSymbol?.trim()) {
       throw new Error('Symbol is required');
     }
     if (dto.entryPrice <= 0) {
@@ -72,7 +72,7 @@ export class TradingService {
       id: alert.id,
       userId: alert.userId,
       assetName: alert.assetName,
-      finnhubSymbol: alert.finnhubSymbol,
+      tradermadeSymbol: alert.tradermadeSymbol,
       tradeType: alert.tradeType,
       entryPrice: alert.entryPrice,
       stopLoss: alert.stopLoss,
@@ -105,7 +105,7 @@ export class TradingService {
       id: alert.id,
       userId: alert.userId,
       assetName: alert.assetName,
-      finnhubSymbol: alert.finnhubSymbol,
+      tradermadeSymbol: alert.tradermadeSymbol,
       tradeType: alert.tradeType,
       entryPrice: alert.entryPrice,
       stopLoss: alert.stopLoss,

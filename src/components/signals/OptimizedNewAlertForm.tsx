@@ -28,7 +28,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   // Form state
   const [formData, setFormData] = useState({
     asset_name: '',
-    finnhub_symbol: '',
+    tradermade_symbol: '',
     trade_type: 'buy' as 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
     entry_price: '',
     stop_loss: '',
@@ -50,14 +50,14 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     setFormData(prev => ({
       ...prev,
       asset_name: asset.name,
-      finnhub_symbol: asset.symbol
+      tradermade_symbol: asset.symbol
     }));
     
     // Clear asset-related errors
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors.asset_name;
-      delete newErrors.finnhub_symbol;
+      delete newErrors.tradermade_symbol;
       return newErrors;
     });
 
@@ -185,7 +185,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     try {
       const submissionData: TradeAlertSubmissionData = {
         asset_name: formData.asset_name,
-        finnhub_symbol: formData.finnhub_symbol,
+        tradermade_symbol: formData.tradermade_symbol,
         trade_type: formData.trade_type,
         entry_price: parseFloat(formData.entry_price),
         stop_loss: parseFloat(formData.stop_loss),
@@ -215,8 +215,8 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       <form onSubmit={handleSubmit} className="w-full space-y-4">
         {/* Asset Selection */}
         <AssetSelector
-          value={formData.finnhub_symbol}
-          onValueChange={(value) => handleInputChange('finnhub_symbol', value)}
+          value={formData.tradermade_symbol}
+          onValueChange={(value) => handleInputChange('tradermade_symbol', value)}
           onAssetChange={handleAssetChange}
         />
         

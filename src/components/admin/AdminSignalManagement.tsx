@@ -129,7 +129,7 @@ export function AdminSignalManagement() {
   const filteredAlerts = useMemo(() => {
     return userAlerts.filter(alert => {
       const matchesSearch = alert.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           alert.finnhubSymbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           alert.tradermadeSymbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            alert.creator?.display_name?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = filterStatus === 'all' || alert.status === filterStatus;
       return matchesSearch && matchesStatus;
@@ -244,7 +244,7 @@ export function AdminSignalManagement() {
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-semibold">{alert.assetName}</h3>
                   <Badge variant="outline" className="text-xs">
-                    {alert.finnhubSymbol}
+                    {alert.tradermadeSymbol}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 mt-1">

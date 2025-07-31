@@ -81,8 +81,10 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
   }
 
   const apiKey = Deno.env.get('TRADERMADE_API_KEY');
+  console.log('🔑 HTTP API Key check:', apiKey ? 'Found' : 'Missing');
+  
   if (!apiKey) {
-    console.error('❌ TRADERMADE_API_KEY not found');
+    console.error('❌ TRADERMADE_API_KEY not found in environment for HTTP request');
     return null;
   }
 
@@ -214,11 +216,13 @@ serve(async (req) => {
   // Connect to Tradermade WebSocket
   async function connectToTradermade() {
     const apiKey = Deno.env.get('TRADERMADE_API_KEY');
+    console.log('🔑 API Key check:', apiKey ? 'Found' : 'Missing');
+    
     if (!apiKey) {
-      console.error('❌ TRADERMADE_API_KEY not found');
+      console.error('❌ TRADERMADE_API_KEY not found in environment');
       socket.send(JSON.stringify({
         type: 'error',
-        message: 'API key not configured',
+        message: 'Tradermade API key not configured',
         timestamp: new Date().toISOString()
       }));
       return;

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle, Target, Activity, ArrowUp, ArrowDown } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { calculatePnL, calculateRiskAmount, getLotSizeSpec } from '@/utils/lotSizing';
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
   if (!symbol) return {
@@ -72,8 +73,111 @@ const LivePriceWidgetComponent = ({
   const [dataAge, setDataAge] = useState('');
   const [prevPrice, setPrevPrice] = useState(0);
   const [priceAnimation, setPriceAnimation] = useState(null);
+  const [calculationFlash, setCalculationFlash] = useState(false);
   const isProcessingRef = useRef(false);
   const lastUpdateRef = useRef(0);
+  const prevRiskRef = useRef(null);
+  
+  // Enhanced live price calculations with the same logic as TradingCalculator
+  const liveCalculations = useMemo(() => {
+    if (!currentPrice || currentPrice <= 0) return null;
+    
+    const isBuy = alert.trade_type.includes('buy');
+    const symbol = alert.tradermade_symbol || alert.asset_name || '';
+    
+    // Calculate pip distances to levels using same logic as TradingCalculator
+    const calculatePipDistance = (fromPrice, toPrice) => {
+      const priceDiff = Math.abs(toPrice - fromPrice);
+      
+      if (symbol.includes('JPY')) {
+        return (priceDiff * 100).toFixed(1); // JPY pairs: 1 pip = 0.01
+      } else if (symbol.includes('USD') && (symbol.includes('XAU') || symbol.includes('GOLD'))) {
+        return (priceDiff * 10).toFixed(1); // Gold: 1 pip = 0.1
+      } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
+        return priceDiff.toFixed(0); // Crypto: 1 pip = 1 point
+      } else {
+        return (priceDiff * 10000).toFixed(1); // Standard forex: 1 pip = 0.0001
+      }
+    };
+    
+    // Calculate price change from entry with direction awareness
+    const priceChangeFromEntry = currentPrice - alert.entry_price;
+    const priceChangePercentage = ((priceChangeFromEntry / alert.entry_price) * 100);
+    const isPriceUp = priceChangeFromEntry > 0;
+    
+    // Distance to Stop Loss
+    const stopLossDistance = calculatePipDistance(currentPrice, alert.stop_loss);
+    
+    // Get available Take Profit levels
+    const takeProfits = [
+      { level: 1, price: alert.tp1 },
+      { level: 2, price: alert.tp2 },
+      { level: 3, price: alert.tp3 },
+      { level: 4, price: alert.tp4 },
+      { level: 5, price: alert.tp5 }
+    ].filter(tp => tp.price && tp.price > 0);
+    
+    // Calculate distance to next TP level
+    const nextTP = takeProfits.find(tp => {
+      if (isBuy) {
+        return currentPrice < tp.price; // Next TP is above current price for buy
+      } else {
+        return currentPrice > tp.price; // Next TP is below current price for sell
+      }
+    });
+    
+    // Risk/Reward calculations for standard position size (0.1 lot)
+    const standardLotSize = 0.1;
+    const currentRisk = alert.status === 'active' 
+      ? calculateRiskAmount(currentPrice, alert.stop_loss, standardLotSize, symbol)
+      : calculateRiskAmount(alert.entry_price, alert.stop_loss, standardLotSize, symbol);
+    
+    // Current P&L for active trades
+    const currentPnL = alert.status === 'active' 
+      ? calculatePnL(alert.entry_price, currentPrice, standardLotSize, symbol)
+      : 0;
+    
+    // Potential rewards to each TP level from current price
+    const rewards = takeProfits.map(tp => {
+      const basePrice = alert.status === 'pending' ? alert.entry_price : currentPrice;
+      const totalReward = calculatePnL(basePrice, tp.price, standardLotSize, symbol);
+      const rewardRiskRatio = currentRisk > 0 ? Math.abs(totalReward) / currentRisk : 0;
+      const distance = calculatePipDistance(currentPrice, tp.price);
+      
+      return {
+        level: tp.level,
+        price: tp.price,
+        usd: Math.abs(totalReward),
+        ratio: rewardRiskRatio,
+        distance: distance
+      };
+    });
+    
+    return {
+      priceChangeFromEntry,
+      priceChangePercentage,
+      isPriceUp,
+      stopLossDistance,
+      nextTP,
+      currentRisk,
+      currentPnL,
+      rewards,
+      isCurrentlyProfit: currentPnL > 0,
+      calculatePipDistance
+    };
+  }, [currentPrice, alert]);
+  
+  // Flash effect for risk changes
+  useEffect(() => {
+    if (liveCalculations && prevRiskRef.current !== null && prevRiskRef.current !== liveCalculations.currentRisk) {
+      setCalculationFlash(true);
+      const timer = setTimeout(() => setCalculationFlash(false), 400);
+      return () => clearTimeout(timer);
+    }
+    if (liveCalculations) {
+      prevRiskRef.current = liveCalculations.currentRisk;
+    }
+  }, [liveCalculations]);
 
   // Update data age every second
   useEffect(() => {
@@ -666,6 +770,134 @@ const LivePriceWidgetComponent = ({
                 <div className="text-xs">
                   ({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
                 </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Enhanced Live Risk Analysis & Distance to Levels Display */}
+      {liveCalculations && (
+        <div className={`bg-gray-800/50 rounded-md p-3 border transition-all duration-300 mb-3 ${
+          calculationFlash ? 'border-emerald-400 bg-emerald-900/20' : 'border-gray-700'
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm font-medium text-gray-300">Live Market Analysis</span>
+              <Badge variant="outline" className="text-xs px-1 py-0 text-emerald-400 border-emerald-600">
+                Real-time
+              </Badge>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              <RefreshCw className="w-3 h-3" />
+              Live Updates
+            </div>
+          </div>
+          
+          {/* Price Change from Entry with Enhanced Visualization */}
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <div className="text-xs text-gray-400 mb-1">Change from Entry</div>
+              <div className="flex items-center gap-2">
+                <span className={`text-lg font-bold transition-colors duration-300 ${
+                  liveCalculations.isPriceUp ? 'text-emerald-400' : 'text-red-400'
+                }`}>
+                  {liveCalculations.isPriceUp ? '+' : ''}{liveCalculations.priceChangeFromEntry.toFixed(alert.tradermade_symbol?.includes('JPY') ? 3 : 5)}
+                </span>
+                <div className={`flex items-center gap-1 ${liveCalculations.isPriceUp ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {liveCalculations.isPriceUp ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                  <span className="text-xs font-medium">
+                    ({liveCalculations.isPriceUp ? '+' : ''}{liveCalculations.priceChangePercentage.toFixed(2)}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Current P&L for Active Trades */}
+            {alert.status === 'active' && (
+              <div>
+                <div className="text-xs text-gray-400 mb-1">Current P&L (0.1 lot)</div>
+                <div className={`transition-all duration-400 ${
+                  calculationFlash 
+                    ? (liveCalculations.isCurrentlyProfit ? 'scale-105 text-emerald-300' : 'scale-105 text-red-300')
+                    : (liveCalculations.isCurrentlyProfit ? 'text-emerald-400' : 'text-red-400')
+                }`}>
+                  <div className="text-lg font-bold">
+                    ${Math.abs(liveCalculations.currentPnL).toFixed(2)}
+                  </div>
+                  <div className="text-xs">
+                    {liveCalculations.isCurrentlyProfit ? 'Profit' : 'Loss'}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Distance to Levels (Pips) - Enhanced */}
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-gray-300 flex items-center gap-1">
+              <Target className="w-3 h-3" />
+              Distance to Levels (Pips)
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-red-900/30 rounded px-2 py-1 border border-red-700/50">
+                <div className="text-red-300 font-medium">Stop Loss</div>
+                <div className="text-white font-bold">{liveCalculations.stopLossDistance} pips</div>
+                <div className="text-red-400 text-xs">${alert.stop_loss.toFixed(alert.tradermade_symbol?.includes('JPY') ? 3 : 5)}</div>
+              </div>
+              {liveCalculations.nextTP && (
+                <div className="bg-emerald-900/30 rounded px-2 py-1 border border-emerald-700/50">
+                  <div className="text-emerald-300 font-medium">Next TP{liveCalculations.nextTP.level}</div>
+                  <div className="text-white font-bold">{liveCalculations.calculatePipDistance(currentPrice, liveCalculations.nextTP.price)} pips</div>
+                  <div className="text-emerald-400 text-xs">${liveCalculations.nextTP.price.toFixed(alert.tradermade_symbol?.includes('JPY') ? 3 : 5)}</div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Live Risk Analysis */}
+          <div className="mt-3 p-2 bg-red-900/20 rounded border border-red-700/50">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="w-3 h-3 text-red-400" />
+              <span className="text-xs font-medium text-red-300">Live Risk (0.1 lot)</span>
+            </div>
+            <div className="text-red-300 font-bold">
+              ${liveCalculations.currentRisk.toFixed(2)}
+            </div>
+            <div className="text-xs text-gray-400">
+              Based on {alert.status === 'pending' ? 'entry price' : 'current price'}
+            </div>
+          </div>
+          
+          {/* Live Reward Targets */}
+          {liveCalculations.rewards.length > 0 && (
+            <div className="mt-3 p-2 bg-emerald-900/20 rounded border border-emerald-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-3 h-3 text-emerald-400" />
+                <span className="text-xs font-medium text-emerald-300">Live Reward Targets (0.1 lot)</span>
+              </div>
+              <div className="space-y-1">
+                {liveCalculations.rewards.slice(0, 2).map((reward, index) => (
+                  <div key={index} className="flex justify-between items-center text-xs">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-emerald-400 border-emerald-600 px-1 py-0 text-xs">
+                        TP{reward.level}
+                      </Badge>
+                      <span className="text-gray-400">
+                        {reward.distance} pips
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-emerald-300">
+                        ${reward.usd.toFixed(2)}
+                      </div>
+                      <div className="text-emerald-400">
+                        {reward.ratio.toFixed(1)}:1 R:R
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,14 +7,49 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass } from 'lucide-react';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
 
+// Enhanced pip value calculator
+const calculatePipValue = (symbol, lotSize = 0.01) => {
+  const upperSymbol = (symbol || '').toUpperCase();
+  
+  if (upperSymbol.includes('JPY')) {
+    // JPY pairs: 1 pip = 0.01, so for 0.01 lots (1,000 units) = $0.10 per pip
+    return (lotSize * 100000 * 0.01) / 150; // Approximate USD/JPY rate
+  } else if (upperSymbol.startsWith('XAU')) {
+    // Gold: 1 pip = 0.1, so for 0.01 lots = $1 per pip
+    return lotSize * 100 * 0.1;
+  } else if (upperSymbol.startsWith('BTC')) {
+    // Bitcoin: Direct price movement
+    return lotSize;
+  } else {
+    // Standard forex: 1 pip = 0.0001, so for 0.01 lots = $1 per pip
+    return lotSize * 100000 * 0.0001;
+  }
+};
+
+// Calculate pips between two prices
+const calculatePipsBetweenPrices = (price1, price2, symbol) => {
+  const difference = Math.abs(price2 - price1);
+  const upperSymbol = (symbol || '').toUpperCase();
+  
+  if (upperSymbol.includes('JPY')) {
+    return difference / 0.01;
+  } else if (upperSymbol.startsWith('XAU')) {
+    return difference / 0.1;
+  } else if (upperSymbol.startsWith('BTC')) {
+    return difference; // Points for crypto
+  } else {
+    return difference / 0.0001;
+  }
+};
+
 export default function TradingCalculator({ alert, livePrice }) {
-  const [accountBalance, setAccountBalance] = useState('');
-  const [lotSize, setLotSize] = useState('');
+  const [accountBalance, setAccountBalance] = useState('10000');
+  const [lotSize, setLotSize] = useState('0.01');
   
   const isPending = alert.status === 'pending';
   
-  // Calculate maximum lot size based on both margin requirements AND risk limit
-  const maxLotSizeByMargin = useMemo(() => {
+  // Enhanced max lot size calculation with proper risk management
+  const maxLotSizeByRisk = useMemo(() => {
     const balance = parseFloat(accountBalance) || 0;
     const entryPrice = alert.entry_price || 0;
     const stopLoss = alert.stop_loss || 0;
@@ -21,35 +57,31 @@ export default function TradingCalculator({ alert, livePrice }) {
     
     if (!balance || !entryPrice || !stopLoss || !symbol) return null;
     
-    // Handle livePrice - use current price for active trades, entry price for pending
+    // Use current price for active trades, entry price for pending orders
     const currentPrice = typeof livePrice === 'number' && livePrice > 0 
       ? livePrice 
       : (livePrice?.price && livePrice.price > 0 ? livePrice.price : entryPrice);
     
-    // Use current price for active trades, entry price for pending orders
     const basePrice = isPending ? entryPrice : currentPrice;
     
-    // Calculate max lot size based on risk (100% of account balance)
-    const maxRiskAmount = balance; // Use 100% of account as max risk
+    // Calculate max risk (2% of account balance for conservative trading)
+    const maxRiskAmount = balance * 0.02;
     const maxLotsByRisk = calculatePositionSize(maxRiskAmount, basePrice, stopLoss, symbol);
     
-    // Return the risk-based limit (this ensures risk never exceeds account balance)
-    return Math.max(0.01, maxLotsByRisk); // Minimum 0.01 lots
+    return Math.max(0.01, Math.min(maxLotsByRisk, balance * 0.001)); // Cap at reasonable maximum
   }, [accountBalance, alert, livePrice, isPending]);
 
-  // Prevent scroll wheel from changing number inputs
   const handleNumberInputWheel = (e) => {
     e.target.blur();
   };
 
-  // Calculate all trading metrics in real-time
+  // Enhanced calculations with pip-based logic
   const calculations = useMemo(() => {
     const balance = parseFloat(accountBalance) || 0;
     const lots = parseFloat(lotSize) || 0;
     const entryPrice = alert.entry_price || 0;
     const stopLoss = alert.stop_loss || 0;
     
-    // Handle livePrice - it can be a number or an object with price property
     const currentPrice = typeof livePrice === 'number' && livePrice > 0 
       ? livePrice 
       : (livePrice?.price && livePrice.price > 0 ? livePrice.price : entryPrice);
@@ -61,14 +93,19 @@ export default function TradingCalculator({ alert, livePrice }) {
     const isBuy = alert.trade_type.includes('buy');
     const symbol = alert.tradermade_symbol || alert.asset_name || '';
     
-    // Calculate risk using current price for active trades, entry price for pending orders
+    // Calculate risk using appropriate base price
     const riskBasePrice = isPending ? entryPrice : currentPrice;
     const totalRisk = calculateRiskAmount(riskBasePrice, stopLoss, lots, symbol);
     const riskPercentage = (totalRisk / balance) * 100;
 
-    // Calculate current P&L using proper lot sizing mechanics
+    // Calculate current P&L
     const currentPnL = calculatePnL(entryPrice, currentPrice, lots, symbol);
     const currentPnLPercentage = (currentPnL / balance) * 100;
+
+    // Calculate pip values and distances
+    const pipValue = calculatePipValue(symbol, lots);
+    const riskInPips = calculatePipsBetweenPrices(riskBasePrice, stopLoss, symbol);
+    const currentPnLInPips = calculatePipsBetweenPrices(entryPrice, currentPrice, symbol);
 
     // Calculate potential rewards for each TP level
     const takeProfits = [
@@ -80,16 +117,16 @@ export default function TradingCalculator({ alert, livePrice }) {
     ].filter(tp => tp.price && tp.price > 0);
 
     const rewards = takeProfits.map(tp => {
-      // For reward calculation: 
-      // - Pending orders: Calculate from entry price to TP (potential reward if entered)
-      // - Active trades: Calculate from CURRENT price to TP (reward from current position)
       const basePrice = isPending ? entryPrice : currentPrice;
       const totalReward = calculatePnL(basePrice, tp.price, lots, symbol);
+      const rewardInPips = calculatePipsBetweenPrices(basePrice, tp.price, symbol);
       const rewardRiskRatio = totalRisk > 0 ? Math.abs(totalReward) / totalRisk : 0;
+      
       return {
         level: tp.level,
         price: tp.price,
         usd: Math.abs(totalReward),
+        pips: rewardInPips,
         ratio: rewardRiskRatio
       };
     });
@@ -97,12 +134,15 @@ export default function TradingCalculator({ alert, livePrice }) {
     return {
       totalRisk,
       riskPercentage,
+      riskInPips,
       currentPnL,
       currentPnLPercentage,
+      currentPnLInPips,
+      pipValue,
       rewards,
       isCurrentlyProfit: currentPnL > 0
     };
-  }, [accountBalance, lotSize, alert, livePrice]);
+  }, [accountBalance, lotSize, alert, livePrice, isPending]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
@@ -111,6 +151,14 @@ export default function TradingCalculator({ alert, livePrice }) {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(value);
+  };
+
+  const formatPips = (pips, symbol) => {
+    const upperSymbol = (symbol || '').toUpperCase();
+    if (upperSymbol.startsWith('BTC')) {
+      return `${pips.toFixed(0)} pts`;
+    }
+    return `${pips.toFixed(1)} pips`;
   };
 
   const formatPercentage = (value) => {
@@ -131,7 +179,7 @@ export default function TradingCalculator({ alert, livePrice }) {
         {/* Input Fields */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label className="text-xs text-gray-400">Account Balance</Label>
+            <Label className="text-xs text-gray-400">Account Balance ($)</Label>
             <Input
               type="number"
               step="any"
@@ -144,68 +192,79 @@ export default function TradingCalculator({ alert, livePrice }) {
           </div>
           <div className="space-y-2">
             <Label className="text-xs text-gray-400">
-              Position Size 
-              {maxLotSizeByMargin && (
+              Position Size (lots)
+              {maxLotSizeByRisk && (
                 <span className="ml-2 text-xs text-emerald-400">
-                  Max: {maxLotSizeByMargin.toFixed(2)}
+                  Max: {maxLotSizeByRisk.toFixed(3)}
                 </span>
               )}
             </Label>
             <Input
               type="number"
-              step="any"
-              placeholder="0.1"
+              step="0.001"
+              placeholder="0.01"
               value={lotSize}
-              max={maxLotSizeByMargin || undefined}
+              max={maxLotSizeByRisk || undefined}
               onChange={(e) => {
                 const inputValue = e.target.value;
                 const numValue = parseFloat(inputValue);
                 
-                // Prevent input if exceeding margin limit
-                if (maxLotSizeByMargin && numValue > maxLotSizeByMargin) {
-                  // Don't allow the input - enforce hard limit
+                if (maxLotSizeByRisk && numValue > maxLotSizeByRisk) {
                   return;
                 }
                 setLotSize(inputValue);
               }}
               onWheel={handleNumberInputWheel}
               className={`bg-gray-800 border-gray-600 text-white h-8 text-sm ${
-                maxLotSizeByMargin && parseFloat(lotSize) > maxLotSizeByMargin 
+                maxLotSizeByRisk && parseFloat(lotSize) > maxLotSizeByRisk 
                   ? 'border-red-500 ring-1 ring-red-500' 
                   : ''
               }`}
             />
-            {maxLotSizeByMargin && parseFloat(lotSize) > maxLotSizeByMargin && (
-              <div className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" />
-                Position size exceeds margin limit (100% margin used)
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Live Price & P&L Display (Only for Active Trades) */}
-        {livePrice && !isPending && (
+        {/* Live P&L Display (Only for Active Trades) */}
+        {livePrice && !isPending && calculations && (
           <div className="bg-gray-800/50 rounded-md p-3 border border-gray-700">
-            {/* Current price calculation kept for reward target mechanics but not displayed */}
-            {/* Current P&L calculation kept for reward target mechanics but not displayed */}
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-4 h-4 text-blue-400" />
+              <span className="text-sm font-medium text-blue-300">Current P&L</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <div className="text-gray-400">USD P&L</div>
+                <div className={`font-bold ${calculations.isCurrentlyProfit ? 'text-emerald-300' : 'text-red-300'}`}>
+                  {formatCurrency(calculations.currentPnL)}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-400">Pip P&L</div>
+                <div className={`font-bold ${calculations.isCurrentlyProfit ? 'text-emerald-300' : 'text-red-300'}`}>
+                  {calculations.isCurrentlyProfit ? '+' : ''}{formatPips(calculations.currentPnLInPips, alert.tradermade_symbol)}
+                </div>
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-gray-400">
+              Pip Value: {formatCurrency(calculations.pipValue)} per pip
+            </div>
           </div>
         )}
         
         {/* Pending Order Notice */}
         {isPending && (
-             <div className="bg-amber-900/20 rounded-md p-3 border border-amber-700/50 text-center">
-                <div className="flex items-center justify-center gap-2 text-amber-300 font-medium">
-                    <Hourglass className="w-4 h-4"/>
-                    <span>Pending Order Calculation</span>
-                </div>
-                <p className="text-xs text-gray-400 mt-1">
-                    Risk/Reward is based on the limit price of <span className="font-bold text-white">${alert.entry_price.toFixed(2)}</span>.
-                </p>
+          <div className="bg-amber-900/20 rounded-md p-3 border border-amber-700/50 text-center">
+            <div className="flex items-center justify-center gap-2 text-amber-300 font-medium">
+              <Hourglass className="w-4 h-4"/>
+              <span>Pending Order Calculation</span>
             </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Risk/Reward based on limit price: <span className="font-bold text-white">${alert.entry_price.toFixed(2)}</span>
+            </p>
+          </div>
         )}
 
-        {/* Calculations Display (Risk/Reward) */}
+        {/* Calculations Display */}
         {calculations ? (
           <div className="space-y-3">
             {/* Risk Analysis */}
@@ -222,15 +281,21 @@ export default function TradingCalculator({ alert, livePrice }) {
                   </div>
                 </div>
                 <div>
-                  <div className="text-gray-400">Risk of Account</div>
-                  <div className={`font-bold ${calculations.riskPercentage > 5 ? 'text-red-400' : 'text-yellow-400'}`}>
-                    {calculations.riskPercentage.toFixed(2)}%
+                  <div className="text-gray-400">Risk (Pips)</div>
+                  <div className="font-bold text-red-300">
+                    {formatPips(calculations.riskInPips, alert.tradermade_symbol)}
                   </div>
                 </div>
               </div>
-              {calculations.riskPercentage > 5 && (
+              <div className="mt-2 text-xs">
+                <span className="text-gray-400">Account Risk: </span>
+                <span className={`font-bold ${calculations.riskPercentage > 2 ? 'text-red-400' : 'text-yellow-400'}`}>
+                  {calculations.riskPercentage.toFixed(2)}%
+                </span>
+              </div>
+              {calculations.riskPercentage > 2 && (
                 <div className="mt-2 text-xs text-red-300 bg-red-900/30 p-2 rounded border border-red-700">
-                  ⚠️ High Risk Warning: Risking more than 5% of account
+                  ⚠️ High Risk: Consider reducing position size (recommended max: 2%)
                 </div>
               )}
             </div>
@@ -258,7 +323,7 @@ export default function TradingCalculator({ alert, livePrice }) {
                           {formatCurrency(reward.usd)}
                         </div>
                         <div className="text-emerald-400">
-                          {reward.ratio.toFixed(1)}:1 R:R
+                          {formatPips(reward.pips, alert.tradermade_symbol)} • {reward.ratio.toFixed(1)}:1
                         </div>
                       </div>
                     </div>
@@ -266,10 +331,32 @@ export default function TradingCalculator({ alert, livePrice }) {
                 </div>
               </div>
             )}
+
+            {/* Pip Value Information */}
+            <div className="bg-blue-900/20 rounded-md p-3 border border-blue-700/50">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="w-4 h-4 text-blue-400" />
+                <span className="text-sm font-medium text-blue-300">Position Details</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <div className="text-gray-400">Pip Value</div>
+                  <div className="font-bold text-blue-300">
+                    {formatCurrency(calculations.pipValue)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-gray-400">Position Size</div>
+                  <div className="font-bold text-blue-300">
+                    {formatLotSize(parseFloat(lotSize), alert.tradermade_symbol)}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="text-center py-4 text-gray-500 text-sm">
-            Enter your account balance and position size to see calculations
+            Enter your account balance and position size to see pip-based calculations
           </div>
         )}
       </CardContent>

@@ -73,7 +73,7 @@ function isRateLimited(): boolean {
   return globalRateLimitCount >= RATE_LIMIT_PER_MINUTE;
 }
 
-// Fetch price from Tradermade HTTP API
+// Fetch price from Tradermade HTTP API with better error handling
 async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData | null> {
   if (isRateLimited()) {
     console.log('⚠️ Rate limited - using cached data');
@@ -81,53 +81,72 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
   }
 
   const apiKey = Deno.env.get('TRADERMADE_API_KEY');
-  console.log('🔑 HTTP API Key check:', apiKey ? 'Found' : 'Missing');
+  console.log('🔑 HTTP API Key check:', apiKey ? `Found (${apiKey.substring(0, 8)}...)` : 'Missing');
   
   if (!apiKey) {
     console.error('❌ TRADERMADE_API_KEY not found in environment for HTTP request');
-    return null;
+    return getCachedPrice(symbol) || {
+      symbol,
+      price: 0,
+      bid: 0,
+      ask: 0,
+      timestamp: new Date().toISOString(),
+      change: 0,
+      changePercent: 0
+    };
   }
 
   try {
     globalRateLimitCount++;
     
     const url = `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${apiKey}`;
-    console.log(`🔄 Fetching HTTP price for ${symbol}`);
+    console.log(`🔄 Fetching HTTP price for ${symbol} from:`, url);
     
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'User-Agent': 'Supabase-Edge-Function'
       },
+      timeout: 10000 // 10 second timeout
     });
 
     if (!response.ok) {
-      console.error(`❌ HTTP request failed: ${response.status} ${response.statusText}`);
+      console.error(`❌ HTTP request failed for ${symbol}: ${response.status} ${response.statusText}`);
+      const errorText = await response.text().catch(() => 'No response body');
+      console.error(`Response body:`, errorText);
       return getCachedPrice(symbol);
     }
 
     const data = await response.json();
-    console.log(`📦 Tradermade HTTP response for ${symbol}:`, data);
+    console.log(`✅ Tradermade HTTP response for ${symbol}:`, JSON.stringify(data, null, 2));
 
-    if (data.quotes && data.quotes.length > 0) {
+    if (data.quotes && Array.isArray(data.quotes) && data.quotes.length > 0) {
       const quote = data.quotes[0];
-      const priceData: TradermadePriceData = {
-        symbol: symbol,
-        price: quote.mid || quote.ask || quote.bid || 0,
-        bid: quote.bid,
-        ask: quote.ask,
-        timestamp: new Date().toISOString(),
-        change: 0, // Will calculate later
-        changePercent: 0
-      };
+      const mid = quote.mid || (quote.bid && quote.ask ? (quote.bid + quote.ask) / 2 : null);
+      const price = mid || quote.ask || quote.bid || 0;
+      
+      if (price > 0) {
+        const priceData: TradermadePriceData = {
+          symbol: symbol,
+          price: price,
+          bid: quote.bid || price,
+          ask: quote.ask || price,
+          timestamp: new Date().toISOString(),
+          change: 0,
+          changePercent: 0
+        };
 
-      setCachedPrice(symbol, priceData);
-      return priceData;
+        setCachedPrice(symbol, priceData);
+        console.log(`💰 Cached price for ${symbol}: $${price}`);
+        return priceData;
+      }
     }
 
+    console.warn(`⚠️ No valid price data for ${symbol} in response:`, data);
     return getCachedPrice(symbol);
   } catch (error) {
-    console.error(`❌ Error fetching price for ${symbol}:`, error);
+    console.error(`❌ Error fetching price for ${symbol}:`, error.message || error);
     return getCachedPrice(symbol);
   }
 }
@@ -196,10 +215,11 @@ serve(async (req) => {
   const { headers } = req;
   const upgradeHeader = headers.get("upgrade") || "";
 
-  console.log(`🔌 WebSocket upgrade request: ${upgradeHeader}`);
+  console.log(`🔌 WebSocket upgrade request: "${upgradeHeader}"`);
+  console.log(`📋 All headers:`, Object.fromEntries(headers.entries()));
 
   if (upgradeHeader.toLowerCase() !== "websocket") {
-    console.log(`❌ Expected WebSocket, got: ${upgradeHeader}`);
+    console.error(`❌ Expected WebSocket upgrade, got: "${upgradeHeader}"`);
     return new Response("Expected WebSocket connection", { 
       status: 400,
       headers: corsHeaders 
@@ -214,25 +234,38 @@ serve(async (req) => {
   let heartbeatInterval: number | null = null;
   let connectionHealthy = true;
 
-  // Connect to Tradermade WebSocket
+  // Connect to Tradermade WebSocket with enhanced error handling
   async function connectToTradermade() {
     const apiKey = Deno.env.get('TRADERMADE_API_KEY');
-    console.log('🔑 API Key check:', apiKey ? `Found (${apiKey.substring(0, 8)}...)` : 'Missing');
+    console.log('🔑 WebSocket API Key check:', apiKey ? `Found (${apiKey.substring(0, 8)}...)` : 'Missing');
     
     if (!apiKey) {
       console.error('❌ TRADERMADE_API_KEY not found in environment');
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type: 'error',
-          message: 'Tradermade API key not configured',
+          message: 'Tradermade API key not configured - please check environment variables',
           timestamp: new Date().toISOString()
         }));
+      }
+      
+      // Fall back to HTTP API for all symbols
+      console.log('🔄 Falling back to HTTP API due to missing API key...');
+      for (const symbol of TRADERMADE_SYMBOLS) {
+        fetchTradermadePrice(symbol).then(data => {
+          if (data && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'price_update',
+              ...data
+            }));
+          }
+        });
       }
       return;
     }
 
     try {
-      console.log('🔌 Connecting to Tradermade WebSocket...');
+      console.log('🔌 Connecting to Tradermade WebSocket with API key...');
       tradermadeSocket = new WebSocket(`wss://marketdata.tradermade.com/feedadv`);
 
       tradermadeSocket.onopen = () => {
@@ -282,20 +315,37 @@ serve(async (req) => {
       tradermadeSocket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('📊 Received from Tradermade:', data);
+          console.log('📊 Raw Tradermade message:', event.data);
+          console.log('📊 Parsed Tradermade data:', JSON.stringify(data, null, 2));
 
           // Handle authentication response
-          if (data.message && data.message.includes('connected')) {
+          if (data.message && (data.message.includes('connected') || data.message.includes('Connected'))) {
             console.log('✅ Tradermade authentication successful');
             return;
           }
 
-          // Handle different message types - handle both single quote object and array
-          if (data.symbol && (data.bid || data.ask || data.price)) {
-            const symbol = data.symbol.toUpperCase();
-            const price = data.mid || data.price || (data.bid && data.ask ? (data.bid + data.ask) / 2 : data.bid || data.ask);
+          // Handle heartbeat/ping responses
+          if (data.type === 'pong' || data.message === 'pong') {
+            console.log('💓 Heartbeat response from Tradermade');
+            return;
+          }
+
+          // Handle price updates - support multiple formats
+          let symbol = data.symbol || data.instrument;
+          if (symbol && (data.bid || data.ask || data.price || data.mid)) {
+            symbol = symbol.toUpperCase();
             
-            if (!price || price <= 0) {
+            // Calculate mid price from available data
+            let price = data.mid || data.price;
+            if (!price && data.bid && data.ask) {
+              price = (parseFloat(data.bid) + parseFloat(data.ask)) / 2;
+            } else if (!price) {
+              price = data.bid || data.ask;
+            }
+            
+            price = parseFloat(price);
+            
+            if (!price || price <= 0 || isNaN(price)) {
               console.log(`⚠️ Invalid price data for ${symbol}:`, data);
               return;
             }
@@ -303,8 +353,8 @@ serve(async (req) => {
             const priceUpdate: TradermadePriceData = {
               symbol: symbol,
               price: price,
-              bid: data.bid,
-              ask: data.ask,
+              bid: data.bid ? parseFloat(data.bid) : price,
+              ask: data.ask ? parseFloat(data.ask) : price,
               timestamp: new Date().toISOString(),
               change: 0,
               changePercent: 0
@@ -315,17 +365,18 @@ serve(async (req) => {
 
             // Send to client if subscribed
             if (clientSubscriptions.has(symbol) && socket.readyState === WebSocket.OPEN) {
-              console.log(`💰 LIVE PRICE UPDATE for: ${symbol} Price: ${price}`);
+              console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${price}`);
               socket.send(JSON.stringify({
                 type: 'price_update',
                 ...priceUpdate
               }));
             }
           } else {
-            console.log('ℹ️ Non-price message from Tradermade:', data);
+            console.log('ℹ️ Non-price message from Tradermade:', JSON.stringify(data));
           }
         } catch (error) {
-          console.error('❌ Error parsing Tradermade message:', error);
+          console.error('❌ Error parsing Tradermade message:', error.message || error);
+          console.error('❌ Raw message data:', event.data);
         }
       };
 
@@ -359,26 +410,51 @@ serve(async (req) => {
       };
 
       tradermadeSocket.onerror = (error) => {
-        console.error('❌ Tradermade WebSocket error:', error);
+        console.error('❌ Tradermade WebSocket error:', error.message || error);
+        console.error('❌ WebSocket error details:', {
+          readyState: tradermadeSocket?.readyState,
+          url: tradermadeSocket?.url
+        });
         connectionHealthy = false;
+        
+        // Notify client of error
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Tradermade WebSocket connection error',
+            timestamp: new Date().toISOString()
+          }));
+        }
       };
 
     } catch (error) {
-      console.error('❌ Error connecting to Tradermade:', error);
+      console.error('❌ Error connecting to Tradermade:', error.message || error);
+      connectionHealthy = false;
       
-      // Fall back to HTTP for initial data
-      if (clientSubscriptions.size > 0) {
-        console.log('📡 Falling back to HTTP API...');
-        for (const symbol of clientSubscriptions) {
-          fetchTradermadePrice(symbol).then(data => {
-            if (data && socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({
-                type: 'price_update',
-                ...data
-              }));
-            }
-          });
-        }
+      // Notify client of connection error
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: 'error',
+          message: 'Failed to establish Tradermade connection',
+          timestamp: new Date().toISOString()
+        }));
+      }
+      
+      // Fall back to HTTP for all symbols
+      console.log('📡 Falling back to HTTP API for all symbols...');
+      const symbolsToFetch = clientSubscriptions.size > 0 ? Array.from(clientSubscriptions) : TRADERMADE_SYMBOLS;
+      
+      for (const symbol of symbolsToFetch) {
+        fetchTradermadePrice(symbol).then(data => {
+          if (data && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'price_update',
+              ...data
+            }));
+          }
+        }).catch(err => {
+          console.error(`Failed to fetch HTTP price for ${symbol}:`, err);
+        });
       }
     }
   }
@@ -469,7 +545,11 @@ serve(async (req) => {
   };
 
   socket.onerror = (error) => {
-    console.error('❌ Client WebSocket error:', error);
+    console.error('❌ Client WebSocket error:', error.message || error);
+    console.error('❌ Client socket details:', {
+      readyState: socket.readyState,
+      url: socket.url
+    });
   };
 
   return response;

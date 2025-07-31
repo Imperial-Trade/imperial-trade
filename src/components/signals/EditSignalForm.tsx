@@ -114,7 +114,7 @@ export default function EditSignalForm({ alert, onSubmit, onCancel }: EditSignal
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
             <p className="text-gray-400">Symbol</p>
-            <p className="text-white font-mono">{alert.finnhubSymbol}</p>
+            <p className="text-white font-mono">{alert.tradermadeSymbol}</p>
           </div>
           <div>
             <p className="text-gray-400">Trade Type</p>

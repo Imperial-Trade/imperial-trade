@@ -17,7 +17,7 @@ export default function TradingCalculator({ alert, livePrice }) {
     const balance = parseFloat(accountBalance) || 0;
     const entryPrice = alert.entry_price || 0;
     const stopLoss = alert.stop_loss || 0;
-    const symbol = alert.finnhub_symbol || alert.asset_name || '';
+    const symbol = alert.tradermade_symbol || alert.asset_name || '';
     
     if (!balance || !entryPrice || !stopLoss || !symbol) return null;
     
@@ -59,7 +59,7 @@ export default function TradingCalculator({ alert, livePrice }) {
     }
 
     const isBuy = alert.trade_type.includes('buy');
-    const symbol = alert.finnhub_symbol || alert.asset_name || '';
+    const symbol = alert.tradermade_symbol || alert.asset_name || '';
     
     // Calculate risk using current price for active trades, entry price for pending orders
     const riskBasePrice = isPending ? entryPrice : currentPrice;

@@ -36,7 +36,7 @@ describe('useOptimizedTrading', () => {
     {
       id: '1',
       assetName: 'AAPL',
-      finnhubSymbol: 'AAPL',
+      tradermadeSymbol: 'AAPL',
       tradeType: 'buy' as const,
       entryPrice: 150.00,
       stopLoss: 145.00,
@@ -100,7 +100,7 @@ describe('useOptimizedTrading', () => {
       {
         id: '2',
         assetName: 'TSLA',
-        finnhubSymbol: 'TSLA',
+        tradermadeSymbol: 'TSLA',
         tradeType: 'sell' as const,
         entryPrice: 200.00,
         stopLoss: 205.00,

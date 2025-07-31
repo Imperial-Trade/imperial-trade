@@ -581,7 +581,7 @@ export function AdminSignalManagement() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground">Symbol</p>
-                    <p className="font-mono">{viewingAlert.finnhubSymbol}</p>
+                    <p className="font-mono">{viewingAlert.tradermadeSymbol}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Trade Type</p>

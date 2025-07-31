@@ -64,7 +64,7 @@ describe('Trading Signals Integration', () => {
       {
         id: '1',
         asset_name: 'EURUSD',
-        finnhub_symbol: 'OANDA:EUR_USD',
+        tradermade_symbol: 'EURUSD',
         trade_type: 'BUY',
         entry_price: 1.0500,
         stop_loss: 1.0450,

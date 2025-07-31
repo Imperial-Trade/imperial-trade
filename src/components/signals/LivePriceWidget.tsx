@@ -76,7 +76,7 @@ const LivePriceWidgetComponent = ({
         entryPrice: alert.entry_price,
         tradeType: alert.trade_type,
         assetName: alert.asset_name,
-        symbol: alert.finnhub_symbol,
+        symbol: alert.tradermade_symbol,
         timestamp: new Date().toISOString(),
         alertStatus: alert.status
       });
@@ -108,7 +108,7 @@ const LivePriceWidgetComponent = ({
       pips,
       points,
       difference
-    } = calculatePips(alert.entry_price, price, alert.finnhub_symbol);
+    } = calculatePips(alert.entry_price, price, alert.tradermade_symbol);
     setPriceChange({
       pips,
       points,
@@ -134,7 +134,7 @@ const LivePriceWidgetComponent = ({
     const buffer = alert.entry_price * 0.0001;
 
     // Enhanced logging for debugging
-    console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.finnhub_symbol}):`, {
+    console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.tradermade_symbol}):`, {
       currentPrice: price,
       entryPrice: alert.entry_price,
       tradeType: alert.trade_type,
@@ -260,7 +260,7 @@ const LivePriceWidgetComponent = ({
   // Debug logging
   useEffect(() => {
     console.log(`LivePriceWidget Debug for ${alert.asset_name}:`, {
-      alertSymbol: alert.finnhub_symbol,
+      alertSymbol: alert.tradermade_symbol,
       currentPrice: currentPrice,
       connectionStatus,
       priceSource,
@@ -303,7 +303,7 @@ const LivePriceWidgetComponent = ({
         </div>
         <div className="flex items-center justify-center">
           <div className="text-sm text-gray-400">
-            🔍 No data for {alert.finnhub_symbol}
+            🔍 No data for {alert.tradermade_symbol}
           </div>
         </div>
       </div>;

@@ -50,7 +50,7 @@ test.describe('Complete User Journey - E2E Tests', () => {
     await page.goto('/dashboard/new-signal');
     
     await page.fill('input[name="assetName"]', 'EUR/USD');
-    await page.fill('input[name="finnhubSymbol"]', 'OANDA:EUR_USD');
+    await page.fill('input[name="tradermadeSymbol"]', 'EURUSD');
     await page.selectOption('select[name="tradeType"]', 'BUY');
     await page.fill('input[name="entryPrice"]', '1.0500');
     await page.fill('input[name="stopLoss"]', '1.0450');

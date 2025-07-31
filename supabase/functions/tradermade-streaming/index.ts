@@ -299,7 +299,7 @@ serve(async (req) => {
               }
             }
           }
-        }, 50); // Ultra-fast 50ms updates for smoothest live experience
+        }, 250); // Optimized 250ms updates for balance of speed and server performance
 
         // Notify client of connection
         if (socket.readyState === WebSocket.OPEN) {

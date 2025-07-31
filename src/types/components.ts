@@ -27,7 +27,7 @@ export interface FormState<T extends Record<string, unknown>> {
 export interface TradeAlertData {
   id: string;
   asset_name: string;
-  finnhub_symbol: string;
+  tradermade_symbol: string;
   trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entry_price: number;
   stop_loss: number;

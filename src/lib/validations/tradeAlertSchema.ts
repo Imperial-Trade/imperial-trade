@@ -8,7 +8,7 @@ export const baseSchemas = {
     .max(50, "Asset name must be no more than 50 characters")
     .trim(),
   
-  finnhubSymbol: z.string()
+  tradermadeSymbol: z.string()
     .min(1, "Symbol is required")
     .max(20, "Symbol must be no more than 20 characters")
     .trim()
@@ -39,7 +39,7 @@ export const baseSchemas = {
 // Base trade alert object schema without refinements
 const baseTradeAlertSchema = z.object({
   asset_name: baseSchemas.assetName,
-  finnhub_symbol: baseSchemas.finnhubSymbol,
+  tradermade_symbol: baseSchemas.tradermadeSymbol,
   trade_type: baseSchemas.tradeType,
   entry_price: baseSchemas.price,
   stop_loss: baseSchemas.price,

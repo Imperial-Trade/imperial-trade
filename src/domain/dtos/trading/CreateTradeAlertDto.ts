@@ -1,7 +1,7 @@
 
 export interface CreateTradeAlertDto {
   assetName: string;
-  finnhubSymbol: string;
+  tradermadeSymbol: string;
   tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entryPrice: number;
   stopLoss: number;
@@ -24,7 +24,7 @@ export interface TradeAlertResponseDto {
   id: string;
   userId: string;
   assetName: string;
-  finnhubSymbol: string;
+  tradermadeSymbol: string;
   tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entryPrice: number;
   stopLoss: number;

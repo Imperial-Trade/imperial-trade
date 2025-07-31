@@ -9,7 +9,7 @@ export class TradingMapper {
     return new TradeAlert(
       row.id,
       row.asset_name,
-      row.finnhub_symbol,
+      row.tradermade_symbol,
       row.trade_type,
       row.entry_price,
       row.stop_loss,

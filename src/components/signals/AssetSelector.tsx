@@ -6,7 +6,7 @@ import { ASSET_REGISTRY, AssetDefinition } from '@/types/assets';
 export interface AssetOption {
   symbol: string;
   name: string;
-  category: 'crypto' | 'commodities';
+  category: 'crypto' | 'commodities' | 'forex' | 'indices';
 }
 
 // Use centralized asset registry for consistent symbol handling

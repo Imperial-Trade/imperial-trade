@@ -39,7 +39,7 @@ export function isNumberArray(value: unknown): value is number[] {
 export function isTradeAlert(value: unknown): value is {
   id: string;
   asset_name: string;
-  finnhub_symbol: string;
+  tradermade_symbol: string;
   trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entry_price: number;
   stop_loss: number;
@@ -63,7 +63,7 @@ export function isTradeAlert(value: unknown): value is {
   return (
     typeof obj.id === 'string' &&
     typeof obj.asset_name === 'string' &&
-    typeof obj.finnhub_symbol === 'string' &&
+    typeof obj.tradermade_symbol === 'string' &&
     ['buy', 'sell', 'buy_limit', 'sell_limit'].includes(obj.trade_type as string) &&
     typeof obj.entry_price === 'number' &&
     typeof obj.stop_loss === 'number' &&
@@ -77,7 +77,7 @@ export function isTradeAlert(value: unknown): value is {
 
 export function isCreateTradeAlertDto(value: unknown): value is {
   assetName: string;
-  finnhubSymbol: string;
+  tradermadeSymbol: string;
   tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entryPrice: number;
   stopLoss: number;
@@ -94,7 +94,7 @@ export function isCreateTradeAlertDto(value: unknown): value is {
   
   return (
     typeof obj.assetName === 'string' &&
-    typeof obj.finnhubSymbol === 'string' &&
+    typeof obj.tradermadeSymbol === 'string' &&
     ['buy', 'sell', 'buy_limit', 'sell_limit'].includes(obj.tradeType as string) &&
     typeof obj.entryPrice === 'number' &&
     typeof obj.stopLoss === 'number'

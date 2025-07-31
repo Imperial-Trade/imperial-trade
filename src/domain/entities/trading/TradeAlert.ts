@@ -3,7 +3,7 @@ export class TradeAlert {
   constructor(
     public readonly id: string,
     public readonly assetName: string,
-    public readonly finnhubSymbol: string,
+    public readonly tradermadeSymbol: string,
     public readonly tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
     public readonly entryPrice: number,
     public readonly stopLoss: number,

@@ -19,13 +19,13 @@ export const baseSchemas = {
   }),
   
   price: z.number()
-    .min(0.01, "Price must be greater than 0")
-    .max(1000000, "Price is too high")
+    .min(0.000001, "Price must be greater than 0")
+    .max(10000000, "Price is too high")
     .finite("Price must be a valid number"),
   
   optionalPrice: z.number()
-    .min(0.01, "Price must be greater than 0")
-    .max(1000000, "Price is too high")
+    .min(0.000001, "Price must be greater than 0")  
+    .max(10000000, "Price is too high")
     .finite("Price must be a valid number")
     .optional(),
   
@@ -51,98 +51,89 @@ const baseTradeAlertSchema = z.object({
   notes: baseSchemas.notes,
 });
 
-// Main trade alert schema with optimized validation
+// Main trade alert schema with simplified validation
 export const tradeAlertSchema = baseTradeAlertSchema.refine((data) => {
-  // Custom validation: Stop loss should be different from entry price
-  if (data.stop_loss === data.entry_price) {
+  // Stop loss validation based on trade direction
+  const tolerance = 0.000001; // Small tolerance for floating point comparison
+  
+  if (Math.abs(data.stop_loss - data.entry_price) < tolerance) {
     return false;
   }
   
-  // For buy orders, stop loss should be lower than entry
-  if (data.trade_type.includes('buy') && data.stop_loss >= data.entry_price) {
-    return false;
+  if (data.trade_type === 'buy' || data.trade_type === 'buy_limit') {
+    return data.stop_loss < data.entry_price;
   }
   
-  // For sell orders, stop loss should be higher than entry
-  if (data.trade_type.includes('sell') && data.stop_loss <= data.entry_price) {
-    return false;
+  if (data.trade_type === 'sell' || data.trade_type === 'sell_limit') {
+    return data.stop_loss > data.entry_price;
   }
   
   return true;
 }, {
-  message: "Stop loss must be set appropriately based on trade direction",
+  message: "Stop loss must be positioned correctly for the trade direction",
   path: ["stop_loss"]
 }).refine((data) => {
-  // Validate take profit levels are in correct order
-  const tps = [data.tp1, data.tp2, data.tp3, data.tp4, data.tp5].filter(tp => tp !== undefined) as number[];
+  // Take profit validation - at least TP1 should be positioned correctly
+  if (!data.tp1) return true; // No TP1 is acceptable
   
-  if (tps.length === 0) return true; // No TPs is valid
+  if (data.trade_type === 'buy' || data.trade_type === 'buy_limit') {
+    return data.tp1 > data.entry_price;
+  }
   
-  // Check if TPs are in ascending order for buy trades or descending for sell trades
-  const isBuy = data.trade_type.includes('buy');
-  
-  for (let i = 0; i < tps.length - 1; i++) {
-    if (isBuy && tps[i] >= tps[i + 1]) {
-      return false;
-    }
-    if (!isBuy && tps[i] <= tps[i + 1]) {
-      return false;
-    }
+  if (data.trade_type === 'sell' || data.trade_type === 'sell_limit') {
+    return data.tp1 < data.entry_price;
   }
   
   return true;
 }, {
-  message: "Take profit levels must be in correct order based on trade direction",
+  message: "Take profit must be positioned correctly for the trade direction",
   path: ["tp1"]
 });
 
 // Infer TypeScript type from schema
 export type TradeAlertFormData = z.infer<typeof tradeAlertSchema>;
 
-// Schema with status for API submissions - use base schema and add status, then apply refinements
+// Schema with status for API submissions
 export const tradeAlertSubmissionSchema = baseTradeAlertSchema
   .extend({
     status: z.enum(['pending', 'active']).default('active')
   })
   .refine((data) => {
-    // Apply the same stop loss validation
-    if (data.stop_loss === data.entry_price) {
+    // Stop loss validation
+    const tolerance = 0.000001;
+    
+    if (Math.abs(data.stop_loss - data.entry_price) < tolerance) {
       return false;
     }
     
-    if (data.trade_type.includes('buy') && data.stop_loss >= data.entry_price) {
-      return false;
+    if (data.trade_type === 'buy' || data.trade_type === 'buy_limit') {
+      return data.stop_loss < data.entry_price;
     }
     
-    if (data.trade_type.includes('sell') && data.stop_loss <= data.entry_price) {
-      return false;
+    if (data.trade_type === 'sell' || data.trade_type === 'sell_limit') {
+      return data.stop_loss > data.entry_price;
     }
     
     return true;
   }, {
-    message: "Stop loss must be set appropriately based on trade direction",
+    message: "Stop loss must be positioned correctly for the trade direction",
     path: ["stop_loss"]
   })
   .refine((data) => {
-    // Apply the same take profit validation
-    const tps = [data.tp1, data.tp2, data.tp3, data.tp4, data.tp5].filter(tp => tp !== undefined) as number[];
+    // Take profit validation
+    if (!data.tp1) return true;
     
-    if (tps.length === 0) return true;
+    if (data.trade_type === 'buy' || data.trade_type === 'buy_limit') {
+      return data.tp1 > data.entry_price;
+    }
     
-    const isBuy = data.trade_type.includes('buy');
-    
-    for (let i = 0; i < tps.length - 1; i++) {
-      if (isBuy && tps[i] >= tps[i + 1]) {
-        return false;
-      }
-      if (!isBuy && tps[i] <= tps[i + 1]) {
-        return false;
-      }
+    if (data.trade_type === 'sell' || data.trade_type === 'sell_limit') {
+      return data.tp1 < data.entry_price;
     }
     
     return true;
   }, {
-    message: "Take profit levels must be in correct order based on trade direction",
+    message: "Take profit must be positioned correctly for the trade direction", 
     path: ["tp1"]
   });
 

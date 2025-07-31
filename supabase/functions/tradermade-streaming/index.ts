@@ -217,15 +217,17 @@ serve(async (req) => {
   // Connect to Tradermade WebSocket
   async function connectToTradermade() {
     const apiKey = Deno.env.get('TRADERMADE_API_KEY');
-    console.log('🔑 API Key check:', apiKey ? 'Found' : 'Missing');
+    console.log('🔑 API Key check:', apiKey ? `Found (${apiKey.substring(0, 8)}...)` : 'Missing');
     
     if (!apiKey) {
       console.error('❌ TRADERMADE_API_KEY not found in environment');
-      socket.send(JSON.stringify({
-        type: 'error',
-        message: 'Tradermade API key not configured',
-        timestamp: new Date().toISOString()
-      }));
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: 'error',
+          message: 'Tradermade API key not configured',
+          timestamp: new Date().toISOString()
+        }));
+      }
       return;
     }
 
@@ -282,10 +284,21 @@ serve(async (req) => {
           const data = JSON.parse(event.data);
           console.log('📊 Received from Tradermade:', data);
 
-          // Handle different message types
-          if (data.symbol && data.bid && data.ask) {
+          // Handle authentication response
+          if (data.message && data.message.includes('connected')) {
+            console.log('✅ Tradermade authentication successful');
+            return;
+          }
+
+          // Handle different message types - handle both single quote object and array
+          if (data.symbol && (data.bid || data.ask || data.price)) {
             const symbol = data.symbol.toUpperCase();
-            const price = (data.bid + data.ask) / 2;
+            const price = data.mid || data.price || (data.bid && data.ask ? (data.bid + data.ask) / 2 : data.bid || data.ask);
+            
+            if (!price || price <= 0) {
+              console.log(`⚠️ Invalid price data for ${symbol}:`, data);
+              return;
+            }
             
             const priceUpdate: TradermadePriceData = {
               symbol: symbol,
@@ -308,6 +321,8 @@ serve(async (req) => {
                 ...priceUpdate
               }));
             }
+          } else {
+            console.log('ℹ️ Non-price message from Tradermade:', data);
           }
         } catch (error) {
           console.error('❌ Error parsing Tradermade message:', error);
@@ -373,12 +388,14 @@ serve(async (req) => {
     console.log('🎯 Client connected to Tradermade streaming');
     
     // Immediately send connection status
-    socket.send(JSON.stringify({
-      type: 'connection_status',
-      status: 'connecting',
-      dataSource: 'tradermade',
-      timestamp: new Date().toISOString()
-    }));
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'connection_status',
+        status: 'connecting',
+        dataSource: 'tradermade',
+        timestamp: new Date().toISOString()
+      }));
+    }
     
     connectToTradermade();
   };

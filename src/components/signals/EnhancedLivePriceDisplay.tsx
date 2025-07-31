@@ -345,9 +345,10 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       <div className="mt-2 pt-2 border-t border-gray-600">
         <div className="text-xs text-gray-500">
           {connectionStatusInfo.description} • 
-          Source: {priceUpdateSource === 'websocket' ? 'Real-time Tradermade' : 
-                   priceUpdateSource === 'http' ? 'Tradermade API' : 'Tradermade'} •
-          Symbol: {symbol}
+          Source: {dataSource === 'tradermade' ? 'Tradermade API' : 
+                   priceUpdateSource === 'websocket' ? 'Real-time Tradermade' : 
+                   priceUpdateSource === 'http' ? 'Tradermade API' : 'Tradermade'} • 
+          Symbol: {symbol} • Price: ${price > 0 ? price.toFixed(2) : 'Loading...'}
         </div>
       </div>
     </div>

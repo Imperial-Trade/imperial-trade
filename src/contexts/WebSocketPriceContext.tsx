@@ -75,8 +75,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       // Connect to Tradermade streaming WebSocket
       const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming`;
       console.log('🔌 Connecting to Tradermade WebSocket:', wsUrl);
+      console.log('🔍 WebSocket readyState before connection:', socketRef.current?.readyState);
       
       socketRef.current = new WebSocket(wsUrl);
+      console.log('🆕 Created new WebSocket instance');
 
       socketRef.current.onopen = () => {
         console.log('✅ WebSocket connected to Tradermade streaming');

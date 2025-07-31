@@ -234,20 +234,33 @@ serve(async (req) => {
           }));
         }
 
-        // Set up heartbeat
+        // Set up heartbeat and 1-second price updates
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         heartbeatInterval = setInterval(() => {
           if (tradermadeSocket?.readyState === WebSocket.OPEN) {
             tradermadeSocket.send(JSON.stringify({ type: 'ping' }));
           }
-        }, 30000);
+          
+          // Send cached prices every 1 second for subscribed symbols
+          if (socket.readyState === WebSocket.OPEN && clientSubscriptions.size > 0) {
+            for (const symbol of clientSubscriptions) {
+              const cached = getCachedPrice(symbol);
+              if (cached) {
+                socket.send(JSON.stringify({
+                  type: 'price_update',
+                  ...cached
+                }));
+              }
+            }
+          }
+        }, 1000); // 1-second interval for price updates
 
         // Notify client of connection
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({
             type: 'connection_status',
             status: 'connected',
-            dataSource: 'tradermade_websocket',
+            dataSource: 'tradermade',
             timestamp: new Date().toISOString()
           }));
         }

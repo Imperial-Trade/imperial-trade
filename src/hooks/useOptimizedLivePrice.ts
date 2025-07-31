@@ -10,7 +10,7 @@ interface OptimizedLivePriceData {
   error: string | null;
   lastUpdated: Date | null;
   connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error';
-  dataSource: 'twelve_data_api' | 'unavailable';
+  dataSource: 'tradermade' | 'unavailable';
   priceUpdateSource: 'websocket' | 'http' | 'unknown';
   refreshPrice: () => void;
 }

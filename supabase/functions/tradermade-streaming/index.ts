@@ -299,7 +299,7 @@ serve(async (req) => {
               }
             }
           }
-        }, 1000); // 1-second interval for price updates
+        }, 50); // Ultra-fast 50ms updates for smoothest live experience
 
         // Notify client of connection
         if (socket.readyState === WebSocket.OPEN) {

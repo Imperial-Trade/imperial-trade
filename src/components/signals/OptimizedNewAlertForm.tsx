@@ -178,11 +178,11 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         trade_type: formData.trade_type,
         entry_price: parseFloat(formData.entry_price),
         stop_loss: parseFloat(formData.stop_loss),
-        tp1: takeProfits[0] ? parseFloat(takeProfits[0]) : undefined,
-        tp2: takeProfits[1] ? parseFloat(takeProfits[1]) : undefined,
-        tp3: takeProfits[2] ? parseFloat(takeProfits[2]) : undefined,
-        tp4: takeProfits[3] ? parseFloat(takeProfits[3]) : undefined,
-        tp5: takeProfits[4] ? parseFloat(takeProfits[4]) : undefined,
+        tp1: takeProfits[0] && takeProfits[0].trim() ? parseFloat(takeProfits[0]) : undefined,
+        tp2: takeProfits[1] && takeProfits[1].trim() ? parseFloat(takeProfits[1]) : undefined,
+        tp3: takeProfits[2] && takeProfits[2].trim() ? parseFloat(takeProfits[2]) : undefined,
+        tp4: takeProfits[3] && takeProfits[3].trim() ? parseFloat(takeProfits[3]) : undefined,
+        tp5: takeProfits[4] && takeProfits[4].trim() ? parseFloat(takeProfits[4]) : undefined,
         notes: formData.notes || undefined,
         status: 'active'
       };

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle } from 'lucide-react';
+import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
   if (!symbol) return {
@@ -44,18 +46,75 @@ const LivePriceWidgetComponent = ({
   alert,
   onTakeProfitHit,
   onStopLossHit,
-  onOrderActivation,
-  livePrice,
-  connectionStatus,
-  priceSource
+  onOrderActivation
 }) => {
+  // Use the optimized live price hook directly
+  const {
+    price: currentPrice,
+    change,
+    changePercent,
+    isLoading,
+    error,
+    lastUpdated,
+    connectionStatus,
+    dataSource,
+    priceUpdateSource,
+    refreshPrice
+  } = useOptimizedLivePrice(alert.tradermade_symbol, {
+    enableSmartPausing: false,
+    debounceMs: 50,
+    pauseOnInput: false
+  });
+
   const [priceChange, setPriceChange] = useState(null);
   const [lastProcessedPrice, setLastProcessedPrice] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dataAge, setDataAge] = useState('');
+  const [prevPrice, setPrevPrice] = useState(0);
+  const [priceAnimation, setPriceAnimation] = useState(null);
   const isProcessingRef = useRef(false);
   const lastUpdateRef = useRef(0);
 
-  // Get the live price for this specific alert
-  const currentPrice = livePrice;
+  // Update data age every second
+  useEffect(() => {
+    const updateAge = () => {
+      if (!lastUpdated) {
+        setDataAge('');
+        return;
+      }
+      
+      const now = new Date();
+      const diffMs = now.getTime() - lastUpdated.getTime();
+      const diffSeconds = Math.floor(diffMs / 1000);
+      
+      if (diffSeconds < 30) {
+        setDataAge('Live');
+      } else if (diffSeconds < 60) {
+        setDataAge(`${diffSeconds}s ago`);
+      } else if (diffSeconds < 3600) {
+        const minutes = Math.floor(diffSeconds / 60);
+        setDataAge(`${minutes}m ago`);
+      } else {
+        setDataAge('Stale');
+      }
+    };
+
+    updateAge();
+    const interval = setInterval(updateAge, 1000);
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
+
+  // Price change animation effect
+  useEffect(() => {
+    if (currentPrice > 0 && prevPrice > 0 && currentPrice !== prevPrice) {
+      setPriceAnimation(currentPrice > prevPrice ? 'up' : 'down');
+      const timer = setTimeout(() => setPriceAnimation(null), 1000);
+      return () => clearTimeout(timer);
+    }
+    if (currentPrice > 0) {
+      setPrevPrice(currentPrice);
+    }
+  }, [currentPrice, prevPrice]);
   const processLevelHit = useCallback(async (hitType, data) => {
     if (isProcessingRef.current) {
       console.log(`[PROCESSING SKIP] Already processing ${hitType} for alert ${alert.id}, skipping...`);
@@ -76,7 +135,7 @@ const LivePriceWidgetComponent = ({
         entryPrice: alert.entry_price,
         tradeType: alert.trade_type,
         assetName: alert.asset_name,
-        symbol: alert.finnhub_symbol,
+        symbol: alert.tradermade_symbol,
         timestamp: new Date().toISOString(),
         alertStatus: alert.status
       });
@@ -108,7 +167,7 @@ const LivePriceWidgetComponent = ({
       pips,
       points,
       difference
-    } = calculatePips(alert.entry_price, price, alert.finnhub_symbol);
+    } = calculatePips(alert.entry_price, price, alert.tradermade_symbol);
     setPriceChange({
       pips,
       points,
@@ -134,7 +193,7 @@ const LivePriceWidgetComponent = ({
     const buffer = alert.entry_price * 0.0001;
 
     // Enhanced logging for debugging
-    console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.finnhub_symbol}):`, {
+    console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.tradermade_symbol}):`, {
       currentPrice: price,
       entryPrice: alert.entry_price,
       tradeType: alert.trade_type,
@@ -260,14 +319,125 @@ const LivePriceWidgetComponent = ({
   // Debug logging
   useEffect(() => {
     console.log(`LivePriceWidget Debug for ${alert.asset_name}:`, {
-      alertSymbol: alert.finnhub_symbol,
+      alertSymbol: alert.tradermade_symbol,
       currentPrice: currentPrice,
       connectionStatus,
-      priceSource,
+      priceUpdateSource,
       entryPrice: alert.entry_price,
       stopLoss: alert.stop_loss
     });
-  }, [currentPrice, connectionStatus, priceSource, alert]);
+  }, [currentPrice, connectionStatus, priceUpdateSource, alert]);
+  // Format price with dynamic decimal places
+  const formatPrice = useCallback((price) => {
+    if (price >= 1000) {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(price);
+    } else if (price >= 1) {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+      }).format(price);
+    } else {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 6,
+      }).format(price);
+    }
+  }, []);
+
+  const formatTime = useCallback((date) => {
+    if (!date) return '';
+    return date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }, []);
+
+  const connectionStatusInfo = useMemo(() => {
+    const dataFreshness = lastUpdated ? (new Date().getTime() - lastUpdated.getTime()) / 1000 : Infinity;
+    
+    if (isLoading || connectionStatus === 'connecting') {
+      return { 
+        color: 'text-yellow-400', 
+        icon: RefreshCw, 
+        text: 'Fetching',
+        description: 'Fetching latest price data...',
+        animate: true
+      };
+    }
+    
+    if (error) {
+      return { 
+        color: 'text-red-400', 
+        icon: AlertTriangle, 
+        text: 'Error',
+        description: 'Failed to fetch price data',
+        animate: false
+      };
+    }
+    
+    if (connectionStatus === 'connected') {
+      switch (priceUpdateSource) {
+        case 'websocket':
+          return { 
+            color: 'text-green-400', 
+            icon: Wifi, 
+            text: '⚡ Real-time',
+            description: 'Live WebSocket updates active',
+            animate: false
+          };
+        case 'http':
+          return { 
+            color: 'text-blue-400', 
+            icon: RefreshCw, 
+            text: '🔄 HTTP Fallback',
+            description: 'Using HTTP API fallback mode',
+            animate: false
+          };
+        default:
+          if (dataFreshness < 30) {
+            return { 
+              color: 'text-green-400', 
+              icon: Wifi, 
+              text: 'Live',
+              description: 'Real-time price updates active',
+              animate: false
+            };
+          }
+      }
+    }
+    
+    return { 
+      color: 'text-red-400', 
+      icon: WifiOff, 
+      text: 'Offline',
+      description: 'No recent price updates',
+      animate: false
+    };
+  }, [connectionStatus, isLoading, error, lastUpdated, priceUpdateSource]);
+
+  // Handle refresh with loading state
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshPrice();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
+  const priceChangeColor = useMemo(() => {
+    return change >= 0 ? 'text-green-400' : 'text-red-400';
+  }, [change]);
+
+  const priceChangeIcon = useMemo(() => {
+    return change >= 0 ? TrendingUp : TrendingDown;
+  }, [change]);
+
   const profitLossDisplay = useMemo(() => {
     if (!priceChange) return null;
     const isBuy = alert.trade_type.includes('buy');
@@ -288,90 +458,83 @@ const LivePriceWidgetComponent = ({
       sign: priceChange.isPositive ? '+' : ''
     };
   }, [priceChange, alert.trade_type]);
-  if (!currentPrice && connectionStatus === 'connected') {
-    return <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
-        <div className="flex items-center justify-between h-6">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 text-yellow-400" />
-            <span className="text-sm font-medium text-gray-300">Price Data</span>
-          </div>
-          <div className="text-right min-w-[80px]">
-            <div className="text-lg font-mono font-bold text-gray-400">
-              --
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-center">
-          <div className="text-sm text-gray-400">
-            🔍 No data for {alert.finnhub_symbol}
-          </div>
-        </div>
-      </div>;
-  }
-  if (connectionStatus === 'connecting') {
-    return <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
-        <div className="flex items-center justify-between h-6">
-          <div className="flex items-center space-x-2">
-            <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-            <span className="text-sm font-medium text-gray-300">Connecting</span>
-          </div>
-          <div className="text-right min-w-[80px]">
-            <div className="text-lg font-mono font-bold text-gray-400">
-              --
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-center">
-          <div className="flex space-x-1">
-            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{
-            animationDelay: '0.1s'
-          }}></div>
-            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{
-            animationDelay: '0.2s'
-          }}></div>
-          </div>
-        </div>
-      </div>;
-  }
-  if (connectionStatus === 'error') {
-    return <div className="bg-gray-900/50 rounded-md p-3 border border-gray-700 space-y-3 min-h-[80px]">
-        <div className="flex items-center justify-between h-6">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 text-red-400" />
-            <span className="text-sm font-medium text-gray-300">Error</span>
-          </div>
-          <div className="text-right min-w-[80px]">
-            <div className="text-lg font-mono font-bold text-gray-400">
-              --
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-center">
-          <div className="text-sm text-red-400">
-            ⚠️ Feed unavailable
-          </div>
-        </div>
-      </div>;
-  }
+
+  if (!alert.tradermade_symbol) return null;
+
+  // Pending order state
   if (alert.status === 'pending') {
     const isBuyLimit = alert.trade_type === 'buy_limit';
     const isSellLimit = alert.trade_type === 'sell_limit';
-    return <div className="bg-amber-900/20 rounded-md p-3 border border-amber-700 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-amber-400">
-            <Hourglass className="w-4 h-4" />
-            <span className="text-sm font-medium">
-              {isBuyLimit ? 'Buy Limit' : isSellLimit ? 'Sell Limit' : 'Pending Order'}
-            </span>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-mono font-bold text-white">
-              ${currentPrice?.toFixed(2) || '--'}
+    
+    return (
+      <div className="bg-card/50 border border-border rounded-lg p-4 backdrop-blur-sm transition-all duration-300 border-amber-500/30 shadow-amber-500/10 shadow-lg">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="text-white font-medium">
+              Live Price for {alert.asset_name}
             </div>
-            <div className="text-xs text-gray-400">Current Price</div>
+            <div className="flex items-center gap-1 text-xs text-amber-400">
+              <Hourglass className="w-3 h-3" />
+              <span>{isBuyLimit ? 'Buy Limit' : isSellLimit ? 'Sell Limit' : 'Pending Order'}</span>
+              {dataAge && (
+                <>
+                  <span className="text-gray-500">•</span>
+                  <span className={dataAge === 'Live' ? 'text-green-400' : dataAge === 'Stale' ? 'text-red-400' : 'text-yellow-400'}>
+                    {dataAge}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            className="text-gray-400 hover:text-white h-8 w-8 p-0"
+            title="Refresh price"
+            disabled={isLoading || isRefreshing}
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
+
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className={`font-mono text-xl font-bold transition-all duration-300 ${
+              isLoading || isRefreshing ? 'animate-pulse' : ''
+            } ${
+              priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
+              priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
+              'text-accent-green'
+            }`}>
+              ${currentPrice ? formatPrice(currentPrice) : '---.--'}
+            </div>
+            
+            {(isLoading || isRefreshing) && currentPrice > 0 && (
+              <div className="flex items-center gap-1 text-yellow-400 text-xs">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                <span>Updating...</span>
+              </div>
+            )}
+          </div>
+          
+          {!error && currentPrice > 0 && (
+            <div className={`flex items-center gap-1 ${priceChangeColor}`}>
+              {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
+              <div className="text-right">
+                <div className="text-sm font-medium">
+                  {change >= 0 ? '+' : ''}{change.toFixed(4)}
+                </div>
+                <div className="text-xs">
+                  ({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="text-center text-sm text-gray-300 border-t border-amber-700 pt-2">
           <span className="text-amber-400 font-bold">
             {isBuyLimit ? 'Waiting for price to drop to' : isSellLimit ? 'Waiting for price to rise to' : 'Entry at'}
@@ -379,25 +542,139 @@ const LivePriceWidgetComponent = ({
           <br />
           <span className="font-bold text-white">${alert.entry_price.toFixed(2)}</span>
         </div>
-      </div>;
-  }
-  return <div className="p-3 border border-gray-700 space-y-3 min-h-[80px] bg-slate-950 rounded-sm">
-      <div className="flex items-center justify-between h-6">
-        <div className="flex items-center space-x-2">
-          <Wifi className="w-4 h-4 text-emerald-400" />
-          <span className="text-sm font-medium text-gray-300">Live Price</span>
-          <Badge variant="outline" className="text-emerald-400 border-emerald-700 bg-emerald-900/30 p-1">
-            <Zap className="w-3 h-3" />
-          </Badge>
-        </div>
-        <div className="text-right min-w-[80px]">
-          <div className="text-lg font-mono font-bold text-white">
-            ${currentPrice?.toFixed(2) || '--'}
+
+        <div className="mt-2 pt-2 border-t border-gray-600">
+          <div className="text-xs text-gray-500">
+            {connectionStatusInfo.description} • 
+            Source: {dataSource === 'tradermade' ? 'Tradermade API' : 
+                     priceUpdateSource === 'websocket' ? 'Real-time Tradermade' : 
+                     priceUpdateSource === 'http' ? 'Tradermade API' : 'Tradermade'} • 
+            Symbol: {alert.tradermade_symbol} • Price: ${currentPrice > 0 ? currentPrice.toFixed(2) : 'Loading...'}
           </div>
         </div>
       </div>
+    );
+  }
 
-      {priceChange && profitLossDisplay && <div className="flex items-center justify-between">
+  return (
+    <div className={`bg-card/50 border border-border rounded-lg p-4 backdrop-blur-sm transition-all duration-300 ${
+      connectionStatus === 'connected' ? 'border-green-500/30 shadow-green-500/10 shadow-lg' : 
+      connectionStatus === 'error' ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
+      'border-border'
+    }`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="text-white font-medium">
+            Live Price for {alert.asset_name}
+          </div>
+          <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
+            <connectionStatusInfo.icon 
+              className={`w-3 h-3 ${connectionStatusInfo.animate ? 'animate-spin' : ''}`} 
+            />
+            <span>{connectionStatusInfo.text}</span>
+            {dataAge && (
+              <>
+                <span className="text-gray-500">•</span>
+                <span className={`${
+                  dataAge === 'Live' ? 'text-green-400' : 
+                  dataAge === 'Stale' ? 'text-red-400' : 
+                  'text-yellow-400'
+                }`}>
+                  {dataAge}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={handleRefresh}
+          className="text-gray-400 hover:text-white h-8 w-8 p-0"
+          title="Refresh price"
+          disabled={isLoading || isRefreshing}
+        >
+          <RefreshCw className={`w-4 h-4 ${
+            isLoading || isRefreshing ? 'animate-spin' : ''
+          }`} />
+        </Button>
+      </div>
+
+      {/* Error State */}
+      {error && (
+        <div className="flex items-center gap-2 mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+          <div className="text-red-400 text-sm">
+            {error}
+          </div>
+        </div>
+      )}
+
+      {/* Loading State for Initial Load */}
+      {isLoading && currentPrice === 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-7 w-32 bg-gray-600 rounded animate-pulse"></div>
+              <div className="h-4 w-4 bg-gray-600 rounded animate-pulse"></div>
+            </div>
+            <div className="h-6 w-20 bg-gray-600 rounded animate-pulse"></div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-24 bg-gray-600 rounded animate-pulse"></div>
+            <div className="h-6 w-24 bg-gray-600 rounded animate-pulse"></div>
+          </div>
+        </div>
+      )}
+
+      {/* Price Display */}
+      {(currentPrice > 0 || !isLoading) && (
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            {error ? (
+              <div className="text-gray-500 font-mono text-xl">---.--</div>
+            ) : (
+              <div className={`font-mono text-xl font-bold transition-all duration-300 ${
+                isLoading || isRefreshing ? 'animate-pulse' : ''
+              } ${
+                priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
+                priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
+                'text-accent-green'
+              }`}>
+                ${formatPrice(currentPrice)}
+              </div>
+            )}
+            
+            {(isLoading || isRefreshing) && currentPrice > 0 && (
+              <div className="flex items-center gap-1 text-yellow-400 text-xs">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                <span>Updating...</span>
+              </div>
+            )}
+          </div>
+          
+          {!error && currentPrice > 0 && (
+            <div className={`flex items-center gap-1 ${priceChangeColor}`}>
+              {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
+              <div className="text-right">
+                <div className="text-sm font-medium">
+                  {change >= 0 ? '+' : ''}{change.toFixed(4)}
+                </div>
+                <div className="text-xs">
+                  ({change >= 0 ? '+' : ''}{changePercent.toFixed(2)}%)
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* P&L from Entry Display */}
+      {priceChange && profitLossDisplay && (
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
             {profitLossDisplay.isProfit ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
             <span className="text-sm text-gray-300">P/L from Entry</span>
@@ -412,8 +689,31 @@ const LivePriceWidgetComponent = ({
               {priceChange.isPositive ? '+' : ''}${Math.abs(priceChange.absolute).toFixed(2)}
             </div>
           </div>
-        </div>}
-    </div>;
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 text-xs text-gray-400">
+          <Clock className="w-3 h-3" />
+          <span>
+            {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
+          </span>
+        </div>
+      </div>
+
+      {/* Data Source Info */}
+      <div className="mt-2 pt-2 border-t border-gray-600">
+        <div className="text-xs text-gray-500">
+          {connectionStatusInfo.description} • 
+          Source: {dataSource === 'tradermade' ? 'Tradermade API' : 
+                   priceUpdateSource === 'websocket' ? 'Real-time Tradermade' : 
+                   priceUpdateSource === 'http' ? 'Tradermade API' : 'Tradermade'} • 
+          Symbol: {alert.tradermade_symbol} • Price: ${currentPrice > 0 ? currentPrice.toFixed(2) : 'Loading...'}
+        </div>
+      </div>
+    </div>
+  );
 };
 export const LivePriceWidget = memo(LivePriceWidgetComponent);
 export default LivePriceWidget;

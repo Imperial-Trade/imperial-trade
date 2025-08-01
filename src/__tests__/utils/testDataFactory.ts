@@ -35,7 +35,7 @@ export class TestDataFactory {
       id: '456e7890-f12b-34c5-d678-901234567890',
       userId: 'user-123e4567-e89b-12d3-a456-426614174000',
       assetName: 'EUR/USD',
-      finnhubSymbol: 'OANDA:EUR_USD',
+      tradermadeSymbol: 'EURUSD',
       tradeType: 'buy',
       entryPrice: 1.0500,
       stopLoss: 1.0450,
@@ -55,7 +55,7 @@ export class TestDataFactory {
     return {
       id: '456e7890-f12b-34c5-d678-901234567890',
       asset_name: 'EUR/USD',
-      finnhub_symbol: 'OANDA:EUR_USD',
+      tradermade_symbol: 'EURUSD',
       trade_type: 'buy',
       entry_price: 1.0500,
       stop_loss: 1.0450,

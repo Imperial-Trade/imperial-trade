@@ -1615,7 +1615,6 @@ export type Database = {
           close_reason: Database["public"]["Enums"]["close_reason"] | null
           created_at: string
           entry_price: number
-          finnhub_symbol: string
           id: string
           notes: string | null
           status: Database["public"]["Enums"]["trade_alert_status"]
@@ -1627,6 +1626,7 @@ export type Database = {
           tp4: number | null
           tp5: number | null
           trade_type: Database["public"]["Enums"]["trade_alert_type"]
+          tradermade_symbol: string
           updated_at: string
           user_id: string
         }
@@ -1635,7 +1635,6 @@ export type Database = {
           close_reason?: Database["public"]["Enums"]["close_reason"] | null
           created_at?: string
           entry_price: number
-          finnhub_symbol: string
           id?: string
           notes?: string | null
           status?: Database["public"]["Enums"]["trade_alert_status"]
@@ -1647,6 +1646,7 @@ export type Database = {
           tp4?: number | null
           tp5?: number | null
           trade_type: Database["public"]["Enums"]["trade_alert_type"]
+          tradermade_symbol: string
           updated_at?: string
           user_id: string
         }
@@ -1655,7 +1655,6 @@ export type Database = {
           close_reason?: Database["public"]["Enums"]["close_reason"] | null
           created_at?: string
           entry_price?: number
-          finnhub_symbol?: string
           id?: string
           notes?: string | null
           status?: Database["public"]["Enums"]["trade_alert_status"]
@@ -1667,6 +1666,7 @@ export type Database = {
           tp4?: number | null
           tp5?: number | null
           trade_type?: Database["public"]["Enums"]["trade_alert_type"]
+          tradermade_symbol?: string
           updated_at?: string
           user_id?: string
         }

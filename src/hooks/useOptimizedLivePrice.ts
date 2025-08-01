@@ -10,7 +10,7 @@ interface OptimizedLivePriceData {
   error: string | null;
   lastUpdated: Date | null;
   connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error';
-  dataSource: 'twelve_data_api' | 'unavailable';
+  dataSource: 'tradermade' | 'unavailable';
   priceUpdateSource: 'websocket' | 'http' | 'unknown';
   refreshPrice: () => void;
 }
@@ -26,7 +26,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 500
+    debounceMs = 100 // Reduced from 500ms to 100ms for faster updates
   } = options;
 
   const {
@@ -68,9 +68,9 @@ export function useOptimizedLivePrice(
     
     if (!currentPrice) return;
 
-    // Smart debouncing: shorter delay for price changes, longer for same price
+    // Ultra-fast updates: minimal delay for real-time feel
     const isSignificantChange = Math.abs(currentPrice.price - debouncedPrice.price) > (currentPrice.price * 0.001); // 0.1% change
-    const dynamicDelay = isSignificantChange ? Math.min(debounceMs, 200) : debounceMs;
+    const dynamicDelay = isSignificantChange ? 50 : Math.min(debounceMs, 100); // 50ms for changes, max 100ms for same
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);

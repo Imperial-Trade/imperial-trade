@@ -77,7 +77,7 @@ export default function SignalStream() {
     // Apply user filters
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      filteredAlerts = filteredAlerts.filter(alert => alert.assetName.toLowerCase().includes(searchLower) || alert.finnhubSymbol.toLowerCase().includes(searchLower) || alert.creator?.display_name?.toLowerCase().includes(searchLower));
+      filteredAlerts = filteredAlerts.filter(alert => alert.assetName.toLowerCase().includes(searchLower) || alert.tradermadeSymbol.toLowerCase().includes(searchLower) || alert.creator?.display_name?.toLowerCase().includes(searchLower));
     }
     if (filters.status) {
       filteredAlerts = filteredAlerts.filter(alert => alert.status === filters.status);
@@ -132,9 +132,9 @@ export default function SignalStream() {
   const symbols = useMemo(() => {
     const symbolSet = new Set();
     activeAlerts.forEach(alert => {
-      if (alert && alert.finnhubSymbol) {
-        // Use the actual finnhub symbol that matches WebSocket data
-        symbolSet.add(alert.finnhubSymbol);
+      if (alert && alert.tradermadeSymbol) {
+        // Use the actual tradermade symbol that matches WebSocket data
+        symbolSet.add(alert.tradermadeSymbol);
       }
     });
     const symbolList = Array.from(symbolSet);
@@ -467,7 +467,7 @@ export default function SignalStream() {
                       {activeAlerts.map(alert => <TradeAlertCard key={alert.id} alert={{
                   ...alert,
                   asset_name: alert.assetName,
-                  finnhub_symbol: alert.finnhubSymbol,
+                  tradermade_symbol: alert.tradermadeSymbol,
                   trade_type: alert.tradeType,
                   entry_price: alert.entryPrice,
                   stop_loss: alert.stopLoss,
@@ -475,7 +475,7 @@ export default function SignalStream() {
                   close_reason: alert.closeReason,
                   created_date: alert.createdAt,
                   updated_date: alert.updatedAt
-                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices['GOLD'] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} />)}
+                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} />)}
                     </div> : <div className="text-center py-8">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <Shield className="w-8 h-8 text-muted-foreground/50" />
@@ -493,7 +493,7 @@ export default function SignalStream() {
                       {sortedClosedAlerts.map(alert => <TradeAlertCard key={alert.id} alert={{
                   ...alert,
                   asset_name: alert.assetName,
-                  finnhub_symbol: alert.finnhubSymbol,
+                  tradermade_symbol: alert.tradermadeSymbol,
                   trade_type: alert.tradeType,
                   entry_price: alert.entryPrice,
                   stop_loss: alert.stopLoss,

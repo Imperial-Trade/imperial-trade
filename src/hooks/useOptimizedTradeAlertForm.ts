@@ -26,7 +26,7 @@ export const useOptimizedTradeAlertForm = ({
 
   const defaultValues = {
     asset_name: '',
-    finnhub_symbol: '',
+    tradermade_symbol: '',
     trade_type: 'buy' as const,
     entry_price: 0,
     stop_loss: 0,
@@ -56,7 +56,7 @@ export const useOptimizedTradeAlertForm = ({
       // Add debugging for each field
       console.log('Field values:', {
         asset_name: data.asset_name,
-        finnhub_symbol: data.finnhub_symbol,
+        tradermade_symbol: data.tradermade_symbol,
         trade_type: data.trade_type,
         entry_price: data.entry_price,
         stop_loss: data.stop_loss,

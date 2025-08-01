@@ -14,7 +14,8 @@ enabled = true
 [functions.get-market-data]
 verify_jwt = false
 
-[functions.live-price-stream]
+
+[functions.tradermade-streaming]
 verify_jwt = false
 
 [functions.check-user-existence]

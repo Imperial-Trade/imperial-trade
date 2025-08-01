@@ -50,7 +50,7 @@ export class TradingRepository implements ITradingRepository {
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
     const insertData = {
       asset_name: dto.assetName,
-      finnhub_symbol: dto.finnhubSymbol,
+      tradermade_symbol: dto.tradermadeSymbol,
       trade_type: dto.tradeType,
       entry_price: dto.entryPrice,
       stop_loss: dto.stopLoss,

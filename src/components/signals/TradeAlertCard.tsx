@@ -246,9 +246,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               onTakeProfitHit={onTakeProfitHit}
               onStopLossHit={onStopLossHit}
               onOrderActivation={onOrderActivation}
-              livePrice={livePrice}
-              connectionStatus={connectionStatus}
-              priceSource={priceSource}
           />
         </div>
       )}

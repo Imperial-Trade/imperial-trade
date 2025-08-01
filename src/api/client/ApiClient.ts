@@ -77,6 +77,7 @@ export class ApiClient {
     data: TableInsert<T>
   ): Promise<ApiResponse<TableRow<T>>> {
     try {
+      console.log(`📝 Inserting into ${table}:`, data);
       const { data: result, error } = await supabase
         .from(table)
         .insert(data as any)

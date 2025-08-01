@@ -111,7 +111,7 @@ export default function EducatorSignalManagement() {
       // Transform form data to DTO format (camelCase)
       const createDto = {
         assetName: data.asset_name,
-        finnhubSymbol: data.finnhub_symbol,
+        tradermadeSymbol: data.tradermade_symbol,
         tradeType: data.trade_type,
         entryPrice: data.entry_price,
         stopLoss: data.stop_loss,
@@ -201,7 +201,7 @@ export default function EducatorSignalManagement() {
   };
 
   const handleCopySignal = (alert: any) => {
-    const signalText = `📊 ${alert.assetName} (${alert.finnhubSymbol})
+    const signalText = `📊 ${alert.assetName} (${alert.tradermadeSymbol})
 🔄 ${alert.tradeType.toUpperCase()}
 💰 Entry: $${alert.entryPrice}
 ❌ Stop Loss: $${alert.stopLoss}
@@ -219,7 +219,7 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
   const filteredAlerts = useMemo(() => {
     return userAlerts.filter(alert => {
       const matchesSearch = alert.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           alert.finnhubSymbol.toLowerCase().includes(searchTerm.toLowerCase());
+                           alert.tradermadeSymbol.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = filterStatus === 'all' || alert.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
@@ -413,7 +413,7 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
                           <div className="flex items-center gap-2">
                             <h3 className="text-lg font-semibold text-primary">{alert.assetName}</h3>
                             <Badge variant="outline" className="text-xs">
-                              {alert.finnhubSymbol}
+                              {alert.tradermadeSymbol}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
@@ -543,7 +543,7 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
                           <div className="flex items-center gap-2">
                             <h3 className="text-lg font-semibold text-primary">{alert.assetName}</h3>
                             <Badge variant="outline" className="text-xs">
-                              {alert.finnhubSymbol}
+                              {alert.tradermadeSymbol}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
@@ -670,7 +670,7 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
                           <div className="flex items-center gap-2">
                             <h3 className="text-lg font-semibold text-primary">{alert.assetName}</h3>
                             <Badge variant="outline" className="text-xs">
-                              {alert.finnhubSymbol}
+                              {alert.tradermadeSymbol}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
@@ -808,7 +808,7 @@ ${alert.notes ? `📝 ${alert.notes}` : ''}`;
             <AlertDialogDescription className="text-secondary">
               Are you sure you want to delete this trading signal for{" "}
               <span className="font-semibold text-primary">
-                {deletingAlert?.assetName} ({deletingAlert?.finnhubSymbol})
+                {deletingAlert?.assetName} ({deletingAlert?.tradermadeSymbol})
               </span>?
               This action cannot be undone and will remove the signal from all your followers.
             </AlertDialogDescription>

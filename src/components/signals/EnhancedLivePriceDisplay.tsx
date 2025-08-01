@@ -42,12 +42,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     refreshPrice
   } = useOptimizedLivePrice(apiSymbol, {
     enableSmartPausing: false, // Keep connection active for trading signals
-    debounceMs: 500, // Faster updates for trading
+    debounceMs: 50, // Ultra-fast updates for trading (50ms)
     pauseOnInput: false
   });
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataAge, setDataAge] = useState<string>('');
+  const [prevPrice, setPrevPrice] = useState<number>(0);
+  const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
 
   // Update data age every second
   useEffect(() => {
@@ -77,6 +79,18 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     const interval = setInterval(updateAge, 1000);
     return () => clearInterval(interval);
   }, [lastUpdated]);
+
+  // Price change animation effect
+  useEffect(() => {
+    if (price > 0 && prevPrice > 0 && price !== prevPrice) {
+      setPriceAnimation(price > prevPrice ? 'up' : 'down');
+      const timer = setTimeout(() => setPriceAnimation(null), 1000);
+      return () => clearTimeout(timer);
+    }
+    if (price > 0) {
+      setPrevPrice(price);
+    }
+  }, [price, prevPrice]);
 
   const formatPrice = useCallback((price: number) => {
     // Dynamic decimal places based on price magnitude
@@ -211,7 +225,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   if (!symbol) return null;
 
   return (
-    <div className={`bg-gray-800/50 border border-gray-600 rounded-lg p-4 ${className}`}>
+    <div className={`bg-card/50 border border-border rounded-lg p-4 backdrop-blur-sm transition-all duration-300 ${
+      connectionStatus === 'connected' ? 'border-green-500/30 shadow-green-500/10 shadow-lg' : 
+      connectionStatus === 'error' ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
+      'border-border'
+    } ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -287,8 +305,12 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             {error ? (
               <div className="text-gray-500 font-mono text-xl">---.--</div>
             ) : (
-              <div className={`text-accent-green font-mono text-xl font-bold ${
+              <div className={`font-mono text-xl font-bold transition-all duration-300 ${
                 isLoading || isRefreshing ? 'animate-pulse' : ''
+              } ${
+                priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
+                priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
+                'text-accent-green'
               }`}>
                 ${formatPrice(price)}
               </div>
@@ -345,9 +367,10 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       <div className="mt-2 pt-2 border-t border-gray-600">
         <div className="text-xs text-gray-500">
           {connectionStatusInfo.description} • 
-          Source: {priceUpdateSource === 'websocket' ? 'Real-time WebSocket' : 
-                   priceUpdateSource === 'http' ? 'HTTP API' : 'Twelve Data API'} • 
-          Symbol: {symbol}
+          Source: {dataSource === 'tradermade' ? 'Tradermade API' : 
+                   priceUpdateSource === 'websocket' ? 'Real-time Tradermade' : 
+                   priceUpdateSource === 'http' ? 'Tradermade API' : 'Tradermade'} • 
+          Symbol: {symbol} • Price: ${price > 0 ? price.toFixed(2) : 'Loading...'}
         </div>
       </div>
     </div>

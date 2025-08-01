@@ -28,7 +28,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   // Form state
   const [formData, setFormData] = useState({
     asset_name: '',
-    finnhub_symbol: '',
+    tradermade_symbol: '',
     trade_type: 'buy' as 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
     entry_price: '',
     stop_loss: '',
@@ -37,7 +37,8 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     tp3: '',
     tp4: '',
     tp5: '',
-    notes: ''
+    notes: '',
+    status: 'active' as const
   });
 
   const [takeProfits, setTakeProfits] = useState<string[]>(['']);
@@ -50,14 +51,14 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     setFormData(prev => ({
       ...prev,
       asset_name: asset.name,
-      finnhub_symbol: asset.symbol
+      tradermade_symbol: asset.symbol
     }));
     
     // Clear asset-related errors
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors.asset_name;
-      delete newErrors.finnhub_symbol;
+      delete newErrors.tradermade_symbol;
       return newErrors;
     });
 
@@ -124,43 +125,31 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    // Basic required field validation
     if (!formData.asset_name) newErrors.asset_name = 'Please select an asset';
     if (!formData.entry_price) newErrors.entry_price = 'Entry price is required';
     if (!formData.stop_loss) newErrors.stop_loss = 'Stop loss is required';
     if (!takeProfits[0]) newErrors.tp1 = 'At least one take profit is required';
 
-    // Validate numeric fields
-    const entryPrice = parseFloat(formData.entry_price);
-    const stopLoss = parseFloat(formData.stop_loss);
-    const tp1 = parseFloat(takeProfits[0]);
-
-    if (isNaN(entryPrice) || entryPrice <= 0) {
-      newErrors.entry_price = 'Entry price must be a valid positive number';
-    }
-    if (isNaN(stopLoss) || stopLoss <= 0) {
-      newErrors.stop_loss = 'Stop loss must be a valid positive number';
-    }
-    if (isNaN(tp1) || tp1 <= 0) {
-      newErrors.tp1 = 'Take profit must be a valid positive number';
-    }
-
-    // Validate price relationships for buy
-    if (formData.trade_type === 'buy' && !isNaN(entryPrice) && !isNaN(stopLoss) && !isNaN(tp1)) {
-      if (stopLoss >= entryPrice) {
-        newErrors.stop_loss = 'Stop loss must be below entry price for buy positions';
-      }
-      if (tp1 <= entryPrice) {
-        newErrors.tp1 = 'Take profit must be above entry price for buy positions';
+    // Only validate numbers if fields are not empty
+    if (formData.entry_price) {
+      const entryPrice = parseFloat(formData.entry_price);
+      if (isNaN(entryPrice) || entryPrice <= 0) {
+        newErrors.entry_price = 'Entry price must be a positive number';
       }
     }
 
-    // Validate price relationships for sell
-    if (formData.trade_type === 'sell' && !isNaN(entryPrice) && !isNaN(stopLoss) && !isNaN(tp1)) {
-      if (stopLoss <= entryPrice) {
-        newErrors.stop_loss = 'Stop loss must be above entry price for sell positions';
+    if (formData.stop_loss) {
+      const stopLoss = parseFloat(formData.stop_loss);
+      if (isNaN(stopLoss) || stopLoss <= 0) {
+        newErrors.stop_loss = 'Stop loss must be a positive number';
       }
-      if (tp1 >= entryPrice) {
-        newErrors.tp1 = 'Take profit must be below entry price for sell positions';
+    }
+
+    if (takeProfits[0]) {
+      const tp1 = parseFloat(takeProfits[0]);
+      if (isNaN(tp1) || tp1 <= 0) {
+        newErrors.tp1 = 'Take profit must be a positive number';
       }
     }
 
@@ -185,17 +174,21 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     try {
       const submissionData: TradeAlertSubmissionData = {
         asset_name: formData.asset_name,
-        finnhub_symbol: formData.finnhub_symbol,
+        tradermade_symbol: formData.tradermade_symbol,
         trade_type: formData.trade_type,
         entry_price: parseFloat(formData.entry_price),
         stop_loss: parseFloat(formData.stop_loss),
-        tp1: takeProfits[0] ? parseFloat(takeProfits[0]) : null,
-        tp2: takeProfits[1] ? parseFloat(takeProfits[1]) : null,
-        tp3: takeProfits[2] ? parseFloat(takeProfits[2]) : null,
-        tp4: takeProfits[3] ? parseFloat(takeProfits[3]) : null,
-        tp5: takeProfits[4] ? parseFloat(takeProfits[4]) : null,
-        notes: formData.notes || null
+        tp1: takeProfits[0] && takeProfits[0].trim() ? parseFloat(takeProfits[0]) : undefined,
+        tp2: takeProfits[1] && takeProfits[1].trim() ? parseFloat(takeProfits[1]) : undefined,
+        tp3: takeProfits[2] && takeProfits[2].trim() ? parseFloat(takeProfits[2]) : undefined,
+        tp4: takeProfits[3] && takeProfits[3].trim() ? parseFloat(takeProfits[3]) : undefined,
+        tp5: takeProfits[4] && takeProfits[4].trim() ? parseFloat(takeProfits[4]) : undefined,
+        notes: formData.notes || undefined,
+        status: 'active'
       };
+
+      console.log('📋 Submission Data:', submissionData);
+      console.log('✅ Validation passed - submitting to API');
 
       await onSubmit(submissionData);
     } catch (error) {
@@ -215,8 +208,8 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       <form onSubmit={handleSubmit} className="w-full space-y-4">
         {/* Asset Selection */}
         <AssetSelector
-          value={formData.finnhub_symbol}
-          onValueChange={(value) => handleInputChange('finnhub_symbol', value)}
+          value={formData.tradermade_symbol}
+          onValueChange={(value) => handleInputChange('tradermade_symbol', value)}
           onAssetChange={handleAssetChange}
         />
         

@@ -37,7 +37,7 @@ export const TypeSafetyTest: React.FC<TypeSafetyTestProps> = ({ userId }) => {
     const validTradeAlert = {
       id: '123e4567-e89b-12d3-a456-426614174000',
       asset_name: 'Gold',
-      finnhub_symbol: 'XAU/USD',
+      tradermade_symbol: 'XAUUSD',
       trade_type: 'buy' as const,
       entry_price: 2000,
       stop_loss: 1950,
@@ -57,7 +57,7 @@ export const TypeSafetyTest: React.FC<TypeSafetyTestProps> = ({ userId }) => {
     // Test 3: DTO Validation
     const validCreateDto: CreateTradeAlertDto = {
       assetName: 'Bitcoin',
-      finnhubSymbol: 'BTC/USD',
+      tradermadeSymbol: 'BTCUSD',
       tradeType: 'buy',
       entryPrice: 50000,
       stopLoss: 48000,

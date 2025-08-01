@@ -38,7 +38,7 @@ export class AdminTradingService {
           id: alert.id,
           userId: alert.user_id,
           assetName: alert.asset_name,
-          finnhubSymbol: alert.finnhub_symbol,
+          tradermadeSymbol: alert.tradermade_symbol,
           tradeType: alert.trade_type,
           entryPrice: Number(alert.entry_price),
           stopLoss: Number(alert.stop_loss),

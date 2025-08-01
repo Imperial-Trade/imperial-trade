@@ -19,18 +19,17 @@ const NewSignalPage: React.FC = () => {
   // Pre-load all supported asset prices for immediate availability
   const { subscribe, unsubscribe } = useWebSocketPrices();
 
-  // Pre-load all supported asset prices on mount
+  // Pre-load all supported asset prices on mount with proper symbol mapping
   useEffect(() => {
-    const supportedSymbols = SUPPORTED_ASSETS.map(asset => 
-      asset.name === 'Gold' ? 'GOLD' : asset.name.toUpperCase()
-    );
+    // Use actual Tradermade symbols for subscription
+    const tradermadeSymbols = SUPPORTED_ASSETS.map(asset => asset.symbol);
     
-    console.log('NewSignalPage - Pre-loading asset prices:', supportedSymbols);
-    subscribe(supportedSymbols);
+    console.log('NewSignalPage - Pre-loading asset prices with Tradermade symbols:', tradermadeSymbols);
+    subscribe(tradermadeSymbols);
 
     return () => {
       console.log('NewSignalPage - Cleaning up asset price subscriptions');
-      unsubscribe(supportedSymbols);
+      unsubscribe(tradermadeSymbols);
     };
   }, [subscribe, unsubscribe]);
 
@@ -78,7 +77,7 @@ const NewSignalPage: React.FC = () => {
       // Convert form data to CreateTradeAlertDto
       const createDto: CreateTradeAlertDto = {
         assetName: data.asset_name,
-        finnhubSymbol: data.finnhub_symbol,
+        tradermadeSymbol: data.tradermade_symbol,
         tradeType: data.trade_type,
         entryPrice: data.entry_price,
         stopLoss: data.stop_loss,

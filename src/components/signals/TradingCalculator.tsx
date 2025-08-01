@@ -62,24 +62,34 @@ export default function TradingCalculator({ alert, livePrice }) {
   }, [currentPrice]);
   
   
-  // Calculate pip distances to levels
+  // Enhanced pip distance calculations for all asset types
   const calculatePipDistance = (fromPrice, toPrice) => {
     const symbol = alert.tradermade_symbol || alert.asset_name || '';
-    const spec = getLotSizeSpec(symbol);
-    
-    // Calculate the actual price difference
     const priceDiff = Math.abs(toPrice - fromPrice);
     
-    // Convert to pips based on asset type
+    // Enhanced asset type detection with better support for indices
     if (symbol.includes('JPY')) {
       return (priceDiff * 100).toFixed(1); // JPY pairs: 1 pip = 0.01
     } else if (symbol.includes('USD') && (symbol.includes('XAU') || symbol.includes('GOLD'))) {
       return (priceDiff * 10).toFixed(1); // Gold: 1 pip = 0.1
-    } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
-      return priceDiff.toFixed(0); // Crypto: 1 pip = 1 point
+    } else if (symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('CRYPTO')) {
+      return priceDiff.toFixed(0); // Crypto: 1 point = 1 unit
+    } else if (symbol.includes('NAS100') || symbol.includes('US30') || symbol.includes('USA30') || symbol.includes('SPX500') || symbol.includes('DJ30')) {
+      return priceDiff.toFixed(1); // Indices: 1 point = 1 unit
     } else {
       return (priceDiff * 10000).toFixed(1); // Standard forex: 1 pip = 0.0001
     }
+  };
+
+  // Get proper terminology for the asset type
+  const getPipTerminology = () => {
+    const symbol = alert.tradermade_symbol || alert.asset_name || '';
+    if (symbol.includes('NAS100') || symbol.includes('US30') || symbol.includes('USA30') || symbol.includes('SPX500') || symbol.includes('DJ30')) {
+      return 'points';
+    } else if (symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('CRYPTO')) {
+      return 'points';
+    }
+    return 'pips';
   };
   
   // Calculate maximum lot size based on both margin requirements AND risk limit
@@ -156,11 +166,21 @@ export default function TradingCalculator({ alert, livePrice }) {
       const basePrice = isPending ? entryPrice : currentPrice;
       const totalReward = calculatePnL(basePrice, tp.price, lots, symbol);
       const rewardRiskRatio = totalRisk > 0 ? Math.abs(totalReward) / totalRisk : 0;
+      
+      // Calculate distance and proximity for visual indicators
+      const distancePips = calculatePipDistance(currentPrice, tp.price);
+      const distancePercent = Math.abs(((tp.price - currentPrice) / currentPrice) * 100);
+      const isClose = distancePercent < 1; // Within 1% is considered close
+      
       return {
         level: tp.level,
         price: tp.price,
         usd: Math.abs(totalReward),
-        ratio: rewardRiskRatio
+        ratio: rewardRiskRatio,
+        distancePips: parseFloat(distancePips),
+        distancePercent,
+        isClose,
+        direction: tp.price > currentPrice ? 'above' : 'below'
       };
     });
 
@@ -215,6 +235,20 @@ export default function TradingCalculator({ alert, livePrice }) {
     const color = value >= 0 ? 'text-emerald-400' : 'text-red-400';
     const sign = value >= 0 ? '+' : '';
     return <span className={color}>{sign}{value.toFixed(2)}%</span>;
+  };
+
+  // Enhanced price formatting for different asset types
+  const formatPrice = (price, symbol = '') => {
+    if (symbol.includes('NAS100') || symbol.includes('US30') || symbol.includes('USA30')) {
+      return price.toFixed(0); // No decimals for major indices
+    } else if (symbol.includes('SPX500')) {
+      return price.toFixed(1); // 1 decimal for S&P 500
+    } else if (symbol.includes('JPY')) {
+      return price.toFixed(3); // 3 decimals for JPY pairs
+    } else if (symbol.includes('BTC') || symbol.includes('ETH')) {
+      return price.toFixed(2); // 2 decimals for crypto
+    }
+    return price.toFixed(5); // 5 decimals for standard forex
   };
 
   return (
@@ -341,19 +375,19 @@ export default function TradingCalculator({ alert, livePrice }) {
                       ? (isPriceUp ? 'text-emerald-400' : 'text-red-400')
                       : 'text-white'
                   }`}>
-                    ${currentPrice.toFixed(alert.tradermade_symbol?.includes('JPY') ? 3 : 5)}
+                    ${formatPrice(currentPrice, alert.tradermade_symbol)}
                   </span>
                   {priceChangeFromEntry !== 0 && (
                     <div className={`flex items-center gap-1 ${isPriceUp ? 'text-emerald-400' : 'text-red-400'}`}>
                       {isPriceUp ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
                       <span className="text-xs font-medium">
-                        {isPriceUp ? '+' : ''}{priceChangeFromEntry.toFixed(alert.tradermade_symbol?.includes('JPY') ? 3 : 5)}
+                        {isPriceUp ? '+' : ''}{formatPrice(priceChangeFromEntry, alert.tradermade_symbol)}
                       </span>
                     </div>
                   )}
                 </div>
                 <div className="text-xs text-gray-400">
-                  Entry: ${alert.entry_price.toFixed(alert.tradermade_symbol?.includes('JPY') ? 3 : 5)}
+                  Entry: ${formatPrice(alert.entry_price, alert.tradermade_symbol)}
                   {priceChangeFromEntry !== 0 && (
                     <span className={`ml-2 ${isPriceUp ? 'text-emerald-400' : 'text-red-400'}`}>
                       ({isPriceUp ? '+' : ''}{priceChangePercentage.toFixed(2)}%)
@@ -382,25 +416,57 @@ export default function TradingCalculator({ alert, livePrice }) {
               )}
             </div>
             
-            {/* Distance to Levels (Pips) */}
+            {/* Enhanced Distance to All Levels */}
             {calculations && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="text-xs font-medium text-gray-300 flex items-center gap-1">
                   <Target className="w-3 h-3" />
-                  Distance to Levels (Pips)
+                  Distance to Levels ({getPipTerminology()})
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-red-900/30 rounded px-2 py-1 border border-red-700/50">
+                
+                {/* Stop Loss */}
+                <div className="bg-red-900/30 rounded px-2 py-1 border border-red-700/50">
+                  <div className="flex justify-between items-center">
                     <div className="text-red-300 font-medium">Stop Loss</div>
-                    <div className="text-white">{calculatePipDistance(currentPrice, alert.stop_loss)} pips</div>
-                  </div>
-                  {calculations.rewards.length > 0 && (
-                    <div className="bg-emerald-900/30 rounded px-2 py-1 border border-emerald-700/50">
-                      <div className="text-emerald-300 font-medium">Next TP{calculations.rewards[0].level}</div>
-                      <div className="text-white">{calculatePipDistance(currentPrice, calculations.rewards[0].price)} pips</div>
+                    <div className="text-white text-xs">
+                      {calculatePipDistance(currentPrice, alert.stop_loss)} {getPipTerminology()}
                     </div>
-                  )}
+                  </div>
+                  <div className="text-xs text-red-200 mt-1">
+                    ${formatPrice(alert.stop_loss, alert.tradermade_symbol)}
+                  </div>
                 </div>
+
+                {/* All Take Profit Levels */}
+                {calculations.rewards.length > 0 && (
+                  <div className="space-y-2">
+                    {calculations.rewards.map((reward) => (
+                      <div key={reward.level} className={`rounded px-2 py-1 border transition-all duration-300 ${
+                        reward.isClose 
+                          ? 'bg-emerald-800/40 border-emerald-600/70' 
+                          : 'bg-emerald-900/30 border-emerald-700/50'
+                      }`}>
+                        <div className="flex justify-between items-center">
+                          <div className="text-emerald-300 font-medium text-xs">
+                            TP{reward.level}
+                            {reward.isClose && <span className="ml-1 text-emerald-200">●</span>}
+                          </div>
+                          <div className="text-white text-xs">
+                            {reward.distancePips.toFixed(1)} {getPipTerminology()}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                          <div className="text-xs text-emerald-200">
+                            ${formatPrice(reward.price, alert.tradermade_symbol)}
+                          </div>
+                          <div className="text-xs text-gray-300">
+                            {reward.distancePercent.toFixed(2)}%
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -419,101 +485,126 @@ export default function TradingCalculator({ alert, livePrice }) {
             </div>
         )}
 
-        {/* Calculations Display (Risk/Reward) */}
-        {calculations ? (
+        {/* Risk Analysis */}
+        {calculations && (
           <div className="space-y-3">
-            {/* Enhanced Risk Analysis with Dynamic Alerts */}
-            <div className={`rounded-md p-3 border transition-all duration-300 ${
-              calculations.riskPercentage > 10 
-                ? 'bg-red-900/40 border-red-600/60' 
-                : calculations.riskPercentage > 5 
-                  ? 'bg-red-900/20 border-red-700/50' 
-                  : 'bg-yellow-900/20 border-yellow-700/50'
-            } ${riskWarningFlash ? 'animate-pulse scale-105' : ''}`}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className={`w-4 h-4 transition-colors ${
-                    calculations.riskPercentage > 10 ? 'text-red-300' : 
-                    calculations.riskPercentage > 5 ? 'text-red-400' : 'text-yellow-400'
-                  }`} />
-                  <span className="text-sm font-medium text-red-300">Risk Analysis</span>
+            <div className="text-sm font-medium text-gray-300 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-orange-400" />
+              Risk Analysis
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-800/50 rounded-md p-3 border border-gray-700">
+                <div className="text-xs text-gray-400 mb-1">Total Risk</div>
+                <div className="text-lg font-bold text-red-400">
+                  {formatCurrency(calculations.totalRisk)}
+                </div>
+              </div>
+              <div className={`bg-gray-800/50 rounded-md p-3 border transition-all duration-300 ${
+                calculations.riskPercentage > 10 
+                  ? 'border-red-500' 
+                  : calculations.riskPercentage > 5 
+                    ? 'border-orange-500' 
+                    : 'border-gray-700'
+              }`}>
+                <div className="text-xs text-gray-400 mb-1">Risk of Account</div>
+                <div className={`text-lg font-bold transition-all duration-300 ${
+                  riskWarningFlash && calculations.riskPercentage > 5
+                    ? 'scale-105'
+                    : ''
+                } ${
+                  calculations.riskPercentage > 10 
+                    ? 'text-red-400' 
+                    : calculations.riskPercentage > 5 
+                      ? 'text-orange-400' 
+                      : 'text-emerald-400'
+                }`}>
+                  {calculations.riskPercentage.toFixed(2)}%
                 </div>
                 {calculations.riskPercentage > 10 && (
-                  <Badge variant="outline" className="text-red-300 border-red-500 text-xs px-1 py-0">
-                    CRITICAL
-                  </Badge>
+                  <div className="text-xs text-red-300 mt-1 flex items-center gap-1">
+                    <Zap className="w-3 h-3" />
+                    Critical Risk
+                  </div>
                 )}
                 {calculations.riskPercentage > 5 && calculations.riskPercentage <= 10 && (
-                  <Badge variant="outline" className="text-yellow-300 border-yellow-500 text-xs px-1 py-0">
-                    HIGH
-                  </Badge>
+                  <div className="text-xs text-orange-300 mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    High Risk
+                  </div>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <div className="text-gray-400">Risk (USD)</div>
-                  <div className={`font-bold transition-colors ${
-                    calculations.riskPercentage > 10 ? 'text-red-300' : 
-                    calculations.riskPercentage > 5 ? 'text-red-400' : 'text-yellow-400'
-                  }`}>
-                    {formatCurrency(calculations.totalRisk)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-400">Risk of Account</div>
-                  <div className={`font-bold text-lg transition-all duration-300 ${
-                    calculations.riskPercentage > 10 ? 'text-red-300 animate-pulse' : 
-                    calculations.riskPercentage > 5 ? 'text-red-400' : 'text-yellow-400'
-                  }`}>
-                    {calculations.riskPercentage.toFixed(2)}%
-                  </div>
-                </div>
-              </div>
-              {calculations.riskPercentage > 10 && (
-                <div className="mt-2 text-xs text-red-200 bg-red-900/50 p-2 rounded border border-red-600 animate-pulse">
-                  🚨 CRITICAL RISK: Position may cause significant account damage
-                </div>
-              )}
-              {calculations.riskPercentage > 5 && calculations.riskPercentage <= 10 && (
-                <div className="mt-2 text-xs text-yellow-200 bg-yellow-900/30 p-2 rounded border border-yellow-600">
-                  ⚠️ High Risk Warning: Risking more than 5% of account
-                </div>
-              )}
             </div>
+          </div>
+        )}
 
-            {/* Reward Analysis */}
-            {calculations.rewards.length > 0 && (
-              <div className="bg-emerald-900/20 rounded-md p-3 border border-emerald-700/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-400" />
-                  <span className="text-sm font-medium text-emerald-300">Reward Targets</span>
-                </div>
-                <div className="space-y-2">
-                  {calculations.rewards.map((reward, index) => (
-                    <div key={index} className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-emerald-400 border-emerald-600 px-1 py-0 text-xs">
-                          TP{reward.level}
-                        </Badge>
-                        <span className="text-gray-400">
-                          ${reward.price.toFixed(2)}
-                        </span>
+        {/* Enhanced Reward Targets */}
+        {calculations && calculations.rewards.length > 0 && (
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-gray-300 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              Reward Targets {!isPending && <span className="text-xs text-gray-400">(from current price)</span>}
+            </div>
+            <div className="space-y-2">
+              {calculations.rewards.map((reward) => (
+                <div key={reward.level} className={`rounded-md p-3 border transition-all duration-300 ${
+                  reward.isClose 
+                    ? 'bg-emerald-800/20 border-emerald-600' 
+                    : 'bg-gray-800/50 border-gray-700'
+                }`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-medium text-emerald-400">
+                        Take Profit {reward.level}
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold text-emerald-300">
-                          {formatCurrency(reward.usd)}
-                        </div>
-                        <div className="text-emerald-400">
-                          {reward.ratio.toFixed(1)}:1 R:R
-                        </div>
+                      {reward.isClose && (
+                        <Badge variant="outline" className="text-xs px-1 py-0 text-emerald-400 border-emerald-600">
+                          Close
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      ${formatPrice(reward.price, alert.tradermade_symbol)}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <div className="text-xs text-gray-400 mb-1">
+                        {isPending ? 'Potential' : 'Current'} Reward
+                      </div>
+                      <div className="text-emerald-400 font-bold text-sm">
+                        {formatCurrency(reward.usd)}
                       </div>
                     </div>
-                  ))}
+                    <div>
+                      <div className="text-xs text-gray-400 mb-1">Risk:Reward</div>
+                      <div className={`font-bold text-sm ${
+                        reward.ratio >= 2 ? 'text-emerald-400' : 
+                        reward.ratio >= 1 ? 'text-orange-400' : 'text-red-400'
+                      }`}>
+                        1:{reward.ratio.toFixed(2)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400 mb-1">Distance</div>
+                      <div className="text-white text-sm">
+                        {reward.distancePips.toFixed(1)} {getPipTerminology()}
+                      </div>
+                    </div>
+                  </div>
+                  {!isPending && (
+                    <div className="mt-2 pt-2 border-t border-gray-700">
+                      <div className="text-xs text-gray-400">
+                        Price needs to move {reward.direction} by {reward.distancePercent.toFixed(2)}% to reach this target
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
-        ) : (
+        )}
+
+        {!calculations && (
           <div className="text-center py-4 text-gray-500 text-sm">
             Enter your account balance and position size to see calculations
           </div>

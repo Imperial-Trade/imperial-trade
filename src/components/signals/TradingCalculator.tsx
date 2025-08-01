@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, Activity, Target, ArrowUp, ArrowDown, Zap, RefreshCw } from 'lucide-react';
+import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, Activity, Target, ArrowUp, ArrowDown, Zap, RefreshCw, Wifi, WifiOff, Signal, TrendingDown } from 'lucide-react';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
 
 export default function TradingCalculator({ alert, livePrice }) {
@@ -11,8 +11,13 @@ export default function TradingCalculator({ alert, livePrice }) {
   const [lotSize, setLotSize] = useState('');
   const [priceChangeFlash, setPriceChangeFlash] = useState(false);
   const [calculationFlash, setCalculationFlash] = useState(false);
+  const [riskWarningFlash, setRiskWarningFlash] = useState(false);
+  const [trendDirection, setTrendDirection] = useState('neutral'); // 'up', 'down', 'neutral'
   const prevPriceRef = useRef(null);
   const prevPnLRef = useRef(null);
+  const prevRiskRef = useRef(null);
+  const priceHistoryRef = useRef([]);
+  const riskLevelRef = useRef('normal');
   
   const isPending = alert.status === 'pending';
   
@@ -26,11 +31,31 @@ export default function TradingCalculator({ alert, livePrice }) {
   const priceChangePercentage = ((priceChangeFromEntry / alert.entry_price) * 100);
   const isPriceUp = priceChangeFromEntry > 0;
   
-  // Flash effect for price changes
+  // Enhanced price tracking with trend detection
   useEffect(() => {
     if (prevPriceRef.current !== null && prevPriceRef.current !== currentPrice) {
+      // Price change flash effect
       setPriceChangeFlash(true);
       const timer = setTimeout(() => setPriceChangeFlash(false), 300);
+
+      // Update price history for trend detection
+      const now = Date.now();
+      priceHistoryRef.current = [
+        ...priceHistoryRef.current.slice(-4), // Keep last 5 prices
+        { price: currentPrice, timestamp: now }
+      ];
+
+      // Determine trend direction
+      if (priceHistoryRef.current.length >= 3) {
+        const recent = priceHistoryRef.current.slice(-3);
+        const isUpTrend = recent.every((item, i) => i === 0 || item.price > recent[i - 1].price);
+        const isDownTrend = recent.every((item, i) => i === 0 || item.price < recent[i - 1].price);
+        
+        if (isUpTrend) setTrendDirection('up');
+        else if (isDownTrend) setTrendDirection('down');
+        else setTrendDirection('neutral');
+      }
+
       return () => clearTimeout(timer);
     }
     prevPriceRef.current = currentPrice;
@@ -149,15 +174,31 @@ export default function TradingCalculator({ alert, livePrice }) {
     };
   }, [accountBalance, lotSize, alert, livePrice]);
   
-  // Flash effect for P&L changes
+  // Enhanced flash effects for P&L and risk changes
   useEffect(() => {
-    if (calculations && prevPnLRef.current !== null && prevPnLRef.current !== calculations.currentPnL) {
-      setCalculationFlash(true);
-      const timer = setTimeout(() => setCalculationFlash(false), 400);
-      return () => clearTimeout(timer);
-    }
     if (calculations) {
+      // P&L flash effect
+      if (prevPnLRef.current !== null && prevPnLRef.current !== calculations.currentPnL) {
+        setCalculationFlash(true);
+        const timer = setTimeout(() => setCalculationFlash(false), 400);
+      }
+
+      // Risk warning flash effect
+      if (prevRiskRef.current !== null && prevRiskRef.current !== calculations.riskPercentage) {
+        const currentRiskLevel = calculations.riskPercentage > 10 ? 'critical' : 
+                               calculations.riskPercentage > 5 ? 'high' : 'normal';
+        const prevRiskLevel = riskLevelRef.current;
+        
+        if (currentRiskLevel !== prevRiskLevel && currentRiskLevel !== 'normal') {
+          setRiskWarningFlash(true);
+          const timer = setTimeout(() => setRiskWarningFlash(false), 600);
+        }
+        
+        riskLevelRef.current = currentRiskLevel;
+      }
+
       prevPnLRef.current = calculations.currentPnL;
+      prevRiskRef.current = calculations.riskPercentage;
     }
   }, [calculations]);
 
@@ -179,9 +220,33 @@ export default function TradingCalculator({ alert, livePrice }) {
   return (
     <Card className="bg-gray-900/50 border-gray-700 text-white">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium text-gray-300 flex items-center gap-2">
-          <Calculator className="w-4 h-4 text-emerald-400" />
-          Position Calculator - {alert.asset_name}
+        <CardTitle className="text-sm font-medium text-gray-300 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calculator className="w-4 h-4 text-emerald-400" />
+            Position Calculator - {alert.asset_name}
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Live Price Trend Indicator */}
+            {trendDirection !== 'neutral' && (
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300 ${
+                trendDirection === 'up' 
+                  ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/50' 
+                  : 'bg-red-900/30 text-red-400 border border-red-700/50'
+              }`}>
+                {trendDirection === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {trendDirection === 'up' ? 'Bullish' : 'Bearish'}
+              </div>
+            )}
+            {/* Connection Status */}
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+              livePrice?.connectionStatus === 'connected' 
+                ? 'bg-emerald-900/30 text-emerald-400' 
+                : 'bg-red-900/30 text-red-400'
+            }`}>
+              {livePrice?.connectionStatus === 'connected' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+              {livePrice?.connectionStatus === 'connected' ? 'Live' : 'Offline'}
+            </div>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -357,28 +422,60 @@ export default function TradingCalculator({ alert, livePrice }) {
         {/* Calculations Display (Risk/Reward) */}
         {calculations ? (
           <div className="space-y-3">
-            {/* Risk Analysis */}
-            <div className="bg-red-900/20 rounded-md p-3 border border-red-700/50">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-4 h-4 text-red-400" />
-                <span className="text-sm font-medium text-red-300">Risk Analysis</span>
+            {/* Enhanced Risk Analysis with Dynamic Alerts */}
+            <div className={`rounded-md p-3 border transition-all duration-300 ${
+              calculations.riskPercentage > 10 
+                ? 'bg-red-900/40 border-red-600/60' 
+                : calculations.riskPercentage > 5 
+                  ? 'bg-red-900/20 border-red-700/50' 
+                  : 'bg-yellow-900/20 border-yellow-700/50'
+            } ${riskWarningFlash ? 'animate-pulse scale-105' : ''}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className={`w-4 h-4 transition-colors ${
+                    calculations.riskPercentage > 10 ? 'text-red-300' : 
+                    calculations.riskPercentage > 5 ? 'text-red-400' : 'text-yellow-400'
+                  }`} />
+                  <span className="text-sm font-medium text-red-300">Risk Analysis</span>
+                </div>
+                {calculations.riskPercentage > 10 && (
+                  <Badge variant="outline" className="text-red-300 border-red-500 text-xs px-1 py-0">
+                    CRITICAL
+                  </Badge>
+                )}
+                {calculations.riskPercentage > 5 && calculations.riskPercentage <= 10 && (
+                  <Badge variant="outline" className="text-yellow-300 border-yellow-500 text-xs px-1 py-0">
+                    HIGH
+                  </Badge>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
                   <div className="text-gray-400">Risk (USD)</div>
-                  <div className="font-bold text-red-300">
+                  <div className={`font-bold transition-colors ${
+                    calculations.riskPercentage > 10 ? 'text-red-300' : 
+                    calculations.riskPercentage > 5 ? 'text-red-400' : 'text-yellow-400'
+                  }`}>
                     {formatCurrency(calculations.totalRisk)}
                   </div>
                 </div>
                 <div>
                   <div className="text-gray-400">Risk of Account</div>
-                  <div className={`font-bold ${calculations.riskPercentage > 5 ? 'text-red-400' : 'text-yellow-400'}`}>
+                  <div className={`font-bold text-lg transition-all duration-300 ${
+                    calculations.riskPercentage > 10 ? 'text-red-300 animate-pulse' : 
+                    calculations.riskPercentage > 5 ? 'text-red-400' : 'text-yellow-400'
+                  }`}>
                     {calculations.riskPercentage.toFixed(2)}%
                   </div>
                 </div>
               </div>
-              {calculations.riskPercentage > 5 && (
-                <div className="mt-2 text-xs text-red-300 bg-red-900/30 p-2 rounded border border-red-700">
+              {calculations.riskPercentage > 10 && (
+                <div className="mt-2 text-xs text-red-200 bg-red-900/50 p-2 rounded border border-red-600 animate-pulse">
+                  🚨 CRITICAL RISK: Position may cause significant account damage
+                </div>
+              )}
+              {calculations.riskPercentage > 5 && calculations.riskPercentage <= 10 && (
+                <div className="mt-2 text-xs text-yellow-200 bg-yellow-900/30 p-2 rounded border border-yellow-600">
                   ⚠️ High Risk Warning: Risking more than 5% of account
                 </div>
               )}

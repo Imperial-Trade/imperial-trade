@@ -174,33 +174,35 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
     ].filter(tp => tp.price && tp.price > 0);
 
     const rewards = takeProfits.map(tp => {
-      // FIXED: Reward calculation logic
+      // LIVE REWARD CALCULATION LOGIC:
       // - Pending orders: Show potential reward from entry to TP
-      // - Active trades: Show remaining reward from CURRENT price to TP
-      const basePrice = isPending ? entryPrice : currentPrice;
-      const totalReward = calculatePnL(basePrice, tp.price, lots, symbol);
+      // - Active trades: Show CURRENT LIVE reward from live price to TP
+      const rewardBasePrice = isPending ? entryPrice : currentPrice;
+      const liveReward = calculatePnL(rewardBasePrice, tp.price, lots, symbol);
       
-      // Risk ratio based on original risk (entry to SL)
-      const rewardRiskRatio = totalRisk > 0 ? Math.abs(totalReward) / totalRisk : 0;
+      // Risk ratio based on original risk (entry to SL) vs current reward
+      const liveRewardRiskRatio = totalRisk > 0 ? Math.abs(liveReward) / totalRisk : 0;
       
-      // Distance calculations always from current price (real-time)
-      const distancePips = parseFloat(calculatePipDistance(currentPrice, tp.price));
-      const distancePercent = Math.abs(((tp.price - currentPrice) / currentPrice) * 100);
-      const isClose = distancePercent < 1; // Within 1% is considered close
+      // LIVE DISTANCE calculations always from current price (updates in real-time)
+      const liveDistancePips = parseFloat(calculatePipDistance(currentPrice, tp.price));
+      const liveDistancePercent = Math.abs(((tp.price - currentPrice) / currentPrice) * 100);
+      const isVeryClose = liveDistancePercent < 0.5; // Within 0.5% is very close
+      const isClose = liveDistancePercent < 2; // Within 2% is close
       
-      // Show if we've passed this TP level
+      // LIVE STATUS: Check if we've passed this TP level with current price
       const isPassed = isBuy ? currentPrice >= tp.price : currentPrice <= tp.price;
       
       return {
         level: tp.level,
         price: tp.price,
-        usd: Math.abs(totalReward),
-        ratio: rewardRiskRatio,
-        distancePips,
-        distancePercent,
-        isClose,
-        isPassed,
-        direction: tp.price > currentPrice ? 'above' : 'below'
+        usd: Math.abs(liveReward), // LIVE current reward amount
+        ratio: liveRewardRiskRatio, // LIVE risk:reward ratio
+        distancePips: liveDistancePips, // LIVE distance in pips
+        distancePercent: liveDistancePercent, // LIVE distance percentage  
+        isVeryClose, // LIVE proximity status
+        isClose, // LIVE proximity status
+        isPassed, // LIVE achievement status
+        direction: tp.price > currentPrice ? 'above' : 'below' // LIVE direction
       };
     });
 

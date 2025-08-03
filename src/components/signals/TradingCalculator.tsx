@@ -1,12 +1,19 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, Activity, Target, ArrowUp, ArrowDown, Zap, RefreshCw, Wifi, WifiOff, Signal, TrendingDown } from 'lucide-react';
+import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, Activity, Target, ArrowUp, ArrowDown, Zap, RefreshCw, Wifi, WifiOff, Signal, TrendingDown, Radio } from 'lucide-react';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
+import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
 
-export default function TradingCalculator({ alert, livePrice }) {
+export default function TradingCalculator({ alert, livePrice: externalLivePrice }) {
+  // Get live price from WebSocket for the current asset
+  const symbol = alert.tradermade_symbol || alert.asset_name || '';
+  const wsLivePrice = useWebSocketLivePrice(symbol);
+  
+  // Use external live price or fallback to WebSocket live price
+  const livePrice = externalLivePrice || wsLivePrice;
   const [accountBalance, setAccountBalance] = useState('');
   const [lotSize, setLotSize] = useState('');
   const [priceChangeFlash, setPriceChangeFlash] = useState(false);
@@ -278,6 +285,13 @@ export default function TradingCalculator({ alert, livePrice }) {
           <div className="flex items-center gap-2">
             <Calculator className="w-4 h-4 text-emerald-400" />
             Position Calculator - {alert.asset_name}
+            {/* Live Calculation Indicator */}
+            {livePrice?.connectionStatus === 'connected' && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-emerald-900/30 rounded-full">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                <span className="text-xs text-emerald-400 font-medium">LIVE</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {/* Live Price Trend Indicator */}
@@ -292,7 +306,7 @@ export default function TradingCalculator({ alert, livePrice }) {
               </div>
             )}
             {/* Connection Status */}
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all duration-300 ${
               livePrice?.connectionStatus === 'connected' 
                 ? 'bg-emerald-900/30 text-emerald-400' 
                 : 'bg-red-900/30 text-red-400'
@@ -300,6 +314,12 @@ export default function TradingCalculator({ alert, livePrice }) {
               {livePrice?.connectionStatus === 'connected' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
               {livePrice?.connectionStatus === 'connected' ? 'Live' : 'Offline'}
             </div>
+            {/* Data Source Indicator */}
+            {livePrice?.connectionStatus === 'connected' && (
+              <div className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full">
+                {symbol}
+              </div>
+            )}
           </div>
         </CardTitle>
       </CardHeader>

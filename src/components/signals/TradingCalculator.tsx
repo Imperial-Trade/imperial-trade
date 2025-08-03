@@ -122,7 +122,7 @@ export default function TradingCalculator({ alert, livePrice }) {
     e.target.blur();
   };
 
-  // Calculate all trading metrics in real-time
+  // Calculate all trading metrics in real-time with proper synchronization
   const calculations = useMemo(() => {
     const balance = parseFloat(accountBalance) || 0;
     const lots = parseFloat(lotSize) || 0;
@@ -141,16 +141,23 @@ export default function TradingCalculator({ alert, livePrice }) {
     const isBuy = alert.trade_type.includes('buy');
     const symbol = alert.tradermade_symbol || alert.asset_name || '';
     
-    // Calculate risk using current price for active trades, entry price for pending orders
-    const riskBasePrice = isPending ? entryPrice : currentPrice;
-    const totalRisk = calculateRiskAmount(riskBasePrice, stopLoss, lots, symbol);
+    // FIXED: Total risk should ALWAYS be calculated from entry price to stop loss
+    // This represents the maximum risk when the position was opened/will be opened
+    const totalRisk = calculateRiskAmount(entryPrice, stopLoss, lots, symbol);
     const riskPercentage = (totalRisk / balance) * 100;
 
-    // Calculate current P&L using proper lot sizing mechanics
-    const currentPnL = calculatePnL(entryPrice, currentPrice, lots, symbol);
-    const currentPnLPercentage = (currentPnL / balance) * 100;
+    // Current P&L: Always from entry to current price (shows unrealized P&L for active trades)
+    const currentPnL = isPending ? 0 : calculatePnL(entryPrice, currentPrice, lots, symbol);
+    const currentPnLPercentage = isPending ? 0 : (currentPnL / balance) * 100;
 
-    // Calculate potential rewards for each TP level
+    // Calculate stop loss distance from current price (real-time)
+    const stopLossDistance = {
+      pips: parseFloat(calculatePipDistance(currentPrice, stopLoss)),
+      percent: Math.abs(((stopLoss - currentPrice) / currentPrice) * 100),
+      direction: stopLoss > currentPrice ? 'above' : 'below'
+    };
+
+    // Calculate potential rewards for each TP level with real-time updates
     const takeProfits = [
       { level: 1, price: alert.tp1 },
       { level: 2, price: alert.tp2 },
@@ -160,26 +167,32 @@ export default function TradingCalculator({ alert, livePrice }) {
     ].filter(tp => tp.price && tp.price > 0);
 
     const rewards = takeProfits.map(tp => {
-      // For reward calculation: 
-      // - Pending orders: Calculate from entry price to TP (potential reward if entered)
-      // - Active trades: Calculate from CURRENT price to TP (reward from current position)
+      // FIXED: Reward calculation logic
+      // - Pending orders: Show potential reward from entry to TP
+      // - Active trades: Show remaining reward from CURRENT price to TP
       const basePrice = isPending ? entryPrice : currentPrice;
       const totalReward = calculatePnL(basePrice, tp.price, lots, symbol);
+      
+      // Risk ratio based on original risk (entry to SL)
       const rewardRiskRatio = totalRisk > 0 ? Math.abs(totalReward) / totalRisk : 0;
       
-      // Calculate distance and proximity for visual indicators
-      const distancePips = calculatePipDistance(currentPrice, tp.price);
+      // Distance calculations always from current price (real-time)
+      const distancePips = parseFloat(calculatePipDistance(currentPrice, tp.price));
       const distancePercent = Math.abs(((tp.price - currentPrice) / currentPrice) * 100);
       const isClose = distancePercent < 1; // Within 1% is considered close
+      
+      // Show if we've passed this TP level
+      const isPassed = isBuy ? currentPrice >= tp.price : currentPrice <= tp.price;
       
       return {
         level: tp.level,
         price: tp.price,
         usd: Math.abs(totalReward),
         ratio: rewardRiskRatio,
-        distancePips: parseFloat(distancePips),
+        distancePips,
         distancePercent,
         isClose,
+        isPassed,
         direction: tp.price > currentPrice ? 'above' : 'below'
       };
     });
@@ -189,10 +202,17 @@ export default function TradingCalculator({ alert, livePrice }) {
       riskPercentage,
       currentPnL,
       currentPnLPercentage,
+      stopLossDistance,
       rewards,
-      isCurrentlyProfit: currentPnL > 0
+      isCurrentlyProfit: currentPnL > 0,
+      // Add breakeven info
+      breakeven: {
+        price: entryPrice,
+        distance: parseFloat(calculatePipDistance(currentPrice, entryPrice)),
+        direction: entryPrice > currentPrice ? 'above' : 'below'
+      }
     };
-  }, [accountBalance, lotSize, alert, livePrice]);
+  }, [accountBalance, lotSize, alert, livePrice, isPending]);
   
   // Enhanced flash effects for P&L and risk changes
   useEffect(() => {
@@ -589,6 +609,26 @@ export default function TradingCalculator({ alert, livePrice }) {
                       <div className="text-white text-sm">
                         {reward.distancePips.toFixed(1)} {getPipTerminology()}
                       </div>
+                    </div>
+                  </div>
+                  {/* Progress indicator for how close price is to TP */}
+                  <div className="mt-2 pt-2 border-t border-gray-700">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-400">Progress to TP{reward.level}</span>
+                      <span className={`text-xs font-medium ${
+                        reward.isPassed ? 'text-emerald-400' : 
+                        reward.isClose ? 'text-orange-400' : 'text-gray-400'
+                      }`}>
+                        {reward.isPassed ? '✓ Passed' : `${reward.distancePercent.toFixed(1)}% away`}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-1.5">
+                      <div className={`h-1.5 rounded-full transition-all duration-500 ${
+                        reward.isPassed ? 'bg-emerald-400' : 
+                        reward.isClose ? 'bg-orange-400' : 'bg-blue-400'
+                      }`} style={{
+                        width: reward.isPassed ? '100%' : `${Math.min(90, 100 - reward.distancePercent * 10)}%`
+                      }}></div>
                     </div>
                   </div>
                   {!isPending && (

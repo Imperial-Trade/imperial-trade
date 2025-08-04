@@ -158,9 +158,12 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
     const currentPnLPercentage = isPending ? 0 : (currentPnL / balance) * 100;
 
     // Calculate stop loss distance from current price (real-time)
+    const entryToStopPips = parseFloat(calculatePipDistance(entryPrice, stopLoss));
+    const currentToStopPips = parseFloat(calculatePipDistance(currentPrice, stopLoss));
     const stopLossDistance = {
-      pips: parseFloat(calculatePipDistance(currentPrice, stopLoss)),
+      pips: currentToStopPips,
       percent: Math.abs(((stopLoss - currentPrice) / currentPrice) * 100),
+      pipPercent: entryToStopPips > 0 ? (currentToStopPips / entryToStopPips) * 100 : 0, // Pip-based percentage
       direction: stopLoss > currentPrice ? 'above' : 'below'
     };
 
@@ -186,8 +189,13 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
       // LIVE DISTANCE calculations always from current price (updates in real-time)
       const liveDistancePips = parseFloat(calculatePipDistance(currentPrice, tp.price));
       const liveDistancePercent = Math.abs(((tp.price - currentPrice) / currentPrice) * 100);
-      const isVeryClose = liveDistancePercent < 0.5; // Within 0.5% is very close
-      const isClose = liveDistancePercent < 2; // Within 2% is close
+      
+      // Pip-based percentage: calculate distance as percentage of total entry-to-TP distance
+      const entryToTpPips = parseFloat(calculatePipDistance(entryPrice, tp.price));
+      const pipBasedPercent = entryToTpPips > 0 ? (liveDistancePips / entryToTpPips) * 100 : 0;
+      
+      const isVeryClose = pipBasedPercent < 10; // Within 10% of pip distance is very close
+      const isClose = pipBasedPercent < 25; // Within 25% of pip distance is close
       
       // LIVE STATUS: Check if we've passed this TP level with current price
       const isPassed = isBuy ? currentPrice >= tp.price : currentPrice <= tp.price;
@@ -199,6 +207,7 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
         ratio: liveRewardRiskRatio, // LIVE risk:reward ratio
         distancePips: liveDistancePips, // LIVE distance in pips
         distancePercent: liveDistancePercent, // LIVE distance percentage  
+        pipBasedPercent, // NEW: Pip-based percentage of total distance
         isVeryClose, // LIVE proximity status
         isClose, // LIVE proximity status
         isPassed, // LIVE achievement status
@@ -474,8 +483,13 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
                       {calculatePipDistance(currentPrice, alert.stop_loss)} {getPipTerminology()}
                     </div>
                   </div>
-                  <div className="text-xs text-red-200 mt-1">
-                    ${formatPrice(alert.stop_loss, alert.tradermade_symbol)}
+                  <div className="flex justify-between items-center mt-1">
+                    <div className="text-xs text-red-200">
+                      ${formatPrice(alert.stop_loss, alert.tradermade_symbol)}
+                    </div>
+                    <div className="text-xs text-gray-300">
+                      {calculations.stopLossDistance.pipPercent.toFixed(1)}% away
+                    </div>
                   </div>
                 </div>
 
@@ -502,7 +516,7 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
                             ${formatPrice(reward.price, alert.tradermade_symbol)}
                           </div>
                           <div className="text-xs text-gray-300">
-                            {reward.distancePercent.toFixed(2)}%
+                            {reward.pipBasedPercent.toFixed(1)}% away
                           </div>
                         </div>
                       </div>
@@ -641,7 +655,7 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
                         reward.isPassed ? 'text-emerald-400' : 
                         reward.isClose ? 'text-orange-400' : 'text-gray-400'
                       }`}>
-                        {reward.isPassed ? '✓ Passed' : `${reward.distancePercent.toFixed(1)}% away`}
+                        {reward.isPassed ? '✓ Passed' : `${reward.pipBasedPercent.toFixed(1)}% away`}
                       </span>
                     </div>
                     <div className="w-full bg-gray-700 rounded-full h-1.5">
@@ -649,14 +663,14 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
                         reward.isPassed ? 'bg-emerald-400' : 
                         reward.isClose ? 'bg-orange-400' : 'bg-blue-400'
                       }`} style={{
-                        width: reward.isPassed ? '100%' : `${Math.min(90, 100 - reward.distancePercent * 10)}%`
+                        width: reward.isPassed ? '100%' : `${Math.max(10, 100 - reward.pipBasedPercent)}%`
                       }}></div>
                     </div>
                   </div>
                   {!isPending && (
                     <div className="mt-2 pt-2 border-t border-gray-700">
                       <div className="text-xs text-gray-400">
-                        Price needs to move {reward.direction} by {reward.distancePercent.toFixed(2)}% to reach this target
+                        Price needs to move {reward.direction} by {reward.pipBasedPercent.toFixed(1)}% in {getPipTerminology()} to reach this target
                       </div>
                     </div>
                   )}

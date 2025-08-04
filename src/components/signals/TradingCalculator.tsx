@@ -148,9 +148,11 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
     const isBuy = alert.trade_type.includes('buy');
     const symbol = alert.tradermade_symbol || alert.asset_name || '';
     
-    // FIXED: Total risk should ALWAYS be calculated from entry price to stop loss
-    // This represents the maximum risk when the position was opened/will be opened
-    const totalRisk = calculateRiskAmount(entryPrice, stopLoss, lots, symbol);
+    // LIVE RISK CALCULATION: Use live price for active trades, entry price for pending
+    // - Pending orders: Show potential risk from entry to SL
+    // - Active trades: Show CURRENT LIVE risk from live price to SL
+    const riskBasePrice = isPending ? entryPrice : currentPrice;
+    const totalRisk = calculateRiskAmount(riskBasePrice, stopLoss, lots, symbol);
     const riskPercentage = (totalRisk / balance) * 100;
 
     // Current P&L: Always from entry to current price (shows unrealized P&L for active trades)

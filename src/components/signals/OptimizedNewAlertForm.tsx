@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertTriangle, Plus, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Loader2, AlertTriangle, Plus, X, Info, Clock, TrendingUp, TrendingDown } from 'lucide-react';
 import EnhancedLivePriceDisplay from './EnhancedLivePriceDisplay';
 import { AssetSelector, SUPPORTED_ASSETS, type AssetOption } from './AssetSelector';
 import { useToast } from '@/components/ui/use-toast';
@@ -268,7 +270,26 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Trade Type */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Trade Type</label>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-foreground">Trade Type</label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm p-3 bg-popover border border-border">
+                    <div className="space-y-2 text-sm">
+                      <div><strong>Market Orders:</strong></div>
+                      <div>• <strong>Buy:</strong> Execute immediately at current market price</div>
+                      <div>• <strong>Sell:</strong> Execute immediately at current market price</div>
+                      <div><strong>Limit Orders:</strong></div>
+                      <div>• <strong>Buy Limit:</strong> Buy when price drops to or below entry price</div>
+                      <div>• <strong>Sell Limit:</strong> Sell when price rises to or above entry price</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Select 
               value={formData.trade_type} 
               onValueChange={(value) => handleInputChange('trade_type', value)}
@@ -276,26 +297,93 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="buy">Buy</SelectItem>
-                <SelectItem value="sell">Sell</SelectItem>
+              <SelectContent className="bg-popover border border-border z-50">
+                <SelectItem value="buy" className="hover:bg-accent">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-green-500" />
+                    <span>Buy</span>
+                    <Badge variant="secondary" className="text-xs">Market</Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="sell" className="hover:bg-accent">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-red-500" />
+                    <span>Sell</span>
+                    <Badge variant="secondary" className="text-xs">Market</Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="buy_limit" className="hover:bg-accent">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-green-500" />
+                    <span>Buy Limit</span>
+                    <Badge variant="outline" className="text-xs">Pending</Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="sell_limit" className="hover:bg-accent">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-red-500" />
+                    <span>Sell Limit</span>
+                    <Badge variant="outline" className="text-xs">Pending</Badge>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
+            
+            {/* Limit Order Status Badge */}
+            {(formData.trade_type === 'buy_limit' || formData.trade_type === 'sell_limit') && (
+              <div className="flex items-center gap-2 mt-2 p-2 bg-muted/50 rounded-md border border-border">
+                <Clock className="w-4 h-4 text-blue-500" />
+                <div className="text-sm">
+                  <div className="font-medium text-foreground">
+                    {formData.trade_type === 'buy_limit' ? 'Buy Limit Order' : 'Sell Limit Order'}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {formData.trade_type === 'buy_limit' 
+                      ? 'Will execute when price drops to or below entry price'
+                      : 'Will execute when price rises to or above entry price'
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Entry Price */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Entry Price</label>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-foreground">Entry Price</label>
+              {(formData.trade_type === 'buy_limit' || formData.trade_type === 'sell_limit') && (
+                <Badge variant="outline" className="text-xs">
+                  Activation Price
+                </Badge>
+              )}
+            </div>
             <Input
               type="number"
               step="0.01"
-              placeholder="0.00"
+              placeholder={
+                formData.trade_type === 'buy_limit' ? 'Price to buy at (below current)' :
+                formData.trade_type === 'sell_limit' ? 'Price to sell at (above current)' :
+                '0.00'
+              }
               value={formData.entry_price}
               onChange={(e) => handleInputChange('entry_price', e.target.value)}
               className={`w-full ${errors.entry_price ? 'border-red-500' : ''}`}
             />
             {errors.entry_price && (
               <p className="text-sm text-red-500">{errors.entry_price}</p>
+            )}
+            
+            {/* Price Relationship Validation Feedback */}
+            {selectedAsset && formData.entry_price && (
+              <div className="text-xs text-muted-foreground">
+                {formData.trade_type === 'buy_limit' && (
+                  <span>💡 Buy Limit should be below current market price</span>
+                )}
+                {formData.trade_type === 'sell_limit' && (
+                  <span>💡 Sell Limit should be above current market price</span>
+                )}
+              </div>
             )}
           </div>
         </div>

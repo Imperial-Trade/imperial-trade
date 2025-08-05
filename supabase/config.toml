@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.check-user-existence]
 verify_jwt = false
+
+[functions.order-trigger-monitor]
+verify_jwt = false

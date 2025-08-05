@@ -1611,10 +1611,14 @@ export type Database = {
       }
       trade_alerts: {
         Row: {
+          activated_at: string | null
+          activation_price: number | null
           asset_name: string
           close_reason: Database["public"]["Enums"]["close_reason"] | null
           created_at: string
           entry_price: number
+          expires_at: string | null
+          expiry_type: string | null
           id: string
           notes: string | null
           status: Database["public"]["Enums"]["trade_alert_status"]
@@ -1631,10 +1635,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          activated_at?: string | null
+          activation_price?: number | null
           asset_name: string
           close_reason?: Database["public"]["Enums"]["close_reason"] | null
           created_at?: string
           entry_price: number
+          expires_at?: string | null
+          expiry_type?: string | null
           id?: string
           notes?: string | null
           status?: Database["public"]["Enums"]["trade_alert_status"]
@@ -1651,10 +1659,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          activated_at?: string | null
+          activation_price?: number | null
           asset_name?: string
           close_reason?: Database["public"]["Enums"]["close_reason"] | null
           created_at?: string
           entry_price?: number
+          expires_at?: string | null
+          expiry_type?: string | null
           id?: string
           notes?: string | null
           status?: Database["public"]["Enums"]["trade_alert_status"]
@@ -2403,6 +2415,10 @@ export type Database = {
       cleanup_old_rate_limits: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      expire_limit_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       get_community_tier_info: {
         Args: { tier_level: number }

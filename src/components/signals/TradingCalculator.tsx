@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, Activity, Target, ArrowUp, ArrowDown, Zap, RefreshCw, Wifi, WifiOff, Signal, TrendingDown, Radio } from 'lucide-react';
+import { LimitOrderStatus } from './LimitOrderStatus';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
 import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
 
@@ -594,6 +595,9 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
             </div>
           </div>
         )}
+
+        {/* Limit Order Status Management */}
+        <LimitOrderStatus alert={alert} />
 
         {/* Enhanced Reward Targets */}
         {calculations && calculations.rewards.length > 0 && (

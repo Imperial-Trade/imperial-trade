@@ -360,16 +360,6 @@ const LivePriceWidgetComponent = ({
   const connectionStatusInfo = useMemo(() => {
     const dataFreshness = lastUpdated ? (new Date().getTime() - lastUpdated.getTime()) / 1000 : Infinity;
     
-    if (isLoading || connectionStatus === 'connecting') {
-      return { 
-        color: 'text-yellow-400', 
-        icon: RefreshCw, 
-        text: 'Fetching',
-        description: 'Fetching latest price data...',
-        animate: true
-      };
-    }
-    
     if (error) {
       return { 
         color: 'text-red-400', 
@@ -412,13 +402,13 @@ const LivePriceWidgetComponent = ({
     }
     
     return { 
-      color: 'text-red-400', 
-      icon: WifiOff, 
-      text: 'Offline',
-      description: 'No recent price updates',
+      color: 'text-gray-400', 
+      icon: Wifi, 
+      text: 'Live',
+      description: 'Price updates active',
       animate: false
     };
-  }, [connectionStatus, isLoading, error, lastUpdated, priceUpdateSource]);
+  }, [connectionStatus, error, lastUpdated, priceUpdateSource]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -503,8 +493,6 @@ const LivePriceWidgetComponent = ({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-              isLoading || isRefreshing ? 'animate-pulse' : ''
-            } ${
               priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
               priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
               'text-accent-green'
@@ -630,8 +618,6 @@ const LivePriceWidgetComponent = ({
               <div className="text-gray-500 font-mono text-xl">---.--</div>
             ) : (
               <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-                isLoading || isRefreshing ? 'animate-pulse' : ''
-              } ${
                 priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
                 priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
                 'text-accent-green'

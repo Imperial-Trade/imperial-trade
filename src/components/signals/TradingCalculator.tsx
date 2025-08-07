@@ -182,11 +182,37 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
     // Calculate stop loss distance from current price (real-time)
     const entryToStopPips = parseFloat(calculatePipDistance(entryPrice, stopLoss));
     const currentToStopPips = parseFloat(calculatePipDistance(priceValue, stopLoss));
+    
+    // Progress to Stop Loss calculation (how close we are to hitting SL)
+    const entryToCurrentPips = parseFloat(calculatePipDistance(entryPrice, priceValue));
+    
+    let stopLossProgress = 0;
+    if (entryToStopPips > 0) {
+      // Check if we're moving towards or away from stop loss
+      const isMovingTowardsStopLoss = isBuy ? (priceValue <= entryPrice) : (priceValue >= entryPrice);
+      const isStopLossHit = isBuy ? (priceValue <= stopLoss) : (priceValue >= stopLoss);
+      
+      if (isStopLossHit) {
+        stopLossProgress = 100; // Stop loss hit
+      } else if (isMovingTowardsStopLoss) {
+        stopLossProgress = (entryToCurrentPips / entryToStopPips) * 100;
+      } else {
+        stopLossProgress = 0; // Moving away from stop loss (good)
+      }
+    }
+    
+    // Clamp progress between 0-100%
+    stopLossProgress = Math.max(0, Math.min(100, stopLossProgress));
+    
     const stopLossDistance = {
       pips: currentToStopPips,
       percent: Math.abs(((stopLoss - priceValue) / priceValue) * 100),
-      pipPercent: entryToStopPips > 0 ? (currentToStopPips / entryToStopPips) * 100 : 0, // Pip-based percentage
-      direction: stopLoss > priceValue ? 'above' : 'below'
+      pipPercent: entryToStopPips > 0 ? (currentToStopPips / entryToStopPips) * 100 : 0,
+      progressPercent: stopLossProgress,
+      direction: stopLoss > priceValue ? 'above' : 'below',
+      isHit: isBuy ? (priceValue <= stopLoss) : (priceValue >= stopLoss),
+      isClose: (currentToStopPips / Math.max(entryToStopPips, 1)) * 100 < 25, // Within 25% of SL distance
+      isVeryClose: (currentToStopPips / Math.max(entryToStopPips, 1)) * 100 < 10 // Within 10% of SL distance
     };
 
     // Calculate potential rewards for each TP level with real-time updates
@@ -634,6 +660,91 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
                   </div>
                 )}
               </div>
+            </div>
+            
+            {/* Progress to Stop Loss */}
+            <div className={`rounded-md p-3 border transition-all duration-300 ${
+              calculations.stopLossDistance.isVeryClose 
+                ? 'bg-red-800/30 border-red-500' 
+                : calculations.stopLossDistance.isClose 
+                  ? 'bg-red-900/20 border-red-600' 
+                  : 'bg-gray-800/50 border-gray-700'
+            }`}>
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="text-sm font-medium text-red-400">
+                    Distance to Stop Loss
+                  </div>
+                  {calculations.stopLossDistance.isVeryClose && (
+                    <Badge variant="outline" className="text-xs px-1 py-0 text-red-300 border-red-500">
+                      Critical
+                    </Badge>
+                  )}
+                  {calculations.stopLossDistance.isClose && !calculations.stopLossDistance.isVeryClose && (
+                    <Badge variant="outline" className="text-xs px-1 py-0 text-orange-300 border-orange-500">
+                      Close
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-xs text-gray-400">
+                  ${formatPrice(alert.stop_loss, alert.tradermade_symbol)}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Current Distance</div>
+                  <div className="text-white font-bold text-sm">
+                    {calculations.stopLossDistance.pips.toFixed(1)} {getPipTerminology()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Risk Exposure</div>
+                  <div className={`font-bold text-sm ${
+                    calculations.stopLossDistance.progressPercent >= 75 ? 'text-red-400' : 
+                    calculations.stopLossDistance.progressPercent >= 50 ? 'text-orange-400' : 'text-emerald-400'
+                  }`}>
+                    {calculations.stopLossDistance.pipPercent.toFixed(1)}% away
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Price Move</div>
+                  <div className="text-white text-sm">
+                    {calculations.stopLossDistance.percent.toFixed(2)}%
+                  </div>
+                </div>
+              </div>
+              {/* Progress bar showing how close to stop loss */}
+              <div className="mt-2 pt-2 border-t border-gray-700">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-gray-400">Progress to Stop Loss</span>
+                  <span className={`text-xs font-medium ${
+                    calculations.stopLossDistance.isHit ? 'text-red-400' : 
+                    calculations.stopLossDistance.progressPercent >= 75 ? 'text-red-300' : 
+                    calculations.stopLossDistance.progressPercent >= 50 ? 'text-orange-400' : 'text-emerald-400'
+                  }`}>
+                    {calculations.stopLossDistance.isHit ? '✗ Hit' : `${calculations.stopLossDistance.progressPercent.toFixed(1)}% exposed`}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-1.5">
+                  <div className={`h-1.5 rounded-full transition-all duration-500 ${
+                    calculations.stopLossDistance.isHit ? 'bg-red-500' : 
+                    calculations.stopLossDistance.progressPercent >= 75 ? 'bg-red-400' : 
+                    calculations.stopLossDistance.progressPercent >= 50 ? 'bg-orange-400' : 'bg-emerald-400'
+                  }`} style={{
+                    width: `${Math.max(2, calculations.stopLossDistance.progressPercent)}%`
+                  }}></div>
+                </div>
+              </div>
+              {!isPending && (
+                <div className="mt-2 pt-2 border-t border-gray-700">
+                  <div className="text-xs text-gray-400">
+                    {calculations.stopLossDistance.progressPercent === 0 
+                      ? 'Price is moving away from stop loss (favorable)' 
+                      : `Price needs to move ${calculations.stopLossDistance.direction} by ${(100 - calculations.stopLossDistance.pipPercent).toFixed(1)}% more to avoid stop loss`
+                    }
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

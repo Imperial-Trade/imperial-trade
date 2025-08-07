@@ -12,18 +12,32 @@ export default function TradingCalculator({
   alert,
   livePrice: externalLivePrice
 }) {
-  // Get live price from WebSocket for the current asset
+  // Get live price from WebSocket for the current asset (PRIMARY SOURCE)
   const symbol = alert.tradermade_symbol || alert.asset_name || '';
   const wsLivePrice = useWebSocketLivePrice(symbol);
   const { prices, priceUpdateSources } = useWebSocketPrices();
 
-  // Use external live price or fallback to WebSocket live price
-  const livePrice = externalLivePrice || wsLivePrice;
+  // MIRROR LIVE PRICE STRATEGY: Use external price ONLY if it's more recent, otherwise use WebSocket
+  const livePrice = useMemo(() => {
+    if (!externalLivePrice) return wsLivePrice;
+    
+    // If external price exists, compare timestamps and use the most recent
+    const externalTimestamp = externalLivePrice?.lastUpdated?.getTime() || 0;
+    const wsTimestamp = wsLivePrice?.lastUpdated?.getTime() || 0;
+    
+    // Use WebSocket price if it's more recent or if connection status is better
+    if (wsTimestamp > externalTimestamp || wsLivePrice?.connectionStatus === 'connected') {
+      return wsLivePrice;
+    }
+    
+    return externalLivePrice;
+  }, [externalLivePrice, wsLivePrice]);
   
-  // Check if we're receiving institutional tick data
+  // Check if we're receiving ultra-fast institutional tick data
   const currentPriceData = prices[symbol];
+  const isUltraFastTick = currentPriceData?.is_ultra_fast_tick === true;
   const isInstitutionalTick = currentPriceData?.is_institutional_tick === true;
-  const updateFrequency = currentPriceData?.update_frequency || '1000ms';
+  const updateFrequency = currentPriceData?.update_frequency || '250ms';
   const priceSource = priceUpdateSources[symbol] || 'unknown';
   const [accountBalance, setAccountBalance] = useState('');
   const [lotSize, setLotSize] = useState('');
@@ -38,10 +52,27 @@ export default function TradingCalculator({
   const riskLevelRef = useRef('normal');
   const isPending = alert.status === 'pending';
 
-  // Get current price value for calculations
-  const currentPrice = typeof livePrice === 'number' && livePrice > 0 ? livePrice : livePrice?.price && livePrice.price > 0 ? livePrice.price : alert.entry_price;
+  // ENHANCED LIVE PRICE VALUE: Real-time price mirroring with ultra-fast updates
+  const currentPrice = useMemo(() => {
+    const priceValue = typeof livePrice === 'number' && livePrice > 0 ? livePrice : 
+                     livePrice?.price && livePrice.price > 0 ? livePrice.price : 
+                     alert.entry_price;
+    
+    // Log ultra-fast price updates for monitoring
+    if (isUltraFastTick && priceValue !== alert.entry_price) {
+      console.log('⚡ ULTRA-FAST PRICE UPDATE:', {
+        symbol,
+        price: priceValue,
+        frequency: updateFrequency,
+        source: priceSource,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    return priceValue;
+  }, [livePrice, alert.entry_price, isUltraFastTick, symbol, updateFrequency, priceSource]);
 
-  // Calculate price change from entry
+  // Calculate real-time price metrics
   const priceChangeFromEntry = currentPrice - alert.entry_price;
   const priceChangePercentage = priceChangeFromEntry / alert.entry_price * 100;
   const isPriceUp = priceChangeFromEntry > 0;
@@ -138,39 +169,44 @@ export default function TradingCalculator({
     const entryPrice = alert.entry_price || 0;
     const stopLoss = alert.stop_loss || 0;
 
-    // Extract current price for better dependency tracking
-    const priceValue = typeof livePrice === 'number' && livePrice > 0 ? livePrice : livePrice?.price && livePrice.price > 0 ? livePrice.price : entryPrice;
+    // REAL-TIME PRICE VALUE: Use the currentPrice from useMemo for optimal performance
+    const priceValue = currentPrice;
 
-    // Debug logging for price updates
-    console.log('🧮 TradingCalculator - Price Update:', {
-      symbol: alert.tradermade_symbol || alert.asset_name,
-      priceValue,
-      livePrice: typeof livePrice === 'object' ? livePrice?.price : livePrice,
-      connectionStatus: livePrice?.connectionStatus,
-      isLoading: livePrice?.isLoading,
-      timestamp: new Date().toISOString()
-    });
+    // Enhanced debug logging for ultra-fast price updates
+    if (isUltraFastTick) {
+      console.log('⚡ ULTRA-FAST CALC UPDATE:', {
+        symbol: alert.tradermade_symbol || alert.asset_name,
+        priceValue,
+        livePrice: typeof livePrice === 'object' ? livePrice?.price : livePrice,
+        connectionStatus: livePrice?.connectionStatus,
+        isLoading: livePrice?.isLoading,
+        updateFrequency,
+        timestamp: new Date().toISOString()
+      });
+    }
     if (!balance || !lots || !entryPrice || !stopLoss) {
       return null;
     }
     const isBuy = alert.trade_type.includes('buy');
     const symbol = alert.tradermade_symbol || alert.asset_name || '';
 
-    // LIVE RISK CALCULATION: Use live price for active trades, entry price for pending
+    // LIVE RISK CALCULATION: Ultra-fast real-time risk tracking
     // - Pending orders: Show potential risk from entry to SL
-    // - Active trades: Show CURRENT LIVE risk from live price to SL
+    // - Active trades: Show CURRENT LIVE risk from live price to SL (updates every 250ms)
     const riskBasePrice = isPending ? entryPrice : priceValue;
     const totalRisk = calculateRiskAmount(riskBasePrice, stopLoss, lots, symbol);
     const riskPercentage = totalRisk / balance * 100;
 
-    // Debug logging for risk calculations
-    console.log('📊 Risk Calculation Update:', {
-      riskBasePrice,
-      totalRisk,
-      riskPercentage,
-      isPending,
-      timestamp: new Date().toISOString()
-    });
+    // Enhanced debug logging for ultra-fast risk calculations
+    if (isUltraFastTick && !isPending) {
+      console.log('⚡ ULTRA-FAST RISK UPDATE:', {
+        riskBasePrice,
+        totalRisk,
+        riskPercentage,
+        priceChange: priceValue - entryPrice,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // Current P&L: Always from entry to current price (shows unrealized P&L for active trades)
     const currentPnL = isPending ? 0 : calculatePnL(entryPrice, priceValue, lots, symbol);
@@ -228,20 +264,20 @@ export default function TradingCalculator({
       price: alert.tp5
     }].filter(tp => tp.price && tp.price > 0);
     const rewards = takeProfits.map(tp => {
-      // LIVE REWARD CALCULATION LOGIC:
+      // ULTRA-FAST LIVE REWARD CALCULATION:
       // - Pending orders: Show potential reward from entry to TP
-      // - Active trades: Show CURRENT LIVE reward from live price to TP
+      // - Active trades: Show CURRENT LIVE reward from live price to TP (updates every 250ms)
       const rewardBasePrice = isPending ? entryPrice : priceValue;
       const liveReward = calculatePnL(rewardBasePrice, tp.price, lots, symbol);
 
-      // Risk ratio based on original risk (entry to SL) vs current reward
+      // REAL-TIME RISK:REWARD RATIO: Based on original risk (entry to SL) vs current live reward
       const liveRewardRiskRatio = totalRisk > 0 ? Math.abs(liveReward) / totalRisk : 0;
 
-      // LIVE DISTANCE calculations always from current price (updates in real-time)
+      // ULTRA-FAST DISTANCE calculations: Always from current price (updates every 250ms)
       const liveDistancePips = parseFloat(calculatePipDistance(priceValue, tp.price));
       const liveDistancePercent = Math.abs((tp.price - priceValue) / priceValue * 100);
 
-      // Progress percentage: calculate completion from entry to TP target
+      // ULTRA-FAST PROGRESS TRACKING: Real-time completion from entry to TP target
       const entryToTpPips = parseFloat(calculatePipDistance(entryPrice, tp.price));
       const entryToCurrentPips = parseFloat(calculatePipDistance(entryPrice, priceValue));
 
@@ -251,6 +287,7 @@ export default function TradingCalculator({
         // Check if we're moving in the right direction for the trade type
         const isMovingTowardsTarget = isBuy ? priceValue >= entryPrice : priceValue <= entryPrice;
         const isTargetReached = isBuy ? priceValue >= tp.price : priceValue <= tp.price;
+        
         if (isTargetReached) {
           progressPercent = 100; // Target reached or passed
         } else if (isMovingTowardsTarget) {
@@ -260,7 +297,7 @@ export default function TradingCalculator({
         }
       }
 
-      // Pip-based percentage: calculate remaining distance as percentage of total entry-to-TP distance
+      // REAL-TIME distance analysis for proximity alerts
       const pipBasedPercent = entryToTpPips > 0 ? liveDistancePips / entryToTpPips * 100 : 0;
 
       // Clamp progress between 0-100%
@@ -309,7 +346,7 @@ export default function TradingCalculator({
         direction: entryPrice > priceValue ? 'above' : 'below'
       }
     };
-  }, [accountBalance, lotSize, alert, livePrice, isPending]);
+  }, [accountBalance, lotSize, alert, currentPrice, livePrice, isPending, isUltraFastTick]);
 
   // Enhanced flash effects for P&L and risk changes
   useEffect(() => {
@@ -367,33 +404,68 @@ export default function TradingCalculator({
           <div className="flex items-center gap-2">
             <Calculator className="w-4 h-4 text-emerald-400" />
             Position Calculator - {alert.asset_name}
-            {/* Live Calculation Indicator */}
-            {livePrice?.connectionStatus === 'connected' && <div className="flex items-center gap-1 px-2 py-1 bg-emerald-900/30 rounded-full">
+            {/* Ultra-Fast Live Calculation Indicator */}
+            {livePrice?.connectionStatus === 'connected' && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-emerald-900/30 rounded-full border border-emerald-500/30">
+                {isUltraFastTick && <Zap className="w-3 h-3 text-emerald-400" />}
                 <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                <span className="text-xs text-emerald-400 font-medium">LIVE</span>
-              </div>}
+                <span className="text-xs text-emerald-400 font-medium">
+                  {isUltraFastTick ? 'ULTRA-FAST' : 'LIVE'}
+                </span>
+                <span className="text-xs text-emerald-300 opacity-75">
+                  {updateFrequency}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Enhanced Live Price Display */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
+              priceChangeFlash ? 'bg-emerald-500/20 shadow-lg shadow-emerald-500/20' : 'bg-gray-800/50'
+            }`}>
+              <div className="flex items-center gap-1">
+                {isPriceUp ? 
+                  <ArrowUp className="w-3 h-3 text-emerald-400" /> : 
+                  <ArrowDown className="w-3 h-3 text-red-400" />
+                }
+                <span className={`text-sm font-bold ${isPriceUp ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {formatPrice(currentPrice, alert.tradermade_symbol)}
+                </span>
+                {isUltraFastTick && (
+                  <div className="text-xs text-emerald-400 font-medium bg-emerald-500/20 px-1 rounded">
+                    ⚡
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-gray-400 border-l border-gray-600 pl-2 ml-1">
+                {formatPercentage(priceChangePercentage)}
+              </div>
+            </div>
+
             {/* Live Price Trend Indicator */}
             {trendDirection !== 'neutral' && <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300 ${trendDirection === 'up' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/50' : 'bg-red-900/30 text-red-400 border border-red-700/50'}`}>
                 {trendDirection === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                 {trendDirection === 'up' ? 'Bullish' : 'Bearish'}
               </div>}
-            {/* Connection Status */}
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all duration-300 ${livePrice?.connectionStatus === 'connected' ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'}`}>
-              {livePrice?.connectionStatus === 'connected' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-              {livePrice?.connectionStatus === 'connected' ? 'Live' : 'Offline'}
+            
+            {/* Enhanced Connection Status */}
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all duration-300 ${
+              livePrice?.connectionStatus === 'connected' ? 
+                (isUltraFastTick ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' : 'bg-green-900/30 text-green-400 border border-green-500/30') :
+              livePrice?.connectionStatus === 'connecting' ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30' :
+              'bg-red-900/30 text-red-400 border border-red-500/30'
+            }`}>
+              {livePrice?.connectionStatus === 'connected' ? 
+                (isUltraFastTick ? <Radio className="w-3 h-3 animate-pulse" /> : <Wifi className="w-3 h-3" />) : 
+                <WifiOff className="w-3 h-3" />
+              }
+              <span className="font-medium">
+                {livePrice?.connectionStatus === 'connected' ? 
+                  (isUltraFastTick ? 'Ultra-Fast' : 'Connected') : 
+                  livePrice?.connectionStatus || 'Offline'
+                }
+              </span>
             </div>
-            {/* Data Source Indicator */}
-            {livePrice?.connectionStatus === 'connected' && <div className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full">
-                {symbol}
-              </div>}
-            {/* Institutional Tick Indicator */}
-            {isInstitutionalTick && <div className="flex items-center gap-1 px-2 py-1 bg-blue-900/30 rounded-full text-xs">
-                <Radio className="w-3 h-3 text-blue-400 animate-pulse" />
-                <span className="text-blue-400 font-medium">INST</span>
-                <span className="text-blue-300 text-[10px]">{updateFrequency}</span>
-              </div>}
           </div>
         </CardTitle>
       </CardHeader>

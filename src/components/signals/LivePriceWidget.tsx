@@ -579,7 +579,7 @@ const LivePriceWidgetComponent = ({
           title="Refresh price"
           disabled={isLoading || isRefreshing}
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 

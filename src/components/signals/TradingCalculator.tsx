@@ -415,8 +415,8 @@ export default function TradingCalculator({
           </div>
         </div>
 
-        {/* Enhanced Live Price & Market Data Display */}
-        {livePrice && <div className={`bg-gray-800/50 rounded-md p-3 border transition-all duration-300 ${priceChangeFlash ? isPriceUp ? 'border-emerald-400 bg-emerald-900/20' : 'border-red-400 bg-red-900/20' : 'border-gray-700'}`}>
+        {/* Enhanced Live Price & Market Data Display - Hidden but functions still running */}
+        {livePrice && <div className={`hidden bg-gray-800/50 rounded-md p-3 border transition-all duration-300 ${priceChangeFlash ? isPriceUp ? 'border-emerald-400 bg-emerald-900/20' : 'border-red-400 bg-red-900/20' : 'border-gray-700'}`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Activity className={`w-4 h-4 ${livePrice?.connectionStatus === 'connected' ? 'text-emerald-400' : 'text-red-400'}`} />

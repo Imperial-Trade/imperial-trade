@@ -30,9 +30,9 @@ interface ErrorMessage {
   timestamp: string;
 }
 
-// Cache configuration
+// Cache configuration - optimized for ultra-fast 250ms ticks
 const priceCache = new Map<string, TradermadePriceData>();
-const CACHE_TTL = 5000; // 5 seconds
+const CACHE_TTL = 1000; // 1 second for ultra-fast updates
 
 let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();
@@ -280,30 +280,33 @@ serve(async (req) => {
           }));
         }
 
-        // Set up high-frequency institutional tick updates (1-second intervals)
+        // Set up ultra-fast 250ms institutional tick updates
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         heartbeatInterval = setInterval(() => {
           if (tradermadeSocket?.readyState === WebSocket.OPEN) {
-            // Send heartbeat to maintain connection
-            tradermadeSocket.send(JSON.stringify({ type: 'ping' }));
+            // Send heartbeat every 12th tick (3 seconds) to maintain connection
+            if (Date.now() % 3000 < 250) {
+              tradermadeSocket.send(JSON.stringify({ type: 'ping' }));
+            }
           }
           
-          // Send institutional-grade tick prices every 1 second for all subscribed symbols
+          // Send ultra-fast institutional-grade tick prices every 250ms for all subscribed symbols
           if (socket.readyState === WebSocket.OPEN && clientSubscriptions.size > 0) {
-            console.log('📊 Sending institutional tick prices for', clientSubscriptions.size, 'symbols');
+            console.log('⚡ Sending ULTRA-FAST tick prices for', clientSubscriptions.size, 'symbols');
             for (const symbol of clientSubscriptions) {
               const cached = getCachedPrice(symbol);
               if (cached) {
-                // Add micro-timestamp for institutional precision
+                // Add micro-timestamp for ultra-fast institutional precision
                 const tickData = {
                   type: 'price_update',
                   ...cached,
                   tick_timestamp: Date.now(),
                   is_institutional_tick: true,
-                  update_frequency: '1000ms'
+                  is_ultra_fast_tick: true,
+                  update_frequency: '250ms'
                 };
                 socket.send(JSON.stringify(tickData));
-                console.log(`💎 INSTITUTIONAL TICK: ${symbol} = $${cached.price} @ ${new Date().toISOString()}`);
+                console.log(`⚡ ULTRA-FAST TICK: ${symbol} = $${cached.price} @ ${new Date().toISOString()}`);
               } else {
                 // Fetch fresh price if no cache available
                 fetchTradermadePrice(symbol).then(data => {
@@ -313,16 +316,17 @@ serve(async (req) => {
                       ...data,
                       tick_timestamp: Date.now(),
                       is_institutional_tick: true,
-                      update_frequency: '1000ms'
+                      is_ultra_fast_tick: true,
+                      update_frequency: '250ms'
                     };
                     socket.send(JSON.stringify(tickData));
-                    console.log(`💎 FRESH INSTITUTIONAL TICK: ${symbol} = $${data.price} @ ${new Date().toISOString()}`);
+                    console.log(`⚡ FRESH ULTRA-FAST TICK: ${symbol} = $${data.price} @ ${new Date().toISOString()}`);
                   }
                 });
               }
             }
           }
-        }, 1000); // Institutional-grade 1-second tick intervals
+        }, 250); // Ultra-fast 250ms tick intervals
 
         // Notify client of connection
         if (socket.readyState === WebSocket.OPEN) {
@@ -412,21 +416,25 @@ serve(async (req) => {
           heartbeatInterval = null;
         }
 
-        // Attempt reconnection
+        // Enhanced ultra-fast reconnection for 250ms requirements
         if (!reconnectTimeout) {
+          console.log('🚀 Ultra-fast reconnection - attempting immediate reconnect...');
           reconnectTimeout = setTimeout(() => {
             reconnectTimeout = null;
             if (socket.readyState === WebSocket.OPEN) {
+              console.log('🔄 Reconnecting for ultra-fast 250ms ticks...');
               connectToTradermade();
             }
-          }, 5000);
+          }, 1000); // Reduced from 5000ms to 1000ms for ultra-fast recovery
         }
 
-        // Notify client
+        // Notify client with enhanced status
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({
             type: 'connection_status',
             status: 'disconnected',
+            reconnecting: true,
+            ultra_fast_mode: true,
             timestamp: new Date().toISOString()
           }));
         }

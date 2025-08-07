@@ -8,9 +8,10 @@ interface PriceData {
   timestamp: string;
   bid?: number;
   ask?: number;
-  // Institutional tick data
+  // Ultra-fast institutional tick data
   tick_timestamp?: number;
   is_institutional_tick?: boolean;
+  is_ultra_fast_tick?: boolean;
   update_frequency?: string;
 }
 
@@ -127,11 +128,14 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           if (data.type === 'price_update' && data.symbol && typeof data.price === 'number') {
             const symbol = data.symbol;
             
-            // Check if this is an institutional tick with enhanced precision
+            // Check if this is an ultra-fast institutional tick
             const isInstitutionalTick = data.is_institutional_tick === true;
+            const isUltraFastTick = data.is_ultra_fast_tick === true;
             const tickTimestamp = data.tick_timestamp || Date.now();
             
-            if (isInstitutionalTick) {
+            if (isUltraFastTick) {
+              console.log(`⚡ ULTRA-FAST TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
+            } else if (isInstitutionalTick) {
               console.log(`💎 INSTITUTIONAL TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
             } else {
               console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${data.price}`);
@@ -152,16 +156,17 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
                 timestamp: data.timestamp || new Date().toISOString(),
                 bid: data.bid,
                 ask: data.ask,
-                // Enhanced institutional tick data
+                // Enhanced ultra-fast tick data
                 tick_timestamp: tickTimestamp,
                 is_institutional_tick: isInstitutionalTick,
-                update_frequency: data.update_frequency || '1000ms'
+                is_ultra_fast_tick: isUltraFastTick,
+                update_frequency: data.update_frequency || '250ms'
               }
             }));
             
             setPriceUpdateSources(prev => ({ 
               ...prev, 
-              [symbol]: isInstitutionalTick ? 'websocket_institutional' : 'websocket' 
+              [symbol]: isUltraFastTick ? 'websocket_institutional' : isInstitutionalTick ? 'websocket_institutional' : 'websocket' 
             }));
             setLastUpdated(new Date());
             websocketHealthRef.current.lastSuccessfulMessage = Date.now();

@@ -3,6 +3,7 @@ import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -233,8 +234,15 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="text-white font-medium">
-            Live Price for {assetName}
+          <div className="flex items-center gap-2">
+            <div className="text-white font-medium">
+              Live Price for {assetName}
+            </div>
+            {priceUpdateSource === 'websocket_institutional' && (
+              <div className="px-2 py-0.5 bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 rounded-full text-xs text-emerald-400 font-medium">
+                ⚡ 250ms
+              </div>
+            )}
           </div>
           <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
             <connectionStatusInfo.icon 
@@ -342,11 +350,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 text-xs text-gray-400">
-          <Clock className="w-3 h-3" />
-          <span>
-            {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
-          </span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            <Clock className="w-3 h-3" />
+            <span>
+              {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
+            </span>
+          </div>
+          <ConnectionHealthBadge className="ml-2" />
         </div>
         
         {onUseCurrentPrice && !isLoading && !error && price > 0 && (

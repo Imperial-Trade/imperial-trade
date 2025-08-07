@@ -535,28 +535,6 @@ export default function TradingCalculator({
               <AlertTriangle className="w-4 h-4 text-orange-400" />
               Risk Analysis
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-800/50 rounded-md p-3 border border-gray-700">
-                <div className="text-xs text-gray-400 mb-1">Total Risk</div>
-                <div className="text-lg font-bold text-red-400">
-                  {formatCurrency(calculations.totalRisk)}
-                </div>
-              </div>
-              <div className={`bg-gray-800/50 rounded-md p-3 border transition-all duration-300 ${calculations.riskPercentage > 10 ? 'border-red-500' : calculations.riskPercentage > 5 ? 'border-orange-500' : 'border-gray-700'}`}>
-                <div className="text-xs text-gray-400 mb-1">Risk of Account</div>
-                <div className={`text-lg font-bold transition-all duration-300 ${riskWarningFlash && calculations.riskPercentage > 5 ? 'scale-105' : ''} ${calculations.riskPercentage > 10 ? 'text-red-400' : calculations.riskPercentage > 5 ? 'text-orange-400' : 'text-emerald-400'}`}>
-                  {calculations.riskPercentage.toFixed(2)}%
-                </div>
-                {calculations.riskPercentage > 10 && <div className="text-xs text-red-300 mt-1 flex items-center gap-1">
-                    <Zap className="w-3 h-3" />
-                    Critical Risk
-                  </div>}
-                {calculations.riskPercentage > 5 && calculations.riskPercentage <= 10 && <div className="text-xs text-orange-300 mt-1 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    High Risk
-                  </div>}
-              </div>
-            </div>
             
             {/* Progress to Stop Loss */}
             <div className={`rounded-md p-3 border transition-all duration-300 ${calculations.stopLossDistance.isVeryClose ? 'bg-red-800/30 border-red-500' : calculations.stopLossDistance.isClose ? 'bg-red-900/20 border-red-600' : 'bg-gray-800/50 border-gray-700'}`}>

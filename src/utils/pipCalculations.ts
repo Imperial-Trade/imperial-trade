@@ -5,6 +5,11 @@
 export const getPipSize = (symbol: string): number => {
   const upperSymbol = symbol.toUpperCase();
   
+  // Gold: 1 pip = $0.10 (10 cents)
+  if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) {
+    return 0.10;
+  }
+  
   // JPY pairs have 2 decimal places (0.01 pip size)
   if (upperSymbol.includes('JPY')) {
     return 0.01;
@@ -20,11 +25,6 @@ export const getPipSize = (symbol: string): number => {
       upperSymbol.includes('AUD') || 
       upperSymbol.includes('NZD')) {
     return 0.0001;
-  }
-  
-  // Gold and other commodities typically use 0.01
-  if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) {
-    return 0.01;
   }
   
   // Crypto and indices typically use 0.01

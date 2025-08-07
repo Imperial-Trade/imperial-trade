@@ -700,7 +700,7 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
                 <div>
                   <div className="text-xs text-gray-400 mb-1">Distance</div>
                   <div className="text-white font-bold text-sm">
-                    {calculatePipDistance(alert.entry_price, alert.stop_loss)} {getPipTerminology()}
+                    {calculations.stopLossDistance.pips.toFixed(1)} {getPipTerminology()}
                   </div>
                 </div>
               </div>

@@ -7,6 +7,7 @@ import { Calculator, DollarSign, Percent, TrendingUp, AlertTriangle, Hourglass, 
 import { LimitOrderStatus } from './LimitOrderStatus';
 import { calculatePnL, calculateRiskAmount, formatLotSize, getLotSizeSpec, calculatePositionSize } from '@/utils/lotSizing';
 import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 export default function TradingCalculator({
   alert,
   livePrice: externalLivePrice
@@ -14,9 +15,16 @@ export default function TradingCalculator({
   // Get live price from WebSocket for the current asset
   const symbol = alert.tradermade_symbol || alert.asset_name || '';
   const wsLivePrice = useWebSocketLivePrice(symbol);
+  const { prices, priceUpdateSources } = useWebSocketPrices();
 
   // Use external live price or fallback to WebSocket live price
   const livePrice = externalLivePrice || wsLivePrice;
+  
+  // Check if we're receiving institutional tick data
+  const currentPriceData = prices[symbol];
+  const isInstitutionalTick = currentPriceData?.is_institutional_tick === true;
+  const updateFrequency = currentPriceData?.update_frequency || '1000ms';
+  const priceSource = priceUpdateSources[symbol] || 'unknown';
   const [accountBalance, setAccountBalance] = useState('');
   const [lotSize, setLotSize] = useState('');
   const [priceChangeFlash, setPriceChangeFlash] = useState(false);
@@ -379,6 +387,12 @@ export default function TradingCalculator({
             {/* Data Source Indicator */}
             {livePrice?.connectionStatus === 'connected' && <div className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full">
                 {symbol}
+              </div>}
+            {/* Institutional Tick Indicator */}
+            {isInstitutionalTick && <div className="flex items-center gap-1 px-2 py-1 bg-blue-900/30 rounded-full text-xs">
+                <Radio className="w-3 h-3 text-blue-400 animate-pulse" />
+                <span className="text-blue-400 font-medium">INST</span>
+                <span className="text-blue-300 text-[10px]">{updateFrequency}</span>
               </div>}
           </div>
         </CardTitle>

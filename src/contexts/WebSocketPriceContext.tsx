@@ -8,6 +8,10 @@ interface PriceData {
   timestamp: string;
   bid?: number;
   ask?: number;
+  // Institutional tick data
+  tick_timestamp?: number;
+  is_institutional_tick?: boolean;
+  update_frequency?: string;
 }
 
 interface ErrorData {
@@ -22,7 +26,7 @@ interface WebSocketContextType {
   dataSource: 'tradermade' | 'unavailable';
   lastUpdated: Date | null;
   errors: Record<string, string>;
-  priceUpdateSources: Record<string, 'websocket' | 'http'>;
+  priceUpdateSources: Record<string, 'websocket' | 'websocket_institutional' | 'http'>;
   subscribe: (symbols: string[]) => void;
   unsubscribe: (symbols: string[]) => void;
   getPrice: (symbol: string) => PriceData | null;
@@ -49,7 +53,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const [dataSource, setDataSource] = useState<'tradermade' | 'unavailable'>('unavailable');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [priceUpdateSources, setPriceUpdateSources] = useState<Record<string, 'websocket' | 'http'>>({});
+  const [priceUpdateSources, setPriceUpdateSources] = useState<Record<string, 'websocket' | 'websocket_institutional' | 'http'>>({});
   
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -122,7 +126,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           
           if (data.type === 'price_update' && data.symbol && typeof data.price === 'number') {
             const symbol = data.symbol;
-            console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${data.price}`);
+            
+            // Check if this is an institutional tick with enhanced precision
+            const isInstitutionalTick = data.is_institutional_tick === true;
+            const tickTimestamp = data.tick_timestamp || Date.now();
+            
+            if (isInstitutionalTick) {
+              console.log(`💎 INSTITUTIONAL TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
+            } else {
+              console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${data.price}`);
+            }
             
             // Calculate percentage change if we have previous price
             const prevPrice = prices[symbol]?.price || data.price;
@@ -138,11 +151,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
                 changePercent: data.changePercent || changePercent,
                 timestamp: data.timestamp || new Date().toISOString(),
                 bid: data.bid,
-                ask: data.ask
+                ask: data.ask,
+                // Enhanced institutional tick data
+                tick_timestamp: tickTimestamp,
+                is_institutional_tick: isInstitutionalTick,
+                update_frequency: data.update_frequency || '1000ms'
               }
             }));
             
-            setPriceUpdateSources(prev => ({ ...prev, [symbol]: 'websocket' }));
+            setPriceUpdateSources(prev => ({ 
+              ...prev, 
+              [symbol]: isInstitutionalTick ? 'websocket_institutional' : 'websocket' 
+            }));
             setLastUpdated(new Date());
             websocketHealthRef.current.lastSuccessfulMessage = Date.now();
             websocketHealthRef.current.isHealthy = true;

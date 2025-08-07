@@ -11,7 +11,7 @@ interface OptimizedLivePriceData {
   lastUpdated: Date | null;
   connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error';
   dataSource: 'tradermade' | 'unavailable';
-  priceUpdateSource: 'websocket' | 'http' | 'unknown';
+  priceUpdateSource: 'websocket' | 'websocket_institutional' | 'http' | 'unknown';
   refreshPrice: () => void;
 }
 

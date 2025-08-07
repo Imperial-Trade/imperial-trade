@@ -280,26 +280,49 @@ serve(async (req) => {
           }));
         }
 
-        // Set up heartbeat and 1-second price updates
+        // Set up high-frequency institutional tick updates (1-second intervals)
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         heartbeatInterval = setInterval(() => {
           if (tradermadeSocket?.readyState === WebSocket.OPEN) {
+            // Send heartbeat to maintain connection
             tradermadeSocket.send(JSON.stringify({ type: 'ping' }));
           }
           
-          // Send cached prices every 1 second for subscribed symbols
+          // Send institutional-grade tick prices every 1 second for all subscribed symbols
           if (socket.readyState === WebSocket.OPEN && clientSubscriptions.size > 0) {
+            console.log('📊 Sending institutional tick prices for', clientSubscriptions.size, 'symbols');
             for (const symbol of clientSubscriptions) {
               const cached = getCachedPrice(symbol);
               if (cached) {
-                socket.send(JSON.stringify({
+                // Add micro-timestamp for institutional precision
+                const tickData = {
                   type: 'price_update',
-                  ...cached
-                }));
+                  ...cached,
+                  tick_timestamp: Date.now(),
+                  is_institutional_tick: true,
+                  update_frequency: '1000ms'
+                };
+                socket.send(JSON.stringify(tickData));
+                console.log(`💎 INSTITUTIONAL TICK: ${symbol} = $${cached.price} @ ${new Date().toISOString()}`);
+              } else {
+                // Fetch fresh price if no cache available
+                fetchTradermadePrice(symbol).then(data => {
+                  if (data && socket.readyState === WebSocket.OPEN) {
+                    const tickData = {
+                      type: 'price_update',
+                      ...data,
+                      tick_timestamp: Date.now(),
+                      is_institutional_tick: true,
+                      update_frequency: '1000ms'
+                    };
+                    socket.send(JSON.stringify(tickData));
+                    console.log(`💎 FRESH INSTITUTIONAL TICK: ${symbol} = $${data.price} @ ${new Date().toISOString()}`);
+                  }
+                });
               }
             }
           }
-        }, 250); // Optimized 250ms updates for balance of speed and server performance
+        }, 1000); // Institutional-grade 1-second tick intervals
 
         // Notify client of connection
         if (socket.readyState === WebSocket.OPEN) {

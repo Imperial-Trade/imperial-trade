@@ -400,73 +400,9 @@ export default function TradingCalculator({
   };
   return <Card className="bg-gray-900/50 border-gray-700 text-white">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium text-gray-300 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calculator className="w-4 h-4 text-emerald-400" />
-            Position Calculator - {alert.asset_name}
-            {/* Ultra-Fast Live Calculation Indicator */}
-            {livePrice?.connectionStatus === 'connected' && (
-              <div className="flex items-center gap-1 px-2 py-1 bg-emerald-900/30 rounded-full border border-emerald-500/30">
-                {isUltraFastTick && <Zap className="w-3 h-3 text-emerald-400" />}
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                <span className="text-xs text-emerald-400 font-medium">
-                  {isUltraFastTick ? 'ULTRA-FAST' : 'LIVE'}
-                </span>
-                <span className="text-xs text-emerald-300 opacity-75">
-                  {updateFrequency}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Enhanced Live Price Display */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-300 ${
-              priceChangeFlash ? 'bg-emerald-500/20 shadow-lg shadow-emerald-500/20' : 'bg-gray-800/50'
-            }`}>
-              <div className="flex items-center gap-1">
-                {isPriceUp ? 
-                  <ArrowUp className="w-3 h-3 text-emerald-400" /> : 
-                  <ArrowDown className="w-3 h-3 text-red-400" />
-                }
-                <span className={`text-sm font-bold ${isPriceUp ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {formatPrice(currentPrice, alert.tradermade_symbol)}
-                </span>
-                {isUltraFastTick && (
-                  <div className="text-xs text-emerald-400 font-medium bg-emerald-500/20 px-1 rounded">
-                    ⚡
-                  </div>
-                )}
-              </div>
-              <div className="text-xs text-gray-400 border-l border-gray-600 pl-2 ml-1">
-                {formatPercentage(priceChangePercentage)}
-              </div>
-            </div>
-
-            {/* Live Price Trend Indicator */}
-            {trendDirection !== 'neutral' && <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300 ${trendDirection === 'up' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/50' : 'bg-red-900/30 text-red-400 border border-red-700/50'}`}>
-                {trendDirection === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {trendDirection === 'up' ? 'Bullish' : 'Bearish'}
-              </div>}
-            
-            {/* Enhanced Connection Status */}
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all duration-300 ${
-              livePrice?.connectionStatus === 'connected' ? 
-                (isUltraFastTick ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' : 'bg-green-900/30 text-green-400 border border-green-500/30') :
-              livePrice?.connectionStatus === 'connecting' ? 'bg-blue-900/30 text-blue-400 border border-blue-500/30' :
-              'bg-red-900/30 text-red-400 border border-red-500/30'
-            }`}>
-              {livePrice?.connectionStatus === 'connected' ? 
-                (isUltraFastTick ? <Radio className="w-3 h-3 animate-pulse" /> : <Wifi className="w-3 h-3" />) : 
-                <WifiOff className="w-3 h-3" />
-              }
-              <span className="font-medium">
-                {livePrice?.connectionStatus === 'connected' ? 
-                  (isUltraFastTick ? 'Ultra-Fast' : 'Connected') : 
-                  livePrice?.connectionStatus || 'Offline'
-                }
-              </span>
-            </div>
-          </div>
+        <CardTitle className="text-sm font-medium text-gray-300 flex items-center gap-2">
+          <Calculator className="w-4 h-4 text-emerald-400" />
+          Position Calculator - {alert.asset_name}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -577,13 +577,13 @@ export default function TradingCalculator({
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <div className="text-xs text-gray-400 mb-1">Total Risk</div>
-                  <div className="text-white font-bold text-sm">
+                  <div className="text-red-400 font-bold text-sm">
                     {formatCurrency(calculations.totalRisk)}
                   </div>
                 </div>
                 <div>
                   <div className="text-xs text-gray-400 mb-1">Total Risk $$$</div>
-                  <div className={`font-bold text-sm ${calculations.stopLossDistance.progressPercent >= 75 ? 'text-red-400' : calculations.stopLossDistance.progressPercent >= 50 ? 'text-orange-400' : 'text-emerald-400'}`}>
+                  <div className="font-bold text-sm text-red-400">
                     {formatCurrency(calculations.totalRisk)}
                   </div>
                 </div>

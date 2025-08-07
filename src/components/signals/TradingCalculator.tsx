@@ -576,22 +576,21 @@ export default function TradingCalculator({
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <div className="text-xs text-gray-400 mb-1">Current Distance</div>
+                  <div className="text-xs text-gray-400 mb-1">Total Risk</div>
                   <div className="text-white font-bold text-sm">
-                    {calculations.stopLossDistance.pips.toFixed(1)} {getPipTerminology()}
+                    {formatCurrency(calculations.totalRisk)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-400 mb-1">Total Risk $$$
-$854.56</div>
+                  <div className="text-xs text-gray-400 mb-1">Total Risk $$$</div>
                   <div className={`font-bold text-sm ${calculations.stopLossDistance.progressPercent >= 75 ? 'text-red-400' : calculations.stopLossDistance.progressPercent >= 50 ? 'text-orange-400' : 'text-emerald-400'}`}>
-                    {calculations.stopLossDistance.pipPercent.toFixed(1)}% away
+                    {formatCurrency(calculations.totalRisk)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-400 mb-1">Price Move</div>
+                  <div className="text-xs text-gray-400 mb-1">Current Distance</div>
                   <div className="text-white text-sm">
-                    {calculations.stopLossDistance.percent.toFixed(2)}%
+                    {calculations.stopLossDistance.pips.toFixed(1)} {getPipTerminology()}
                   </div>
                 </div>
               </div>

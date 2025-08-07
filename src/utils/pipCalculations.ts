@@ -22,9 +22,9 @@ export const getPipSize = (symbol: string): number => {
     return 0.1;
   }
   
-  // Bitcoin (BTC/USD): define pip as $0.10
+  // Bitcoin (BTC/USD): define pip as $1.00
   if (upperSymbol.includes('BTC')) {
-    return 0.1;
+    return 1.0;
   }
   
   // JPY pairs have 2 decimal places (0.01 pip size)

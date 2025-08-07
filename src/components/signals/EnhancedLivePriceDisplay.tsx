@@ -9,6 +9,7 @@ interface EnhancedLivePriceDisplayProps {
   symbol: string;
   assetName: string;
   onUseCurrentPrice?: (price: number) => void;
+  onPriceUpdate?: (price: number) => void;
   className?: string;
 }
 
@@ -16,6 +17,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   symbol,
   assetName,
   onUseCurrentPrice,
+  onPriceUpdate,
   className = ''
 }) => {
   // Map frontend symbols to standardized Tradermade API symbols (no slashes)
@@ -102,6 +104,13 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       setPrevPrice(price);
     }
   }, [price, prevPrice]);
+
+  // Notify parent about price updates
+  useEffect(() => {
+    if (onPriceUpdate && price > 0) {
+      onPriceUpdate(price);
+    }
+  }, [price, onPriceUpdate]);
 
   const formatPrice = useCallback((price: number) => {
     // Dynamic decimal places based on price magnitude

@@ -16,7 +16,8 @@ import {
   calculatePipsFromPrice, 
   calculatePriceFromPips, 
   formatPips, 
-  getDirectionFromTradeType 
+  getDirectionFromTradeType,
+  getPipSize 
 } from '@/utils/pipCalculations';
 
 interface OptimizedNewAlertFormProps {
@@ -32,6 +33,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<AssetOption | null>(null);
   const [isLoadingPriceData, setIsLoadingPriceData] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -317,25 +319,87 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     if (!formData.stop_loss) newErrors.stop_loss = 'Stop loss is required';
     if (!takeProfits[0]) newErrors.tp1 = 'At least one take profit is required';
 
-    // Only validate numbers if fields are not empty
+    // Parse numeric values safely
+    const entryPrice = formData.entry_price ? parseFloat(formData.entry_price) : NaN;
+    const stopLoss = formData.stop_loss ? parseFloat(formData.stop_loss) : NaN;
+    const tp1Val = takeProfits[0] ? parseFloat(takeProfits[0]) : NaN;
+
     if (formData.entry_price) {
-      const entryPrice = parseFloat(formData.entry_price);
       if (isNaN(entryPrice) || entryPrice <= 0) {
         newErrors.entry_price = 'Entry price must be a positive number';
       }
     }
 
     if (formData.stop_loss) {
-      const stopLoss = parseFloat(formData.stop_loss);
       if (isNaN(stopLoss) || stopLoss <= 0) {
         newErrors.stop_loss = 'Stop loss must be a positive number';
       }
     }
 
     if (takeProfits[0]) {
-      const tp1 = parseFloat(takeProfits[0]);
-      if (isNaN(tp1) || tp1 <= 0) {
+      if (isNaN(tp1Val) || tp1Val <= 0) {
         newErrors.tp1 = 'Take profit must be a positive number';
+      }
+    }
+
+    // Directional checks (independent from live price)
+    if (!isNaN(entryPrice) && !isNaN(stopLoss)) {
+      const isBuySide = formData.trade_type === 'buy' || formData.trade_type === 'buy_limit';
+      if (isBuySide && !(stopLoss < entryPrice)) {
+        newErrors.stop_loss = 'For Buy/Buy Limit, Stop Loss must be below Entry';
+      }
+      if (!isBuySide && !(stopLoss > entryPrice)) {
+        newErrors.stop_loss = 'For Sell/Sell Limit, Stop Loss must be above Entry';
+      }
+      // Minimum SL distance from entry
+      if (selectedAsset) {
+        const pipSize = getPipSize(selectedAsset.symbol);
+        const minSlDistance = pipSize * 1; // 1 pip minimum
+        if (Math.abs(entryPrice - stopLoss) < minSlDistance) {
+          newErrors.stop_loss = `Stop Loss too close to Entry (min ${formatPips(minSlDistance / pipSize)} pips)`;
+        }
+      }
+    }
+
+    if (!isNaN(entryPrice) && !isNaN(tp1Val)) {
+      const isBuySide = formData.trade_type === 'buy' || formData.trade_type === 'buy_limit';
+      if (isBuySide && !(tp1Val > entryPrice)) {
+        newErrors.tp1 = 'For Buy/Buy Limit, TP1 must be above Entry';
+      }
+      if (!isBuySide && !(tp1Val < entryPrice)) {
+        newErrors.tp1 = 'For Sell/Sell Limit, TP1 must be below Entry';
+      }
+    }
+
+    // Live market dependent checks (only when we have a fresh price)
+    if (selectedAsset && currentPrice > 0 && !isNaN(entryPrice)) {
+      const pipSize = getPipSize(selectedAsset.symbol);
+      const minDistance = pipSize * 5; // minimum distance from market for pending orders (5 pips default)
+      const slippage = pipSize * 2;    // allowed slippage for market orders (±2 pips default)
+
+      if (formData.trade_type === 'buy_limit') {
+        if (entryPrice >= currentPrice) {
+          newErrors.entry_price = 'Buy Limit must be BELOW current market price';
+        } else if ((currentPrice - entryPrice) < minDistance) {
+          newErrors.entry_price = `Buy Limit too close to market (min ${formatPips(minDistance / pipSize)} pips)`;
+        }
+      }
+
+      if (formData.trade_type === 'sell_limit') {
+        if (entryPrice <= currentPrice) {
+          newErrors.entry_price = 'Sell Limit must be ABOVE current market price';
+        } else if ((entryPrice - currentPrice) < minDistance) {
+          newErrors.entry_price = `Sell Limit too close to market (min ${formatPips(minDistance / pipSize)} pips)`;
+        }
+      }
+
+      if (formData.trade_type === 'buy' || formData.trade_type === 'sell') {
+        const diff = Math.abs(entryPrice - currentPrice);
+        if (diff > slippage) {
+          const allowedPips = slippage / pipSize;
+          const actualPips = diff / pipSize;
+          newErrors.entry_price = `Entry outside slippage tolerance (±${formatPips(allowedPips)} pips, current diff ${formatPips(actualPips)} pips)`;
+        }
       }
     }
 
@@ -431,6 +495,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 symbol={selectedAsset.symbol}
                 assetName={selectedAsset.name}
                 onUseCurrentPrice={handleUseCurrentPrice}
+                onPriceUpdate={setCurrentPrice}
                 className="w-full mb-4"
               />
             )}

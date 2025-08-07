@@ -341,6 +341,16 @@ serve(async (req) => {
 
       tradermadeSocket.onmessage = (event) => {
         try {
+          // Handle raw text messages (like "Connected")
+          if (typeof event.data === 'string' && !event.data.startsWith('{')) {
+            console.log('📋 Tradermade text message:', event.data);
+            
+            if (event.data.toLowerCase().includes('connected')) {
+              console.log('✅ Tradermade authentication successful');
+            }
+            return;
+          }
+
           const data = JSON.parse(event.data);
           console.log('📊 Raw Tradermade message:', event.data);
           console.log('📊 Parsed Tradermade data:', JSON.stringify(data, null, 2));

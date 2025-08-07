@@ -70,7 +70,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const connect = useCallback(() => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
+    if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
+      console.log('🔄 WebSocket already connected or connecting, skipping duplicate connection');
       return;
     }
 
@@ -223,10 +224,17 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, [getReconnectDelay, prices]);
 
   const subscribe = useCallback((symbols: string[]) => {
-    console.log('📡 Subscribing to symbols:', symbols);
+    // Prevent duplicate subscriptions
+    const newSymbols = symbols.filter(symbol => !subscribedSymbolsRef.current.has(symbol));
+    if (newSymbols.length === 0) {
+      console.log('📡 All symbols already subscribed, skipping');
+      return;
+    }
+    
+    console.log('📡 Subscribing to new symbols:', newSymbols);
     
     // Validate and normalize symbols for Tradermade format
-    const validatedSymbols = symbols.map(symbol => {
+    const validatedSymbols = newSymbols.map(symbol => {
       const upperSymbol = symbol.toUpperCase().trim();
       console.log(`🔍 Symbol validation: ${symbol} -> ${upperSymbol}`);
       
@@ -302,8 +310,27 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return prices[symbol] || null;
   }, [prices]);
 
+  // Auto-connect on mount and add connection health monitoring
   useEffect(() => {
+    connect();
+    
+    // Health monitoring - check connection every 30 seconds and reconnect if needed
+    const healthCheckInterval = setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
+      
+      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 60000) {
+        console.log('⚠️ No messages received for 60 seconds, reconnecting...');
+        socketRef.current.close();
+        connect();
+      } else if (socketRef.current?.readyState !== WebSocket.OPEN && socketRef.current?.readyState !== WebSocket.CONNECTING) {
+        console.log('🔄 Connection lost, attempting reconnection...');
+        connect();
+      }
+    }, 30000); // Check every 30 seconds
+
     return () => {
+      clearInterval(healthCheckInterval);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -311,7 +338,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         socketRef.current.close();
       }
     };
-  }, []);
+  }, [connect]);
 
   const value: WebSocketContextType = {
     prices,

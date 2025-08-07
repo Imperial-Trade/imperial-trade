@@ -512,12 +512,6 @@ const LivePriceWidgetComponent = ({
               ${currentPrice ? formatPrice(currentPrice) : '---.--'}
             </div>
             
-            {(isLoading || isRefreshing) && currentPrice > 0 && (
-              <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                <span>Updating...</span>
-              </div>
-            )}
           </div>
           
           {!error && currentPrice > 0 && (
@@ -570,7 +564,7 @@ const LivePriceWidgetComponent = ({
           </div>
           <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
             <connectionStatusInfo.icon 
-              className={`w-3 h-3 ${connectionStatusInfo.animate ? 'animate-spin' : ''}`} 
+              className="w-3 h-3" 
             />
             <span>{connectionStatusInfo.text}</span>
             {dataAge && (
@@ -597,9 +591,7 @@ const LivePriceWidgetComponent = ({
           title="Refresh price"
           disabled={isLoading || isRefreshing}
         >
-          <RefreshCw className={`w-4 h-4 ${
-            isLoading || isRefreshing ? 'animate-spin' : ''
-          }`} />
+          <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
 
@@ -645,13 +637,6 @@ const LivePriceWidgetComponent = ({
                 'text-accent-green'
               }`}>
                 ${formatPrice(currentPrice)}
-              </div>
-            )}
-            
-            {(isLoading || isRefreshing) && currentPrice > 0 && (
-              <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                <span>Updating...</span>
               </div>
             )}
           </div>

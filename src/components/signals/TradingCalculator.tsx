@@ -574,11 +574,17 @@ export default function TradingCalculator({
                   ${formatPrice(alert.stop_loss, alert.tradermade_symbol)}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
                   <div className="text-xs text-gray-400 mb-1">Total Risk</div>
                   <div className="text-red-400 font-bold text-sm">
                     {formatCurrency(calculations.totalRisk)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Risk of Account</div>
+                  <div className="text-red-400 font-bold text-sm">
+                    {calculations.riskPercentage.toFixed(2)}%
                   </div>
                 </div>
                 <div>

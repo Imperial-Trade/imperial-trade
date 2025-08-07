@@ -18,16 +18,26 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   onUseCurrentPrice,
   className = ''
 }) => {
-  // Map frontend symbols to standardized API symbols
+  // Map frontend symbols to standardized Tradermade API symbols (no slashes)
   const mapSymbolForAPI = (frontendSymbol: string): string => {
+    const s = (frontendSymbol || '').toUpperCase().trim();
     const symbolMap: Record<string, string> = {
-      'GOLD': 'XAU/USD',
-      'XAU/USD': 'XAU/USD',
-      'BTC/USD': 'BTC/USD'
+      'GOLD': 'XAUUSD',
+      'XAU/USD': 'XAUUSD',
+      'XAUUSD': 'XAUUSD',
+      'BTC/USD': 'BTCUSD',
+      'BTCUSD': 'BTCUSD',
+      'NAS100': 'NAS100USD',
+      'NASDAQ': 'NAS100USD',
+      'NAS100USD': 'NAS100USD',
+      'USA30': 'USA30USD',
+      'US30': 'USA30USD',
+      'USA30USD': 'USA30USD',
+      'EUR/USD': 'EURUSD',
+      'EURUSD': 'EURUSD'
     };
-    return symbolMap[frontendSymbol] || frontendSymbol;
+    return symbolMap[s] || s;
   };
-
   const apiSymbol = mapSymbolForAPI(symbol);
   
   const {

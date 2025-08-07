@@ -137,10 +137,20 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
     const entryPrice = alert.entry_price || 0;
     const stopLoss = alert.stop_loss || 0;
     
-    // Handle livePrice - it can be a number or an object with price property
-    const currentPrice = typeof livePrice === 'number' && livePrice > 0 
+    // Extract current price for better dependency tracking
+    const priceValue = typeof livePrice === 'number' && livePrice > 0 
       ? livePrice 
       : (livePrice?.price && livePrice.price > 0 ? livePrice.price : entryPrice);
+
+    // Debug logging for price updates
+    console.log('🧮 TradingCalculator - Price Update:', {
+      symbol: alert.tradermade_symbol || alert.asset_name,
+      priceValue,
+      livePrice: typeof livePrice === 'object' ? livePrice?.price : livePrice,
+      connectionStatus: livePrice?.connectionStatus,
+      isLoading: livePrice?.isLoading,
+      timestamp: new Date().toISOString()
+    });
 
     if (!balance || !lots || !entryPrice || !stopLoss) {
       return null;
@@ -152,22 +162,31 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
     // LIVE RISK CALCULATION: Use live price for active trades, entry price for pending
     // - Pending orders: Show potential risk from entry to SL
     // - Active trades: Show CURRENT LIVE risk from live price to SL
-    const riskBasePrice = isPending ? entryPrice : currentPrice;
+    const riskBasePrice = isPending ? entryPrice : priceValue;
     const totalRisk = calculateRiskAmount(riskBasePrice, stopLoss, lots, symbol);
     const riskPercentage = (totalRisk / balance) * 100;
 
+    // Debug logging for risk calculations
+    console.log('📊 Risk Calculation Update:', {
+      riskBasePrice,
+      totalRisk,
+      riskPercentage,
+      isPending,
+      timestamp: new Date().toISOString()
+    });
+
     // Current P&L: Always from entry to current price (shows unrealized P&L for active trades)
-    const currentPnL = isPending ? 0 : calculatePnL(entryPrice, currentPrice, lots, symbol);
+    const currentPnL = isPending ? 0 : calculatePnL(entryPrice, priceValue, lots, symbol);
     const currentPnLPercentage = isPending ? 0 : (currentPnL / balance) * 100;
 
     // Calculate stop loss distance from current price (real-time)
     const entryToStopPips = parseFloat(calculatePipDistance(entryPrice, stopLoss));
-    const currentToStopPips = parseFloat(calculatePipDistance(currentPrice, stopLoss));
+    const currentToStopPips = parseFloat(calculatePipDistance(priceValue, stopLoss));
     const stopLossDistance = {
       pips: currentToStopPips,
-      percent: Math.abs(((stopLoss - currentPrice) / currentPrice) * 100),
+      percent: Math.abs(((stopLoss - priceValue) / priceValue) * 100),
       pipPercent: entryToStopPips > 0 ? (currentToStopPips / entryToStopPips) * 100 : 0, // Pip-based percentage
-      direction: stopLoss > currentPrice ? 'above' : 'below'
+      direction: stopLoss > priceValue ? 'above' : 'below'
     };
 
     // Calculate potential rewards for each TP level with real-time updates
@@ -183,15 +202,15 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
       // LIVE REWARD CALCULATION LOGIC:
       // - Pending orders: Show potential reward from entry to TP
       // - Active trades: Show CURRENT LIVE reward from live price to TP
-      const rewardBasePrice = isPending ? entryPrice : currentPrice;
+      const rewardBasePrice = isPending ? entryPrice : priceValue;
       const liveReward = calculatePnL(rewardBasePrice, tp.price, lots, symbol);
       
       // Risk ratio based on original risk (entry to SL) vs current reward
       const liveRewardRiskRatio = totalRisk > 0 ? Math.abs(liveReward) / totalRisk : 0;
       
       // LIVE DISTANCE calculations always from current price (updates in real-time)
-      const liveDistancePips = parseFloat(calculatePipDistance(currentPrice, tp.price));
-      const liveDistancePercent = Math.abs(((tp.price - currentPrice) / currentPrice) * 100);
+      const liveDistancePips = parseFloat(calculatePipDistance(priceValue, tp.price));
+      const liveDistancePercent = Math.abs(((tp.price - priceValue) / priceValue) * 100);
       
       // Pip-based percentage: calculate distance as percentage of total entry-to-TP distance
       const entryToTpPips = parseFloat(calculatePipDistance(entryPrice, tp.price));
@@ -201,7 +220,7 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
       const isClose = pipBasedPercent < 25; // Within 25% of pip distance is close
       
       // LIVE STATUS: Check if we've passed this TP level with current price
-      const isPassed = isBuy ? currentPrice >= tp.price : currentPrice <= tp.price;
+      const isPassed = isBuy ? priceValue >= tp.price : priceValue <= tp.price;
       
       return {
         level: tp.level,
@@ -214,7 +233,7 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
         isVeryClose, // LIVE proximity status
         isClose, // LIVE proximity status
         isPassed, // LIVE achievement status
-        direction: tp.price > currentPrice ? 'above' : 'below' // LIVE direction
+        direction: tp.price > priceValue ? 'above' : 'below' // LIVE direction
       };
     });
 
@@ -229,11 +248,11 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
       // Add breakeven info
       breakeven: {
         price: entryPrice,
-        distance: parseFloat(calculatePipDistance(currentPrice, entryPrice)),
-        direction: entryPrice > currentPrice ? 'above' : 'below'
+        distance: parseFloat(calculatePipDistance(priceValue, entryPrice)),
+        direction: entryPrice > priceValue ? 'above' : 'below'
       }
     };
-  }, [accountBalance, lotSize, alert, livePrice, isPending]);
+  }, [accountBalance, lotSize, alert, currentPrice, isPending, livePrice?.connectionStatus, livePrice?.lastUpdated]);
   
   // Enhanced flash effects for P&L and risk changes
   useEffect(() => {

@@ -666,9 +666,6 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                   onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
                   className="w-full"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Automatically calculates stop loss price based on entry price
-                </p>
               </div>
 
               {/* Take Profit Pips */}
@@ -685,13 +682,10 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                       onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
                       className="flex-1"
                     />
-                    <span className="text-xs text-muted-foreground w-8">pips</span>
+                    
                   </div>
                 ))}
                 
-                <p className="text-xs text-muted-foreground">
-                  Enter pips to automatically calculate take profit prices
-                </p>
               </div>
 
               {/* Pip Info */}

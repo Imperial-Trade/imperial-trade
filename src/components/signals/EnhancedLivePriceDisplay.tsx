@@ -359,14 +359,16 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           <ConnectionHealthBadge className="ml-2" />
         </div>
         
-        {onUseCurrentPrice && !isLoading && !error && price > 0 && (
+        {onUseCurrentPrice && (
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => onUseCurrentPrice(price)}
             className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
-            disabled={isRefreshing}
+            disabled={isRefreshing || !!error || price <= 0}
+            aria-disabled={isRefreshing || !!error || price <= 0}
+            title={price > 0 ? 'Use current price' : 'Price not available yet'}
           >
             Use Current Price
           </Button>

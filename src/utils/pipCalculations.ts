@@ -5,9 +5,26 @@
 export const getPipSize = (symbol: string): number => {
   const upperSymbol = symbol.toUpperCase();
   
-  // Gold: 1 pip = $0.10 (10 cents)
+  // Indices (points): 1.0 (e.g., US30, US100)
+  if (
+    upperSymbol.includes('US30') ||
+    upperSymbol.includes('DJI') ||
+    upperSymbol.includes('DOW') ||
+    upperSymbol.includes('US100') ||
+    upperSymbol.includes('NDX') ||
+    upperSymbol.includes('NAS100')
+  ) {
+    return 1.0;
+  }
+  
+  // Gold (XAU/USD): 1 pip = $0.10 (10 cents)
   if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) {
-    return 0.10;
+    return 0.1;
+  }
+  
+  // Bitcoin (BTC/USD): define pip as $0.10
+  if (upperSymbol.includes('BTC')) {
+    return 0.1;
   }
   
   // JPY pairs have 2 decimal places (0.01 pip size)
@@ -16,18 +33,20 @@ export const getPipSize = (symbol: string): number => {
   }
   
   // Most forex pairs have 4 decimal places (0.0001 pip size)
-  if (upperSymbol.includes('/') || 
-      upperSymbol.includes('USD') || 
-      upperSymbol.includes('EUR') || 
-      upperSymbol.includes('GBP') || 
-      upperSymbol.includes('CHF') || 
-      upperSymbol.includes('CAD') || 
-      upperSymbol.includes('AUD') || 
-      upperSymbol.includes('NZD')) {
+  if (
+    upperSymbol.includes('/') || 
+    upperSymbol.includes('USD') || 
+    upperSymbol.includes('EUR') || 
+    upperSymbol.includes('GBP') || 
+    upperSymbol.includes('CHF') || 
+    upperSymbol.includes('CAD') || 
+    upperSymbol.includes('AUD') || 
+    upperSymbol.includes('NZD')
+  ) {
     return 0.0001;
   }
   
-  // Crypto and indices typically use 0.01
+  // Default for others
   return 0.01;
 };
 

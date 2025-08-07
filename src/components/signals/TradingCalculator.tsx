@@ -212,9 +212,31 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
       const liveDistancePips = parseFloat(calculatePipDistance(priceValue, tp.price));
       const liveDistancePercent = Math.abs(((tp.price - priceValue) / priceValue) * 100);
       
-      // Pip-based percentage: calculate distance as percentage of total entry-to-TP distance
+      // Progress percentage: calculate completion from entry to TP target
       const entryToTpPips = parseFloat(calculatePipDistance(entryPrice, tp.price));
+      const entryToCurrentPips = parseFloat(calculatePipDistance(entryPrice, priceValue));
+      
+      // Calculate actual progress (0-100%) - how much of the journey from entry to TP is complete
+      let progressPercent = 0;
+      if (entryToTpPips > 0) {
+        // Check if we're moving in the right direction for the trade type
+        const isMovingTowardsTarget = isBuy ? (priceValue >= entryPrice) : (priceValue <= entryPrice);
+        const isTargetReached = isBuy ? (priceValue >= tp.price) : (priceValue <= tp.price);
+        
+        if (isTargetReached) {
+          progressPercent = 100; // Target reached or passed
+        } else if (isMovingTowardsTarget) {
+          progressPercent = (entryToCurrentPips / entryToTpPips) * 100;
+        } else {
+          progressPercent = 0; // Moving away from target
+        }
+      }
+      
+      // Pip-based percentage: calculate remaining distance as percentage of total entry-to-TP distance
       const pipBasedPercent = entryToTpPips > 0 ? (liveDistancePips / entryToTpPips) * 100 : 0;
+      
+      // Clamp progress between 0-100%
+      progressPercent = Math.max(0, Math.min(100, progressPercent));
       
       const isVeryClose = pipBasedPercent < 10; // Within 10% of pip distance is very close
       const isClose = pipBasedPercent < 25; // Within 25% of pip distance is close
@@ -229,7 +251,8 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
         ratio: liveRewardRiskRatio, // LIVE risk:reward ratio
         distancePips: liveDistancePips, // LIVE distance in pips
         distancePercent: liveDistancePercent, // LIVE distance percentage  
-        pipBasedPercent, // NEW: Pip-based percentage of total distance
+        pipBasedPercent, // Pip-based percentage of remaining distance
+        progressPercent, // NEW: Actual progress completion percentage (0-100%)
         isVeryClose, // LIVE proximity status
         isClose, // LIVE proximity status
         isPassed, // LIVE achievement status
@@ -674,23 +697,23 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
                   </div>
                   {/* Progress indicator for how close price is to TP */}
                   <div className="mt-2 pt-2 border-t border-gray-700">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-400">Progress to TP{reward.level}</span>
-                      <span className={`text-xs font-medium ${
-                        reward.isPassed ? 'text-emerald-400' : 
-                        reward.isClose ? 'text-orange-400' : 'text-gray-400'
-                      }`}>
-                        {reward.isPassed ? '✓ Passed' : `${reward.pipBasedPercent.toFixed(1)}% away`}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-700 rounded-full h-1.5">
-                      <div className={`h-1.5 rounded-full transition-all duration-500 ${
-                        reward.isPassed ? 'bg-emerald-400' : 
-                        reward.isClose ? 'bg-orange-400' : 'bg-blue-400'
-                      }`} style={{
-                        width: reward.isPassed ? '100%' : `${Math.max(10, 100 - reward.pipBasedPercent)}%`
-                      }}></div>
-                    </div>
+                     <div className="flex items-center justify-between mb-1">
+                       <span className="text-xs text-gray-400">Progress to TP{reward.level}</span>
+                       <span className={`text-xs font-medium ${
+                         reward.isPassed ? 'text-emerald-400' : 
+                         reward.progressPercent >= 75 ? 'text-orange-400' : 'text-gray-400'
+                       }`}>
+                         {reward.isPassed ? '✓ Passed' : `${reward.progressPercent.toFixed(1)}% complete`}
+                       </span>
+                     </div>
+                     <div className="w-full bg-gray-700 rounded-full h-1.5">
+                       <div className={`h-1.5 rounded-full transition-all duration-500 ${
+                         reward.isPassed ? 'bg-emerald-400' : 
+                         reward.progressPercent >= 75 ? 'bg-orange-400' : 'bg-blue-400'
+                       }`} style={{
+                         width: `${Math.max(2, reward.progressPercent)}%`
+                       }}></div>
+                     </div>
                   </div>
                   {!isPending && (
                     <div className="mt-2 pt-2 border-t border-gray-700">

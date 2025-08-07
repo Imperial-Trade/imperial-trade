@@ -1,3 +1,4 @@
+project_id = "kmuoqkcxguafxulqlbmi"
 
 [project]
 name = "imperial-trading"
@@ -14,7 +15,6 @@ enabled = true
 [functions.get-market-data]
 verify_jwt = false
 
-
 [functions.tradermade-streaming]
 verify_jwt = false
 
@@ -22,4 +22,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.order-trigger-monitor]
+verify_jwt = false
+
+[functions.send-password-reset-email]
 verify_jwt = false

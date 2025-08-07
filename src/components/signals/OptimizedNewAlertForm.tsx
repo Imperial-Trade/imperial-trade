@@ -128,30 +128,30 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       }
     }
     
-    // Clear both stop loss fields when either is set to zero or empty
+    // Clear both stop loss fields when either is deleted or set to zero
     if (field === 'stop_loss' || field === 'stop_loss_pips') {
       const numValue = parseFloat(value.toString());
-      if (!value || numValue === 0 || isNaN(numValue)) {
-        setFormData(prev => ({ ...prev, stop_loss: '0' }));
-        setPipInputs(prev => ({ ...prev, stop_loss_pips: '0' }));
+      if (!value || value === '' || numValue === 0 || isNaN(numValue)) {
+        setFormData(prev => ({ ...prev, stop_loss: '' }));
+        setPipInputs(prev => ({ ...prev, stop_loss_pips: '' }));
       }
     }
     
-    // Clear both take profit fields when either is set to zero or empty
+    // Clear both take profit fields when either is deleted or set to zero
     const tpFields = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
     const tpPipFields = ['tp1_pips', 'tp2_pips', 'tp3_pips', 'tp4_pips', 'tp5_pips'];
     
     tpFields.forEach((tpField, index) => {
       if (field === tpField || field === tpPipFields[index]) {
         const numValue = parseFloat(value.toString());
-        if (!value || numValue === 0 || isNaN(numValue)) {
+        if (!value || value === '' || numValue === 0 || isNaN(numValue)) {
           // Clear the corresponding TP price
-          setFormData(prev => ({ ...prev, [tpField]: '0' }));
+          setFormData(prev => ({ ...prev, [tpField]: '' }));
           // Clear the corresponding TP pips
-          setPipInputs(prev => ({ ...prev, [tpPipFields[index]]: '0' }));
+          setPipInputs(prev => ({ ...prev, [tpPipFields[index]]: '' }));
           // Clear from takeProfits array
           const newTPs = [...takeProfits];
-          newTPs[index] = '0';
+          newTPs[index] = '';
           setTakeProfits(newTPs);
         }
       }

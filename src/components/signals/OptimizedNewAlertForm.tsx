@@ -423,10 +423,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                     <div className="h-8 bg-muted rounded w-28"></div>
                     <div className="h-4 bg-muted rounded w-24"></div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Fetching live price for {selectedAsset.name}...</span>
-                  </div>
+                  <div className="h-4 w-24" />
                 </div>
               </div>
             ) : (

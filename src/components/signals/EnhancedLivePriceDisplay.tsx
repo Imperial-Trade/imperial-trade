@@ -254,14 +254,10 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               </div>
             )}
           </div>
-          <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
-            <connectionStatusInfo.icon 
-              className={`w-3 h-3 ${connectionStatusInfo.animate ? 'animate-spin' : ''}`} 
-            />
-            <span>{connectionStatusInfo.text}</span>
-            {dataAge && (
-              <>
-                <span className="text-gray-500">•</span>
+          {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && (
+            <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
+              {/* Status text and effects hidden for a smoother interface */}
+              {dataAge && (
                 <span className={`${
                   dataAge === 'Live' ? 'text-green-400' : 
                   dataAge === 'Stale' ? 'text-red-400' : 
@@ -269,9 +265,9 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
                 }`}>
                   {dataAge}
                 </span>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
         
         <Button
@@ -283,9 +279,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           title="Refresh price"
           disabled={isLoading || isRefreshing}
         >
-          <RefreshCw className={`w-4 h-4 ${
-            isLoading || isRefreshing ? 'animate-spin' : ''
-          }`} />
+          <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
 
@@ -334,12 +328,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               </div>
             )}
             
-            {(isLoading || isRefreshing) && price > 0 && (
-              <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                <span>Updating...</span>
-              </div>
-            )}
+            {/* Updating indicator hidden for smooth UI */}
           </div>
           
           {!error && price > 0 && (

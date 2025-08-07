@@ -134,6 +134,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       if (!value || value === '' || numValue === 0 || isNaN(numValue)) {
         setFormData(prev => ({ ...prev, stop_loss: '' }));
         setPipInputs(prev => ({ ...prev, stop_loss_pips: '' }));
+        return; // Exit early to prevent further processing
       }
     }
     
@@ -225,6 +226,32 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   // Handle pip input changes
   const handlePipChange = useCallback((field: string, pips: string) => {
     setPipInputs(prev => ({ ...prev, [field]: pips }));
+    
+    // Clear both fields if pips is deleted or zero
+    if (!pips || pips === '' || parseFloat(pips) === 0 || isNaN(parseFloat(pips))) {
+      if (field === 'stop_loss_pips') {
+        setFormData(prev => ({ ...prev, stop_loss: '' }));
+        setPipInputs(prev => ({ ...prev, stop_loss_pips: '' }));
+        return;
+      } else {
+        // Handle TP pips clearing
+        const tpIndex = parseInt(field.replace('tp', '').replace('_pips', '')) - 1;
+        if (tpIndex >= 0 && tpIndex < 5) {
+          const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+          const tpPipKeys = ['tp1_pips', 'tp2_pips', 'tp3_pips', 'tp4_pips', 'tp5_pips'];
+          
+          setFormData(prev => ({ ...prev, [tpKeys[tpIndex]]: '' }));
+          setPipInputs(prev => ({ ...prev, [tpPipKeys[tpIndex]]: '' }));
+          
+          if (tpIndex < takeProfits.length) {
+            const newTPs = [...takeProfits];
+            newTPs[tpIndex] = '';
+            setTakeProfits(newTPs);
+          }
+        }
+        return;
+      }
+    }
     
     if (pips && formData.entry_price && selectedAsset) {
       const entryPrice = parseFloat(formData.entry_price);

@@ -275,7 +275,7 @@ export default function TradingCalculator({ alert, livePrice: externalLivePrice 
         direction: entryPrice > priceValue ? 'above' : 'below'
       }
     };
-  }, [accountBalance, lotSize, alert, currentPrice, isPending, livePrice?.connectionStatus, livePrice?.lastUpdated]);
+  }, [accountBalance, lotSize, alert, livePrice, isPending]);
   
   // Enhanced flash effects for P&L and risk changes
   useEffect(() => {

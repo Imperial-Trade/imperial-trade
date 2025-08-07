@@ -224,50 +224,32 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, [getReconnectDelay, prices]);
 
   const subscribe = useCallback((symbols: string[]) => {
-    // Prevent duplicate subscriptions
-    const newSymbols = symbols.filter(symbol => !subscribedSymbolsRef.current.has(symbol));
+    console.log('📡 Subscribing request received for symbols:', symbols);
+
+    // Normalize and validate symbols FIRST
+    const normalized = symbols.map(s => s.toUpperCase().trim()).map(upperSymbol => {
+      console.log(`🔍 Symbol validation: ${upperSymbol}`);
+      if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAUUSD';
+      if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTCUSD';
+      if (upperSymbol === 'US30' || upperSymbol === 'USA30' || upperSymbol === 'USA30USD') return 'USA30USD';
+      if (upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ' || upperSymbol === 'NAS100USD') return 'NAS100USD';
+      if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') return 'EURUSD';
+      return upperSymbol;
+    }).filter(symbol => ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'].includes(symbol));
+
+    // Filter out already-subscribed (using normalized keys)
+    const newSymbols = normalized.filter(symbol => !subscribedSymbolsRef.current.has(symbol));
     if (newSymbols.length === 0) {
-      console.log('📡 All symbols already subscribed, skipping');
+      console.log('📡 All normalized symbols already subscribed, skipping');
       return;
     }
-    
-    console.log('📡 Subscribing to new symbols:', newSymbols);
-    
-    // Validate and normalize symbols for Tradermade format
-    const validatedSymbols = newSymbols.map(symbol => {
-      const upperSymbol = symbol.toUpperCase().trim();
-      console.log(`🔍 Symbol validation: ${symbol} -> ${upperSymbol}`);
-      
-      // Map frontend symbols to Tradermade format
-      if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') {
-        return 'XAUUSD';
-      }
-      if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') {
-        return 'BTCUSD';
-      }
-      if (upperSymbol === 'US30' || upperSymbol === 'USA30') {
-        return 'USA30';
-      }
-      if (upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ') {
-        return 'NAS100';
-      }
-      if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') {
-        return 'EURUSD';
-      }
-      return upperSymbol;
-    }).filter(symbol => ['XAUUSD', 'BTCUSD', 'USA30', 'NAS100', 'EURUSD'].includes(symbol));
-    
-    console.log('✅ Validated Tradermade symbols:', validatedSymbols);
-    
-    validatedSymbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
-    
+
+    console.log('✅ Validated Tradermade symbols (new):', newSymbols);
+    newSymbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
+
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       console.log('📤 WebSocket ready, sending subscription');
-      
-      socketRef.current.send(JSON.stringify({
-        action: 'subscribe',
-        symbols: validatedSymbols
-      }));
+      socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: newSymbols }));
     } else {
       console.log('🔄 WebSocket not ready, attempting connection');
       connect();
@@ -275,22 +257,29 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, [connect]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
-    symbols.forEach(symbol => subscribedSymbolsRef.current.delete(symbol));
-    
+    // Normalize like subscribe
+    const normalized = symbols.map(s => s.toUpperCase().trim()).map(upperSymbol => {
+      if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAUUSD';
+      if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTCUSD';
+      if (upperSymbol === 'US30' || upperSymbol === 'USA30' || upperSymbol === 'USA30USD') return 'USA30USD';
+      if (upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ' || upperSymbol === 'NAS100USD') return 'NAS100USD';
+      if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') return 'EURUSD';
+      return upperSymbol;
+    }).filter(symbol => ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'].includes(symbol));
+
+    normalized.forEach(symbol => subscribedSymbolsRef.current.delete(symbol));
+
     // Clear errors for unsubscribed symbols
     setErrors(prev => {
-      const newErrors = { ...prev };
-      symbols.forEach(symbol => {
+      const newErrors = { ...prev } as Record<string, string>;
+      normalized.forEach(symbol => {
         delete newErrors[symbol];
       });
       return newErrors;
     });
-    
+
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({
-        action: 'unsubscribe',
-        symbols
-      }));
+      socketRef.current.send(JSON.stringify({ action: 'unsubscribe', symbols: normalized }));
     }
   }, []);
 

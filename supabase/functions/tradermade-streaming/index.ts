@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Tradermade symbol configuration
-const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30', 'NAS100', 'EURUSD'];
+const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
 
 interface TradermadePriceData {
   symbol: string;

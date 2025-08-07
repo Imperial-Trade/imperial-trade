@@ -89,6 +89,45 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   const handleInputChange = useCallback((field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
+    // If entry price changes and we have existing pip values, recalculate prices
+    if (field === 'entry_price' && value && selectedAsset) {
+      const newEntryPrice = parseFloat(value.toString());
+      if (!isNaN(newEntryPrice)) {
+        
+        // Recalculate stop loss if stop loss pips exist
+        if (pipInputs.stop_loss_pips) {
+          const stopLossPips = parseFloat(pipInputs.stop_loss_pips);
+          if (!isNaN(stopLossPips) && stopLossPips > 0) {
+            const direction = getDirectionFromTradeType(formData.trade_type, 'stop_loss');
+            const calculatedStopLoss = calculatePriceFromPips(newEntryPrice, stopLossPips, selectedAsset.symbol, direction);
+            setFormData(prev => ({ ...prev, stop_loss: calculatedStopLoss.toFixed(5) }));
+          }
+        }
+        
+        // Recalculate take profits if take profit pips exist
+        ['tp1_pips', 'tp2_pips', 'tp3_pips', 'tp4_pips', 'tp5_pips'].forEach((pipField, index) => {
+          const pipValue = pipInputs[pipField as keyof typeof pipInputs];
+          if (pipValue) {
+            const tpPips = parseFloat(pipValue);
+            if (!isNaN(tpPips) && tpPips > 0 && index < takeProfits.length) {
+              const direction = getDirectionFromTradeType(formData.trade_type, 'take_profit');
+              const calculatedPrice = calculatePriceFromPips(newEntryPrice, tpPips, selectedAsset.symbol, direction);
+              
+              const newTPs = [...takeProfits];
+              newTPs[index] = calculatedPrice.toFixed(5);
+              setTakeProfits(newTPs);
+              
+              const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+              setFormData(prev => ({
+                ...prev,
+                [tpKeys[index]]: calculatedPrice.toFixed(5)
+              }));
+            }
+          }
+        });
+      }
+    }
+    
     // Clear field-specific errors
     if (errors[field]) {
       setErrors(prev => {
@@ -97,7 +136,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         return newErrors;
       });
     }
-  }, [errors]);
+  }, [errors, selectedAsset, formData.trade_type, pipInputs, takeProfits]);
 
   const handleUseCurrentPrice = useCallback((price: number) => {
     setFormData(prev => ({ ...prev, entry_price: price.toString() }));

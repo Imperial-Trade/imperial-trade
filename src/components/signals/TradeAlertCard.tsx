@@ -183,57 +183,56 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 </Badge>
               )}
             </div>
-            
-            {/* Action buttons below currency pair */}
-            <div className="flex items-center gap-2 flex-wrap">
+          </div>
 
-              {/* Copy Button */}
-              <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
+          {/* Actions - moved to the right */}
+          <div className="flex items-center gap-2 flex-wrap" data-prevent-widget-open="true">
+            {/* Copy Button */}
+            <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                  onClick={handleCopyPanelToggle}
+                >
+                  <Copy className="w-4 h-4 mr-1" />
+                  {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </Button>
+              </CollapsibleTrigger>
+            </Collapsible>
+            
+            {/* Share Button */}
+            <SignalSharingModal 
+              signal={tradeSignal}
+              trigger={
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                >
+                  <Share2 className="w-4 h-4 mr-1" />
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              }
+            />
+            
+            {/* Calculator Toggle - Only for active/pending trades */}
+            {(alert.status === 'active' || alert.status === 'pending') && (
+              <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
                 <CollapsibleTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                    onClick={handleCopyPanelToggle}
+                    className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
+                    onClick={handleCalculatorToggle}
                   >
-                    <Copy className="w-4 h-4 mr-1" />
-                    {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    <Calculator className="w-4 h-4 mr-1" />
+                    {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                   </Button>
                 </CollapsibleTrigger>
               </Collapsible>
-              
-              {/* Share Button */}
-              <SignalSharingModal 
-                signal={tradeSignal}
-                trigger={
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                  >
-                    <Share2 className="w-4 h-4 mr-1" />
-                    <ChevronDown className="w-3 h-3" />
-                  </Button>
-                }
-              />
-              
-              {/* Calculator Toggle - Only for active/pending trades */}
-              {(alert.status === 'active' || alert.status === 'pending') && (
-                <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
-                  <CollapsibleTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
-                      onClick={handleCalculatorToggle}
-                    >
-                      <Calculator className="w-4 h-4 mr-1" />
-                      {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    </Button>
-                  </CollapsibleTrigger>
-                </Collapsible>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>

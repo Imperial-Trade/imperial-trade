@@ -530,12 +530,12 @@ export default function SignalStream() {
                       <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
                     </div>}
                 </div>
-              </div>}
+              </div>)}
           </div>
-          
+
           {/* Economic Sidebar - Optimized positioning and visibility */}
           
                 </div>
-              </div>) }
+              </div>
     </div>;
 }

@@ -14,6 +14,7 @@ import { TradeSignal } from '@/services/SignalSharingService';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 
 interface PriceRowProps {
   label: string;
@@ -72,6 +73,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const isPending = alert.status === 'pending';
   const canCloseSignal = isCreator;
   const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
+  const { getPrice } = useWebSocketPrices();
 
   // Convert alert to TradeSignal format for sharing
   const tradeSignal: TradeSignal = {
@@ -355,19 +357,16 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         )}
       </div>
       {/* Stop Loss Proximity Warning */}
-      {livePrice && alert.status === 'active' && (() => {
+      {alert.status === 'active' && (() => {
+        const wsPrice = getPrice?.(alert.tradermade_symbol)?.price;
+        const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
         const entryPrice = alert.entry_price;
         const stopLoss = alert.stop_loss;
-        const currentPrice = livePrice;
-        
-        if (!entryPrice || !stopLoss) return null;
-        
-        // Calculate proximity to stop loss (works for both buy and sell trades)
+        if (!entryPrice || !stopLoss || !currentPrice) return null;
         const totalDistance = Math.abs(entryPrice - stopLoss);
+        if (totalDistance === 0) return null;
         const currentDistance = Math.abs(currentPrice - stopLoss);
         const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
-        
-        // Only show warning if 50% or closer to stop loss, hide if price goes back to 49% or less
         if (proximityPercentage >= 50) {
           return (
             <div className="px-4 pb-4">

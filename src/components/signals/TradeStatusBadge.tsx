@@ -42,8 +42,8 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
         return (
             <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-emerald-400 border-emerald-400 animate-pulse">
-                    <Target className="w-3 h-3 mr-1" /> TP{highestTP} Hit
+                <Badge variant="outline" className="text-emerald-400 border-emerald-400 animate-pulse whitespace-nowrap uppercase">
+                    <Target className="w-3 h-3 mr-1" /> TP{highestTP} HIT
                 </Badge>
                 <Badge variant="outline" className="text-emerald-400 border-emerald-400">
                     {activeText}

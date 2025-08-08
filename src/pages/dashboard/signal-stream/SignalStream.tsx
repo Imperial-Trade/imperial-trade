@@ -192,6 +192,7 @@ export default function SignalStream() {
       setReconnectIn(null);
     }
   }, [connectionStatus, nextRetryAt]);
+  const getConnectionStatusBadge = () => {
     switch (connectionStatus) {
       case 'connected':
         return <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">

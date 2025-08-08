@@ -45,7 +45,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
                 <Badge variant="outline" className="text-emerald-400 border-emerald-400 animate-pulse whitespace-nowrap uppercase">
                     <Target className="w-3 h-3 mr-1" /> TP{highestTP} HIT
                 </Badge>
-                <Badge variant="outline" className="text-emerald-400 border-emerald-400">
+                <Badge variant="outline" className="text-emerald-400 border-emerald-400 uppercase whitespace-nowrap">
                     {activeText}
                 </Badge>
             </div>

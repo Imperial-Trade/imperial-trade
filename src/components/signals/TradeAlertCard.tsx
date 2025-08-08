@@ -1,8 +1,8 @@
 
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2, User, Crown, GraduationCap } from 'lucide-react';
+import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2, User, Crown, GraduationCap, Pencil } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
@@ -11,6 +11,9 @@ import TradingCalculator from './TradingCalculator';
 import SignalSharingModal from './SignalSharingModal';
 import { TradeAlertCardProps } from '@/types/components';
 import { TradeSignal } from '@/services/SignalSharingService';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface PriceRowProps {
   label: string;
@@ -51,6 +54,15 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 }) => {
   const [showCopyPanel, setShowCopyPanel] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState(alert.notes || '');
+  const [localNotes, setLocalNotes] = useState(alert.notes || '');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  
+  useEffect(() => {
+    setLocalNotes(alert.notes || '');
+    setNotesDraft(alert.notes || '');
+  }, [alert.id, alert.notes]);
   
   // Type-safe derivations
   const isBuy = alert.trade_type.includes('buy');
@@ -59,6 +71,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const isClosed = alert.status === 'closed';
   const isPending = alert.status === 'pending';
   const canCloseSignal = isCreator;
+  const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
 
   // Convert alert to TradeSignal format for sharing
   const tradeSignal: TradeSignal = {
@@ -88,6 +101,30 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     setShowCalculator(prev => !prev);
   };
 
+  const handleNotesEditToggle = () => {
+    setIsEditingNotes(prev => !prev);
+    setNotesDraft(localNotes || '');
+  };
+
+  const handleNotesSave = async () => {
+    try {
+      setIsSavingNotes(true);
+      const { error } = await supabase
+        .from('trade_alerts')
+        .update({ notes: notesDraft })
+        .eq('id', alert.id);
+
+      if (error) throw error;
+
+      setLocalNotes(notesDraft);
+      setIsEditingNotes(false);
+      toast({ title: 'Notes updated', description: 'Everyone can now see the new notes.' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Failed to update notes', description: e?.message || 'Please try again.' });
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
   // Get role icon and color
   const getRoleIcon = (role: string) => {
     switch (role.toLowerCase()) {
@@ -284,12 +321,39 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </div>
       </div>
       
-      {alert.notes && (
-        <div className="px-4 pb-4">
-            <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded-md">"{alert.notes}"</p>
+      <div className="px-4 pb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-muted-foreground">Notes</span>
+          {canEditNotes && !isEditingNotes && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue" 
+              onClick={handleNotesEditToggle}
+            >
+              <Pencil className="w-3 h-3 mr-1" /> Edit
+            </Button>
+          )}
         </div>
-      )}
-
+        {isEditingNotes ? (
+          <div className="space-y-2">
+            <Textarea 
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              placeholder="Add helpful context for followers..."
+              className="min-h-[80px]"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={handleNotesEditToggle} disabled={isSavingNotes}>Cancel</Button>
+              <Button variant="default" size="sm" onClick={handleNotesSave} disabled={isSavingNotes || notesDraft === localNotes}>
+                {isSavingNotes ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
+        )}
+      </div>
       {/* Stop Loss Proximity Warning */}
       {livePrice && alert.status === 'active' && (() => {
         const entryPrice = alert.entry_price;

@@ -525,15 +525,7 @@ const LivePriceWidgetComponent = ({
           <span className="font-bold text-white">${alert.entry_price.toFixed(2)}</span>
         </div>
 
-        <div className="mt-2 pt-2 border-t border-gray-600">
-          <div className="text-xs text-gray-500">
-            {connectionStatusInfo.description} • 
-            Source: {dataSource === 'tradermade' ? 'Tradermade API' : 
-                     priceUpdateSource === 'websocket' ? 'Real-time Tradermade' : 
-                     priceUpdateSource === 'http' ? 'Tradermade API' : 'Tradermade'} • 
-            Symbol: {alert.tradermade_symbol} • Price: ${currentPrice > 0 ? currentPrice.toFixed(2) : 'Loading...'}
-          </div>
-        </div>
+{/* Hidden meta section (Source/Symbol/Price) per request */}
       </div>
     );
   }

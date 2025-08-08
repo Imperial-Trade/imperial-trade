@@ -176,12 +176,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 updatedDate={alert.updated_date} 
                 isRecentClosure={isRecentClosure} 
               />
-              {alert.status === 'active' && (
-                <Badge className={`${isBuy ? 'bg-accent-green/20 text-accent-green border-accent-green/30' : 'bg-accent-red/20 text-accent-red border-accent-red/30'}`}>
-                  {isBuy ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-                  {alert.trade_type.replace('_', ' ').toUpperCase()}
-                </Badge>
-              )}
             </div>
           </div>
 

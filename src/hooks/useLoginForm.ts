@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const useLoginForm = () => {
   const { toast } = useToast();
-  const { canSubmit, recordAttempt } = useRateLimiting('login', 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
+  const { canSubmit, recordAttempt, attemptsLeft, remainingMs } = useRateLimiting('login', 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -82,5 +82,7 @@ export const useLoginForm = () => {
     onSubmit: form.handleSubmit(onSubmit),
     canSubmit,
     isSubmitting: form.formState.isSubmitting,
+    attemptsLeft,
+    remainingMs,
   };
 };

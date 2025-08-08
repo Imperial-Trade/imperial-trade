@@ -58,7 +58,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const hitTPs = alert.tp_hits || [];
   const isClosed = alert.status === 'closed';
   const isPending = alert.status === 'pending';
-  const canCloseSignal = isAdmin || isCreator;
+  const canCloseSignal = isCreator;
 
   // Convert alert to TradeSignal format for sharing
   const tradeSignal: TradeSignal = {
@@ -124,12 +124,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     return `${diffInDays}d ago`;
   };
 
-  // Get button text based on user role
-  const getCloseButtonText = () => {
-    if (isAdmin && !isCreator) return 'Close Trade';
-    if (isCreator) return 'Close My Signal';
-    return 'Close Trade';
-  };
+  // Get button text (only creator can close in stream)
+  const getCloseButtonText = () => 'Close My Signal';
 
   return (
     <div 

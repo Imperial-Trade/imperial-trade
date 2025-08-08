@@ -62,6 +62,17 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const reconnectAttemptsRef = useRef(0);
   const websocketHealthRef = useRef<{ lastSuccessfulMessage: number, isHealthy: boolean }>({ lastSuccessfulMessage: 0, isHealthy: false });
   const refCountsRef = useRef<Map<string, number>>(new Map());
+  const pendingSubscribeBatchRef = useRef<Set<string>>(new Set());
+  const subscribeFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const flushPendingSubscriptions = useCallback(() => {
+    if (socketRef.current?.readyState !== WebSocket.OPEN) return;
+    const pending = Array.from(pendingSubscribeBatchRef.current);
+    if (pending.length === 0) return;
+    console.log('📤 Sending batched subscription for:', pending);
+    socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: pending }));
+    pendingSubscribeBatchRef.current.clear();
+    subscribeFlushTimerRef.current = null;
+  }, []);
 
   const getReconnectDelay = useCallback(() => {
     const baseDelay = 5000;
@@ -258,14 +269,20 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       return;
     }
 
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      console.log('📤 WebSocket ready, sending subscription for:', toSubscribe);
-      socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: toSubscribe }));
-    } else {
+    // Enqueue for batched send
+    toSubscribe.forEach(s => pendingSubscribeBatchRef.current.add(s));
+
+    if (socketRef.current?.readyState !== WebSocket.OPEN) {
       console.log('🔄 WebSocket not ready, attempting connection');
       connect();
     }
-  }, [connect]);
+
+    if (!subscribeFlushTimerRef.current) {
+      subscribeFlushTimerRef.current = setTimeout(() => {
+        flushPendingSubscriptions();
+      }, 50);
+    }
+  }, [connect, flushPendingSubscriptions]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     // Normalize like subscribe
@@ -352,6 +369,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
+      if (subscribeFlushTimerRef.current) {
+        clearTimeout(subscribeFlushTimerRef.current);
+      }
+      pendingSubscribeBatchRef.current.clear();
       if (socketRef.current) {
         socketRef.current.close();
       }

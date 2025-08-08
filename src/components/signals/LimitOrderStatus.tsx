@@ -7,6 +7,7 @@ import { Clock, CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-re
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { useOrderManagement } from '@/hooks/useOrderManagement';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface LimitOrderStatusProps {
   alert: TradeAlertWithProfile;
@@ -18,8 +19,11 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
   const { toast } = useToast();
   const { prices } = useWebSocketPrices();
   const { cancelOrder, modifyOrderPrice } = useOrderManagement();
+  const { userId } = useCurrentUser();
   const [isModifying, setIsModifying] = useState(false);
   const [newPrice, setNewPrice] = useState(alert.entryPrice);
+
+  const isOwner = !!userId && alert.userId === userId;
 
   const symbol = alert.tradermadeSymbol || alert.assetName;
   const currentPrice = prices[symbol]?.price || 0;
@@ -65,6 +69,15 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
 
   const handleCancel = async () => {
     try {
+      if (!isOwner) {
+        toast({
+          title: 'Action not allowed',
+          description: 'Only the educator who posted this signal can cancel it.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       if (onCancel) {
         await onCancel(alert.id);
       } else {
@@ -84,6 +97,15 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
   };
 
   const handleModify = async () => {
+    if (!isOwner) {
+      toast({
+        title: 'Action not allowed',
+        description: 'Only the educator who posted this signal can modify it.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (newPrice === entryPrice) {
       setIsModifying(false);
       return;
@@ -152,7 +174,7 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
           )}
         </div>
 
-        {isPending && (
+        {isPending && isOwner && (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -214,7 +236,7 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
         </div>
       )}
 
-      {isModifying && isPending && (
+      {isModifying && isPending && isOwner && (
         <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-md">
           <input
             type="number"

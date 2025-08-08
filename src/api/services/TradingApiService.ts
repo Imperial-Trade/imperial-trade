@@ -155,20 +155,18 @@ export class TradingApiService {
         requestUserId: userId 
       });
 
-      // Check if user can update this alert (owner or admin)
+      // Only the owner (educator who posted it) can update
       const isOwner = alert.user_id === userId;
-      const isAdmin = await this.isUserAdmin(userId);
 
       console.log('TradingApiService - Authorization check:', { 
         isOwner, 
-        isAdmin, 
-        canUpdate: isOwner || isAdmin 
+        canUpdate: isOwner 
       });
 
-      if (!isOwner && !isAdmin) {
+      if (!isOwner) {
         return {
           success: false,
-          error: 'Unauthorized to update this alert',
+          error: 'Only the educator who posted this signal can edit it',
           data: undefined
         };
       }

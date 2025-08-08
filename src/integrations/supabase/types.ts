@@ -2138,6 +2138,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_saved_posts: {
         Row: {
           created_at: string
@@ -2424,6 +2442,13 @@ export type Database = {
         Args: { tier_level: number }
         Returns: Json
       }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
       process_price_alerts: {
         Args: { p_symbol: string; p_current_price: number }
         Returns: {
@@ -2453,6 +2478,7 @@ export type Database = {
       account_type: "user" | "admin" | "educator"
       alert_condition: "above" | "below"
       alert_status: "active" | "triggered"
+      app_role: "admin" | "moderator" | "user"
       asset_type: "Stock" | "Crypto" | "Forex" | "Commodity"
       close_reason:
         | "manual"
@@ -2633,6 +2659,7 @@ export const Constants = {
       account_type: ["user", "admin", "educator"],
       alert_condition: ["above", "below"],
       alert_status: ["active", "triggered"],
+      app_role: ["admin", "moderator", "user"],
       asset_type: ["Stock", "Crypto", "Forex", "Commodity"],
       close_reason: [
         "manual",

@@ -513,7 +513,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         )}
 
         {/* Trade Type & Entry Price Row */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="w-full grid grid-cols-2 gap-4">
           {/* Trade Type */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -636,7 +636,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
         {/* Split Price & Pip Calculator */}
         <div className="w-full p-4 bg-card border border-border rounded-lg">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-6">
             
             {/* Left Side - Price Inputs */}
             <div className="space-y-4">

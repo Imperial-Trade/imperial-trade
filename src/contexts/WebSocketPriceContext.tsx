@@ -61,6 +61,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const reconnectAttemptsRef = useRef(0);
   const websocketHealthRef = useRef<{ lastSuccessfulMessage: number, isHealthy: boolean }>({ lastSuccessfulMessage: 0, isHealthy: false });
+  const refCountsRef = useRef<Map<string, number>>(new Map());
 
   const getReconnectDelay = useCallback(() => {
     const baseDelay = 5000;
@@ -227,29 +228,39 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     console.log('📡 Subscribing request received for symbols:', symbols);
 
     // Normalize and validate symbols FIRST
-    const normalized = symbols.map(s => s.toUpperCase().trim()).map(upperSymbol => {
-      console.log(`🔍 Symbol validation: ${upperSymbol}`);
-      if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAUUSD';
-      if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTCUSD';
-      if (upperSymbol === 'US30' || upperSymbol === 'USA30' || upperSymbol === 'USA30USD') return 'USA30USD';
-      if (upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ' || upperSymbol === 'NAS100USD') return 'NAS100USD';
-      if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') return 'EURUSD';
-      return upperSymbol;
-    }).filter(symbol => ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'].includes(symbol));
+    const normalized = symbols
+      .map(s => s.toUpperCase().trim())
+      .map(upperSymbol => {
+        console.log(`🔍 Symbol validation: ${upperSymbol}`);
+        if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAUUSD';
+        if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTCUSD';
+        if (upperSymbol === 'US30' || upperSymbol === 'USA30' || upperSymbol === 'USA30USD') return 'USA30USD';
+        if (upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ' || upperSymbol === 'NAS100USD') return 'NAS100USD';
+        if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') return 'EURUSD';
+        return upperSymbol;
+      })
+      .filter(symbol => ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'].includes(symbol));
 
-    // Filter out already-subscribed (using normalized keys)
-    const newSymbols = normalized.filter(symbol => !subscribedSymbolsRef.current.has(symbol));
-    if (newSymbols.length === 0) {
-      console.log('📡 All normalized symbols already subscribed, skipping');
+    // Reference-counted subscriptions: only send to server when count transitions 0 -> 1
+    const toSubscribe: string[] = [];
+    normalized.forEach(symbol => {
+      const prev = refCountsRef.current.get(symbol) || 0;
+      const next = prev + 1;
+      refCountsRef.current.set(symbol, next);
+      if (prev === 0) {
+        toSubscribe.push(symbol);
+        subscribedSymbolsRef.current.add(symbol);
+      }
+    });
+
+    if (toSubscribe.length === 0) {
+      console.log('📡 All symbols already referenced, skipping network subscribe');
       return;
     }
 
-    console.log('✅ Validated Tradermade symbols (new):', newSymbols);
-    newSymbols.forEach(symbol => subscribedSymbolsRef.current.add(symbol));
-
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      console.log('📤 WebSocket ready, sending subscription');
-      socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: newSymbols }));
+      console.log('📤 WebSocket ready, sending subscription for:', toSubscribe);
+      socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: toSubscribe }));
     } else {
       console.log('🔄 WebSocket not ready, attempting connection');
       connect();
@@ -258,28 +269,46 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
   const unsubscribe = useCallback((symbols: string[]) => {
     // Normalize like subscribe
-    const normalized = symbols.map(s => s.toUpperCase().trim()).map(upperSymbol => {
-      if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAUUSD';
-      if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTCUSD';
-      if (upperSymbol === 'US30' || upperSymbol === 'USA30' || upperSymbol === 'USA30USD') return 'USA30USD';
-      if (upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ' || upperSymbol === 'NAS100USD') return 'NAS100USD';
-      if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') return 'EURUSD';
-      return upperSymbol;
-    }).filter(symbol => ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'].includes(symbol));
+    const normalized = symbols
+      .map(s => s.toUpperCase().trim())
+      .map(upperSymbol => {
+        if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAUUSD';
+        if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTCUSD';
+        if (upperSymbol === 'US30' || upperSymbol === 'USA30' || upperSymbol === 'USA30USD') return 'USA30USD';
+        if (upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ' || upperSymbol === 'NAS100USD') return 'NAS100USD';
+        if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') return 'EURUSD';
+        return upperSymbol;
+      })
+      .filter(symbol => ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'].includes(symbol));
 
-    normalized.forEach(symbol => subscribedSymbolsRef.current.delete(symbol));
+    const toUnsubscribe: string[] = [];
+    normalized.forEach(symbol => {
+      const prev = refCountsRef.current.get(symbol) || 0;
+      const next = Math.max(prev - 1, 0);
+      if (next === 0) {
+        refCountsRef.current.delete(symbol);
+        subscribedSymbolsRef.current.delete(symbol);
+        toUnsubscribe.push(symbol);
+      } else {
+        refCountsRef.current.set(symbol, next);
+      }
+    });
 
-    // Clear errors for unsubscribed symbols
+    if (toUnsubscribe.length === 0) {
+      return;
+    }
+
+    // Clear errors for symbols we fully unsubscribed from
     setErrors(prev => {
       const newErrors = { ...prev } as Record<string, string>;
-      normalized.forEach(symbol => {
+      toUnsubscribe.forEach(symbol => {
         delete newErrors[symbol];
       });
       return newErrors;
     });
 
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ action: 'unsubscribe', symbols: normalized }));
+      socketRef.current.send(JSON.stringify({ action: 'unsubscribe', symbols: toUnsubscribe }));
     }
   }, []);
 

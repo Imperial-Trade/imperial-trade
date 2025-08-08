@@ -233,6 +233,7 @@ serve(async (req) => {
   let reconnectTimeout: number | null = null;
   let heartbeatInterval: number | null = null;
   let connectionHealthy = true;
+  const actionTracker = new Map<string, { type: 'subscribe' | 'unsubscribe'; ts: number }>();
 
   // Connect to Tradermade WebSocket with enhanced error handling
   async function connectToTradermade() {
@@ -523,15 +524,26 @@ serve(async (req) => {
       console.log('📨 Client message:', message);
 
       if (message.action === 'subscribe' && Array.isArray(message.symbols)) {
+        const now = Date.now();
         const validSymbols = message.symbols
           .map(validateSymbol)
           .filter((s): s is string => s !== null);
 
-        validSymbols.forEach(symbol => clientSubscriptions.add(symbol));
-        console.log('✅ Client subscribed to:', validSymbols);
+        const filtered = validSymbols.filter((symbol) => {
+          const last = actionTracker.get(symbol);
+          if (last && last.type === 'subscribe' && (now - last.ts) < 200) {
+            // Ignore rapid duplicate subscribe
+            return false;
+          }
+          actionTracker.set(symbol, { type: 'subscribe', ts: now });
+          return true;
+        });
+
+        filtered.forEach(symbol => clientSubscriptions.add(symbol));
+        console.log('✅ Client subscribed to:', filtered);
 
         // Send cached data immediately if available
-        for (const symbol of validSymbols) {
+        for (const symbol of filtered) {
           const cached = getCachedPrice(symbol);
           if (cached) {
             socket.send(JSON.stringify({
@@ -550,12 +562,23 @@ serve(async (req) => {
           }
         }
       } else if (message.action === 'unsubscribe' && Array.isArray(message.symbols)) {
+        const now = Date.now();
         const validSymbols = message.symbols
           .map(validateSymbol)
           .filter((s): s is string => s !== null);
 
-        validSymbols.forEach(symbol => clientSubscriptions.delete(symbol));
-        console.log('❌ Client unsubscribed from:', validSymbols);
+        const filtered = validSymbols.filter((symbol) => {
+          const last = actionTracker.get(symbol);
+          // Ignore unsubscribe if just subscribed within 300ms, or repeated rapid unsubscribes
+          if (last && ((last.type === 'subscribe' && (now - last.ts) < 300) || (last.type === 'unsubscribe' && (now - last.ts) < 200))) {
+            return false;
+          }
+          actionTracker.set(symbol, { type: 'unsubscribe', ts: now });
+          return true;
+        });
+
+        filtered.forEach(symbol => clientSubscriptions.delete(symbol));
+        console.log('❌ Client unsubscribed from:', filtered);
       }
     } catch (error) {
       console.error('❌ Error handling client message:', error);

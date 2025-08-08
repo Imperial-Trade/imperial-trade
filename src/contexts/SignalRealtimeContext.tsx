@@ -10,6 +10,7 @@ interface SignalRealtimeContextType {
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   lastUpdated: Date | null;
   error: string | null;
+  nextRetryAt: number | null;
   subscribe: () => void;
   unsubscribe: () => void;
   refreshSignals: () => Promise<void>;
@@ -26,11 +27,11 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [nextRetryAt, setNextRetryAt] = useState<number | null>(null);
   
   const channelRef = useRef<RealtimeChannel | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
 
   // Initialize instant alerts for zero-delay notifications
   useInstantAlerts();
@@ -290,38 +291,17 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('connected');
           setError(null);
+          setNextRetryAt(null);
           reconnectAttempts.current = 0;
           // Initial data load after successful connection
           refreshSignals();
-        } else if (status === 'CHANNEL_ERROR') {
-          setConnectionStatus('error');
-          setError('Failed to connect to real-time updates');
-          attemptReconnect();
-        } else if (status === 'TIMED_OUT') {
-          setConnectionStatus('error');
-          setError('Connection timed out');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setConnectionStatus('connecting');
+          setError(null);
           attemptReconnect();
         }
       });
   }, [handleRealtimeUpdate, refreshSignals]);
-
-  const attemptReconnect = useCallback(() => {
-    if (reconnectAttempts.current >= maxReconnectAttempts) {
-      console.log('Max reconnection attempts reached');
-      setConnectionStatus('error');
-      setError('Max reconnection attempts reached. Please refresh the page.');
-      return;
-    }
-
-    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current + 1})`);
-    
-    reconnectTimeoutRef.current = setTimeout(() => {
-      reconnectAttempts.current++;
-      unsubscribe();
-      subscribe();
-    }, delay);
-  }, []);
 
   const unsubscribe = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -335,8 +315,33 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       channelRef.current = null;
     }
     
+    setNextRetryAt(null);
     setConnectionStatus('disconnected');
   }, []);
+
+  const attemptReconnect = useCallback(() => {
+    // Always keep trying with exponential backoff + jitter
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    setConnectionStatus('connecting');
+    setError(null);
+
+    const baseDelay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+    const jitter = Math.random() * 500; // add small jitter to avoid thundering herd
+    const delay = Math.max(500, baseDelay + jitter);
+    const target = Date.now() + delay;
+    setNextRetryAt(target);
+
+    console.log(`Attempting to reconnect in ${Math.round(delay)}ms (attempt ${reconnectAttempts.current + 1})`);
+    reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectAttempts.current++;
+      unsubscribe();
+      subscribe();
+    }, delay);
+  }, [subscribe, unsubscribe]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -350,6 +355,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     connectionStatus,
     lastUpdated,
     error,
+    nextRetryAt,
     subscribe,
     unsubscribe,
     refreshSignals

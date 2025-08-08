@@ -14,6 +14,7 @@ interface UseOptimizedTradingRealtimeReturn {
   refreshAlerts: () => Promise<void>;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   lastUpdated: Date | null;
+  nextRetryAt: number | null;
 }
 
 // This hook provides backward compatibility with the existing useOptimizedTrading interface
@@ -33,7 +34,8 @@ export const useOptimizedTradingRealtime = (
     connectionStatus,
     updateAlert: realtimeUpdateAlert,
     refreshAlerts,
-    lastUpdated
+    lastUpdated,
+    nextRetryAt
   } = useSignalRealtime(userId, showAllSignals);
 
   // Combine loading states
@@ -120,6 +122,7 @@ export const useOptimizedTradingRealtime = (
     deleteAlert,
     refreshAlerts,
     connectionStatus,
-    lastUpdated
+    lastUpdated,
+    nextRetryAt
   };
 };

@@ -17,6 +17,7 @@ interface UseOptimizedTradingReturn {
   refreshAlerts: () => Promise<void>;
   connectionStatus?: 'connecting' | 'connected' | 'disconnected' | 'error';
   lastUpdated?: Date | null;
+  nextRetryAt?: number | null;
 }
 
 export const useOptimizedTrading = (userId: string, showAllSignals: boolean = false): UseOptimizedTradingReturn => {
@@ -108,6 +109,7 @@ export const useOptimizedTrading = (userId: string, showAllSignals: boolean = fa
     deleteAlert,
     refreshAlerts,
     connectionStatus: realtimeHook.connectionStatus,
-    lastUpdated: realtimeHook.lastUpdated
+    lastUpdated: realtimeHook.lastUpdated,
+    nextRetryAt: realtimeHook.nextRetryAt
   };
 };

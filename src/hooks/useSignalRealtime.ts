@@ -9,6 +9,7 @@ interface UseSignalRealtimeReturn {
   isLoading: boolean;
   error: string | null;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  nextRetryAt: number | null;
   updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
   refreshAlerts: () => Promise<void>;
   lastUpdated: Date | null;
@@ -25,7 +26,8 @@ export const useSignalRealtime = (
     error: realtimeError,
     subscribe,
     unsubscribe,
-    refreshSignals
+    refreshSignals,
+    nextRetryAt
   } = useSignalRealtimeContext();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -109,6 +111,7 @@ export const useSignalRealtime = (
     isLoading,
     error,
     connectionStatus,
+    nextRetryAt,
     updateAlert,
     refreshAlerts: handleRefreshAlerts,
     lastUpdated

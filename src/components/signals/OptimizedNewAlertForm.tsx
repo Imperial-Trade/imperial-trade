@@ -513,11 +513,11 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         )}
 
         {/* Trade Type & Entry Price Row */}
-        <div className="w-full grid grid-cols-2 gap-4">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Trade Type */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-foreground">Trade Type</label>
+              <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Trade Type</label>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -597,7 +597,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
           {/* Entry Price */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-foreground">Entry Price</label>
+              <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Entry Price</label>
               {(formData.trade_type === 'buy_limit' || formData.trade_type === 'sell_limit') && (
                 <Badge variant="outline" className="text-xs">
                   Activation Price
@@ -636,18 +636,18 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
         {/* Split Price & Pip Calculator */}
         <div className="w-full p-4 bg-card border border-border rounded-lg">
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Left Side - Price Inputs */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Price Levels</h3>
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">Price Levels</h3>
                 <Badge variant="secondary" className="text-xs">Direct Entry</Badge>
               </div>
               
               {/* Stop Loss */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Stop Loss</label>
+                <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Stop Loss</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -664,7 +664,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
               {/* Take Profits */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-foreground">Take Profits</label>
+                  <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Take Profits</label>
                   {takeProfits.length < 5 && (
                     <Button
                       type="button"
@@ -713,13 +713,13 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-3">
                 <Calculator className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Pip Calculator</h3>
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">Pip Calculator</h3>
                 <Badge variant="outline" className="text-xs">Auto-Sync</Badge>
               </div>
               
               {/* Stop Loss Pips */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Stop Loss (Pips)</label>
+                <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Stop Loss (Pips)</label>
                 <Input
                   type="number"
                   step="0.1"
@@ -732,7 +732,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
               {/* Take Profit Pips */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Take Profits (Pips)</label>
+                <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Take Profits (Pips)</label>
                 
                 {takeProfits.map((_, index) => (
                   <div key={index} className="flex items-center gap-2 w-full">

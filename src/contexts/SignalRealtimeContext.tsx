@@ -232,8 +232,19 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         setSignals(prev => prev.map(signal => 
           signal.id === newRecord.id ? {
             ...signal,
+            assetName: newRecord.asset_name,
+            tradermadeSymbol: newRecord.tradermade_symbol,
+            tradeType: newRecord.trade_type,
+            entryPrice: Number(newRecord.entry_price),
+            stopLoss: Number(newRecord.stop_loss),
             status: newRecord.status,
+            tp1: newRecord.tp1 ? Number(newRecord.tp1) : undefined,
+            tp2: newRecord.tp2 ? Number(newRecord.tp2) : undefined,
+            tp3: newRecord.tp3 ? Number(newRecord.tp3) : undefined,
+            tp4: newRecord.tp4 ? Number(newRecord.tp4) : undefined,
+            tp5: newRecord.tp5 ? Number(newRecord.tp5) : undefined,
             tpHits: newRecord.tp_hits || [],
+            notes: newRecord.notes,
             closeReason: newRecord.close_reason,
             updatedAt: newRecord.updated_at
           } : signal

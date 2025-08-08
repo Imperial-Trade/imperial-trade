@@ -74,6 +74,32 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     subscribeFlushTimerRef.current = null;
   }, []);
 
+  const normalizeSymbol = useCallback((s: string) => {
+    const up = (s || '').toUpperCase().trim();
+    // Remove non-alphanumerics like '/' and spaces
+    const compact = up.replace(/[^A-Z0-9]/g, '');
+    switch (up) {
+      case 'GOLD':
+      case 'XAU/USD':
+        return 'XAUUSD';
+      case 'BTC/USD':
+        return 'BTCUSD';
+      case 'US30':
+      case 'USA30':
+      case 'DOWJONES':
+        return 'USA30USD';
+      case 'NASDAQ':
+      case 'NAS100':
+        return 'NAS100USD';
+      case 'SPX500':
+      case 'SP500':
+      case 'SPX':
+        return 'SPX500USD';
+      default:
+        return compact;
+    }
+  }, []);
+
   const getReconnectDelay = useCallback(() => {
     const baseDelay = 5000;
     const maxDelay = 30000;
@@ -139,7 +165,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           }
           
           if (data.type === 'price_update' && data.symbol && typeof data.price === 'number') {
-            const symbol = data.symbol;
+            const symbol = normalizeSymbol(data.symbol);
             
             // Check if this is an ultra-fast institutional tick
             const isInstitutionalTick = data.is_institutional_tick === true;
@@ -240,17 +266,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
     // Normalize and validate symbols FIRST
     const normalized = symbols
-      .map(s => s.toUpperCase().trim())
-      .map(upperSymbol => {
-        console.log(`🔍 Symbol validation: ${upperSymbol}`);
-        if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAUUSD';
-        if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTCUSD';
-        if (upperSymbol === 'US30' || upperSymbol === 'USA30' || upperSymbol === 'USA30USD') return 'USA30USD';
-        if (upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ' || upperSymbol === 'NAS100USD') return 'NAS100USD';
-        if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') return 'EURUSD';
-        return upperSymbol;
-      })
-      .filter(symbol => ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'].includes(symbol));
+      .map(normalizeSymbol)
+      .filter(Boolean);
 
     // Reference-counted subscriptions: only send to server when count transitions 0 -> 1
     const toSubscribe: string[] = [];
@@ -287,16 +304,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const unsubscribe = useCallback((symbols: string[]) => {
     // Normalize like subscribe
     const normalized = symbols
-      .map(s => s.toUpperCase().trim())
-      .map(upperSymbol => {
-        if (upperSymbol === 'GOLD' || upperSymbol === 'XAU/USD') return 'XAUUSD';
-        if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTC/USD') return 'BTCUSD';
-        if (upperSymbol === 'US30' || upperSymbol === 'USA30' || upperSymbol === 'USA30USD') return 'USA30USD';
-        if (upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ' || upperSymbol === 'NAS100USD') return 'NAS100USD';
-        if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') return 'EURUSD';
-        return upperSymbol;
-      })
-      .filter(symbol => ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'].includes(symbol));
+      .map(normalizeSymbol)
+      .filter(Boolean);
 
     const toUnsubscribe: string[] = [];
     normalized.forEach(symbol => {
@@ -330,20 +339,21 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const refreshPrice = useCallback((symbol: string) => {
+    const norm = normalizeSymbol(symbol);
     // Clear any existing error for this symbol
     setErrors(prev => {
       const newErrors = { ...prev };
-      delete newErrors[symbol];
+      delete newErrors[norm];
       return newErrors;
     });
-    
     // Force re-subscription for this symbol
-    subscribe([symbol]);
-  }, [subscribe]);
+    subscribe([norm]);
+  }, [subscribe, normalizeSymbol]);
 
   const getPrice = useCallback((symbol: string): PriceData | null => {
-    return prices[symbol] || null;
-  }, [prices]);
+    const norm = normalizeSymbol(symbol);
+    return prices[norm] || null;
+  }, [prices, normalizeSymbol]);
 
   // Auto-connect on mount and add connection health monitoring
   useEffect(() => {

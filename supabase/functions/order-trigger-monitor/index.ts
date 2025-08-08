@@ -134,48 +134,59 @@ serve(async (req) => {
         continue;
       }
 
-      // MT4/MT5 Standard Triggering Logic
+      // MT5 Triggering Logic: use Ask for Buy Limit, Bid for Sell Limit
       let shouldTrigger = false;
-      const currentPrice = priceData.price;
+      let activationPrice = 0;
       const entryPrice = order.entry_price;
 
       if (order.trade_type === 'buy_limit') {
-        // Buy Limit: Trigger when current price drops to or below entry price
-        shouldTrigger = currentPrice <= entryPrice;
-        console.log(`🔍 Buy Limit ${order.id}: Current: ${currentPrice}, Entry: ${entryPrice}, Trigger: ${shouldTrigger}`);
+        // Trigger when ASK drops to or below entry price
+        shouldTrigger = priceData.ask <= entryPrice;
+        activationPrice = priceData.ask;
+        console.log(`🔍 Buy Limit ${order.id}: Ask: ${priceData.ask}, Entry: ${entryPrice}, Trigger: ${shouldTrigger}`);
       } else if (order.trade_type === 'sell_limit') {
-        // Sell Limit: Trigger when current price rises to or above entry price
-        shouldTrigger = currentPrice >= entryPrice;
-        console.log(`🔍 Sell Limit ${order.id}: Current: ${currentPrice}, Entry: ${entryPrice}, Trigger: ${shouldTrigger}`);
+        // Trigger when BID rises to or above entry price
+        shouldTrigger = priceData.bid >= entryPrice;
+        activationPrice = priceData.bid;
+        console.log(`🔍 Sell Limit ${order.id}: Bid: ${priceData.bid}, Entry: ${entryPrice}, Trigger: ${shouldTrigger}`);
       }
 
       if (shouldTrigger) {
-        console.log(`🎯 TRIGGERED! Order ${order.id} (${order.trade_type}) at price ${currentPrice}`);
-        triggeredOrders.push(order.id);
+        console.log(`🎯 TRIGGERED! Order ${order.id} (${order.trade_type}) at price ${activationPrice}`);
+        triggeredOrders.push(order.id + ':' + activationPrice);
       }
     }
 
     // Step 5: Update triggered orders to active status
-    let updateResults = [];
-    
+    const updateResults: any[] = [];
+
     if (triggeredOrders.length > 0) {
       console.log(`🔄 Activating ${triggeredOrders.length} triggered orders...`);
-      
-      const { data: updated, error: updateError } = await supabase
-        .from('trade_alerts')
-        .update({ 
-          status: 'active',
-          updated_at: new Date().toISOString()
-        })
-        .in('id', triggeredOrders)
-        .select('id, asset_name, trade_type, entry_price, user_id');
 
-      if (updateError) {
-        console.error('❌ Error updating triggered orders:', updateError);
-        throw updateError;
+      for (const item of triggeredOrders) {
+        const [id, priceStr] = item.split(':');
+        const activation_price = parseFloat(priceStr);
+
+        const { data: updated, error: updateError } = await supabase
+          .from('trade_alerts')
+          .update({ 
+            status: 'active',
+            activation_price,
+            activated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+          .select('id, asset_name, trade_type, entry_price, user_id, activation_price');
+
+        if (updateError) {
+          console.error('❌ Error updating triggered order:', id, updateError);
+          continue;
+        }
+
+        if (updated && updated.length > 0) {
+          updateResults.push(updated[0]);
+        }
       }
-
-      updateResults = updated || [];
       console.log(`✅ Successfully activated ${updateResults.length} orders`);
     }
 
@@ -215,6 +226,7 @@ serve(async (req) => {
               assetName: order.asset_name,
               tradeType: order.trade_type,
               entryPrice: order.entry_price,
+              activationPrice: order.activation_price,
               triggeredAt: new Date().toISOString()
             }
           });

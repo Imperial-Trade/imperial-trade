@@ -31,7 +31,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     if (isPending) {
         const pendingText = isLimitType && friendlyType ? `Pending ${friendlyType}` : 'Pending';
         return (
-            <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
+            <Badge className="bg-gold-light/20 text-gold-warm border border-gold-warm/30 uppercase">
                 <Hourglass className="w-3 h-3 mr-1 animate-spin" /> {pendingText}
             </Badge>
         );

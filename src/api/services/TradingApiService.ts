@@ -53,6 +53,7 @@ export class TradingApiService {
       console.log('TradingApiService - Creating alert with DTO:', dto);
       console.log('TradingApiService - User ID:', userId);
       
+      const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
       const insertData: TableInsert<'trade_alerts'> = {
         asset_name: dto.assetName,
         tradermade_symbol: dto.tradermadeSymbol,
@@ -66,7 +67,7 @@ export class TradingApiService {
         tp5: dto.tp5,
         notes: dto.notes,
         user_id: userId,
-        status: 'active'
+        status: isLimitOrder ? 'pending' : 'active'
       };
 
       console.log('TradingApiService - Insert data:', insertData);

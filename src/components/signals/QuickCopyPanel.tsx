@@ -47,7 +47,7 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
     <Button
       variant={variant}
       size="sm"
-      onClick={() => copyToClipboard(value.toString(), label)}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyToClipboard(value.toString(), label); }}
       className="flex items-center gap-2 h-8 text-xs"
     >
       {copiedItem === label ? (
@@ -61,7 +61,7 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
   );
 
   return (
-    <Card className="bg-gray-800/30 border-gray-700">
+    <Card data-prevent-widget-open="true" className="bg-gray-800/30 border-gray-700">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium text-gray-300 flex items-center gap-2">
           <Copy className="w-4 h-4" />
@@ -99,10 +99,12 @@ export default function QuickCopyPanel({ alert }: QuickCopyPanelProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => copyToClipboard(
-              `${alert.asset_name} ${alert.trade_type.replace('_', ' ').toUpperCase()}\nEntry: ${alert.entry_price}\nSL: ${alert.stop_loss}${takeProfits.map((tp, i) => `\n${tp.label}: ${tp.value}`).join('')}`,
-              'All Prices'
-            )}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation();
+              copyToClipboard(
+                `${alert.asset_name} ${alert.trade_type.replace('_', ' ').toUpperCase()}\nEntry: ${alert.entry_price}\nSL: ${alert.stop_loss}${takeProfits.map((tp, i) => `\n${tp.label}: ${tp.value}`).join('')}`,
+                'All Prices'
+              );
+            }}
             className="w-full h-8 text-xs"
           >
             {copiedItem === 'All Prices' ? (

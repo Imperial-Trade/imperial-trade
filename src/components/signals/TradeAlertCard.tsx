@@ -251,7 +251,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       )}
 
       <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-        <CollapsibleContent className="px-4 pb-4">
+        <CollapsibleContent className="px-4 pb-4" data-prevent-widget-open="true">
             <QuickCopyPanel alert={alert} />
         </CollapsibleContent>
       </Collapsible>

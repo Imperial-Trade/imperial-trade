@@ -119,7 +119,7 @@ export default function ImperialPartnership() {
 
   const monthly = useMemo(() => {
     const base = referrals * avgRevenue * (affiliateRate / 100);
-    const royalty = referrals * avgRevenue * (royaltyRate / 100);
+    const royalty = referrals * royaltyRate;
     return {
       base: Math.round(base),
       royalty: Math.round(royalty),
@@ -217,10 +217,10 @@ export default function ImperialPartnership() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm text-muted-foreground">Royalty rate (%)</label>
+                    <label className="text-sm text-muted-foreground">Royalty per active client ($)</label>
                     <div className="mt-2">
-                      <Slider value={[royaltyRate]} min={0} max={20} step={1} onValueChange={(v) => setRoyaltyRate(v[0] ?? 0)} />
-                      <Input className="mt-2" type="number" value={royaltyRate} onChange={(e) => setRoyaltyRate(parseInt(e.target.value || "0"))} />
+                      <Slider value={[royaltyRate]} min={0} max={500} step={1} onValueChange={(v) => setRoyaltyRate(v[0] ?? 0)} />
+                      <Input className="mt-2" type="number" step="1" value={royaltyRate} onChange={(e) => setRoyaltyRate(parseFloat(e.target.value || "0"))} />
                     </div>
                   </div>
                 </div>

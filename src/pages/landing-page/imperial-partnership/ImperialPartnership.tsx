@@ -203,10 +203,10 @@ export default function ImperialPartnership() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm text-muted-foreground">Broker revenue per active client ($)</label>
+                    <label className="text-sm text-muted-foreground">Average lot size (per active client)</label>
                     <div className="mt-2">
-                      <Slider value={[avgRevenue]} min={10} max={300} step={5} onValueChange={(v) => setAvgRevenue(v[0] ?? 0)} />
-                      <Input className="mt-2" type="number" value={avgRevenue} onChange={(e) => setAvgRevenue(parseInt(e.target.value || "0"))} />
+                      <Slider value={[avgRevenue]} min={0} max={10} step={0.01} onValueChange={(v) => setAvgRevenue(v[0] ?? 0)} />
+                      <Input className="mt-2" type="number" step="0.01" value={avgRevenue} onChange={(e) => setAvgRevenue(parseFloat(e.target.value || "0"))} />
                     </div>
                   </div>
                   <div>

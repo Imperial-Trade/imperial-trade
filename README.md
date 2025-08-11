@@ -160,7 +160,7 @@ The application supports the following environment variables:
 **Application loads but shows connection errors:**
 - Verify Supabase environment variables are correct
 - Check that your Supabase project is active
-- Ensure your domain is added to Supabase allowed origins
+- Ensure your domain is added to the Supabase allowed origins
 
 **Static files not loading:**
 - Verify output directory is set to `dist`

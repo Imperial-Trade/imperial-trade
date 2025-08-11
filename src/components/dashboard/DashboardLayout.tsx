@@ -3,6 +3,7 @@ import React, { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import DashboardNav from './DashboardNav';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
+import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
 
 export const DashboardLayout: React.FC = () => {
   return (
@@ -17,6 +18,7 @@ export const DashboardLayout: React.FC = () => {
 
       {/* Top Navigation */}
       <DashboardNav />
+      <NotificationsPanel />
       
       {/* Main Content with Dynamic Top Padding */}
       <main className="relative" style={{ paddingTop: 'var(--header-height, 4rem)' }}>

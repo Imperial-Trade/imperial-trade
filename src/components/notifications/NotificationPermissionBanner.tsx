@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { Button } from '@/components/ui/button';
+import { Bell } from 'lucide-react';
 
 const NotificationPermissionBanner: React.FC = () => {
   const { isPromptDismissed, requestPermission, dismissPrompt, initialized, permission } = useNotifications();
@@ -19,14 +20,22 @@ const NotificationPermissionBanner: React.FC = () => {
     <aside
       role="region"
       aria-label="Notifications permission prompt"
-      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] sm:w-auto sm:max-w-md rounded-lg border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-lg"
+      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] sm:max-w-lg rounded-lg border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-lg"
     >
-      <div className="px-3 py-2 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-        <div className="text-xs sm:text-sm">
-          <h2 className="text-sm font-medium">Enable push notifications</h2>
-          <p className="text-muted-foreground">Stay on top of live signals, TP hits, and risk alerts.</p>
+      <div className="px-4 py-3 sm:px-5 sm:py-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-md bg-muted p-1.5" aria-hidden="true">
+            <Bell className="h-4 w-4 text-foreground" />
+          </div>
+          <div className="flex-1 text-xs sm:text-sm">
+            <h2 className="text-sm font-medium">Enable push notifications</h2>
+            <p className="mt-0.5 text-muted-foreground">Stay on top of live signals, TP hits, and risk alerts.</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="mt-3 flex items-center justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={dismissPrompt}>
+            Not now
+          </Button>
           <Button
             size="sm"
             onClick={async () => {
@@ -41,14 +50,14 @@ const NotificationPermissionBanner: React.FC = () => {
             aria-disabled={!initialized || requesting}
             title={!initialized ? 'Preparing notifications...' : undefined}
           >
+            {requesting ? (
+              <span className="mr-2 inline-flex h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.125em]" />
+            ) : null}
             {requesting ? 'Enabling…' : 'Enable notifications'}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={dismissPrompt}>
-            Not now
           </Button>
         </div>
         {!requesting && initialized && permission === 'default' ? (
-          <p className="mt-1 text-[11px] sm:text-xs text-muted-foreground">
+          <p className="mt-2 text-[11px] sm:text-xs text-muted-foreground">
             No prompt? Check site settings (lock icon) → Notifications.
           </p>
         ) : null}

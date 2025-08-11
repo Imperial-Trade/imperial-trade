@@ -99,19 +99,35 @@ export function useOneSignal() {
 
             if (user?.id) {
               (window as any).OneSignal.login(user.id);
-              const tags: Record<string, string> = {};
-              if (profile?.role) tags["role"] = String(profile.role);
-              if (profile?.user_type) tags["user_type"] = String(profile.user_type);
-              if (Object.keys(tags).length > 0) {
-                const applyTags = async () => {
-                  if ((window as any).OneSignal.User?.addTags) {
-                    await (window as any).OneSignal.User.addTags(tags);
-                  } else if ((window as any).OneSignal.sendTags) {
-                    await (window as any).OneSignal.sendTags(tags);
+              // Attach email identity and tags
+              const applyIdentity = async () => {
+                try {
+                  if (user?.email) {
+                    const osUser = (window as any).OneSignal?.User;
+                    if (osUser?.addEmail) {
+                      await osUser.addEmail(user.email);
+                    }
+                    // Also add email as a tag for easy segmentation/search
+                    const emailTag = { email: user.email } as Record<string, string>;
+                    if (osUser?.addTags) {
+                      await osUser.addTags(emailTag);
+                    } else if ((window as any).OneSignal?.sendTags) {
+                      await (window as any).OneSignal.sendTags(emailTag);
+                    }
                   }
-                };
-                applyTags().catch(() => {});
-              }
+                  const tags: Record<string, string> = {};
+                  if (profile?.role) tags["role"] = String(profile.role);
+                  if (profile?.user_type) tags["user_type"] = String(profile.user_type);
+                  if (Object.keys(tags).length > 0) {
+                    if ((window as any).OneSignal.User?.addTags) {
+                      await (window as any).OneSignal.User.addTags(tags);
+                    } else if ((window as any).OneSignal.sendTags) {
+                      await (window as any).OneSignal.sendTags(tags);
+                    }
+                  }
+                } catch {}
+              };
+              applyIdentity().catch(() => {});
             } else {
               (window as any).OneSignal.logout?.();
             }
@@ -285,6 +301,19 @@ export function useOneSignal() {
       try {
         if (user?.id) {
           await withTimeout(Promise.resolve((window as any).OneSignal?.login?.(user.id)), 5000).catch(() => {});
+          // Attach email to user profile in OneSignal (discoverable by email)
+          if (user?.email) {
+            const osUser = (window as any).OneSignal?.User;
+            if (osUser?.addEmail) {
+              await withTimeout(osUser.addEmail(user.email), 5000).catch(() => {});
+            }
+            const emailTag = { email: user.email } as Record<string, string>;
+            if (osUser?.addTags) {
+              await withTimeout(osUser.addTags(emailTag), 5000).catch(() => {});
+            } else if ((window as any).OneSignal?.sendTags) {
+              await withTimeout((window as any).OneSignal.sendTags(emailTag), 5000).catch(() => {});
+            }
+          }
           const tags: Record<string, string> = {};
           if (profile?.role) tags["role"] = String(profile.role);
           if (profile?.user_type) tags["user_type"] = String(profile.user_type);

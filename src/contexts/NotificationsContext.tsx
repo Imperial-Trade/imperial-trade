@@ -39,8 +39,19 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     setDismissed(true);
     try { localStorage.setItem(DISMISS_KEY, '1'); } catch {}
   }, []);
+  useEffect(() => {
+    if (!user) return;
+    if (isIframeBlocked) return;
+    if (dismissed) return;
+    if (!initialized) return;
+    if (permission !== 'default') return;
+    const t = setTimeout(() => {
+      requestPermission().catch(() => {});
+    }, 300);
+    return () => clearTimeout(t);
+  }, [user?.id, initialized, permission, dismissed, isIframeBlocked, requestPermission]);
 
-const value = useMemo<NotificationsContextValue>(() => ({
+  const value = useMemo<NotificationsContextValue>(() => ({
     permission,
     initialized,
     isGranted: isGranted && !!user,

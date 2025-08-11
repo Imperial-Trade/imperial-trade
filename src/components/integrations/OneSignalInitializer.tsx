@@ -1,15 +1,13 @@
-import React, { useEffect } from "react";
-import { useOneSignal } from "@/hooks/useOneSignal";
+import React from "react";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
+import NotificationPermissionBanner from "@/components/notifications/NotificationPermissionBanner";
 
 const OneSignalInitializer: React.FC = () => {
-  const { initialized } = useOneSignal();
-
-  useEffect(() => {
-    // Optionally, you could auto-request permission on first dashboard load.
-    // We keep it passive to avoid intrusive prompts.
-  }, [initialized]);
-
-  return null;
+  return (
+    <NotificationsProvider>
+      <NotificationPermissionBanner />
+    </NotificationsProvider>
+  );
 };
 
 export default OneSignalInitializer;

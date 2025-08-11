@@ -11,6 +11,9 @@ declare global {
 export function useOneSignal() {
   const { user, profile } = useAuth();
   const [initialized, setInitialized] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +83,7 @@ export function useOneSignal() {
         });
 
         setInitialized(true);
+        try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
       } catch (e) {
         console.warn("OneSignal init failed", e);
       }
@@ -106,7 +110,11 @@ export function useOneSignal() {
           });
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      // ignore
+    } finally {
+      try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
+    }
   };
-  return { initialized, requestPermission };
+  return { initialized, requestPermission, permission, isGranted: permission === 'granted' };
 }

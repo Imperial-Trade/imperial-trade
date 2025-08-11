@@ -13,7 +13,10 @@ interface NotificationPayload {
   triggered_price: number;
   notification_type: string;
   delivery_channels: string[];
+  user_ids?: string[]; // target specific external_user_ids (Supabase user.id)
+  segments?: string[]; // OneSignal segments, defaults to ['Subscribed Users']
 }
+
 
 async function sendRealtimeNotification(supabase: any, payload: NotificationPayload): Promise<boolean> {
   try {
@@ -165,19 +168,28 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
         'Authorization': `Basic ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        app_id: appId,
-        included_segments: ['Subscribed Users'],
-        headings: { en: title },
-        contents: { en: body },
-        data: {
-          signal_id: payload.signal_id,
-          alert_type: payload.alert_type,
-          target_price: payload.target_price,
-          triggered_price: payload.triggered_price,
-          notification_type: payload.notification_type
+      body: JSON.stringify(() => {
+        const base: any = {
+          app_id: appId,
+          headings: { en: title },
+          contents: { en: body },
+          data: {
+            signal_id: payload.signal_id,
+            alert_type: payload.alert_type,
+            target_price: payload.target_price,
+            triggered_price: payload.triggered_price,
+            notification_type: payload.notification_type,
+          },
+        };
+        if (payload.user_ids && payload.user_ids.length > 0) {
+          base.include_external_user_ids = payload.user_ids;
+        } else if (payload.segments && payload.segments.length > 0) {
+          base.included_segments = payload.segments;
+        } else {
+          base.included_segments = ['Subscribed Users'];
         }
-      }),
+        return base;
+      })(),
       signal: AbortSignal.timeout(10000)
     });
 

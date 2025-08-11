@@ -100,12 +100,7 @@ export const useInstantAlerts = () => {
         if (status === 'SUBSCRIBED') {
           console.log('✅ Successfully subscribed to instant alerts');
           
-          // Request notification permission
-          if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission().then(permission => {
-              console.log('🔔 Notification permission:', permission);
-            });
-          }
+          // Notification permission is handled centrally by NotificationsContext
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ Failed to subscribe to instant alerts');
           toast.error('Alert notifications unavailable', {

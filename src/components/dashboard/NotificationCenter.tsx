@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,55 +15,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-
-interface Notification {
-  id: string;
-  type: 'signal' | 'follower' | 'message' | 'system' | 'alert';
-  title: string;
-  message: string;
-  timestamp: Date;
-  isRead: boolean;
-  priority: 'low' | 'medium' | 'high';
-}
-
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'signal',
-    title: 'Signal Triggered',
-    message: 'Your EUR/USD long signal has been triggered at 1.0950',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    isRead: false,
-    priority: 'high'
-  },
-  {
-    id: '2',
-    type: 'follower',
-    title: 'New Follower',
-    message: 'John Doe started following your signals',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    isRead: false,
-    priority: 'medium'
-  },
-  {
-    id: '3',
-    type: 'message',
-    title: 'Forum Reply',
-    message: 'Someone replied to your post in Trading Strategies',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4),
-    isRead: true,
-    priority: 'medium'
-  },
-  {
-    id: '4',
-    type: 'system',
-    title: 'System Update',
-    message: 'New features have been added to the platform',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    isRead: true,
-    priority: 'low'
-  }
-];
+import { useUserNotifications } from '@/hooks/useUserNotifications';
 
 const getNotificationIcon = (type: string) => {
   switch (type) {
@@ -87,28 +38,12 @@ const getPriorityColor = (priority: string) => {
 };
 
 export const NotificationCenter: React.FC = () => {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const { notifications, isLoading, error, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useUserNotifications();
 
   const filteredNotifications = notifications.filter(n => 
-    filter === 'all' ? true : !n.isRead
+    filter === 'all' ? true : !n.is_read
   );
-
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, isRead: true } : n)
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-  };
-
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
 
   return (
     <Card className="w-full max-w-md">
@@ -145,12 +80,23 @@ export const NotificationCenter: React.FC = () => {
             Mark all as read
           </Button>
         )}
+        {error && (
+          <CardDescription className="text-destructive">
+            Failed to load notifications
+          </CardDescription>
+        )}
       </CardHeader>
       
       <CardContent className="p-0">
         <ScrollArea className="h-[400px]">
           <div className="space-y-1 p-4">
-            {filteredNotifications.length === 0 ? (
+            {isLoading ? (
+              <div className="space-y-2">
+                <div className="h-16 rounded-md bg-muted animate-pulse" />
+                <div className="h-16 rounded-md bg-muted animate-pulse" />
+                <div className="h-16 rounded-md bg-muted animate-pulse" />
+              </div>
+            ) : filteredNotifications.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p>No notifications</p>
@@ -161,8 +107,8 @@ export const NotificationCenter: React.FC = () => {
                   <div
                     className={`p-3 rounded-lg border-l-4 transition-colors cursor-pointer hover:bg-muted/50 ${
                       getPriorityColor(notification.priority)
-                    } ${!notification.isRead ? 'bg-muted/20' : ''}`}
-                    onClick={() => !notification.isRead && markAsRead(notification.id)}
+                    } ${!notification.is_read ? 'bg-muted/20' : ''}`}
+                    onClick={() => !notification.is_read && markAsRead(notification.id)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-3 flex-1">
@@ -174,20 +120,20 @@ export const NotificationCenter: React.FC = () => {
                             <p className="text-sm font-medium truncate">
                               {notification.title}
                             </p>
-                            {!notification.isRead && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                            {!notification.is_read && (
+                              <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0" />
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mb-2">
                             {notification.message}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(notification.timestamp, { addSuffix: true })}
+                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                           </p>
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        {!notification.isRead && (
+                        {!notification.is_read && (
                           <Button
                             variant="ghost"
                             size="sm"

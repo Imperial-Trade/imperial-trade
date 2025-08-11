@@ -59,6 +59,7 @@ import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
 import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
+import OneSignalInitializer from "@/components/integrations/OneSignalInitializer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +81,7 @@ function App() {
             <PostHogPageViewTracker />
             <ScrollToTop />
             <AuthProvider>
+              <OneSignalInitializer />
               <WelcomeProvider>
                 <NavigationGuard>
                   <SignalRealtimeProvider>

@@ -149,10 +149,45 @@ async function sendTelegramNotification(payload: NotificationPayload): Promise<b
 
 async function sendPushNotification(payload: NotificationPayload): Promise<boolean> {
   try {
-    // Placeholder for push notification service (e.g., Firebase, OneSignal)
-    console.log(`📱 Push notification would be sent for ${payload.alert_type}`);
-    
-    // For now, just return true as this requires additional setup
+    const apiKey = Deno.env.get('ONESIGNAL_API_KEY');
+    const appId = Deno.env.get('ONESIGNAL_APP_ID');
+    if (!apiKey || !appId) {
+      console.log('⚠️ OneSignal not configured');
+      return false;
+    }
+
+    const title = payload.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
+    const body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
+
+    const response = await fetch('https://api.onesignal.com/notifications', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        app_id: appId,
+        included_segments: ['Subscribed Users'],
+        headings: { en: title },
+        contents: { en: body },
+        data: {
+          signal_id: payload.signal_id,
+          alert_type: payload.alert_type,
+          target_price: payload.target_price,
+          triggered_price: payload.triggered_price,
+          notification_type: payload.notification_type
+        }
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`❌ OneSignal API error: ${response.status} ${errText}`);
+      return false;
+    }
+
+    console.log('✅ Push notification sent via OneSignal');
     return true;
   } catch (error) {
     console.error('❌ Push notification exception:', error);

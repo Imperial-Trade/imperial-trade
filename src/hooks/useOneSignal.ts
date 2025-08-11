@@ -279,8 +279,10 @@ const requestPermission = async () => {
           await withTimeout(os.Notifications.subscribe(), 10000).catch(() => {});
         } catch {}
         try {
-          setHasSubscription(!!(id || optedIn));
-          subscribed = !!(id || optedIn);
+          const sid = os?.User?.PushSubscription?.id ?? null;
+          const opted = !!os?.User?.PushSubscription?.optedIn;
+          setHasSubscription(!!(sid || opted));
+          subscribed = !!(sid || opted);
         } catch {}
       }
 
@@ -330,8 +332,9 @@ const requestPermission = async () => {
       try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
       try {
         const ps = (window as any).OneSignal?.User?.PushSubscription;
-        setHasSubscription(!!(ps?.optedIn ?? id));
-        if (!id && !ps?.optedIn) {
+        const sid = ps?.id ?? null;
+        setHasSubscription(!!(ps?.optedIn ?? sid));
+        if (!sid && !ps?.optedIn) {
           console.warn('[OneSignal] No subscription detected after permission flow. Verify Web Push configuration for origin:', location.origin);
         }
       } catch {}

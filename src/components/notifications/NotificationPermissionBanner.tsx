@@ -3,7 +3,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { Button } from '@/components/ui/button';
 
 const NotificationPermissionBanner: React.FC = () => {
-  const { isPromptDismissed, requestPermission, dismissPrompt } = useNotifications();
+  const { isPromptDismissed, requestPermission, dismissPrompt, initialized } = useNotifications();
 
   if (isPromptDismissed) return null;
 
@@ -19,7 +19,7 @@ const NotificationPermissionBanner: React.FC = () => {
           <p className="text-muted-foreground">Stay on top of live signals, TP hits, and risk alerts in real time.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={requestPermission}>
+          <Button size="sm" onClick={requestPermission} disabled={!initialized} aria-disabled={!initialized} title={!initialized ? 'Preparing notifications...' : undefined}>
             Enable notifications
           </Button>
           <Button size="sm" variant="ghost" onClick={dismissPrompt}>

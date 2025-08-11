@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface NotificationsContextValue {
   permission: NotificationPermission | 'unsupported';
   isGranted: boolean;
+  initialized: boolean;
   isPromptDismissed: boolean;
   requestPermission: () => Promise<void>;
   dismissPrompt: () => void;
@@ -38,13 +39,14 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     try { localStorage.setItem(DISMISS_KEY, '1'); } catch {}
   }, []);
 
-  const value = useMemo<NotificationsContextValue>(() => ({
+const value = useMemo<NotificationsContextValue>(() => ({
     permission,
+    initialized,
     isGranted: isGranted && !!user,
-    isPromptDismissed: dismissed || !initialized || !user || permission !== 'default',
+    isPromptDismissed: dismissed || !user || permission !== 'default',
     requestPermission,
     dismissPrompt,
-  }), [permission, isGranted, dismissed, initialized, user, requestPermission, dismissPrompt]);
+  }), [permission, initialized, isGranted, dismissed, user, requestPermission, dismissPrompt]);
 
   return (
     <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>

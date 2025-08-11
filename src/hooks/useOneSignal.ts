@@ -65,16 +65,31 @@ export function useOneSignal() {
           });
         }
 
-        // Link/unlink user
+        // Link/unlink user and observe permissions
         window.OneSignal.push(function () {
           try {
+            // Keep permission state in sync
+            (window as any).OneSignal.Notifications?.addEventListener?.(
+              "permissionChange",
+              () => {
+                try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
+              }
+            );
+
             if (user?.id) {
               (window as any).OneSignal.login(user.id);
               const tags: Record<string, string> = {};
               if (profile?.role) tags["role"] = String(profile.role);
               if (profile?.user_type) tags["user_type"] = String(profile.user_type);
               if (Object.keys(tags).length > 0) {
-                (window as any).OneSignal.sendTags(tags).catch(() => {});
+                const applyTags = async () => {
+                  if ((window as any).OneSignal.User?.addTags) {
+                    await (window as any).OneSignal.User.addTags(tags);
+                  } else if ((window as any).OneSignal.sendTags) {
+                    await (window as any).OneSignal.sendTags(tags);
+                  }
+                };
+                applyTags().catch(() => {});
               }
             } else {
               (window as any).OneSignal.logout?.();

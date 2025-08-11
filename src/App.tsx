@@ -32,6 +32,8 @@ import ImperialPartnership from "@/pages/landing-page/imperial-partnership/Imper
 import Signin from "@/pages/landing-page/signin/Signin";
 import ResetPasswordPage from "@/pages/reset-password/ResetPasswordPage";
 import DisclaimersPage from "@/pages/legal/DisclaimersPage";
+import PrivacyPolicyPage from "@/pages/legal/PrivacyPolicyPage";
+import TermsOfUsePage from "@/pages/legal/TermsOfUsePage";
 import AccountRequest from "@/pages/landing-page/account-request/AccountRequest";
 import AccountRequestStatus from "@/pages/landing-page/account-request-status/AccountRequestStatus";
 
@@ -125,14 +127,16 @@ function App() {
                            <Route path="signin" element={<Signin />} />
                            <Route path="reset-password" element={<ResetPasswordPage />} />
                            <Route path="legal/disclaimers" element={<DisclaimersPage />} />
-                          <Route
-                            path="account-request"
-                            element={<AccountRequest />}
-                          />
-                          <Route
-                            path="account-request-status"
-                            element={<AccountRequestStatus />}
-                          />
+                           <Route path="legal/privacy" element={<PrivacyPolicyPage />} />
+                           <Route path="legal/terms" element={<TermsOfUsePage />} />
+                           <Route
+                             path="account-request"
+                             element={<AccountRequest />}
+                           />
+                           <Route
+                             path="account-request-status"
+                             element={<AccountRequestStatus />}
+                           />
                         </Route>
 
                         {/* Dashboard Routes */}

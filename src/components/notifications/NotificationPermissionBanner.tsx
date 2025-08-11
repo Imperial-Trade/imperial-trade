@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { useWelcome } from '@/contexts/WelcomeContext';
 import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-
 const NotificationPermissionBanner: React.FC = () => {
   const { isPromptDismissed, requestPermission, dismissPrompt, initialized, permission, isIframeBlocked } = useNotifications();
+  const { hasSeenWelcome } = useWelcome();
   const [requesting, setRequesting] = useState(false);
-
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     if (permission === 'denied') {
       // Auto-close only when user explicitly denies
@@ -15,7 +16,17 @@ const NotificationPermissionBanner: React.FC = () => {
     }
   }, [permission, dismissPrompt]);
 
-  if (isPromptDismissed) return null;
+  // Wait until the welcome animation completes before showing the banner
+  useEffect(() => {
+    if (hasSeenWelcome) {
+      const id = setTimeout(() => setReady(true), 400);
+      return () => clearTimeout(id);
+    } else {
+      setReady(false);
+    }
+  }, [hasSeenWelcome]);
+
+  if (!hasSeenWelcome || !ready || isPromptDismissed) return null;
 
   return (
     <aside

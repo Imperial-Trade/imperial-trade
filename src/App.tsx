@@ -81,8 +81,8 @@ function App() {
             <PostHogPageViewTracker />
             <ScrollToTop />
             <AuthProvider>
-              <OneSignalInitializer />
               <WelcomeProvider>
+                <OneSignalInitializer />
                 <NavigationGuard>
                   <SignalRealtimeProvider>
                     <WebSocketPriceProvider>

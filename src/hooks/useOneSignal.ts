@@ -251,6 +251,7 @@ export function useOneSignal() {
         } catch {
           permResult = undefined;
         }
+      }
 
       // Subscribe after permission is granted
       const currentPermission = typeof Notification !== 'undefined' ? Notification.permission : permResult;

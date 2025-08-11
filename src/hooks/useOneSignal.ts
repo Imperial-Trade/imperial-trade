@@ -119,28 +119,34 @@ export function useOneSignal() {
             // Mark initialized only after SDK is ready and setup completed
             setInitialized(true);
             try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
-            // Auto-subscribe on load if permission is granted but no subscription yet
+            console.info('[OneSignal] SDK initialized and listeners attached');
+            // Ensure a real subscription exists if permission is already granted
             try {
               const os = (window as any).OneSignal;
-              const ps2 = os?.User?.PushSubscription;
+              const ps = os?.User?.PushSubscription;
               const currentPerm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
-              const hasSub = !!(ps2?.optedIn || ps2?.id);
-              if (currentPerm === 'granted' && !hasSub && os?.Notifications?.subscribe) {
-                os.Notifications.subscribe().catch(() => {});
-                const start = Date.now();
-                const wait = async () => {
-                  while (Date.now() - start < 8000) {
-                    try {
-                      const id2 = os?.User?.PushSubscription?.id ?? null;
-                      const opted2 = !!os?.User?.PushSubscription?.optedIn;
-                      setSubscriptionId(id2);
-                      setHasSubscription(!!(id2 || opted2));
-                      if (id2 || opted2) break;
-                    } catch {}
-                    await new Promise(r => setTimeout(r, 200));
-                  }
-                };
-                wait().catch(() => {});
+              const hasSub = !!(ps?.optedIn || ps?.id);
+              if (currentPerm === 'granted' && !hasSub) {
+                console.info('[OneSignal] Permission granted but no subscription found. Ensuring subscription...');
+                ensureSubscription(20000)
+                  .then((ok) => {
+                    if (ok) {
+                      console.info('[OneSignal] Auto-subscribe completed.');
+                      try { if (user?.id) os?.login?.(user.id); } catch {}
+                    } else {
+                      console.warn('[OneSignal] Auto-subscribe timed out. Verify OneSignal Web Push Site URL matches origin:', location.origin);
+                    }
+                  })
+                  .catch((err) => {
+                    console.warn('[OneSignal] Auto-subscribe error:', err);
+                  });
+                // Optional diagnostic: check service worker registrations
+                try {
+                  navigator.serviceWorker?.getRegistrations?.().then((regs) => {
+                    const hasOSW = regs?.some(r => r.active?.scriptURL?.includes('OneSignalSDKWorker')); 
+                    console.info('[OneSignal] SW registered:', { count: regs?.length || 0, hasOneSignalWorker: !!hasOSW });
+                  }).catch(() => {});
+                } catch {}
               }
             } catch {}
           } catch (_) {}
@@ -156,25 +162,66 @@ export function useOneSignal() {
       cancelled = true;
     };
   }, [user?.id, profile?.role, profile?.user_type]);
+  
+  // Ensure a OneSignal web push subscription exists; retries for up to maxWaitMs
+  const ensureSubscription = async (maxWaitMs: number = 20000): Promise<boolean> => {
+    try {
+      const os = (window as any).OneSignal;
+      if (!os?.Notifications || !os?.User?.PushSubscription) {
+        console.warn('[OneSignal] SDK not ready for subscription.');
+        return false;
+      }
+
+      const ps = os.User.PushSubscription;
+      const already = !!(ps?.optedIn || ps?.id);
+      if (already) {
+        setSubscriptionId(ps.id ?? null);
+        setHasSubscription(true);
+        return true;
+      }
+
+      const start = Date.now();
+      let attempt = 0;
+      while (Date.now() - start < maxWaitMs) {
+        attempt += 1;
+        try {
+          console.info(`[OneSignal] subscribe() attempt ${attempt}`);
+          await withTimeout(os.Notifications.subscribe(), Math.min(10000, maxWaitMs));
+        } catch (e) {
+          console.warn('[OneSignal] subscribe() attempt failed:', (e as any)?.message || e);
+        }
+
+        // Poll for subscription state for a short window between attempts
+        const pollStart = Date.now();
+        while (Date.now() - pollStart < 2000) {
+          try {
+            const id = os?.User?.PushSubscription?.id ?? null;
+            const optedIn = !!os?.User?.PushSubscription?.optedIn;
+            setSubscriptionId(id);
+            setHasSubscription(!!(id || optedIn));
+            if (id || optedIn) {
+              console.info('[OneSignal] Subscription confirmed:', { id, optedIn });
+              return true;
+            }
+          } catch {}
+          await new Promise((r) => setTimeout(r, 200));
+        }
+
+        // Backoff between attempts
+        const backoff = Math.min(2000 * attempt, 4000);
+        await new Promise((r) => setTimeout(r, backoff));
+      }
+
+      console.warn('[OneSignal] ensureSubscription timeout after', maxWaitMs, 'ms');
+      return false;
+    } catch (err) {
+      console.warn('[OneSignal] ensureSubscription error:', err);
+      return false;
+    }
+  };
 
   const requestPermission = async () => {
-    // Helper to wait for a real subscription
-    const waitForSubscription = async (timeoutMs = 15000) => {
-      const start = Date.now();
-      while (Date.now() - start < timeoutMs) {
-        try {
-          const ps = (window as any).OneSignal?.User?.PushSubscription;
-          const id = ps?.id ?? null;
-          const optedIn = !!ps?.optedIn;
-          setSubscriptionId(id);
-          setHasSubscription(!!(id || optedIn));
-          if (id || optedIn) return true;
-        } catch {}
-        await new Promise((r) => setTimeout(r, 250));
-      }
-      return false;
-    };
-
+    // Using ensureSubscription() for confirmation after permission is granted
     try {
       if (isIframeBlocked) {
         console.warn("Notifications permission cannot be requested within an iframe preview. Open in a new tab.");
@@ -187,7 +234,7 @@ export function useOneSignal() {
           const check = () => {
             try {
               const os = (window as any).OneSignal;
-              if (os && (os.Notifications || typeof os.push === 'function')) return resolve();
+              if (os?.Notifications) return resolve();
             } catch {}
             setTimeout(check, 50);
           };
@@ -204,47 +251,27 @@ export function useOneSignal() {
         } catch {
           permResult = undefined;
         }
-      } else if (typeof (window as any).OneSignal?.push === 'function') {
-        // Legacy queue fallback
-        await withTimeout(
-          new Promise<void>((resolve) => {
-            (window as any).OneSignal!.push(async function () {
-              try {
-                const regFn = (window as any).OneSignal.registerForPushNotifications?.();
-                await withTimeout(Promise.resolve(regFn), 10000).catch(() => {});
-              } finally {
-                resolve();
-              }
-            });
-          }),
-          10000
-        ).catch(() => {});
-      }
 
       // Subscribe after permission is granted
       const currentPermission = typeof Notification !== 'undefined' ? Notification.permission : permResult;
       if (currentPermission === 'granted') {
-        if ((window as any).OneSignal?.Notifications?.subscribe) {
-          await withTimeout((window as any).OneSignal.Notifications.subscribe(), 10000).catch(() => {});
-        } else {
-          const reg = (window as any).OneSignal?.registerForPushNotifications?.();
-          await withTimeout(Promise.resolve(reg), 10000).catch(() => {});
+        const ok = await ensureSubscription(20000);
+        if (!ok) {
+          console.warn('[OneSignal] Subscription did not finalize after permission grant. Verify Site URL matches origin:', location.origin);
+        } else if (user?.id) {
+          await withTimeout(Promise.resolve((window as any).OneSignal?.login?.(user.id)), 5000).catch(() => {});
         }
-        await waitForSubscription(15000);
       }
 
-      // If no prompt showed (still 'default'), try native prompt then subscribe
+      // If no prompt showed (still 'default'), try native prompt then ensure subscription
       if ((typeof Notification !== 'undefined' ? Notification.permission : 'default') === 'default') {
         try {
           const nativeRes = await withTimeout(Promise.resolve(Notification.requestPermission()), 10000).catch(() => 'default');
           if (nativeRes === 'granted') {
-            if ((window as any).OneSignal?.Notifications?.subscribe) {
-              await withTimeout((window as any).OneSignal.Notifications.subscribe(), 10000).catch(() => {});
-            } else {
-              const reg = (window as any).OneSignal?.registerForPushNotifications?.();
-              await withTimeout(Promise.resolve(reg), 10000).catch(() => {});
+            const ok = await ensureSubscription(20000);
+            if (!ok) {
+              console.warn('[OneSignal] Subscription did not finalize after native grant. Check configuration for', location.origin);
             }
-            await waitForSubscription(15000);
           }
         } catch {}
       }
@@ -276,6 +303,9 @@ export function useOneSignal() {
         const id = ps?.id ?? null;
         setSubscriptionId(id);
         setHasSubscription(!!(ps?.optedIn ?? id));
+        if (!id && !ps?.optedIn) {
+          console.warn('[OneSignal] No subscription detected after permission flow. Verify OneSignal Web Push configuration for origin:', location.origin);
+        }
       } catch (_) {}
     }
   };

@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { ComplianceFooter } from "@/components/compliance/ComplianceFooter"
+import { NotificationsPanel } from "@/components/notifications/NotificationsPanel"
 
 function DashboardHeader() {
   const { openMobile } = useSidebar();
@@ -331,6 +332,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <ErrorBoundary componentName="Header">
           <DashboardHeader />
         </ErrorBoundary>
+        <NotificationsPanel />
 
         {/* Mobile: Use existing Sheet-based sidebar */}
         {isMobile && (

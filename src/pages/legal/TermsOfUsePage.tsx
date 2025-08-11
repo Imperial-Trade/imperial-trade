@@ -102,8 +102,9 @@ export default function TermsOfUsePage() {
               <p>
                 By using our services and providing your email address, you consent to receive
                 communications from us as described in our Privacy Policy, including transactional
-                messages and, where you have opted in, marketing emails. You can opt out of marketing
-                emails at any time via the unsubscribe link included in every email.
+                messages and, where you have opted in, marketing emails. Email delivery is provided by
+                OneSignal. You can opt out of marketing emails at any time via the unsubscribe link
+                included in every email.
               </p>
             </CardContent>
           </Card>

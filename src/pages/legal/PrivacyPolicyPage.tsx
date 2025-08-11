@@ -136,15 +136,15 @@ export default function PrivacyPolicyPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Mail className="w-5 h-5" />
-                Email Communications (Resend)
+                Email Communications via OneSignal
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>
-                We send transactional and, with consent, marketing emails using Resend as our email service
+                We send transactional and, with consent, marketing emails using OneSignal as our email service
                 provider. When we send you email, your email address and message content are processed by
-                Resend to deliver those communications. See Resend's
-                <a className="underline ml-1" href="https://resend.com/legal/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
+                OneSignal to deliver those communications. See OneSignal's
+                <a className="underline ml-1" href="https://onesignal.com/privacy_policy" target="_blank" rel="noreferrer">Privacy Policy</a>.
               </p>
               <p>
                 You can opt out of marketing emails at any time by clicking the unsubscribe link included
@@ -191,8 +191,7 @@ export default function PrivacyPolicyPage() {
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>
                 We do not sell personal data. We share information with service providers solely to operate
-                our platform (e.g., Supabase for authentication and database, OneSignal for notifications,
-                and Resend for email). We implement appropriate safeguards to protect your data.
+                our platform (e.g., Supabase for authentication and database, OneSignal for notifications and email). We implement appropriate safeguards to protect your data.
               </p>
               <p>
                 We retain data only as long as needed for the purposes described above or as required by

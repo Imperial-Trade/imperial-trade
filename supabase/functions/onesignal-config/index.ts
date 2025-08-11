@@ -49,12 +49,12 @@ try {
 
     return new Response(
       JSON.stringify({ appId: selected.appId, safariWebId: selected.safariWebId, meta: { variant, host: h } }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=600, s-maxage=600, stale-while-revalidate=60" } }
     );
   } catch (error) {
     return new Response(
       JSON.stringify({ error: "Failed to load OneSignal config" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=60, s-maxage=60" } }
     );
   }
 });

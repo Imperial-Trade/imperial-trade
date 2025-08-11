@@ -237,109 +237,113 @@ export function useOneSignal() {
     }
   };
 
-  const requestPermission = async () => {
-    // Using ensureSubscription() for confirmation after permission is granted
+const requestPermission = async () => {
+    // Fast path: attempt subscribe() immediately, then finalize identity/tags
     try {
       if (isIframeBlocked) {
         console.warn("Notifications permission cannot be requested within an iframe preview. Open in a new tab.");
         return;
       }
 
-      // Wait for OneSignal to be ready (up to 10s)
+      // Wait briefly for OneSignal SDK readiness (Notifications available)
       await withTimeout(
         new Promise<void>((resolve) => {
+          const start = Date.now();
           const check = () => {
             try {
               const os = (window as any).OneSignal;
               if (os?.Notifications) return resolve();
             } catch {}
+            if (Date.now() - start > 7000) return resolve();
             setTimeout(check, 50);
           };
           check();
         }),
-        10000
+        7000
       ).catch(() => {});
 
-      // IMPORTANT: Do not delay the permission prompt too long after user click.
-      // We attempt to call OneSignal's requestPermission quickly here (but the button also tries immediately).
-      let permResult: NotificationPermission | undefined;
-      if ((window as any).OneSignal?.Notifications?.requestPermission) {
+      const os = (window as any).OneSignal;
+      const currentPerm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+      const ps = os?.User?.PushSubscription;
+      const alreadySub = !!(ps?.optedIn || ps?.id);
+      if (currentPerm === 'granted' && alreadySub) {
         try {
-          permResult = (await withTimeout((window as any).OneSignal.Notifications.requestPermission(), 10000).catch(() => undefined)) as NotificationPermission | undefined;
-        } catch {
-          permResult = undefined;
-        }
+          const id = ps?.id ?? null;
+          setSubscriptionId(id);
+          setHasSubscription(true);
+        } catch {}
+        return;
       }
 
-      // Subscribe after permission is granted
-      const currentPermission = typeof Notification !== 'undefined' ? Notification.permission : permResult;
-      if (currentPermission === 'granted') {
-        const ok = await ensureSubscription(20000);
-        if (!ok) {
-          console.warn('[OneSignal] Subscription did not finalize after permission grant. Verify Site URL matches origin:', location.origin);
-        } else if (user?.id) {
-          await withTimeout(Promise.resolve((window as any).OneSignal?.login?.(user.id)), 5000).catch(() => {});
-        }
+      let subscribed = alreadySub;
+
+      // 1) Try OneSignal subscribe() which both prompts and subscribes
+      if (!subscribed && os?.Notifications?.subscribe) {
+        try {
+          await withTimeout(os.Notifications.subscribe(), 10000).catch(() => {});
+        } catch {}
+        try {
+          const id = os?.User?.PushSubscription?.id ?? null;
+          const optedIn = !!os?.User?.PushSubscription?.optedIn;
+          setSubscriptionId(id);
+          setHasSubscription(!!(id || optedIn));
+          subscribed = !!(id || optedIn);
+        } catch {}
       }
 
-      // If no prompt showed (still 'default'), try native prompt then ensure subscription
-      if ((typeof Notification !== 'undefined' ? Notification.permission : 'default') === 'default') {
+      // 2) Fallback to requestPermission() then ensureSubscription
+      if (!subscribed && os?.Notifications?.requestPermission) {
         try {
-          const nativeRes = await withTimeout(Promise.resolve(Notification.requestPermission()), 10000).catch(() => 'default');
-          if (nativeRes === 'granted') {
-            const ok = await ensureSubscription(20000);
-            if (!ok) {
-              console.warn('[OneSignal] Subscription did not finalize after native grant. Check configuration for', location.origin);
-            }
+          await withTimeout(os.Notifications.requestPermission(), 8000).catch(() => {});
+        } catch {}
+        subscribed = await ensureSubscription(12000);
+      }
+
+      // 3) Final fallback: native Notification API
+      if (!subscribed && typeof Notification !== 'undefined' && Notification.permission === 'default' && Notification.requestPermission) {
+        try {
+          const res = await withTimeout(Promise.resolve(Notification.requestPermission()), 8000).catch(() => 'default');
+          if (res === 'granted') {
+            subscribed = await ensureSubscription(12000);
           }
+        } catch {}
+      }
+
+      // Link identity and tags in parallel (non-blocking for UX)
+      if (subscribed && user?.id) {
+        try {
+          const ops: Promise<any>[] = [];
+          ops.push(withTimeout(Promise.resolve(os?.login?.(user.id)), 3000).catch(() => {}));
+          if (user?.email) {
+            const osUser = os?.User;
+            if (osUser?.addEmail) ops.push(withTimeout(osUser.addEmail(user.email), 3000).catch(() => {}));
+            const emailTag = { email: user.email } as Record<string, string>;
+            if (osUser?.addTags) ops.push(withTimeout(osUser.addTags(emailTag), 3000).catch(() => {}));
+            else if (os?.sendTags) ops.push(withTimeout(os.sendTags(emailTag), 3000).catch(() => {}));
+          }
+          const tags: Record<string, string> = {};
+          if (profile?.role) tags["role"] = String(profile.role);
+          if (profile?.user_type) tags["user_type"] = String(profile.user_type);
+          if (Object.keys(tags).length) {
+            if (os?.User?.addTags) ops.push(withTimeout(os.User.addTags(tags), 3000).catch(() => {}));
+            else if (os?.sendTags) ops.push(withTimeout(os.sendTags(tags), 3000).catch(() => {}));
+          }
+          await Promise.allSettled(ops);
         } catch {}
       }
     } catch (_) {
       // Swallow errors; we'll update state below
     } finally {
       try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
-
-      // Link user and apply tags after the permission/subscribe flow
-      try {
-        if (user?.id) {
-          await withTimeout(Promise.resolve((window as any).OneSignal?.login?.(user.id)), 5000).catch(() => {});
-          // Attach email to user profile in OneSignal (discoverable by email)
-          if (user?.email) {
-            const osUser = (window as any).OneSignal?.User;
-            if (osUser?.addEmail) {
-              await withTimeout(osUser.addEmail(user.email), 5000).catch(() => {});
-              try { console.info('[OneSignal] Email identity attached:', user.email); } catch {}
-            }
-            const emailTag = { email: user.email } as Record<string, string>;
-            if (osUser?.addTags) {
-              await withTimeout(osUser.addTags(emailTag), 5000).catch(() => {});
-            } else if ((window as any).OneSignal?.sendTags) {
-              await withTimeout((window as any).OneSignal.sendTags(emailTag), 5000).catch(() => {});
-            }
-          }
-          const tags: Record<string, string> = {};
-          if (profile?.role) tags["role"] = String(profile.role);
-          if (profile?.user_type) tags["user_type"] = String(profile.user_type);
-          if (Object.keys(tags).length > 0) {
-            if ((window as any).OneSignal?.User?.addTags) {
-              await withTimeout((window as any).OneSignal.User.addTags(tags), 5000).catch(() => {});
-            } else if ((window as any).OneSignal?.sendTags) {
-              await withTimeout((window as any).OneSignal.sendTags(tags), 5000).catch(() => {});
-            }
-          }
-        }
-      } catch (_) {}
-
-      // Refresh subscription state (final check)
       try {
         const ps = (window as any).OneSignal?.User?.PushSubscription;
         const id = ps?.id ?? null;
         setSubscriptionId(id);
         setHasSubscription(!!(ps?.optedIn ?? id));
         if (!id && !ps?.optedIn) {
-          console.warn('[OneSignal] No subscription detected after permission flow. Verify OneSignal Web Push configuration for origin:', location.origin);
+          console.warn('[OneSignal] No subscription detected after permission flow. Verify Web Push configuration for origin:', location.origin);
         }
-      } catch (_) {}
+      } catch {}
     }
   };
 

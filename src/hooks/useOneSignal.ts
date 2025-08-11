@@ -134,6 +134,23 @@ export function useOneSignal() {
   }, [user?.id, profile?.role, profile?.user_type]);
 
   const requestPermission = async () => {
+    // Helper to wait for a real subscription
+    const waitForSubscription = async (timeoutMs = 15000) => {
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        try {
+          const ps = (window as any).OneSignal?.User?.PushSubscription;
+          const id = ps?.id ?? null;
+          const optedIn = !!ps?.optedIn;
+          setSubscriptionId(id);
+          setHasSubscription(!!(id || optedIn));
+          if (id || optedIn) return true;
+        } catch {}
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      return false;
+    };
+
     try {
       if (isIframeBlocked) {
         console.warn("Notifications permission cannot be requested within an iframe preview. Open in a new tab.");
@@ -155,10 +172,16 @@ export function useOneSignal() {
         10000
       ).catch(() => {});
 
-      // Request permission using available API
+      let permResult: NotificationPermission | undefined;
       if ((window as any).OneSignal?.Notifications?.requestPermission) {
-        await withTimeout((window as any).OneSignal.Notifications.requestPermission(), 10000).catch(() => {});
+        // v16 API
+        try {
+          permResult = (await withTimeout((window as any).OneSignal.Notifications.requestPermission(), 10000).catch(() => undefined)) as NotificationPermission | undefined;
+        } catch {
+          permResult = undefined;
+        }
       } else if (typeof (window as any).OneSignal?.push === 'function') {
+        // Legacy queue fallback
         await withTimeout(
           new Promise<void>((resolve) => {
             (window as any).OneSignal!.push(async function () {
@@ -173,12 +196,40 @@ export function useOneSignal() {
           10000
         ).catch(() => {});
       }
+
+      // Subscribe after permission is granted
+      const currentPermission = typeof Notification !== 'undefined' ? Notification.permission : permResult;
+      if (currentPermission === 'granted') {
+        if ((window as any).OneSignal?.Notifications?.subscribe) {
+          await withTimeout((window as any).OneSignal.Notifications.subscribe(), 10000).catch(() => {});
+        } else {
+          const reg = (window as any).OneSignal?.registerForPushNotifications?.();
+          await withTimeout(Promise.resolve(reg), 10000).catch(() => {});
+        }
+        await waitForSubscription(15000);
+      }
+
+      // If no prompt showed (still 'default'), try native prompt then subscribe
+      if ((typeof Notification !== 'undefined' ? Notification.permission : 'default') === 'default') {
+        try {
+          const nativeRes = await withTimeout(Promise.resolve(Notification.requestPermission()), 10000).catch(() => 'default');
+          if (nativeRes === 'granted') {
+            if ((window as any).OneSignal?.Notifications?.subscribe) {
+              await withTimeout((window as any).OneSignal.Notifications.subscribe(), 10000).catch(() => {});
+            } else {
+              const reg = (window as any).OneSignal?.registerForPushNotifications?.();
+              await withTimeout(Promise.resolve(reg), 10000).catch(() => {});
+            }
+            await waitForSubscription(15000);
+          }
+        } catch {}
+      }
     } catch (_) {
       // Swallow errors; we'll update state below
     } finally {
       try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
 
-      // Ensure user is linked and tags are applied after permission flow
+      // Link user and apply tags after the permission/subscribe flow
       try {
         if (user?.id) {
           await withTimeout(Promise.resolve((window as any).OneSignal?.login?.(user.id)), 5000).catch(() => {});
@@ -195,22 +246,12 @@ export function useOneSignal() {
         }
       } catch (_) {}
 
-      // Refresh subscription state and recover if needed
+      // Refresh subscription state (final check)
       try {
         const ps = (window as any).OneSignal?.User?.PushSubscription;
         const id = ps?.id ?? null;
-        setSubscriptionId(id ?? null);
+        setSubscriptionId(id);
         setHasSubscription(!!(ps?.optedIn ?? id));
-
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !id) {
-          // Attempt explicit registration if permission granted but no subscription
-          const reg = (window as any).OneSignal?.registerForPushNotifications?.();
-          await withTimeout(Promise.resolve(reg), 10000).catch(() => {});
-          // Re-check
-          const id2 = (window as any).OneSignal?.User?.PushSubscription?.id ?? null;
-          setSubscriptionId(id2 ?? null);
-          setHasSubscription(!!id2);
-        }
       } catch (_) {}
     }
   };

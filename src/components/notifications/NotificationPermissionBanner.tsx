@@ -8,8 +8,8 @@ const NotificationPermissionBanner: React.FC = () => {
   const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
-    if (permission && permission !== 'default') {
-      // Auto-close once the user makes a choice
+    if (permission === 'denied') {
+      // Auto-close only when user explicitly denies
       dismissPrompt();
     }
   }, [permission, dismissPrompt]);
@@ -20,7 +20,7 @@ const NotificationPermissionBanner: React.FC = () => {
     <aside
       role="region"
       aria-label="Notifications permission prompt"
-      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] sm:max-w-lg rounded-lg border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-lg"
+      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto w-[calc(100%-1.5rem)] sm:max-w-lg rounded-lg border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-lg"
     >
       <div className="px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex items-start gap-3">
@@ -61,9 +61,9 @@ const NotificationPermissionBanner: React.FC = () => {
                     setRequesting(false);
                   }
                 }}
-                disabled={!initialized || requesting}
-                aria-disabled={!initialized || requesting}
-                title={!initialized ? 'Preparing notifications...' : undefined}
+                disabled={requesting}
+                aria-disabled={requesting}
+                title={requesting ? 'Request in progress…' : undefined}
               >
                 {requesting ? (
                   <span className="mr-2 inline-flex h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.125em]" />

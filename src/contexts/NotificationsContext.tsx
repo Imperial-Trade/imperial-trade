@@ -45,7 +45,7 @@ const value = useMemo<NotificationsContextValue>(() => ({
     initialized,
     isGranted: isGranted && !!user,
     isIframeBlocked,
-    isPromptDismissed: dismissed || !user || (permission !== 'default' && !isIframeBlocked),
+    isPromptDismissed: dismissed || !user || isIframeBlocked || (isGranted && !!user) || permission === 'denied',
     requestPermission,
     dismissPrompt,
   }), [permission, initialized, isGranted, dismissed, user, isIframeBlocked, requestPermission, dismissPrompt]);

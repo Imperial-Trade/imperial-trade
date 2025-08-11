@@ -349,6 +349,75 @@ serve(async (req) => {
         console.error('❌ Error updating notification status:', updateError);
       }
 
+      // Persist user-facing notifications so they appear in the in-app center
+      try {
+        // Determine recipients: prefer explicit user_ids; fallback to followers + owner
+        let recipientIds: string[] = [];
+        if (Array.isArray(notification.user_ids) && notification.user_ids.length > 0) {
+          recipientIds = notification.user_ids;
+        } else {
+          const { data: followers, error: followersErr } = await supabase
+            .from('signal_followers')
+            .select('user_id')
+            .eq('signal_id', notification.signal_id);
+          if (followersErr) {
+            console.error('⚠️ Failed to fetch followers for notification persistence:', followersErr);
+          }
+          const { data: ownerRow, error: ownerErr } = await supabase
+            .from('trade_alerts')
+            .select('user_id, asset_name, trade_type, entry_price, stop_loss, tradermade_symbol')
+            .eq('id', notification.signal_id)
+            .single();
+          if (ownerErr) {
+            console.error('⚠️ Failed to fetch signal owner for notification persistence:', ownerErr);
+          }
+          const set = new Set<string>();
+          followers?.forEach((f: { user_id: string }) => set.add(f.user_id));
+          if (ownerRow?.user_id) set.add(ownerRow.user_id);
+          recipientIds = Array.from(set);
+        }
+
+        if (recipientIds.length > 0) {
+          const priority = notification.alert_type === 'stop_loss' ? 'high' : 'medium';
+          const isCreated = notification.notification_type === 'signal_created';
+          const title = isCreated
+            ? `New Signal: ${notification.asset_name || notification.symbol || ''}`.trim()
+            : (notification.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered');
+          const priceForCreated = notification.entry_price ?? notification.target_price ?? notification.triggered_price;
+          const message = isCreated
+            ? `${(notification.trade_type || '').toUpperCase()} @ $${Number(priceForCreated).toFixed(2)}${notification.stop_loss ? ` • SL $${Number(notification.stop_loss).toFixed(2)}` : ''}`
+            : `${notification.alert_type.replace('_', ' ').toUpperCase()} | Target $${Number(notification.target_price).toFixed(2)} | Now $${Number(notification.triggered_price).toFixed(2)}`;
+
+          const rows = recipientIds.map((uid) => ({
+            user_id: uid,
+            type: 'trading_alert',
+            title,
+            message,
+            priority,
+            link_url: null,
+            source: 'signal-notification-dispatcher',
+            metadata: {
+              signal_id: notification.signal_id,
+              alert_type: notification.alert_type,
+              notification_type: notification.notification_type,
+              target_price: notification.target_price,
+              triggered_price: notification.triggered_price,
+              symbol: notification.symbol,
+              asset_name: notification.asset_name,
+            },
+          }));
+
+          const { error: insertErr } = await supabase
+            .from('user_notifications')
+            .insert(rows as any);
+          if (insertErr) {
+            console.error('❌ Error inserting user_notifications:', insertErr);
+          }
+        }
+      } catch (persistErr) {
+        console.error('❌ Exception while persisting user notifications:', persistErr);
+      }
+
       results.push({
         signal_id: notification.signal_id,
         alert_type: notification.alert_type,

@@ -2538,6 +2538,7 @@ export type Database = {
       difficulty_level: "beginner" | "intermediate" | "advanced"
       impact_level: "High" | "Medium" | "Low"
       mood_type: "Confident" | "Anxious" | "Greedy" | "Fearful" | "Neutral"
+      notification_priority: "low" | "medium" | "high"
       post_category:
         | "discussion"
         | "question"
@@ -2720,6 +2721,7 @@ export const Constants = {
       difficulty_level: ["beginner", "intermediate", "advanced"],
       impact_level: ["High", "Medium", "Low"],
       mood_type: ["Confident", "Anxious", "Greedy", "Fearful", "Neutral"],
+      notification_priority: ["low", "medium", "high"],
       post_category: ["discussion", "question", "analysis", "news", "strategy"],
       progress_status: ["completed", "in_progress", "started"],
       registration_source_enum: [

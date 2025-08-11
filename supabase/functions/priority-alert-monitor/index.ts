@@ -180,6 +180,62 @@ async function processAlertTriggers(supabase: any, symbol: string, currentPrice:
 
         if (notificationError) {
           console.error('❌ Error creating notification:', notificationError);
+        } else {
+          // Persist user-facing notifications for owner + followers so they appear in app
+          try {
+            const { data: ownerRow, error: ownerErr } = await supabase
+              .from('trade_alerts')
+              .select('user_id, asset_name, trade_type, entry_price, stop_loss, tradermade_symbol')
+              .eq('id', trigger.signal_id)
+              .single();
+            if (ownerErr) {
+              console.error('⚠️ Failed to fetch signal owner for user_notifications:', ownerErr);
+            }
+
+            const { data: followers, error: followersErr } = await supabase
+              .from('signal_followers')
+              .select('user_id')
+              .eq('signal_id', trigger.signal_id);
+            if (followersErr) {
+              console.error('⚠️ Failed to fetch followers for user_notifications:', followersErr);
+            }
+
+            const set = new Set<string>();
+            if (ownerRow?.user_id) set.add(ownerRow.user_id);
+            followers?.forEach((f: { user_id: string }) => set.add(f.user_id));
+            const recipientIds = Array.from(set);
+
+            if (recipientIds.length > 0) {
+              const priority = trigger.alert_type === 'stop_loss' ? 'high' : 'medium';
+              const title = trigger.alert_type === 'stop_loss' ? 'Stop Loss Hit' : `Take Profit Triggered`;
+              const message = `${trigger.alert_type.replace('_', ' ').toUpperCase()} | Target $${Number(trigger.target_price).toFixed(2)} | Now $${Number(currentPrice).toFixed(2)}`;
+
+              const rows = recipientIds.map((uid) => ({
+                user_id: uid,
+                type: 'trading_alert',
+                title,
+                message,
+                priority,
+                link_url: null,
+                source: 'priority-alert-monitor',
+                metadata: {
+                  signal_id: trigger.signal_id,
+                  alert_id: trigger.alert_id,
+                  alert_type: trigger.alert_type,
+                  target_price: trigger.target_price,
+                  triggered_price: currentPrice,
+                  symbol,
+                },
+              }));
+
+              const { error: insErr } = await supabase.from('user_notifications').insert(rows as any);
+              if (insErr) {
+                console.error('❌ Error inserting user_notifications:', insErr);
+              }
+            }
+          } catch (persistErr) {
+            console.error('❌ Exception while persisting user notifications:', persistErr);
+          }
         }
 
         // Update signal status based on alert type

@@ -4,6 +4,7 @@ import { Crown, Menu, X, Mic, MicOff, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { User } from '@supabase/supabase-js';
+import { openNotificationCenter } from '@/utils/notificationCenterBus';
 
 interface HeaderProps {
   user: User | null;
@@ -56,7 +57,7 @@ const Header: React.FC<HeaderProps> = ({
               {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </Button>
             
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
+            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => openNotificationCenter()} aria-label="Open notifications">
               <Bell className="h-4 w-4" />
             </Button>
             

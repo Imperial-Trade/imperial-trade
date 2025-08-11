@@ -1,5 +1,4 @@
-
-
+import { openNotificationCenter } from "@/utils/notificationCenterBus";
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Crown, Bell, Search, Settings, TrendingUp, BarChart3, User, Menu, LayoutDashboard, GraduationCap, Radio, Users, Briefcase, Target, PieChart, BookOpen, MessageSquare, ChevronDown, Grid3X3, ChevronUp, Minimize2 } from "lucide-react";
@@ -150,6 +149,8 @@ const DashboardNav: React.FC = () => {
                 className={`relative hover:bg-primary/10 group transition-all duration-200 ${
                   scrolled ? 'bg-background/60' : 'bg-background/30'
                 }`}
+                onClick={() => openNotificationCenter()}
+                aria-label="Open notifications"
               >
                 <Bell className="h-4 w-4 transition-colors group-hover:text-primary" />
                 <Badge 

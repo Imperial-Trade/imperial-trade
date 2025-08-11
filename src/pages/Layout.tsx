@@ -7,6 +7,7 @@ import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { useVoiceRecognition } from '@/components/layout/VoiceRecognition';
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from '@/components/AppSidebar';
+import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -92,6 +93,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
             getUserAccessLevel={getUserAccessLevel}
             getAccessLevelDisplay={getAccessLevelDisplay}
           />
+          <NotificationsPanel />
 
           <main className="flex-1 overflow-auto pt-16 overscroll-contain">
             <div className="min-h-full">

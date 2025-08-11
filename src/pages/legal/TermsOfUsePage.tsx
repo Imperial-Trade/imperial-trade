@@ -160,9 +160,9 @@ export default function TermsOfUsePage() {
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
               <p>
-                These Terms are governed by the laws of the State of Delaware, USA, without regard to
+                These Terms are governed by the laws of the State of Nevada, USA, without regard to
                 conflict of laws principles. Any disputes will be resolved in the state or federal courts
-                located in Delaware, and you consent to the jurisdiction and venue of such courts.
+                located in Nevada, and you consent to the jurisdiction and venue of such courts.
               </p>
             </CardContent>
           </Card>

@@ -47,6 +47,11 @@ const NotificationPermissionBanner: React.FC = () => {
             Not now
           </Button>
         </div>
+        {!requesting && initialized && permission === 'default' ? (
+          <p className="mt-1 text-[11px] sm:text-xs text-muted-foreground">
+            No prompt? Check site settings (lock icon) → Notifications.
+          </p>
+        ) : null}
       </div>
     </aside>
   );

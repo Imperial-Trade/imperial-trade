@@ -94,11 +94,13 @@ export function useOneSignal() {
             } else {
               (window as any).OneSignal.logout?.();
             }
+
+            // Mark initialized only after SDK is ready and setup completed
+            setInitialized(true);
+            try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
           } catch (_) {}
         });
 
-        setInitialized(true);
-        try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
       } catch (e) {
         console.warn("OneSignal init failed", e);
       }
@@ -111,14 +113,25 @@ export function useOneSignal() {
   }, [user?.id, profile?.role, profile?.user_type]);
 
   const requestPermission = async () => {
+    const race = async (p: Promise<any>) => {
+      try {
+        await Promise.race([
+          p,
+          new Promise<void>((resolve) => setTimeout(resolve, 10000)),
+        ]);
+      } catch (_) {
+        // ignore errors
+      }
+    };
+
     try {
       if (window.OneSignal?.Notifications?.requestPermission) {
-        await window.OneSignal.Notifications.requestPermission();
+        await race(window.OneSignal.Notifications.requestPermission());
       } else if (typeof window.OneSignal?.push === 'function') {
         await new Promise<void>((resolve) => {
           window.OneSignal!.push(async function () {
             try {
-              await (window as any).OneSignal.registerForPushNotifications?.();
+              await race(Promise.resolve((window as any).OneSignal.registerForPushNotifications?.()));
             } finally {
               resolve();
             }
@@ -129,6 +142,22 @@ export function useOneSignal() {
       // ignore
     } finally {
       try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
+      // Re-link user and re-apply tags to ensure user is added to OneSignal after permission flow
+      try {
+        if (user?.id) {
+          (window as any).OneSignal?.login?.(user.id);
+          const tags: Record<string, string> = {};
+          if (profile?.role) tags["role"] = String(profile.role);
+          if (profile?.user_type) tags["user_type"] = String(profile.user_type);
+          if (Object.keys(tags).length > 0) {
+            if ((window as any).OneSignal?.User?.addTags) {
+              await (window as any).OneSignal.User.addTags(tags);
+            } else if ((window as any).OneSignal?.sendTags) {
+              await (window as any).OneSignal.sendTags(tags);
+            }
+          }
+        }
+      } catch (_) {}
     }
   };
   return { initialized, requestPermission, permission, isGranted: permission === 'granted' };

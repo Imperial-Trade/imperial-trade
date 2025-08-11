@@ -15,6 +15,8 @@ export function useOneSignal() {
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
   );
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
+  const [hasSubscription, setHasSubscription] = useState(false);
   const isIframeBlocked = typeof window !== 'undefined' && window.self !== window.top;
 
   useEffect(() => {
@@ -77,6 +79,23 @@ export function useOneSignal() {
                 try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
               }
             );
+
+            // Track push subscription state
+            const ps = (window as any).OneSignal?.User?.PushSubscription;
+            if (ps) {
+              try {
+                const id = ps.id;
+                setSubscriptionId(id ?? null);
+                setHasSubscription(!!(ps.optedIn ?? id));
+                ps.addEventListener?.('change', () => {
+                  try {
+                    const nid = ps.id;
+                    setSubscriptionId(nid ?? null);
+                    setHasSubscription(!!(ps.optedIn ?? nid));
+                  } catch {}
+                });
+              } catch {}
+            }
 
             if (user?.id) {
               (window as any).OneSignal.login(user.id);
@@ -175,8 +194,26 @@ export function useOneSignal() {
           }
         }
       } catch (_) {}
+
+      // Refresh subscription state and recover if needed
+      try {
+        const ps = (window as any).OneSignal?.User?.PushSubscription;
+        const id = ps?.id ?? null;
+        setSubscriptionId(id ?? null);
+        setHasSubscription(!!(ps?.optedIn ?? id));
+
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !id) {
+          // Attempt explicit registration if permission granted but no subscription
+          const reg = (window as any).OneSignal?.registerForPushNotifications?.();
+          await withTimeout(Promise.resolve(reg), 10000).catch(() => {});
+          // Re-check
+          const id2 = (window as any).OneSignal?.User?.PushSubscription?.id ?? null;
+          setSubscriptionId(id2 ?? null);
+          setHasSubscription(!!id2);
+        }
+      } catch (_) {}
     }
   };
-  return { initialized, requestPermission, permission, isGranted: permission === 'granted', isIframeBlocked };
-}
 
+  return { initialized, requestPermission, permission, isGranted: permission === 'granted' && hasSubscription, isIframeBlocked };
+}

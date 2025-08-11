@@ -106,6 +106,7 @@ export function useOneSignal() {
                     const osUser = (window as any).OneSignal?.User;
                     if (osUser?.addEmail) {
                       await osUser.addEmail(user.email);
+                      try { console.info('[OneSignal] Email identity attached:', user.email); } catch {}
                     }
                     // Also add email as a tag for easy segmentation/search
                     const emailTag = { email: user.email } as Record<string, string>;
@@ -306,6 +307,7 @@ export function useOneSignal() {
             const osUser = (window as any).OneSignal?.User;
             if (osUser?.addEmail) {
               await withTimeout(osUser.addEmail(user.email), 5000).catch(() => {});
+              try { console.info('[OneSignal] Email identity attached:', user.email); } catch {}
             }
             const emailTag = { email: user.email } as Record<string, string>;
             if (osUser?.addTags) {

@@ -15,6 +15,12 @@ interface NotificationPayload {
   delivery_channels: string[];
   user_ids?: string[]; // target specific external_user_ids (Supabase user.id)
   segments?: string[]; // OneSignal segments, defaults to ['Subscribed Users']
+  // Optional enrichment for "signal_created" notifications
+  asset_name?: string;
+  symbol?: string;
+  trade_type?: string;
+  entry_price?: number;
+  stop_loss?: number;
 }
 
 
@@ -159,8 +165,24 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
       return false;
     }
 
-    const title = payload.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
-    const body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
+    const isSignalCreated = payload.notification_type === 'signal_created';
+    let title: string;
+    let body: string;
+
+    if (isSignalCreated) {
+      const asset = payload.asset_name || payload.symbol || 'New Signal';
+      const type = (payload.trade_type || '').toUpperCase();
+      const entry = payload.entry_price ?? payload.target_price ?? payload.triggered_price;
+      const sl = payload.stop_loss;
+      title = `New Signal: ${asset}`;
+      const parts = [] as string[];
+      if (type && entry !== undefined) parts.push(`${type} @ $${Number(entry).toFixed(2)}`);
+      if (sl !== undefined) parts.push(`SL $${Number(sl).toFixed(2)}`);
+      body = parts.join(' • ');
+    } else {
+      title = payload.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
+      body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
+    }
 
     const response = await fetch('https://api.onesignal.com/notifications', {
       method: 'POST',
@@ -179,6 +201,11 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
             target_price: payload.target_price,
             triggered_price: payload.triggered_price,
             notification_type: payload.notification_type,
+            asset_name: payload.asset_name,
+            symbol: payload.symbol,
+            trade_type: payload.trade_type,
+            entry_price: payload.entry_price,
+            stop_loss: payload.stop_loss,
           },
         };
         if (payload.user_ids && payload.user_ids.length > 0) {

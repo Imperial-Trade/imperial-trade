@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { withTimeout } from "@/api/client/utils/timeout";
 
 declare global {
   interface Window {
@@ -14,6 +15,7 @@ export function useOneSignal() {
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
   );
+  const isIframeBlocked = typeof window !== 'undefined' && window.self !== window.top;
 
   useEffect(() => {
     let cancelled = false;
@@ -34,7 +36,7 @@ export function useOneSignal() {
           if (document.getElementById("onesignal-sdk")) return resolve();
           const script = document.createElement("script");
           script.id = "onesignal-sdk";
-          script.src = "https://cdn.onesignal.com/sdks/OneSignalSDK.js";
+          script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
           script.async = true;
           script.onload = () => resolve();
           script.onerror = () => reject(new Error("Failed to load OneSignal SDK"));
@@ -113,52 +115,68 @@ export function useOneSignal() {
   }, [user?.id, profile?.role, profile?.user_type]);
 
   const requestPermission = async () => {
-    const race = async (p: Promise<any>) => {
-      try {
-        await Promise.race([
-          p,
-          new Promise<void>((resolve) => setTimeout(resolve, 10000)),
-        ]);
-      } catch (_) {
-        // ignore errors
-      }
-    };
-
     try {
-      if (window.OneSignal?.Notifications?.requestPermission) {
-        await race(window.OneSignal.Notifications.requestPermission());
-      } else if (typeof window.OneSignal?.push === 'function') {
-        await new Promise<void>((resolve) => {
-          window.OneSignal!.push(async function () {
+      if (isIframeBlocked) {
+        console.warn("Notifications permission cannot be requested within an iframe preview. Open in a new tab.");
+        return;
+      }
+
+      // Wait for OneSignal to be ready (up to 10s)
+      await withTimeout(
+        new Promise<void>((resolve) => {
+          const check = () => {
             try {
-              await race(Promise.resolve((window as any).OneSignal.registerForPushNotifications?.()));
-            } finally {
-              resolve();
-            }
-          });
-        });
+              const os = (window as any).OneSignal;
+              if (os && (os.Notifications || typeof os.push === 'function')) return resolve();
+            } catch {}
+            setTimeout(check, 50);
+          };
+          check();
+        }),
+        10000
+      ).catch(() => {});
+
+      // Request permission using available API
+      if ((window as any).OneSignal?.Notifications?.requestPermission) {
+        await withTimeout((window as any).OneSignal.Notifications.requestPermission(), 10000).catch(() => {});
+      } else if (typeof (window as any).OneSignal?.push === 'function') {
+        await withTimeout(
+          new Promise<void>((resolve) => {
+            (window as any).OneSignal!.push(async function () {
+              try {
+                const regFn = (window as any).OneSignal.registerForPushNotifications?.();
+                await withTimeout(Promise.resolve(regFn), 10000).catch(() => {});
+              } finally {
+                resolve();
+              }
+            });
+          }),
+          10000
+        ).catch(() => {});
       }
     } catch (_) {
-      // ignore
+      // Swallow errors; we'll update state below
     } finally {
       try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
-      // Re-link user and re-apply tags to ensure user is added to OneSignal after permission flow
+
+      // Ensure user is linked and tags are applied after permission flow
       try {
         if (user?.id) {
-          (window as any).OneSignal?.login?.(user.id);
+          await withTimeout(Promise.resolve((window as any).OneSignal?.login?.(user.id)), 5000).catch(() => {});
           const tags: Record<string, string> = {};
           if (profile?.role) tags["role"] = String(profile.role);
           if (profile?.user_type) tags["user_type"] = String(profile.user_type);
           if (Object.keys(tags).length > 0) {
             if ((window as any).OneSignal?.User?.addTags) {
-              await (window as any).OneSignal.User.addTags(tags);
+              await withTimeout((window as any).OneSignal.User.addTags(tags), 5000).catch(() => {});
             } else if ((window as any).OneSignal?.sendTags) {
-              await (window as any).OneSignal.sendTags(tags);
+              await withTimeout((window as any).OneSignal.sendTags(tags), 5000).catch(() => {});
             }
           }
         }
       } catch (_) {}
     }
   };
-  return { initialized, requestPermission, permission, isGranted: permission === 'granted' };
+  return { initialized, requestPermission, permission, isGranted: permission === 'granted', isIframeBlocked };
 }
+

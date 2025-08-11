@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
 
 const NotificationPermissionBanner: React.FC = () => {
-  const { isPromptDismissed, requestPermission, dismissPrompt, initialized, permission } = useNotifications();
+  const { isPromptDismissed, requestPermission, dismissPrompt, initialized, permission, isIframeBlocked } = useNotifications();
   const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
@@ -33,32 +33,51 @@ const NotificationPermissionBanner: React.FC = () => {
           </div>
         </div>
         <div className="mt-3 flex items-center justify-end gap-2">
-          <Button size="sm" variant="ghost" onClick={dismissPrompt}>
-            Not now
-          </Button>
-          <Button
-            size="sm"
-            onClick={async () => {
-              try {
-                setRequesting(true);
-                await requestPermission();
-              } finally {
-                setRequesting(false);
-              }
-            }}
-            disabled={!initialized || requesting}
-            aria-disabled={!initialized || requesting}
-            title={!initialized ? 'Preparing notifications...' : undefined}
-          >
-            {requesting ? (
-              <span className="mr-2 inline-flex h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.125em]" />
-            ) : null}
-            {requesting ? 'Enabling…' : 'Enable notifications'}
-          </Button>
+          {isIframeBlocked ? (
+            <>
+              <Button
+                size="sm"
+                onClick={() => window.open(window.location.href, '_blank', 'noopener,noreferrer')}
+                title="Open the app in a new tab to enable notifications"
+              >
+                Open in new tab
+              </Button>
+              <Button size="sm" variant="ghost" onClick={dismissPrompt}>
+                Not now
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="sm" variant="ghost" onClick={dismissPrompt}>
+                Not now
+              </Button>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  try {
+                    setRequesting(true);
+                    await requestPermission();
+                  } finally {
+                    setRequesting(false);
+                  }
+                }}
+                disabled={!initialized || requesting}
+                aria-disabled={!initialized || requesting}
+                title={!initialized ? 'Preparing notifications...' : undefined}
+              >
+                {requesting ? (
+                  <span className="mr-2 inline-flex h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.125em]" />
+                ) : null}
+                {requesting ? 'Enabling…' : 'Enable notifications'}
+              </Button>
+            </>
+          )}
         </div>
-        {!requesting && initialized && permission === 'default' ? (
+        {!requesting && initialized && (permission === 'default' || isIframeBlocked) ? (
           <p className="mt-2 text-[11px] sm:text-xs text-muted-foreground">
-            No prompt? Check site settings (lock icon) → Notifications.
+            {isIframeBlocked
+              ? 'Push notifications are blocked in preview. Open in a new tab to enable.'
+              : 'No prompt? Check site settings (lock icon) → Notifications.'}
           </p>
         ) : null}
       </div>

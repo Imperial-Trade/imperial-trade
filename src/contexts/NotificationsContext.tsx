@@ -6,6 +6,7 @@ interface NotificationsContextValue {
   permission: NotificationPermission | 'unsupported';
   isGranted: boolean;
   initialized: boolean;
+  isIframeBlocked: boolean;
   isPromptDismissed: boolean;
   requestPermission: () => Promise<void>;
   dismissPrompt: () => void;
@@ -16,7 +17,7 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
 const DISMISS_KEY = 'notifications:permission:dismissed:v1';
 
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { initialized, permission, isGranted, requestPermission } = useOneSignal();
+  const { initialized, permission, isGranted, requestPermission, isIframeBlocked } = useOneSignal();
   const { user } = useAuth();
   const [dismissed, setDismissed] = useState<boolean>(() => {
     try {
@@ -43,10 +44,11 @@ const value = useMemo<NotificationsContextValue>(() => ({
     permission,
     initialized,
     isGranted: isGranted && !!user,
-    isPromptDismissed: dismissed || !user || permission !== 'default',
+    isIframeBlocked,
+    isPromptDismissed: dismissed || !user || (permission !== 'default' && !isIframeBlocked),
     requestPermission,
     dismissPrompt,
-  }), [permission, initialized, isGranted, dismissed, user, requestPermission, dismissPrompt]);
+  }), [permission, initialized, isGranted, dismissed, user, isIframeBlocked, requestPermission, dismissPrompt]);
 
   return (
     <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>

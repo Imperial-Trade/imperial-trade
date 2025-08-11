@@ -356,13 +356,7 @@ serve(async (req) => {
         if (Array.isArray(notification.user_ids) && notification.user_ids.length > 0) {
           recipientIds = notification.user_ids;
         } else {
-          const { data: followers, error: followersErr } = await supabase
-            .from('signal_followers')
-            .select('user_id')
-            .eq('signal_id', notification.signal_id);
-          if (followersErr) {
-            console.error('⚠️ Failed to fetch followers for notification persistence:', followersErr);
-          }
+          // Fetch owner first to resolve user followers
           const { data: ownerRow, error: ownerErr } = await supabase
             .from('trade_alerts')
             .select('user_id, asset_name, trade_type, entry_price, stop_loss, tradermade_symbol')
@@ -371,8 +365,23 @@ serve(async (req) => {
           if (ownerErr) {
             console.error('⚠️ Failed to fetch signal owner for notification persistence:', ownerErr);
           }
+
+          let followers: { follower_id: string }[] = [];
+          if (ownerRow?.user_id) {
+            const { data: followRows, error: followersErr } = await supabase
+              .from('user_follows')
+              .select('follower_id')
+              .eq('following_id', ownerRow.user_id);
+            if (followersErr) {
+              console.error('⚠️ Failed to fetch followers for notification persistence:', followersErr);
+            } else {
+              followers = followRows || [];
+              console.log(`👥 Found ${followers.length} followers for owner ${ownerRow.user_id}`);
+            }
+          }
+
           const set = new Set<string>();
-          followers?.forEach((f: { user_id: string }) => set.add(f.user_id));
+          followers?.forEach((f: { follower_id: string }) => set.add(f.follower_id));
           if (ownerRow?.user_id) set.add(ownerRow.user_id);
           recipientIds = Array.from(set);
         }

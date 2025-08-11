@@ -192,17 +192,23 @@ async function processAlertTriggers(supabase: any, symbol: string, currentPrice:
               console.error('⚠️ Failed to fetch signal owner for user_notifications:', ownerErr);
             }
 
-            const { data: followers, error: followersErr } = await supabase
-              .from('signal_followers')
-              .select('user_id')
-              .eq('signal_id', trigger.signal_id);
-            if (followersErr) {
-              console.error('⚠️ Failed to fetch followers for user_notifications:', followersErr);
+            let followers: { follower_id: string }[] = [];
+            if (ownerRow?.user_id) {
+              const { data: followRows, error: followersErr } = await supabase
+                .from('user_follows')
+                .select('follower_id')
+                .eq('following_id', ownerRow.user_id);
+              if (followersErr) {
+                console.error('⚠️ Failed to fetch followers for user_notifications:', followersErr);
+              } else {
+                followers = followRows || [];
+                console.log(`👥 Found ${followers.length} followers for owner ${ownerRow.user_id}`);
+              }
             }
 
             const set = new Set<string>();
             if (ownerRow?.user_id) set.add(ownerRow.user_id);
-            followers?.forEach((f: { user_id: string }) => set.add(f.user_id));
+            followers?.forEach((f: { follower_id: string }) => set.add(f.follower_id));
             const recipientIds = Array.from(set);
 
             if (recipientIds.length > 0) {

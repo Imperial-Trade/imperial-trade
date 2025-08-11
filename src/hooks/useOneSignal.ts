@@ -15,10 +15,10 @@ export function useOneSignal() {
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
   );
-  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
+  
   const [hasSubscription, setHasSubscription] = useState(false);
   const isIframeBlocked = typeof window !== 'undefined' && window.self !== window.top;
-
+  const debug = (() => { try { return localStorage.getItem('onesignal_debug') === '1'; } catch { return false; } })();
   useEffect(() => {
     let cancelled = false;
 
@@ -85,12 +85,12 @@ export function useOneSignal() {
             if (ps) {
               try {
                 const id = ps.id;
-                setSubscriptionId(id ?? null);
+                
                 setHasSubscription(!!(ps.optedIn ?? id));
                 ps.addEventListener?.('change', () => {
                   try {
                     const nid = ps.id;
-                    setSubscriptionId(nid ?? null);
+                    
                     setHasSubscription(!!(ps.optedIn ?? nid));
                   } catch {}
                 });
@@ -109,7 +109,7 @@ export function useOneSignal() {
                       const osUser = (window as any).OneSignal?.User;
                       if (osUser?.addEmail) {
                         await osUser.addEmail(user.email);
-                        try { console.info('[OneSignal] Email identity attached:', user.email); } catch {}
+                        try { if (debug) console.info('[OneSignal] Email identity attached:', user.email); } catch {}
                       }
                       // Also add email as a tag for easy segmentation/search
                       const emailTag = { email: user.email } as Record<string, string>;
@@ -133,7 +133,7 @@ export function useOneSignal() {
                 };
                 applyIdentity().catch(() => {});
               } else {
-                try { console.info('[OneSignal] User logged in but no push subscription yet; will login after subscription is created.'); } catch {}
+                try { if (debug) console.info('[OneSignal] User logged in but no push subscription yet; will login after subscription is created.'); } catch {}
               }
             } else {
               (window as any).OneSignal.logout?.();
@@ -142,7 +142,7 @@ export function useOneSignal() {
             // Mark initialized only after SDK is ready and setup completed
             setInitialized(true);
             try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
-            console.info('[OneSignal] SDK initialized and listeners attached');
+            if (debug) console.info('[OneSignal] SDK initialized and listeners attached');;
             // Ensure a real subscription exists if permission is already granted
             try {
               const os = (window as any).OneSignal;
@@ -150,11 +150,11 @@ export function useOneSignal() {
               const currentPerm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
               const hasSub = !!(ps?.optedIn || ps?.id);
               if (currentPerm === 'granted' && !hasSub) {
-                console.info('[OneSignal] Permission granted but no subscription found. Ensuring subscription...');
+                if (debug) console.info('[OneSignal] Permission granted but no subscription found. Ensuring subscription...');
                 ensureSubscription(20000)
                   .then((ok) => {
                     if (ok) {
-                      console.info('[OneSignal] Auto-subscribe completed.');
+                      if (debug) console.info('[OneSignal] Auto-subscribe completed.');
                       try { if (user?.id) os?.login?.(user.id); } catch {}
                     } else {
                       console.warn('[OneSignal] Auto-subscribe timed out. Verify OneSignal Web Push Site URL matches origin:', location.origin);
@@ -163,13 +163,6 @@ export function useOneSignal() {
                   .catch((err) => {
                     console.warn('[OneSignal] Auto-subscribe error:', err);
                   });
-                // Optional diagnostic: check service worker registrations
-                try {
-                  navigator.serviceWorker?.getRegistrations?.().then((regs) => {
-                    const hasOSW = regs?.some(r => r.active?.scriptURL?.includes('OneSignalSDKWorker')); 
-                    console.info('[OneSignal] SW registered:', { count: regs?.length || 0, hasOneSignalWorker: !!hasOSW });
-                  }).catch(() => {});
-                } catch {}
               }
             } catch {}
           } catch (_) {}
@@ -198,7 +191,7 @@ export function useOneSignal() {
       const ps = os.User.PushSubscription;
       const already = !!(ps?.optedIn || ps?.id);
       if (already) {
-        setSubscriptionId(ps.id ?? null);
+        
         setHasSubscription(true);
         return true;
       }
@@ -208,7 +201,7 @@ export function useOneSignal() {
       while (Date.now() - start < maxWaitMs) {
         attempt += 1;
         try {
-          console.info(`[OneSignal] subscribe() attempt ${attempt}`);
+          if (debug) console.info(`[OneSignal] subscribe() attempt ${attempt}`);;
           await withTimeout(os.Notifications.subscribe(), Math.min(10000, maxWaitMs));
         } catch (e) {
           console.warn('[OneSignal] subscribe() attempt failed:', (e as any)?.message || e);
@@ -220,10 +213,9 @@ export function useOneSignal() {
           try {
             const id = os?.User?.PushSubscription?.id ?? null;
             const optedIn = !!os?.User?.PushSubscription?.optedIn;
-            setSubscriptionId(id);
             setHasSubscription(!!(id || optedIn));
             if (id || optedIn) {
-              console.info('[OneSignal] Subscription confirmed:', { id, optedIn });
+              if (debug) console.info('[OneSignal] Subscription confirmed:', { id, optedIn });
               return true;
             }
           } catch {}
@@ -274,8 +266,6 @@ const requestPermission = async () => {
       const alreadySub = !!(ps?.optedIn || ps?.id);
       if (currentPerm === 'granted' && alreadySub) {
         try {
-          const id = ps?.id ?? null;
-          setSubscriptionId(id);
           setHasSubscription(true);
         } catch {}
         return;
@@ -289,9 +279,6 @@ const requestPermission = async () => {
           await withTimeout(os.Notifications.subscribe(), 10000).catch(() => {});
         } catch {}
         try {
-          const id = os?.User?.PushSubscription?.id ?? null;
-          const optedIn = !!os?.User?.PushSubscription?.optedIn;
-          setSubscriptionId(id);
           setHasSubscription(!!(id || optedIn));
           subscribed = !!(id || optedIn);
         } catch {}
@@ -343,8 +330,6 @@ const requestPermission = async () => {
       try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
       try {
         const ps = (window as any).OneSignal?.User?.PushSubscription;
-        const id = ps?.id ?? null;
-        setSubscriptionId(id);
         setHasSubscription(!!(ps?.optedIn ?? id));
         if (!id && !ps?.optedIn) {
           console.warn('[OneSignal] No subscription detected after permission flow. Verify Web Push configuration for origin:', location.origin);

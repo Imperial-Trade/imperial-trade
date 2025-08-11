@@ -65,31 +65,18 @@ const NotificationPermissionBanner: React.FC = () => {
               </Button>
               <Button
                 size="sm"
-onClick={async () => {
+                onClick={async () => {
                   try {
                     setRequesting(true);
-                    // Fast path: subscribe immediately within the user gesture
-                    try {
-                      const os = (window as any).OneSignal;
-                      if (os?.Notifications?.subscribe) {
-                        await os.Notifications.subscribe().catch(() => {});
-                      } else if (os?.Notifications?.requestPermission) {
-                        await os.Notifications.requestPermission().catch(() => {});
-                      } else if (typeof Notification !== 'undefined' && Notification.requestPermission) {
-                        await Notification.requestPermission().catch(() => {});
-                      }
-                    } catch {}
-                    // Finalize subscription + identity + tags
                     await requestPermission();
                     const current = typeof Notification !== 'undefined' ? Notification.permission : permission;
                     if (current === 'granted') {
                       toast({ title: 'Push notifications enabled', description: 'You will receive alerts even when the app is closed.' });
-                      // Auto-dismiss once enabled
                       dismissPrompt();
                     } else if (current === 'denied') {
                       toast({ title: 'Notifications blocked', description: 'Use the browser site settings (lock icon) to Allow notifications.', variant: 'destructive' as any });
                     } else {
-                      toast({ title: 'No prompt shown?', description: 'If you didn\'t see a prompt, open site settings (lock icon) → Notifications.' });
+                      toast({ title: 'No prompt shown?', description: "If you didn't see a prompt, open site settings (lock icon) → Notifications." });
                     }
                   } finally {
                     setRequesting(false);

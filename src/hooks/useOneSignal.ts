@@ -98,37 +98,43 @@ export function useOneSignal() {
             }
 
             if (user?.id) {
-              (window as any).OneSignal.login(user.id);
-              // Attach email identity and tags
-              const applyIdentity = async () => {
-                try {
-                  if (user?.email) {
-                    const osUser = (window as any).OneSignal?.User;
-                    if (osUser?.addEmail) {
-                      await osUser.addEmail(user.email);
-                      try { console.info('[OneSignal] Email identity attached:', user.email); } catch {}
+              // Only login/identify after we know a subscription exists to avoid origin errors
+              const hasSub = !!(ps?.optedIn || ps?.id);
+              if (hasSub) {
+                (window as any).OneSignal.login(user.id);
+                // Attach email identity and tags
+                const applyIdentity = async () => {
+                  try {
+                    if (user?.email) {
+                      const osUser = (window as any).OneSignal?.User;
+                      if (osUser?.addEmail) {
+                        await osUser.addEmail(user.email);
+                        try { console.info('[OneSignal] Email identity attached:', user.email); } catch {}
+                      }
+                      // Also add email as a tag for easy segmentation/search
+                      const emailTag = { email: user.email } as Record<string, string>;
+                      if (osUser?.addTags) {
+                        await osUser.addTags(emailTag);
+                      } else if ((window as any).OneSignal?.sendTags) {
+                        await (window as any).OneSignal.sendTags(emailTag);
+                      }
                     }
-                    // Also add email as a tag for easy segmentation/search
-                    const emailTag = { email: user.email } as Record<string, string>;
-                    if (osUser?.addTags) {
-                      await osUser.addTags(emailTag);
-                    } else if ((window as any).OneSignal?.sendTags) {
-                      await (window as any).OneSignal.sendTags(emailTag);
+                    const tags: Record<string, string> = {};
+                    if (profile?.role) tags["role"] = String(profile.role);
+                    if (profile?.user_type) tags["user_type"] = String(profile.user_type);
+                    if (Object.keys(tags).length > 0) {
+                      if ((window as any).OneSignal.User?.addTags) {
+                        await (window as any).OneSignal.User.addTags(tags);
+                      } else if ((window as any).OneSignal.sendTags) {
+                        await (window as any).OneSignal.sendTags(tags);
+                      }
                     }
-                  }
-                  const tags: Record<string, string> = {};
-                  if (profile?.role) tags["role"] = String(profile.role);
-                  if (profile?.user_type) tags["user_type"] = String(profile.user_type);
-                  if (Object.keys(tags).length > 0) {
-                    if ((window as any).OneSignal.User?.addTags) {
-                      await (window as any).OneSignal.User.addTags(tags);
-                    } else if ((window as any).OneSignal.sendTags) {
-                      await (window as any).OneSignal.sendTags(tags);
-                    }
-                  }
-                } catch {}
-              };
-              applyIdentity().catch(() => {});
+                  } catch {}
+                };
+                applyIdentity().catch(() => {});
+              } else {
+                try { console.info('[OneSignal] User logged in but no push subscription yet; will login after subscription is created.'); } catch {}
+              }
             } else {
               (window as any).OneSignal.logout?.();
             }

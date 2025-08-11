@@ -39,16 +39,33 @@ try {
     const h = (host || "").toLowerCase();
     let variant: "dev" | "staging" | "prod" | "default" = "default";
     if (h.includes("localhost") || h.includes("127.0.0.1")) variant = "dev";
-    else if (h.includes("staging") || h.includes("test") || h.includes("lovable.app")) variant = "staging";
+    else if (
+      h.includes("staging") ||
+      h.includes("test") ||
+      h.includes("lovable.app") ||
+      h.includes("vercel.app") ||
+      h.includes("netlify.app") ||
+      h.includes("web.app") ||
+      h.includes("pages.dev") ||
+      h.includes("onrender.com") ||
+      h.includes("herokuapp.com") ||
+      h.includes("fly.dev")
+    ) variant = "staging";
     else if (h) variant = "prod";
 
+    // Select config and track if we had to fall back to defaults for this variant
     let selected = defaults;
-    if (variant === "dev" && (dev.appId || dev.safariWebId)) selected = dev;
-    else if (variant === "staging" && (staging.appId || staging.safariWebId)) selected = staging;
-    else if (variant === "prod" && (prod.appId || prod.safariWebId)) selected = prod;
+    let usedDefaultForVariant = false;
+    if (variant === "dev") {
+      if (dev.appId || dev.safariWebId) selected = dev; else usedDefaultForVariant = true;
+    } else if (variant === "staging") {
+      if (staging.appId || staging.safariWebId) selected = staging; else usedDefaultForVariant = true;
+    } else if (variant === "prod") {
+      if (prod.appId || prod.safariWebId) selected = prod; else usedDefaultForVariant = true;
+    }
 
     return new Response(
-      JSON.stringify({ appId: selected.appId, safariWebId: selected.safariWebId, meta: { variant, host: h } }),
+      JSON.stringify({ appId: selected.appId, safariWebId: selected.safariWebId, meta: { variant, host: h, usedDefaultForVariant } }),
       { headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=600, s-maxage=600, stale-while-revalidate=60" } }
     );
   } catch (error) {

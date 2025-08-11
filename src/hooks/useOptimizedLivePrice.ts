@@ -11,7 +11,7 @@ interface OptimizedLivePriceData {
   lastUpdated: Date | null;
   connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error';
   dataSource: 'tradermade' | 'unavailable';
-  priceUpdateSource: 'websocket' | 'http' | 'unknown';
+  priceUpdateSource: 'websocket' | 'websocket_institutional' | 'http' | 'unknown';
   refreshPrice: () => void;
 }
 
@@ -26,7 +26,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 100 // Reduced from 500ms to 100ms for faster updates
+    debounceMs = 25 // Ultra-fast 25ms for 250ms tick compatibility
   } = options;
 
   const {
@@ -68,9 +68,10 @@ export function useOptimizedLivePrice(
     
     if (!currentPrice) return;
 
-    // Ultra-fast updates: minimal delay for real-time feel
+    // Ultra-fast updates: minimal delay for 250ms real-time feel
     const isSignificantChange = Math.abs(currentPrice.price - debouncedPrice.price) > (currentPrice.price * 0.001); // 0.1% change
-    const dynamicDelay = isSignificantChange ? 50 : Math.min(debounceMs, 100); // 50ms for changes, max 100ms for same
+    const isUltraFastTick = currentPrice.is_ultra_fast_tick === true;
+    const dynamicDelay = isUltraFastTick ? 10 : isSignificantChange ? 25 : Math.min(debounceMs, 50); // 10ms for ultra-fast, 25ms for changes, max 50ms
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);

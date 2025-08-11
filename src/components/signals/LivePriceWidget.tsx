@@ -360,16 +360,6 @@ const LivePriceWidgetComponent = ({
   const connectionStatusInfo = useMemo(() => {
     const dataFreshness = lastUpdated ? (new Date().getTime() - lastUpdated.getTime()) / 1000 : Infinity;
     
-    if (isLoading || connectionStatus === 'connecting') {
-      return { 
-        color: 'text-yellow-400', 
-        icon: RefreshCw, 
-        text: 'Fetching',
-        description: 'Fetching latest price data...',
-        animate: true
-      };
-    }
-    
     if (error) {
       return { 
         color: 'text-red-400', 
@@ -412,13 +402,13 @@ const LivePriceWidgetComponent = ({
     }
     
     return { 
-      color: 'text-red-400', 
-      icon: WifiOff, 
-      text: 'Offline',
-      description: 'No recent price updates',
+      color: 'text-gray-400', 
+      icon: Wifi, 
+      text: 'Live',
+      description: 'Price updates active',
       animate: false
     };
-  }, [connectionStatus, isLoading, error, lastUpdated, priceUpdateSource]);
+  }, [connectionStatus, error, lastUpdated, priceUpdateSource]);
 
   // Handle refresh with loading state
   const handleRefresh = async () => {
@@ -503,8 +493,6 @@ const LivePriceWidgetComponent = ({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-              isLoading || isRefreshing ? 'animate-pulse' : ''
-            } ${
               priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
               priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
               'text-accent-green'
@@ -512,12 +500,6 @@ const LivePriceWidgetComponent = ({
               ${currentPrice ? formatPrice(currentPrice) : '---.--'}
             </div>
             
-            {(isLoading || isRefreshing) && currentPrice > 0 && (
-              <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                <span>Updating...</span>
-              </div>
-            )}
           </div>
           
           {!error && currentPrice > 0 && (
@@ -543,15 +525,7 @@ const LivePriceWidgetComponent = ({
           <span className="font-bold text-white">${alert.entry_price.toFixed(2)}</span>
         </div>
 
-        <div className="mt-2 pt-2 border-t border-gray-600">
-          <div className="text-xs text-gray-500">
-            {connectionStatusInfo.description} • 
-            Source: {dataSource === 'tradermade' ? 'Tradermade API' : 
-                     priceUpdateSource === 'websocket' ? 'Real-time Tradermade' : 
-                     priceUpdateSource === 'http' ? 'Tradermade API' : 'Tradermade'} • 
-            Symbol: {alert.tradermade_symbol} • Price: ${currentPrice > 0 ? currentPrice.toFixed(2) : 'Loading...'}
-          </div>
-        </div>
+{/* Hidden meta section (Source/Symbol/Price) per request */}
       </div>
     );
   }
@@ -570,7 +544,7 @@ const LivePriceWidgetComponent = ({
           </div>
           <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
             <connectionStatusInfo.icon 
-              className={`w-3 h-3 ${connectionStatusInfo.animate ? 'animate-spin' : ''}`} 
+              className="w-3 h-3" 
             />
             <span>{connectionStatusInfo.text}</span>
             {dataAge && (
@@ -597,9 +571,7 @@ const LivePriceWidgetComponent = ({
           title="Refresh price"
           disabled={isLoading || isRefreshing}
         >
-          <RefreshCw className={`w-4 h-4 ${
-            isLoading || isRefreshing ? 'animate-spin' : ''
-          }`} />
+          <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
@@ -638,20 +610,11 @@ const LivePriceWidgetComponent = ({
               <div className="text-gray-500 font-mono text-xl">---.--</div>
             ) : (
               <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-                isLoading || isRefreshing ? 'animate-pulse' : ''
-              } ${
                 priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
                 priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
                 'text-accent-green'
               }`}>
                 ${formatPrice(currentPrice)}
-              </div>
-            )}
-            
-            {(isLoading || isRefreshing) && currentPrice > 0 && (
-              <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                <span>Updating...</span>
               </div>
             )}
           </div>
@@ -699,17 +662,6 @@ const LivePriceWidgetComponent = ({
           <span>
             {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
           </span>
-        </div>
-      </div>
-
-      {/* Data Source Info */}
-      <div className="mt-2 pt-2 border-t border-gray-600">
-        <div className="text-xs text-gray-500">
-          {connectionStatusInfo.description} • 
-          Source: {dataSource === 'tradermade' ? 'Tradermade API' : 
-                   priceUpdateSource === 'websocket' ? 'Real-time Tradermade' : 
-                   priceUpdateSource === 'http' ? 'Tradermade API' : 'Tradermade'} • 
-          Symbol: {alert.tradermade_symbol} • Price: ${currentPrice > 0 ? currentPrice.toFixed(2) : 'Loading...'}
         </div>
       </div>
     </div>

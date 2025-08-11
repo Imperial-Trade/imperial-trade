@@ -3,11 +3,13 @@ import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
   assetName: string;
   onUseCurrentPrice?: (price: number) => void;
+  onPriceUpdate?: (price: number) => void;
   className?: string;
 }
 
@@ -15,18 +17,29 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   symbol,
   assetName,
   onUseCurrentPrice,
+  onPriceUpdate,
   className = ''
 }) => {
-  // Map frontend symbols to standardized API symbols
+  // Map frontend symbols to standardized Tradermade API symbols (no slashes)
   const mapSymbolForAPI = (frontendSymbol: string): string => {
+    const s = (frontendSymbol || '').toUpperCase().trim();
     const symbolMap: Record<string, string> = {
-      'GOLD': 'XAU/USD',
-      'XAU/USD': 'XAU/USD',
-      'BTC/USD': 'BTC/USD'
+      'GOLD': 'XAUUSD',
+      'XAU/USD': 'XAUUSD',
+      'XAUUSD': 'XAUUSD',
+      'BTC/USD': 'BTCUSD',
+      'BTCUSD': 'BTCUSD',
+      'NAS100': 'NAS100USD',
+      'NASDAQ': 'NAS100USD',
+      'NAS100USD': 'NAS100USD',
+      'USA30': 'USA30USD',
+      'US30': 'USA30USD',
+      'USA30USD': 'USA30USD',
+      'EUR/USD': 'EURUSD',
+      'EURUSD': 'EURUSD'
     };
-    return symbolMap[frontendSymbol] || frontendSymbol;
+    return symbolMap[s] || s;
   };
-
   const apiSymbol = mapSymbolForAPI(symbol);
   
   const {
@@ -91,6 +104,13 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       setPrevPrice(price);
     }
   }, [price, prevPrice]);
+
+  // Notify parent about price updates
+  useEffect(() => {
+    if (onPriceUpdate && price > 0) {
+      onPriceUpdate(price);
+    }
+  }, [price, onPriceUpdate]);
 
   const formatPrice = useCallback((price: number) => {
     // Dynamic decimal places based on price magnitude
@@ -233,17 +253,20 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="text-white font-medium">
-            Live Price for {assetName}
+          <div className="flex items-center gap-2">
+            <div className="text-white font-medium">
+              Live Price for {assetName}
+            </div>
+            {priceUpdateSource === 'websocket_institutional' && (
+              <div className="px-2 py-0.5 bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 rounded-full text-xs text-emerald-400 font-medium">
+                ⚡ 250ms
+              </div>
+            )}
           </div>
-          <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
-            <connectionStatusInfo.icon 
-              className={`w-3 h-3 ${connectionStatusInfo.animate ? 'animate-spin' : ''}`} 
-            />
-            <span>{connectionStatusInfo.text}</span>
-            {dataAge && (
-              <>
-                <span className="text-gray-500">•</span>
+          {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && (
+            <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
+              {/* Status text and effects hidden for a smoother interface */}
+              {dataAge && (
                 <span className={`${
                   dataAge === 'Live' ? 'text-green-400' : 
                   dataAge === 'Stale' ? 'text-red-400' : 
@@ -251,9 +274,9 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
                 }`}>
                   {dataAge}
                 </span>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
         
         <Button
@@ -265,9 +288,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           title="Refresh price"
           disabled={isLoading || isRefreshing}
         >
-          <RefreshCw className={`w-4 h-4 ${
-            isLoading || isRefreshing ? 'animate-spin' : ''
-          }`} />
+          <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
 
@@ -316,12 +337,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               </div>
             )}
             
-            {(isLoading || isRefreshing) && price > 0 && (
-              <div className="flex items-center gap-1 text-yellow-400 text-xs">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                <span>Updating...</span>
-              </div>
-            )}
+            {/* Updating indicator hidden for smooth UI */}
           </div>
           
           {!error && price > 0 && (
@@ -342,37 +358,32 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 text-xs text-gray-400">
-          <Clock className="w-3 h-3" />
-          <span>
-            {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
-          </span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            <Clock className="w-3 h-3" />
+            <span>
+              {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
+            </span>
+          </div>
+          <ConnectionHealthBadge className="ml-2" />
         </div>
         
-        {onUseCurrentPrice && !isLoading && !error && price > 0 && (
+        {onUseCurrentPrice && (
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => onUseCurrentPrice(price)}
             className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
-            disabled={isRefreshing}
+            disabled={isRefreshing || !!error || price <= 0}
+            aria-disabled={isRefreshing || !!error || price <= 0}
+            title={price > 0 ? 'Use current price' : 'Price not available yet'}
           >
             Use Current Price
           </Button>
         )}
       </div>
 
-      {/* Data Source Info */}
-      <div className="mt-2 pt-2 border-t border-gray-600">
-        <div className="text-xs text-gray-500">
-          {connectionStatusInfo.description} • 
-          Source: {dataSource === 'tradermade' ? 'Tradermade API' : 
-                   priceUpdateSource === 'websocket' ? 'Real-time Tradermade' : 
-                   priceUpdateSource === 'http' ? 'Tradermade API' : 'Tradermade'} • 
-          Symbol: {symbol} • Price: ${price > 0 ? price.toFixed(2) : 'Loading...'}
-        </div>
-      </div>
     </div>
   );
 };

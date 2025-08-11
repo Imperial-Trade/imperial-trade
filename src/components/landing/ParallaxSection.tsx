@@ -8,15 +8,15 @@ interface ParallaxSectionProps {
 }
 
 export default function ParallaxSection({ children, videoSrc, isFirst = false }: ParallaxSectionProps) {
-  const bgRef = useRef(null);
+  const bgRef = useRef<HTMLVideoElement | null>(null);
   const [offsetY, setOffsetY] = useState(0);
 
   const handleScroll = () => {
     if (window.innerWidth > 768) {
       const scrollPosition = window.pageYOffset;
-      const elementTop = bgRef.current?.parentElement.offsetTop || 0;
+      const elementTop = (bgRef.current?.parentElement as HTMLElement | null)?.offsetTop || 0;
       const relativeScroll = scrollPosition - elementTop;
-      setOffsetY(relativeScroll * 0.3);
+      setOffsetY(relativeScroll * 0.15);
     }
   };
 
@@ -26,20 +26,23 @@ export default function ParallaxSection({ children, videoSrc, isFirst = false }:
   }, []);
 
   return (
-    <section className="parallax-container">
+    <section className="relative">
       {videoSrc && (
         <video
           autoPlay
           loop
           muted
           playsInline
-          className="parallax-bg"
-          style={{ objectFit: "cover" }}
+          ref={bgRef}
+          className="absolute inset-0 h-full w-full object-cover -z-10"
+          style={{ transform: `translateY(${offsetY}px)` }}
         >
           <source src={videoSrc} type="video/mp4" />
         </video>
       )}
-      <div className="content-overlay">{children}</div>
+      <div className="relative">
+        {children}
+      </div>
     </section>
   );
 }

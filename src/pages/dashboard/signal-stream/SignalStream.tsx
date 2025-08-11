@@ -33,7 +33,8 @@ export default function SignalStream() {
     updateAlert,
     refreshAlerts,
     connectionStatus,
-    lastUpdated
+    lastUpdated,
+    nextRetryAt
   } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
 
   // Helper functions for role checking
@@ -176,8 +177,21 @@ export default function SignalStream() {
     };
   }, [symbols, subscribe, unsubscribe]);
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
+  const [reconnectIn, setReconnectIn] = useState<number | null>(null);
 
-  // Real-time connection status badge
+  useEffect(() => {
+    if (connectionStatus === 'connecting' && nextRetryAt) {
+      const update = () => {
+        const ms = nextRetryAt - Date.now();
+        setReconnectIn(ms > 0 ? Math.ceil(ms / 1000) : 0);
+      };
+      update();
+      const id = setInterval(update, 1000);
+      return () => clearInterval(id);
+    } else {
+      setReconnectIn(null);
+    }
+  }, [connectionStatus, nextRetryAt]);
   const getConnectionStatusBadge = () => {
     switch (connectionStatus) {
       case 'connected':
@@ -435,6 +449,16 @@ export default function SignalStream() {
       <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
         <div className="max-w-none w-full">
           <div className="w-full">
+            {/* Reconnect banner when we have data */}
+            {connectionStatus === 'connecting' && allAlerts.length > 0 && (
+              <div className="mb-3 flex items-center gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-yellow-300">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Reconnecting…</span>
+                {typeof reconnectIn === 'number' && reconnectIn > 0 && (
+                  <span className="text-xs text-yellow-200/80">Retrying in {reconnectIn}s</span>
+                )}
+              </div>
+            )}
             {/* Enhanced Filters */}
             <SignalStreamFilters 
               filters={filters} 
@@ -444,21 +468,18 @@ export default function SignalStream() {
               canCreateSignals={canCreateSignals}
               onCreateSignal={() => navigate('/dashboard/new-signal')}
             />
-            {isLoading ? <div className="flex justify-center items-center h-64 flex-col space-y-4">
-                <Loader2 className="w-8 h-8 animate-spin text-accent-green" />
-                <div className="text-center">
-                  <p className="text-muted-foreground">Loading educational patterns...</p>
-                  {connectionStatus === 'connecting' && <p className="text-xs text-muted-foreground mt-1">Establishing real-time connection...</p>}
-                </div>
-              </div> : error ? <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
-                <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-foreground mb-2">Connection Error</h3>
-                <p className="text-muted-foreground mb-6">{error}</p>
-                <div className="flex gap-4 justify-center">
-                  <button onClick={() => refreshAlerts()} className="bg-accent-green hover:bg-accent-green/90 text-white px-4 py-2 rounded">Try Again</button>
-                  <button onClick={() => window.location.reload()} className="border border-border text-muted-foreground hover:bg-muted px-4 py-2 rounded">Refresh Page</button>
-                </div>
-              </div> : <div className="space-y-6">
+            {(isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0)) ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
+                    <div className="h-4 w-1/3 bg-muted rounded mb-3" />
+                    <div className="h-6 w-2/3 bg-muted rounded mb-4" />
+                    <div className="h-24 w-full bg-muted rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-6">
                 <div>
                   <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
                     Educational Market Patterns ({activeAlerts.length})
@@ -510,12 +531,12 @@ export default function SignalStream() {
                       <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
                     </div>}
                 </div>
-              </div>}
+              </div>)}
           </div>
-          
+
           {/* Economic Sidebar - Optimized positioning and visibility */}
           
-        </div>
-      </div>
+                </div>
+              </div>
     </div>;
 }

@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Tradermade symbol configuration
-const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30', 'NAS100', 'EURUSD'];
+const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
 
 interface TradermadePriceData {
   symbol: string;
@@ -30,9 +30,9 @@ interface ErrorMessage {
   timestamp: string;
 }
 
-// Cache configuration
+// Cache configuration - optimized for ultra-fast 250ms ticks
 const priceCache = new Map<string, TradermadePriceData>();
-const CACHE_TTL = 5000; // 5 seconds
+const CACHE_TTL = 1000; // 1 second for ultra-fast updates
 
 let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();
@@ -233,6 +233,7 @@ serve(async (req) => {
   let reconnectTimeout: number | null = null;
   let heartbeatInterval: number | null = null;
   let connectionHealthy = true;
+  const actionTracker = new Map<string, { type: 'subscribe' | 'unsubscribe'; ts: number }>();
 
   // Connect to Tradermade WebSocket with enhanced error handling
   async function connectToTradermade() {
@@ -280,26 +281,53 @@ serve(async (req) => {
           }));
         }
 
-        // Set up heartbeat and 1-second price updates
+        // Set up ultra-fast 250ms institutional tick updates
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         heartbeatInterval = setInterval(() => {
           if (tradermadeSocket?.readyState === WebSocket.OPEN) {
-            tradermadeSocket.send(JSON.stringify({ type: 'ping' }));
+            // Send heartbeat every 12th tick (3 seconds) to maintain connection
+            if (Date.now() % 3000 < 250) {
+              tradermadeSocket.send(JSON.stringify({ type: 'ping' }));
+            }
           }
           
-          // Send cached prices every 1 second for subscribed symbols
+          // Send ultra-fast institutional-grade tick prices every 250ms for all subscribed symbols
           if (socket.readyState === WebSocket.OPEN && clientSubscriptions.size > 0) {
+            console.log('⚡ Sending ULTRA-FAST tick prices for', clientSubscriptions.size, 'symbols');
             for (const symbol of clientSubscriptions) {
               const cached = getCachedPrice(symbol);
               if (cached) {
-                socket.send(JSON.stringify({
+                // Add micro-timestamp for ultra-fast institutional precision
+                const tickData = {
                   type: 'price_update',
-                  ...cached
-                }));
+                  ...cached,
+                  tick_timestamp: Date.now(),
+                  is_institutional_tick: true,
+                  is_ultra_fast_tick: true,
+                  update_frequency: '250ms'
+                };
+                socket.send(JSON.stringify(tickData));
+                console.log(`⚡ ULTRA-FAST TICK: ${symbol} = $${cached.price} @ ${new Date().toISOString()}`);
+              } else {
+                // Fetch fresh price if no cache available
+                fetchTradermadePrice(symbol).then(data => {
+                  if (data && socket.readyState === WebSocket.OPEN) {
+                    const tickData = {
+                      type: 'price_update',
+                      ...data,
+                      tick_timestamp: Date.now(),
+                      is_institutional_tick: true,
+                      is_ultra_fast_tick: true,
+                      update_frequency: '250ms'
+                    };
+                    socket.send(JSON.stringify(tickData));
+                    console.log(`⚡ FRESH ULTRA-FAST TICK: ${symbol} = $${data.price} @ ${new Date().toISOString()}`);
+                  }
+                });
               }
             }
           }
-        }, 250); // Optimized 250ms updates for balance of speed and server performance
+        }, 250); // Ultra-fast 250ms tick intervals
 
         // Notify client of connection
         if (socket.readyState === WebSocket.OPEN) {
@@ -314,6 +342,16 @@ serve(async (req) => {
 
       tradermadeSocket.onmessage = (event) => {
         try {
+          // Handle raw text messages (like "Connected")
+          if (typeof event.data === 'string' && !event.data.startsWith('{')) {
+            console.log('📋 Tradermade text message:', event.data);
+            
+            if (event.data.toLowerCase().includes('connected')) {
+              console.log('✅ Tradermade authentication successful');
+            }
+            return;
+          }
+
           const data = JSON.parse(event.data);
           console.log('📊 Raw Tradermade message:', event.data);
           console.log('📊 Parsed Tradermade data:', JSON.stringify(data, null, 2));
@@ -389,21 +427,25 @@ serve(async (req) => {
           heartbeatInterval = null;
         }
 
-        // Attempt reconnection
+        // Enhanced ultra-fast reconnection for 250ms requirements
         if (!reconnectTimeout) {
+          console.log('🚀 Ultra-fast reconnection - attempting immediate reconnect...');
           reconnectTimeout = setTimeout(() => {
             reconnectTimeout = null;
             if (socket.readyState === WebSocket.OPEN) {
+              console.log('🔄 Reconnecting for ultra-fast 250ms ticks...');
               connectToTradermade();
             }
-          }, 5000);
+          }, 1000); // Reduced from 5000ms to 1000ms for ultra-fast recovery
         }
 
-        // Notify client
+        // Notify client with enhanced status
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({
             type: 'connection_status',
             status: 'disconnected',
+            reconnecting: true,
+            ultra_fast_mode: true,
             timestamp: new Date().toISOString()
           }));
         }
@@ -482,15 +524,26 @@ serve(async (req) => {
       console.log('📨 Client message:', message);
 
       if (message.action === 'subscribe' && Array.isArray(message.symbols)) {
+        const now = Date.now();
         const validSymbols = message.symbols
           .map(validateSymbol)
           .filter((s): s is string => s !== null);
 
-        validSymbols.forEach(symbol => clientSubscriptions.add(symbol));
-        console.log('✅ Client subscribed to:', validSymbols);
+        const filtered = validSymbols.filter((symbol) => {
+          const last = actionTracker.get(symbol);
+          if (last && last.type === 'subscribe' && (now - last.ts) < 200) {
+            // Ignore rapid duplicate subscribe
+            return false;
+          }
+          actionTracker.set(symbol, { type: 'subscribe', ts: now });
+          return true;
+        });
+
+        filtered.forEach(symbol => clientSubscriptions.add(symbol));
+        console.log('✅ Client subscribed to:', filtered);
 
         // Send cached data immediately if available
-        for (const symbol of validSymbols) {
+        for (const symbol of filtered) {
           const cached = getCachedPrice(symbol);
           if (cached) {
             socket.send(JSON.stringify({
@@ -509,12 +562,23 @@ serve(async (req) => {
           }
         }
       } else if (message.action === 'unsubscribe' && Array.isArray(message.symbols)) {
+        const now = Date.now();
         const validSymbols = message.symbols
           .map(validateSymbol)
           .filter((s): s is string => s !== null);
 
-        validSymbols.forEach(symbol => clientSubscriptions.delete(symbol));
-        console.log('❌ Client unsubscribed from:', validSymbols);
+        const filtered = validSymbols.filter((symbol) => {
+          const last = actionTracker.get(symbol);
+          // Ignore unsubscribe if just subscribed within 300ms, or repeated rapid unsubscribes
+          if (last && ((last.type === 'subscribe' && (now - last.ts) < 300) || (last.type === 'unsubscribe' && (now - last.ts) < 200))) {
+            return false;
+          }
+          actionTracker.set(symbol, { type: 'unsubscribe', ts: now });
+          return true;
+        });
+
+        filtered.forEach(symbol => clientSubscriptions.delete(symbol));
+        console.log('❌ Client unsubscribed from:', filtered);
       }
     } catch (error) {
       console.error('❌ Error handling client message:', error);

@@ -1611,10 +1611,14 @@ export type Database = {
       }
       trade_alerts: {
         Row: {
+          activated_at: string | null
+          activation_price: number | null
           asset_name: string
           close_reason: Database["public"]["Enums"]["close_reason"] | null
           created_at: string
           entry_price: number
+          expires_at: string | null
+          expiry_type: string | null
           id: string
           notes: string | null
           status: Database["public"]["Enums"]["trade_alert_status"]
@@ -1631,10 +1635,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          activated_at?: string | null
+          activation_price?: number | null
           asset_name: string
           close_reason?: Database["public"]["Enums"]["close_reason"] | null
           created_at?: string
           entry_price: number
+          expires_at?: string | null
+          expiry_type?: string | null
           id?: string
           notes?: string | null
           status?: Database["public"]["Enums"]["trade_alert_status"]
@@ -1651,10 +1659,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          activated_at?: string | null
+          activation_price?: number | null
           asset_name?: string
           close_reason?: Database["public"]["Enums"]["close_reason"] | null
           created_at?: string
           entry_price?: number
+          expires_at?: string | null
+          expiry_type?: string | null
           id?: string
           notes?: string | null
           status?: Database["public"]["Enums"]["trade_alert_status"]
@@ -2126,6 +2138,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_saved_posts: {
         Row: {
           created_at: string
@@ -2404,9 +2434,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      expire_limit_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       get_community_tier_info: {
         Args: { tier_level: number }
         Returns: Json
+      }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
       }
       process_price_alerts: {
         Args: { p_symbol: string; p_current_price: number }
@@ -2437,6 +2478,7 @@ export type Database = {
       account_type: "user" | "admin" | "educator"
       alert_condition: "above" | "below"
       alert_status: "active" | "triggered"
+      app_role: "admin" | "moderator" | "user"
       asset_type: "Stock" | "Crypto" | "Forex" | "Commodity"
       close_reason:
         | "manual"
@@ -2617,6 +2659,7 @@ export const Constants = {
       account_type: ["user", "admin", "educator"],
       alert_condition: ["above", "below"],
       alert_status: ["active", "triggered"],
+      app_role: ["admin", "moderator", "user"],
       asset_type: ["Stock", "Crypto", "Forex", "Commodity"],
       close_reason: [
         "manual",

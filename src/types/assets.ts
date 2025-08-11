@@ -29,14 +29,14 @@ export const ASSET_REGISTRY: Record<string, AssetDefinition> = {
     name: 'Dow Jones',
     category: 'indices',
     displaySymbol: 'US30',
-    tradermadeSymbol: 'USA30'
+    tradermadeSymbol: 'USA30USD'
   },
   NAS100: {
     symbol: 'NAS100',
     name: 'Nasdaq 100',
     category: 'indices',
     displaySymbol: 'NAS100',
-    tradermadeSymbol: 'NAS100'
+    tradermadeSymbol: 'NAS100USD'
   },
   EURUSD: {
     symbol: 'EURUSD',

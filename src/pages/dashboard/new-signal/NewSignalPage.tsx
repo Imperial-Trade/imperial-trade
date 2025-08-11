@@ -5,8 +5,6 @@ import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/components/ui/use-toast';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { supabase } from '@/integrations/supabase/client';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
-import { SUPPORTED_ASSETS } from '@/components/signals/AssetSelector';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
@@ -16,22 +14,8 @@ const NewSignalPage: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Pre-load all supported asset prices for immediate availability
-  const { subscribe, unsubscribe } = useWebSocketPrices();
+  // Removed live price preloading for a simpler, seamless form experience
 
-  // Pre-load all supported asset prices on mount with proper symbol mapping
-  useEffect(() => {
-    // Use actual Tradermade symbols for subscription
-    const tradermadeSymbols = SUPPORTED_ASSETS.map(asset => asset.symbol);
-    
-    console.log('NewSignalPage - Pre-loading asset prices with Tradermade symbols:', tradermadeSymbols);
-    subscribe(tradermadeSymbols);
-
-    return () => {
-      console.log('NewSignalPage - Cleaning up asset price subscriptions');
-      unsubscribe(tradermadeSymbols);
-    };
-  }, [subscribe, unsubscribe]);
 
   // Get user ID
   useEffect(() => {

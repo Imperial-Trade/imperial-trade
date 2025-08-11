@@ -65,9 +65,14 @@ export const useOptimizedTradeAlertForm = ({
         status: data.status
       });
       
+      // Normalize status: limit orders start as 'pending' until activated
+      const tradeType = data.trade_type;
+      const adjustedStatus = (tradeType === 'buy_limit' || tradeType === 'sell_limit') ? 'pending' : (data.status ?? 'active');
+      const normalizedData = { ...data, status: adjustedStatus };
+      
       try {
         setIsSubmitting(true);
-        await onSubmit(data);
+        await onSubmit(normalizedData);
       } catch (error) {
         console.error('Form submission error:', error);
       } finally {

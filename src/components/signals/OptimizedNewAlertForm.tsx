@@ -1,15 +1,24 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertTriangle, Plus, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Loader2, AlertTriangle, Plus, X, Info, Clock, TrendingUp, TrendingDown, Calculator } from 'lucide-react';
 import EnhancedLivePriceDisplay from './EnhancedLivePriceDisplay';
 import { AssetSelector, SUPPORTED_ASSETS, type AssetOption } from './AssetSelector';
 import { useToast } from '@/components/ui/use-toast';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
+import { 
+  calculatePipsFromPrice, 
+  calculatePriceFromPips, 
+  formatPips, 
+  getDirectionFromTradeType,
+  getPipSize 
+} from '@/utils/pipCalculations';
 
 interface OptimizedNewAlertFormProps {
   onSubmit: (data: TradeAlertSubmissionData) => Promise<void>;
@@ -24,6 +33,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<AssetOption | null>(null);
   const [isLoadingPriceData, setIsLoadingPriceData] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -43,6 +53,16 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
 
   const [takeProfits, setTakeProfits] = useState<string[]>(['']);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  // Pip calculation state
+  const [pipInputs, setPipInputs] = useState({
+    stop_loss_pips: '',
+    tp1_pips: '',
+    tp2_pips: '',
+    tp3_pips: '',
+    tp4_pips: '',
+    tp5_pips: ''
+  });
 
   const handleAssetChange = useCallback((asset: AssetOption) => {
     // Start loading immediately when asset is selected
@@ -71,6 +91,75 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
   const handleInputChange = useCallback((field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
+    // If entry price changes and we have existing pip values, recalculate prices
+    if (field === 'entry_price' && value && selectedAsset) {
+      const newEntryPrice = parseFloat(value.toString());
+      if (!isNaN(newEntryPrice)) {
+        
+        // Recalculate stop loss if stop loss pips exist
+        if (pipInputs.stop_loss_pips) {
+          const stopLossPips = parseFloat(pipInputs.stop_loss_pips);
+          if (!isNaN(stopLossPips) && stopLossPips > 0) {
+            const direction = getDirectionFromTradeType(formData.trade_type, 'stop_loss');
+            const calculatedStopLoss = calculatePriceFromPips(newEntryPrice, stopLossPips, selectedAsset.symbol, direction);
+            setFormData(prev => ({ ...prev, stop_loss: calculatedStopLoss.toFixed(5) }));
+          }
+        }
+        
+        // Recalculate take profits if take profit pips exist
+        ['tp1_pips', 'tp2_pips', 'tp3_pips', 'tp4_pips', 'tp5_pips'].forEach((pipField, index) => {
+          const pipValue = pipInputs[pipField as keyof typeof pipInputs];
+          if (pipValue) {
+            const tpPips = parseFloat(pipValue);
+            if (!isNaN(tpPips) && tpPips > 0 && index < takeProfits.length) {
+              const direction = getDirectionFromTradeType(formData.trade_type, 'take_profit');
+              const calculatedPrice = calculatePriceFromPips(newEntryPrice, tpPips, selectedAsset.symbol, direction);
+              
+              const newTPs = [...takeProfits];
+              newTPs[index] = calculatedPrice.toFixed(5);
+              setTakeProfits(newTPs);
+              
+              const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+              setFormData(prev => ({
+                ...prev,
+                [tpKeys[index]]: calculatedPrice.toFixed(5)
+              }));
+            }
+          }
+        });
+      }
+    }
+    
+    // Clear both stop loss fields when either is deleted or set to zero
+    if (field === 'stop_loss' || field === 'stop_loss_pips') {
+      const numValue = parseFloat(value.toString());
+      if (!value || value === '' || numValue === 0 || isNaN(numValue)) {
+        setFormData(prev => ({ ...prev, stop_loss: '' }));
+        setPipInputs(prev => ({ ...prev, stop_loss_pips: '' }));
+        return; // Exit early to prevent further processing
+      }
+    }
+    
+    // Clear both take profit fields when either is deleted or set to zero
+    const tpFields = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+    const tpPipFields = ['tp1_pips', 'tp2_pips', 'tp3_pips', 'tp4_pips', 'tp5_pips'];
+    
+    tpFields.forEach((tpField, index) => {
+      if (field === tpField || field === tpPipFields[index]) {
+        const numValue = parseFloat(value.toString());
+        if (!value || value === '' || numValue === 0 || isNaN(numValue)) {
+          // Clear the corresponding TP price
+          setFormData(prev => ({ ...prev, [tpField]: '' }));
+          // Clear the corresponding TP pips
+          setPipInputs(prev => ({ ...prev, [tpPipFields[index]]: '' }));
+          // Clear from takeProfits array
+          const newTPs = [...takeProfits];
+          newTPs[index] = '';
+          setTakeProfits(newTPs);
+        }
+      }
+    });
+    
     // Clear field-specific errors
     if (errors[field]) {
       setErrors(prev => {
@@ -79,7 +168,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         return newErrors;
       });
     }
-  }, [errors]);
+  }, [errors, selectedAsset, formData.trade_type, pipInputs, takeProfits]);
 
   const handleUseCurrentPrice = useCallback((price: number) => {
     setFormData(prev => ({ ...prev, entry_price: price.toString() }));
@@ -120,7 +209,106 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       ...prev,
       [tpKeys[index]]: value
     }));
+
+    // Calculate pips when price changes
+    if (value && formData.entry_price && selectedAsset) {
+      const entryPrice = parseFloat(formData.entry_price);
+      const targetPrice = parseFloat(value);
+      if (!isNaN(entryPrice) && !isNaN(targetPrice)) {
+        const pips = calculatePipsFromPrice(entryPrice, targetPrice, selectedAsset.symbol);
+        const pipKeys = ['tp1_pips', 'tp2_pips', 'tp3_pips', 'tp4_pips', 'tp5_pips'];
+        setPipInputs(prev => ({
+          ...prev,
+          [pipKeys[index]]: formatPips(pips)
+        }));
+      }
+    }
   };
+
+  // Handle pip input changes
+  const handlePipChange = useCallback((field: string, pips: string) => {
+    setPipInputs(prev => ({ ...prev, [field]: pips }));
+    
+    // Clear both fields if pips is deleted or zero
+    if (!pips || pips === '' || parseFloat(pips) === 0 || isNaN(parseFloat(pips))) {
+      if (field === 'stop_loss_pips') {
+        setFormData(prev => ({ ...prev, stop_loss: '' }));
+        setPipInputs(prev => ({ ...prev, stop_loss_pips: '' }));
+        return;
+      } else {
+        // Handle TP pips clearing
+        const tpIndex = parseInt(field.replace('tp', '').replace('_pips', '')) - 1;
+        if (tpIndex >= 0 && tpIndex < 5) {
+          const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+          const tpPipKeys = ['tp1_pips', 'tp2_pips', 'tp3_pips', 'tp4_pips', 'tp5_pips'];
+          
+          setFormData(prev => ({ ...prev, [tpKeys[tpIndex]]: '' }));
+          setPipInputs(prev => ({ ...prev, [tpPipKeys[tpIndex]]: '' }));
+          
+          if (tpIndex < takeProfits.length) {
+            const newTPs = [...takeProfits];
+            newTPs[tpIndex] = '';
+            setTakeProfits(newTPs);
+          }
+        }
+        return;
+      }
+    }
+    
+    if (pips && formData.entry_price && selectedAsset) {
+      const entryPrice = parseFloat(formData.entry_price);
+      const pipValue = parseFloat(pips);
+      
+      if (!isNaN(entryPrice) && !isNaN(pipValue) && pipValue > 0) {
+        let direction: 'up' | 'down' = 'up';
+        let targetType: 'stop_loss' | 'take_profit' = 'take_profit';
+        
+        if (field === 'stop_loss_pips') {
+          targetType = 'stop_loss';
+        }
+        
+        direction = getDirectionFromTradeType(formData.trade_type, targetType);
+        const calculatedPrice = calculatePriceFromPips(entryPrice, pipValue, selectedAsset.symbol, direction);
+        
+        console.log(`Pip calculation: ${pips} pips for ${field} = ${calculatedPrice.toFixed(5)} price`);
+        
+        if (field === 'stop_loss_pips') {
+          setFormData(prev => ({ ...prev, stop_loss: calculatedPrice.toFixed(5) }));
+        } else {
+          const tpIndex = parseInt(field.replace('tp', '').replace('_pips', '')) - 1;
+          if (tpIndex >= 0 && tpIndex < takeProfits.length) {
+            const newTPs = [...takeProfits];
+            newTPs[tpIndex] = calculatedPrice.toFixed(5);
+            setTakeProfits(newTPs);
+            
+            const tpKeys = ['tp1', 'tp2', 'tp3', 'tp4', 'tp5'];
+            setFormData(prev => ({
+              ...prev,
+              [tpKeys[tpIndex]]: calculatedPrice.toFixed(5)
+            }));
+          }
+        }
+      }
+    }
+  }, [formData.entry_price, formData.trade_type, selectedAsset, takeProfits]);
+
+  // Handle stop loss change with pip calculation
+  const handleStopLossChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, stop_loss: value }));
+    
+    // Calculate pips when stop loss price changes
+    if (value && formData.entry_price && selectedAsset) {
+      const entryPrice = parseFloat(formData.entry_price);
+      const stopLossPrice = parseFloat(value);
+      if (!isNaN(entryPrice) && !isNaN(stopLossPrice)) {
+        const pips = calculatePipsFromPrice(entryPrice, stopLossPrice, selectedAsset.symbol);
+        setPipInputs(prev => ({
+          ...prev,
+          stop_loss_pips: formatPips(pips)
+        }));
+      }
+    }
+  }, [formData.entry_price, selectedAsset]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -131,25 +319,87 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     if (!formData.stop_loss) newErrors.stop_loss = 'Stop loss is required';
     if (!takeProfits[0]) newErrors.tp1 = 'At least one take profit is required';
 
-    // Only validate numbers if fields are not empty
+    // Parse numeric values safely
+    const entryPrice = formData.entry_price ? parseFloat(formData.entry_price) : NaN;
+    const stopLoss = formData.stop_loss ? parseFloat(formData.stop_loss) : NaN;
+    const tp1Val = takeProfits[0] ? parseFloat(takeProfits[0]) : NaN;
+
     if (formData.entry_price) {
-      const entryPrice = parseFloat(formData.entry_price);
       if (isNaN(entryPrice) || entryPrice <= 0) {
         newErrors.entry_price = 'Entry price must be a positive number';
       }
     }
 
     if (formData.stop_loss) {
-      const stopLoss = parseFloat(formData.stop_loss);
       if (isNaN(stopLoss) || stopLoss <= 0) {
         newErrors.stop_loss = 'Stop loss must be a positive number';
       }
     }
 
     if (takeProfits[0]) {
-      const tp1 = parseFloat(takeProfits[0]);
-      if (isNaN(tp1) || tp1 <= 0) {
+      if (isNaN(tp1Val) || tp1Val <= 0) {
         newErrors.tp1 = 'Take profit must be a positive number';
+      }
+    }
+
+    // Directional checks (independent from live price)
+    if (!isNaN(entryPrice) && !isNaN(stopLoss)) {
+      const isBuySide = formData.trade_type === 'buy' || formData.trade_type === 'buy_limit';
+      if (isBuySide && !(stopLoss < entryPrice)) {
+        newErrors.stop_loss = 'For Buy/Buy Limit, Stop Loss must be below Entry';
+      }
+      if (!isBuySide && !(stopLoss > entryPrice)) {
+        newErrors.stop_loss = 'For Sell/Sell Limit, Stop Loss must be above Entry';
+      }
+      // Minimum SL distance from entry
+      if (selectedAsset) {
+        const pipSize = getPipSize(selectedAsset.symbol);
+        const minSlDistance = pipSize * 1; // 1 pip minimum
+        if (Math.abs(entryPrice - stopLoss) < minSlDistance) {
+          newErrors.stop_loss = `Stop Loss too close to Entry (min ${formatPips(minSlDistance / pipSize)} pips)`;
+        }
+      }
+    }
+
+    if (!isNaN(entryPrice) && !isNaN(tp1Val)) {
+      const isBuySide = formData.trade_type === 'buy' || formData.trade_type === 'buy_limit';
+      if (isBuySide && !(tp1Val > entryPrice)) {
+        newErrors.tp1 = 'For Buy/Buy Limit, TP1 must be above Entry';
+      }
+      if (!isBuySide && !(tp1Val < entryPrice)) {
+        newErrors.tp1 = 'For Sell/Sell Limit, TP1 must be below Entry';
+      }
+    }
+
+    // Live market dependent checks (only when we have a fresh price)
+    if (selectedAsset && currentPrice > 0 && !isNaN(entryPrice)) {
+      const pipSize = getPipSize(selectedAsset.symbol);
+      const minDistance = pipSize * 5; // minimum distance from market for pending orders (5 pips default)
+      const slippage = pipSize * 2;    // allowed slippage for market orders (±2 pips default)
+
+      if (formData.trade_type === 'buy_limit') {
+        if (entryPrice >= currentPrice) {
+          newErrors.entry_price = 'Buy Limit must be BELOW current market price';
+        } else if ((currentPrice - entryPrice) < minDistance) {
+          newErrors.entry_price = `Buy Limit too close to market (min ${formatPips(minDistance / pipSize)} pips)`;
+        }
+      }
+
+      if (formData.trade_type === 'sell_limit') {
+        if (entryPrice <= currentPrice) {
+          newErrors.entry_price = 'Sell Limit must be ABOVE current market price';
+        } else if ((entryPrice - currentPrice) < minDistance) {
+          newErrors.entry_price = `Sell Limit too close to market (min ${formatPips(minDistance / pipSize)} pips)`;
+        }
+      }
+
+      if (formData.trade_type === 'buy' || formData.trade_type === 'sell') {
+        const diff = Math.abs(entryPrice - currentPrice);
+        if (diff > slippage) {
+          const allowedPips = slippage / pipSize;
+          const actualPips = diff / pipSize;
+          newErrors.entry_price = `Entry outside slippage tolerance (±${formatPips(allowedPips)} pips, current diff ${formatPips(actualPips)} pips)`;
+        }
       }
     }
 
@@ -237,10 +487,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                     <div className="h-8 bg-muted rounded w-28"></div>
                     <div className="h-4 bg-muted rounded w-24"></div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Fetching live price for {selectedAsset.name}...</span>
-                  </div>
+                  <div className="h-4 w-24" />
                 </div>
               </div>
             ) : (
@@ -248,6 +495,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
                 symbol={selectedAsset.symbol}
                 assetName={selectedAsset.name}
                 onUseCurrentPrice={handleUseCurrentPrice}
+                onPriceUpdate={setCurrentPrice}
                 className="w-full mb-4"
               />
             )}
@@ -268,7 +516,26 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Trade Type */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Trade Type</label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Trade Type</label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm p-3 bg-popover border border-border">
+                    <div className="space-y-2 text-sm">
+                      <div><strong>Market Orders:</strong></div>
+                      <div>• <strong>Buy:</strong> Execute immediately at current market price</div>
+                      <div>• <strong>Sell:</strong> Execute immediately at current market price</div>
+                      <div><strong>Limit Orders:</strong></div>
+                      <div>• <strong>Buy Limit:</strong> Buy when price drops to or below entry price</div>
+                      <div>• <strong>Sell Limit:</strong> Sell when price rises to or above entry price</div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Select 
               value={formData.trade_type} 
               onValueChange={(value) => handleInputChange('trade_type', value)}
@@ -276,20 +543,75 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="buy">Buy</SelectItem>
-                <SelectItem value="sell">Sell</SelectItem>
+              <SelectContent className="bg-popover border border-border z-50">
+                <SelectItem value="buy" className="hover:bg-accent">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-green-500" />
+                    <span>Buy</span>
+                    <Badge variant="secondary" className="text-xs">Market</Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="sell" className="hover:bg-accent">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-red-500" />
+                    <span>Sell</span>
+                    <Badge variant="secondary" className="text-xs">Market</Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="buy_limit" className="hover:bg-accent">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-green-500" />
+                    <span>Buy Limit</span>
+                    <Badge variant="outline" className="text-xs">Pending</Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="sell_limit" className="hover:bg-accent">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4 text-red-500" />
+                    <span>Sell Limit</span>
+                    <Badge variant="outline" className="text-xs">Pending</Badge>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
+            
+            {/* Limit Order Status Badge */}
+            {(formData.trade_type === 'buy_limit' || formData.trade_type === 'sell_limit') && (
+              <div className="flex items-center gap-2 mt-2 p-2 bg-muted/50 rounded-md border border-border">
+                <Clock className="w-4 h-4 text-blue-500" />
+                <div className="text-sm">
+                  <div className="font-medium text-foreground">
+                    {formData.trade_type === 'buy_limit' ? 'Buy Limit Order' : 'Sell Limit Order'}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {formData.trade_type === 'buy_limit' 
+                      ? 'Will execute when price drops to or below entry price'
+                      : 'Will execute when price rises to or above entry price'
+                    }
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Entry Price */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Entry Price</label>
+            <div className="flex items-center gap-2">
+              <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Entry Price</label>
+              {(formData.trade_type === 'buy_limit' || formData.trade_type === 'sell_limit') && (
+                <Badge variant="outline" className="text-xs">
+                  Activation Price
+                </Badge>
+              )}
+            </div>
             <Input
               type="number"
               step="0.01"
-              placeholder="0.00"
+              placeholder={
+                formData.trade_type === 'buy_limit' ? 'Price to buy at (below current)' :
+                formData.trade_type === 'sell_limit' ? 'Price to sell at (above current)' :
+                '0.00'
+              }
               value={formData.entry_price}
               onChange={(e) => handleInputChange('entry_price', e.target.value)}
               className={`w-full ${errors.entry_price ? 'border-red-500' : ''}`}
@@ -297,70 +619,149 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
             {errors.entry_price && (
               <p className="text-sm text-red-500">{errors.entry_price}</p>
             )}
-          </div>
-        </div>
-
-        {/* Stop Loss */}
-        <div className="w-full space-y-2">
-          <label className="text-sm font-medium text-foreground">Stop Loss</label>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={formData.stop_loss}
-            onChange={(e) => handleInputChange('stop_loss', e.target.value)}
-            className={`w-full ${errors.stop_loss ? 'border-red-500' : ''}`}
-          />
-          {errors.stop_loss && (
-            <p className="text-sm text-red-500">{errors.stop_loss}</p>
-          )}
-        </div>
-
-        {/* Take Profits */}
-        <div className="w-full space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-foreground">Take Profits</label>
-            {takeProfits.length < 5 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addTakeProfit}
-                className="h-6 px-2 text-xs"
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                Add TP
-              </Button>
+            
+            {/* Price Relationship Validation Feedback */}
+            {selectedAsset && formData.entry_price && (
+              <div className="text-xs text-muted-foreground">
+                {formData.trade_type === 'buy_limit' && (
+                  <span>💡 Buy Limit should be below current market price</span>
+                )}
+                {formData.trade_type === 'sell_limit' && (
+                  <span>💡 Sell Limit should be above current market price</span>
+                )}
+              </div>
             )}
           </div>
-          
-          {takeProfits.map((tp, index) => (
-            <div key={index} className="flex items-center gap-2 w-full">
-              <Input
-                type="number"
-                step="0.01"
-                placeholder={`TP${index + 1}`}
-                value={tp}
-                onChange={(e) => handleTakeProfitChange(index, e.target.value)}
-                className={`flex-1 ${errors[`tp${index + 1}`] ? 'border-red-500' : ''}`}
-              />
-              {takeProfits.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeTakeProfit(index)}
-                  className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
+        </div>
+
+        {/* Split Price & Pip Calculator */}
+        <div className="w-full p-4 bg-card border border-border rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Left Side - Price Inputs */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">Price Levels</h3>
+                <Badge variant="secondary" className="text-xs">Direct Entry</Badge>
+              </div>
+              
+              {/* Stop Loss */}
+              <div className="space-y-2">
+                <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Stop Loss</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.stop_loss}
+                  onChange={(e) => handleStopLossChange(e.target.value)}
+                  className={`w-full ${errors.stop_loss ? 'border-red-500' : ''}`}
+                />
+                {errors.stop_loss && (
+                  <p className="text-sm text-red-500">{errors.stop_loss}</p>
+                )}
+              </div>
+
+              {/* Take Profits */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Take Profits</label>
+                  {takeProfits.length < 5 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addTakeProfit}
+                      className="h-6 px-2 text-xs"
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add TP
+                    </Button>
+                  )}
+                </div>
+                
+                {takeProfits.map((tp, index) => (
+                  <div key={index} className="flex items-center gap-2 w-full">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder={`TP${index + 1}`}
+                      value={tp}
+                      onChange={(e) => handleTakeProfitChange(index, e.target.value)}
+                      className={`flex-1 ${errors[`tp${index + 1}`] ? 'border-red-500' : ''}`}
+                    />
+                    {takeProfits.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeTakeProfit(index)}
+                        className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                
+                {errors.tp1 && (
+                  <p className="text-sm text-red-500">{errors.tp1}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Right Side - Pip Calculator */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Calculator className="w-4 h-4 text-primary" />
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground whitespace-nowrap">Pip Calculator</h3>
+                <Badge variant="outline" className="text-xs">Auto-Sync</Badge>
+              </div>
+              
+              {/* Stop Loss Pips */}
+              <div className="space-y-2">
+                <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Stop Loss (Pips)</label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="0.0"
+                  value={pipInputs.stop_loss_pips}
+                  onChange={(e) => handlePipChange('stop_loss_pips', e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Take Profit Pips */}
+              <div className="space-y-2">
+                <label className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Take Profits (Pips)</label>
+                
+                {takeProfits.map((_, index) => (
+                  <div key={index} className="flex items-center gap-2 w-full">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      placeholder={`TP${index + 1} pips`}
+                      value={pipInputs[`tp${index + 1}_pips` as keyof typeof pipInputs]}
+                      onChange={(e) => handlePipChange(`tp${index + 1}_pips`, e.target.value)}
+                      className="flex-1"
+                    />
+                    
+                  </div>
+                ))}
+                
+              </div>
+
+              {/* Pip Info */}
+              {selectedAsset && (
+                <div className="p-3 bg-muted/30 rounded-md border border-border">
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div className="font-medium">Pip Information for {selectedAsset.name}:</div>
+                    <div>• Changes sync automatically between price and pip inputs</div>
+                    <div>• Based on standard pip sizes for this asset type</div>
+                  </div>
+                </div>
               )}
             </div>
-          ))}
-          
-          {errors.tp1 && (
-            <p className="text-sm text-red-500">{errors.tp1}</p>
-          )}
+          </div>
         </div>
 
         {/* Notes */}

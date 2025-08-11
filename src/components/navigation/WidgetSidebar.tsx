@@ -77,6 +77,13 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   // Mouse position tracking for edge detection
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      // Prevent sidebar from opening when interacting with protected UI (e.g., Quick Copy panel)
+      if (target && (target as Element).closest('[data-prevent-widget-open="true"]')) {
+        if (isVisible) setIsVisible(false);
+        return;
+      }
+
       const isNearLeftEdge = e.clientX <= 50; // Show when mouse is within 50px of left edge
 
       if (isNearLeftEdge && !isVisible) {

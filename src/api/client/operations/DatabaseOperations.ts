@@ -137,7 +137,7 @@ export class DatabaseOperations {
     try {
       return await withRetry(async () => {
         const executeQuery = async () => {
-          return supabase.from(table).update(data as any).eq('id' as any, id).select().single();
+          return supabase.from(table).update(data as any).eq('id' as any, id).select().maybeSingle();
         };
         
         const response = await withTimeout(

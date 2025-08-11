@@ -5,7 +5,8 @@ import { Check, X, Target, TrendingUp, Hourglass } from 'lucide-react';
 
 interface TradeStatusBadgeProps {
   alert: {
-    status: string;
+    status: 'pending' | 'active' | 'closed';
+    trade_type?: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
     tp_hits?: number[];
     close_reason?: string;
   };
@@ -19,33 +20,43 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     const isPending = alert.status === 'pending';
     const closeReason = alert.close_reason;
     const isClosed = alert.status === 'closed';
+    const tradeType = alert.trade_type;
+    const friendlyType =
+      tradeType === 'buy_limit' ? 'Buy Limit' :
+      tradeType === 'sell_limit' ? 'Sell Limit' :
+      tradeType === 'buy' ? 'Buy' :
+      tradeType === 'sell' ? 'Sell' : undefined;
+    const isLimitType = tradeType === 'buy_limit' || tradeType === 'sell_limit';
 
     if (isPending) {
+        const pendingText = isLimitType && friendlyType ? `Pending ${friendlyType}` : 'Pending';
         return (
-            <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">
-                <Hourglass className="w-3 h-3 mr-1 animate-spin" /> Pending
+            <Badge className="bg-gold-light/20 text-gold-warm border border-gold-warm/30 uppercase">
+                <Hourglass className="w-3 h-3 mr-1 animate-spin" /> {pendingText}
             </Badge>
         );
     }
 
     if (isActive && hitTPs.length > 0) {
         const highestTP = Math.max(...hitTPs);
+        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
         return (
             <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-emerald-400 border-emerald-400 animate-pulse">
-                    <Target className="w-3 h-3 mr-1" /> TP{highestTP} Hit
+                <Badge variant="outline" className="text-emerald-400 border-emerald-400 animate-pulse whitespace-nowrap uppercase">
+                    <Target className="w-3 h-3 mr-1" /> TP{highestTP} HIT
                 </Badge>
-                <Badge variant="outline" className="text-emerald-400 border-emerald-400">
-                    Active
+                <Badge variant="outline" className="text-emerald-400 border-emerald-400 uppercase whitespace-nowrap">
+                    {activeText}
                 </Badge>
             </div>
         );
     }
 
     if (isActive) {
+        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
         return (
             <Badge variant="outline" className="text-emerald-400 border-emerald-400">
-                Active
+                {activeText}
             </Badge>
         );
     }

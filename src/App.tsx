@@ -28,6 +28,7 @@ import EducationPage from "@/pages/landing-page/education/EducationPage";
 import LiveSessionsPage from "@/pages/landing-page/live-sessions/LiveSessionsPage";
 import CommunityForumPage from "@/pages/landing-page/community-forum/CommunityForumPage";
 import IBPartnershipPage from "@/pages/landing-page/ib-partnership-page/IBPartnershipPage";
+import ImperialPartnership from "@/pages/landing-page/imperial-partnership/ImperialPartnership";
 import Signin from "@/pages/landing-page/signin/Signin";
 import ResetPasswordPage from "@/pages/reset-password/ResetPasswordPage";
 import DisclaimersPage from "@/pages/legal/DisclaimersPage";
@@ -107,13 +108,17 @@ function App() {
                             path="community-forum"
                             element={<CommunityForumPage />}
                           />
-                          <Route
+<Route
                             path="ib-partnership"
-                            element={<IBPartnership />}
+                            element={<ImperialPartnership />}
                           />
                           <Route
                             path="ib-partnership-new"
-                            element={<IBPartnershipPage />}
+                            element={<ImperialPartnership />}
+                          />
+                          <Route
+                            path="imperial-partnership"
+                            element={<ImperialPartnership />}
                           />
                            <Route path="signin" element={<Signin />} />
                            <Route path="reset-password" element={<ResetPasswordPage />} />

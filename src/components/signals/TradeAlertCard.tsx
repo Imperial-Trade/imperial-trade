@@ -1,8 +1,8 @@
 
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2, User, Crown, GraduationCap } from 'lucide-react';
+import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2, User, Crown, GraduationCap, Pencil } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
@@ -11,6 +11,10 @@ import TradingCalculator from './TradingCalculator';
 import SignalSharingModal from './SignalSharingModal';
 import { TradeAlertCardProps } from '@/types/components';
 import { TradeSignal } from '@/services/SignalSharingService';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 
 interface PriceRowProps {
   label: string;
@@ -51,6 +55,15 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 }) => {
   const [showCopyPanel, setShowCopyPanel] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState(alert.notes || '');
+  const [localNotes, setLocalNotes] = useState(alert.notes || '');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  
+  useEffect(() => {
+    setLocalNotes(alert.notes || '');
+    setNotesDraft(alert.notes || '');
+  }, [alert.id, alert.notes]);
   
   // Type-safe derivations
   const isBuy = alert.trade_type.includes('buy');
@@ -58,7 +71,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const hitTPs = alert.tp_hits || [];
   const isClosed = alert.status === 'closed';
   const isPending = alert.status === 'pending';
-  const canCloseSignal = isAdmin || isCreator;
+  const canCloseSignal = isCreator;
+  const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
+  const { getPrice } = useWebSocketPrices();
 
   // Convert alert to TradeSignal format for sharing
   const tradeSignal: TradeSignal = {
@@ -88,6 +103,30 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     setShowCalculator(prev => !prev);
   };
 
+  const handleNotesEditToggle = () => {
+    setIsEditingNotes(prev => !prev);
+    setNotesDraft(localNotes || '');
+  };
+
+  const handleNotesSave = async () => {
+    try {
+      setIsSavingNotes(true);
+      const { error } = await supabase
+        .from('trade_alerts')
+        .update({ notes: notesDraft })
+        .eq('id', alert.id);
+
+      if (error) throw error;
+
+      setLocalNotes(notesDraft);
+      setIsEditingNotes(false);
+      toast({ title: 'Notes updated', description: 'Everyone can now see the new notes.' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Failed to update notes', description: e?.message || 'Please try again.' });
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
   // Get role icon and color
   const getRoleIcon = (role: string) => {
     switch (role.toLowerCase()) {
@@ -124,12 +163,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     return `${diffInDays}d ago`;
   };
 
-  // Get button text based on user role
-  const getCloseButtonText = () => {
-    if (isAdmin && !isCreator) return 'Close Trade';
-    if (isCreator) return 'Close My Signal';
-    return 'Close Trade';
-  };
+  // Get button text (only creator can close in stream)
+  const getCloseButtonText = () => 'Close My Signal';
 
   return (
     <div 
@@ -176,64 +211,57 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
                 updatedDate={alert.updated_date} 
                 isRecentClosure={isRecentClosure} 
               />
-              {alert.status === 'active' && (
-                <Badge className={`${isBuy ? 'bg-accent-green/20 text-accent-green border-accent-green/30' : 'bg-accent-red/20 text-accent-red border-accent-red/30'}`}>
-                  {isBuy ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-                  {alert.trade_type.replace('_', ' ').toUpperCase()}
-                </Badge>
-              )}
             </div>
-            
-            {/* Action buttons below currency pair */}
-            <div className="flex items-center gap-2 flex-wrap">
+          </div>
 
-              {/* Copy Button */}
-              <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
+          {/* Actions - moved to the right */}
+          <div className="flex items-center gap-2 flex-wrap" data-prevent-widget-open="true">
+            {/* Copy Button */}
+            <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                  onClick={handleCopyPanelToggle}
+                >
+                  <Copy className="w-4 h-4 mr-1" />
+                  {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </Button>
+              </CollapsibleTrigger>
+            </Collapsible>
+            
+            {/* Share Button */}
+            <SignalSharingModal 
+              signal={tradeSignal}
+              trigger={
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                >
+                  <Share2 className="w-4 h-4 mr-1" />
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              }
+            />
+            
+            {/* Calculator Toggle - Only for active/pending trades */}
+            {(alert.status === 'active' || alert.status === 'pending') && (
+              <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
                 <CollapsibleTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                    onClick={handleCopyPanelToggle}
+                    className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
+                    onClick={handleCalculatorToggle}
                   >
-                    <Copy className="w-4 h-4 mr-1" />
-                    {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    <Calculator className="w-4 h-4 mr-1" />
+                    {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                   </Button>
                 </CollapsibleTrigger>
               </Collapsible>
-              
-              {/* Share Button */}
-              <SignalSharingModal 
-                signal={tradeSignal}
-                trigger={
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                  >
-                    <Share2 className="w-4 h-4 mr-1" />
-                    <ChevronDown className="w-3 h-3" />
-                  </Button>
-                }
-              />
-              
-              {/* Calculator Toggle - Only for active/pending trades */}
-              {(alert.status === 'active' || alert.status === 'pending') && (
-                <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
-                  <CollapsibleTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
-                      onClick={handleCalculatorToggle}
-                    >
-                      <Calculator className="w-4 h-4 mr-1" />
-                      {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    </Button>
-                  </CollapsibleTrigger>
-                </Collapsible>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -251,7 +279,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       )}
 
       <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-        <CollapsibleContent className="px-4 pb-4">
+        <CollapsibleContent className="px-4 pb-4" data-prevent-widget-open="true">
             <QuickCopyPanel alert={alert} />
         </CollapsibleContent>
       </Collapsible>
@@ -295,26 +323,50 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </div>
       </div>
       
-      {alert.notes && (
-        <div className="px-4 pb-4">
-            <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded-md">"{alert.notes}"</p>
+      <div className="px-4 pb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-muted-foreground">Notes</span>
+          {canEditNotes && !isEditingNotes && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue" 
+              onClick={handleNotesEditToggle}
+            >
+              <Pencil className="w-3 h-3 mr-1" /> Edit
+            </Button>
+          )}
         </div>
-      )}
-
+        {isEditingNotes ? (
+          <div className="space-y-2">
+            <Textarea 
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              placeholder="Add helpful context for followers..."
+              className="min-h-[80px]"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={handleNotesEditToggle} disabled={isSavingNotes}>Cancel</Button>
+              <Button variant="default" size="sm" onClick={handleNotesSave} disabled={isSavingNotes || notesDraft === localNotes}>
+                {isSavingNotes ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
+        )}
+      </div>
       {/* Stop Loss Proximity Warning */}
-      {livePrice && alert.status === 'active' && (() => {
+      {alert.status === 'active' && (() => {
+        const wsPrice = getPrice?.(alert.tradermade_symbol)?.price;
+        const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
         const entryPrice = alert.entry_price;
         const stopLoss = alert.stop_loss;
-        const currentPrice = livePrice;
-        
-        if (!entryPrice || !stopLoss) return null;
-        
-        // Calculate proximity to stop loss (works for both buy and sell trades)
+        if (!entryPrice || !stopLoss || !currentPrice) return null;
         const totalDistance = Math.abs(entryPrice - stopLoss);
+        if (totalDistance === 0) return null;
         const currentDistance = Math.abs(currentPrice - stopLoss);
         const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
-        
-        // Only show warning if 50% or closer to stop loss, hide if price goes back to 49% or less
         if (proximityPercentage >= 50) {
           return (
             <div className="px-4 pb-4">

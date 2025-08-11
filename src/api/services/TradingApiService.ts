@@ -53,6 +53,7 @@ export class TradingApiService {
       console.log('TradingApiService - Creating alert with DTO:', dto);
       console.log('TradingApiService - User ID:', userId);
       
+      const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
       const insertData: TableInsert<'trade_alerts'> = {
         asset_name: dto.assetName,
         tradermade_symbol: dto.tradermadeSymbol,
@@ -66,7 +67,7 @@ export class TradingApiService {
         tp5: dto.tp5,
         notes: dto.notes,
         user_id: userId,
-        status: 'active'
+        status: isLimitOrder ? 'pending' : 'active'
       };
 
       console.log('TradingApiService - Insert data:', insertData);
@@ -154,20 +155,18 @@ export class TradingApiService {
         requestUserId: userId 
       });
 
-      // Check if user can update this alert (owner or admin)
+      // Only the owner (educator who posted it) can update
       const isOwner = alert.user_id === userId;
-      const isAdmin = await this.isUserAdmin(userId);
 
       console.log('TradingApiService - Authorization check:', { 
         isOwner, 
-        isAdmin, 
-        canUpdate: isOwner || isAdmin 
+        canUpdate: isOwner 
       });
 
-      if (!isOwner && !isAdmin) {
+      if (!isOwner) {
         return {
           success: false,
-          error: 'Unauthorized to update this alert',
+          error: 'Only the educator who posted this signal can edit it',
           data: undefined
         };
       }

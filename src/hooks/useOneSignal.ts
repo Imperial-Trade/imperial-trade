@@ -260,9 +260,10 @@ export function useOneSignal() {
         10000
       ).catch(() => {});
 
+      // IMPORTANT: Do not delay the permission prompt too long after user click.
+      // We attempt to call OneSignal's requestPermission quickly here (but the button also tries immediately).
       let permResult: NotificationPermission | undefined;
       if ((window as any).OneSignal?.Notifications?.requestPermission) {
-        // v16 API
         try {
           permResult = (await withTimeout((window as any).OneSignal.Notifications.requestPermission(), 10000).catch(() => undefined)) as NotificationPermission | undefined;
         } catch {

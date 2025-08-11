@@ -54,9 +54,19 @@ const NotificationPermissionBanner: React.FC = () => {
               </Button>
               <Button
                 size="sm"
-                onClick={async () => {
+onClick={async () => {
                   try {
                     setRequesting(true);
+                    // Try to trigger the browser prompt immediately within the user gesture
+                    try {
+                      const os = (window as any).OneSignal;
+                      if (os?.Notifications?.requestPermission) {
+                        await os.Notifications.requestPermission().catch(() => {});
+                      } else if (typeof Notification !== 'undefined' && Notification.requestPermission) {
+                        await Notification.requestPermission().catch(() => {});
+                      }
+                    } catch {}
+                    // Continue with the full flow (subscribe + identity + tags)
                     await requestPermission();
                     const current = typeof Notification !== 'undefined' ? Notification.permission : permission;
                     if (current === 'granted') {

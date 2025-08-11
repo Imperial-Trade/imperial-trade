@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 declare global {
   interface Window {
-    OneSignal?: any[] & { push: (fn: () => void) => void };
+    OneSignal?: any;
   }
 }
 
@@ -40,7 +40,7 @@ export function useOneSignal() {
 
         if (cancelled) return;
 
-        window.OneSignal = window.OneSignal || [] as any[];
+        window.OneSignal = window.OneSignal || ([] as any[]);
         window.OneSignal.push(function () {
           window.OneSignal!.SDK_INITIALIZED = true;
         });

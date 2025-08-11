@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useOneSignal } from '@/hooks/useOneSignal';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -27,12 +27,21 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   });
 
+  // Track previous permission to only reset dismissal when user manually changes settings
+  const prevPermissionRef = useRef<NotificationPermission | 'unsupported' | undefined>(undefined);
+
   useEffect(() => {
-    // Auto-reset dismissal if permission changes back to default
-    if (permission === 'default' && dismissed) {
+    // Only reset dismissal if permission transitioned from a decided state back to default
+    if (
+      permission === 'default' &&
+      dismissed &&
+      (prevPermissionRef.current === 'granted' || prevPermissionRef.current === 'denied')
+    ) {
       setDismissed(false);
       try { localStorage.removeItem(DISMISS_KEY); } catch {}
     }
+
+    prevPermissionRef.current = permission;
   }, [permission, dismissed]);
 
   const dismissPrompt = useCallback(() => {

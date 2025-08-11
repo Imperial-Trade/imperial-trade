@@ -119,6 +119,30 @@ export function useOneSignal() {
             // Mark initialized only after SDK is ready and setup completed
             setInitialized(true);
             try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
+            // Auto-subscribe on load if permission is granted but no subscription yet
+            try {
+              const os = (window as any).OneSignal;
+              const ps2 = os?.User?.PushSubscription;
+              const currentPerm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+              const hasSub = !!(ps2?.optedIn || ps2?.id);
+              if (currentPerm === 'granted' && !hasSub && os?.Notifications?.subscribe) {
+                os.Notifications.subscribe().catch(() => {});
+                const start = Date.now();
+                const wait = async () => {
+                  while (Date.now() - start < 8000) {
+                    try {
+                      const id2 = os?.User?.PushSubscription?.id ?? null;
+                      const opted2 = !!os?.User?.PushSubscription?.optedIn;
+                      setSubscriptionId(id2);
+                      setHasSubscription(!!(id2 || opted2));
+                      if (id2 || opted2) break;
+                    } catch {}
+                    await new Promise(r => setTimeout(r, 200));
+                  }
+                };
+                wait().catch(() => {});
+              }
+            } catch {}
           } catch (_) {}
         });
 

@@ -53,8 +53,9 @@ serve(async (req) => {
         token_hash,
         redirect_to: redirect_to || 'https://www.tradeimperial.com/reset-password',
         email_action_type,
-        brand_name: 'Imperial Trading',
-        support_email: 'support@tradeimperial.com',
+        brand_name: 'Trade Imperial',
+        support_email: 'tradeimperial2025@gmail.com',
+        logo_url: 'https://www.tradeimperial.com/logo.png',
       })
     )
 
@@ -67,11 +68,11 @@ serve(async (req) => {
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
         include_email_tokens: [user.email],
-        email_subject: 'Reset your Imperial Trading password',
+        email_subject: 'Reset your Trade Imperial password',
         email_body: html,
         target_channel: 'email',
-        from_email: 'support@tradeimperial.com',
-        from_name: 'Imperial Trading',
+        from_email: 'no-reply@tradeimperial.com',
+        from_name: 'Trade Imperial',
       }),
     })
 

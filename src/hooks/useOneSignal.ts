@@ -179,6 +179,17 @@ export function useOneSignal() {
     };
   }, [user?.id, profile?.role, profile?.user_type]);
   
+  // Ensure the OneSignal User exists and has email subscription on server
+  const ensureOneSignalUser = async () => {
+    try {
+      if (!user?.id) return;
+      const tags: Record<string, string> = {};
+      if (profile?.role) tags.role = String(profile.role);
+      if (profile?.user_type) tags.user_type = String(profile.user_type);
+      await supabase.functions.invoke('onesignal-upsert-user', { body: { tags } }).catch(() => {});
+    } catch {}
+  };
+
   // Ensure a OneSignal web push subscription exists; retries for up to maxWaitMs
   const ensureSubscription = async (maxWaitMs: number = 20000): Promise<boolean> => {
     try {
@@ -242,6 +253,9 @@ const requestPermission = async () => {
         console.warn("Notifications permission cannot be requested within an iframe preview. Open in a new tab.");
         return;
       }
+      
+      // Ensure OneSignal user and email subscription exist server-side before creating push subscription
+      await ensureOneSignalUser();
 
       // Wait briefly for OneSignal SDK readiness (Notifications available)
       await withTimeout(

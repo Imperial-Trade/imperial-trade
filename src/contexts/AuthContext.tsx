@@ -144,6 +144,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Handle specific auth events
         if (event === 'SIGNED_IN') {
           console.log('User signed in successfully');
+          // After successful sign-in, ensure OneSignal user and email subscription exist
+          setTimeout(() => {
+            supabase.functions.invoke('onesignal-upsert-user').catch(() => {});
+          }, 0);
         } else if (event === 'SIGNED_OUT') {
           // Skip cleanup if we're manually signing out to prevent race condition
           if (!isSigningOut) {

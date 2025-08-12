@@ -144,6 +144,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Handle specific auth events
         if (event === 'SIGNED_IN') {
           console.log('User signed in successfully');
+          // OneSignal upsert is handled via a dedicated effect with deduplication
         } else if (event === 'SIGNED_OUT') {
           // Skip cleanup if we're manually signing out to prevent race condition
           if (!isSigningOut) {
@@ -171,7 +172,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+}, []);
+
+  // Ensure OneSignal user/email subscription on auth/profile changes (deduplicated)
+  useEffect(() => {
+    try {
+      const uid = user?.id;
+      if (!uid) return;
+      const email = user?.email || '';
+      const role = profile?.role || '';
+      const utype = profile?.user_type || '';
+      const key = `os_upsert_v1:${uid}:${email}:${role}:${utype}`;
+      const done = (() => { try { return localStorage.getItem(key) === '1'; } catch { return false; } })();
+      if (done) return;
+      const body: { tags?: Record<string, string> } = {};
+      const tags: Record<string, string> = {};
+      if (role) tags.role = String(role);
+      if (utype) tags.user_type = String(utype);
+      if (Object.keys(tags).length) body.tags = tags;
+      supabase.functions.invoke('onesignal-upsert-user', { body }).then(() => {
+        try { localStorage.setItem(key, '1'); } catch {}
+      }).catch(() => {});
+    } catch {}
+  }, [user?.id, user?.email, profile?.role, profile?.user_type]);
+
 
   const signOut = async () => {
     try {

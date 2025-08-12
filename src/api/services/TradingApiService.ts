@@ -362,8 +362,8 @@ export class TradingApiService {
       const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
 
       // Fetch profiles for these users
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
+      const { data: profilesData, error: profilesError } = await (supabase as any)
+        .from('public_profiles')
         .select('*')
         .in('id', userIds);
 

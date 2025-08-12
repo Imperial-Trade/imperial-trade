@@ -1,14 +1,14 @@
 import React from 'npm:react@18.3.1'
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
-import { Resend } from 'npm:resend@4.0.0'
+
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0'
 import PasswordResetEmail from './_templates/password-reset.tsx'
 
-const resend = new Resend(Deno.env.get('RESEND_API_KEY') as string)
-const hookSecret = Deno.env.get('SEND_EMAIL_HOOK_SECRET') as string
+const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID') as string
+const ONESIGNAL_API_KEY = Deno.env.get('ONESIGNAL_API_KEY') as string
+const hookSecret = Deno.env.get('SEND_FORGOT_PASSWORD_EMAIL_HOOK_SECRET') as string
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://kmuoqkcxguafxulqlbmi.supabase.co'
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -58,14 +58,27 @@ serve(async (req) => {
       })
     )
 
-    const { error } = await resend.emails.send({
-      from: 'Imperial Trading <onboarding@resend.dev>',
-      to: [user.email],
-      subject: 'Reset your Imperial Trading password',
-      html,
+    const onesignalResponse = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        app_id: ONESIGNAL_APP_ID,
+        include_email_tokens: [user.email],
+        email_subject: 'Reset your Imperial Trading password',
+        email_body: html,
+        target_channel: 'email',
+        from_email: 'support@tradeimperial.com',
+        from_name: 'Imperial Trading',
+      }),
     })
 
-    if (error) throw error
+    if (!onesignalResponse.ok) {
+      const errText = await onesignalResponse.text()
+      throw new Error(`OneSignal error: ${onesignalResponse.status} ${errText}`)
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

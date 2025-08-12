@@ -143,15 +143,21 @@ try {
       })
     }
 
-    const ALLOWED_REDIRECT = 'https://www.tradeimperial.com/reset-password'
+    const ALLOWED_REDIRECTS = [
+      'https://tradeimperial.com/reset-password',
+      'https://www.tradeimperial.com/reset-password',
+    ]
 
-    // Enforce production redirect URL
-    let enforcedRedirect = ALLOWED_REDIRECT
+    // Enforce production redirect URL (default to apex domain)
+    let enforcedRedirect = ALLOWED_REDIRECTS[0]
     try {
       if (redirect_to) {
         const incoming = new URL(redirect_to)
-        const allowed = new URL(ALLOWED_REDIRECT)
-        if (incoming.origin === allowed.origin && incoming.pathname === allowed.pathname) {
+        const match = ALLOWED_REDIRECTS.find((allowed) => {
+          const a = new URL(allowed)
+          return incoming.origin === a.origin && incoming.pathname === a.pathname
+        })
+        if (match) {
           enforcedRedirect = incoming.toString()
         } else {
           console.log('Overriding invalid redirect_to', { redirect_to })

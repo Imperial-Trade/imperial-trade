@@ -39,9 +39,9 @@ export const accountRequestSchema = z.object({
   // Honeypot field - should always be empty
   website: z.string().max(0, "Invalid submission").optional().default(""),
 
-  // Single combined legal acceptance (required)
-  accept_legal: z.literal(true, {
-    errorMap: () => ({ message: "You must agree to the Terms of Use and Privacy Policy." })
+  // Single combined legal acceptance (required - boolean type)
+  accept_legal: z.boolean().refine((val) => val === true, {
+    message: "You must agree to the Terms of Use and Privacy Policy."
   }),
 });
 
@@ -60,9 +60,9 @@ export const passwordSetupSchema = z.object({
   
   confirmPassword: z.string(),
 
-  // Single combined legal acceptance (required)
-  accept_legal: z.literal(true, {
-    errorMap: () => ({ message: "You must agree to the Terms of Use and Privacy Policy." })
+  // Single combined legal acceptance (required - boolean type)
+  accept_legal: z.boolean().refine((val) => val === true, {
+    message: "You must agree to the Terms of Use and Privacy Policy."
   }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",

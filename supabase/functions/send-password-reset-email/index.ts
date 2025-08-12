@@ -46,12 +46,30 @@ serve(async (req) => {
       })
     }
 
+    const ALLOWED_REDIRECT = 'https://www.tradeimperial.com/reset-password'
+
+    // Enforce production redirect URL
+    let enforcedRedirect = ALLOWED_REDIRECT
+    try {
+      if (redirect_to) {
+        const incoming = new URL(redirect_to)
+        const allowed = new URL(ALLOWED_REDIRECT)
+        if (incoming.origin === allowed.origin && incoming.pathname === allowed.pathname) {
+          enforcedRedirect = incoming.toString()
+        } else {
+          console.log('Overriding invalid redirect_to', { redirect_to })
+        }
+      }
+    } catch (_e) {
+      console.log('Malformed redirect_to received, overriding to allowed URL')
+    }
+
     const html = await renderAsync(
       React.createElement(PasswordResetEmail, {
         supabase_url: SUPABASE_URL,
         token,
         token_hash,
-        redirect_to: redirect_to || 'https://www.tradeimperial.com/reset-password',
+        redirect_to: enforcedRedirect,
         email_action_type,
         brand_name: 'Trade Imperial',
         support_email: 'tradeimperial2025@gmail.com',

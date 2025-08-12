@@ -1,6 +1,7 @@
 import React from 'react';
 import { useConnectionHealth } from '@/hooks/useConnectionHealth';
 import { Wifi, WifiOff, Zap, AlertTriangle } from 'lucide-react';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 
 interface ConnectionHealthBadgeProps {
   className?: string;
@@ -20,8 +21,11 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
     averageLatency
   } = useConnectionHealth();
 
+  const { connectionStatus } = useWebSocketPrices();
+
   const getHealthStatus = () => {
-    if (!isHealthy) {
+    // Show Offline only when the socket isn't connected
+    if (connectionStatus !== 'connected') {
       return {
         icon: WifiOff,
         color: 'text-red-400',
@@ -31,7 +35,8 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
       };
     }
     
-    if (actualFrequency <= 300 && connectionUptime >= 95) {
+    // When connected, classify by performance
+    if (actualFrequency > 0 && actualFrequency <= 300 && connectionUptime >= 95) {
       return {
         icon: Zap,
         color: 'text-emerald-400',
@@ -41,7 +46,7 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
       };
     }
     
-    if (actualFrequency <= 500 && connectionUptime >= 90) {
+    if (actualFrequency > 0 && actualFrequency <= 500 && connectionUptime >= 85) {
       return {
         icon: Wifi,
         color: 'text-green-400',
@@ -51,6 +56,7 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
       };
     }
     
+    // Connected but slower than expected
     return {
       icon: AlertTriangle,
       color: 'text-yellow-400',

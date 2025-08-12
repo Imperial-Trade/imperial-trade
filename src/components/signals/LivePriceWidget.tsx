@@ -62,7 +62,7 @@ const LivePriceWidgetComponent = ({
     refreshPrice
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
-    debounceMs: 80,
+    debounceMs: 25,
     pauseOnInput: false
   });
 

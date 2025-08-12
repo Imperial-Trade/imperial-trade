@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Bell, Mail, Clock, Settings } from 'lucide-react';
+import { Bell, Mail, Clock, Settings, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RecentAdminNotifications } from './notifications/RecentAdminNotifications';
@@ -15,6 +15,13 @@ interface NotificationSettings {
   dailyDigest: boolean;
   weeklyReport: boolean;
 }
+
+const labelMap: Record<keyof NotificationSettings, string> = {
+  newRequests: 'New account requests',
+  resubmissions: 'Request resubmissions',
+  dailyDigest: 'Daily summary email',
+  weeklyReport: 'Weekly report email',
+};
 
 export const AdminNotificationSystem: React.FC = () => {
   const [settings, setSettings] = useState<NotificationSettings>({
@@ -89,17 +96,18 @@ export const AdminNotificationSystem: React.FC = () => {
 
       if (error) throw error;
 
+      const label = labelMap[key];
       toast({
-        title: "Settings Updated",
-        description: `Notification preference for ${key} has been updated.`,
+        title: "Preference saved",
+        description: `${label} notifications ${value ? 'enabled' : 'disabled'}.`,
         variant: "default",
       });
     } catch (error) {
       console.error('Error updating notification settings:', error);
       setSettings(prev => ({ ...prev, [key]: !value }));
       toast({
-        title: "Error",
-        description: "Failed to update notification settings. Please try again.",
+        title: "Couldn't save changes",
+        description: "We couldn't update your preferences. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -139,8 +147,8 @@ export const AdminNotificationSystem: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-foreground">Notification Settings</h3>
-          <p className="text-muted-foreground">Configure admin notifications for account requests</p>
+          <h3 className="text-lg font-semibold text-foreground">Admin Notifications</h3>
+          <p className="text-muted-foreground">Choose how and when you're notified about account requests.</p>
         </div>
         <Button
           onClick={sendTestNotification}
@@ -151,6 +159,12 @@ export const AdminNotificationSystem: React.FC = () => {
           <Bell className="w-4 h-4 mr-2" />
           {loading ? 'Sending...' : 'Send Test Notification'}
         </Button>
+      </div>
+      <div className="flex items-start gap-2 rounded-md border p-3 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
+        <p>
+          Emails are sent to your admin address. Times use your local timezone. Use the Send Test Notification button to confirm delivery.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -166,7 +180,7 @@ export const AdminNotificationSystem: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-foreground">New Account Requests</p>
-                <p className="text-sm text-muted-foreground">Get notified immediately when someone submits a new request</p>
+                <p className="text-sm text-muted-foreground">Receive an email as soon as someone submits a new account request.</p>
               </div>
               <Switch
                 checked={settings.newRequests}
@@ -178,7 +192,7 @@ export const AdminNotificationSystem: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-foreground">Request Resubmissions</p>
-                <p className="text-sm text-muted-foreground">Get alerts when users resubmit after rejection</p>
+                <p className="text-sm text-muted-foreground">Receive an email when an applicant resubmits after changes.</p>
               </div>
               <Switch
                 checked={settings.resubmissions}
@@ -190,7 +204,7 @@ export const AdminNotificationSystem: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-foreground">Daily Digest</p>
-                <p className="text-sm text-muted-foreground">Summary of pending requests sent daily at 9 AM</p>
+                <p className="text-sm text-muted-foreground">A daily summary of pending and recent requests. Sent at 9:00 AM.</p>
               </div>
               <Switch
                 checked={settings.dailyDigest}
@@ -202,7 +216,7 @@ export const AdminNotificationSystem: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-foreground">Weekly Report</p>
-                <p className="text-sm text-muted-foreground">Comprehensive weekly statistics and trends</p>
+                <p className="text-sm text-muted-foreground">A weekly overview of request volumes, outcomes, and trends. Sent every Monday at 9:00 AM.</p>
               </div>
               <Switch
                 checked={settings.weeklyReport}

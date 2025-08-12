@@ -48,6 +48,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
       });
 
       if (error) {
+        console.error('[ForgotPassword] resetPasswordForEmail error', error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -55,6 +56,8 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
         });
         return;
       }
+
+      console.info('[ForgotPassword] Reset email sent successfully', { email: data.email });
 
       setEmailSent(true);
       toast({

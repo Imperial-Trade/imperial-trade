@@ -1,6 +1,7 @@
 import React from 'npm:react@18.3.1'
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
 
+import { createClient } from 'npm:@supabase/supabase-js@2.50.3'
 import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0'
 import PasswordResetEmail from './_templates/password-reset.tsx'
@@ -44,6 +45,31 @@ function normalizeHookSecret(raw: string): { secret: string; encoding: 'hex' | '
     throw new Error('Invalid hook secret format')
   }
 }
+
+async function getLogoUrl(): Promise<string> {
+  const direct = Deno.env.get('EMAIL_LOGO_URL');
+  if (direct && direct.trim() !== '') return direct;
+
+  const bucket = Deno.env.get('EMAIL_LOGO_BUCKET') || 'imperial-trade-bucket';
+  const path = Deno.env.get('EMAIL_LOGO_PATH');
+  const expires = Number(Deno.env.get('EMAIL_LOGO_EXPIRES_IN')) || 60 * 60 * 24 * 7; // 7 days
+
+  try {
+    if (!path) throw new Error('EMAIL_LOGO_PATH not set');
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!serviceKey) throw new Error('Missing service role key');
+
+    const supabase = createClient(SUPABASE_URL, serviceKey);
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expires);
+    if (error || !data?.signedUrl) throw error || new Error('No signed URL');
+    return data.signedUrl;
+  } catch (e) {
+    console.warn('Falling back to default logo URL', { message: (e as any)?.message });
+    return 'https://www.tradeimperial.com/logo.png';
+  }
+}
+
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -135,6 +161,8 @@ try {
       console.log('Malformed redirect_to received, overriding to allowed URL')
     }
 
+    const logoUrl = await getLogoUrl();
+    console.log('Email logo URL', { correlationId, logoUrl });
     const html = await renderAsync(
       React.createElement(PasswordResetEmail, {
         supabase_url: SUPABASE_URL,
@@ -144,7 +172,7 @@ try {
         email_action_type,
         brand_name: 'Trade Imperial',
         support_email: 'tradeimperial2025@gmail.com',
-        logo_url: 'https://www.tradeimperial.com/logo.png',
+        logo_url: logoUrl,
       })
     )
 

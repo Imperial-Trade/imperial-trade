@@ -48,35 +48,64 @@ export const ResetPasswordForm: React.FC = () => {
   });
 
   useEffect(() => {
-    const validateSession = async () => {
+    const cleanUrl = () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error || !session) {
-          toast({
-            variant: "destructive",
-            title: "Invalid Reset Link",
-            description: "This password reset link is invalid or has expired.",
-          });
-          navigate('/signin');
+        const url = new URL(window.location.href);
+        // Remove hash tokens
+        url.hash = '';
+        // Remove token params from query if present
+        const params = new URLSearchParams(url.search);
+        params.delete('access_token');
+        params.delete('refresh_token');
+        params.delete('type');
+        url.search = params.toString();
+        window.history.replaceState({}, document.title, url.toString());
+      } catch {}
+    };
+
+    const parseTokens = () => {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const searchParams = new URLSearchParams(window.location.search);
+      const access_token = hashParams.get('access_token') || searchParams.get('access_token');
+      const refresh_token = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+      const type = hashParams.get('type') || searchParams.get('type');
+      return { access_token, refresh_token, type };
+    };
+
+    const validateSession = async () => {
+      setIsValidating(true);
+      try {
+        const { access_token, refresh_token, type } = parseTokens();
+        console.info('[ResetPassword] Validating link', { hasAccess: !!access_token, hasRefresh: !!refresh_token, type });
+
+        if (type === 'recovery' && access_token && refresh_token) {
+          const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (error) {
+            console.error('[ResetPassword] setSession error', error);
+            setIsValidLink(false);
+            return;
+          }
+          if (data?.session) {
+            console.info('[ResetPassword] Session set successfully');
+            setIsValidLink(true);
+            cleanUrl();
+            return;
+          }
         } else {
-          setIsValidLink(true);
+          console.warn('[ResetPassword] Invalid link parameters');
         }
+
+        setIsValidLink(false);
       } catch (error) {
-        console.error("Session validation error:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Unable to validate reset link. Please try again.",
-        });
-        navigate('/signin');
+        console.error('[ResetPassword] Session validation error:', error);
+        setIsValidLink(false);
       } finally {
         setIsValidating(false);
       }
     };
 
     validateSession();
-  }, [navigate, toast]);
+  }, []);
 
   const onSubmit = async (data: ResetPasswordData) => {
     setIsSubmitting(true);
@@ -87,6 +116,7 @@ export const ResetPasswordForm: React.FC = () => {
       });
 
       if (error) {
+        console.error('[ResetPassword] updateUser error', error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -94,6 +124,8 @@ export const ResetPasswordForm: React.FC = () => {
         });
         return;
       }
+
+      console.info('[ResetPassword] Password updated successfully');
 
       setResetComplete(true);
       toast({
@@ -165,9 +197,25 @@ export const ResetPasswordForm: React.FC = () => {
     );
   }
 
-  // Don't render the form until we have a valid session
+  // Show invalid link state
   if (!isValidLink) {
-    return null;
+    return (
+      <Card className="glass-effect border-default">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center text-red-300">
+            Invalid Reset Link
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-slate-50 text-center">
+            This password reset link is invalid or has expired. Please request a new link.
+          </p>
+          <Button className="w-full" onClick={() => navigate('/signin')}>
+            Return to Sign In
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

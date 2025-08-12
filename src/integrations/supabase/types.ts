@@ -140,6 +140,51 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_notification_events: {
+        Row: {
+          channels: string[]
+          created_at: string
+          delivery_status: string
+          error: string | null
+          event_type: string
+          id: string
+          message: string
+          metadata: Json
+          recipients: Json
+          sent_at: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          channels?: string[]
+          created_at?: string
+          delivery_status?: string
+          error?: string | null
+          event_type: string
+          id?: string
+          message: string
+          metadata?: Json
+          recipients: Json
+          sent_at?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channels?: string[]
+          created_at?: string
+          delivery_status?: string
+          error?: string | null
+          event_type?: string
+          id?: string
+          message?: string
+          metadata?: Json
+          recipients?: Json
+          sent_at?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       agent_outputs: {
         Row: {
           agent_name: string

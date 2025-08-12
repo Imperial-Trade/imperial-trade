@@ -1,12 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Bell, Mail, Users, Clock, CheckCircle, Settings } from 'lucide-react';
+import { Bell, Mail, Clock, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { RecentAdminNotifications } from './notifications/RecentAdminNotifications';
+import { AdminNotificationStats } from './notifications/AdminNotificationStats';
 
 interface NotificationSettings {
   newRequests: boolean;
@@ -26,7 +27,6 @@ export const AdminNotificationSystem: React.FC = () => {
   const [saveLoading, setSaveLoading] = useState(false);
   const { toast } = useToast();
 
-  // Load notification settings from database
   useEffect(() => {
     loadNotificationSettings();
   }, []);
@@ -44,7 +44,7 @@ export const AdminNotificationSystem: React.FC = () => {
         .eq('admin_id', user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error && (error as any).code !== 'PGRST116') {
         console.error('Error loading notification settings:', error);
         return;
       }
@@ -96,7 +96,6 @@ export const AdminNotificationSystem: React.FC = () => {
       });
     } catch (error) {
       console.error('Error updating notification settings:', error);
-      // Revert the setting on error
       setSettings(prev => ({ ...prev, [key]: !value }));
       toast({
         title: "Error",
@@ -111,18 +110,14 @@ export const AdminNotificationSystem: React.FC = () => {
   const sendTestNotification = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('account-request-notifications', {
-        body: {
-          type: 'test',
-          message: 'This is a test notification from the admin panel'
-        }
+      const { error } = await supabase.functions.invoke('account-request-notifications', {
+        body: { type: 'test' }
       });
-
       if (error) throw error;
-      
+
       toast({
-        title: "Test Email Sent",
-        description: "Check your inbox for the test email.",
+        title: "Test Notification Sent",
+        description: "A test push and email were sent via OneSignal.",
         variant: "default",
       });
     } catch (error) {
@@ -151,7 +146,7 @@ export const AdminNotificationSystem: React.FC = () => {
           className="border-gray-300"
         >
           <Bell className="w-4 h-4 mr-2" />
-          {loading ? 'Sending...' : 'Send Test Email'}
+          {loading ? 'Sending...' : 'Send Test Notification'}
         </Button>
       </div>
 
@@ -215,7 +210,7 @@ export const AdminNotificationSystem: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
+        {/* Recent Activity (dynamic) */}
         <Card className="border-gray-200">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
@@ -223,37 +218,11 @@ export const AdminNotificationSystem: React.FC = () => {
               Recent Activity
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <Users className="w-4 h-4 text-blue-600 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-900">New account request received</p>
-                  <p className="text-xs text-blue-700">john.doe@example.com • 2 minutes ago</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-900">Account approved</p>
-                  <p className="text-xs text-green-700">jane.smith@example.com • 15 minutes ago</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                <Bell className="w-4 h-4 text-orange-600 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-orange-900">Request resubmitted</p>
-                  <p className="text-xs text-orange-700">alice.johnson@example.com • 1 hour ago</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
+          <RecentAdminNotifications />
         </Card>
       </div>
 
-      {/* Statistics Overview */}
+      {/* Statistics Overview (dynamic) */}
       <Card className="border-gray-200">
         <CardHeader>
             <CardTitle className="flex items-center gap-2 text-foreground">
@@ -261,26 +230,7 @@ export const AdminNotificationSystem: React.FC = () => {
               Notification Statistics
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="text-2xl font-bold text-blue-600">24</div>
-              <div className="text-sm text-blue-700">Emails sent today</div>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="text-2xl font-bold text-green-600">156</div>
-              <div className="text-sm text-green-700">This week</div>
-            </div>
-            <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-              <div className="text-2xl font-bold text-yellow-600">89%</div>
-              <div className="text-sm text-yellow-700">Delivery rate</div>
-            </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <div className="text-2xl font-bold text-purple-600">3</div>
-              <div className="text-sm text-purple-700">Active subscriptions</div>
-            </div>
-          </div>
-        </CardContent>
+        <AdminNotificationStats />
       </Card>
     </div>
   );

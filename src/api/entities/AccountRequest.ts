@@ -86,6 +86,18 @@ export class AccountRequest {
       throw error;
     }
 
+    // Fire admin notifications (non-blocking)
+    supabase.functions.invoke('account-request-notifications', {
+      body: {
+        type: 'new_request',
+        requestId: (result as any).id,
+        userEmail: data.email,
+        userName: data.full_name,
+      },
+    }).then(({ data, error }) => {
+      console.log('Admin notification (new_request) invoked:', { data, error });
+    });
+
     console.log('✅ Account request created successfully:', result);
     return result as AccountRequestData;
   }
@@ -160,7 +172,18 @@ export class AccountRequest {
       throw error;
     }
 
-    console.log('✅ Account request updated successfully:', result);
+    // Fire admin notifications (non-blocking)
+    supabase.functions.invoke('account-request-notifications', {
+      body: {
+        type: 'request_resubmitted',
+        requestId: id,
+        userEmail: (result as any).email,
+        userName: (result as any).full_name,
+      },
+    }).then(({ data, error }) => {
+      console.log('Admin notification (request_resubmitted) invoked:', { data, error });
+    });
+
     return result as AccountRequestData;
   }
 

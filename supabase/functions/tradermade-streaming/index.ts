@@ -104,7 +104,7 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
     globalRateLimitCount++;
     
     const url = `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${apiKey}`;
-    console.log(`🔄 Fetching HTTP price for ${symbol} from:`, url);
+    console.log(`🔄 Fetching HTTP price for ${symbol} (endpoint logged, API key masked)`);
     
     const response = await fetch(url, {
       method: 'GET',
@@ -407,9 +407,11 @@ serve(async (req) => {
             // Send to client if subscribed
             if (clientSubscriptions.has(symbol) && socket.readyState === WebSocket.OPEN) {
               console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${price}`);
+              const tickTs = (typeof data.ts === 'string' || typeof data.ts === 'number') ? Number(data.ts) : Date.now();
               socket.send(JSON.stringify({
                 type: 'price_update',
-                ...priceUpdate
+                ...priceUpdate,
+                tick_timestamp: tickTs
               }));
             }
           } else {

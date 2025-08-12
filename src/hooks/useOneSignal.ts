@@ -254,9 +254,6 @@ const requestPermission = async () => {
         return;
       }
       
-      // Ensure OneSignal user and email subscription exist server-side before creating push subscription
-      await ensureOneSignalUser();
-
       // Wait briefly for OneSignal SDK readiness (Notifications available)
       await withTimeout(
         new Promise<void>((resolve) => {

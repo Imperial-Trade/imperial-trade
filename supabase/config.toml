@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.onesignal-upsert-user]
 verify_jwt = true
+
+[functions.onesignal-config]
+verify_jwt = false

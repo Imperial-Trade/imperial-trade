@@ -103,22 +103,20 @@ export class AccountRequest {
   }
 
   static async getByEmail(email: string): Promise<AccountRequestData | null> {
-    console.log('🔍 Checking for existing account request:', email);
-    
-    const { data, error } = await supabase
-      .from('account_requests')
-      .select('*')
-      .eq('email', email.toLowerCase().trim())
-      .order('created_at', { ascending: false })
-      .maybeSingle();
+    console.log('🔍 Checking for existing account request via edge function:', email);
+
+    const { data, error } = await supabase.functions.invoke('check-account-request-status', {
+      body: { email: email.toLowerCase().trim() }
+    });
 
     if (error) {
-      console.error('❌ Error fetching account request by email:', error);
+      console.error('❌ Error fetching account request by email (edge fn):', error);
       throw error;
     }
 
-    console.log('✅ Account request found:', data);
-    return data as AccountRequestData | null;
+    const req = (data as any)?.request ?? null;
+    console.log('✅ Account request (edge fn) found:', req);
+    return req as AccountRequestData | null;
   }
 
   static async updateRejectedRequest(id: string, updateData: Partial<AccountRequestData>): Promise<AccountRequestData> {

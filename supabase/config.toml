@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.admin-notification-active-admins]
 verify_jwt = true
+
+[functions.check-account-request-status]
+verify_jwt = false

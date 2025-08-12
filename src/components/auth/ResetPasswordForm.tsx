@@ -76,20 +76,28 @@ export const ResetPasswordForm: React.FC = () => {
       setIsValidating(true);
       try {
         const { access_token, refresh_token, type } = parseTokens();
+        console.info('[ResetPassword] Validating link', { hasAccess: !!access_token, hasRefresh: !!refresh_token, type });
 
         if (type === 'recovery' && access_token && refresh_token) {
           const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-          if (!error && data?.session) {
+          if (error) {
+            console.error('[ResetPassword] setSession error', error);
+            setIsValidLink(false);
+            return;
+          }
+          if (data?.session) {
+            console.info('[ResetPassword] Session set successfully');
             setIsValidLink(true);
             cleanUrl();
             return;
           }
+        } else {
+          console.warn('[ResetPassword] Invalid link parameters');
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
-        setIsValidLink(!!session);
+        setIsValidLink(false);
       } catch (error) {
-        console.error('Session validation error:', error);
+        console.error('[ResetPassword] Session validation error:', error);
         setIsValidLink(false);
       } finally {
         setIsValidating(false);
@@ -108,6 +116,7 @@ export const ResetPasswordForm: React.FC = () => {
       });
 
       if (error) {
+        console.error('[ResetPassword] updateUser error', error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -115,6 +124,8 @@ export const ResetPasswordForm: React.FC = () => {
         });
         return;
       }
+
+      console.info('[ResetPassword] Password updated successfully');
 
       setResetComplete(true);
       toast({

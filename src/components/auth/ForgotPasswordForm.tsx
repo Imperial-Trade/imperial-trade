@@ -92,6 +92,15 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
             <p className="text-sm text-slate-300">
               Please check your inbox and follow the instructions to reset your password.
             </p>
+            <p className="text-xs text-slate-400">If you don’t see the email within a few minutes:</p>
+            <ul className="text-xs text-slate-400 text-left mx-auto max-w-xs list-disc pl-5 space-y-1">
+              <li>Check your Spam or Junk folder</li>
+              <li>Add no-reply@tradeimperial.com to your contacts</li>
+              <li>Verify the email you entered is correct</li>
+            </ul>
+            <p className="text-xs text-slate-400">
+              Still no email? Contact support at <a href="mailto:tradeimperial2025@gmail.com" className="underline">tradeimperial2025@gmail.com</a>.
+            </p>
           </div>
           
           <Button
@@ -168,6 +177,14 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Sign In
               </Button>
+            </div>
+
+            <div className="text-xs text-slate-400 text-center mt-2 space-y-1">
+              <p>Didn’t receive the email? Check your Spam folder or wait a couple of minutes.</p>
+              <p>
+                For help, contact
+                {' '}<a href="mailto:tradeimperial2025@gmail.com" className="underline">tradeimperial2025@gmail.com</a>.
+              </p>
             </div>
           </form>
         </Form>

@@ -79,6 +79,15 @@ serve(async (req) => {
       })
     }
 
+    // Validate OneSignal configuration
+    if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
+      console.error('Missing OneSignal configuration', { correlationId, hasAppId: !!ONESIGNAL_APP_ID, hasApiKey: !!ONESIGNAL_API_KEY })
+      return new Response(JSON.stringify({ error: 'Email service not configured', correlationId }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
+    }
+
     const ALLOWED_REDIRECT = 'https://www.tradeimperial.com/reset-password'
 
     // Enforce production redirect URL

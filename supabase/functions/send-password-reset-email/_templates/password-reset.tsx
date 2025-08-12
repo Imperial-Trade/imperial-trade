@@ -61,12 +61,12 @@ export const PasswordResetEmail = ({
 
             <ol style={list as any}>
               <li>Click the button below to open the secure reset page.</li>
-              <li>Create a strong new password (12+ chars, upper/lowercase, number, symbol).</li>
+              <li>Create a strong new password (at least 12 characters, mix upper/lowercase letters, numbers, and symbols).</li>
               <li>Confirm your new password and submit.</li>
             </ol>
 
             <Link href={resetUrl} target="_blank" style={button}>
-              Reset Password
+              Reset Password Securely
             </Link>
 
             <Text style={{ ...text, marginTop: 16 }}>
@@ -80,13 +80,13 @@ export const PasswordResetEmail = ({
             <Hr style={hr} />
 
             <Text style={footnote}>
-              This link will expire shortly for security. If you didn’t request
-              a password reset, you can safely ignore this email.
+              For your security, this link expires in 60 minutes. Do not share it with anyone.
+              If you didn’t request a password reset, you can safely ignore this email.
             </Text>
           </Section>
 
           <Text style={footer}>
-            Need help? Reply to this email or contact us at {support_email}
+            Need help? Contact our support team at {support_email}
           </Text>
         </Container>
       </Body>

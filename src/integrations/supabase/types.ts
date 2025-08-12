@@ -67,6 +67,9 @@ export type Database = {
           full_name: string
           id: string
           last_resubmitted_at: string | null
+          legal_accepted: boolean
+          legal_accepted_at: string | null
+          legal_version: string | null
           original_rejection_reason: string | null
           phone_number: string | null
           reason: string | null
@@ -89,6 +92,9 @@ export type Database = {
           full_name: string
           id?: string
           last_resubmitted_at?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           original_rejection_reason?: string | null
           phone_number?: string | null
           reason?: string | null
@@ -113,6 +119,9 @@ export type Database = {
           full_name?: string
           id?: string
           last_resubmitted_at?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           original_rejection_reason?: string | null
           phone_number?: string | null
           reason?: string | null
@@ -1204,6 +1213,9 @@ export type Database = {
           engagement_score: number | null
           id: string
           last_login: string | null
+          legal_accepted: boolean
+          legal_accepted_at: string | null
+          legal_version: string | null
           location: string | null
           phone_number: string | null
           profile_type: string | null
@@ -1238,6 +1250,9 @@ export type Database = {
           engagement_score?: number | null
           id: string
           last_login?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           location?: string | null
           phone_number?: string | null
           profile_type?: string | null
@@ -1272,6 +1287,9 @@ export type Database = {
           engagement_score?: number | null
           id?: string
           last_login?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           location?: string | null
           phone_number?: string | null
           profile_type?: string | null

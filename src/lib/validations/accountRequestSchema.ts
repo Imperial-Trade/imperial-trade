@@ -1,5 +1,6 @@
 
 import { z } from "zod";
+import { LEGAL_VERSION } from "@/lib/constants/legal";
 
 export const accountRequestSchema = z.object({
   full_name: z.string()
@@ -37,6 +38,11 @@ export const accountRequestSchema = z.object({
   
   // Honeypot field - should always be empty
   website: z.string().max(0, "Invalid submission").optional().default(""),
+
+  // Single combined legal acceptance (required)
+  accept_legal: z.literal(true, {
+    errorMap: () => ({ message: "You must agree to the Terms of Use and Privacy Policy." })
+  }),
 });
 
 export type AccountRequestFormData = z.infer<typeof accountRequestSchema>;
@@ -53,6 +59,11 @@ export const passwordSetupSchema = z.object({
     ),
   
   confirmPassword: z.string(),
+
+  // Single combined legal acceptance (required)
+  accept_legal: z.literal(true, {
+    errorMap: () => ({ message: "You must agree to the Terms of Use and Privacy Policy." })
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],

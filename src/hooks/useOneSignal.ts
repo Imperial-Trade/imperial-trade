@@ -352,5 +352,5 @@ const requestPermission = async () => {
     }
   };
 
-  return { initialized, requestPermission, permission, isGranted: permission === 'granted' && hasSubscription, isIframeBlocked };
+  return { initialized, requestPermission, permission, isGranted: permission === 'granted' && hasSubscription, hasSubscription, isIframeBlocked };
 }

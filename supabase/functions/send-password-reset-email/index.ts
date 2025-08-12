@@ -19,16 +19,49 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders })
   }
 
+  const correlationId = (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
   try {
     // Supabase Auth email webhook (Standard Webhooks)
     const payloadText = await req.text()
     const headers = Object.fromEntries(req.headers)
 
-    const wh = new Webhook(hookSecret)
+    if (!hookSecret || hookSecret.trim() === '') {
+      console.error('Missing SEND_FORGOT_PASSWORD_EMAIL_HOOK_SECRET', { correlationId })
+      return new Response(JSON.stringify({ error: 'Server misconfiguration', correlationId }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
+    }
+
+    // Auto-detect secret encoding (hex vs base64)
+    const isHex = /^[0-9a-f]+$/i.test(hookSecret) && hookSecret.length % 2 === 0
+
+    let wh: Webhook
+    try {
+      wh = new Webhook(hookSecret, { encoding: isHex ? 'hex' : 'base64' })
+    } catch (e: any) {
+      console.error('Webhook initialization failed', { correlationId, message: e?.message })
+      return new Response(JSON.stringify({ error: 'Invalid hook secret format', correlationId }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
+    }
+
+    let verification: any
+    try {
+      verification = wh.verify(payloadText, headers)
+    } catch (e: any) {
+      console.warn('Signature verification failed', { correlationId, message: e?.message })
+      return new Response(JSON.stringify({ error: 'Invalid signature', correlationId }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
+    }
+
     const {
       user,
       email_data: { token, token_hash, redirect_to, email_action_type },
-    } = wh.verify(payloadText, headers) as {
+    } = verification as {
       user: { email: string; user_metadata?: Record<string, any> }
       email_data: {
         token: string
@@ -99,13 +132,13 @@ serve(async (req) => {
       throw new Error(`OneSignal error: ${onesignalResponse.status} ${errText}`)
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, correlationId }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     })
   } catch (error: any) {
-    console.error('send-password-reset-email error:', error)
-    return new Response(JSON.stringify({ error: error?.message || 'Unknown error' }), {
+    console.error('send-password-reset-email error:', { correlationId, message: error?.message, stack: error?.stack })
+    return new Response(JSON.stringify({ error: error?.message || 'Unknown error', correlationId }), {
       status: 400,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     })

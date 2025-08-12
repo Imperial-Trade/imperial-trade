@@ -14,21 +14,83 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function normalizeHookSecret(raw: string): { secret: string; encoding: 'hex' | 'base64' } {
+  let s = (raw || '').trim()
+  try {
+    // Supabase may prefix with version, e.g. "v1,whsec_..."
+    if (s.includes(',')) {
+      s = s.split(',').pop()!.trim()
+    }
+    // Strip standardwebhooks-style prefix if present
+    if (s.startsWith('whsec_')) {
+      s = s.slice(6)
+    }
+
+    // Hex secret
+    const hexRe = /^[0-9a-f]+$/i
+    if (hexRe.test(s) && s.length % 2 === 0) {
+      return { secret: s, encoding: 'hex' }
+    }
+
+    // Base64url -> Base64
+    let b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4 !== 0) b64 += '=';
+    const base64Re = /^[A-Za-z0-9+/=]+$/
+    if (!base64Re.test(b64)) {
+      throw new Error('Unsupported secret format')
+    }
+    return { secret: b64, encoding: 'base64' }
+  } catch (_e) {
+    throw new Error('Invalid hook secret format')
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
+  const correlationId = (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
   try {
     // Supabase Auth email webhook (Standard Webhooks)
     const payloadText = await req.text()
     const headers = Object.fromEntries(req.headers)
 
-    const wh = new Webhook(hookSecret)
+    if (!hookSecret || hookSecret.trim() === '') {
+      console.error('Missing SEND_FORGOT_PASSWORD_EMAIL_HOOK_SECRET', { correlationId })
+      return new Response(JSON.stringify({ error: 'Server misconfiguration', correlationId }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
+    }
+
+let wh: Webhook
+try {
+  const normalized = normalizeHookSecret(hookSecret)
+  wh = new Webhook(normalized.secret, { encoding: normalized.encoding })
+} catch (e: any) {
+  console.error('Webhook initialization failed', { correlationId, message: e?.message })
+  return new Response(JSON.stringify({ error: 'Invalid hook secret format', correlationId }), {
+    status: 500,
+    headers: { 'Content-Type': 'application/json', ...corsHeaders },
+  })
+}
+
+    let verification: any
+    try {
+      verification = wh.verify(payloadText, headers)
+    } catch (e: any) {
+      console.warn('Signature verification failed', { correlationId, message: e?.message })
+      return new Response(JSON.stringify({ error: 'Invalid signature', correlationId }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
+    }
+
     const {
       user,
       email_data: { token, token_hash, redirect_to, email_action_type },
-    } = wh.verify(payloadText, headers) as {
+    } = verification as {
       user: { email: string; user_metadata?: Record<string, any> }
       email_data: {
         token: string
@@ -41,6 +103,15 @@ serve(async (req) => {
     // Only handle password recovery emails here
     if (email_action_type !== 'recovery') {
       return new Response(JSON.stringify({ skipped: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
+    }
+
+// Validate OneSignal configuration
+    if (!ONESIGNAL_APP_ID || !ONESIGNAL_API_KEY) {
+      console.error('Missing OneSignal configuration', { correlationId, hasAppId: !!ONESIGNAL_APP_ID, hasApiKey: !!ONESIGNAL_API_KEY })
+      return new Response(JSON.stringify({ success: false, error: 'Email service not configured', correlationId }), {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       })
@@ -82,30 +153,37 @@ serve(async (req) => {
       headers: {
         'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
         'Content-Type': 'application/json',
+        'Idempotency-Key': correlationId,
       },
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
         include_email_tokens: [user.email],
         email_subject: 'Reset your Trade Imperial password',
         email_body: html,
+        email_preheader: 'Reset your Trade Imperial password securely.',
         target_channel: 'email',
         from_email: 'no-reply@tradeimperial.com',
         from_name: 'Trade Imperial',
+        external_id: correlationId,
       }),
     })
 
-    if (!onesignalResponse.ok) {
+if (!onesignalResponse.ok) {
       const errText = await onesignalResponse.text()
-      throw new Error(`OneSignal error: ${onesignalResponse.status} ${errText}`)
+      console.error('OneSignal error', { correlationId, status: onesignalResponse.status, body: errText })
+      return new Response(JSON.stringify({ success: false, correlationId, error: 'Email provider error' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, correlationId }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     })
   } catch (error: any) {
-    console.error('send-password-reset-email error:', error)
-    return new Response(JSON.stringify({ error: error?.message || 'Unknown error' }), {
+    console.error('send-password-reset-email error:', { correlationId, message: error?.message, stack: error?.stack })
+    return new Response(JSON.stringify({ error: error?.message || 'Unknown error', correlationId }), {
       status: 400,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     })

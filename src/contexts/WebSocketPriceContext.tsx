@@ -64,6 +64,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const refCountsRef = useRef<Map<string, number>>(new Map());
   const pendingSubscribeBatchRef = useRef<Set<string>>(new Set());
   const subscribeFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastRefreshAttemptRef = useRef<Map<string, number>>(new Map());
   const flushPendingSubscriptions = useCallback(() => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) return;
     const pending = Array.from(pendingSubscribeBatchRef.current);
@@ -388,6 +389,31 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }
     };
   }, [connect]);
+
+  // One-second stale tick refresher: ensure <=1.2s between updates by nudging the stream
+  useEffect(() => {
+    if (connectionStatus !== 'connected') return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      // iterate over subscribed symbols
+      subscribedSymbolsRef.current.forEach((symbol) => {
+        const pd = prices[symbol];
+        const lastTick = pd?.tick_timestamp ?? (pd?.timestamp ? Date.parse(pd.timestamp) : 0);
+        const isStale = !lastTick || now - lastTick > 1200;
+        const lastAttempt = lastRefreshAttemptRef.current.get(symbol) || 0;
+        if (isStale && now - lastAttempt > 1200) {
+          lastRefreshAttemptRef.current.set(symbol, now);
+          try {
+            // Light-touch: re-subscribe the symbol to prompt a fresh tick
+            refreshPrice(symbol);
+          } catch (e) {
+            // noop
+          }
+        }
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [connectionStatus, prices, refreshPrice]);
 
   const value: WebSocketContextType = {
     prices,

@@ -1,0 +1,109 @@
+import React, { useEffect, useState } from 'react';
+import { useNotifications } from '@/contexts/NotificationsContext';
+import { useWelcome } from '@/contexts/WelcomeContext';
+import { Button } from '@/components/ui/button';
+import { Bell } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+const NotificationPermissionBanner: React.FC = () => {
+  const { isPromptDismissed, requestPermission, dismissPrompt, initialized, permission, isIframeBlocked } = useNotifications();
+  const { hasSeenWelcome } = useWelcome();
+  const [requesting, setRequesting] = useState(false);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (permission === 'denied') {
+      // Auto-close only when user explicitly denies
+      dismissPrompt();
+    }
+  }, [permission, dismissPrompt]);
+
+  // Wait until the welcome animation completes before showing the banner
+  useEffect(() => {
+    if (hasSeenWelcome) {
+      const id = setTimeout(() => setReady(true), 400);
+      return () => clearTimeout(id);
+    } else {
+      setReady(false);
+    }
+  }, [hasSeenWelcome]);
+
+  if (!hasSeenWelcome || !ready || isPromptDismissed) return null;
+
+  return (
+    <aside
+      role="region"
+      aria-label="Notifications permission prompt"
+      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto w-[calc(100%-1.5rem)] sm:max-w-lg rounded-lg border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-lg"
+    >
+      <div className="px-4 py-3 sm:px-5 sm:py-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-md bg-muted p-1.5" aria-hidden="true">
+            <Bell className="h-4 w-4 text-foreground" />
+          </div>
+          <div className="flex-1 text-xs sm:text-sm">
+            <h2 className="text-sm font-medium">Enable push notifications</h2>
+            <p className="mt-0.5 text-muted-foreground">Stay on top of live signals, TP hits, and risk alerts.</p>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-end gap-2">
+          {isIframeBlocked ? (
+            <>
+              <Button
+                size="sm"
+                onClick={() => window.open(window.location.href, '_blank', 'noopener,noreferrer')}
+                title="Open the app in a new tab to enable notifications"
+              >
+                Open in new tab
+              </Button>
+              <Button size="sm" variant="ghost" onClick={dismissPrompt}>
+                Not now
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="sm" variant="ghost" onClick={dismissPrompt}>
+                Not now
+              </Button>
+              <Button
+                size="sm"
+                onClick={async () => {
+                  try {
+                    setRequesting(true);
+                    await requestPermission();
+                    const current = typeof Notification !== 'undefined' ? Notification.permission : permission;
+                    if (current === 'granted') {
+                      toast({ title: 'Push notifications enabled', description: 'You will receive alerts even when the app is closed.' });
+                      dismissPrompt();
+                    } else if (current === 'denied') {
+                      toast({ title: 'Notifications blocked', description: 'Use the browser site settings (lock icon) to Allow notifications.', variant: 'destructive' as any });
+                    } else {
+                      toast({ title: 'No prompt shown?', description: "If you didn't see a prompt, open site settings (lock icon) → Notifications." });
+                    }
+                  } finally {
+                    setRequesting(false);
+                  }
+                }}
+                disabled={requesting}
+                aria-disabled={requesting}
+                title={requesting ? 'Request in progress…' : undefined}
+              >
+                {requesting ? (
+                  <span className="mr-2 inline-flex h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.125em]" />
+                ) : null}
+                {requesting ? 'Enabling…' : 'Enable notifications'}
+              </Button>
+            </>
+          )}
+        </div>
+        {!requesting && initialized && (permission === 'default' || isIframeBlocked) ? (
+          <p className="mt-2 text-[11px] sm:text-xs text-muted-foreground">
+            {isIframeBlocked
+              ? 'Push notifications are blocked in preview. Open in a new tab to enable.'
+              : 'No prompt? Check site settings (lock icon) → Notifications.'}
+          </p>
+        ) : null}
+      </div>
+    </aside>
+  );
+};
+
+export default NotificationPermissionBanner;

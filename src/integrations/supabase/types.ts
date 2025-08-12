@@ -67,6 +67,9 @@ export type Database = {
           full_name: string
           id: string
           last_resubmitted_at: string | null
+          legal_accepted: boolean
+          legal_accepted_at: string | null
+          legal_version: string | null
           original_rejection_reason: string | null
           phone_number: string | null
           reason: string | null
@@ -89,6 +92,9 @@ export type Database = {
           full_name: string
           id?: string
           last_resubmitted_at?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           original_rejection_reason?: string | null
           phone_number?: string | null
           reason?: string | null
@@ -113,6 +119,9 @@ export type Database = {
           full_name?: string
           id?: string
           last_resubmitted_at?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           original_rejection_reason?: string | null
           phone_number?: string | null
           reason?: string | null
@@ -1204,6 +1213,9 @@ export type Database = {
           engagement_score: number | null
           id: string
           last_login: string | null
+          legal_accepted: boolean
+          legal_accepted_at: string | null
+          legal_version: string | null
           location: string | null
           phone_number: string | null
           profile_type: string | null
@@ -1238,6 +1250,9 @@ export type Database = {
           engagement_score?: number | null
           id: string
           last_login?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           location?: string | null
           phone_number?: string | null
           profile_type?: string | null
@@ -1272,6 +1287,9 @@ export type Database = {
           engagement_score?: number | null
           id?: string
           last_login?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           location?: string | null
           phone_number?: string | null
           profile_type?: string | null
@@ -2010,6 +2028,51 @@ export type Database = {
           },
         ]
       }
+      user_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          link_url: string | null
+          message: string
+          metadata: Json
+          priority: string
+          source: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link_url?: string | null
+          message: string
+          metadata?: Json
+          priority?: string
+          source?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link_url?: string | null
+          message?: string
+          metadata?: Json
+          priority?: string
+          source?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_pathway_progress: {
         Row: {
           certificate_earned: boolean
@@ -2493,6 +2556,7 @@ export type Database = {
       difficulty_level: "beginner" | "intermediate" | "advanced"
       impact_level: "High" | "Medium" | "Low"
       mood_type: "Confident" | "Anxious" | "Greedy" | "Fearful" | "Neutral"
+      notification_priority: "low" | "medium" | "high"
       post_category:
         | "discussion"
         | "question"
@@ -2675,6 +2739,7 @@ export const Constants = {
       difficulty_level: ["beginner", "intermediate", "advanced"],
       impact_level: ["High", "Medium", "Low"],
       mood_type: ["Confident", "Anxious", "Greedy", "Fearful", "Neutral"],
+      notification_priority: ["low", "medium", "high"],
       post_category: ["discussion", "question", "analysis", "news", "strategy"],
       progress_status: ["completed", "in_progress", "started"],
       registration_source_enum: [

@@ -116,6 +116,50 @@ export class TradingApiService {
       // Dispatch custom event to notify about new signal
       window.dispatchEvent(new CustomEvent('signal-posted'));
 
+      // Send push notification to subscribed users via Edge Function (best-effort)
+      try {
+        const notificationPayload = {
+          signal_id: responseDto.id,
+          alert_type: 'signal_created',
+          target_price: responseDto.entryPrice,
+          triggered_price: responseDto.entryPrice,
+          notification_type: 'signal_created',
+          delivery_channels: ['push'],
+          segments: ['Subscribed Users'],
+          asset_name: responseDto.assetName,
+          symbol: responseDto.tradermadeSymbol,
+          trade_type: responseDto.tradeType,
+          entry_price: responseDto.entryPrice,
+          stop_loss: responseDto.stopLoss
+        };
+        await supabase.functions.invoke('signal-notification-dispatcher', {
+          body: { notifications: [notificationPayload] }
+        });
+      } catch (notifyError) {
+        console.error('Failed to dispatch push notification for new signal:', notifyError);
+      }
+
+      // Broadcast realtime in-app notification
+      try {
+        await supabase
+          .channel('instant-alerts')
+          .send({
+            type: 'broadcast',
+            event: 'signal_created',
+            payload: {
+              signal_id: responseDto.id,
+              asset_name: responseDto.assetName,
+              symbol: responseDto.tradermadeSymbol,
+              trade_type: responseDto.tradeType,
+              entry_price: responseDto.entryPrice,
+              timestamp: new Date().toISOString(),
+              urgency: 'normal'
+            }
+          });
+      } catch (broadcastError) {
+        console.error('Failed to broadcast realtime new signal event:', broadcastError);
+      }
+
       return {
         success: true,
         data: responseDto,

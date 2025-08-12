@@ -26,7 +26,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 25 // Ultra-fast 25ms for 250ms tick compatibility
+    debounceMs = 10 // Default ultra-low debounce for near-instant updates
   } = options;
 
   const {
@@ -68,10 +68,9 @@ export function useOptimizedLivePrice(
     
     if (!currentPrice) return;
 
-    // Ultra-fast updates: minimal delay for 250ms real-time feel
-    const isSignificantChange = Math.abs(currentPrice.price - debouncedPrice.price) > (currentPrice.price * 0.001); // 0.1% change
+    // Near-instant updates: no significance gating, minimal debounce
     const isUltraFastTick = currentPrice.is_ultra_fast_tick === true;
-    const dynamicDelay = isUltraFastTick ? 10 : isSignificantChange ? 25 : Math.min(debounceMs, 50); // 10ms for ultra-fast, 25ms for changes, max 50ms
+    const dynamicDelay = isUltraFastTick ? 0 : Math.max(0, Math.min(debounceMs, 10));
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
@@ -83,7 +82,8 @@ export function useOptimizedLivePrice(
         change: currentPrice.change,
         changePercent: currentPrice.changePercent
       });
-      setLastUpdated(new Date(currentPrice.timestamp));
+      const tickMs = currentPrice.tick_timestamp ?? (currentPrice.timestamp ? Date.parse(currentPrice.timestamp) : Date.now());
+      setLastUpdated(new Date(tickMs));
     }, dynamicDelay);
 
     return () => {

@@ -121,8 +121,8 @@ export const AdminNotificationSystem: React.FC = () => {
       if (error) throw error;
       
       toast({
-        title: "Test Notification Sent",
-        description: "Check your email for the test notification.",
+        title: "Test Email Sent",
+        description: "Check your inbox for the test email.",
         variant: "default",
       });
     } catch (error) {
@@ -151,7 +151,7 @@ export const AdminNotificationSystem: React.FC = () => {
           className="border-gray-300"
         >
           <Bell className="w-4 h-4 mr-2" />
-          {loading ? 'Sending...' : 'Test Notification'}
+          {loading ? 'Sending...' : 'Send Test Email'}
         </Button>
       </div>
 

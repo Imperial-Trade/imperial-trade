@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { User, Mail, Shield, Send, Phone } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface AccountRequestFormProps {
   form: UseFormReturn<AccountRequestFormData>;
@@ -223,10 +223,51 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
             )} 
           />
 
+          {/* Legal Acceptance */}
+          <FormField
+            control={form.control}
+            name="accept_legal"
+            render={({ field }) => (
+              <FormItem className="space-y-2">
+                <div className="flex items-start gap-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      aria-label="Accept Terms of Use and Privacy Policy"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm text-foreground leading-6 cursor-pointer">
+                    I have read and agree to the{" "}
+                    <a
+                      href="/legal/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                       className="underline text-primary hover:text-primary/80"
+                    >
+                      Terms of Use
+                    </a>{" "}
+                    and{" "}
+                    <a
+                      href="/legal/privacy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-primary hover:text-primary/80"
+                    >
+                      Privacy Policy
+                    </a>
+                    .
+                  </FormLabel>
+                </div>
+                <FormMessage className="text-red-400" />
+              </FormItem>
+            )}
+          />
+
           {/* Submit Button */}
           <Button 
             type="submit" 
-            disabled={isSubmitting || !canSubmit} 
+            disabled={isSubmitting || !canSubmit || !form.watch('accept_legal')} 
             className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (

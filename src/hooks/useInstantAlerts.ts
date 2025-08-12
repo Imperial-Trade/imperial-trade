@@ -85,6 +85,34 @@ export const useInstantAlerts = () => {
     }
   }, []);
 
+  const handleSignalCreated = useCallback((payload: any) => {
+    console.log('🆕 NEW SIGNAL CREATED:', payload);
+
+    const asset = payload.asset_name || payload.symbol || 'New Signal';
+    const type = (payload.trade_type || '').toUpperCase();
+    const entry = payload.entry_price;
+
+    const title = `New Signal Created`;
+    const message = `${asset} • ${type}${entry ? ` @ $${Number(entry).toFixed(2)}` : ''}`;
+
+    toast.success(title, {
+      description: message,
+      duration: 6000,
+      className: 'border-primary bg-primary/10 text-primary',
+      action: {
+        label: 'View',
+        onClick: () => console.log('Navigate to signal:', payload.signal_id)
+      }
+    });
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body: message,
+        icon: '/favicon.ico'
+      });
+    }
+  }, []);
+
   useEffect(() => {
     console.log('🔔 Setting up instant alert notifications...');
 
@@ -94,18 +122,16 @@ export const useInstantAlerts = () => {
       .on('broadcast', { event: 'alert_triggered' }, ({ payload }) => {
         handleAlertNotification(payload as AlertNotification);
       })
+      .on('broadcast', { event: 'signal_created' }, ({ payload }) => {
+        handleSignalCreated(payload);
+      })
       .subscribe((status) => {
         console.log('📡 Instant alerts subscription status:', status);
         
         if (status === 'SUBSCRIBED') {
           console.log('✅ Successfully subscribed to instant alerts');
           
-          // Request notification permission
-          if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission().then(permission => {
-              console.log('🔔 Notification permission:', permission);
-            });
-          }
+          // Notification permission is handled centrally by NotificationsContext
         } else if (status === 'CHANNEL_ERROR') {
           console.error('❌ Failed to subscribe to instant alerts');
           toast.error('Alert notifications unavailable', {

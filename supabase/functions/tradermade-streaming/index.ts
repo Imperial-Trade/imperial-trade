@@ -6,6 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Prefer dedicated WS/HTTP keys if available; fallback to TRADERMADE_API_KEY
+const WS_API_KEY = Deno.env.get('TRADERMADE_WS_API_KEY') || Deno.env.get('TRADERMADE_API_KEY') || '';
+const HTTP_API_KEY = Deno.env.get('TRADERMADE_HTTP_API_KEY') || Deno.env.get('TRADERMADE_API_KEY') || '';
+
 // Tradermade symbol configuration
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
 
@@ -80,11 +84,11 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
     return getCachedPrice(symbol);
   }
 
-  const apiKey = Deno.env.get('TRADERMADE_API_KEY');
+  const apiKey = HTTP_API_KEY;
   console.log('🔑 HTTP API Key check:', apiKey ? `Found (${apiKey.substring(0, 8)}...)` : 'Missing');
   
   if (!apiKey) {
-    console.error('❌ TRADERMADE_API_KEY not found in environment for HTTP request');
+    console.error('❌ TRADERMADE_HTTP_API_KEY/TRADERMADE_API_KEY not found for HTTP request');
     return getCachedPrice(symbol) || {
       symbol,
       price: 0,
@@ -100,15 +104,14 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
     globalRateLimitCount++;
     
     const url = `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${apiKey}`;
-    console.log(`🔄 Fetching HTTP price for ${symbol} from:`, url);
+    console.log(`🔄 Fetching HTTP price for ${symbol} (endpoint logged, API key masked)`);
     
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Supabase-Edge-Function'
-      },
-      timeout: 10000 // 10 second timeout
+      }
     });
 
     if (!response.ok) {
@@ -237,21 +240,21 @@ serve(async (req) => {
 
   // Connect to Tradermade WebSocket with enhanced error handling
   async function connectToTradermade() {
-    const apiKey = Deno.env.get('TRADERMADE_API_KEY');
+    const apiKey = WS_API_KEY;
     console.log('🔑 WebSocket API Key check:', apiKey ? `Found (${apiKey.substring(0, 8)}...)` : 'Missing');
     
     if (!apiKey) {
-      console.error('❌ TRADERMADE_API_KEY not found in environment');
+      console.error('❌ TRADERMADE_WS_API_KEY/TRADERMADE_API_KEY not found in environment');
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type: 'error',
-          message: 'Tradermade API key not configured - please check environment variables',
+          message: 'Tradermade WS API key not configured - please check environment variables',
           timestamp: new Date().toISOString()
         }));
       }
       
       // Fall back to HTTP API for all symbols
-      console.log('🔄 Falling back to HTTP API due to missing API key...');
+      console.log('🔄 Falling back to HTTP API due to missing WS API key...');
       for (const symbol of TRADERMADE_SYMBOLS) {
         fetchTradermadePrice(symbol).then(data => {
           if (data && socket.readyState === WebSocket.OPEN) {
@@ -404,9 +407,11 @@ serve(async (req) => {
             // Send to client if subscribed
             if (clientSubscriptions.has(symbol) && socket.readyState === WebSocket.OPEN) {
               console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${price}`);
+              const tickTs = (typeof data.ts === 'string' || typeof data.ts === 'number') ? Number(data.ts) : Date.now();
               socket.send(JSON.stringify({
                 type: 'price_update',
-                ...priceUpdate
+                ...priceUpdate,
+                tick_timestamp: tickTs
               }));
             }
           } else {

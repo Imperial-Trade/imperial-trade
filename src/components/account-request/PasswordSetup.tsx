@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +16,8 @@ import { sendWelcomeEmail } from '@/components/auth/AuthNotifications';
 import { cleanupAuthState } from '@/utils/authUtils';
 import { useProfessionalToast } from '@/hooks/useProfessionalToast';
 import { motion } from 'framer-motion';
+import { Checkbox } from '@/components/ui/checkbox';
+import { LEGAL_VERSION } from '@/lib/constants/legal';
 
 interface PasswordSetupProps {
   accountRequest: any;
@@ -80,6 +81,7 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
     defaultValues: {
       password: '',
       confirmPassword: '',
+      accept_legal: false,
     },
     mode: 'onChange',
   });
@@ -160,6 +162,24 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
         }
       } catch (updateErr) {
         console.warn('Error updating request timestamp:', updateErr);
+      }
+
+      // Persist legal acceptance to profiles (single checkbox)
+      try {
+        const { error: profileErr } = await supabase
+          .from('profiles')
+          .update({
+            legal_accepted: true,
+            legal_accepted_at: new Date().toISOString(),
+            legal_version: LEGAL_VERSION,
+          })
+          .eq('id', authData.user.id);
+
+        if (profileErr) {
+          console.warn('Could not update legal acceptance on profile:', profileErr);
+        }
+      } catch (profErr) {
+        console.warn('Error updating profile legal acceptance:', profErr);
       }
 
       updateStepStatus(2, 'completed');
@@ -341,6 +361,47 @@ export const PasswordSetup: React.FC<PasswordSetupProps> = ({ accountRequest, on
                         <span>Passwords match</span>
                       </motion.div>
                     )}
+                  </FormItem>
+                )}
+              />
+
+              {/* Legal Acceptance */}
+              <FormField
+                control={form.control}
+                name="accept_legal"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <div className="flex items-start gap-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          aria-label="Accept Terms of Use and Privacy Policy"
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm text-gray-200 leading-6 cursor-pointer">
+                        I have read and agree to the{" "}
+                        <a
+                          href="/legal/terms"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline text-teal-300 hover:text-teal-200"
+                        >
+                          Terms of Use
+                        </a>{" "}
+                        and{" "}
+                        <a
+                          href="/legal/privacy"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline text-teal-300 hover:text-teal-200"
+                        >
+                          Privacy Policy
+                        </a>
+                        .
+                      </FormLabel>
+                    </div>
                   </FormItem>
                 )}
               />

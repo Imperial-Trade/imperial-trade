@@ -22,7 +22,7 @@ export function useWebSocketLivePrice(symbol: string): LivePriceData {
 
   const optimizedData = useOptimizedLivePrice(symbol, {
     enableSmartPausing: false, // Disabled for fastest updates
-    debounceMs: 50, // Ultra-fast 50ms updates
+    debounceMs: 5, // Near-instant 5ms updates
     pauseOnInput: false
   });
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useConnectionHealth } from '@/hooks/useConnectionHealth';
 import { Wifi, WifiOff, Zap, AlertTriangle } from 'lucide-react';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 
 interface ConnectionHealthBadgeProps {
   className?: string;
@@ -20,8 +21,30 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
     averageLatency
   } = useConnectionHealth();
 
+  const { connectionStatus } = useWebSocketPrices();
+
+  // Gracefully handle brief disconnects to avoid "Offline" flicker
+  const lastConnectedRef = React.useRef<number>(Date.now());
+  const [effectiveStatus, setEffectiveStatus] = React.useState<'connected' | 'connecting' | 'disconnected' | 'error'>(connectionStatus);
+  const GRACE_MS = 8000; // 8s grace window to stay Live during short reconnects
+
+  React.useEffect(() => {
+    const now = Date.now();
+    if (connectionStatus === 'connected') {
+      lastConnectedRef.current = now;
+      setEffectiveStatus('connected');
+    } else {
+      if (now - lastConnectedRef.current > GRACE_MS) {
+        setEffectiveStatus(connectionStatus);
+      } else {
+        setEffectiveStatus('connected');
+      }
+    }
+  }, [connectionStatus]);
+
   const getHealthStatus = () => {
-    if (!isHealthy) {
+    // Only show Offline if we've truly been down past the grace period
+    if (effectiveStatus !== 'connected') {
       return {
         icon: WifiOff,
         color: 'text-red-400',
@@ -31,32 +54,34 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
       };
     }
     
-    if (actualFrequency <= 300 && connectionUptime >= 95) {
+    // When effectively connected, always label as Live and classify by performance
+    if (actualFrequency > 0 && actualFrequency <= 300 && connectionUptime >= 95) {
       return {
         icon: Zap,
         color: 'text-emerald-400',
         bgColor: 'bg-emerald-500/10',
         borderColor: 'border-emerald-500/30',
-        text: 'Ultra-Fast'
+        text: 'Live'
       };
     }
     
-    if (actualFrequency <= 500 && connectionUptime >= 90) {
+    if (actualFrequency > 0 && actualFrequency <= 500 && connectionUptime >= 85) {
       return {
         icon: Wifi,
         color: 'text-green-400',
         bgColor: 'bg-green-500/10',
         borderColor: 'border-green-500/30',
-        text: 'Good'
+        text: 'Live'
       };
     }
     
+    // Connected but slower than expected
     return {
       icon: AlertTriangle,
       color: 'text-yellow-400',
       bgColor: 'bg-yellow-500/10',
       borderColor: 'border-yellow-500/30',
-      text: 'Degraded'
+      text: 'Live'
     };
   };
 

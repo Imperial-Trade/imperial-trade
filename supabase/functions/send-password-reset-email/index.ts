@@ -153,6 +153,7 @@ try {
       headers: {
         'Authorization': `Basic ${ONESIGNAL_API_KEY}`,
         'Content-Type': 'application/json',
+        'Idempotency-Key': correlationId,
       },
       body: JSON.stringify({
         app_id: ONESIGNAL_APP_ID,
@@ -163,7 +164,7 @@ try {
         target_channel: 'email',
         from_email: 'no-reply@tradeimperial.com',
         from_name: 'Trade Imperial',
-        external_id: user.email,
+        external_id: correlationId,
       }),
     })
 

@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // OneSignal constants
-const ONE_SIGNAL_API_URL = "https://onesignal.com/api/v1/notifications";
+const ONE_SIGNAL_API_URL = "https://api.onesignal.com/notifications";
 
 type SupportedEventType = "new_request" | "request_resubmitted" | "test";
 
@@ -29,13 +29,19 @@ async function sendOneSignalNotification(params: {
   message: string;
   targetChannel: "push" | "email";
 }) {
-  const body = {
+  const body: any = {
     app_id: params.appId,
     include_external_user_ids: params.includeExternalUserIds,
     target_channel: params.targetChannel,
     headings: { en: params.subject },
     contents: { en: params.message },
   };
+
+  // Ensure required email fields are present when sending email
+  if (params.targetChannel === "email") {
+    body.email_subject = params.subject;
+    body.email_body = params.message;
+  }
 
   const res = await fetch(ONE_SIGNAL_API_URL, {
     method: "POST",

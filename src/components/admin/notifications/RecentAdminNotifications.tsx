@@ -16,6 +16,8 @@ type EventRow = {
   delivery_status: string;
   sent_at: string;
   recipients: any;
+  error?: string | null;
+  metadata?: any;
 };
 
 const iconFor = (eventType: string) => {
@@ -85,7 +87,10 @@ export const RecentAdminNotifications: React.FC = () => {
   return (
     <CardContent>
       <div className="space-y-3">
-        {data.map((row) => (
+        {data.map((row) => {
+          const errorText = (row as any).error as string | null;
+          const shortError = errorText ? (errorText.length > 180 ? errorText.slice(0, 180) + '…' : errorText) : null;
+          return (
           <div key={row.id} className="flex items-start gap-3 p-3 rounded-lg border">
             {iconFor(row.event_type)}
             <div className="flex-1">
@@ -96,12 +101,16 @@ export const RecentAdminNotifications: React.FC = () => {
                 {pillForStatus(row.delivery_status)}
               </div>
               <p className="text-xs text-muted-foreground">{row.message}</p>
+              {shortError && (
+                <p className="text-xs text-destructive mt-1">Error: {shortError}</p>
+              )}
               <p className="text-xs text-muted-foreground mt-1">
                 {formatDistanceToNow(new Date(row.sent_at), { addSuffix: true })} • Channels: {row.channels.join(', ') || 'none'}
               </p>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </CardContent>
   );

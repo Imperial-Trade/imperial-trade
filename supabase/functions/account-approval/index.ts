@@ -146,9 +146,14 @@ serve(async (req) => {
           ? `<p><strong>Reason:</strong> ${escapeHtml(normalizedReason)}</p>`
           : ''
 
+        const logoUrl = (Deno.env.get('EMAIL_LOGO_URL') ?? '').trim() || 'https://www.tradeimperial.com/logo.png';
+        console.log(`[${correlationId}] Using approval email logo`, { logoUrl });
+        const headerHtml = `<div style="text-align:center;margin-bottom:12px"><img src="${logoUrl}" alt="Imperial Trading logo" style="max-width:180px;height:auto;"/></div>`;
+
         const bodyHtml = status === 'approved'
           ? `
             <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a">
+              ${headerHtml}
               <h2 style="margin:0 0 12px 0;">You're in! 🎉</h2>
               <p>Hi ${escapeHtml(request.full_name || 'there')},</p>
               <p>Your account request has been <strong>approved</strong>.</p>
@@ -161,6 +166,7 @@ serve(async (req) => {
           `
           : `
             <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a">
+              ${headerHtml}
               <h2 style="margin:0 0 12px 0;">Account Request Update</h2>
               <p>Hi ${escapeHtml(request.full_name || 'there')},</p>
               <p>Your request has been <strong>reviewed</strong> and is currently <strong>rejected</strong>.</p>

@@ -64,14 +64,7 @@ export const useOptimizedRealTimeRequests = () => {
         requests: [payload.new, ...prev.requests]
       }));
 
-      // Send notification to admin
-      supabase.functions.invoke('account-request-notifications', {
-        body: {
-          type: 'new_request',
-          userEmail: payload.new.email,
-          userName: payload.new.full_name
-        }
-      }).catch(console.error);
+      // Notifications are handled centrally on create; avoid duplicates here
 
     } else if (payload.eventType === 'UPDATE') {
       batchStateUpdate(prev => ({
@@ -83,14 +76,7 @@ export const useOptimizedRealTimeRequests = () => {
 
       // Check if it's a resubmission
       if (payload.old?.status === 'rejected' && payload.new?.status === 'pending') {
-        supabase.functions.invoke('account-request-notifications', {
-          body: {
-            type: 'request_resubmitted',
-            requestId: payload.new.id,
-            userEmail: payload.new.email,
-            userName: payload.new.full_name
-          }
-        }).catch(console.error);
+        // Resubmission notifications handled centrally; avoid duplicates here
       }
 
     } else if (payload.eventType === 'DELETE') {

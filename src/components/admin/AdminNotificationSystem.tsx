@@ -110,14 +110,17 @@ export const AdminNotificationSystem: React.FC = () => {
   const sendTestNotification = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('account-request-notifications', {
+      const { data, error } = await supabase.functions.invoke('account-request-notifications', {
         body: { type: 'test' }
       });
       if (error) throw error;
 
+      const delivery = (data as any)?.delivery_status || (data as any)?.note || 'unknown';
+      const recipients = (data as any)?.recipients ?? 0;
+
       toast({
-        title: "Test Notification Sent",
-        description: "A test push and email were sent via OneSignal.",
+        title: "Test Notification",
+        description: `Status: ${delivery} • Recipients: ${recipients}`,
         variant: "default",
       });
     } catch (error) {

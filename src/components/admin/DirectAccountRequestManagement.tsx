@@ -107,19 +107,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
 
       if (error) throw error;
 
-      // Send approval email notification
-      try {
-        await supabase.functions.invoke('account-request-notifications', {
-          body: {
-            type: 'request_approved',
-            userEmail: request.email,
-            userName: request.full_name
-          }
-        });
-      } catch (emailError) {
-        console.error('Failed to send approval email:', emailError);
-        // Don't fail the approval if email fails
-      }
+      // Approval notification emails are not sent here; delivery is centralized via admin flows
 
       toast({
         title: "Request Approved",
@@ -154,20 +142,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
 
       if (error) throw error;
 
-      // Send rejection email notification
-      try {
-        await supabase.functions.invoke('account-request-notifications', {
-          body: {
-            type: 'request_rejected',
-            userEmail: request.email,
-            userName: request.full_name,
-            reason: reason
-          }
-        });
-      } catch (emailError) {
-        console.error('Failed to send rejection email:', emailError);
-        // Don't fail the rejection if email fails
-      }
+      // Rejection notification emails are not sent here; delivery is centralized via admin flows
 
       toast({
         title: "Request Rejected",

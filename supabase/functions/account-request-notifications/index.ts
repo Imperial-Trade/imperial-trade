@@ -122,7 +122,7 @@ serve(async (req) => {
           subject: subjectFor(type),
           message: messageFor(type, userEmail, userName),
           recipients: { user_ids: [] },
-          delivery_status: "sent",
+          delivery_status: "skipped",
           metadata: { requestId, userEmail, userName, note: "no-recipients" },
         },
       ]);

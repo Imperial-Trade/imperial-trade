@@ -52,25 +52,18 @@ export const AdminNotificationStats: React.FC = () => {
   const activeAdminsQuery = useQuery({
     queryKey: ['admin-stats', 'active-admins'],
     queryFn: async () => {
-      // Count admins with at least one relevant notification enabled
-      const { data, error } = await supabase
-        .from('notification_settings')
-        .select('admin_id, new_requests, resubmissions');
+      const { data, error } = await supabase.functions.invoke('admin-notification-active-admins');
       if (error) throw error;
-      const active = new Set(
-        (data || [])
-          .filter((s: any) => s.new_requests || s.resubmissions)
-          .map((s: any) => s.admin_id)
-      );
-      return active.size;
+      return (data as any)?.count ?? 0;
     },
     meta: {
       onError: (err: any) => console.error('active-admins error', err),
     },
   });
 
-  const weekTotal = weekTotalQuery.data?.length || 0;
-  const weekSent = (weekTotalQuery.data || []).filter(e => e.delivery_status === 'sent').length;
+  const relevant = (weekTotalQuery.data || []).filter(e => e.delivery_status !== 'skipped');
+  const weekTotal = relevant.length;
+  const weekSent = relevant.filter(e => e.delivery_status === 'sent').length;
   const deliveryRate = weekTotal > 0 ? Math.round((weekSent / weekTotal) * 100) : 0;
 
   return (

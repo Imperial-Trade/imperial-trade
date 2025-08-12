@@ -32,3 +32,9 @@ verify_jwt = true
 
 [functions.onesignal-config]
 verify_jwt = false
+
+[functions.account-request-notifications]
+verify_jwt = false
+
+[functions.admin-notification-active-admins]
+verify_jwt = true

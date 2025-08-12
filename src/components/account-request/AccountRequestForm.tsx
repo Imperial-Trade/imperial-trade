@@ -237,13 +237,13 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                       aria-label="Accept Terms of Use and Privacy Policy"
                     />
                   </FormControl>
-                  <FormLabel className="text-sm text-gray-200 leading-6 cursor-pointer">
+                  <FormLabel className="text-sm text-foreground leading-6 cursor-pointer">
                     I have read and agree to the{" "}
                     <a
                       href="/legal/terms"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline text-teal-300 hover:text-teal-200"
+                       className="underline text-primary hover:text-primary/80"
                     >
                       Terms of Use
                     </a>{" "}
@@ -252,7 +252,7 @@ export const AccountRequestForm: React.FC<AccountRequestFormProps> = ({
                       href="/legal/privacy"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="underline text-teal-300 hover:text-teal-200"
+                      className="underline text-primary hover:text-primary/80"
                     >
                       Privacy Policy
                     </a>

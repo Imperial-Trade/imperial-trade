@@ -148,7 +148,7 @@ serve(async (req) => {
 
         const logoUrl = (Deno.env.get('EMAIL_LOGO_URL') ?? '').trim() || 'https://www.tradeimperial.com/logo.png';
         console.log(`[${correlationId}] Using approval email logo`, { logoUrl });
-        const headerHtml = `<div style="text-align:center;margin-bottom:12px"><img src="${logoUrl}" alt="Imperial Trading logo" style="max-width:180px;height:auto;"/></div>`;
+        const headerHtml = `<div style="text-align:center;margin-bottom:12px"><img src="${logoUrl}" alt="Trade Imperial logo" width="56" height="56" style="display:block;margin:0 auto 8px auto;width:56px;height:56px;"/></div>`;
 
         const bodyHtml = status === 'approved'
           ? `

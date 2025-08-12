@@ -45,7 +45,7 @@ export const PasswordResetEmail = ({
         <Container style={container}>
           <Section style={header}>
             {logo_url ? (
-              <img src={logo_url} alt={`${brand_name} logo`} style={logo as any} />
+              <img src={logo_url} alt={`${brand_name} logo`} width={56} height={56} style={logo as any} />
             ) : null}
             <Heading style={title}>{brand_name}</Heading>
             <Text style={subtitle}>Secure Password Reset</Text>

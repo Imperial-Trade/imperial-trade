@@ -43,6 +43,7 @@ function normalizeHookSecret(raw: string): { secret: string; encoding: 'hex' | '
     return { secret: b64, encoding: 'base64' }
   } catch (_e) {
     throw new Error('Invalid hook secret format')
+  }
 }
 
 async function getLogoUrl(): Promise<string> {
@@ -69,7 +70,6 @@ async function getLogoUrl(): Promise<string> {
 }
 
 
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -161,6 +161,8 @@ try {
       console.log('Malformed redirect_to received, overriding to allowed URL')
     }
 
+    const logoUrl = await getLogoUrl();
+    console.log('Email logo URL', { correlationId, logoUrl });
     const html = await renderAsync(
       React.createElement(PasswordResetEmail, {
         supabase_url: SUPABASE_URL,
@@ -170,7 +172,7 @@ try {
         email_action_type,
         brand_name: 'Trade Imperial',
         support_email: 'tradeimperial2025@gmail.com',
-        logo_url: 'https://www.tradeimperial.com/logo.png',
+        logo_url: logoUrl,
       })
     )
 

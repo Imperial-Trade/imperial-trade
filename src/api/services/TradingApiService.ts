@@ -287,11 +287,71 @@ export class TradingApiService {
         updatedAt: result.data.updated_at
       };
 
-      return {
-        success: true,
-        data: responseDto,
-        error: undefined
-      };
+// After successful update, dispatch push and realtime notifications (best-effort)
+try {
+  // Fetch author profile to enrich notifications
+  const { data: author } = await (supabase as any)
+    .from('public_profiles')
+    .select('display_name, avatar_url')
+    .eq('id', responseDto.userId)
+    .single();
+
+  // Push notification via Edge Function
+  const notificationPayload = {
+    signal_id: responseDto.id,
+    alert_type: 'signal_updated',
+    target_price: responseDto.entryPrice,
+    triggered_price: responseDto.entryPrice,
+    notification_type: 'signal_updated',
+    delivery_channels: ['push'],
+    segments: ['Subscribed Users'],
+    asset_name: responseDto.assetName,
+    symbol: responseDto.tradermadeSymbol,
+    trade_type: responseDto.tradeType,
+    entry_price: responseDto.entryPrice,
+    stop_loss: responseDto.stopLoss,
+    author_id: responseDto.userId,
+    author_name: author?.display_name,
+    author_avatar_url: author?.avatar_url,
+    status: responseDto.status,
+    tp_hits: responseDto.tpHits,
+    close_reason: responseDto.closeReason,
+    notes: responseDto.notes,
+  };
+  await supabase.functions.invoke('signal-notification-dispatcher', {
+    body: { notifications: [notificationPayload] }
+  });
+
+  // Realtime broadcast for instant in-app toast
+  await supabase
+    .channel('instant-alerts')
+    .send({
+      type: 'broadcast',
+      event: 'signal_updated',
+      payload: {
+        signal_id: responseDto.id,
+        asset_name: responseDto.assetName,
+        symbol: responseDto.tradermadeSymbol,
+        status: responseDto.status,
+        tp_hits: responseDto.tpHits,
+        close_reason: responseDto.closeReason,
+        notes: responseDto.notes,
+        author_id: responseDto.userId,
+        author_name: author?.display_name,
+        author_avatar_url: author?.avatar_url,
+        timestamp: new Date().toISOString(),
+        urgency: 'normal'
+      }
+    });
+} catch (notifyErr) {
+  console.error('Failed to dispatch signal_updated notifications:', notifyErr);
+}
+
+return {
+  success: true,
+  data: responseDto,
+  error: undefined
+};
     } catch (error) {
       console.error('TradingApiService - Update error:', error);
       return {

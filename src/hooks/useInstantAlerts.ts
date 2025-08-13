@@ -120,6 +120,40 @@ export const useInstantAlerts = () => {
     }
   }, []);
 
+  const handleSignalUpdated = useCallback((payload: any) => {
+    console.log('♻️ SIGNAL UPDATED:', payload);
+
+    const asset = payload.asset_name || payload.symbol || 'Signal';
+    const author = (payload.author_name || '').trim();
+    const title = author ? `${author} updated signal` : `Signal updated`;
+
+    const status = payload.status ? String(payload.status).toUpperCase() : undefined;
+    const tpHits = Array.isArray(payload.tp_hits) && payload.tp_hits.length ? `TP hits ${payload.tp_hits.join(',')}` : undefined;
+    const closeReason = payload.close_reason ? `Close: ${String(payload.close_reason).replace('_',' ')}` : undefined;
+    const notes = payload.notes ? (String(payload.notes).length > 80 ? String(payload.notes).slice(0,77) + '...' : String(payload.notes)) : undefined;
+
+    const details = [asset, status ? `Status ${status}` : undefined, tpHits, closeReason, notes]
+      .filter(Boolean)
+      .join(' • ');
+
+    toast.message(title, {
+      description: details || 'Signal details updated',
+      duration: 6000,
+      className: 'border-primary bg-primary/10 text-primary',
+      action: {
+        label: 'View',
+        onClick: () => console.log('Navigate to signal:', payload.signal_id)
+      }
+    });
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body: details || 'Signal details updated',
+        icon: '/favicon.ico'
+      });
+    }
+  }, []);
+
   useEffect(() => {
     console.log('🔔 Setting up instant alert notifications...');
 
@@ -131,6 +165,9 @@ export const useInstantAlerts = () => {
       })
       .on('broadcast', { event: 'signal_created' }, ({ payload }) => {
         handleSignalCreated(payload);
+      })
+      .on('broadcast', { event: 'signal_updated' }, ({ payload }) => {
+        handleSignalUpdated(payload);
       })
       .subscribe((status) => {
         console.log('📡 Instant alerts subscription status:', status);
@@ -170,7 +207,7 @@ export const useInstantAlerts = () => {
       supabase.removeChannel(channel);
       supabase.removeChannel(alertMonitoringChannel);
     };
-  }, [handleAlertNotification]);
+  }, [handleAlertNotification, handleSignalCreated, handleSignalUpdated]);
 
   return {
     // Could expose methods for manual alert testing, muting, etc.

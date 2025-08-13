@@ -25,6 +25,11 @@ interface NotificationPayload {
   author_id?: string;
   author_name?: string;
   author_avatar_url?: string;
+  // Optional enrichment for "signal_updated" notifications
+  status?: 'pending' | 'active' | 'closed';
+  tp_hits?: number[];
+  close_reason?: string;
+  notes?: string;
 }
 
 
@@ -150,25 +155,40 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
       return false;
     }
 
-    const isSignalCreated = payload.notification_type === 'signal_created';
-    let title: string;
-    let body: string;
+const isSignalCreated = payload.notification_type === 'signal_created';
+const isSignalUpdated = payload.notification_type === 'signal_updated';
+let title: string;
+let body: string;
 
-    if (isSignalCreated) {
-      const asset = payload.asset_name || payload.symbol || 'New Signal';
-      const type = (payload.trade_type || '').toUpperCase();
-      const entry = payload.entry_price ?? payload.target_price ?? payload.triggered_price;
-      const sl = payload.stop_loss;
-      const author = (payload.author_name || '').trim();
-      title = author ? `New Signal by ${author}: ${asset}` : `New Signal: ${asset}`;
-      const parts: string[] = [];
-      if (type && entry !== undefined) parts.push(`${type} @ $${Number(entry).toFixed(2)}`);
-      if (sl !== undefined) parts.push(`SL $${Number(sl).toFixed(2)}`);
-      body = parts.join(' • ');
-    } else {
-      title = payload.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
-      body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
-    }
+if (isSignalCreated) {
+  const asset = payload.asset_name || payload.symbol || 'New Signal';
+  const type = (payload.trade_type || '').toUpperCase();
+  const entry = payload.entry_price ?? payload.target_price ?? payload.triggered_price;
+  const sl = payload.stop_loss;
+  const author = (payload.author_name || '').trim();
+  title = author ? `New Signal by ${author}: ${asset}` : `New Signal: ${asset}`;
+  const parts: string[] = [];
+  if (type && entry !== undefined) parts.push(`${type} @ $${Number(entry).toFixed(2)}`);
+  if (sl !== undefined) parts.push(`SL $${Number(sl).toFixed(2)}`);
+  body = parts.join(' • ');
+} else if (isSignalUpdated) {
+  const asset = payload.asset_name || payload.symbol || 'Signal';
+  const author = (payload.author_name || '').trim();
+  const status = payload.status ? payload.status.toUpperCase() : undefined;
+  const tpHitsText = payload.tp_hits && payload.tp_hits.length ? `TP hits ${payload.tp_hits.join(',')}` : undefined;
+  const closeReason = payload.close_reason ? `Close: ${payload.close_reason.replace('_',' ')}` : undefined;
+  const noteText = payload.notes ? (payload.notes.length > 80 ? payload.notes.slice(0,77) + '...' : payload.notes) : undefined;
+  title = author ? `Signal updated by ${author}: ${asset}` : `Signal updated: ${asset}`;
+  const parts: string[] = [];
+  if (status) parts.push(`Status ${status}`);
+  if (tpHitsText) parts.push(tpHitsText);
+  if (closeReason) parts.push(closeReason);
+  if (noteText) parts.push(noteText);
+  body = parts.join(' • ') || 'Signal details updated';
+} else {
+  title = payload.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
+  body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
+}
 
     const response = await fetch('https://api.onesignal.com/notifications', {
       method: 'POST',
@@ -181,21 +201,25 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
           app_id: appId,
           headings: { en: title },
           contents: { en: body },
-          data: {
-            signal_id: payload.signal_id,
-            alert_type: payload.alert_type,
-            target_price: payload.target_price,
-            triggered_price: payload.triggered_price,
-            notification_type: payload.notification_type,
-            asset_name: payload.asset_name,
-            symbol: payload.symbol,
-            trade_type: payload.trade_type,
-            entry_price: payload.entry_price,
-            stop_loss: payload.stop_loss,
-            author_id: payload.author_id,
-            author_name: payload.author_name,
-            author_avatar_url: payload.author_avatar_url,
-          },
+data: {
+  signal_id: payload.signal_id,
+  alert_type: payload.alert_type,
+  target_price: payload.target_price,
+  triggered_price: payload.triggered_price,
+  notification_type: payload.notification_type,
+  asset_name: payload.asset_name,
+  symbol: payload.symbol,
+  trade_type: payload.trade_type,
+  entry_price: payload.entry_price,
+  stop_loss: payload.stop_loss,
+  author_id: payload.author_id,
+  author_name: payload.author_name,
+  author_avatar_url: payload.author_avatar_url,
+  status: payload.status,
+  tp_hits: payload.tp_hits,
+  close_reason: payload.close_reason,
+  notes: payload.notes,
+},
         };
         if (payload.user_ids && payload.user_ids.length > 0) {
           base.include_external_user_ids = payload.user_ids;
@@ -403,16 +427,34 @@ serve(async (req) => {
         }
 
         if (recipientIds.length > 0) {
-          const priority = notification.alert_type === 'stop_loss' ? 'high' : 'medium';
-          const isCreated = notification.notification_type === 'signal_created';
-          const author = (notification.author_name || '').trim();
-          const title = isCreated
-            ? (author ? `New Signal by ${author}: ${notification.asset_name || notification.symbol || ''}`.trim() : `New Signal: ${notification.asset_name || notification.symbol || ''}`.trim())
-            : (notification.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered');
-          const priceForCreated = notification.entry_price ?? notification.target_price ?? notification.triggered_price;
-          const message = isCreated
-            ? `${(notification.trade_type || '').toUpperCase()} @ $${Number(priceForCreated).toFixed(2)}${notification.stop_loss ? ` • SL $${Number(notification.stop_loss).toFixed(2)}` : ''}`
-            : `${notification.alert_type.replace('_', ' ').toUpperCase()} | Target $${Number(notification.target_price).toFixed(2)} | Now $${Number(notification.triggered_price).toFixed(2)}`;
+const priority = notification.alert_type === 'stop_loss' ? 'high' : 'medium';
+const isCreated = notification.notification_type === 'signal_created';
+const isUpdated = notification.notification_type === 'signal_updated';
+const author = (notification.author_name || '').trim();
+let title: string;
+let message: string;
+
+if (isCreated) {
+  title = author ? `New Signal by ${author}: ${notification.asset_name || notification.symbol || ''}`.trim() : `New Signal: ${notification.asset_name || notification.symbol || ''}`.trim();
+  const priceForCreated = notification.entry_price ?? notification.target_price ?? notification.triggered_price;
+  message = `${(notification.trade_type || '').toUpperCase()} @ $${Number(priceForCreated).toFixed(2)}${notification.stop_loss ? ` • SL $${Number(notification.stop_loss).toFixed(2)}` : ''}`;
+} else if (isUpdated) {
+  const asset = notification.asset_name || notification.symbol || 'Signal';
+  title = author ? `Signal updated by ${author}: ${asset}` : `Signal updated: ${asset}`;
+  const status = notification.status ? notification.status.toUpperCase() : undefined;
+  const tpHitsText = notification.tp_hits && notification.tp_hits.length ? `TP hits ${notification.tp_hits.join(',')}` : undefined;
+  const closeReason = notification.close_reason ? `Close: ${notification.close_reason.replace('_',' ')}` : undefined;
+  const noteText = notification.notes ? (notification.notes.length > 80 ? notification.notes.slice(0,77) + '...' : notification.notes) : undefined;
+  const parts: string[] = [];
+  if (status) parts.push(`Status ${status}`);
+  if (tpHitsText) parts.push(tpHitsText);
+  if (closeReason) parts.push(closeReason);
+  if (noteText) parts.push(noteText);
+  message = parts.join(' • ') || 'Signal details updated';
+} else {
+  title = notification.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
+  message = `${notification.alert_type.replace('_', ' ').toUpperCase()} | Target $${Number(notification.target_price).toFixed(2)} | Now $${Number(notification.triggered_price).toFixed(2)}`;
+}
 
           const rows = recipientIds.map((uid) => ({
             user_id: uid,

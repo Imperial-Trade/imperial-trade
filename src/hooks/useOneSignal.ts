@@ -208,24 +208,37 @@ export function useOneSignal() {
     }
   };
 
-  // Verify user is subscribed to push notifications
-  const verifySubscription = async (): Promise<boolean> => {
+  // Verify subscription helper - both locally and server-side
+  const verifySubscription = async (): Promise<{ local: boolean; remote?: any; error?: string }> => {
     try {
       const os = (window as any).OneSignal;
-      const ps = os?.User?.PushSubscription;
-      const hasSubscription = !!(ps?.optedIn || ps?.id);
+      if (!os) return { local: false, error: "OneSignal not loaded" };
       
-      if (hasSubscription && debug) {
-        console.info('[OneSignal] Subscription verified:', { 
-          id: ps?.id, 
-          optedIn: ps?.optedIn 
-        });
+      const ps = os?.User?.PushSubscription;
+      const subscriptionId = ps?.id;
+      const optedIn = ps?.optedIn;
+      const localSubscribed = !!(subscriptionId && optedIn);
+      
+      // Also verify server-side if user is available
+      let remoteVerification = null;
+      if (user?.id) {
+        try {
+          const { data: remoteData } = await supabase.functions.invoke('onesignal-verify-subscription', {
+            body: { user_id: user.id }
+          });
+          remoteVerification = remoteData;
+        } catch (err) {
+          console.warn('[OneSignal] Remote verification failed:', err);
+        }
       }
       
-      return hasSubscription;
+      return { 
+        local: localSubscribed, 
+        remote: remoteVerification,
+        error: !localSubscribed && !remoteVerification?.subscribed ? "Not subscribed" : undefined
+      };
     } catch (err) {
-      console.warn('[OneSignal] verifySubscription error:', err);
-      return false;
+      return { local: false, error: `Verification failed: ${err.message}` };
     }
   };
 
@@ -285,11 +298,12 @@ export function useOneSignal() {
     }
   };
 
-const requestPermission = async () => {
+const requestPermission = async (): Promise<{ success: boolean; error?: string; details?: any }> => {
     try {
       if (isIframeBlocked) {
-        console.warn("Notifications permission cannot be requested within an iframe preview. Open in a new tab.");
-        return;
+        const error = "Notifications permission cannot be requested within an iframe preview. Open in a new tab.";
+        console.warn(error);
+        return { success: false, error };
       }
 
       if (debug) console.info('[OneSignal] Starting permission request flow...');
@@ -298,6 +312,7 @@ const requestPermission = async () => {
       const userCreated = await ensureOneSignalUser();
       if (!userCreated) {
         console.warn('[OneSignal] Failed to create OneSignal user. Continuing with subscription attempt...');
+        return { success: false, error: "Failed to create OneSignal user", details: { step: "user_creation" } };
       }
       
       // Wait briefly for OneSignal SDK readiness (Notifications available)
@@ -331,7 +346,7 @@ const requestPermission = async () => {
             if (debug) console.info('[OneSignal] User already subscribed and logged in');
           }
         } catch {}
-        return;
+        return { success: true };
       }
 
       let subscribed = alreadySub;
@@ -398,19 +413,35 @@ const requestPermission = async () => {
           await Promise.allSettled(ops);
           
           // Verify the subscription worked
-          const verified = await verifySubscription();
-          if (verified && debug) {
-            console.info('[OneSignal] Complete setup successful - user subscribed and logged in');
-          } else if (!verified) {
-            console.warn('[OneSignal] Subscription verification failed');
+          const verification = await verifySubscription();
+          if (verification.local && debug) {
+            console.info('[OneSignal] Complete setup successful - user subscribed and logged in', verification);
+          } else if (!verification.local) {
+            console.warn('[OneSignal] Subscription verification failed', verification);
           }
 
         } catch (err) {
           console.warn('[OneSignal] Error during user login/identity setup:', err);
         }
       }
+      // STEP 5: Final verification
+      const verification = await verifySubscription();
+      const success = verification.local || verification.remote?.subscribed;
+      
+      if (debug) console.info('[OneSignal] Permission request completed:', { 
+        subscribed, 
+        verification,
+        success 
+      });
+
+      return { 
+        success, 
+        error: success ? undefined : verification.error || "Subscription verification failed",
+        details: { verification, subscribed }
+      };
     } catch (err) {
-      console.warn('[OneSignal] requestPermission error:', err);
+      console.error('[OneSignal] requestPermission error:', err);
+      return { success: false, error: `Permission request failed: ${err.message}`, details: { originalError: err } };
     } finally {
       try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
       try {

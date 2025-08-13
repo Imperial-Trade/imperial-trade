@@ -9,7 +9,7 @@ interface NotificationsContextValue {
   initialized: boolean;
   isIframeBlocked: boolean;
   isPromptDismissed: boolean;
-  requestPermission: () => Promise<void>;
+  requestPermission: () => Promise<{ success: boolean; error?: string; details?: any }>;
   dismissPrompt: () => void;
 }
 

@@ -18,8 +18,8 @@ const getErrorMessage = (error: any): string => {
   }
   
   // Check for rate limiting errors
-  if (error?.message?.includes('Too many requests') || error?.message?.includes('rate limit')) {
-    return error.message; // Pass through the detailed rate limit message
+  if (error?.message?.includes('Too many requests') || error?.message?.includes('rate limit') || error?.message?.includes('reached the limit')) {
+    return error.message; // Pass through the detailed rate limit message with clear instructions
   }
   
   // Check for specific database constraint errors

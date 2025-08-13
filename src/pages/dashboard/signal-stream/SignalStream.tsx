@@ -11,6 +11,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
+import { usePublicProfiles } from '@/hooks/usePublicProfiles';
+
 export default function SignalStream() {
   const {
     user,
@@ -61,6 +63,19 @@ export default function SignalStream() {
     return profile?.id === alertCreatorId;
   }, [profile?.id]);
 
+  // Fetch public profiles for all creators to prevent "Unknown User"
+  const creatorIds = useMemo(() => {
+    const ids = new Set<string>();
+    allAlerts.forEach(a => {
+      if (a?.creator?.id) ids.add(a.creator.id);
+      // if your alert also carries userId, you could fall back to it:
+      // else if (a?.userId) ids.add(a.userId);
+    });
+    return Array.from(ids);
+  }, [allAlerts]);
+
+  const { profilesMap } = usePublicProfiles(creatorIds);
+
   // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
   const alerts = useMemo(() => {
     console.log('SignalStream - Processing alerts:', allAlerts.length);
@@ -73,12 +88,38 @@ export default function SignalStream() {
       userType: a.creator?.user_type,
       accessLevel: a.creator?.access_level
     })));
-    let filteredAlerts = allAlerts;
+
+    // Enrich creators with public_profiles data
+    const enriched = allAlerts.map(a => {
+      const cid = a.creator?.id;
+      const profile = cid ? profilesMap[cid] : undefined;
+      if (profile) {
+        return {
+          ...a,
+          creator: {
+            ...a.creator,
+            id: cid,
+            display_name: profile.display_name ?? a.creator?.display_name ?? 'Member',
+            avatar_url: profile.avatar_url ?? a.creator?.avatar_url,
+            role: profile.role ?? a.creator?.role,
+            user_type: profile.user_type ?? a.creator?.user_type,
+            access_level: profile.access_level ?? a.creator?.access_level
+          }
+        };
+      }
+      return a;
+    });
+
+    let filteredAlerts = enriched;
 
     // Apply user filters
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      filteredAlerts = filteredAlerts.filter(alert => alert.assetName.toLowerCase().includes(searchLower) || alert.tradermadeSymbol.toLowerCase().includes(searchLower) || alert.creator?.display_name?.toLowerCase().includes(searchLower));
+      filteredAlerts = filteredAlerts.filter(alert => 
+        alert.assetName.toLowerCase().includes(searchLower) || 
+        alert.tradermadeSymbol.toLowerCase().includes(searchLower) || 
+        alert.creator?.display_name?.toLowerCase().includes(searchLower)
+      );
     }
     if (filters.status) {
       filteredAlerts = filteredAlerts.filter(alert => alert.status === filters.status);
@@ -90,7 +131,8 @@ export default function SignalStream() {
       filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
     }
     return filteredAlerts;
-  }, [allAlerts, filters]);
+  }, [allAlerts, filters, profilesMap]);
+
   const {
     activeAlerts,
     closedAlerts,
@@ -100,13 +142,17 @@ export default function SignalStream() {
     const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
     const closed = alerts.filter(a => a.status === 'closed');
 
-    // Get unique educators for filter dropdown
+    // Get unique educators for filter dropdown, prefer fetched names
     const educatorsMap = new Map();
     allAlerts.forEach(alert => {
+      const cid = alert.creator?.id;
+      if (!cid) return;
       if (alert.creator && (alert.creator.user_type === 'educator' || alert.creator.access_level === 'admin' || alert.creator.role === 'admin')) {
-        educatorsMap.set(alert.creator.id, {
-          id: alert.creator.id,
-          name: alert.creator.display_name || 'Unknown Educator'
+        const prof = profilesMap[cid];
+        const name = (prof?.display_name ?? alert.creator.display_name ?? 'Unknown Educator');
+        educatorsMap.set(cid, {
+          id: cid,
+          name
         });
       }
     });
@@ -126,15 +172,16 @@ export default function SignalStream() {
       educatorOptions: educatorsList,
       signalCounts: counts
     };
-  }, [alerts, allAlerts]);
+  }, [alerts, allAlerts, profilesMap]);
+
   const sortedClosedAlerts = useMemo(() => {
     return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
   }, [closedAlerts]);
+
   const symbols = useMemo(() => {
     const symbolSet = new Set();
     activeAlerts.forEach(alert => {
       if (alert && alert.tradermadeSymbol) {
-        // Use the actual tradermade symbol that matches WebSocket data
         symbolSet.add(alert.tradermadeSymbol);
       }
     });
@@ -142,6 +189,7 @@ export default function SignalStream() {
     console.log('SignalStream - Final symbols for price feed:', symbolList);
     return symbolList as string[];
   }, [activeAlerts]);
+
   const {
     connectionStatus: priceConnectionStatus,
     dataSource: priceSource,
@@ -150,7 +198,6 @@ export default function SignalStream() {
   } = useWebSocketPrices();
 
   // Live prices mapping removed to prevent top-level re-renders caused by frequent price ticks
-
 
   // Subscribe to symbols for live price updates
   useEffect(() => {
@@ -166,6 +213,7 @@ export default function SignalStream() {
       }
     };
   }, [symbols, subscribe, unsubscribe]);
+
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);
 
@@ -182,6 +230,7 @@ export default function SignalStream() {
       setReconnectIn(null);
     }
   }, [connectionStatus, nextRetryAt]);
+
   const getConnectionStatusBadge = () => {
     switch (connectionStatus) {
       case 'connected':
@@ -204,6 +253,7 @@ export default function SignalStream() {
         return null;
     }
   };
+
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
     if (updateInProgress.has(alert.id)) return;
 
@@ -268,6 +318,7 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     if (updateInProgress.has(alert.id)) return;
 
@@ -324,6 +375,7 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+
   const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
     if (updateInProgress.has(alert.id)) return;
 
@@ -372,6 +424,7 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+
   const handleOrderActivation = useCallback(async (alert: any) => {
     if (updateInProgress.has(alert.id)) return;
 
@@ -404,6 +457,7 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+
   return <div className="min-h-screen bg-background w-full">
       <NotificationSystem />
       

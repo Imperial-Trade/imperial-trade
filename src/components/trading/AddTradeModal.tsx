@@ -195,7 +195,7 @@ const AddTradeModal = memo<AddTradeModalProps>(({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
@@ -203,7 +203,7 @@ const AddTradeModal = memo<AddTradeModalProps>(({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="asset">Asset</Label>
               <Input
@@ -308,7 +308,7 @@ const AddTradeModal = memo<AddTradeModalProps>(({
           <div className="space-y-4 border-t pt-4">
             <h4 className="font-medium text-sm">AI Coach Data Points</h4>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="strategy">Strategy</Label>
                 <Select onValueChange={updateStrategy}>
@@ -386,7 +386,7 @@ const AddTradeModal = memo<AddTradeModalProps>(({
                   <img
                     src={screenshotPreview}
                     alt="Trade screenshot preview"
-                    className="w-full h-40 object-cover"
+                    className="w-full h-32 object-cover"
                   />
                   <div className="mt-2">
                     <Button variant="outline" size="sm" onClick={removeScreenshot}>

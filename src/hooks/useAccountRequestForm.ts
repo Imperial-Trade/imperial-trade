@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AccountRequest, AccountRequestData } from "@/api/entities/AccountRequest";
 import { useState } from "react";
 import { validateAccountRequestData } from "@/lib/validations/accountRequestValidation";
+import { LEGAL_VERSION } from "@/lib/constants/legal";
 
 // Error message mapping for user-friendly error display
 const getErrorMessage = (error: any): string => {
@@ -13,12 +14,12 @@ const getErrorMessage = (error: any): string => {
   
   // Check for unique constraint violation (email already exists)
   if (error?.message?.includes('already exists') || error?.message?.includes('account_requests_email_unique')) {
-    return "An account request with this email already exists. Please use the status checker to view or update your existing request.";
+    return "An account request with this email already exists. Please click the 'Check Request Status' button below to view or update your request.";
   }
   
   // Check for rate limiting errors
-  if (error?.message?.includes('Too many requests') || error?.message?.includes('rate limit')) {
-    return error.message; // Pass through the detailed rate limit message
+  if (error?.message?.includes('Too many requests') || error?.message?.includes('rate limit') || error?.message?.includes('reached the limit')) {
+    return error.message; // Pass through the detailed rate limit message with clear instructions
   }
   
   // Check for specific database constraint errors
@@ -65,6 +66,7 @@ export const useAccountRequestForm = () => {
       account_type: "user",
       reason: "",
       website: "", // Honeypot field
+      accept_legal: false, // Must be checked to submit
     },
     mode: "onChange", // Real-time validation
   });
@@ -99,7 +101,7 @@ export const useAccountRequestForm = () => {
       console.log("✅ Submitting account request to database:", data);
       
       // Convert form data to AccountRequestData format
-      const requestData: AccountRequestData = {
+      const baseRequestData: any = {
         email: data.email,
         full_name: data.full_name,
         phone_number: data.phone_number,
@@ -109,6 +111,14 @@ export const useAccountRequestForm = () => {
         reason: data.reason,
         website: data.website,
       };
+
+      // Persist legal acceptance (single checkbox)
+      const requestData = {
+        ...baseRequestData,
+        legal_accepted: true,
+        legal_accepted_at: new Date().toISOString(),
+        legal_version: LEGAL_VERSION,
+      } as unknown as AccountRequestData;
       
       // Use the AccountRequest entity with integrated rate limiting
       const result = await AccountRequest.create(requestData);

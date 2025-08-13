@@ -67,6 +67,9 @@ export type Database = {
           full_name: string
           id: string
           last_resubmitted_at: string | null
+          legal_accepted: boolean
+          legal_accepted_at: string | null
+          legal_version: string | null
           original_rejection_reason: string | null
           phone_number: string | null
           reason: string | null
@@ -89,6 +92,9 @@ export type Database = {
           full_name: string
           id?: string
           last_resubmitted_at?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           original_rejection_reason?: string | null
           phone_number?: string | null
           reason?: string | null
@@ -113,6 +119,9 @@ export type Database = {
           full_name?: string
           id?: string
           last_resubmitted_at?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           original_rejection_reason?: string | null
           phone_number?: string | null
           reason?: string | null
@@ -128,6 +137,51 @@ export type Database = {
           username?: string | null
           vt_market_account_number?: string | null
           website?: string | null
+        }
+        Relationships: []
+      }
+      admin_notification_events: {
+        Row: {
+          channels: string[]
+          created_at: string
+          delivery_status: string
+          error: string | null
+          event_type: string
+          id: string
+          message: string
+          metadata: Json
+          recipients: Json
+          sent_at: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          channels?: string[]
+          created_at?: string
+          delivery_status?: string
+          error?: string | null
+          event_type: string
+          id?: string
+          message: string
+          metadata?: Json
+          recipients: Json
+          sent_at?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channels?: string[]
+          created_at?: string
+          delivery_status?: string
+          error?: string | null
+          event_type?: string
+          id?: string
+          message?: string
+          metadata?: Json
+          recipients?: Json
+          sent_at?: string
+          subject?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1010,6 +1064,48 @@ export type Database = {
           },
         ]
       }
+      notification_analytics: {
+        Row: {
+          avg_delivery_time_seconds: number | null
+          created_at: string
+          date: string
+          error_breakdown: Json | null
+          id: string
+          platform_breakdown: Json | null
+          total_delivered: number
+          total_failed: number
+          total_opened: number
+          total_sent: number
+          updated_at: string
+        }
+        Insert: {
+          avg_delivery_time_seconds?: number | null
+          created_at?: string
+          date: string
+          error_breakdown?: Json | null
+          id?: string
+          platform_breakdown?: Json | null
+          total_delivered?: number
+          total_failed?: number
+          total_opened?: number
+          total_sent?: number
+          updated_at?: string
+        }
+        Update: {
+          avg_delivery_time_seconds?: number | null
+          created_at?: string
+          date?: string
+          error_breakdown?: Json | null
+          id?: string
+          platform_breakdown?: Json | null
+          total_delivered?: number
+          total_failed?: number
+          total_opened?: number
+          total_sent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           admin_id: string
@@ -1204,6 +1300,9 @@ export type Database = {
           engagement_score: number | null
           id: string
           last_login: string | null
+          legal_accepted: boolean
+          legal_accepted_at: string | null
+          legal_version: string | null
           location: string | null
           phone_number: string | null
           profile_type: string | null
@@ -1238,6 +1337,9 @@ export type Database = {
           engagement_score?: number | null
           id: string
           last_login?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           location?: string | null
           phone_number?: string | null
           profile_type?: string | null
@@ -1272,6 +1374,9 @@ export type Database = {
           engagement_score?: number | null
           id?: string
           last_login?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           location?: string | null
           phone_number?: string | null
           profile_type?: string | null
@@ -1316,6 +1421,93 @@ export type Database = {
           log_date?: string
           mood?: Database["public"]["Enums"]["mood_type"]
           notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      public_profiles: {
+        Row: {
+          access_level: Database["public"]["Enums"]["access_level_enum"] | null
+          avatar_url: string | null
+          community_tier: number | null
+          display_name: string | null
+          id: string
+          role: string | null
+          trader_level: string | null
+          user_type: Database["public"]["Enums"]["user_type_enum"] | null
+        }
+        Insert: {
+          access_level?: Database["public"]["Enums"]["access_level_enum"] | null
+          avatar_url?: string | null
+          community_tier?: number | null
+          display_name?: string | null
+          id: string
+          role?: string | null
+          trader_level?: string | null
+          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+        }
+        Update: {
+          access_level?: Database["public"]["Enums"]["access_level_enum"] | null
+          avatar_url?: string | null
+          community_tier?: number | null
+          display_name?: string | null
+          id?: string
+          role?: string | null
+          trader_level?: string | null
+          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+        }
+        Relationships: []
+      }
+      push_notification_deliveries: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          device_type: string | null
+          error_message: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          notification_id: string
+          onesignal_id: string | null
+          platform: string | null
+          sent_at: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          device_type?: string | null
+          error_message?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          notification_id: string
+          onesignal_id?: string | null
+          platform?: string | null
+          sent_at?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          device_type?: string | null
+          error_message?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          notification_id?: string
+          onesignal_id?: string | null
+          platform?: string | null
+          sent_at?: string
+          status?: string
+          title?: string
           updated_at?: string
           user_id?: string
         }
@@ -2009,6 +2201,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_notification_preferences: {
+        Row: {
+          community_activity: boolean
+          created_at: string
+          educational_content: boolean
+          email_enabled: boolean
+          frequency_limit: number | null
+          id: string
+          market_updates: boolean
+          push_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          sms_enabled: boolean
+          system_announcements: boolean
+          timezone: string | null
+          trading_signals: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          community_activity?: boolean
+          created_at?: string
+          educational_content?: boolean
+          email_enabled?: boolean
+          frequency_limit?: number | null
+          id?: string
+          market_updates?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean
+          system_announcements?: boolean
+          timezone?: string | null
+          trading_signals?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          community_activity?: boolean
+          created_at?: string
+          educational_content?: boolean
+          email_enabled?: boolean
+          frequency_limit?: number | null
+          id?: string
+          market_updates?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean
+          system_announcements?: boolean
+          timezone?: string | null
+          trading_signals?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_notifications: {
         Row: {

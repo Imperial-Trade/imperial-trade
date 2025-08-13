@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { PasswordStrengthMeter } from "@/components/security/PasswordStrengthMeter";
 
 const resetPasswordSchema = z.object({
@@ -36,6 +36,7 @@ export const ResetPasswordForm: React.FC = () => {
   const [resetComplete, setResetComplete] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
   const [isValidLink, setIsValidLink] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -48,35 +49,153 @@ export const ResetPasswordForm: React.FC = () => {
   });
 
   useEffect(() => {
-    const validateSession = async () => {
+    const cleanUrl = () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error || !session) {
-          toast({
-            variant: "destructive",
-            title: "Invalid Reset Link",
-            description: "This password reset link is invalid or has expired.",
-          });
-          navigate('/signin');
-        } else {
+        const url = new URL(window.location.href);
+        // Remove hash tokens
+        url.hash = '';
+        // Remove token params from query if present
+        const params = new URLSearchParams(url.search);
+        params.delete('access_token');
+        params.delete('refresh_token');
+        params.delete('type');
+        url.search = params.toString();
+        window.history.replaceState({}, document.title, url.toString());
+      } catch {}
+    };
+
+    const parseTokens = () => {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const searchParams = new URLSearchParams(window.location.search);
+      const access_token = hashParams.get('access_token') || searchParams.get('access_token');
+      const refresh_token = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+      const type = hashParams.get('type') || searchParams.get('type');
+      return { access_token, refresh_token, type };
+    };
+
+    const validateSession = async () => {
+      setIsValidating(true);
+      try {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const searchParams = new URLSearchParams(window.location.search);
+        const access_token = hashParams.get('access_token') || searchParams.get('access_token');
+        const refresh_token = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+        const type = hashParams.get('type') || searchParams.get('type');
+        const token_hash = searchParams.get('token_hash');
+        console.info('[ResetPassword] Link params', { hasAccess: !!access_token, hasRefresh: !!refresh_token, type, hasTokenHash: !!token_hash });
+
+        // Step 1: If we only have token_hash, prompt user to continue securely
+        if (!access_token && !refresh_token && token_hash && type === 'recovery') {
+          setNeedsVerification(true);
           setIsValidLink(true);
+          setIsValidating(false);
+          return;
         }
+
+        // Step 2: After verification, Supabase redirects back with access/refresh tokens
+        if (type === 'recovery' && access_token && refresh_token) {
+          const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (error) {
+            console.error('[ResetPassword] setSession error', error);
+            setIsValidLink(false);
+          } else if (data?.session) {
+            console.info('[ResetPassword] Session set successfully');
+            setIsValidLink(true);
+            // Clean URL of tokens
+            try {
+              const url = new URL(window.location.href);
+              url.hash = '';
+              const params = new URLSearchParams(url.search);
+              params.delete('access_token');
+              params.delete('refresh_token');
+              params.delete('type');
+              params.delete('token_hash');
+              url.search = params.toString();
+              window.history.replaceState({}, document.title, url.toString());
+            } catch {}
+          }
+          setIsValidating(false);
+          return;
+        }
+
+        console.warn('[ResetPassword] Invalid or expired link');
+        setIsValidLink(false);
       } catch (error) {
-        console.error("Session validation error:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Unable to validate reset link. Please try again.",
-        });
-        navigate('/signin');
+        console.error('[ResetPassword] Session validation error:', error);
+        setIsValidLink(false);
       } finally {
         setIsValidating(false);
       }
     };
 
     validateSession();
-  }, [navigate, toast]);
+  }, []);
+
+  const continueSecurely = async () => {
+    setIsValidating(true);
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const token_hash = searchParams.get('token_hash');
+      const type = searchParams.get('type');
+
+      if (type !== 'recovery' || !token_hash) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid link',
+          description: 'The verification link is missing or invalid. Please request a new reset email.'
+        });
+        setNeedsVerification(false);
+        setIsValidLink(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.verifyOtp({
+        type: 'recovery',
+        token_hash,
+      });
+
+      if (error) {
+        console.error('[ResetPassword] verifyOtp error', error);
+        toast({
+          variant: 'destructive',
+          title: 'Verification failed',
+          description: error.message || 'The link may have expired. Please request a new one.'
+        });
+        setIsValidLink(false);
+        return;
+      }
+
+      console.info('[ResetPassword] Link verified successfully');
+      setIsValidLink(true);
+      setNeedsVerification(false);
+
+      // Clean URL params
+      try {
+        const url = new URL(window.location.href);
+        url.hash = '';
+        const params = new URLSearchParams(url.search);
+        params.delete('type');
+        params.delete('token_hash');
+        url.search = params.toString();
+        window.history.replaceState({}, document.title, url.toString());
+      } catch {}
+
+      toast({
+        title: 'Link verified',
+        description: 'You can now set a new password.'
+      });
+    } catch (err) {
+      console.error('[ResetPassword] continueSecurely error', err);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not verify the link. Please try again.'
+      });
+      setIsValidLink(false);
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   const onSubmit = async (data: ResetPasswordData) => {
     setIsSubmitting(true);
@@ -87,6 +206,7 @@ export const ResetPasswordForm: React.FC = () => {
       });
 
       if (error) {
+        console.error('[ResetPassword] updateUser error', error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -94,6 +214,8 @@ export const ResetPasswordForm: React.FC = () => {
         });
         return;
       }
+
+      console.info('[ResetPassword] Password updated successfully');
 
       setResetComplete(true);
       toast({
@@ -165,9 +287,45 @@ export const ResetPasswordForm: React.FC = () => {
     );
   }
 
-  // Don't render the form until we have a valid session
+  if (needsVerification) {
+    return (
+      <Card className="glass-effect border-default">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center text-lime-200">
+            Verify Your Reset Request
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-slate-50 text-center">
+            For your security, click the button below to confirm this password reset.
+          </p>
+          <Button className="w-full" onClick={continueSecurely}>
+            Continue securely
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show invalid link state
   if (!isValidLink) {
-    return null;
+    return (
+      <Card className="glass-effect border-default">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center text-red-300">
+            Invalid Reset Link
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-slate-50 text-center">
+            This password reset link is invalid or has expired. Please request a new link.
+          </p>
+          <Button className="w-full" onClick={() => navigate('/signin')}>
+            Return to Sign In
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

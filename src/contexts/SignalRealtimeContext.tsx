@@ -64,8 +64,8 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       console.log('SignalRealtimeContext - Unique user IDs from alerts:', userIds);
 
       // Fetch ALL profiles for these users
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
+      const { data: profilesData, error: profilesError } = await (supabase as any)
+        .from('public_profiles')
         .select('*')
         .in('id', userIds);
 
@@ -165,11 +165,11 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
         
         // Get profile for the new signal
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
+        const { data: profile, error: profileError } = await (supabase as any)
+          .from('public_profiles')
           .select('*')
           .eq('id', newRecord.user_id)
-          .single();
+          .maybeSingle();
 
         if (profileError) {
           console.error('SignalRealtimeContext - Error fetching profile for new signal:', profileError);

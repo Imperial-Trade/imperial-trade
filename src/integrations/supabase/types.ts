@@ -1384,6 +1384,39 @@ export type Database = {
         }
         Relationships: []
       }
+      public_profiles: {
+        Row: {
+          access_level: Database["public"]["Enums"]["access_level_enum"] | null
+          avatar_url: string | null
+          community_tier: number | null
+          display_name: string | null
+          id: string
+          role: string | null
+          trader_level: string | null
+          user_type: Database["public"]["Enums"]["user_type_enum"] | null
+        }
+        Insert: {
+          access_level?: Database["public"]["Enums"]["access_level_enum"] | null
+          avatar_url?: string | null
+          community_tier?: number | null
+          display_name?: string | null
+          id: string
+          role?: string | null
+          trader_level?: string | null
+          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+        }
+        Update: {
+          access_level?: Database["public"]["Enums"]["access_level_enum"] | null
+          avatar_url?: string | null
+          community_tier?: number | null
+          display_name?: string | null
+          id?: string
+          role?: string | null
+          trader_level?: string | null
+          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+        }
+        Relationships: []
+      }
       quiz_attempts: {
         Row: {
           answers: Json
@@ -2032,13 +2065,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_engagement_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_follows: {
@@ -2072,24 +2098,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "user_follows_follower_id_fkey"
-            columns: ["follower_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "user_follows_following_id_fkey"
             columns: ["following_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_follows_following_id_fkey"
-            columns: ["following_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2322,13 +2334,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_saved_posts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "public_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_streaks: {
@@ -2555,39 +2560,7 @@ export type Database = {
       }
     }
     Views: {
-      public_profiles: {
-        Row: {
-          access_level: Database["public"]["Enums"]["access_level_enum"] | null
-          avatar_url: string | null
-          community_tier: number | null
-          display_name: string | null
-          id: string | null
-          role: string | null
-          trader_level: string | null
-          user_type: Database["public"]["Enums"]["user_type_enum"] | null
-        }
-        Insert: {
-          access_level?: Database["public"]["Enums"]["access_level_enum"] | null
-          avatar_url?: string | null
-          community_tier?: number | null
-          display_name?: string | null
-          id?: string | null
-          role?: string | null
-          trader_level?: string | null
-          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
-        }
-        Update: {
-          access_level?: Database["public"]["Enums"]["access_level_enum"] | null
-          avatar_url?: string | null
-          community_tier?: number | null
-          display_name?: string | null
-          id?: string | null
-          role?: string | null
-          trader_level?: string | null
-          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       check_account_request_rate_limit: {

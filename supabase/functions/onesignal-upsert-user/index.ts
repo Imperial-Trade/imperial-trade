@@ -73,45 +73,82 @@ Deno.serve(async (req: Request) => {
       try { return await r.text(); } catch { return ""; }
     };
 
-    // 1) Try to create the user with optional email subscription (idempotent-ish for our use case)
-    const createUserPayload: any = {
-      identity: { external_id: externalId },
-      properties: { tags },
+    // Helper to parse JSON response safely
+    const safeJson = async (r: Response) => {
+      try { 
+        const text = await r.text(); 
+        return text ? JSON.parse(text) : {};
+      } catch { 
+        return {}; 
+      }
     };
-    if (email) {
-      createUserPayload.subscriptions = [
-        {
-          type: "Email",
-          token: email,
-          enabled: true,
-        },
-      ];
-    }
 
-    const createRes = await fetch(`https://api.onesignal.com/apps/${appId}/users`, {
-      method: "POST",
+    // STEP 1: First check if user already exists to prevent duplication
+    const getUserRes = await fetch(`https://api.onesignal.com/apps/${appId}/users/by/external_id/${externalId}`, {
+      method: "GET",
       headers: {
         Authorization: `Basic ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(createUserPayload),
     });
 
-    if (createRes.ok) {
-      const txt = await safeText(createRes);
-      return new Response(
-        JSON.stringify({
-          success: true,
-          action: "created_user",
-          email_subscription_added: !!email,
-          response: txt,
-        }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+    let userExists = false;
+    let existingUser: any = null;
+    if (getUserRes.ok) {
+      existingUser = await safeJson(getUserRes);
+      userExists = !!existingUser?.identity?.external_id;
+      console.log(`OneSignal user exists: ${userExists}`, existingUser?.identity?.external_id);
     }
 
-    // 2) If user already exists or creation failed, try adding/updating the Email subscription by alias (external_id)
-    let subscriptionAttempt: { ok: boolean; status: number; text?: string } | null = null;
+    // STEP 2: If user doesn't exist, create it
+    if (!userExists) {
+      const createUserPayload: any = {
+        identity: { external_id: externalId },
+        properties: { tags },
+      };
+      if (email) {
+        createUserPayload.subscriptions = [
+          {
+            type: "Email",
+            token: email,
+            enabled: true,
+          },
+        ];
+      }
+
+      const createRes = await fetch(`https://api.onesignal.com/apps/${appId}/users`, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(createUserPayload),
+      });
+
+      if (createRes.ok) {
+        const responseData = await safeJson(createRes);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: "created_user",
+            email_subscription_added: !!email,
+            user_exists: false,
+            response: responseData,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      } else {
+        // Creation failed, but maybe user was created between our check and this call
+        const createError = await safeText(createRes);
+        console.warn(`User creation failed with status ${createRes.status}:`, createError);
+      }
+    }
+
+    // STEP 3: User exists or creation failed - update email subscription and tags
+    let subscriptionAttempt: { ok: boolean; status: number; text?: string; json?: any } | null = null;
+    let tagsAttempt: { ok: boolean; status: number; text?: string } | null = null;
+
+    // Update email subscription if email provided
     if (email) {
       const subRes = await fetch(
         `https://api.onesignal.com/apps/${appId}/users/by/external_id/${externalId}/subscriptions`,
@@ -130,29 +167,67 @@ Deno.serve(async (req: Request) => {
           }),
         }
       );
-      subscriptionAttempt = { ok: subRes.ok, status: subRes.status, text: await safeText(subRes) };
-      if (subRes.ok) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            action: "updated_email_subscription",
-            response: subscriptionAttempt.text,
-          }),
-          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
+      const subText = await safeText(subRes);
+      let subJson = null;
+      if (subRes.ok && subText) {
+        try {
+          subJson = JSON.parse(subText);
+        } catch {
+          subJson = {};
+        }
       }
+      subscriptionAttempt = { 
+        ok: subRes.ok, 
+        status: subRes.status, 
+        text: subText,
+        json: subJson
+      };
     }
 
-    // If we get here, both attempts failed
-    const createTxt = await safeText(createRes);
+    // Update tags
+    if (Object.keys(tags).length > 0) {
+      const tagsRes = await fetch(
+        `https://api.onesignal.com/apps/${appId}/users/by/external_id/${externalId}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Basic ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            properties: { tags },
+          }),
+        }
+      );
+      tagsAttempt = { ok: tagsRes.ok, status: tagsRes.status, text: await safeText(tagsRes) };
+    }
+
+    // Return success if at least subscription or tags update succeeded
+    if ((subscriptionAttempt?.ok || !email) && (tagsAttempt?.ok || Object.keys(tags).length === 0)) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          action: userExists ? "updated_existing_user" : "updated_user_after_creation_failed",
+          user_exists: userExists,
+          email_subscription_updated: subscriptionAttempt?.ok || false,
+          tags_updated: tagsAttempt?.ok || false,
+          subscription_response: subscriptionAttempt?.json,
+          tags_response: tagsAttempt?.text ? (() => { try { return JSON.parse(tagsAttempt.text); } catch { return {}; } })() : null,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // If we get here, updates failed
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Failed to create/update OneSignal user",
-        create_status: createRes.status,
-        create_response: createTxt,
+        error: "Failed to update OneSignal user subscriptions/tags",
+        user_exists: userExists,
         subscription_status: subscriptionAttempt?.status,
         subscription_response: subscriptionAttempt?.text,
+        tags_status: tagsAttempt?.status,
+        tags_response: tagsAttempt?.text,
       }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

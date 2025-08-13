@@ -1064,6 +1064,48 @@ export type Database = {
           },
         ]
       }
+      notification_analytics: {
+        Row: {
+          avg_delivery_time_seconds: number | null
+          created_at: string
+          date: string
+          error_breakdown: Json | null
+          id: string
+          platform_breakdown: Json | null
+          total_delivered: number
+          total_failed: number
+          total_opened: number
+          total_sent: number
+          updated_at: string
+        }
+        Insert: {
+          avg_delivery_time_seconds?: number | null
+          created_at?: string
+          date: string
+          error_breakdown?: Json | null
+          id?: string
+          platform_breakdown?: Json | null
+          total_delivered?: number
+          total_failed?: number
+          total_opened?: number
+          total_sent?: number
+          updated_at?: string
+        }
+        Update: {
+          avg_delivery_time_seconds?: number | null
+          created_at?: string
+          date?: string
+          error_breakdown?: Json | null
+          id?: string
+          platform_breakdown?: Json | null
+          total_delivered?: number
+          total_failed?: number
+          total_opened?: number
+          total_sent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           admin_id: string
@@ -1414,6 +1456,60 @@ export type Database = {
           role?: string | null
           trader_level?: string | null
           user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+        }
+        Relationships: []
+      }
+      push_notification_deliveries: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          device_type: string | null
+          error_message: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          notification_id: string
+          onesignal_id: string | null
+          platform: string | null
+          sent_at: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          device_type?: string | null
+          error_message?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          notification_id: string
+          onesignal_id?: string | null
+          platform?: string | null
+          sent_at?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          device_type?: string | null
+          error_message?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          notification_id?: string
+          onesignal_id?: string | null
+          platform?: string | null
+          sent_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2105,6 +2201,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_notification_preferences: {
+        Row: {
+          community_activity: boolean
+          created_at: string
+          educational_content: boolean
+          email_enabled: boolean
+          frequency_limit: number | null
+          id: string
+          market_updates: boolean
+          push_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          sms_enabled: boolean
+          system_announcements: boolean
+          timezone: string | null
+          trading_signals: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          community_activity?: boolean
+          created_at?: string
+          educational_content?: boolean
+          email_enabled?: boolean
+          frequency_limit?: number | null
+          id?: string
+          market_updates?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean
+          system_announcements?: boolean
+          timezone?: string | null
+          trading_signals?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          community_activity?: boolean
+          created_at?: string
+          educational_content?: boolean
+          email_enabled?: boolean
+          frequency_limit?: number | null
+          id?: string
+          market_updates?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean
+          system_announcements?: boolean
+          timezone?: string | null
+          trading_signals?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_notifications: {
         Row: {

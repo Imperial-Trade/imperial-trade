@@ -40,13 +40,23 @@ export class AccountRequest {
 
     const normalizedEmail = data.email.toLowerCase().trim();
     
-    // Check server-side rate limiting before creating
+    // Best-effort duplicate check (validation only - no rate limiting)
+    try {
+      const existingRequest = await this.getByEmail(normalizedEmail);
+      if (existingRequest) {
+        throw new Error("An account request with this email already exists. Please click the 'Check Request Status' button below to view or update your request.");
+      }
+    } catch (e) {
+      console.warn('getByEmail pre-check failed, proceeding with insert:', e);
+    }
+
+    // Check server-side rate limiting ONLY before actual submission
     const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(normalizedEmail);
     if (!rateLimitCheck.allowed) {
       const retryAfterHours = Math.ceil(
         (new Date(rateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60 * 60)
       );
-      throw new Error(`Too many requests for this email. Please try again in ${retryAfterHours} hours.`);
+      throw new Error(`You've reached the limit of 3 account requests per day. Please try again in ${retryAfterHours} hours, or use 'Check Request Status' if you've already submitted a request.`);
     }
 
     // Also check IP-based rate limiting
@@ -57,16 +67,6 @@ export class AccountRequest {
         (new Date(ipRateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60)
       );
       throw new Error(`Too many requests from your location. Please try again in ${retryAfterMinutes} minutes.`);
-    }
-
-    // Best-effort duplicate check (does not block on errors)
-    try {
-      const existingRequest = await this.getByEmail(normalizedEmail);
-      if (existingRequest) {
-        throw new Error("An account request with this email already exists. Please click the 'Check Request Status' button below to view or update your request.");
-      }
-    } catch (e) {
-      console.warn('getByEmail pre-check failed, proceeding with insert:', e);
     }
 
     // Include legal acceptance fields

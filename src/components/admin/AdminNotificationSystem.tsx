@@ -8,6 +8,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RecentAdminNotifications } from './notifications/RecentAdminNotifications';
 import { AdminNotificationStats } from './notifications/AdminNotificationStats';
+import { NotificationTestPanel } from './NotificationTestPanel';
+import { SubscriptionMonitor } from '../notifications/SubscriptionMonitor';
+import { NotificationAnalytics } from './NotificationAnalytics';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface NotificationSettings {
   newRequests: boolean;
@@ -147,108 +151,149 @@ export const AdminNotificationSystem: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-foreground">Admin Notifications</h3>
-          <p className="text-muted-foreground">Choose how and when you're notified about account requests.</p>
+          <h3 className="text-lg font-semibold text-foreground">Notification Management</h3>
+          <p className="text-muted-foreground">Manage push notifications, analytics, and system monitoring</p>
         </div>
-        <Button
-          onClick={sendTestNotification}
-          disabled={loading}
-          variant="outline"
-          className="border-gray-300"
-        >
-          <Bell className="w-4 h-4 mr-2" />
-          {loading ? 'Sending...' : 'Send Test Notification'}
-        </Button>
-      </div>
-      <div className="flex items-start gap-2 rounded-md border p-3 text-sm text-muted-foreground">
-        <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
-        <p>
-          Emails are sent to your admin address. Times use your local timezone. Use the Send Test Notification button to confirm delivery.
-        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Email Notifications */}
-        <Card className="border-gray-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <Mail className="w-5 h-5" />
-              Email Notifications
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">New Account Requests</p>
-                <p className="text-sm text-muted-foreground">Receive an email as soon as someone submits a new account request.</p>
-              </div>
-              <Switch
-                checked={settings.newRequests}
-                onCheckedChange={(checked) => updateSetting('newRequests', checked)}
-                disabled={saveLoading}
-              />
+      <Tabs defaultValue="settings" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="testing">Testing</TabsTrigger>
+          <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="settings" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-lg font-semibold text-foreground">Admin Email Notifications</h4>
+              <p className="text-muted-foreground">Choose how and when you're notified about account requests</p>
             </div>
+            <Button
+              onClick={sendTestNotification}
+              disabled={loading}
+              variant="outline"
+              className="border-gray-300"
+            >
+              <Bell className="w-4 h-4 mr-2" />
+              {loading ? 'Sending...' : 'Send Test Email'}
+            </Button>
+          </div>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">Request Resubmissions</p>
-                <p className="text-sm text-muted-foreground">Receive an email when an applicant resubmits after changes.</p>
-              </div>
-              <Switch
-                checked={settings.resubmissions}
-                onCheckedChange={(checked) => updateSetting('resubmissions', checked)}
-                disabled={saveLoading}
-              />
-            </div>
+          <div className="flex items-start gap-2 rounded-md border p-3 text-sm text-muted-foreground">
+            <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
+            <p>
+              Emails are sent to your admin address. Times use your local timezone. Use the Send Test Email button to confirm delivery.
+            </p>
+          </div>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">Daily Digest</p>
-                <p className="text-sm text-muted-foreground">A daily summary of pending and recent requests. Sent at 9:00 AM.</p>
-              </div>
-              <Switch
-                checked={settings.dailyDigest}
-                onCheckedChange={(checked) => updateSetting('dailyDigest', checked)}
-                disabled={saveLoading}
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Email Notifications */}
+            <Card className="border-gray-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Mail className="w-5 h-5" />
+                  Email Notifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">New Account Requests</p>
+                    <p className="text-sm text-muted-foreground">Receive an email as soon as someone submits a new account request.</p>
+                  </div>
+                  <Switch
+                    checked={settings.newRequests}
+                    onCheckedChange={(checked) => updateSetting('newRequests', checked)}
+                    disabled={saveLoading}
+                  />
+                </div>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-foreground">Weekly Report</p>
-                <p className="text-sm text-muted-foreground">A weekly overview of request volumes, outcomes, and trends. Sent every Monday at 9:00 AM.</p>
-              </div>
-              <Switch
-                checked={settings.weeklyReport}
-                onCheckedChange={(checked) => updateSetting('weeklyReport', checked)}
-                disabled={saveLoading}
-              />
-            </div>
-          </CardContent>
-        </Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">Request Resubmissions</p>
+                    <p className="text-sm text-muted-foreground">Receive an email when an applicant resubmits after changes.</p>
+                  </div>
+                  <Switch
+                    checked={settings.resubmissions}
+                    onCheckedChange={(checked) => updateSetting('resubmissions', checked)}
+                    disabled={saveLoading}
+                  />
+                </div>
 
-        {/* Recent Activity (dynamic) */}
-        <Card className="border-gray-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <Clock className="w-5 h-5" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <RecentAdminNotifications />
-        </Card>
-      </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">Daily Digest</p>
+                    <p className="text-sm text-muted-foreground">A daily summary of pending and recent requests. Sent at 9:00 AM.</p>
+                  </div>
+                  <Switch
+                    checked={settings.dailyDigest}
+                    onCheckedChange={(checked) => updateSetting('dailyDigest', checked)}
+                    disabled={saveLoading}
+                  />
+                </div>
 
-      {/* Statistics Overview (dynamic) */}
-      <Card className="border-gray-200">
-        <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <Settings className="w-5 h-5" />
-              Notification Statistics
-          </CardTitle>
-        </CardHeader>
-        <AdminNotificationStats />
-      </Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">Weekly Report</p>
+                    <p className="text-sm text-muted-foreground">A weekly overview of request volumes, outcomes, and trends. Sent every Monday at 9:00 AM.</p>
+                  </div>
+                  <Switch
+                    checked={settings.weeklyReport}
+                    onCheckedChange={(checked) => updateSetting('weeklyReport', checked)}
+                    disabled={saveLoading}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity (dynamic) */}
+            <Card className="border-gray-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Clock className="w-5 h-5" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <RecentAdminNotifications />
+            </Card>
+          </div>
+
+          {/* Statistics Overview (dynamic) */}
+          <Card className="border-gray-200">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Settings className="w-5 h-5" />
+                  Notification Statistics
+              </CardTitle>
+            </CardHeader>
+            <AdminNotificationStats />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <NotificationAnalytics />
+        </TabsContent>
+
+        <TabsContent value="testing">
+          <NotificationTestPanel />
+        </TabsContent>
+
+        <TabsContent value="monitoring">
+          <SubscriptionMonitor />
+        </TabsContent>
+
+        <TabsContent value="activity" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Admin Activity</CardTitle>
+            </CardHeader>
+            <RecentAdminNotifications />
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

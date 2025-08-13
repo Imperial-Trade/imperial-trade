@@ -68,15 +68,49 @@ const NotificationPermissionBanner: React.FC = () => {
                 onClick={async () => {
                   try {
                     setRequesting(true);
-                    await requestPermission();
+                    const result = await requestPermission();
                     const current = typeof Notification !== 'undefined' ? Notification.permission : permission;
-                    if (current === 'granted') {
-                      toast({ title: 'Push notifications enabled', description: 'You will receive alerts even when the app is closed.' });
+                    
+                    if (result.success) {
+                      toast({ 
+                        title: 'Push notifications enabled', 
+                        description: 'You will receive alerts even when the app is closed.' 
+                      });
                       dismissPrompt();
                     } else if (current === 'denied') {
-                      toast({ title: 'Notifications blocked', description: 'Use the browser site settings (lock icon) to Allow notifications.', variant: 'destructive' as any });
+                      toast({ 
+                        title: 'Notifications blocked', 
+                        description: 'Use the browser site settings (lock icon) to Allow notifications.', 
+                        variant: 'destructive' as any 
+                      });
+                    } else if (result.error) {
+                      // Enhanced error handling based on specific failure
+                      const errorTitle = result.details?.step === 'user_creation' 
+                        ? 'OneSignal setup failed'
+                        : result.details?.step === 'onesignal_subscribe'
+                        ? 'Subscription failed'
+                        : result.details?.step === 'native_permission'
+                        ? 'Permission request failed'
+                        : 'Setup incomplete';
+                      
+                      const errorDescription = result.error.includes('iframe') 
+                        ? 'Open in a new tab to enable notifications'
+                        : result.error.includes('denied')
+                        ? 'Check browser settings to allow notifications'
+                        : result.error.includes('failed to create')
+                        ? 'Please try again or contact support'
+                        : result.error;
+
+                      toast({ 
+                        title: errorTitle,
+                        description: errorDescription,
+                        variant: 'destructive' as any 
+                      });
                     } else {
-                      toast({ title: 'No prompt shown?', description: "If you didn't see a prompt, open site settings (lock icon) → Notifications." });
+                      toast({ 
+                        title: 'No prompt shown?', 
+                        description: "If you didn't see a prompt, open site settings (lock icon) → Notifications." 
+                      });
                     }
                   } finally {
                     setRequesting(false);

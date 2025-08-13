@@ -118,6 +118,13 @@ export class TradingApiService {
 
       // Send push notification to subscribed users via Edge Function (best-effort)
       try {
+        // Fetch author profile to enrich notifications
+        const { data: author } = await (supabase as any)
+          .from('public_profiles')
+          .select('display_name, avatar_url')
+          .eq('id', responseDto.userId)
+          .single();
+
         const notificationPayload = {
           signal_id: responseDto.id,
           alert_type: 'signal_created',
@@ -130,7 +137,10 @@ export class TradingApiService {
           symbol: responseDto.tradermadeSymbol,
           trade_type: responseDto.tradeType,
           entry_price: responseDto.entryPrice,
-          stop_loss: responseDto.stopLoss
+          stop_loss: responseDto.stopLoss,
+          author_id: responseDto.userId,
+          author_name: author?.display_name,
+          author_avatar_url: author?.avatar_url,
         };
         await supabase.functions.invoke('signal-notification-dispatcher', {
           body: { notifications: [notificationPayload] }
@@ -141,6 +151,13 @@ export class TradingApiService {
 
       // Broadcast realtime in-app notification
       try {
+        // Enrich realtime payload with author info
+        const { data: author } = await (supabase as any)
+          .from('public_profiles')
+          .select('display_name, avatar_url')
+          .eq('id', responseDto.userId)
+          .single();
+
         await supabase
           .channel('instant-alerts')
           .send({
@@ -152,6 +169,10 @@ export class TradingApiService {
               symbol: responseDto.tradermadeSymbol,
               trade_type: responseDto.tradeType,
               entry_price: responseDto.entryPrice,
+              stop_loss: responseDto.stopLoss,
+              author_id: responseDto.userId,
+              author_name: author?.display_name,
+              author_avatar_url: author?.avatar_url,
               timestamp: new Date().toISOString(),
               urgency: 'normal'
             }

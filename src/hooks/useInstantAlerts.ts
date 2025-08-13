@@ -92,11 +92,18 @@ export const useInstantAlerts = () => {
     const type = (payload.trade_type || '').toUpperCase();
     const entry = payload.entry_price;
 
-    const title = `New Signal Created`;
-    const message = `${asset} • ${type}${entry ? ` @ $${Number(entry).toFixed(2)}` : ''}`;
+    const author = (payload.author_name || '').trim();
+
+    const title = author ? `${author} posted a new signal` : `New Signal Created`;
+    const details = [
+      asset,
+      type ? type : undefined,
+      entry ? `@ $${Number(entry).toFixed(2)}` : undefined,
+      payload.stop_loss ? `SL $${Number(payload.stop_loss).toFixed(2)}` : undefined
+    ].filter(Boolean).join(' • ');
 
     toast.success(title, {
-      description: message,
+      description: details,
       duration: 6000,
       className: 'border-primary bg-primary/10 text-primary',
       action: {
@@ -107,7 +114,7 @@ export const useInstantAlerts = () => {
 
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, {
-        body: message,
+        body: details,
         icon: '/favicon.ico'
       });
     }

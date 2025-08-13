@@ -1,7 +1,8 @@
+
 // Test notification function for admins to verify delivery
 // Sends a test notification to verify end-to-end delivery
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",

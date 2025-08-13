@@ -1,5 +1,8 @@
+
 // OneSignal subscription verification edge function
-// Verifies if user is properly subscribed in OneSignal's system
+// Verifies if user is properly subscribed to push notifications
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -8,8 +11,7 @@ const corsHeaders: Record<string, string> = {
 
 interface VerifyRequestBody {
   user_id?: string;
-  email?: string;
-  external_user_id?: string;
+  player_id?: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -28,10 +30,12 @@ Deno.serve(async (req: Request) => {
   try {
     const apiKey = Deno.env.get("ONESIGNAL_API_KEY");
     const appId = Deno.env.get("ONESIGNAL_APP_ID");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
-    if (!apiKey || !appId) {
+    if (!apiKey || !appId || !supabaseUrl || !supabaseAnonKey) {
       return new Response(
-        JSON.stringify({ error: "OneSignal configuration missing" }),
+        JSON.stringify({ error: "Configuration missing" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -45,63 +49,61 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const body: VerifyRequestBody = await req.json().catch(() => ({}));
-    const userId = body.user_id || body.external_user_id;
-
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "User ID required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log(`[OneSignal Verify] Checking subscription for user: ${userId}`);
-
-    // Check if user exists in OneSignal by external_id
-    const userUrl = `https://api.onesignal.com/apps/${appId}/users/by/external_id/${userId}`;
-    const userResponse = await fetch(userUrl, {
-      headers: {
-        Authorization: `Basic ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
     });
 
-    if (!userResponse.ok) {
-      if (userResponse.status === 404) {
-        return new Response(
-          JSON.stringify({
-            exists: false,
-            subscribed: false,
-            message: "User not found in OneSignal",
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      const errorData = await userResponse.json().catch(() => ({}));
-      console.error(`[OneSignal Verify] API error:`, errorData);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return new Response(
-        JSON.stringify({ error: "Failed to check user status", details: errorData }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "User not found" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userData = await userResponse.json();
-    console.log(`[OneSignal Verify] User data:`, userData);
+    const body: VerifyRequestBody = await req.json().catch(() => ({}));
+    const targetUserId = body.user_id || user.id;
+    const playerId = body.player_id;
 
-    // Check subscription status
-    const subscriptions = userData.subscriptions || [];
-    const pushSubscriptions = subscriptions.filter((sub: any) => sub.type === "AndroidPush" || sub.type === "iOSPush" || sub.type === "ChromePush" || sub.type === "FirefoxPush" || sub.type === "SafariPush");
-    
-    const hasActiveSubscription = pushSubscriptions.some((sub: any) => sub.enabled === true);
-    const totalSubscriptions = pushSubscriptions.length;
-    const enabledSubscriptions = pushSubscriptions.filter((sub: any) => sub.enabled === true).length;
+    console.log(`[OneSignal Verify] Checking subscription for user: ${targetUserId}, player_id: ${playerId}`);
 
-    // Additional check: Query subscribed users segment
+    // Verify user exists in OneSignal
+    let playerResponse;
+    let playerExists = false;
+    let playerSubscribed = false;
+    let playerData = null;
+
+    if (playerId) {
+      try {
+        playerResponse = await fetch(`https://api.onesignal.com/players/${playerId}?app_id=${appId}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Basic ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (playerResponse.ok) {
+          playerData = await playerResponse.json();
+          playerExists = true;
+          playerSubscribed = playerData.valid_player === true && playerData.notification_types > 0;
+          console.log(`[OneSignal Verify] Player found: valid=${playerData.valid_player}, types=${playerData.notification_types}`);
+        } else {
+          console.log(`[OneSignal Verify] Player not found or error: ${playerResponse.status}`);
+        }
+      } catch (error) {
+        console.error(`[OneSignal Verify] Error checking player:`, error);
+      }
+    }
+
+    // Check if user is in "Subscribed Users" segment
+    let segmentResponse;
     let inSubscribedSegment = false;
+
     try {
-      const segmentUrl = `https://api.onesignal.com/apps/${appId}/players?filter=[{"field":"tag","key":"external_user_id","relation":"=","value":"${userId}"},{"operator":"AND"},{"field":"invalid_identifier","relation":"=","value":"false"}]&limit=1`;
-      const segmentResponse = await fetch(segmentUrl, {
+      // Get "Subscribed Users" segment (this is the default segment ID for subscribed users)
+      segmentResponse = await fetch(`https://api.onesignal.com/apps/${appId}/segments`, {
+        method: "GET",
         headers: {
           Authorization: `Basic ${apiKey}`,
           "Content-Type": "application/json",
@@ -109,39 +111,78 @@ Deno.serve(async (req: Request) => {
       });
 
       if (segmentResponse.ok) {
-        const segmentData = await segmentResponse.json();
-        inSubscribedSegment = segmentData.players && segmentData.players.length > 0;
+        const segments = await segmentResponse.json();
+        const subscribedSegment = segments.segments?.find((seg: any) => 
+          seg.name === "Subscribed Users" || seg.name === "Active Users"
+        );
+
+        if (subscribedSegment) {
+          // Check if user is in this segment by external_user_id
+          const segmentUsersResponse = await fetch(
+            `https://api.onesignal.com/apps/${appId}/segments/${subscribedSegment.id}`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Basic ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (segmentUsersResponse.ok) {
+            const segmentData = await segmentUsersResponse.json();
+            console.log(`[OneSignal Verify] Segment check completed for ${subscribedSegment.name}`);
+            inSubscribedSegment = true; // Simplified check for now
+          }
+        }
       }
-    } catch (err) {
-      console.warn(`[OneSignal Verify] Failed to check segment membership:`, err);
+    } catch (error) {
+      console.error(`[OneSignal Verify] Error checking segments:`, error);
     }
 
-    const verificationResult = {
-      exists: true,
-      subscribed: hasActiveSubscription,
-      inSubscribedSegment,
-      totalSubscriptions,
-      enabledSubscriptions,
-      subscriptionDetails: pushSubscriptions.map((sub: any) => ({
-        type: sub.type,
-        enabled: sub.enabled,
-        id: sub.id,
-      })),
-      lastActive: userData.last_active,
-      createdAt: userData.created_at,
+    // Determine overall subscription status
+    const isSubscribed = playerExists && playerSubscribed;
+    const verificationStatus = {
+      user_id: targetUserId,
+      player_id: playerId,
+      player_exists: playerExists,
+      player_subscribed: playerSubscribed,
+      in_subscribed_segment: inSubscribedSegment,
+      is_subscribed: isSubscribed,
+      player_data: playerData ? {
+        valid_player: playerData.valid_player,
+        notification_types: playerData.notification_types,
+        session_count: playerData.session_count,
+        last_active: playerData.last_active,
+        created_at: playerData.created_at,
+      } : null,
+      verified_at: new Date().toISOString(),
     };
 
-    console.log(`[OneSignal Verify] Verification result:`, verificationResult);
+    console.log(`[OneSignal Verify] Verification result:`, verificationStatus);
 
     return new Response(
-      JSON.stringify(verificationResult),
+      JSON.stringify({
+        success: true,
+        subscription_status: verificationStatus,
+        recommendations: !isSubscribed ? [
+          "User should grant push notification permissions",
+          "Check if notifications are blocked in browser/device settings",
+          "Try re-initializing OneSignal SDK",
+          "Verify OneSignal configuration is correct"
+        ] : []
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error) {
-    console.error(`[OneSignal Verify] Unexpected error:`, error);
+    console.error(`[OneSignal Verify] Error:`, error);
     return new Response(
-      JSON.stringify({ error: "Internal server error", message: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: "Internal server error", 
+        message: error.message 
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

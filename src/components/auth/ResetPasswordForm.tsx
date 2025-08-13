@@ -131,6 +131,72 @@ export const ResetPasswordForm: React.FC = () => {
     validateSession();
   }, []);
 
+  const continueSecurely = async () => {
+    setIsValidating(true);
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const token_hash = searchParams.get('token_hash');
+      const type = searchParams.get('type');
+
+      if (type !== 'recovery' || !token_hash) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid link',
+          description: 'The verification link is missing or invalid. Please request a new reset email.'
+        });
+        setNeedsVerification(false);
+        setIsValidLink(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.verifyOtp({
+        type: 'recovery',
+        token_hash,
+      });
+
+      if (error) {
+        console.error('[ResetPassword] verifyOtp error', error);
+        toast({
+          variant: 'destructive',
+          title: 'Verification failed',
+          description: error.message || 'The link may have expired. Please request a new one.'
+        });
+        setIsValidLink(false);
+        return;
+      }
+
+      console.info('[ResetPassword] Link verified successfully');
+      setIsValidLink(true);
+      setNeedsVerification(false);
+
+      // Clean URL params
+      try {
+        const url = new URL(window.location.href);
+        url.hash = '';
+        const params = new URLSearchParams(url.search);
+        params.delete('type');
+        params.delete('token_hash');
+        url.search = params.toString();
+        window.history.replaceState({}, document.title, url.toString());
+      } catch {}
+
+      toast({
+        title: 'Link verified',
+        description: 'You can now set a new password.'
+      });
+    } catch (err) {
+      console.error('[ResetPassword] continueSecurely error', err);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not verify the link. Please try again.'
+      });
+      setIsValidLink(false);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   const onSubmit = async (data: ResetPasswordData) => {
     setIsSubmitting(true);
     

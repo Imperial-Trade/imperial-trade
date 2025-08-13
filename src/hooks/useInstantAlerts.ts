@@ -225,9 +225,62 @@ export const useInstantAlerts = () => {
             if (!monitorRef.current) {
               monitorRef.current = supabase
                 .channel('alert-monitoring-changes')
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'alert_monitoring', filter: 'is_active=eq.false' }, (payload) => {
-                  console.log('📊 Alert monitoring change detected:', payload);
-                })
+                // Fallback 1: Alert monitoring deactivation implies a trigger
+                .on(
+                  'postgres_changes',
+                  { event: 'UPDATE', schema: 'public', table: 'alert_monitoring' },
+                  (payload: any) => {
+                    try {
+                      const newRow = payload.new as any;
+                      const oldRow = payload.old as any;
+                      console.log('📊 Alert monitoring change detected:', payload);
+                      if (oldRow?.is_active && newRow?.is_active === false) {
+                        const alertType = String(newRow?.alert_type || 'unknown');
+                        const urgency: 'critical' | 'high' | 'normal' =
+                          alertType === 'stop_loss'
+                            ? 'critical'
+                            : alertType.startsWith('take_profit')
+                            ? 'high'
+                            : 'normal';
+                        handleAlertNotification({
+                          signal_id: String(newRow?.signal_id || ''),
+                          alert_type: alertType,
+                          target_price: Number(newRow?.target_price ?? 0),
+                          triggered_price: Number(newRow?.current_price ?? newRow?.target_price ?? 0),
+                          notification_type: 'db_fallback',
+                          timestamp: new Date().toISOString(),
+                          urgency,
+                        });
+                      }
+                    } catch (err) {
+                      console.warn('Failed to process alert_monitoring fallback', err);
+                    }
+                  }
+                )
+                // Fallback 2: New trade alerts
+                .on(
+                  'postgres_changes',
+                  { event: 'INSERT', schema: 'public', table: 'trade_alerts' },
+                  (payload: any) => {
+                    try {
+                      handleSignalCreated(payload.new);
+                    } catch (err) {
+                      console.warn('Failed to process trade_alerts INSERT fallback', err);
+                    }
+                  }
+                )
+                // Fallback 3: Trade alert updates (status, tp hits, etc.)
+                .on(
+                  'postgres_changes',
+                  { event: 'UPDATE', schema: 'public', table: 'trade_alerts' },
+                  (payload: any) => {
+                    try {
+                      handleSignalUpdated(payload.new);
+                    } catch (err) {
+                      console.warn('Failed to process trade_alerts UPDATE fallback', err);
+                    }
+                  }
+                )
                 .subscribe();
             }
 

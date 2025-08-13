@@ -21,34 +21,24 @@ interface NotificationPayload {
   trade_type?: string;
   entry_price?: number;
   stop_loss?: number;
+  // Author enrichment
+  author_id?: string;
+  author_name?: string;
+  author_avatar_url?: string;
+  // Optional enrichment for "signal_updated" notifications
+  status?: 'pending' | 'active' | 'closed';
+  tp_hits?: number[];
+  close_reason?: string;
+  notes?: string;
 }
 
 
-async function sendRealtimeNotification(supabase: any, payload: NotificationPayload): Promise<boolean> {
+
+async function sendRealtimeNotification(payload: NotificationPayload): Promise<boolean> {
   try {
-    // Broadcast via Supabase Realtime to all subscribers
-    const { error } = await supabase
-      .channel('instant-alerts')
-      .send({
-        type: 'broadcast',
-        event: 'alert_triggered',
-        payload: {
-          signal_id: payload.signal_id,
-          alert_type: payload.alert_type,
-          target_price: payload.target_price,
-          triggered_price: payload.triggered_price,
-          notification_type: payload.notification_type,
-          timestamp: new Date().toISOString(),
-          urgency: payload.alert_type === 'stop_loss' ? 'critical' : 'high'
-        }
-      });
-
-    if (error) {
-      console.error('❌ Realtime notification error:', error);
-      return false;
-    }
-
-    console.log(`✅ Realtime notification sent for ${payload.alert_type}`);
+    // Server-side realtime broadcasts are handled by clients in our architecture.
+    // We log and no-op here to avoid misuse in Edge Functions.
+    console.log(`ℹ️ Skipping server realtime broadcast for ${payload.alert_type}. Client will handle realtime.`);
     return true;
   } catch (error) {
     console.error('❌ Realtime notification exception:', error);
@@ -165,24 +155,40 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
       return false;
     }
 
-    const isSignalCreated = payload.notification_type === 'signal_created';
-    let title: string;
-    let body: string;
+const isSignalCreated = payload.notification_type === 'signal_created';
+const isSignalUpdated = payload.notification_type === 'signal_updated';
+let title: string;
+let body: string;
 
-    if (isSignalCreated) {
-      const asset = payload.asset_name || payload.symbol || 'New Signal';
-      const type = (payload.trade_type || '').toUpperCase();
-      const entry = payload.entry_price ?? payload.target_price ?? payload.triggered_price;
-      const sl = payload.stop_loss;
-      title = `New Signal: ${asset}`;
-      const parts = [] as string[];
-      if (type && entry !== undefined) parts.push(`${type} @ $${Number(entry).toFixed(2)}`);
-      if (sl !== undefined) parts.push(`SL $${Number(sl).toFixed(2)}`);
-      body = parts.join(' • ');
-    } else {
-      title = payload.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
-      body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
-    }
+if (isSignalCreated) {
+  const asset = payload.asset_name || payload.symbol || 'New Signal';
+  const type = (payload.trade_type || '').toUpperCase();
+  const entry = payload.entry_price ?? payload.target_price ?? payload.triggered_price;
+  const sl = payload.stop_loss;
+  const author = (payload.author_name || '').trim();
+  title = author ? `New Signal by ${author}: ${asset}` : `New Signal: ${asset}`;
+  const parts: string[] = [];
+  if (type && entry !== undefined) parts.push(`${type} @ $${Number(entry).toFixed(2)}`);
+  if (sl !== undefined) parts.push(`SL $${Number(sl).toFixed(2)}`);
+  body = parts.join(' • ');
+} else if (isSignalUpdated) {
+  const asset = payload.asset_name || payload.symbol || 'Signal';
+  const author = (payload.author_name || '').trim();
+  const status = payload.status ? payload.status.toUpperCase() : undefined;
+  const tpHitsText = payload.tp_hits && payload.tp_hits.length ? `TP hits ${payload.tp_hits.join(',')}` : undefined;
+  const closeReason = payload.close_reason ? `Close: ${payload.close_reason.replace('_',' ')}` : undefined;
+  const noteText = payload.notes ? (payload.notes.length > 80 ? payload.notes.slice(0,77) + '...' : payload.notes) : undefined;
+  title = author ? `Signal updated by ${author}: ${asset}` : `Signal updated: ${asset}`;
+  const parts: string[] = [];
+  if (status) parts.push(`Status ${status}`);
+  if (tpHitsText) parts.push(tpHitsText);
+  if (closeReason) parts.push(closeReason);
+  if (noteText) parts.push(noteText);
+  body = parts.join(' • ') || 'Signal details updated';
+} else {
+  title = payload.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
+  body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
+}
 
     const response = await fetch('https://api.onesignal.com/notifications', {
       method: 'POST',
@@ -195,18 +201,25 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
           app_id: appId,
           headings: { en: title },
           contents: { en: body },
-          data: {
-            signal_id: payload.signal_id,
-            alert_type: payload.alert_type,
-            target_price: payload.target_price,
-            triggered_price: payload.triggered_price,
-            notification_type: payload.notification_type,
-            asset_name: payload.asset_name,
-            symbol: payload.symbol,
-            trade_type: payload.trade_type,
-            entry_price: payload.entry_price,
-            stop_loss: payload.stop_loss,
-          },
+data: {
+  signal_id: payload.signal_id,
+  alert_type: payload.alert_type,
+  target_price: payload.target_price,
+  triggered_price: payload.triggered_price,
+  notification_type: payload.notification_type,
+  asset_name: payload.asset_name,
+  symbol: payload.symbol,
+  trade_type: payload.trade_type,
+  entry_price: payload.entry_price,
+  stop_loss: payload.stop_loss,
+  author_id: payload.author_id,
+  author_name: payload.author_name,
+  author_avatar_url: payload.author_avatar_url,
+  status: payload.status,
+  tp_hits: payload.tp_hits,
+  close_reason: payload.close_reason,
+  notes: payload.notes,
+},
         };
         if (payload.user_ids && payload.user_ids.length > 0) {
           base.include_external_user_ids = payload.user_ids;
@@ -241,7 +254,7 @@ async function processNotification(payload: NotificationPayload): Promise<Record
   const deliveryPromises = payload.delivery_channels.map(async (channel) => {
     switch (channel) {
       case 'realtime':
-        return { channel, success: await sendRealtimeNotification(null, payload) };
+        return { channel, success: await sendRealtimeNotification(payload) };
       case 'discord':
         return { channel, success: await sendDiscordWebhook(payload) };
       case 'telegram':
@@ -332,6 +345,33 @@ serve(async (req) => {
       
       console.log(`🚨 Processing ${notification.alert_type} for signal ${notification.signal_id}`);
       
+      // Enrich notification with author/profile and signal fields if missing (for push/title rendering)
+      try {
+        const { data: ownerRow } = await supabase
+          .from('trade_alerts')
+          .select('user_id, asset_name, trade_type, entry_price, stop_loss, tradermade_symbol')
+          .eq('id', notification.signal_id)
+          .single();
+        if (ownerRow?.user_id) {
+          const { data: profile } = await supabase
+            .from('public_profiles')
+            .select('display_name, avatar_url')
+            .eq('id', ownerRow.user_id)
+            .single();
+          notification.author_id = ownerRow.user_id;
+          notification.author_name = profile?.display_name || undefined;
+          notification.author_avatar_url = profile?.avatar_url || undefined;
+        }
+        // Fill missing signal fields
+        notification.asset_name = notification.asset_name ?? ownerRow?.asset_name ?? notification.asset_name;
+        notification.symbol = notification.symbol ?? ownerRow?.tradermade_symbol ?? notification.symbol;
+        notification.trade_type = notification.trade_type ?? ownerRow?.trade_type ?? notification.trade_type;
+        notification.entry_price = notification.entry_price ?? (ownerRow?.entry_price as number | undefined);
+        notification.stop_loss = notification.stop_loss ?? (ownerRow?.stop_loss as number | undefined);
+      } catch (enrichErr) {
+        console.log('ℹ️ Unable to enrich notification with author info:', enrichErr);
+      }
+      
       const deliveryResults = await processNotification(notification);
       const processingTime = Date.now() - startTime;
       
@@ -387,15 +427,34 @@ serve(async (req) => {
         }
 
         if (recipientIds.length > 0) {
-          const priority = notification.alert_type === 'stop_loss' ? 'high' : 'medium';
-          const isCreated = notification.notification_type === 'signal_created';
-          const title = isCreated
-            ? `New Signal: ${notification.asset_name || notification.symbol || ''}`.trim()
-            : (notification.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered');
-          const priceForCreated = notification.entry_price ?? notification.target_price ?? notification.triggered_price;
-          const message = isCreated
-            ? `${(notification.trade_type || '').toUpperCase()} @ $${Number(priceForCreated).toFixed(2)}${notification.stop_loss ? ` • SL $${Number(notification.stop_loss).toFixed(2)}` : ''}`
-            : `${notification.alert_type.replace('_', ' ').toUpperCase()} | Target $${Number(notification.target_price).toFixed(2)} | Now $${Number(notification.triggered_price).toFixed(2)}`;
+const priority = notification.alert_type === 'stop_loss' ? 'high' : 'medium';
+const isCreated = notification.notification_type === 'signal_created';
+const isUpdated = notification.notification_type === 'signal_updated';
+const author = (notification.author_name || '').trim();
+let title: string;
+let message: string;
+
+if (isCreated) {
+  title = author ? `New Signal by ${author}: ${notification.asset_name || notification.symbol || ''}`.trim() : `New Signal: ${notification.asset_name || notification.symbol || ''}`.trim();
+  const priceForCreated = notification.entry_price ?? notification.target_price ?? notification.triggered_price;
+  message = `${(notification.trade_type || '').toUpperCase()} @ $${Number(priceForCreated).toFixed(2)}${notification.stop_loss ? ` • SL $${Number(notification.stop_loss).toFixed(2)}` : ''}`;
+} else if (isUpdated) {
+  const asset = notification.asset_name || notification.symbol || 'Signal';
+  title = author ? `Signal updated by ${author}: ${asset}` : `Signal updated: ${asset}`;
+  const status = notification.status ? notification.status.toUpperCase() : undefined;
+  const tpHitsText = notification.tp_hits && notification.tp_hits.length ? `TP hits ${notification.tp_hits.join(',')}` : undefined;
+  const closeReason = notification.close_reason ? `Close: ${notification.close_reason.replace('_',' ')}` : undefined;
+  const noteText = notification.notes ? (notification.notes.length > 80 ? notification.notes.slice(0,77) + '...' : notification.notes) : undefined;
+  const parts: string[] = [];
+  if (status) parts.push(`Status ${status}`);
+  if (tpHitsText) parts.push(tpHitsText);
+  if (closeReason) parts.push(closeReason);
+  if (noteText) parts.push(noteText);
+  message = parts.join(' • ') || 'Signal details updated';
+} else {
+  title = notification.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
+  message = `${notification.alert_type.replace('_', ' ').toUpperCase()} | Target $${Number(notification.target_price).toFixed(2)} | Now $${Number(notification.triggered_price).toFixed(2)}`;
+}
 
           const rows = recipientIds.map((uid) => ({
             user_id: uid,

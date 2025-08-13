@@ -335,6 +335,8 @@ const requestPermission = async () => {
             else if (os?.sendTags) ops.push(withTimeout(os.sendTags(tags), 3000).catch(() => {}));
           }
           await Promise.allSettled(ops);
+          try { await ensureOneSignalUser(); } catch {}
+
         } catch {}
       }
     } catch (_) {

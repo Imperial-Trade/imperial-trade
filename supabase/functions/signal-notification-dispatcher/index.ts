@@ -29,31 +29,11 @@ interface NotificationPayload {
 
 
 
-async function sendRealtimeNotification(supabase: any, payload: NotificationPayload): Promise<boolean> {
+async function sendRealtimeNotification(payload: NotificationPayload): Promise<boolean> {
   try {
-    // Broadcast via Supabase Realtime to all subscribers
-    const { error } = await supabase
-      .channel('instant-alerts')
-      .send({
-        type: 'broadcast',
-        event: 'alert_triggered',
-        payload: {
-          signal_id: payload.signal_id,
-          alert_type: payload.alert_type,
-          target_price: payload.target_price,
-          triggered_price: payload.triggered_price,
-          notification_type: payload.notification_type,
-          timestamp: new Date().toISOString(),
-          urgency: payload.alert_type === 'stop_loss' ? 'critical' : 'high'
-        }
-      });
-
-    if (error) {
-      console.error('❌ Realtime notification error:', error);
-      return false;
-    }
-
-    console.log(`✅ Realtime notification sent for ${payload.alert_type}`);
+    // Server-side realtime broadcasts are handled by clients in our architecture.
+    // We log and no-op here to avoid misuse in Edge Functions.
+    console.log(`ℹ️ Skipping server realtime broadcast for ${payload.alert_type}. Client will handle realtime.`);
     return true;
   } catch (error) {
     console.error('❌ Realtime notification exception:', error);
@@ -250,7 +230,7 @@ async function processNotification(payload: NotificationPayload): Promise<Record
   const deliveryPromises = payload.delivery_channels.map(async (channel) => {
     switch (channel) {
       case 'realtime':
-        return { channel, success: await sendRealtimeNotification(null, payload) };
+        return { channel, success: await sendRealtimeNotification(payload) };
       case 'discord':
         return { channel, success: await sendDiscordWebhook(payload) };
       case 'telegram':

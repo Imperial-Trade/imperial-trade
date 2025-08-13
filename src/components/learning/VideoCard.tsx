@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Play, Plus, ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -9,7 +8,11 @@ interface VideoCardProps {
   trailerUrl: string;
 }
 
-export default function VideoCard({ video, onPlay, trailerUrl }: VideoCardProps) {
+export default function VideoCard({
+  video,
+  onPlay,
+  trailerUrl,
+}: VideoCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -17,7 +20,7 @@ export default function VideoCard({ video, onPlay, trailerUrl }: VideoCardProps)
     if (isHovered && videoRef.current) {
       videoRef.current
         .play()
-        .catch((error) => console.log("Autoplay prevented:", error));
+        .catch((error) => logger.log("Autoplay prevented:", error));
     } else if (!isHovered && videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;

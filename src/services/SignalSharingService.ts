@@ -1,5 +1,4 @@
-
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
 
 export interface TradeSignal {
   id: string;
@@ -13,7 +12,7 @@ export interface TradeSignal {
 
 export interface ShareRequest {
   signal: TradeSignal;
-  platforms: ('discord' | 'slack' | 'telegram' | 'twitter')[];
+  platforms: ("discord" | "slack" | "telegram" | "twitter")[];
   customMessage?: string;
 }
 
@@ -30,29 +29,41 @@ export interface ShareResponse {
 class SignalSharingService {
   async shareSignal(request: ShareRequest): Promise<ShareResponse> {
     try {
-      const { data, error } = await supabase.functions.invoke('share-trade-signal', {
-        body: request
-      });
+      const { data, error } = await supabase.functions.invoke(
+        "share-trade-signal",
+        {
+          body: request,
+        }
+      );
 
       if (error) throw error;
 
       return data;
     } catch (error) {
-      console.error('SignalSharingService error:', error);
-      throw new Error(`Failed to share signal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      logger.error("SignalSharingService error:", error);
+      throw new Error(
+        `Failed to share signal: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
   formatSignalMessage(signal: TradeSignal, customMessage?: string): string {
-    const tpList = signal.takeProfits.map((tp, i) => `TP${i + 1}: ${tp}`).join(' | ');
-    
-    return customMessage || `
+    const tpList = signal.takeProfits
+      .map((tp, i) => `TP${i + 1}: ${tp}`)
+      .join(" | ");
+
+    return (
+      customMessage ||
+      `
 🚨 ${signal.tradeType.toUpperCase()} Signal: ${signal.assetName}
 📍 Entry: ${signal.entryPrice}
 🛑 Stop Loss: ${signal.stopLoss}
 🎯 ${tpList}
-${signal.notes ? `📝 Notes: ${signal.notes}` : ''}
-    `.trim();
+${signal.notes ? `📝 Notes: ${signal.notes}` : ""}
+    `.trim()
+    );
   }
 }
 

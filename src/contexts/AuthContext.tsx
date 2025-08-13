@@ -1,9 +1,8 @@
-
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { cleanupAuthState } from '@/utils/authUtils';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { cleanupAuthState } from "@/utils/authUtils";
 
 interface Profile {
   id: string;
@@ -37,7 +36,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -59,8 +58,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setProfileLoading(true);
       const { data: profileData, error } = await supabase
-        .from('profiles')
-        .select(`
+        .from("profiles")
+        .select(
+          `
           id,
           display_name,
           role,
@@ -74,18 +74,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           approved_by,
           created_at,
           updated_at
-        `)
-        .eq('id', userId)
+        `
+        )
+        .eq("id", userId)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
+      if (error && error.code !== "PGRST116") {
+        logger.error("Error fetching profile:", error);
         return null;
       }
 
       return profileData as Profile;
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      logger.error("Error fetching profile:", error);
       return null;
     } finally {
       setProfileLoading(false);
@@ -101,10 +102,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshSession = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         // Load profile in background - don't block main loading state
         setTimeout(() => {
@@ -114,7 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setProfile(null);
       }
     } catch (error) {
-      console.error('Error refreshing session:', error);
+      logger.error("Error refreshing session:", error);
       setSession(null);
       setUser(null);
       setProfile(null);
@@ -123,46 +126,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      logger.log("Auth state changed:", event, session?.user?.email);
+      setSession(session);
+      setUser(session?.user ?? null);
 
-        // Set main loading to false as soon as we have auth state
-        setLoading(false);
+      // Set main loading to false as soon as we have auth state
+      setLoading(false);
 
-        if (session?.user) {
-          // Fetch profile data in background - don't block UI
-          setTimeout(() => {
-            fetchProfile(session.user.id).then(setProfile);
-          }, 0);
-        } else {
-          setProfile(null);
-        }
-
-        // Handle specific auth events
-        if (event === 'SIGNED_IN') {
-          console.log('User signed in successfully');
-          // OneSignal upsert is handled via a dedicated effect with deduplication
-        } else if (event === 'SIGNED_OUT') {
-          // Skip cleanup if we're manually signing out to prevent race condition
-          if (!isSigningOut) {
-            cleanupAuthState();
-          }
-          setProfile(null);
-        }
+      if (session?.user) {
+        // Fetch profile data in background - don't block UI
+        setTimeout(() => {
+          fetchProfile(session.user.id).then(setProfile);
+        }, 0);
+      } else {
+        setProfile(null);
       }
-    );
+
+      // Handle specific auth events
+      if (event === "SIGNED_IN") {
+        logger.log("User signed in successfully");
+        // OneSignal upsert is handled via a dedicated effect with deduplication
+      } else if (event === "SIGNED_OUT") {
+        // Skip cleanup if we're manually signing out to prevent race condition
+        if (!isSigningOut) {
+          cleanupAuthState();
+        }
+        setProfile(null);
+      }
+    });
 
     // THEN check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       // Set main loading to false immediately after getting initial session
       setLoading(false);
-      
+
       if (session?.user) {
         // Load profile in background
         setTimeout(() => {
@@ -172,56 +175,65 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
 
     return () => subscription.unsubscribe();
-}, []);
+  }, []);
 
   // Ensure OneSignal user/email subscription on auth/profile changes (deduplicated)
   useEffect(() => {
     try {
       const uid = user?.id;
       if (!uid) return;
-      const email = user?.email || '';
-      const role = profile?.role || '';
-      const utype = profile?.user_type || '';
+      const email = user?.email || "";
+      const role = profile?.role || "";
+      const utype = profile?.user_type || "";
       const key = `os_upsert_v1:${uid}:${email}:${role}:${utype}`;
-      const done = (() => { try { return localStorage.getItem(key) === '1'; } catch { return false; } })();
+      const done = (() => {
+        try {
+          return localStorage.getItem(key) === "1";
+        } catch {
+          return false;
+        }
+      })();
       if (done) return;
       const body: { tags?: Record<string, string> } = {};
       const tags: Record<string, string> = {};
       if (role) tags.role = String(role);
       if (utype) tags.user_type = String(utype);
       if (Object.keys(tags).length) body.tags = tags;
-      supabase.functions.invoke('onesignal-upsert-user', { body }).then(() => {
-        try { localStorage.setItem(key, '1'); } catch {}
-      }).catch(() => {});
+      supabase.functions
+        .invoke("onesignal-upsert-user", { body })
+        .then(() => {
+          try {
+            localStorage.setItem(key, "1");
+          } catch {}
+        })
+        .catch(() => {});
     } catch {}
   }, [user?.id, user?.email, profile?.role, profile?.user_type]);
-
 
   const signOut = async () => {
     try {
       // Set signing out flag to prevent auth handler interference
       setIsSigningOut(true);
-      
+
       // Clean up auth state first
       cleanupAuthState();
-      
+
       // Reset state immediately
       setSession(null);
       setUser(null);
       setProfile(null);
-      
+
       // Start the sign out process
-      await supabase.auth.signOut({ scope: 'global' });
-      
+      await supabase.auth.signOut({ scope: "global" });
+
       // Use React Router navigation instead of page reload
-      navigate('/signin', { replace: true });
-      
+      navigate("/signin", { replace: true });
     } catch (error) {
-      console.error('Error signing out:', error);
+      logger.error("Error signing out:", error);
       // Reset flag on error
       setIsSigningOut(false);
       // Navigate to signin even if signout fails
-      navigate('/signin', { replace: true });
+      navigate("/signin", { replace: true });
     } finally {
       // Reset the signing out flag
       setIsSigningOut(false);
@@ -229,16 +241,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      profile, 
-      loading, 
-      profileLoading,
-      signOut, 
-      refreshSession, 
-      refreshProfile 
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        loading,
+        profileLoading,
+        signOut,
+        refreshSession,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

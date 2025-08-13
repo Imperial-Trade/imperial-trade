@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -80,7 +79,10 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as Element | null;
       // Prevent sidebar from opening when interacting with protected UI (e.g., Quick Copy panel)
-      if (target && (target as Element).closest('[data-prevent-widget-open="true"]')) {
+      if (
+        target &&
+        (target as Element).closest('[data-prevent-widget-open="true"]')
+      ) {
         if (isVisible) setIsVisible(false);
         return;
       }
@@ -309,7 +311,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     try {
       await signOut();
     } catch (error) {
-      console.error("Error signing out:", error);
+      logger.error("Error signing out:", error);
     }
   };
 
@@ -463,7 +465,9 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                   whileTap={{ scale: 0.98 }}
                 >
                   <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                  <span className="text-foreground text-xs sm:text-sm">My Progress</span>
+                  <span className="text-foreground text-xs sm:text-sm">
+                    My Progress
+                  </span>
                 </motion.button>
 
                 <motion.button
@@ -492,7 +496,9 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                     whileTap={{ scale: 0.98 }}
                   >
                     <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                    <span className="text-foreground text-xs sm:text-sm">Admin Panel</span>
+                    <span className="text-foreground text-xs sm:text-sm">
+                      Admin Panel
+                    </span>
                   </motion.button>
                 )}
               </div>

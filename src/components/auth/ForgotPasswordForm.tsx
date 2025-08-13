@@ -27,7 +27,9 @@ interface ForgotPasswordFormProps {
   onBack: () => void;
 }
 
-export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }) => {
+export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
+  onBack,
+}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const { toast } = useToast();
@@ -41,14 +43,14 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
 
   const onSubmit = async (data: ForgotPasswordData) => {
     setIsSubmitting(true);
-    
+
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: 'https://www.tradeimperial.com/reset-password',
+        redirectTo: "https://www.tradeimperial.com/reset-password",
       });
 
       if (error) {
-        console.error('[ForgotPassword] resetPasswordForEmail error', error);
+        logger.error("[ForgotPassword] resetPasswordForEmail error", error);
         toast({
           variant: "destructive",
           title: "Error",
@@ -57,17 +59,20 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
         return;
       }
 
-      console.info('[ForgotPassword] Reset email sent successfully', { email: data.email });
+      logger.info("[ForgotPassword] Reset email sent successfully", {
+        email: data.email,
+      });
 
       setEmailSent(true);
       toast({
         title: "Email Sent",
-        description: "If an account with that email exists, we've sent you a password reset link.",
+        description:
+          "If an account with that email exists, we've sent you a password reset link.",
       });
     } catch (error) {
-      console.error("Password reset error:", error);
+      logger.error("Password reset error:", error);
       toast({
-        variant: "destructive", 
+        variant: "destructive",
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
       });
@@ -93,19 +98,29 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
               We've sent a password reset link to your email address.
             </p>
             <p className="text-sm text-slate-300">
-              Please check your inbox and follow the instructions to reset your password.
+              Please check your inbox and follow the instructions to reset your
+              password.
             </p>
-            <p className="text-xs text-slate-400">If you don’t see the email within a few minutes:</p>
+            <p className="text-xs text-slate-400">
+              If you don’t see the email within a few minutes:
+            </p>
             <ul className="text-xs text-slate-400 text-left mx-auto max-w-xs list-disc pl-5 space-y-1">
               <li>Check your Spam or Junk folder</li>
               <li>Add no-reply@tradeimperial.com to your contacts</li>
               <li>Verify the email you entered is correct</li>
             </ul>
             <p className="text-xs text-slate-400">
-              Still no email? Contact support at <a href="mailto:tradeimperial2025@gmail.com" className="underline">tradeimperial2025@gmail.com</a>.
+              Still no email? Contact support at{" "}
+              <a
+                href="mailto:tradeimperial2025@gmail.com"
+                className="underline"
+              >
+                tradeimperial2025@gmail.com
+              </a>
+              .
             </p>
           </div>
-          
+
           <Button
             onClick={onBack}
             variant="outline"
@@ -183,10 +198,19 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
             </div>
 
             <div className="text-xs text-slate-400 text-center mt-2 space-y-1">
-              <p>Didn’t receive the email? Check your Spam folder or wait a couple of minutes.</p>
               <p>
-                For help, contact
-                {' '}<a href="mailto:tradeimperial2025@gmail.com" className="underline">tradeimperial2025@gmail.com</a>.
+                Didn’t receive the email? Check your Spam folder or wait a
+                couple of minutes.
+              </p>
+              <p>
+                For help, contact{" "}
+                <a
+                  href="mailto:tradeimperial2025@gmail.com"
+                  className="underline"
+                >
+                  tradeimperial2025@gmail.com
+                </a>
+                .
               </p>
             </div>
           </form>

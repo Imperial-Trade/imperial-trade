@@ -1,12 +1,15 @@
-import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
-import { ApiResponse } from '@/types/common';
-import { isValidUUID } from '@/types/guards';
+import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+import { ApiResponse } from "@/types/common";
+import { isValidUUID } from "@/types/guards";
 
-export type DatabaseTable = keyof Database['public']['Tables'];
-export type TableRow<T extends DatabaseTable> = Database['public']['Tables'][T]['Row'];
-export type TableInsert<T extends DatabaseTable> = Database['public']['Tables'][T]['Insert'];
-export type TableUpdate<T extends DatabaseTable> = Database['public']['Tables'][T]['Update'];
+export type DatabaseTable = keyof Database["public"]["Tables"];
+export type TableRow<T extends DatabaseTable> =
+  Database["public"]["Tables"][T]["Row"];
+export type TableInsert<T extends DatabaseTable> =
+  Database["public"]["Tables"][T]["Insert"];
+export type TableUpdate<T extends DatabaseTable> =
+  Database["public"]["Tables"][T]["Update"];
 
 export class ApiClient {
   private static instance: ApiClient;
@@ -30,15 +33,15 @@ export class ApiClient {
     }
   ): Promise<ApiResponse<TableRow<T>[]>> {
     try {
-      let query = supabase.from(table).select(options?.select || '*');
+      let query = supabase.from(table).select(options?.select || "*");
 
       if (options?.eq) {
         query = query.eq(options.eq.column, options.eq.value);
       }
 
       if (options?.order) {
-        query = query.order(options.order.column, { 
-          ascending: options.order.ascending ?? true 
+        query = query.order(options.order.column, {
+          ascending: options.order.ascending ?? true,
         });
       }
 
@@ -49,25 +52,25 @@ export class ApiClient {
       const { data, error } = await query;
 
       if (error) {
-        console.error(`Database error in ${table} select:`, error);
+        logger.error(`Database error in ${table} select:`, error);
         return {
           success: false,
           error: error.message,
-          data: undefined
+          data: undefined,
         };
       }
 
       return {
         success: true,
         data: data as unknown as TableRow<T>[],
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
-      console.error(`Unexpected error in ${table} select:`, error);
+      logger.error(`Unexpected error in ${table} select:`, error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }
@@ -77,7 +80,7 @@ export class ApiClient {
     data: TableInsert<T>
   ): Promise<ApiResponse<TableRow<T>>> {
     try {
-      console.log(`📝 Inserting into ${table}:`, data);
+      logger.log(`📝 Inserting into ${table}:`, data);
       const { data: result, error } = await supabase
         .from(table)
         .insert(data as any)
@@ -85,25 +88,25 @@ export class ApiClient {
         .single();
 
       if (error) {
-        console.error(`Database error in ${table} insert:`, error);
+        logger.error(`Database error in ${table} insert:`, error);
         return {
           success: false,
           error: error.message,
-          data: undefined
+          data: undefined,
         };
       }
 
       return {
         success: true,
         data: result as unknown as TableRow<T>,
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
-      console.error(`Unexpected error in ${table} insert:`, error);
+      logger.error(`Unexpected error in ${table} insert:`, error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }
@@ -117,38 +120,38 @@ export class ApiClient {
       if (!isValidUUID(id)) {
         return {
           success: false,
-          error: 'Invalid ID format',
-          data: undefined
+          error: "Invalid ID format",
+          data: undefined,
         };
       }
 
       const { data: result, error } = await supabase
         .from(table)
         .update(data as any)
-        .eq('id' as any, id)
+        .eq("id" as any, id)
         .select()
         .single();
 
       if (error) {
-        console.error(`Database error in ${table} update:`, error);
+        logger.error(`Database error in ${table} update:`, error);
         return {
           success: false,
           error: error.message,
-          data: undefined
+          data: undefined,
         };
       }
 
       return {
         success: true,
         data: result as unknown as TableRow<T>,
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
-      console.error(`Unexpected error in ${table} update:`, error);
+      logger.error(`Unexpected error in ${table} update:`, error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }
@@ -161,62 +164,65 @@ export class ApiClient {
       if (!isValidUUID(id)) {
         return {
           success: false,
-          error: 'Invalid ID format',
-          data: undefined
+          error: "Invalid ID format",
+          data: undefined,
         };
       }
 
       const { error } = await supabase
         .from(table)
         .delete()
-        .eq('id' as any, id);
+        .eq("id" as any, id);
 
       if (error) {
-        console.error(`Database error in ${table} delete:`, error);
+        logger.error(`Database error in ${table} delete:`, error);
         return {
           success: false,
           error: error.message,
-          data: undefined
+          data: undefined,
         };
       }
 
       return {
         success: true,
         data: undefined,
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
-      console.error(`Unexpected error in ${table} delete:`, error);
+      logger.error(`Unexpected error in ${table} delete:`, error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }
 
   async getCurrentUser() {
     try {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
       if (error) {
         return {
           success: false,
           error: error.message,
-          data: undefined
+          data: undefined,
         };
       }
 
       return {
         success: true,
         data: user,
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }

@@ -1,21 +1,35 @@
-import React, { useState, useCallback, useRef } from 'react';
-import './MeccaResponsive.css';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, Brain, Zap, TrendingUp, Target, Shield, ChevronRight, Scan, Activity, Menu, X, Clock, AlertCircle } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
-import { AnalyzeSetup, UploadFile } from '@/api/integrations';
-import { PersonalizedInsights } from './PersonalizedInsights';
-import { MeccaKpiDashboard } from './MeccaKpiDashboard';
-import { MeccaAnalysisViewer } from './MeccaAnalysisViewer';
-import { useTradingMetrics } from '@/hooks/useTradingMetrics';
+import React, { useState, useCallback, useRef } from "react";
+import "./MeccaResponsive.css";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Upload,
+  Brain,
+  Zap,
+  TrendingUp,
+  Target,
+  Shield,
+  ChevronRight,
+  Scan,
+  Activity,
+  Menu,
+  X,
+  Clock,
+  AlertCircle,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { AnalyzeSetup, UploadFile } from "@/api/integrations";
+import { PersonalizedInsights } from "./PersonalizedInsights";
+import { MeccaKpiDashboard } from "./MeccaKpiDashboard";
+import { MeccaAnalysisViewer } from "./MeccaAnalysisViewer";
+import { useTradingMetrics } from "@/hooks/useTradingMetrics";
 
 interface AnalysisResult {
   overall_analysis: string;
@@ -34,7 +48,7 @@ interface AnalysisResult {
 interface UploadedFile {
   file: File;
   preview: string;
-  status: 'uploading' | 'uploaded' | 'error';
+  status: "uploading" | "uploaded" | "error";
   progress: number;
 }
 
@@ -49,16 +63,19 @@ interface AgentOutput {
 
 const MeccaAnalysisHub: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
+    null
+  );
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [insightStream, setInsightStream] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState('strengths');
+  const [activeTab, setActiveTab] = useState("strengths");
   const [scanlinePosition, setScanlinePosition] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [selectedHistoryItem, setSelectedHistoryItem] = useState<AgentOutput | null>(null);
-  
+  const [selectedHistoryItem, setSelectedHistoryItem] =
+    useState<AgentOutput | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -66,17 +83,17 @@ const MeccaAnalysisHub: React.FC = () => {
 
   // Fetch analysis history
   const { data: analysisHistory = [] } = useQuery({
-    queryKey: ['analysis-history', user?.id],
+    queryKey: ["analysis-history", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
       const { data, error } = await supabase
-        .from('agent_outputs')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('agent_name', 'Deconstructor')
-        .order('created_at', { ascending: false })
+        .from("agent_outputs")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("agent_name", "Deconstructor")
+        .order("created_at", { ascending: false })
         .limit(5);
-      
+
       if (error) throw error;
       return data as AgentOutput[];
     },
@@ -84,7 +101,7 @@ const MeccaAnalysisHub: React.FC = () => {
   });
 
   const addInsight = useCallback((insight: string) => {
-    setInsightStream(prev => [...prev, insight]);
+    setInsightStream((prev) => [...prev, insight]);
   }, []);
 
   const simulateAnalysisStream = useCallback(() => {
@@ -97,14 +114,14 @@ const MeccaAnalysisHub: React.FC = () => {
       "🎯 Identifying trading strengths...",
       "⚠️ Detecting improvement areas...",
       "🧠 Generating personalized recommendations...",
-      "✨ Analysis complete - insights ready!"
+      "✨ Analysis complete - insights ready!",
     ];
 
     let currentIndex = 0;
     const interval = setInterval(() => {
       if (currentIndex < insights.length) {
         addInsight(insights[currentIndex]);
-        setAnalysisProgress((currentIndex + 1) / insights.length * 100);
+        setAnalysisProgress(((currentIndex + 1) / insights.length) * 100);
         currentIndex++;
       } else {
         clearInterval(interval);
@@ -115,12 +132,14 @@ const MeccaAnalysisHub: React.FC = () => {
   }, [addInsight]);
 
   const handleFileUpload = useCallback((files: FileList) => {
-    const newFiles: UploadedFile[] = Array.from(files).slice(0, 5).map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      status: 'uploading' as const,
-      progress: 0
-    }));
+    const newFiles: UploadedFile[] = Array.from(files)
+      .slice(0, 5)
+      .map((file) => ({
+        file,
+        preview: URL.createObjectURL(file),
+        status: "uploading" as const,
+        progress: 0,
+      }));
 
     setUploadedFiles(newFiles);
 
@@ -129,14 +148,18 @@ const MeccaAnalysisHub: React.FC = () => {
       let progress = 0;
       const interval = setInterval(() => {
         progress += 20; // Faster progress increments
-        
-        setUploadedFiles(prev => prev.map((file, i) => 
-          i === index ? { 
-            ...file, 
-            progress: Math.min(progress, 100),
-            status: progress >= 100 ? 'uploaded' : 'uploading'
-          } : file
-        ));
+
+        setUploadedFiles((prev) =>
+          prev.map((file, i) =>
+            i === index
+              ? {
+                  ...file,
+                  progress: Math.min(progress, 100),
+                  status: progress >= 100 ? "uploaded" : "uploading",
+                }
+              : file
+          )
+        );
 
         if (progress >= 100) {
           clearInterval(interval);
@@ -146,10 +169,14 @@ const MeccaAnalysisHub: React.FC = () => {
   }, []);
 
   const handleAnalyze = useCallback(async () => {
-    if (uploadedFiles.length === 0 || !uploadedFiles.every(f => f.status === 'uploaded')) {
+    if (
+      uploadedFiles.length === 0 ||
+      !uploadedFiles.every((f) => f.status === "uploaded")
+    ) {
       toast({
         title: "Upload Required",
-        description: "Please upload at least one trading screenshot and wait for upload to complete.",
+        description:
+          "Please upload at least one trading screenshot and wait for upload to complete.",
         variant: "destructive",
       });
       return;
@@ -165,16 +192,16 @@ const MeccaAnalysisHub: React.FC = () => {
     try {
       // Show immediate feedback
       addInsight("🚀 Starting MECCA analysis engine...");
-      
+
       // Use real trading metrics for enhanced AI analysis
       const userMetrics = {
         totalAnalyses: analysisHistory.length,
-        recentActivity: analysisHistory.slice(0, 3).map(h => h.metadata),
+        recentActivity: analysisHistory.slice(0, 3).map((h) => h.metadata),
         tradingPattern: analysisHistory[0]?.metadata?.trader_behavior || {},
         riskProfile: analysisHistory[0]?.metadata?.risk_assessment || {},
-        realMetrics: tradingMetrics || null
+        realMetrics: tradingMetrics || null,
       };
-      
+
       // First upload files to get URLs
       const uploadPromises = uploadedFiles.map(async ({ file }) => {
         const uploadResult = await UploadFile({ file });
@@ -183,93 +210,119 @@ const MeccaAnalysisHub: React.FC = () => {
 
       addInsight("📤 Uploading files to secure cloud storage...");
       const fileUrls = await Promise.all(uploadPromises);
-      
+
       addInsight(`✅ Successfully uploaded ${fileUrls.length} files`);
       addInsight("🧠 Analyzing with personalized AI intelligence...");
-      
+
       // Then analyze with the uploaded URLs and enhanced context
       const result = await AnalyzeSetup({
         user_id: user?.id,
         file_urls: fileUrls,
         // Pass metrics as metadata for internal use by AI
-        analysis_context: userMetrics
+        analysis_context: userMetrics,
       });
-      
+
       addInsight("📊 Processing trading patterns and performance metrics...");
-      
+
       // Parse the JSON result with enhanced validation
-      let parsedResult = typeof result === 'string' ? JSON.parse(result) : result;
-      
+      let parsedResult =
+        typeof result === "string" ? JSON.parse(result) : result;
+
       // Enhanced validation with proper error handling and real data fallback
       const validatedResult = {
-        overall_analysis: parsedResult.overall_analysis || "Analysis completed successfully with enhanced AI processing.",
+        overall_analysis:
+          parsedResult.overall_analysis ||
+          "Analysis completed successfully with enhanced AI processing.",
         screenshot_analysis: parsedResult.screenshot_analysis || {
           images_processed: fileUrls.length,
           platform_detected: "Detected from screenshots",
           data_quality: "good",
           visible_timeframe: "Analysis completed",
-          account_type: "Standard trading account"
+          account_type: "Standard trading account",
         },
         extracted_metrics: parsedResult.extracted_metrics || {
           account_balance: "Data extracted from visuals",
-          equity: "Screenshot analysis complete", 
+          equity: "Screenshot analysis complete",
           total_pnl: "Performance metrics calculated",
           win_count: "Trade count analyzed",
           loss_count: "Loss analysis complete",
-          win_rate: "Win rate calculated from data"
+          win_rate: "Win rate calculated from data",
         },
         visual_patterns: parsedResult.visual_patterns || {
           chart_patterns_seen: ["Chart analysis completed"],
           support_resistance: ["Technical levels identified"],
-          trend_direction: "Market direction analyzed"
+          trend_direction: "Market direction analyzed",
         },
         risk_assessment: parsedResult.risk_assessment || {
           position_sizing: "Risk analysis complete",
           stop_losses: "Risk management evaluated",
           leverage_usage: "Leverage analysis done",
-          risk_score: tradingMetrics?.riskScore?.toString() || "Assessment complete"
+          risk_score:
+            tradingMetrics?.riskScore?.toString() || "Assessment complete",
         },
         trader_behavior: parsedResult.trader_behavior || {
           discipline_signs: ["Trading discipline analyzed"],
           warning_signs: ["Risk patterns identified"],
           emotional_indicators: ["Psychology assessment complete"],
-          experience_level: "Intermediate trader profile"
+          experience_level: "Intermediate trader profile",
         },
         performance_metrics: parsedResult.performance_metrics || {
           win_rate: tradingMetrics?.winRate || 0,
           total_pnl: tradingMetrics?.totalPnL || 0,
           risk_score: tradingMetrics?.riskScore || 5,
-          trades_analyzed: tradingMetrics?.totalTrades || fileUrls.length
+          trades_analyzed: tradingMetrics?.totalTrades || fileUrls.length,
         },
-        strengths: Array.isArray(parsedResult.strengths) ? parsedResult.strengths : 
-          ["Consistent trading activity", "Active performance monitoring", "Data collection practices"],
-        improvements: Array.isArray(parsedResult.improvements) ? parsedResult.improvements : 
-          ["Continue detailed record keeping", "Focus on risk management optimization", "Maintain consistent analysis routine"],
-        recommendations: Array.isArray(parsedResult.recommendations) ? parsedResult.recommendations : 
-          ["Regular performance review sessions", "Enhanced risk management protocols", "Continued education and skill development"],
-        key_insights: Array.isArray(parsedResult.key_insights) ? parsedResult.key_insights : 
-          ["Trading patterns successfully analyzed", "Performance metrics computed from real data", "AI analysis framework operational"]
+        strengths: Array.isArray(parsedResult.strengths)
+          ? parsedResult.strengths
+          : [
+              "Consistent trading activity",
+              "Active performance monitoring",
+              "Data collection practices",
+            ],
+        improvements: Array.isArray(parsedResult.improvements)
+          ? parsedResult.improvements
+          : [
+              "Continue detailed record keeping",
+              "Focus on risk management optimization",
+              "Maintain consistent analysis routine",
+            ],
+        recommendations: Array.isArray(parsedResult.recommendations)
+          ? parsedResult.recommendations
+          : [
+              "Regular performance review sessions",
+              "Enhanced risk management protocols",
+              "Continued education and skill development",
+            ],
+        key_insights: Array.isArray(parsedResult.key_insights)
+          ? parsedResult.key_insights
+          : [
+              "Trading patterns successfully analyzed",
+              "Performance metrics computed from real data",
+              "AI analysis framework operational",
+            ],
       };
-      
+
       parsedResult = validatedResult;
-      
+
       // Simulate more detailed processing
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       addInsight("🎯 Analysis complete! Generating insights...");
-      
+
       setAnalysisResult(parsedResult);
       setShowResultsModal(true);
-      
+
       toast({
         title: "🎉 Analysis Complete!",
-        description: "Your trading performance has been analyzed successfully by MECCA AI.",
+        description:
+          "Your trading performance has been analyzed successfully by MECCA AI.",
       });
     } catch (error) {
-      console.error('Analysis failed:', error);
+      logger.error("Analysis failed:", error);
       addInsight("❌ Analysis failed. Please try again.");
       toast({
         title: "Analysis Failed",
-        description: "There was an error analyzing your trades. Please try again.",
+        description:
+          "There was an error analyzing your trades. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -278,13 +331,16 @@ const MeccaAnalysisHub: React.FC = () => {
     }
   }, [uploadedFiles, toast, simulateAnalysisStream, addInsight, user?.id]);
 
-  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFileUpload(files);
-    }
-  }, [handleFileUpload]);
+  const onDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFileUpload(files);
+      }
+    },
+    [handleFileUpload]
+  );
 
   // Neural brain animation component
   const NeuralBrain = () => (
@@ -301,10 +357,25 @@ const MeccaAnalysisHub: React.FC = () => {
       >
         <svg viewBox="0 0 64 64" className="w-full h-full">
           <defs>
-            <linearGradient id="brainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style={{ stopColor: '#8b5cf6', stopOpacity: 1 }} />
-              <stop offset="50%" style={{ stopColor: '#a855f7', stopOpacity: 0.8 }} />
-              <stop offset="100%" style={{ stopColor: '#c084fc', stopOpacity: 0.6 }} />
+            <linearGradient
+              id="brainGradient"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop
+                offset="0%"
+                style={{ stopColor: "#8b5cf6", stopOpacity: 1 }}
+              />
+              <stop
+                offset="50%"
+                style={{ stopColor: "#a855f7", stopOpacity: 0.8 }}
+              />
+              <stop
+                offset="100%"
+                style={{ stopColor: "#c084fc", stopOpacity: 0.6 }}
+              />
             </linearGradient>
           </defs>
           <Brain className="w-full h-full fill-url(#brainGradient) stroke-violet-400" />
@@ -312,23 +383,23 @@ const MeccaAnalysisHub: React.FC = () => {
           {[...Array(6)].map((_, i) => (
             <motion.circle
               key={i}
-              cx={20 + (i * 4)}
+              cx={20 + i * 4}
               cy={30 + Math.sin(i) * 8}
               r="1"
               fill="#8b5cf6"
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 1, 0] }}
-              transition={{ 
-                duration: 2, 
-                repeat: Infinity, 
+              transition={{
+                duration: 2,
+                repeat: Infinity,
                 delay: i * 0.3,
-                ease: "easeInOut"
+                ease: "easeInOut",
               }}
             />
           ))}
         </svg>
       </motion.div>
-      
+
       {/* Floating particles */}
       {[...Array(3)].map((_, i) => (
         <motion.div
@@ -357,7 +428,7 @@ const MeccaAnalysisHub: React.FC = () => {
   return (
     <div className="mecca-hub">
       {/* Header */}
-      <motion.div 
+      <motion.div
         className="mecca-header"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -378,7 +449,6 @@ const MeccaAnalysisHub: React.FC = () => {
                 </p>
               </div>
             </div>
-            
           </div>
         </div>
       </motion.div>
@@ -386,7 +456,6 @@ const MeccaAnalysisHub: React.FC = () => {
       {/* Main Content - Responsive Layout */}
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <div className="mecca-main-grid">
-          
           {/* Left Panel - Evidence Viewer */}
           <motion.div
             className="mecca-left-panel space-y-4"
@@ -403,11 +472,15 @@ const MeccaAnalysisHub: React.FC = () => {
                 <span className="sm:hidden">Upload</span>
                 {uploadedFiles.length > 0 && (
                   <Badge variant="secondary" className="ml-auto">
-                    {uploadedFiles.filter(f => f.status === 'uploaded').length}/{uploadedFiles.length}
+                    {
+                      uploadedFiles.filter((f) => f.status === "uploaded")
+                        .length
+                    }
+                    /{uploadedFiles.length}
                   </Badge>
                 )}
               </h3>
-              
+
               {/* Upload Zone */}
               <div
                 className="mecca-upload-zone group relative"
@@ -418,7 +491,11 @@ const MeccaAnalysisHub: React.FC = () => {
                 {/* Upload Icon Animation */}
                 <motion.div
                   animate={{ y: [0, -8, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
                   className="relative"
                 >
                   <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-violet-500 mx-auto mb-2" />
@@ -443,7 +520,7 @@ const MeccaAnalysisHub: React.FC = () => {
                     />
                   ))}
                 </motion.div>
-                
+
                 <div className="space-y-1">
                   <p className="text-xs sm:text-sm text-muted-foreground font-medium">
                     Drop screenshots or tap to upload
@@ -456,14 +533,16 @@ const MeccaAnalysisHub: React.FC = () => {
                   </p>
                 </div>
               </div>
-              
+
               <input
                 ref={fileInputRef}
                 type="file"
                 multiple
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                onChange={(e) =>
+                  e.target.files && handleFileUpload(e.target.files)
+                }
               />
             </Card>
 
@@ -489,9 +568,9 @@ const MeccaAnalysisHub: React.FC = () => {
                         alt={`Upload ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
-                      
+
                       {/* Upload Progress Overlay */}
-                      {file.status === 'uploading' && (
+                      {file.status === "uploading" && (
                         <motion.div
                           className="absolute inset-0 bg-violet-500/20 flex items-center justify-center backdrop-blur-sm"
                           initial={{ opacity: 0 }}
@@ -499,87 +578,105 @@ const MeccaAnalysisHub: React.FC = () => {
                         >
                           <div className="text-center">
                             <Scan className="w-3 h-3 sm:w-4 sm:h-4 text-violet-400 animate-spin mx-auto mb-1" />
-                            <span className="text-xs text-violet-200">{file.progress}%</span>
+                            <span className="text-xs text-violet-200">
+                              {file.progress}%
+                            </span>
                           </div>
                         </motion.div>
                       )}
-                      
+
                       {/* Analysis Scanning Effect */}
-                      {isAnalyzing && file.status === 'uploaded' && (
+                      {isAnalyzing && file.status === "uploaded" && (
                         <motion.div
                           className="absolute inset-0 bg-gradient-to-r from-transparent via-violet-400/30 to-transparent"
-                          initial={{ x: '-100%' }}
-                          animate={{ x: '100%' }}
-                          transition={{ 
-                            duration: 1.5, 
-                            repeat: Infinity, 
+                          initial={{ x: "-100%" }}
+                          animate={{ x: "100%" }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
                             delay: index * 0.3,
-                            ease: "easeInOut"
+                            ease: "easeInOut",
                           }}
                         />
                       )}
-                      
-                      <Badge 
-                        variant={file.status === 'uploaded' ? 'default' : 'secondary'}
-                        className={`mecca-badge ${file.status === 'uploaded' ? 'bg-emerald-500 text-white' : 'bg-violet-200 text-violet-800'}`}
+
+                      <Badge
+                        variant={
+                          file.status === "uploaded" ? "default" : "secondary"
+                        }
+                        className={`mecca-badge ${
+                          file.status === "uploaded"
+                            ? "bg-emerald-500 text-white"
+                            : "bg-violet-200 text-violet-800"
+                        }`}
                       >
-                        {file.status === 'uploaded' ? '✓' : `${file.progress}%`}
+                        {file.status === "uploaded" ? "✓" : `${file.progress}%`}
                       </Badge>
                     </motion.div>
                   ))}
                 </div>
-                
+
                 {/* Premium Analysis Button */}
                 <AnimatePresence>
-                  {uploadedFiles.length > 0 && uploadedFiles.every(f => f.status === 'uploaded') && !isAnalyzing && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -20, scale: 0.9 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Button 
-                        onClick={handleAnalyze}
-                        className="w-full mt-4 mecca-touch-button bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 
+                  {uploadedFiles.length > 0 &&
+                    uploadedFiles.every((f) => f.status === "uploaded") &&
+                    !isAnalyzing && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Button
+                          onClick={handleAnalyze}
+                          className="w-full mt-4 mecca-touch-button bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 
                                  hover:from-violet-700 hover:via-purple-700 hover:to-violet-700 
                                  shadow-lg hover:shadow-violet-500/25 transition-all duration-300
                                  text-white font-semibold py-3 px-6 rounded-lg
                                  border border-violet-400/30 hover:border-violet-300/50
                                  backdrop-blur-sm relative overflow-hidden group"
-                        disabled={isAnalyzing}
-                      >
-                        {/* Button shine effect */}
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                          initial={{ x: '-100%' }}
-                          whileHover={{ x: '100%' }}
-                          transition={{ duration: 0.6 }}
-                        />
-                        
-                        <div className="relative flex items-center justify-center gap-2">
+                          disabled={isAnalyzing}
+                        >
+                          {/* Button shine effect */}
                           <motion.div
-                            animate={{ rotate: isAnalyzing ? 360 : 0 }}
-                            transition={{ duration: 2, repeat: isAnalyzing ? Infinity : 0, ease: "linear" }}
-                          >
-                            <Brain className="w-5 h-5" />
-                          </motion.div>
-                          <span className="hidden sm:inline font-medium tracking-wide">
-                            Analyze with MECCA AI
-                          </span>
-                          <span className="sm:hidden font-medium">
-                            Analyze
-                          </span>
-                        </div>
-                      </Button>
-                    </motion.div>
-                  )}
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                            initial={{ x: "-100%" }}
+                            whileHover={{ x: "100%" }}
+                            transition={{ duration: 0.6 }}
+                          />
+
+                          <div className="relative flex items-center justify-center gap-2">
+                            <motion.div
+                              animate={{ rotate: isAnalyzing ? 360 : 0 }}
+                              transition={{
+                                duration: 2,
+                                repeat: isAnalyzing ? Infinity : 0,
+                                ease: "linear",
+                              }}
+                            >
+                              <Brain className="w-5 h-5" />
+                            </motion.div>
+                            <span className="hidden sm:inline font-medium tracking-wide">
+                              Analyze with MECCA AI
+                            </span>
+                            <span className="sm:hidden font-medium">
+                              Analyze
+                            </span>
+                          </div>
+                        </Button>
+                      </motion.div>
+                    )}
                 </AnimatePresence>
-                
+
                 {/* Upload Status Indicator */}
                 {uploadedFiles.length > 0 && (
                   <div className="mt-3 text-center">
                     <p className="text-xs text-muted-foreground">
-                      {uploadedFiles.filter(f => f.status === 'uploaded').length} of {uploadedFiles.length} files ready
+                      {
+                        uploadedFiles.filter((f) => f.status === "uploaded")
+                          .length
+                      }{" "}
+                      of {uploadedFiles.length} files ready
                     </p>
                   </div>
                 )}
@@ -600,16 +697,27 @@ const MeccaAnalysisHub: React.FC = () => {
                 <Card className="mecca-panel mecca-glass">
                   <Tabs value={activeTab} onValueChange={setActiveTab}>
                     <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6">
-                      <TabsTrigger value="strengths" className="data-[state=active]:bg-emerald-500/20 text-xs sm:text-sm">
+                      <TabsTrigger
+                        value="strengths"
+                        className="data-[state=active]:bg-emerald-500/20 text-xs sm:text-sm"
+                      >
                         <span className="hidden sm:inline">Strengths</span>
                         <span className="sm:hidden">✓</span>
                       </TabsTrigger>
-                      <TabsTrigger value="improvements" className="data-[state=active]:bg-orange-500/20 text-xs sm:text-sm">
+                      <TabsTrigger
+                        value="improvements"
+                        className="data-[state=active]:bg-orange-500/20 text-xs sm:text-sm"
+                      >
                         <span className="hidden sm:inline">Improvements</span>
                         <span className="sm:hidden">⚠</span>
                       </TabsTrigger>
-                      <TabsTrigger value="recommendations" className="data-[state=active]:bg-violet-500/20 text-xs sm:text-sm">
-                        <span className="hidden sm:inline">Recommendations</span>
+                      <TabsTrigger
+                        value="recommendations"
+                        className="data-[state=active]:bg-violet-500/20 text-xs sm:text-sm"
+                      >
+                        <span className="hidden sm:inline">
+                          Recommendations
+                        </span>
                         <span className="sm:hidden">💡</span>
                       </TabsTrigger>
                     </TabsList>
@@ -622,17 +730,21 @@ const MeccaAnalysisHub: React.FC = () => {
                           exit={{ opacity: 0, x: 20 }}
                           className="mecca-tab-content"
                         >
-                          {(analysisResult.strengths || []).map((strength, index) => (
-                            <motion.div
-                              key={index}
-                              className="mecca-analysis-card bg-emerald-50/50 border-emerald-200/30"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                            >
-                              <p className="text-xs sm:text-sm text-emerald-800">{strength}</p>
-                            </motion.div>
-                          ))}
+                          {(analysisResult.strengths || []).map(
+                            (strength, index) => (
+                              <motion.div
+                                key={index}
+                                className="mecca-analysis-card bg-emerald-50/50 border-emerald-200/30"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                              >
+                                <p className="text-xs sm:text-sm text-emerald-800">
+                                  {strength}
+                                </p>
+                              </motion.div>
+                            )
+                          )}
                         </motion.div>
                       </TabsContent>
 
@@ -643,17 +755,21 @@ const MeccaAnalysisHub: React.FC = () => {
                           exit={{ opacity: 0, x: 20 }}
                           className="space-y-3"
                         >
-                          {(analysisResult.improvements || []).map((improvement, index) => (
-                            <motion.div
-                              key={index}
-                              className="p-4 rounded-lg bg-orange-50/50 border border-orange-200/30"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                            >
-                              <p className="text-sm text-orange-800">{improvement}</p>
-                            </motion.div>
-                          ))}
+                          {(analysisResult.improvements || []).map(
+                            (improvement, index) => (
+                              <motion.div
+                                key={index}
+                                className="p-4 rounded-lg bg-orange-50/50 border border-orange-200/30"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                              >
+                                <p className="text-sm text-orange-800">
+                                  {improvement}
+                                </p>
+                              </motion.div>
+                            )
+                          )}
                         </motion.div>
                       </TabsContent>
 
@@ -664,17 +780,21 @@ const MeccaAnalysisHub: React.FC = () => {
                           exit={{ opacity: 0, x: 20 }}
                           className="space-y-3"
                         >
-                          {analysisResult.recommendations.map((recommendation, index) => (
-                            <motion.div
-                              key={index}
-                              className="p-4 rounded-lg bg-violet-50/50 border border-violet-200/30"
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                            >
-                              <p className="text-sm text-violet-800">{recommendation}</p>
-                            </motion.div>
-                          ))}
+                          {analysisResult.recommendations.map(
+                            (recommendation, index) => (
+                              <motion.div
+                                key={index}
+                                className="p-4 rounded-lg bg-violet-50/50 border border-violet-200/30"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                              >
+                                <p className="text-sm text-violet-800">
+                                  {recommendation}
+                                </p>
+                              </motion.div>
+                            )
+                          )}
                         </motion.div>
                       </TabsContent>
                     </AnimatePresence>
@@ -686,14 +806,18 @@ const MeccaAnalysisHub: React.FC = () => {
                 <div className="mecca-neural-brain mx-auto mb-4">
                   <NeuralBrain />
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold mb-2 mecca-gradient-text">Ready for Analysis</h3>
+                <h3 className="text-lg sm:text-xl font-semibold mb-2 mecca-gradient-text">
+                  Ready for Analysis
+                </h3>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
-                  Upload your trading screenshots and let MECCA analyze your performance with AI-powered insights.
+                  Upload your trading screenshots and let MECCA analyze your
+                  performance with AI-powered insights.
                 </p>
                 {analysisHistory.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-border/30">
                     <p className="text-xs text-muted-foreground mb-2">
-                      You have previous analysis data. Analyze new screenshots to see updated insights.
+                      You have previous analysis data. Analyze new screenshots
+                      to see updated insights.
                     </p>
                     <Button
                       variant="outline"
@@ -701,13 +825,30 @@ const MeccaAnalysisHub: React.FC = () => {
                       onClick={async () => {
                         if (user?.id) {
                           try {
-                            await supabase.from('agent_outputs').delete().eq('user_id', user.id);
-                            await supabase.from('screenshot_analysis_history').delete().eq('user_id', user.id);
-                            await supabase.from('user_trading_profiles').delete().eq('user_id', user.id);
-                            toast({ title: "Data cleared", description: "Your analysis history has been reset." });
+                            await supabase
+                              .from("agent_outputs")
+                              .delete()
+                              .eq("user_id", user.id);
+                            await supabase
+                              .from("screenshot_analysis_history")
+                              .delete()
+                              .eq("user_id", user.id);
+                            await supabase
+                              .from("user_trading_profiles")
+                              .delete()
+                              .eq("user_id", user.id);
+                            toast({
+                              title: "Data cleared",
+                              description:
+                                "Your analysis history has been reset.",
+                            });
                             window.location.reload();
                           } catch (error) {
-                            toast({ title: "Error", description: "Failed to clear data.", variant: "destructive" });
+                            toast({
+                              title: "Error",
+                              description: "Failed to clear data.",
+                              variant: "destructive",
+                            });
                           }
                         }
                       }}
@@ -734,15 +875,22 @@ const MeccaAnalysisHub: React.FC = () => {
                 <span className="hidden sm:inline">AI Insight Stream</span>
                 <span className="sm:hidden">AI Stream</span>
               </h3>
-              
+
               {/* Analysis Progress */}
               {isAnalyzing && (
                 <div className="mb-3 sm:mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs sm:text-sm text-muted-foreground">Processing</span>
-                    <span className="text-xs sm:text-sm font-medium">{Math.round(analysisProgress)}%</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground">
+                      Processing
+                    </span>
+                    <span className="text-xs sm:text-sm font-medium">
+                      {Math.round(analysisProgress)}%
+                    </span>
                   </div>
-                  <Progress value={analysisProgress} className="mecca-progress" />
+                  <Progress
+                    value={analysisProgress}
+                    className="mecca-progress"
+                  />
                 </div>
               )}
 
@@ -760,11 +908,13 @@ const MeccaAnalysisHub: React.FC = () => {
                     </motion.div>
                   ))}
                 </AnimatePresence>
-                
+
                 {!isAnalyzing && insightStream.length === 0 && (
                   <div className="text-center py-6 sm:py-8 text-muted-foreground">
                     <Brain className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-xs sm:text-sm">AI insights will appear here during analysis</p>
+                    <p className="text-xs sm:text-sm">
+                      AI insights will appear here during analysis
+                    </p>
                   </div>
                 )}
               </div>
@@ -783,10 +933,11 @@ const MeccaAnalysisHub: React.FC = () => {
                 </h4>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {analysisHistory.slice(0, 5).map((analysis, index) => {
-                    const analysisData = typeof analysis.output_text === 'string' 
-                      ? JSON.parse(analysis.output_text) 
-                      : analysis.output_text;
-                    
+                    const analysisData =
+                      typeof analysis.output_text === "string"
+                        ? JSON.parse(analysis.output_text)
+                        : analysis.output_text;
+
                     return (
                       <motion.div
                         key={analysis.id}
@@ -800,25 +951,39 @@ const MeccaAnalysisHub: React.FC = () => {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs font-medium text-violet-600">
-                                {new Date(analysis.created_at).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric'
+                                {new Date(
+                                  analysis.created_at
+                                ).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
                                 })}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {new Date(analysis.created_at).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  hour12: true
+                                {new Date(
+                                  analysis.created_at
+                                ).toLocaleTimeString("en-US", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: true,
                                 })}
                               </span>
-                              <Badge variant="secondary" className="text-xs px-2 py-0">
-                                {analysisData?.screenshot_analysis?.images_processed || 'N/A'} images
+                              <Badge
+                                variant="secondary"
+                                className="text-xs px-2 py-0"
+                              >
+                                {analysisData?.screenshot_analysis
+                                  ?.images_processed || "N/A"}{" "}
+                                images
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground truncate">
-                              {analysisData?.trader_behavior?.experience_level || 'Analysis'} • {analysisData?.risk_assessment?.risk_score || 'N/A'}/10 risk
+                              {analysisData?.trader_behavior
+                                ?.experience_level || "Analysis"}{" "}
+                              •{" "}
+                              {analysisData?.risk_assessment?.risk_score ||
+                                "N/A"}
+                              /10 risk
                             </p>
                           </div>
                           <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-violet-500 transition-colors" />
@@ -827,7 +992,7 @@ const MeccaAnalysisHub: React.FC = () => {
                     );
                   })}
                 </div>
-                
+
                 {analysisHistory.length > 5 && (
                   <div className="mt-3 text-center">
                     <p className="text-xs text-muted-foreground">
@@ -863,26 +1028,34 @@ const MeccaAnalysisHub: React.FC = () => {
               <div className="relative bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 text-white p-6 overflow-hidden">
                 <motion.div
                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-                  initial={{ x: '-100%' }}
-                  animate={{ x: '100%' }}
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "100%" }}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
-                
+
                 <div className="relative flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <motion.div
                       animate={{ rotate: 360 }}
-                      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                      transition={{
+                        duration: 20,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
                       className="p-3 bg-white/20 rounded-full"
                     >
                       <Brain className="w-8 h-8" />
                     </motion.div>
                     <div>
-                      <h2 className="text-2xl font-bold tracking-wide">MECCA Analysis Complete</h2>
-                      <p className="text-violet-100 opacity-90">AI-Powered Trading Performance Insights</p>
+                      <h2 className="text-2xl font-bold tracking-wide">
+                        MECCA Analysis Complete
+                      </h2>
+                      <p className="text-violet-100 opacity-90">
+                        AI-Powered Trading Performance Insights
+                      </p>
                     </div>
                   </div>
-                  
+
                   <Button
                     variant="ghost"
                     size="sm"
@@ -896,8 +1069,6 @@ const MeccaAnalysisHub: React.FC = () => {
 
               {/* Scrollable Content Area */}
               <div className="max-h-[calc(90vh-120px)] overflow-y-auto p-6">
-                
-
                 {/* Overall Analysis */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -912,13 +1083,14 @@ const MeccaAnalysisHub: React.FC = () => {
                       </div>
                       Overall Performance Analysis
                     </h3>
-                    <p className="text-gray-700 leading-relaxed">{analysisResult.overall_analysis}</p>
+                    <p className="text-gray-700 leading-relaxed">
+                      {analysisResult.overall_analysis}
+                    </p>
                   </Card>
                 </motion.div>
 
                 {/* Analysis Sections Grid */}
                 <div className="grid lg:grid-cols-3 gap-6">
-                  
                   {/* Strengths */}
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
@@ -933,17 +1105,21 @@ const MeccaAnalysisHub: React.FC = () => {
                         Strengths
                       </h4>
                       <div className="space-y-3">
-                        {(analysisResult.strengths || []).map((strength, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.7 + index * 0.1 }}
-                            className="p-3 bg-white/60 rounded-lg border border-emerald-200/30"
-                          >
-                            <p className="text-emerald-800 text-sm leading-relaxed">{strength}</p>
-                          </motion.div>
-                        ))}
+                        {(analysisResult.strengths || []).map(
+                          (strength, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.7 + index * 0.1 }}
+                              className="p-3 bg-white/60 rounded-lg border border-emerald-200/30"
+                            >
+                              <p className="text-emerald-800 text-sm leading-relaxed">
+                                {strength}
+                              </p>
+                            </motion.div>
+                          )
+                        )}
                       </div>
                     </Card>
                   </motion.div>
@@ -962,17 +1138,21 @@ const MeccaAnalysisHub: React.FC = () => {
                         Areas for Improvement
                       </h4>
                       <div className="space-y-3">
-                        {(analysisResult.improvements || []).map((improvement, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.8 + index * 0.1 }}
-                            className="p-3 bg-white/60 rounded-lg border border-orange-200/30"
-                          >
-                            <p className="text-orange-800 text-sm leading-relaxed">{improvement}</p>
-                          </motion.div>
-                        ))}
+                        {(analysisResult.improvements || []).map(
+                          (improvement, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.8 + index * 0.1 }}
+                              className="p-3 bg-white/60 rounded-lg border border-orange-200/30"
+                            >
+                              <p className="text-orange-800 text-sm leading-relaxed">
+                                {improvement}
+                              </p>
+                            </motion.div>
+                          )
+                        )}
                       </div>
                     </Card>
                   </motion.div>
@@ -991,7 +1171,8 @@ const MeccaAnalysisHub: React.FC = () => {
                         AI Recommendations
                       </h4>
                       <div className="space-y-3">
-                          {(analysisResult.recommendations || []).map((recommendation, index) => (
+                        {(analysisResult.recommendations || []).map(
+                          (recommendation, index) => (
                             <motion.div
                               key={index}
                               initial={{ opacity: 0, y: 10 }}
@@ -999,45 +1180,53 @@ const MeccaAnalysisHub: React.FC = () => {
                               transition={{ delay: 0.9 + index * 0.1 }}
                               className="p-3 bg-white/60 rounded-lg border border-violet-200/30"
                             >
-                              <p className="text-violet-800 text-sm leading-relaxed">{recommendation}</p>
+                              <p className="text-violet-800 text-sm leading-relaxed">
+                                {recommendation}
+                              </p>
                             </motion.div>
-                          ))}
+                          )
+                        )}
                       </div>
                     </Card>
                   </motion.div>
                 </div>
 
                 {/* Key Insights */}
-                {analysisResult.key_insights && analysisResult.key_insights.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1.2 }}
-                    className="mt-8"
-                  >
-                    <Card className="p-6 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200/30">
-                      <h4 className="text-lg font-bold text-indigo-800 mb-4 flex items-center gap-2">
-                        <div className="p-2 bg-indigo-500 rounded-lg">
-                          <Brain className="w-5 h-5 text-white" />
+                {analysisResult.key_insights &&
+                  analysisResult.key_insights.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1.2 }}
+                      className="mt-8"
+                    >
+                      <Card className="p-6 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200/30">
+                        <h4 className="text-lg font-bold text-indigo-800 mb-4 flex items-center gap-2">
+                          <div className="p-2 bg-indigo-500 rounded-lg">
+                            <Brain className="w-5 h-5 text-white" />
+                          </div>
+                          Key AI Insights
+                        </h4>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {(analysisResult.key_insights || []).map(
+                            (insight, index) => (
+                              <motion.div
+                                key={index}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 1.3 + index * 0.1 }}
+                                className="p-4 bg-white/60 rounded-lg border border-indigo-200/30"
+                              >
+                                <p className="text-indigo-800 text-sm leading-relaxed font-medium">
+                                  {insight}
+                                </p>
+                              </motion.div>
+                            )
+                          )}
                         </div>
-                        Key AI Insights
-                      </h4>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        {(analysisResult.key_insights || []).map((insight, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 1.3 + index * 0.1 }}
-                            className="p-4 bg-white/60 rounded-lg border border-indigo-200/30"
-                          >
-                            <p className="text-indigo-800 text-sm leading-relaxed font-medium">{insight}</p>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </Card>
-                  </motion.div>
-                )}
+                      </Card>
+                    </motion.div>
+                  )}
 
                 {/* Action Buttons */}
                 <motion.div
@@ -1098,16 +1287,18 @@ const MeccaAnalysisHub: React.FC = () => {
                     <div>
                       <h2 className="text-xl font-bold">Previous Analysis</h2>
                       <p className="text-violet-100 opacity-90">
-                        {new Date(selectedHistoryItem.created_at).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
+                        {new Date(
+                          selectedHistoryItem.created_at
+                        ).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
                         })}
                       </p>
                     </div>
                   </div>
-                  
+
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1123,13 +1314,13 @@ const MeccaAnalysisHub: React.FC = () => {
               <div className="max-h-[calc(90vh-120px)] overflow-y-auto p-6">
                 {(() => {
                   try {
-                    const analysisData = typeof selectedHistoryItem.output_text === 'string' 
-                      ? JSON.parse(selectedHistoryItem.output_text) 
-                      : selectedHistoryItem.output_text;
+                    const analysisData =
+                      typeof selectedHistoryItem.output_text === "string"
+                        ? JSON.parse(selectedHistoryItem.output_text)
+                        : selectedHistoryItem.output_text;
 
                     return (
                       <div className="space-y-6">
-
                         {/* Analysis Sections */}
                         <div className="grid md:grid-cols-3 gap-6">
                           {/* Strengths */}
@@ -1139,11 +1330,16 @@ const MeccaAnalysisHub: React.FC = () => {
                               Strengths
                             </h4>
                             <div className="space-y-2">
-                              {(analysisData?.strengths || []).slice(0, 3).map((strength: string, index: number) => (
-                                <div key={index} className="p-2 bg-white/60 rounded text-xs text-emerald-800">
-                                  {strength}
-                                </div>
-                              ))}
+                              {(analysisData?.strengths || [])
+                                .slice(0, 3)
+                                .map((strength: string, index: number) => (
+                                  <div
+                                    key={index}
+                                    className="p-2 bg-white/60 rounded text-xs text-emerald-800"
+                                  >
+                                    {strength}
+                                  </div>
+                                ))}
                             </div>
                           </Card>
 
@@ -1154,11 +1350,16 @@ const MeccaAnalysisHub: React.FC = () => {
                               Improvements
                             </h4>
                             <div className="space-y-2">
-                              {(analysisData?.improvements || []).slice(0, 3).map((improvement: string, index: number) => (
-                                <div key={index} className="p-2 bg-white/60 rounded text-xs text-orange-800">
-                                  {improvement}
-                                </div>
-                              ))}
+                              {(analysisData?.improvements || [])
+                                .slice(0, 3)
+                                .map((improvement: string, index: number) => (
+                                  <div
+                                    key={index}
+                                    className="p-2 bg-white/60 rounded text-xs text-orange-800"
+                                  >
+                                    {improvement}
+                                  </div>
+                                ))}
                             </div>
                           </Card>
 
@@ -1169,11 +1370,18 @@ const MeccaAnalysisHub: React.FC = () => {
                               Recommendations
                             </h4>
                             <div className="space-y-2">
-                              {(analysisData?.recommendations || []).slice(0, 3).map((recommendation: string, index: number) => (
-                                <div key={index} className="p-2 bg-white/60 rounded text-xs text-violet-800">
-                                  {recommendation}
-                                </div>
-                              ))}
+                              {(analysisData?.recommendations || [])
+                                .slice(0, 3)
+                                .map(
+                                  (recommendation: string, index: number) => (
+                                    <div
+                                      key={index}
+                                      className="p-2 bg-white/60 rounded text-xs text-violet-800"
+                                    >
+                                      {recommendation}
+                                    </div>
+                                  )
+                                )}
                             </div>
                           </Card>
                         </div>
@@ -1187,19 +1395,43 @@ const MeccaAnalysisHub: React.FC = () => {
                             </h4>
                             <div className="grid md:grid-cols-2 gap-4">
                               <div>
-                                <p className="text-sm font-medium text-blue-700 mb-2">Discipline Signs:</p>
+                                <p className="text-sm font-medium text-blue-700 mb-2">
+                                  Discipline Signs:
+                                </p>
                                 <div className="space-y-1">
-                                  {(analysisData.trader_behavior.discipline_signs || []).slice(0, 2).map((sign: string, index: number) => (
-                                    <p key={index} className="text-xs text-blue-600 bg-white/60 p-2 rounded">{sign}</p>
-                                  ))}
+                                  {(
+                                    analysisData.trader_behavior
+                                      .discipline_signs || []
+                                  )
+                                    .slice(0, 2)
+                                    .map((sign: string, index: number) => (
+                                      <p
+                                        key={index}
+                                        className="text-xs text-blue-600 bg-white/60 p-2 rounded"
+                                      >
+                                        {sign}
+                                      </p>
+                                    ))}
                                 </div>
                               </div>
                               <div>
-                                <p className="text-sm font-medium text-blue-700 mb-2">Warning Signs:</p>
+                                <p className="text-sm font-medium text-blue-700 mb-2">
+                                  Warning Signs:
+                                </p>
                                 <div className="space-y-1">
-                                  {(analysisData.trader_behavior.warning_signs || []).slice(0, 2).map((warning: string, index: number) => (
-                                    <p key={index} className="text-xs text-blue-600 bg-white/60 p-2 rounded">{warning}</p>
-                                  ))}
+                                  {(
+                                    analysisData.trader_behavior
+                                      .warning_signs || []
+                                  )
+                                    .slice(0, 2)
+                                    .map((warning: string, index: number) => (
+                                      <p
+                                        key={index}
+                                        className="text-xs text-blue-600 bg-white/60 p-2 rounded"
+                                      >
+                                        {warning}
+                                      </p>
+                                    ))}
                                 </div>
                               </div>
                             </div>
@@ -1210,7 +1442,9 @@ const MeccaAnalysisHub: React.FC = () => {
                   } catch (error) {
                     return (
                       <div className="text-center py-8">
-                        <p className="text-muted-foreground">Unable to display analysis data</p>
+                        <p className="text-muted-foreground">
+                          Unable to display analysis data
+                        </p>
                       </div>
                     );
                   }

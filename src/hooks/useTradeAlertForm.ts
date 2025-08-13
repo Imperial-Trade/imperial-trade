@@ -1,6 +1,11 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { tradeAlertSchema, tradeAlertSubmissionSchema, type TradeAlertFormData, type TradeAlertSubmissionData } from "@/lib/validations/tradeAlertSchema";
+import {
+  tradeAlertSchema,
+  tradeAlertSubmissionSchema,
+  type TradeAlertFormData,
+  type TradeAlertSubmissionData,
+} from "@/lib/validations/tradeAlertSchema";
 import { useCallback, useMemo, useEffect } from "react";
 
 /**
@@ -24,14 +29,14 @@ export function useTradeAlertForm(options: UseTradeAlertFormOptions = {}) {
     onSubmit,
     defaultValues,
     validateOnChange = true,
-    validateOnBlur = true
+    validateOnBlur = true,
   } = options;
 
   // Log deprecation warning
   useEffect(() => {
-    console.warn(
-      '⚠️ useTradeAlertForm is deprecated. Please migrate to useOptimizedTradeAlertForm for better performance.\n' +
-      'Benefits: Debounced validation, smart input detection, reduced re-renders'
+    logger.warn(
+      "⚠️ useTradeAlertForm is deprecated. Please migrate to useOptimizedTradeAlertForm for better performance.\n" +
+        "Benefits: Debounced validation, smart input detection, reduced re-renders"
     );
   }, []);
 
@@ -39,9 +44,9 @@ export function useTradeAlertForm(options: UseTradeAlertFormOptions = {}) {
   const form = useForm<TradeAlertFormData>({
     resolver: zodResolver(tradeAlertSchema),
     defaultValues: {
-      asset_name: '',
-      tradermade_symbol: '',
-      trade_type: 'buy',
+      asset_name: "",
+      tradermade_symbol: "",
+      trade_type: "buy",
       entry_price: 0,
       stop_loss: 0,
       tp1: undefined,
@@ -49,46 +54,59 @@ export function useTradeAlertForm(options: UseTradeAlertFormOptions = {}) {
       tp3: undefined,
       tp4: undefined,
       tp5: undefined,
-      notes: '',
+      notes: "",
       ...defaultValues,
     },
-    mode: validateOnChange ? 'onChange' : (validateOnBlur ? 'onBlur' : 'onSubmit'),
+    mode: validateOnChange
+      ? "onChange"
+      : validateOnBlur
+      ? "onBlur"
+      : "onSubmit",
   });
 
   // Optimized submission handler
-  const handleSubmit = useCallback(async (data: TradeAlertFormData) => {
-    if (!onSubmit) return;
+  const handleSubmit = useCallback(
+    async (data: TradeAlertFormData) => {
+      if (!onSubmit) return;
 
-    try {
-      // Determine status based on trade type
-      const isLimitOrder = data.trade_type === 'buy_limit' || data.trade_type === 'sell_limit';
-      const submissionData: TradeAlertSubmissionData = {
-        ...data,
-        status: isLimitOrder ? 'pending' : 'active'
-      };
+      try {
+        // Determine status based on trade type
+        const isLimitOrder =
+          data.trade_type === "buy_limit" || data.trade_type === "sell_limit";
+        const submissionData: TradeAlertSubmissionData = {
+          ...data,
+          status: isLimitOrder ? "pending" : "active",
+        };
 
-      // Validate submission data
-      const validatedData = tradeAlertSubmissionSchema.parse(submissionData);
-      
-      await onSubmit(validatedData);
-    } catch (error) {
-      console.error('Form submission error:', error);
-      throw error;
-    }
-  }, [onSubmit]);
+        // Validate submission data
+        const validatedData = tradeAlertSubmissionSchema.parse(submissionData);
+
+        await onSubmit(validatedData);
+      } catch (error) {
+        logger.error("Form submission error:", error);
+        throw error;
+      }
+    },
+    [onSubmit]
+  );
 
   // Memoized form state for performance
-  const formState = useMemo(() => ({
-    data: form.getValues(),
-    errors: Object.keys(form.formState.errors).map(field => ({
-      field,
-      message: form.formState.errors[field as keyof TradeAlertFormData]?.message || 'Invalid value'
-    })),
-    isSubmitting: form.formState.isSubmitting,
-    isValid: form.formState.isValid,
-    isDirty: form.formState.isDirty,
-    hasErrors: Object.keys(form.formState.errors).length > 0
-  }), [form.formState]);
+  const formState = useMemo(
+    () => ({
+      data: form.getValues(),
+      errors: Object.keys(form.formState.errors).map((field) => ({
+        field,
+        message:
+          form.formState.errors[field as keyof TradeAlertFormData]?.message ||
+          "Invalid value",
+      })),
+      isSubmitting: form.formState.isSubmitting,
+      isValid: form.formState.isValid,
+      isDirty: form.formState.isDirty,
+      hasErrors: Object.keys(form.formState.errors).length > 0,
+    }),
+    [form.formState]
+  );
 
   // Utility functions
   const reset = useCallback(() => {
@@ -96,29 +114,38 @@ export function useTradeAlertForm(options: UseTradeAlertFormOptions = {}) {
   }, [form]);
 
   // Simplified setValue with proper typing
-  const setValue = useCallback((
-    name: keyof TradeAlertFormData,
-    value: TradeAlertFormData[keyof TradeAlertFormData],
-    options?: { shouldValidate?: boolean; shouldDirty?: boolean }
-  ) => {
-    form.setValue(name, value as any, {
-      shouldValidate: options?.shouldValidate ?? validateOnChange,
-      shouldDirty: options?.shouldDirty ?? true
-    });
-  }, [form, validateOnChange]);
+  const setValue = useCallback(
+    (
+      name: keyof TradeAlertFormData,
+      value: TradeAlertFormData[keyof TradeAlertFormData],
+      options?: { shouldValidate?: boolean; shouldDirty?: boolean }
+    ) => {
+      form.setValue(name, value as any, {
+        shouldValidate: options?.shouldValidate ?? validateOnChange,
+        shouldDirty: options?.shouldDirty ?? true,
+      });
+    },
+    [form, validateOnChange]
+  );
 
-  const getFieldError = useCallback((name: keyof TradeAlertFormData): string | undefined => {
-    return form.formState.errors[name]?.message;
-  }, [form.formState.errors]);
+  const getFieldError = useCallback(
+    (name: keyof TradeAlertFormData): string | undefined => {
+      return form.formState.errors[name]?.message;
+    },
+    [form.formState.errors]
+  );
 
-  const isFieldTouched = useCallback((name: keyof TradeAlertFormData): boolean => {
-    return form.formState.touchedFields[name] ?? false;
-  }, [form.formState.touchedFields]);
+  const isFieldTouched = useCallback(
+    (name: keyof TradeAlertFormData): boolean => {
+      return form.formState.touchedFields[name] ?? false;
+    },
+    [form.formState.touchedFields]
+  );
 
   return {
     // React Hook Form instance
     form,
-    
+
     // Form state
     formState,
     data: form.watch(), // Real-time data updates
@@ -132,11 +159,11 @@ export function useTradeAlertForm(options: UseTradeAlertFormOptions = {}) {
     handleSubmit: form.handleSubmit(handleSubmit),
     reset,
     setValue,
-    
+
     // Field utilities
     getFieldError,
     isFieldTouched,
-    
+
     // Direct form methods for advanced usage
     register: form.register,
     control: form.control,

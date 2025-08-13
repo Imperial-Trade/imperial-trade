@@ -1,4 +1,3 @@
-
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormData } from "@/lib/validations/loginSchema";
@@ -8,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const useLoginForm = () => {
   const { toast } = useToast();
-  const { canSubmit, recordAttempt, attemptsLeft, remainingMs } = useRateLimiting('login', 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
+  const { canSubmit, recordAttempt, attemptsLeft, remainingMs } =
+    useRateLimiting("login", 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -32,13 +32,13 @@ export const useLoginForm = () => {
 
     // Check honeypot
     if (data.website && data.website.length > 0) {
-      console.log("Bot detected via honeypot");
+      logger.log("Bot detected via honeypot");
       return; // Silent fail for bots
     }
 
     try {
       recordAttempt();
-      
+
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -55,10 +55,10 @@ export const useLoginForm = () => {
 
       // Redirect will be handled by the parent component
     } catch (error: any) {
-      console.error("Login error:", error);
-      
+      logger.error("Login error:", error);
+
       let errorMessage = "Login failed. Please check your credentials.";
-      
+
       if (error.message?.includes("Invalid login credentials")) {
         errorMessage = "Invalid email or password. Please try again.";
       } else if (error.message?.includes("Email not confirmed")) {
@@ -72,7 +72,7 @@ export const useLoginForm = () => {
         title: "Login Failed",
         description: errorMessage,
       });
-      
+
       throw error;
     }
   };

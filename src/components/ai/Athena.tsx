@@ -247,8 +247,7 @@ export default function Athena({ isOpen, onClose, autoListen }) {
 
         rec.onstart = () => setIsListening(true);
         rec.onend = () => setIsListening(false);
-        rec.onerror = (e) =>
-          console.error("Speech recognition error:", e.error);
+        rec.onerror = (e) => logger.error("Speech recognition error:", e.error);
         rec.onresult = (event) => {
           clearTimeout(inactivityTimerRef.current);
           const transcript = event.results[0][0].transcript;
@@ -529,7 +528,7 @@ export default function Athena({ isOpen, onClose, autoListen }) {
         text: "I apologize, but I'm experiencing a temporary connection issue with my advanced analysis systems. Please try again in a moment, and I'll provide you with the sophisticated insights you're looking for.",
       };
       setMessages((prev) => [...prev, errorMessage]);
-      console.error("Error with Athena:", error);
+      logger.error("Error with Athena:", error);
     }
     setIsLoading(false);
     setReasoning("");

@@ -1,19 +1,27 @@
-
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowLeft, Save, AlertCircle } from "lucide-react";
-import { AccountRequestData, AccountRequest } from '@/api/entities/AccountRequest';
+import {
+  AccountRequestData,
+  AccountRequest,
+} from "@/api/entities/AccountRequest";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  validateAccountRequestData, 
-  getFieldError, 
+import {
+  validateAccountRequestData,
+  getFieldError,
   getGeneralError,
-  ValidationError 
-} from '@/lib/validations/accountRequestValidation';
+  ValidationError,
+} from "@/lib/validations/accountRequestValidation";
 
 interface UpdateAccountRequestFormProps {
   existingRequest: AccountRequestData;
@@ -21,24 +29,24 @@ interface UpdateAccountRequestFormProps {
   onCancel: () => void;
 }
 
-export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> = ({
-  existingRequest,
-  onSuccess,
-  onCancel
-}) => {
+export const UpdateAccountRequestForm: React.FC<
+  UpdateAccountRequestFormProps
+> = ({ existingRequest, onSuccess, onCancel }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: existingRequest.full_name || '',
+    full_name: existingRequest.full_name || "",
     email: existingRequest.email,
-    phone_number: existingRequest.phone_number || '',
-    vt_market_account_number: existingRequest.vt_market_account_number || '',
-    referrer: existingRequest.referrer || '',
-    account_type: existingRequest.account_type || 'user' as const,
-    reason: existingRequest.reason || '',
+    phone_number: existingRequest.phone_number || "",
+    vt_market_account_number: existingRequest.vt_market_account_number || "",
+    referrer: existingRequest.referrer || "",
+    account_type: existingRequest.account_type || ("user" as const),
+    reason: existingRequest.reason || "",
   });
 
-  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
+    []
+  );
 
   const validateForm = () => {
     const validation = validateAccountRequestData(formData, existingRequest);
@@ -48,7 +56,7 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -56,20 +64,27 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
     setIsSubmitting(true);
 
     try {
-      const updatedRequest = await AccountRequest.updateRejectedRequest(existingRequest.id!, formData);
-      
+      const updatedRequest = await AccountRequest.updateRejectedRequest(
+        existingRequest.id!,
+        formData
+      );
+
       toast({
         title: "Request Updated Successfully!",
-        description: "Your updated request has been resubmitted and is now pending review.",
+        description:
+          "Your updated request has been resubmitted and is now pending review.",
       });
 
       onSuccess(updatedRequest);
     } catch (error) {
-      console.error('Error updating request:', error);
+      logger.error("Error updating request:", error);
       toast({
         variant: "destructive",
         title: "Update Failed",
-        description: error instanceof Error ? error.message : "Failed to update request. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to update request. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -77,9 +92,11 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear validation errors when user starts typing
-    setValidationErrors(prev => prev.filter(error => error.field !== field && error.field !== 'general'));
+    setValidationErrors((prev) =>
+      prev.filter((error) => error.field !== field && error.field !== "general")
+    );
   };
 
   return (
@@ -89,7 +106,8 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
           Update Account Request
         </CardTitle>
         <p className="text-gray-300">
-          Make the necessary changes to address the rejection reason and resubmit your request.
+          Make the necessary changes to address the rejection reason and
+          resubmit your request.
         </p>
       </CardHeader>
       <CardContent>
@@ -98,8 +116,12 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
             <div className="flex items-start gap-2">
               <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
               <div>
-                <h4 className="font-semibold text-red-400 mb-1">Previous Rejection Reason:</h4>
-                <p className="text-red-300 text-sm">{existingRequest.rejection_reason}</p>
+                <h4 className="font-semibold text-red-400 mb-1">
+                  Previous Rejection Reason:
+                </h4>
+                <p className="text-red-300 text-sm">
+                  {existingRequest.rejection_reason}
+                </p>
               </div>
             </div>
           </div>
@@ -113,12 +135,14 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
             <Input
               type="text"
               value={formData.full_name}
-              onChange={(e) => handleInputChange('full_name', e.target.value)}
+              onChange={(e) => handleInputChange("full_name", e.target.value)}
               className="bg-white border-gray-300 text-gray-900"
               disabled={isSubmitting}
             />
-            {getFieldError(validationErrors, 'full_name') && (
-              <p className="text-red-400 text-sm mt-1">{getFieldError(validationErrors, 'full_name')}</p>
+            {getFieldError(validationErrors, "full_name") && (
+              <p className="text-red-400 text-sm mt-1">
+                {getFieldError(validationErrors, "full_name")}
+              </p>
             )}
           </div>
 
@@ -132,7 +156,9 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
               disabled
               className="bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed"
             />
-            <p className="text-gray-400 text-xs mt-1">Email cannot be changed</p>
+            <p className="text-gray-400 text-xs mt-1">
+              Email cannot be changed
+            </p>
           </div>
 
           <div>
@@ -142,7 +168,9 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
             <Input
               type="tel"
               value={formData.phone_number}
-              onChange={(e) => handleInputChange('phone_number', e.target.value)}
+              onChange={(e) =>
+                handleInputChange("phone_number", e.target.value)
+              }
               className="bg-white border-gray-300 text-gray-900"
               disabled={isSubmitting}
             />
@@ -155,12 +183,16 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
             <Input
               type="text"
               value={formData.vt_market_account_number}
-              onChange={(e) => handleInputChange('vt_market_account_number', e.target.value)}
+              onChange={(e) =>
+                handleInputChange("vt_market_account_number", e.target.value)
+              }
               className="bg-white border-gray-300 text-gray-900"
               disabled={isSubmitting}
             />
-            {getFieldError(validationErrors, 'vt_market_account_number') && (
-              <p className="text-red-400 text-sm mt-1">{getFieldError(validationErrors, 'vt_market_account_number')}</p>
+            {getFieldError(validationErrors, "vt_market_account_number") && (
+              <p className="text-red-400 text-sm mt-1">
+                {getFieldError(validationErrors, "vt_market_account_number")}
+              </p>
             )}
           </div>
 
@@ -170,7 +202,9 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
             </label>
             <Select
               value={formData.account_type}
-              onValueChange={(value) => handleInputChange('account_type', value)}
+              onValueChange={(value) =>
+                handleInputChange("account_type", value)
+              }
               disabled={isSubmitting}
             >
               <SelectTrigger className="bg-white border-gray-300 text-gray-900">
@@ -181,8 +215,10 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
                 <SelectItem value="educator">Educator / IB Partner</SelectItem>
               </SelectContent>
             </Select>
-            {getFieldError(validationErrors, 'account_type') && (
-              <p className="text-red-400 text-sm mt-1">{getFieldError(validationErrors, 'account_type')}</p>
+            {getFieldError(validationErrors, "account_type") && (
+              <p className="text-red-400 text-sm mt-1">
+                {getFieldError(validationErrors, "account_type")}
+              </p>
             )}
           </div>
 
@@ -193,21 +229,21 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
             <Input
               type="text"
               value={formData.referrer}
-              onChange={(e) => handleInputChange('referrer', e.target.value)}
+              onChange={(e) => handleInputChange("referrer", e.target.value)}
               placeholder="Who referred you to our platform?"
               className="bg-white border-gray-300 text-gray-900"
               disabled={isSubmitting}
             />
           </div>
 
-          {formData.account_type === 'educator' && (
+          {formData.account_type === "educator" && (
             <div>
               <label className="block text-sm font-medium text-white mb-2">
                 Reason for Educator Account * (10-500 characters)
               </label>
               <Textarea
                 value={formData.reason}
-                onChange={(e) => handleInputChange('reason', e.target.value)}
+                onChange={(e) => handleInputChange("reason", e.target.value)}
                 placeholder="Please explain why you need an educator account and how you plan to use it..."
                 className="bg-white border-gray-300 text-gray-900 min-h-[100px]"
                 disabled={isSubmitting}
@@ -217,15 +253,19 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
                   {formData.reason.length}/500
                 </span>
               </div>
-              {getFieldError(validationErrors, 'reason') && (
-                <p className="text-red-400 text-sm mt-1">{getFieldError(validationErrors, 'reason')}</p>
+              {getFieldError(validationErrors, "reason") && (
+                <p className="text-red-400 text-sm mt-1">
+                  {getFieldError(validationErrors, "reason")}
+                </p>
               )}
             </div>
           )}
 
           {getGeneralError(validationErrors) && (
             <div className="bg-yellow-500/10 rounded-lg p-3 border border-yellow-500/20">
-              <p className="text-yellow-400 text-sm">{getGeneralError(validationErrors)}</p>
+              <p className="text-yellow-400 text-sm">
+                {getGeneralError(validationErrors)}
+              </p>
             </div>
           )}
 
@@ -244,7 +284,7 @@ export const UpdateAccountRequestForm: React.FC<UpdateAccountRequestFormProps> =
                 </>
               )}
             </Button>
-            
+
             <Button
               type="button"
               variant="outline"

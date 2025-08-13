@@ -1,6 +1,5 @@
-
-import { apiClient } from '../client/ApiClient';
-import { ApiResponse } from '@/types/common';
+import { apiClient } from "../client/ApiClient";
+import { ApiResponse } from "@/types/common";
 
 export interface AuditLogEntry {
   id: string;
@@ -32,63 +31,66 @@ export class AdminAuditService {
     details?: any
   ): Promise<ApiResponse<void>> {
     try {
-      const result = await apiClient.insert('audit_logs', {
+      const result = await apiClient.insert("audit_logs", {
         action,
         admin_email: adminEmail,
         target_entity: targetEntity,
         target_id: targetId,
-        details: details ? JSON.stringify(details) : null
+        details: details ? JSON.stringify(details) : null,
       });
 
       if (!result.success) {
-        console.error('Failed to log admin action:', result.error);
+        logger.error("Failed to log admin action:", result.error);
         return {
           success: false,
-          error: result.error || 'Failed to log admin action',
-          data: undefined
+          error: result.error || "Failed to log admin action",
+          data: undefined,
         };
       }
 
       return {
         success: true,
         data: undefined,
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
-      console.error('Error logging admin action:', error);
+      logger.error("Error logging admin action:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to log admin action',
-        data: undefined
+        error:
+          error instanceof Error ? error.message : "Failed to log admin action",
+        data: undefined,
       };
     }
   }
 
-  async getAuditLogs(limit: number = 50): Promise<ApiResponse<AuditLogEntry[]>> {
+  async getAuditLogs(
+    limit: number = 50
+  ): Promise<ApiResponse<AuditLogEntry[]>> {
     try {
-      const result = await apiClient.select('audit_logs', {
-        order: { column: 'created_at', ascending: false },
-        limit
+      const result = await apiClient.select("audit_logs", {
+        order: { column: "created_at", ascending: false },
+        limit,
       });
 
       if (!result.success || !result.data) {
         return {
           success: false,
-          error: result.error || 'Failed to fetch audit logs',
-          data: undefined
+          error: result.error || "Failed to fetch audit logs",
+          data: undefined,
         };
       }
 
       return {
         success: true,
         data: result.data as AuditLogEntry[],
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }

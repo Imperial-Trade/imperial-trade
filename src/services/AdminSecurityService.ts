@@ -1,9 +1,13 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
 
 interface SecurityAlert {
   id: string;
-  type: 'suspicious_activity' | 'failed_login' | 'unauthorized_access' | 'unusual_pattern';
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  type:
+    | "suspicious_activity"
+    | "failed_login"
+    | "unauthorized_access"
+    | "unusual_pattern";
+  severity: "low" | "medium" | "high" | "critical";
   message: string;
   timestamp: Date;
   userEmail?: string;
@@ -40,8 +44,8 @@ class AdminSecurityService {
   }
 
   logSecurityAlert(
-    type: SecurityAlert['type'],
-    severity: SecurityAlert['severity'],
+    type: SecurityAlert["type"],
+    severity: SecurityAlert["severity"],
     message: string,
     metadata?: Record<string, any>
   ) {
@@ -51,11 +55,15 @@ class AdminSecurityService {
       severity,
       message,
       timestamp: new Date(),
-      metadata
+      metadata,
     };
 
     this.alerts.push(alert);
-    console.warn(`Security Alert [${severity.toUpperCase()}]:`, message, metadata);
+    logger.warn(
+      `Security Alert [${severity.toUpperCase()}]:`,
+      message,
+      metadata
+    );
 
     // Keep only recent alerts (last 1000)
     if (this.alerts.length > 1000) {
@@ -69,8 +77,8 @@ class AdminSecurityService {
 
     if (attempts >= this.maxFailedAttempts) {
       this.logSecurityAlert(
-        'failed_login',
-        'high',
+        "failed_login",
+        "high",
         `Multiple failed login attempts for ${email}`,
         { attempts, email }
       );
@@ -91,14 +99,14 @@ class AdminSecurityService {
       email,
       loginTime: new Date(),
       lastActivity: new Date(),
-      ipAddress: 'unknown', // Would need backend integration
-      userAgent: navigator.userAgent
+      ipAddress: "unknown", // Would need backend integration
+      userAgent: navigator.userAgent,
     };
 
     this.activeSessions.set(userId, session);
     this.logSecurityAlert(
-      'suspicious_activity',
-      'low',
+      "suspicious_activity",
+      "low",
       `Admin session started for ${email}`,
       { userId, email }
     );
@@ -117,12 +125,12 @@ class AdminSecurityService {
 
     const now = Date.now();
     const lastActivity = session.lastActivity.getTime();
-    
+
     if (now - lastActivity > this.sessionTimeout) {
       this.endSession(userId);
       return true;
     }
-    
+
     return false;
   }
 
@@ -130,8 +138,8 @@ class AdminSecurityService {
     const session = this.activeSessions.get(userId);
     if (session) {
       this.logSecurityAlert(
-        'suspicious_activity',
-        'low',
+        "suspicious_activity",
+        "low",
         `Admin session ended for ${session.email}`,
         { userId, sessionDuration: Date.now() - session.loginTime.getTime() }
       );
@@ -159,23 +167,23 @@ class AdminSecurityService {
   async validateAdminAccess(userId: string): Promise<boolean> {
     try {
       const { data: user } = await supabase.auth.getUser();
-      
+
       if (!user.user || user.user.id !== userId) {
         this.logSecurityAlert(
-          'unauthorized_access',
-          'high',
-          'Unauthorized admin access attempt',
+          "unauthorized_access",
+          "high",
+          "Unauthorized admin access attempt",
           { userId }
         );
         return false;
       }
 
       const userRole = user.user.user_metadata?.access_level;
-      if (userRole !== 'admin') {
+      if (userRole !== "admin") {
         this.logSecurityAlert(
-          'unauthorized_access',
-          'high',
-          'Non-admin user attempting admin access',
+          "unauthorized_access",
+          "high",
+          "Non-admin user attempting admin access",
           { userId, userRole }
         );
         return false;
@@ -188,14 +196,17 @@ class AdminSecurityService {
 
       // Update session activity
       this.updateSessionActivity(userId);
-      
+
       return true;
     } catch (error) {
       this.logSecurityAlert(
-        'unauthorized_access',
-        'critical',
-        'Error validating admin access',
-        { userId, error: error instanceof Error ? error.message : 'Unknown error' }
+        "unauthorized_access",
+        "critical",
+        "Error validating admin access",
+        {
+          userId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        }
       );
       return false;
     }

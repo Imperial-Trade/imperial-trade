@@ -1,11 +1,14 @@
-
-import { useState } from 'react';
-import { useOptimizedTradingRealtime } from './useOptimizedTradingRealtime';
-import { useTradingFallback } from './trading/useTradingFallback';
-import { useTradingPolling } from './trading/useTradingPolling';
-import { useTradingOperations } from './trading/useTradingOperations';
-import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
-import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import { useState } from "react";
+import { useOptimizedTradingRealtime } from "./useOptimizedTradingRealtime";
+import { useTradingFallback } from "./trading/useTradingFallback";
+import { useTradingPolling } from "./trading/useTradingPolling";
+import { useTradingOperations } from "./trading/useTradingOperations";
+import { TradeAlertWithProfile } from "@/api/services/TradingApiService";
+import {
+  CreateTradeAlertDto,
+  UpdateTradeAlertDto,
+  TradeAlertResponseDto,
+} from "@/domain/dtos/trading/CreateTradeAlertDto";
 
 interface UseOptimizedTradingReturn {
   alerts: TradeAlertWithProfile[];
@@ -15,34 +18,39 @@ interface UseOptimizedTradingReturn {
   updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<boolean>;
   deleteAlert: (id: string) => Promise<boolean>;
   refreshAlerts: () => Promise<void>;
-  connectionStatus?: 'connecting' | 'connected' | 'disconnected' | 'error';
+  connectionStatus?: "connecting" | "connected" | "disconnected" | "error";
   lastUpdated?: Date | null;
   nextRetryAt?: number | null;
 }
 
-export const useOptimizedTrading = (userId: string, showAllSignals: boolean = false): UseOptimizedTradingReturn => {
+export const useOptimizedTrading = (
+  userId: string,
+  showAllSignals: boolean = false
+): UseOptimizedTradingReturn => {
   // Try real-time first
   const realtimeHook = useOptimizedTradingRealtime(userId, showAllSignals);
-  
+
   // Fallback state for HTTP polling
   const [usingFallback, setUsingFallback] = useState(false);
-  
-  const shouldFetchAlerts = showAllSignals || Boolean(userId && userId.trim() !== '');
+
+  const shouldFetchAlerts =
+    showAllSignals || Boolean(userId && userId.trim() !== "");
 
   // Check if we should use fallback based on connection status
-  const shouldUseFallback = realtimeHook.connectionStatus === 'error' || 
-                           realtimeHook.connectionStatus === 'disconnected';
+  const shouldUseFallback =
+    realtimeHook.connectionStatus === "error" ||
+    realtimeHook.connectionStatus === "disconnected";
 
   // Use fallback hook
   const {
     fallbackAlerts,
     fallbackLoading,
     fallbackError,
-    fetchAlertsFallback
+    fetchAlertsFallback,
   } = useTradingFallback({
     userId,
     showAllSignals,
-    shouldUseFallback
+    shouldUseFallback,
   });
 
   // Use polling hook
@@ -50,30 +58,33 @@ export const useOptimizedTrading = (userId: string, showAllSignals: boolean = fa
     shouldUseFallback,
     shouldFetchAlerts,
     fetchAlertsFallback,
-    setUsingFallback
+    setUsingFallback,
   });
 
   // Use operations hook with boolean return types
   const createAlert = async (dto: CreateTradeAlertDto): Promise<boolean> => {
     try {
-      const result = usingFallback 
+      const result = usingFallback
         ? await realtimeHook.createAlert(dto)
         : await realtimeHook.createAlert(dto);
       return !!result;
     } catch (error) {
-      console.error('Error in createAlert:', error);
+      logger.error("Error in createAlert:", error);
       return false;
     }
   };
 
-  const updateAlert = async (id: string, dto: UpdateTradeAlertDto): Promise<boolean> => {
+  const updateAlert = async (
+    id: string,
+    dto: UpdateTradeAlertDto
+  ): Promise<boolean> => {
     try {
-      const result = usingFallback 
+      const result = usingFallback
         ? await realtimeHook.updateAlert(id, dto)
         : await realtimeHook.updateAlert(id, dto);
       return !!result;
     } catch (error) {
-      console.error('Error in updateAlert:', error);
+      logger.error("Error in updateAlert:", error);
       return false;
     }
   };
@@ -82,7 +93,7 @@ export const useOptimizedTrading = (userId: string, showAllSignals: boolean = fa
     try {
       return await realtimeHook.deleteAlert(id);
     } catch (error) {
-      console.error('Error in deleteAlert:', error);
+      logger.error("Error in deleteAlert:", error);
       return false;
     }
   };
@@ -110,6 +121,6 @@ export const useOptimizedTrading = (userId: string, showAllSignals: boolean = fa
     refreshAlerts,
     connectionStatus: realtimeHook.connectionStatus,
     lastUpdated: realtimeHook.lastUpdated,
-    nextRetryAt: realtimeHook.nextRetryAt
+    nextRetryAt: realtimeHook.nextRetryAt,
   };
 };

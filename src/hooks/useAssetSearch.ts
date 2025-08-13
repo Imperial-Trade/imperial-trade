@@ -1,21 +1,43 @@
-
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useOptimizedDebounce } from './useOptimizedDebounce';
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { useOptimizedDebounce } from "./useOptimizedDebounce";
 
 // Static asset lists (moved outside to prevent recreation)
 export const FOREX_PAIRS = [
-  "EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "USD/CAD", "NZD/USD",
-  "EUR/GBP", "EUR/JPY", "EUR/CHF", "EUR/AUD", "EUR/CAD", "EUR/NZD",
-  "GBP/JPY", "GBP/CHF", "GBP/AUD", "GBP/CAD", "GBP/NZD",
-  "AUD/JPY", "AUD/CAD", "AUD/CHF", "AUD/NZD",
-  "CAD/JPY", "CAD/CHF", "CHF/JPY", "NZD/JPY", "NZD/CHF", "NZD/CAD",
+  "EUR/USD",
+  "GBP/USD",
+  "USD/JPY",
+  "USD/CHF",
+  "AUD/USD",
+  "USD/CAD",
+  "NZD/USD",
+  "EUR/GBP",
+  "EUR/JPY",
+  "EUR/CHF",
+  "EUR/AUD",
+  "EUR/CAD",
+  "EUR/NZD",
+  "GBP/JPY",
+  "GBP/CHF",
+  "GBP/AUD",
+  "GBP/CAD",
+  "GBP/NZD",
+  "AUD/JPY",
+  "AUD/CAD",
+  "AUD/CHF",
+  "AUD/NZD",
+  "CAD/JPY",
+  "CAD/CHF",
+  "CHF/JPY",
+  "NZD/JPY",
+  "NZD/CHF",
+  "NZD/CAD",
 ];
 
 export const COMMODITIES = ["XAU/USD", "XAG/USD", "WTI/USD", "BRENT/USD"];
 export const INDICES = ["SPX500", "US30", "NAS100", "UK100", "DAX30", "JP225"];
 
 // Cache for API responses
-const cryptoCache = new Map<string, { data: string[], timestamp: number }>();
+const cryptoCache = new Map<string, { data: string[]; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 interface UseAssetSearchProps {
@@ -27,7 +49,7 @@ export const useAssetSearch = ({ query, delay = 300 }: UseAssetSearchProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [cryptoSuggestions, setCryptoSuggestions] = useState<string[]>([]);
   const debouncedQuery = useOptimizedDebounce(query, delay);
-  
+
   // Get recent assets from localStorage
   const getRecentAssets = useCallback(() => {
     try {
@@ -39,54 +61,65 @@ export const useAssetSearch = ({ query, delay = 300 }: UseAssetSearchProps) => {
   }, []);
 
   // Save asset to recent list
-  const saveRecentAsset = useCallback((asset: string) => {
-    if (!asset.trim()) return;
+  const saveRecentAsset = useCallback(
+    (asset: string) => {
+      if (!asset.trim()) return;
 
-    const recent = getRecentAssets();
-    const normalized = asset.toUpperCase().trim();
-    const filtered = recent.filter((item: string) => item !== normalized);
-    const updated = [normalized, ...filtered].slice(0, 5);
+      const recent = getRecentAssets();
+      const normalized = asset.toUpperCase().trim();
+      const filtered = recent.filter((item: string) => item !== normalized);
+      const updated = [normalized, ...filtered].slice(0, 5);
 
-    localStorage.setItem("recent-trading-assets", JSON.stringify(updated));
-  }, [getRecentAssets]);
+      localStorage.setItem("recent-trading-assets", JSON.stringify(updated));
+    },
+    [getRecentAssets]
+  );
 
   // Fetch crypto suggestions with caching
-  const fetchCryptoSuggestions = useCallback(async (searchQuery: string): Promise<string[]> => {
-    const cacheKey = searchQuery.toLowerCase();
-    const cached = cryptoCache.get(cacheKey);
-    
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      return cached.data;
-    }
+  const fetchCryptoSuggestions = useCallback(
+    async (searchQuery: string): Promise<string[]> => {
+      const cacheKey = searchQuery.toLowerCase();
+      const cached = cryptoCache.get(cacheKey);
 
-    try {
-      setIsLoading(true);
-      const response = await fetch(
-        `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(searchQuery)}`
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        const suggestions = (data.coins || [])
-          .slice(0, 5)
-          .map((coin: any) => `${coin.symbol.toUpperCase()}/USDT`);
-        
-        cryptoCache.set(cacheKey, { data: suggestions, timestamp: Date.now() });
-        return suggestions;
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return cached.data;
       }
-    } catch (error) {
-      console.warn("Could not fetch crypto suggestions:", error);
-    } finally {
-      setIsLoading(false);
-    }
-    
-    return [];
-  }, []);
+
+      try {
+        setIsLoading(true);
+        const response = await fetch(
+          `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(
+            searchQuery
+          )}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const suggestions = (data.coins || [])
+            .slice(0, 5)
+            .map((coin: any) => `${coin.symbol.toUpperCase()}/USDT`);
+
+          cryptoCache.set(cacheKey, {
+            data: suggestions,
+            timestamp: Date.now(),
+          });
+          return suggestions;
+        }
+      } catch (error) {
+        logger.warn("Could not fetch crypto suggestions:", error);
+      } finally {
+        setIsLoading(false);
+      }
+
+      return [];
+    },
+    []
+  );
 
   // Effect to fetch crypto suggestions when query changes
   useEffect(() => {
     const normalizedQuery = debouncedQuery.toUpperCase().trim();
-    
+
     if (normalizedQuery && normalizedQuery.length > 1) {
       fetchCryptoSuggestions(debouncedQuery).then(setCryptoSuggestions);
     } else {
@@ -97,7 +130,7 @@ export const useAssetSearch = ({ query, delay = 300 }: UseAssetSearchProps) => {
   // Generate suggestions based on query
   const suggestions = useMemo(() => {
     const normalizedQuery = debouncedQuery.toUpperCase().trim();
-    
+
     if (!normalizedQuery) {
       return getRecentAssets();
     }
@@ -109,9 +142,7 @@ export const useAssetSearch = ({ query, delay = 300 }: UseAssetSearchProps) => {
     const commoditySuggestions = COMMODITIES.filter((c) =>
       c.includes(normalizedQuery)
     );
-    const indexSuggestions = INDICES.filter((i) => 
-      i.includes(normalizedQuery)
-    );
+    const indexSuggestions = INDICES.filter((i) => i.includes(normalizedQuery));
 
     // Combine all sources
     const combined = [

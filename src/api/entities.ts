@@ -47,24 +47,26 @@ export class TradeJournalEntry {
   ): Promise<TradeJournalEntry> {
     const { data: result, error } = await supabase
       .from("trade_journal_entries")
-      .insert([{
-        user_id,
-        asset_ticker: data.asset_ticker,
-        pnl: data.pnl,
-        notes: data.notes,
-        trade_date: data.trade_date,
-        screenshot_url: data.screenshot_url,
-        ai_positive_feedback: data.ai_positive_feedback,
-        trade_type: data.trade_type,
-        entry_price: data.entry_price,
-        exit_price: data.exit_price,
-        position_size: data.position_size
-      }])
+      .insert([
+        {
+          user_id,
+          asset_ticker: data.asset_ticker,
+          pnl: data.pnl,
+          notes: data.notes,
+          trade_date: data.trade_date,
+          screenshot_url: data.screenshot_url,
+          ai_positive_feedback: data.ai_positive_feedback,
+          trade_type: data.trade_type,
+          entry_price: data.entry_price,
+          exit_price: data.exit_price,
+          position_size: data.position_size,
+        },
+      ])
       .select()
       .single();
 
     if (error) {
-      console.error("Error creating trade journal entry:", error);
+      logger.error("Error creating trade journal entry:", error);
       throw new Error(`Failed to create trade journal entry: ${error.message}`);
     }
 
@@ -101,21 +103,24 @@ export class TradeJournalEntry {
       position_size?: number;
     }
   ): Promise<TradeJournalEntry> {
-    console.log("TradeJournalEntry.update - Starting update for ID:", id);
-    console.log("TradeJournalEntry.update - Data to update:", data);
+    logger.log("TradeJournalEntry.update - Starting update for ID:", id);
+    logger.log("TradeJournalEntry.update - Data to update:", data);
 
     try {
       // Check authentication first
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      console.log("TradeJournalEntry.update - Current user:", user?.id);
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      logger.log("TradeJournalEntry.update - Current user:", user?.id);
+
       if (authError) {
-        console.error("TradeJournalEntry.update - Auth error:", authError);
+        logger.error("TradeJournalEntry.update - Auth error:", authError);
         throw new Error(`Authentication error: ${authError.message}`);
       }
 
       if (!user) {
-        console.error("TradeJournalEntry.update - No authenticated user");
+        logger.error("TradeJournalEntry.update - No authenticated user");
         throw new Error("No authenticated user found");
       }
 
@@ -127,21 +132,31 @@ export class TradeJournalEntry {
         .single();
 
       if (fetchError) {
-        console.error("TradeJournalEntry.update - Error fetching existing entry:", fetchError);
-        throw new Error(`Failed to fetch existing entry: ${fetchError.message}`);
+        logger.error(
+          "TradeJournalEntry.update - Error fetching existing entry:",
+          fetchError
+        );
+        throw new Error(
+          `Failed to fetch existing entry: ${fetchError.message}`
+        );
       }
 
       if (!existingEntry) {
-        console.error("TradeJournalEntry.update - Entry not found with ID:", id);
+        logger.error("TradeJournalEntry.update - Entry not found with ID:", id);
         throw new Error("Journal entry not found");
       }
 
       if (existingEntry.user_id !== user.id) {
-        console.error("TradeJournalEntry.update - User mismatch. Entry user:", existingEntry.user_id, "Current user:", user.id);
+        logger.error(
+          "TradeJournalEntry.update - User mismatch. Entry user:",
+          existingEntry.user_id,
+          "Current user:",
+          user.id
+        );
         throw new Error("Unauthorized: Entry belongs to different user");
       }
 
-      console.log("TradeJournalEntry.update - Performing update...");
+      logger.log("TradeJournalEntry.update - Performing update...");
 
       // Perform the update
       const { data: result, error } = await supabase
@@ -153,22 +168,26 @@ export class TradeJournalEntry {
         .single();
 
       if (error) {
-        console.error("TradeJournalEntry.update - Update error:", error);
-        console.error("TradeJournalEntry.update - Error details:", {
+        logger.error("TradeJournalEntry.update - Update error:", error);
+        logger.error("TradeJournalEntry.update - Error details:", {
           code: error.code,
           message: error.message,
           details: error.details,
-          hint: error.hint
+          hint: error.hint,
         });
-        throw new Error(`Failed to update trade journal entry: ${error.message}`);
+        throw new Error(
+          `Failed to update trade journal entry: ${error.message}`
+        );
       }
 
       if (!result) {
-        console.error("TradeJournalEntry.update - No result returned from update");
+        logger.error(
+          "TradeJournalEntry.update - No result returned from update"
+        );
         throw new Error("Update operation completed but no data returned");
       }
 
-      console.log("TradeJournalEntry.update - Update successful:", result);
+      logger.log("TradeJournalEntry.update - Update successful:", result);
 
       return new TradeJournalEntry(
         result.id,
@@ -187,7 +206,7 @@ export class TradeJournalEntry {
         result.updated_at
       );
     } catch (error) {
-      console.error("TradeJournalEntry.update - Caught error:", error);
+      logger.error("TradeJournalEntry.update - Caught error:", error);
       throw error;
     }
   }
@@ -200,8 +219,10 @@ export class TradeJournalEntry {
       .order("trade_date", { ascending: false });
 
     if (error) {
-      console.error("Error fetching trade journal entries:", error);
-      throw new Error(`Failed to fetch trade journal entries: ${error.message}`);
+      logger.error("Error fetching trade journal entries:", error);
+      throw new Error(
+        `Failed to fetch trade journal entries: ${error.message}`
+      );
     }
 
     return data.map(
@@ -232,7 +253,7 @@ export class TradeJournalEntry {
       .eq("id", id);
 
     if (error) {
-      console.error("Error deleting trade journal entry:", error);
+      logger.error("Error deleting trade journal entry:", error);
       throw new Error(`Failed to delete trade journal entry: ${error.message}`);
     }
   }
@@ -246,16 +267,18 @@ export class User {
   ) {}
 
   static async me(): Promise<User | null> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return null;
-    
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("real_name")
       .eq("id", user.id)
       .single();
-    
-    return new User(user.id, user.email || '', profile?.real_name);
+
+    return new User(user.id, user.email || "", profile?.real_name);
   }
 }
 
@@ -283,18 +306,21 @@ export class AccountRequest {
       throw new Error(`Failed to fetch account requests: ${error.message}`);
     }
 
-    return data.map(req => new AccountRequest(
-      req.id,
-      req.full_name,
-      req.email,
-      req.account_type,
-      req.status,
-      req.created_at,
-      req.updated_at,
-      req.reason,
-      req.rejection_reason,
-      req.resubmission_count
-    ));
+    return data.map(
+      (req) =>
+        new AccountRequest(
+          req.id,
+          req.full_name,
+          req.email,
+          req.account_type,
+          req.status,
+          req.created_at,
+          req.updated_at,
+          req.reason,
+          req.rejection_reason,
+          req.resubmission_count
+        )
+    );
   }
 }
 
@@ -362,10 +388,12 @@ export class AthenaInteraction {
   }): Promise<AthenaInteraction> {
     const { data: result, error } = await supabase
       .from("athena_interactions")
-      .insert([{
-        ...data,
-        interaction_time: new Date().toISOString()
-      }])
+      .insert([
+        {
+          ...data,
+          interaction_time: new Date().toISOString(),
+        },
+      ])
       .select()
       .single();
 

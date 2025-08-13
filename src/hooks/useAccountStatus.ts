@@ -1,6 +1,5 @@
-
-import { useState, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useCallback, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AccountStatusData {
   id: string;
@@ -13,7 +12,7 @@ interface AccountStatusData {
 }
 
 interface StatusError {
-  type: 'not_found' | 'network_error' | 'system_error';
+  type: "not_found" | "network_error" | "system_error";
   message: string;
 }
 
@@ -22,15 +21,18 @@ interface UseAccountStatusProps {
 }
 
 // Simple cache to prevent duplicate requests
-const statusCache = new Map<string, { data: AccountStatusData | null; timestamp: number; error?: StatusError }>();
+const statusCache = new Map<
+  string,
+  { data: AccountStatusData | null; timestamp: number; error?: StatusError }
+>();
 const CACHE_DURATION = 30 * 1000; // 30 seconds
 
 export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
   const [status, setStatus] = useState<AccountStatusData | null>(null);
   const [error, setError] = useState<StatusError | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
-  const lastCheckedEmailRef = useRef<string>('');
+
+  const lastCheckedEmailRef = useRef<string>("");
   const isCheckingRef = useRef(false);
 
   const clearError = useCallback(() => {
@@ -40,16 +42,16 @@ export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
   const checkStatus = useCallback(async (emailToCheck: string) => {
     // Prevent duplicate requests
     if (isCheckingRef.current && lastCheckedEmailRef.current === emailToCheck) {
-      console.log('Skipping duplicate request for:', emailToCheck);
+      logger.log("Skipping duplicate request for:", emailToCheck);
       return;
     }
 
     const normalizedEmail = emailToCheck.toLowerCase().trim();
-    
+
     // Check cache first
     const cached = statusCache.get(normalizedEmail);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log('Using cached result for:', normalizedEmail);
+      logger.log("Using cached result for:", normalizedEmail);
       if (cached.error) {
         setError(cached.error);
         setStatus(null);
@@ -65,53 +67,68 @@ export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
       lastCheckedEmailRef.current = normalizedEmail;
       setIsLoading(true);
       setError(null);
-      
-      console.log('Checking account status for:', normalizedEmail);
 
-      const { data, error: fnError } = await supabase.functions.invoke('check-account-request-status', {
-        body: { email: normalizedEmail }
-      });
+      logger.log("Checking account status for:", normalizedEmail);
+
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "check-account-request-status",
+        {
+          body: { email: normalizedEmail },
+        }
+      );
 
       if (fnError) {
-        console.error('Edge function error:', fnError);
+        logger.error("Edge function error:", fnError);
         const errorObj = {
-          type: 'system_error' as const,
-          message: 'Unable to check account status. Please try again.'
+          type: "system_error" as const,
+          message: "Unable to check account status. Please try again.",
         };
         setError(errorObj);
         setStatus(null);
-        statusCache.set(normalizedEmail, { data: null, timestamp: Date.now(), error: errorObj });
+        statusCache.set(normalizedEmail, {
+          data: null,
+          timestamp: Date.now(),
+          error: errorObj,
+        });
         return;
       }
 
       const result = (data as any)?.request ?? null;
       if (!result) {
         const errorObj = {
-          type: 'not_found' as const,
-          message: 'No account request found for this email address.'
+          type: "not_found" as const,
+          message: "No account request found for this email address.",
         };
         setError(errorObj);
         setStatus(null);
-        statusCache.set(normalizedEmail, { data: null, timestamp: Date.now(), error: errorObj });
+        statusCache.set(normalizedEmail, {
+          data: null,
+          timestamp: Date.now(),
+          error: errorObj,
+        });
       } else {
         setStatus(result as AccountStatusData);
         setError(null);
-        statusCache.set(normalizedEmail, { data: result as AccountStatusData, timestamp: Date.now() });
+        statusCache.set(normalizedEmail, {
+          data: result as AccountStatusData,
+          timestamp: Date.now(),
+        });
       }
     } catch (error) {
-      console.error('Network error:', error);
+      logger.error("Network error:", error);
       const errorObj = {
-        type: 'network_error' as const,
-        message: 'Connection failed. Please check your internet connection and try again.'
+        type: "network_error" as const,
+        message:
+          "Connection failed. Please check your internet connection and try again.",
       };
       setError(errorObj);
       setStatus(null);
-      
+
       // Cache the network error
       statusCache.set(normalizedEmail, {
         data: null,
         timestamp: Date.now(),
-        error: errorObj
+        error: errorObj,
       });
     } finally {
       setIsLoading(false);
@@ -131,11 +148,11 @@ export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
   }, [checkStatus]);
 
   const resetState = useCallback(() => {
-    console.log('Resetting account status state');
+    logger.log("Resetting account status state");
     setStatus(null);
     setError(null);
     setIsLoading(false);
-    lastCheckedEmailRef.current = '';
+    lastCheckedEmailRef.current = "";
     isCheckingRef.current = false;
   }, []);
 

@@ -1,8 +1,10 @@
-
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useCallback } from 'react';
-import { tradeAlertSubmissionSchema, type TradeAlertSubmissionData } from '@/lib/validations/tradeAlertSchema';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState, useCallback } from "react";
+import {
+  tradeAlertSubmissionSchema,
+  type TradeAlertSubmissionData,
+} from "@/lib/validations/tradeAlertSchema";
 
 interface UseOptimizedTradeAlertFormProps {
   onSubmit: (data: TradeAlertSubmissionData) => Promise<void> | void;
@@ -20,14 +22,14 @@ interface UseOptimizedTradeAlertFormReturn {
 export const useOptimizedTradeAlertForm = ({
   onSubmit,
   enableSmartValidation = true,
-  initialData
+  initialData,
 }: UseOptimizedTradeAlertFormProps): UseOptimizedTradeAlertFormReturn => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const defaultValues = {
-    asset_name: '',
-    tradermade_symbol: '',
-    trade_type: 'buy' as const,
+    asset_name: "",
+    tradermade_symbol: "",
+    trade_type: "buy" as const,
     entry_price: 0,
     stop_loss: 0,
     tp1: undefined,
@@ -35,51 +37,59 @@ export const useOptimizedTradeAlertForm = ({
     tp3: undefined,
     tp4: undefined,
     tp5: undefined,
-    notes: '',
-    status: 'active' as const
+    notes: "",
+    status: "active" as const,
   };
 
   const form = useForm<TradeAlertSubmissionData>({
     resolver: zodResolver(tradeAlertSubmissionSchema),
-    defaultValues: initialData ? { ...defaultValues, ...initialData } : defaultValues,
-    mode: enableSmartValidation ? 'onChange' : 'onSubmit'
+    defaultValues: initialData
+      ? { ...defaultValues, ...initialData }
+      : defaultValues,
+    mode: enableSmartValidation ? "onChange" : "onSubmit",
   });
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    
-    form.handleSubmit(async (data) => {
-      console.log('Form submitting with data:', data);
-      console.log('Form validation status:', form.formState.isValid);
-      console.log('Form errors:', form.formState.errors);
-      
-      // Add debugging for each field
-      console.log('Field values:', {
-        asset_name: data.asset_name,
-        tradermade_symbol: data.tradermade_symbol,
-        trade_type: data.trade_type,
-        entry_price: data.entry_price,
-        stop_loss: data.stop_loss,
-        tp1: data.tp1,
-        notes: data.notes,
-        status: data.status
-      });
-      
-      // Normalize status: limit orders start as 'pending' until activated
-      const tradeType = data.trade_type;
-      const adjustedStatus = (tradeType === 'buy_limit' || tradeType === 'sell_limit') ? 'pending' : (data.status ?? 'active');
-      const normalizedData = { ...data, status: adjustedStatus };
-      
-      try {
-        setIsSubmitting(true);
-        await onSubmit(normalizedData);
-      } catch (error) {
-        console.error('Form submission error:', error);
-      } finally {
-        setIsSubmitting(false);
-      }
-    })(e);
-  }, [form, onSubmit]);
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+
+      form.handleSubmit(async (data) => {
+        logger.log("Form submitting with data:", data);
+        logger.log("Form validation status:", form.formState.isValid);
+        logger.log("Form errors:", form.formState.errors);
+
+        // Add debugging for each field
+        logger.log("Field values:", {
+          asset_name: data.asset_name,
+          tradermade_symbol: data.tradermade_symbol,
+          trade_type: data.trade_type,
+          entry_price: data.entry_price,
+          stop_loss: data.stop_loss,
+          tp1: data.tp1,
+          notes: data.notes,
+          status: data.status,
+        });
+
+        // Normalize status: limit orders start as 'pending' until activated
+        const tradeType = data.trade_type;
+        const adjustedStatus =
+          tradeType === "buy_limit" || tradeType === "sell_limit"
+            ? "pending"
+            : data.status ?? "active";
+        const normalizedData = { ...data, status: adjustedStatus };
+
+        try {
+          setIsSubmitting(true);
+          await onSubmit(normalizedData);
+        } catch (error) {
+          logger.error("Form submission error:", error);
+        } finally {
+          setIsSubmitting(false);
+        }
+      })(e);
+    },
+    [form, onSubmit]
+  );
 
   const hasErrors = Object.keys(form.formState.errors).length > 0;
 
@@ -87,7 +97,7 @@ export const useOptimizedTradeAlertForm = ({
     form,
     handleSubmit,
     isSubmitting,
-    hasErrors
+    hasErrors,
   };
 };
 

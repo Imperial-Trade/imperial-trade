@@ -1,10 +1,9 @@
-
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { adminAuditService } from '@/api/services/AdminAuditService';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { adminAuditService } from "@/api/services/AdminAuditService";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Activity,
   Database,
@@ -15,14 +14,14 @@ import {
   Zap,
   Users,
   TrendingUp,
-  Server
-} from 'lucide-react';
+  Server,
+} from "lucide-react";
 
 interface SystemHealth {
-  database: 'healthy' | 'warning' | 'error';
-  api: 'healthy' | 'warning' | 'error';
-  storage: 'healthy' | 'warning' | 'error';
-  auth: 'healthy' | 'warning' | 'error';
+  database: "healthy" | "warning" | "error";
+  api: "healthy" | "warning" | "error";
+  storage: "healthy" | "warning" | "error";
+  auth: "healthy" | "warning" | "error";
 }
 
 interface SystemMetrics {
@@ -36,19 +35,19 @@ interface SystemMetrics {
 
 export function SystemMonitoring() {
   const [systemHealth, setSystemHealth] = useState<SystemHealth>({
-    database: 'healthy',
-    api: 'healthy',
-    storage: 'healthy',
-    auth: 'healthy'
+    database: "healthy",
+    api: "healthy",
+    storage: "healthy",
+    auth: "healthy",
   });
-  
+
   const [metrics, setMetrics] = useState<SystemMetrics>({
     activeUsers: 0,
     totalRequests: 0,
     errorRate: 0,
     responseTime: 0,
     storageUsed: 0,
-    storageLimit: 1000
+    storageLimit: 1000,
   });
 
   const [loading, setLoading] = useState(false);
@@ -63,24 +62,26 @@ export function SystemMonitoring() {
   const checkSystemHealth = async () => {
     try {
       setLoading(true);
-      
+
       // Test database connection
-      const dbTest = await supabase.from('audit_logs').select('count').limit(1);
-      const dbHealth = dbTest.error ? 'error' : 'healthy';
+      const dbTest = await supabase.from("audit_logs").select("count").limit(1);
+      const dbHealth = dbTest.error ? "error" : "healthy";
 
       // Test auth
-      const { data: { user } } = await supabase.auth.getUser();
-      const authHealth = user ? 'healthy' : 'warning';
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const authHealth = user ? "healthy" : "warning";
 
       // Simulate API and storage health checks
-      const apiHealth = 'healthy';
-      const storageHealth = 'healthy';
+      const apiHealth = "healthy";
+      const storageHealth = "healthy";
 
       setSystemHealth({
         database: dbHealth,
         api: apiHealth,
         storage: storageHealth,
-        auth: authHealth
+        auth: authHealth,
       });
 
       // Update metrics with simulated data
@@ -90,7 +91,7 @@ export function SystemMonitoring() {
         errorRate: Math.random() * 2,
         responseTime: Math.floor(Math.random() * 200) + 50,
         storageUsed: Math.floor(Math.random() * 500) + 100,
-        storageLimit: 1000
+        storageLimit: 1000,
       });
 
       setLastUpdated(new Date());
@@ -98,60 +99,71 @@ export function SystemMonitoring() {
       // Log monitoring action
       if (user) {
         await adminAuditService.logAdminAction(
-          'system_health_check',
-          user.email || 'unknown',
-          'system',
-          'monitoring',
-          { 
+          "system_health_check",
+          user.email || "unknown",
+          "system",
+          "monitoring",
+          {
             database_health: dbHealth,
             api_health: apiHealth,
             storage_health: storageHealth,
-            auth_health: authHealth
+            auth_health: authHealth,
           }
         );
       }
-
     } catch (error) {
-      console.error('Error checking system health:', error);
+      logger.error("Error checking system health:", error);
       setSystemHealth({
-        database: 'error',
-        api: 'error',
-        storage: 'error',
-        auth: 'error'
+        database: "error",
+        api: "error",
+        storage: "error",
+        auth: "error",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const getHealthIcon = (status: 'healthy' | 'warning' | 'error') => {
+  const getHealthIcon = (status: "healthy" | "warning" | "error") => {
     switch (status) {
-      case 'healthy':
+      case "healthy":
         return <CheckCircle className="w-5 h-5 text-green-400" />;
-      case 'warning':
+      case "warning":
         return <AlertTriangle className="w-5 h-5 text-yellow-400" />;
-      case 'error':
+      case "error":
         return <XCircle className="w-5 h-5 text-red-400" />;
     }
   };
 
-  const getHealthBadge = (status: 'healthy' | 'warning' | 'error') => {
+  const getHealthBadge = (status: "healthy" | "warning" | "error") => {
     switch (status) {
-      case 'healthy':
-        return <Badge className="bg-green-500/10 text-green-400 border-green-500/20">Healthy</Badge>;
-      case 'warning':
-        return <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">Warning</Badge>;
-      case 'error':
-        return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Error</Badge>;
+      case "healthy":
+        return (
+          <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+            Healthy
+          </Badge>
+        );
+      case "warning":
+        return (
+          <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
+            Warning
+          </Badge>
+        );
+      case "error":
+        return (
+          <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
+            Error
+          </Badge>
+        );
     }
   };
 
   const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   return (
@@ -178,7 +190,7 @@ export function SystemMonitoring() {
                 {loading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent-green"></div>
                 ) : (
-                  'Refresh'
+                  "Refresh"
                 )}
               </Button>
             </div>
@@ -240,7 +252,9 @@ export function SystemMonitoring() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-secondary text-sm">Active Users</p>
-                <p className="text-2xl font-bold text-primary">{metrics.activeUsers}</p>
+                <p className="text-2xl font-bold text-primary">
+                  {metrics.activeUsers}
+                </p>
               </div>
               <Users className="w-8 h-8 text-blue-400" />
             </div>
@@ -252,7 +266,9 @@ export function SystemMonitoring() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-secondary text-sm">Total Requests</p>
-                <p className="text-2xl font-bold text-primary">{metrics.totalRequests.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-primary">
+                  {metrics.totalRequests.toLocaleString()}
+                </p>
               </div>
               <TrendingUp className="w-8 h-8 text-green-400" />
             </div>
@@ -264,7 +280,9 @@ export function SystemMonitoring() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-secondary text-sm">Error Rate</p>
-                <p className="text-2xl font-bold text-primary">{metrics.errorRate.toFixed(2)}%</p>
+                <p className="text-2xl font-bold text-primary">
+                  {metrics.errorRate.toFixed(2)}%
+                </p>
               </div>
               <AlertTriangle className="w-8 h-8 text-red-400" />
             </div>
@@ -276,7 +294,9 @@ export function SystemMonitoring() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-secondary text-sm">Response Time</p>
-                <p className="text-2xl font-bold text-primary">{metrics.responseTime}ms</p>
+                <p className="text-2xl font-bold text-primary">
+                  {metrics.responseTime}ms
+                </p>
               </div>
               <Zap className="w-8 h-8 text-yellow-400" />
             </div>
@@ -297,17 +317,23 @@ export function SystemMonitoring() {
             <div className="flex items-center justify-between">
               <span className="text-secondary">Used Storage</span>
               <span className="text-primary font-medium">
-                {formatBytes(metrics.storageUsed * 1024 * 1024)} / {formatBytes(metrics.storageLimit * 1024 * 1024)}
+                {formatBytes(metrics.storageUsed * 1024 * 1024)} /{" "}
+                {formatBytes(metrics.storageLimit * 1024 * 1024)}
               </span>
             </div>
             <div className="w-full bg-surface rounded-full h-2">
               <div
                 className="bg-accent-green h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(metrics.storageUsed / metrics.storageLimit) * 100}%` }}
+                style={{
+                  width: `${
+                    (metrics.storageUsed / metrics.storageLimit) * 100
+                  }%`,
+                }}
               ></div>
             </div>
             <div className="text-sm text-secondary">
-              {((metrics.storageUsed / metrics.storageLimit) * 100).toFixed(1)}% of storage used
+              {((metrics.storageUsed / metrics.storageLimit) * 100).toFixed(1)}%
+              of storage used
             </div>
           </div>
         </CardContent>

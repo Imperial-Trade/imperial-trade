@@ -1,14 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Bell, Clock, Volume2 } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Bell, Clock, Volume2 } from "lucide-react";
 
 interface NotificationPreferences {
   push_enabled: boolean;
@@ -37,7 +43,7 @@ export const NotificationPreferences: React.FC = () => {
     system_announcements: true,
     quiet_hours_start: null,
     quiet_hours_end: null,
-    timezone: 'UTC',
+    timezone: "UTC",
     frequency_limit: 10,
   });
   const [loading, setLoading] = useState(false);
@@ -53,9 +59,9 @@ export const NotificationPreferences: React.FC = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('user_notification_preferences')
-        .select('*')
-        .eq('user_id', user?.id)
+        .from("user_notification_preferences")
+        .select("*")
+        .eq("user_id", user?.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -71,12 +77,12 @@ export const NotificationPreferences: React.FC = () => {
           system_announcements: data.system_announcements,
           quiet_hours_start: data.quiet_hours_start,
           quiet_hours_end: data.quiet_hours_end,
-          timezone: data.timezone || 'UTC',
+          timezone: data.timezone || "UTC",
           frequency_limit: data.frequency_limit || 10,
         });
       }
     } catch (error) {
-      console.error('Error loading preferences:', error);
+      logger.error("Error loading preferences:", error);
       toast({
         title: "Error",
         description: "Failed to load notification preferences",
@@ -93,7 +99,7 @@ export const NotificationPreferences: React.FC = () => {
     try {
       setSaving(true);
       const { error } = await supabase
-        .from('user_notification_preferences')
+        .from("user_notification_preferences")
         .upsert({
           user_id: user.id,
           ...preferences,
@@ -106,7 +112,7 @@ export const NotificationPreferences: React.FC = () => {
         description: "Your notification preferences have been updated",
       });
     } catch (error) {
-      console.error('Error saving preferences:', error);
+      logger.error("Error saving preferences:", error);
       toast({
         title: "Error",
         description: "Failed to save notification preferences",
@@ -121,14 +127,16 @@ export const NotificationPreferences: React.FC = () => {
     key: K,
     value: NotificationPreferences[K]
   ) => {
-    setPreferences(prev => ({ ...prev, [key]: value }));
+    setPreferences((prev) => ({ ...prev, [key]: value }));
   };
 
   if (loading) {
     return (
       <Card>
         <CardContent className="pt-6">
-          <div className="text-center text-muted-foreground">Loading preferences...</div>
+          <div className="text-center text-muted-foreground">
+            Loading preferences...
+          </div>
         </CardContent>
       </Card>
     );
@@ -154,7 +162,9 @@ export const NotificationPreferences: React.FC = () => {
               </div>
               <Switch
                 checked={preferences.push_enabled}
-                onCheckedChange={(checked) => updatePreference('push_enabled', checked)}
+                onCheckedChange={(checked) =>
+                  updatePreference("push_enabled", checked)
+                }
               />
             </div>
 
@@ -167,7 +177,9 @@ export const NotificationPreferences: React.FC = () => {
               </div>
               <Switch
                 checked={preferences.email_enabled}
-                onCheckedChange={(checked) => updatePreference('email_enabled', checked)}
+                onCheckedChange={(checked) =>
+                  updatePreference("email_enabled", checked)
+                }
               />
             </div>
 
@@ -180,7 +192,9 @@ export const NotificationPreferences: React.FC = () => {
               </div>
               <Switch
                 checked={preferences.trading_signals}
-                onCheckedChange={(checked) => updatePreference('trading_signals', checked)}
+                onCheckedChange={(checked) =>
+                  updatePreference("trading_signals", checked)
+                }
               />
             </div>
 
@@ -193,7 +207,9 @@ export const NotificationPreferences: React.FC = () => {
               </div>
               <Switch
                 checked={preferences.market_updates}
-                onCheckedChange={(checked) => updatePreference('market_updates', checked)}
+                onCheckedChange={(checked) =>
+                  updatePreference("market_updates", checked)
+                }
               />
             </div>
 
@@ -206,7 +222,9 @@ export const NotificationPreferences: React.FC = () => {
               </div>
               <Switch
                 checked={preferences.educational_content}
-                onCheckedChange={(checked) => updatePreference('educational_content', checked)}
+                onCheckedChange={(checked) =>
+                  updatePreference("educational_content", checked)
+                }
               />
             </div>
 
@@ -219,7 +237,9 @@ export const NotificationPreferences: React.FC = () => {
               </div>
               <Switch
                 checked={preferences.community_activity}
-                onCheckedChange={(checked) => updatePreference('community_activity', checked)}
+                onCheckedChange={(checked) =>
+                  updatePreference("community_activity", checked)
+                }
               />
             </div>
 
@@ -232,7 +252,9 @@ export const NotificationPreferences: React.FC = () => {
               </div>
               <Switch
                 checked={preferences.system_announcements}
-                onCheckedChange={(checked) => updatePreference('system_announcements', checked)}
+                onCheckedChange={(checked) =>
+                  updatePreference("system_announcements", checked)
+                }
               />
             </div>
           </div>
@@ -252,16 +274,20 @@ export const NotificationPreferences: React.FC = () => {
               <Label>Start Time</Label>
               <Input
                 type="time"
-                value={preferences.quiet_hours_start || ''}
-                onChange={(e) => updatePreference('quiet_hours_start', e.target.value || null)}
+                value={preferences.quiet_hours_start || ""}
+                onChange={(e) =>
+                  updatePreference("quiet_hours_start", e.target.value || null)
+                }
               />
             </div>
             <div className="space-y-2">
               <Label>End Time</Label>
               <Input
                 type="time"
-                value={preferences.quiet_hours_end || ''}
-                onChange={(e) => updatePreference('quiet_hours_end', e.target.value || null)}
+                value={preferences.quiet_hours_end || ""}
+                onChange={(e) =>
+                  updatePreference("quiet_hours_end", e.target.value || null)
+                }
               />
             </div>
           </div>
@@ -269,7 +295,7 @@ export const NotificationPreferences: React.FC = () => {
             <Label>Timezone</Label>
             <Select
               value={preferences.timezone}
-              onValueChange={(value) => updatePreference('timezone', value)}
+              onValueChange={(value) => updatePreference("timezone", value)}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -279,7 +305,9 @@ export const NotificationPreferences: React.FC = () => {
                 <SelectItem value="America/New_York">Eastern Time</SelectItem>
                 <SelectItem value="America/Chicago">Central Time</SelectItem>
                 <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                <SelectItem value="America/Los_Angeles">
+                  Pacific Time
+                </SelectItem>
                 <SelectItem value="Europe/London">London</SelectItem>
                 <SelectItem value="Europe/Paris">Paris</SelectItem>
                 <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
@@ -305,7 +333,12 @@ export const NotificationPreferences: React.FC = () => {
               min="1"
               max="50"
               value={preferences.frequency_limit}
-              onChange={(e) => updatePreference('frequency_limit', parseInt(e.target.value) || 10)}
+              onChange={(e) =>
+                updatePreference(
+                  "frequency_limit",
+                  parseInt(e.target.value) || 10
+                )
+              }
             />
             <p className="text-sm text-muted-foreground">
               Limit the number of push notifications you receive daily
@@ -315,12 +348,12 @@ export const NotificationPreferences: React.FC = () => {
       </Card>
 
       <div className="flex justify-end">
-        <Button 
-          onClick={savePreferences} 
+        <Button
+          onClick={savePreferences}
           disabled={saving}
           className="min-w-24"
         >
-          {saving ? 'Saving...' : 'Save Preferences'}
+          {saving ? "Saving..." : "Save Preferences"}
         </Button>
       </div>
     </div>

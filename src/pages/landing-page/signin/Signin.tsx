@@ -14,17 +14,11 @@ import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 export default function SigninPage() {
   const [status, setStatus] = useState({
     type: "",
-    message: ""
+    message: "",
   });
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const {
-    form,
-    onSubmit,
-    canSubmit,
-    isSubmitting,
-    attemptsLeft,
-    remainingMs,
-  } = useLoginForm();
+  const { form, onSubmit, canSubmit, isSubmitting, attemptsLeft, remainingMs } =
+    useLoginForm();
   const navigate = useNavigate();
   const handleFormSubmit = async (data: any) => {
     try {
@@ -34,14 +28,15 @@ export default function SigninPage() {
       // Redirect to dashboard after successful login
       navigate("/dashboard/home");
     } catch (error) {
-      console.error("Login failed:", error);
+      logger.error("Login failed:", error);
       setStatus({
         type: "error",
-        message: "Login failed. Please check your credentials and try again."
+        message: "Login failed. Please check your credentials and try again.",
       });
     }
   };
-  return <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+  return (
+    <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
       <ErrorBoundary componentName="Video Background">
         <VideoBackground />
       </ErrorBoundary>
@@ -62,38 +57,47 @@ export default function SigninPage() {
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
             {/* Rate limit indicators */}
-            {typeof remainingMs === 'number' && remainingMs > 0 && (
+            {typeof remainingMs === "number" && remainingMs > 0 && (
               <div className="mb-3 text-center text-slate-50 text-sm">
-                Too many login attempts. Please wait {Math.floor(Math.ceil(remainingMs / 1000) / 60)}:{String(Math.ceil(remainingMs / 1000) % 60).padStart(2, '0')} before trying again.
+                Too many login attempts. Please wait{" "}
+                {Math.floor(Math.ceil(remainingMs / 1000) / 60)}:
+                {String(Math.ceil(remainingMs / 1000) % 60).padStart(2, "0")}{" "}
+                before trying again.
               </div>
             )}
             <div className="mb-2 text-center text-slate-50/80 text-xs">
               Attempts left: {attemptsLeft} of 5
             </div>
-            {typeof window !== 'undefined' && (window as any).clearRateLimits && (
-              <div className="mb-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => (window as any).clearRateLimits?.()}
-                  className="underline text-slate-50/70 hover:text-slate-50 text-xs"
-                  aria-label="Reset rate limiter (development only)"
-                >
-                  Reset limiter (dev)
-                </button>
-              </div>
-            )}
+            {typeof window !== "undefined" &&
+              (window as any).clearRateLimits && (
+                <div className="mb-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => (window as any).clearRateLimits?.()}
+                    className="underline text-slate-50/70 hover:text-slate-50 text-xs"
+                    aria-label="Reset rate limiter (development only)"
+                  >
+                    Reset limiter (dev)
+                  </button>
+                </div>
+              )}
             <ErrorBoundary componentName="Status Message">
-              <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
+              <StatusMessage
+                type={status.type as "success" | "error" | ""}
+                message={status.message}
+              />
             </ErrorBoundary>
             {status.type !== "success" && (
               <ErrorBoundary componentName="Auth Form">
                 {showForgotPassword ? (
-                  <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
+                  <ForgotPasswordForm
+                    onBack={() => setShowForgotPassword(false)}
+                  />
                 ) : (
-                  <LoginForm 
-                    form={form} 
-                    onSubmit={handleFormSubmit} 
-                    isSubmitting={isSubmitting} 
+                  <LoginForm
+                    form={form}
+                    onSubmit={handleFormSubmit}
+                    isSubmitting={isSubmitting}
                     canSubmit={canSubmit}
                     onForgotPassword={() => setShowForgotPassword(true)}
                   />
@@ -103,8 +107,8 @@ export default function SigninPage() {
 
             <div className="pt-4 space-y-3">
               <Link to="/account-request">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full min-h-[48px] border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95 touch-manipulation"
                   aria-label="Request new account access"
                 >
@@ -114,8 +118,8 @@ export default function SigninPage() {
               </Link>
 
               <Link to="/account-request-status">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full min-h-[48px] border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95 touch-manipulation"
                   aria-label="Check your request status"
                 >
@@ -131,5 +135,6 @@ export default function SigninPage() {
       <ErrorBoundary componentName="Page Styles">
         <PageStyles />
       </ErrorBoundary>
-    </div>;
+    </div>
+  );
 }

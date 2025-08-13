@@ -1,20 +1,21 @@
-
-import React from 'react';
-import { FormField, FormItem, FormControl } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { UseFormReturn } from 'react-hook-form';
-import { AccountRequestFormData } from '@/lib/validations/accountRequestSchema';
+import React from "react";
+import { FormField, FormItem, FormControl } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { UseFormReturn } from "react-hook-form";
+import { AccountRequestFormData } from "@/lib/validations/accountRequestSchema";
 
 interface EnhancedHoneypotFieldsProps {
   form: UseFormReturn<AccountRequestFormData>;
 }
 
-export const EnhancedHoneypotFields: React.FC<EnhancedHoneypotFieldsProps> = ({ form }) => {
+export const EnhancedHoneypotFields: React.FC<EnhancedHoneypotFieldsProps> = ({
+  form,
+}) => {
   return (
     <>
       {/* Original honeypot field */}
-      <div style={{ display: 'none' }} aria-hidden="true">
+      <div style={{ display: "none" }} aria-hidden="true">
         <FormField
           control={form.control}
           name="website"
@@ -35,7 +36,10 @@ export const EnhancedHoneypotFields: React.FC<EnhancedHoneypotFieldsProps> = ({ 
       </div>
 
       {/* CSS-based invisible honeypots */}
-      <div className="opacity-0 absolute -left-[9999px] pointer-events-none" aria-hidden="true">
+      <div
+        className="opacity-0 absolute -left-[9999px] pointer-events-none"
+        aria-hidden="true"
+      >
         <input
           type="text"
           name="company_name"
@@ -43,7 +47,7 @@ export const EnhancedHoneypotFields: React.FC<EnhancedHoneypotFieldsProps> = ({ 
           tabIndex={-1}
           onChange={() => {
             // Silent detection - mark as bot if filled
-            console.log('Bot detected: invisible honeypot filled');
+            logger.log("Bot detected: invisible honeypot filled");
           }}
         />
         <input
@@ -52,7 +56,7 @@ export const EnhancedHoneypotFields: React.FC<EnhancedHoneypotFieldsProps> = ({ 
           autoComplete="off"
           tabIndex={-1}
           onChange={() => {
-            console.log('Bot detected: backup email honeypot filled');
+            logger.log("Bot detected: backup email honeypot filled");
           }}
         />
         <textarea
@@ -60,7 +64,7 @@ export const EnhancedHoneypotFields: React.FC<EnhancedHoneypotFieldsProps> = ({ 
           autoComplete="off"
           tabIndex={-1}
           onChange={() => {
-            console.log('Bot detected: textarea honeypot filled');
+            logger.log("Bot detected: textarea honeypot filled");
           }}
         />
       </div>

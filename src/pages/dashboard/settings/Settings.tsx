@@ -1,18 +1,23 @@
-
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import type { User } from '@supabase/supabase-js';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { User as UserIcon, Bell, Shield, Palette, Download } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNotifications } from '@/contexts/NotificationsContext';
-import { toast } from '@/hooks/use-toast';
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from "@supabase/supabase-js";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import {
+  User as UserIcon,
+  Bell,
+  Shield,
+  Palette,
+  Download,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationsContext";
+import { toast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -20,26 +25,26 @@ export default function Settings() {
   const [enablingPush, setEnablingPush] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState({
-    displayName: '',
-    email: '',
+    displayName: "",
+    email: "",
     notifications: {
       signals: true,
       forum: true,
       education: false,
-      marketing: false
+      marketing: false,
     },
     privacy: {
       showProfile: true,
-      shareActivity: false
-    }
+      shareActivity: false,
+    },
   });
 
   useEffect(() => {
     if (user) {
-      setProfile(prev => ({
+      setProfile((prev) => ({
         ...prev,
-        displayName: user.user_metadata?.full_name || '',
-        email: user.email || ''
+        displayName: user.user_metadata?.full_name || "",
+        email: user.email || "",
       }));
     }
   }, [user]);
@@ -48,9 +53,9 @@ export default function Settings() {
     setIsLoading(true);
     try {
       // Update profile logic here
-      console.log('Saving profile:', profile);
+      logger.log("Saving profile:", profile);
     } catch (error) {
-      console.error('Error saving profile:', error);
+      logger.error("Error saving profile:", error);
     } finally {
       setIsLoading(false);
     }
@@ -60,16 +65,16 @@ export default function Settings() {
     try {
       await signOut();
     } catch (error) {
-      console.error('Error signing out:', error);
+      logger.error("Error signing out:", error);
     }
   };
 
-  const userAccessLevel = user?.user_metadata?.access_level || 'free';
+  const userAccessLevel = user?.user_metadata?.access_level || "free";
   const getAccessLevelDisplay = (level: string) => {
     const levels = {
-      free: { label: 'Free', color: 'bg-gray-500' },
-      user: { label: 'Member', color: 'bg-blue-500' },
-      admin: { label: 'Admin', color: 'bg-red-500' }
+      free: { label: "Free", color: "bg-gray-500" },
+      user: { label: "Member", color: "bg-blue-500" },
+      admin: { label: "Admin", color: "bg-red-500" },
     };
     return levels[level as keyof typeof levels] || levels.free;
   };
@@ -80,7 +85,9 @@ export default function Settings() {
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground">Manage your account preferences and settings</p>
+          <p className="text-muted-foreground">
+            Manage your account preferences and settings
+          </p>
         </div>
 
         {/* Profile Section */}
@@ -94,11 +101,15 @@ export default function Settings() {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-amber-300 flex items-center justify-center text-white font-bold text-xl">
-                {user?.email?.[0]?.toUpperCase() || 'U'}
+                {user?.email?.[0]?.toUpperCase() || "U"}
               </div>
               <div>
                 <p className="font-semibold text-foreground">{user?.email}</p>
-                <Badge className={`${getAccessLevelDisplay(userAccessLevel).color} text-white`}>
+                <Badge
+                  className={`${
+                    getAccessLevelDisplay(userAccessLevel).color
+                  } text-white`}
+                >
                   {getAccessLevelDisplay(userAccessLevel).label}
                 </Badge>
               </div>
@@ -110,7 +121,12 @@ export default function Settings() {
                 <Input
                   id="displayName"
                   value={profile.displayName}
-                  onChange={(e) => setProfile(prev => ({ ...prev, displayName: e.target.value }))}
+                  onChange={(e) =>
+                    setProfile((prev) => ({
+                      ...prev,
+                      displayName: e.target.value,
+                    }))
+                  }
                   placeholder="Enter your display name"
                 />
               </div>
@@ -126,7 +142,7 @@ export default function Settings() {
             </div>
 
             <Button onClick={handleSaveProfile} disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
+              {isLoading ? "Saving..." : "Save Changes"}
             </Button>
           </CardContent>
         </Card>
@@ -144,13 +160,13 @@ export default function Settings() {
               <div>
                 <Label>Push Notifications</Label>
                 <p className="text-sm text-muted-foreground">
-                  {permission === 'granted'
-                    ? 'Enabled'
-                    : permission === 'denied'
-                    ? 'Blocked in browser settings'
+                  {permission === "granted"
+                    ? "Enabled"
+                    : permission === "denied"
+                    ? "Blocked in browser settings"
                     : isIframeBlocked
-                    ? 'Blocked in preview. Open in a new tab to enable.'
-                    : 'Enable to receive alerts when away.'}
+                    ? "Blocked in preview. Open in a new tab to enable."
+                    : "Enable to receive alerts when away."}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -158,7 +174,11 @@ export default function Settings() {
                   <Button
                     size="sm"
                     onClick={() =>
-                      window.open(window.location.href, '_blank', 'noopener,noreferrer')
+                      window.open(
+                        window.location.href,
+                        "_blank",
+                        "noopener,noreferrer"
+                      )
                     }
                     title="Open the app in a new tab to enable notifications"
                   >
@@ -167,28 +187,31 @@ export default function Settings() {
                 ) : (
                   <Button
                     size="sm"
-                    disabled={permission === 'granted' || enablingPush}
+                    disabled={permission === "granted" || enablingPush}
                     onClick={async () => {
                       try {
                         setEnablingPush(true);
                         await requestPermission();
                         const current =
-                          typeof Notification !== 'undefined' ? Notification.permission : permission;
-                        if (current === 'granted') {
+                          typeof Notification !== "undefined"
+                            ? Notification.permission
+                            : permission;
+                        if (current === "granted") {
                           toast({
-                            title: 'Push notifications enabled',
-                            description: 'You will receive alerts even when the app is closed.',
-                          });
-                        } else if (current === 'denied') {
-                          toast({
-                            title: 'Notifications blocked',
+                            title: "Push notifications enabled",
                             description:
-                              'Use the browser site settings (lock icon) to Allow notifications.',
-                            variant: 'destructive' as any,
+                              "You will receive alerts even when the app is closed.",
+                          });
+                        } else if (current === "denied") {
+                          toast({
+                            title: "Notifications blocked",
+                            description:
+                              "Use the browser site settings (lock icon) to Allow notifications.",
+                            variant: "destructive" as any,
                           });
                         } else {
                           toast({
-                            title: 'No prompt shown?',
+                            title: "No prompt shown?",
                             description:
                               "If you didn't see a prompt, open site settings (lock icon) → Notifications.",
                           });
@@ -197,9 +220,13 @@ export default function Settings() {
                         setEnablingPush(false);
                       }
                     }}
-                    title={enablingPush ? 'Request in progress…' : undefined}
+                    title={enablingPush ? "Request in progress…" : undefined}
                   >
-                    {enablingPush ? 'Enabling…' : permission === 'granted' ? 'Enabled' : 'Enable'}
+                    {enablingPush
+                      ? "Enabling…"
+                      : permission === "granted"
+                      ? "Enabled"
+                      : "Enable"}
                   </Button>
                 )}
               </div>
@@ -208,14 +235,16 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <Label>Trading Signals</Label>
-                <p className="text-sm text-muted-foreground">Get notified about new trading signals</p>
+                <p className="text-sm text-muted-foreground">
+                  Get notified about new trading signals
+                </p>
               </div>
               <Switch
                 checked={profile.notifications.signals}
-                onCheckedChange={(checked) => 
-                  setProfile(prev => ({ 
-                    ...prev, 
-                    notifications: { ...prev.notifications, signals: checked } 
+                onCheckedChange={(checked) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    notifications: { ...prev.notifications, signals: checked },
                   }))
                 }
               />
@@ -224,14 +253,16 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <Label>Forum Activity</Label>
-                <p className="text-sm text-muted-foreground">Get notified about forum replies and mentions</p>
+                <p className="text-sm text-muted-foreground">
+                  Get notified about forum replies and mentions
+                </p>
               </div>
               <Switch
                 checked={profile.notifications.forum}
-                onCheckedChange={(checked) => 
-                  setProfile(prev => ({ 
-                    ...prev, 
-                    notifications: { ...prev.notifications, forum: checked } 
+                onCheckedChange={(checked) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    notifications: { ...prev.notifications, forum: checked },
                   }))
                 }
               />
@@ -240,14 +271,19 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <Label>Educational Content</Label>
-                <p className="text-sm text-muted-foreground">Get notified about new courses and materials</p>
+                <p className="text-sm text-muted-foreground">
+                  Get notified about new courses and materials
+                </p>
               </div>
               <Switch
                 checked={profile.notifications.education}
-                onCheckedChange={(checked) => 
-                  setProfile(prev => ({ 
-                    ...prev, 
-                    notifications: { ...prev.notifications, education: checked } 
+                onCheckedChange={(checked) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    notifications: {
+                      ...prev.notifications,
+                      education: checked,
+                    },
                   }))
                 }
               />
@@ -267,14 +303,16 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <Label>Show Profile to Others</Label>
-                <p className="text-sm text-muted-foreground">Allow other members to view your profile</p>
+                <p className="text-sm text-muted-foreground">
+                  Allow other members to view your profile
+                </p>
               </div>
               <Switch
                 checked={profile.privacy.showProfile}
-                onCheckedChange={(checked) => 
-                  setProfile(prev => ({ 
-                    ...prev, 
-                    privacy: { ...prev.privacy, showProfile: checked } 
+                onCheckedChange={(checked) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    privacy: { ...prev.privacy, showProfile: checked },
                   }))
                 }
               />
@@ -283,14 +321,16 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div>
                 <Label>Share Trading Activity</Label>
-                <p className="text-sm text-muted-foreground">Share your trading performance with the community</p>
+                <p className="text-sm text-muted-foreground">
+                  Share your trading performance with the community
+                </p>
               </div>
               <Switch
                 checked={profile.privacy.shareActivity}
-                onCheckedChange={(checked) => 
-                  setProfile(prev => ({ 
-                    ...prev, 
-                    privacy: { ...prev.privacy, shareActivity: checked } 
+                onCheckedChange={(checked) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    privacy: { ...prev.privacy, shareActivity: checked },
                   }))
                 }
               />

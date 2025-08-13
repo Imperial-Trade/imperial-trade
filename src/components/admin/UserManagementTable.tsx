@@ -1,11 +1,10 @@
-
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { adminAuditService } from '@/api/services/AdminAuditService';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { adminAuditService } from "@/api/services/AdminAuditService";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -13,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,17 +23,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { 
-  Users, 
-  Search, 
-  Filter, 
-  Shield, 
-  UserX, 
+} from "@/components/ui/alert-dialog";
+import {
+  Users,
+  Search,
+  Filter,
+  Shield,
+  UserX,
   RefreshCw,
   Crown,
-  User
-} from 'lucide-react';
+  User,
+} from "lucide-react";
 
 interface UserData {
   id: string;
@@ -49,8 +48,8 @@ interface UserData {
 export function UserManagementTable() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("");
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
@@ -59,39 +58,43 @@ export function UserManagementTable() {
   }, []);
 
   const getCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     setCurrentUser(user);
   };
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      
+
       // Get auth users (this requires admin privileges)
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      
+      const { data: authUsers, error: authError } =
+        await supabase.auth.admin.listUsers();
+
       if (authError) {
-        console.error('Error loading auth users:', authError);
+        logger.error("Error loading auth users:", authError);
         return;
       }
 
       // Get profiles data
       const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*');
+        .from("profiles")
+        .select("*");
 
       if (profilesError) {
-        console.error('Error loading profiles:', profilesError);
+        logger.error("Error loading profiles:", profilesError);
       }
 
       // Combine auth data with profile data
-      const combinedUsers = authUsers.users.map(user => {
-        const profile = profiles?.find(p => p.id === user.id);
+      const combinedUsers = authUsers.users.map((user) => {
+        const profile = profiles?.find((p) => p.id === user.id);
         return {
           id: user.id,
-          email: user.email || '',
-          display_name: profile?.display_name || user.user_metadata?.full_name || 'Unknown',
-          role: profile?.role || user.user_metadata?.role || 'user',
+          email: user.email || "",
+          display_name:
+            profile?.display_name || user.user_metadata?.full_name || "Unknown",
+          role: profile?.role || user.user_metadata?.role || "user",
           created_at: user.created_at,
           last_sign_in_at: user.last_sign_in_at,
           email_confirmed_at: user.email_confirmed_at,
@@ -100,7 +103,7 @@ export function UserManagementTable() {
 
       setUsers(combinedUsers);
     } catch (error) {
-      console.error('Error loading users:', error);
+      logger.error("Error loading users:", error);
     } finally {
       setLoading(false);
     }
@@ -109,108 +112,138 @@ export function UserManagementTable() {
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
       // Update in profiles table
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: userId,
-          role: newRole,
-          updated_at: new Date().toISOString()
-        });
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: userId,
+        role: newRole,
+        updated_at: new Date().toISOString(),
+      });
 
       if (profileError) {
-        console.error('Error updating profile:', profileError);
+        logger.error("Error updating profile:", profileError);
         return;
       }
 
       // Update in auth metadata
-      const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
-        user_metadata: { role: newRole }
-      });
+      const { error: authError } = await supabase.auth.admin.updateUserById(
+        userId,
+        {
+          user_metadata: { role: newRole },
+        }
+      );
 
       if (authError) {
-        console.error('Error updating auth metadata:', authError);
+        logger.error("Error updating auth metadata:", authError);
       }
 
       // Log the action
       if (currentUser) {
         await adminAuditService.logAdminAction(
-          'update_user_role',
-          currentUser.email || 'unknown',
-          'user',
+          "update_user_role",
+          currentUser.email || "unknown",
+          "user",
           userId,
-          { old_role: users.find(u => u.id === userId)?.role, new_role: newRole }
+          {
+            old_role: users.find((u) => u.id === userId)?.role,
+            new_role: newRole,
+          }
         );
       }
 
       // Reload users to show updated data
       loadUsers();
     } catch (error) {
-      console.error('Error updating user role:', error);
+      logger.error("Error updating user role:", error);
     }
   };
 
   const deleteUser = async (userId: string) => {
     try {
       const { error } = await supabase.auth.admin.deleteUser(userId);
-      
+
       if (error) {
-        console.error('Error deleting user:', error);
+        logger.error("Error deleting user:", error);
         return;
       }
 
       // Log the action
       if (currentUser) {
         await adminAuditService.logAdminAction(
-          'delete_user',
-          currentUser.email || 'unknown',
-          'user',
+          "delete_user",
+          currentUser.email || "unknown",
+          "user",
           userId,
-          { deleted_user_email: users.find(u => u.id === userId)?.email }
+          { deleted_user_email: users.find((u) => u.id === userId)?.email }
         );
       }
 
       // Reload users
       loadUsers();
     } catch (error) {
-      console.error('Error deleting user:', error);
+      logger.error("Error deleting user:", error);
     }
   };
 
   const getRoleBadge = (role: string) => {
-    if (role === 'admin') {
-      return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Admin</Badge>;
+    if (role === "admin") {
+      return (
+        <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
+          Admin
+        </Badge>
+      );
     }
-    if (role === 'moderator') {
-      return <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">Moderator</Badge>;
+    if (role === "moderator") {
+      return (
+        <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
+          Moderator
+        </Badge>
+      );
     }
-    return <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">User</Badge>;
+    return (
+      <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">
+        User
+      </Badge>
+    );
   };
 
   const getStatusBadge = (user: UserData) => {
     if (!user.email_confirmed_at) {
-      return <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/20">Unconfirmed</Badge>;
+      return (
+        <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/20">
+          Unconfirmed
+        </Badge>
+      );
     }
     if (user.last_sign_in_at) {
       const lastSignIn = new Date(user.last_sign_in_at);
-      const daysSinceLastSignIn = Math.floor((Date.now() - lastSignIn.getTime()) / (1000 * 60 * 60 * 24));
+      const daysSinceLastSignIn = Math.floor(
+        (Date.now() - lastSignIn.getTime()) / (1000 * 60 * 60 * 24)
+      );
       if (daysSinceLastSignIn <= 7) {
-        return <Badge className="bg-green-500/10 text-green-400 border-green-500/20">Active</Badge>;
+        return (
+          <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+            Active
+          </Badge>
+        );
       }
     }
-    return <Badge className="bg-gray-500/10 text-gray-400 border-gray-500/20">Inactive</Badge>;
+    return (
+      <Badge className="bg-gray-500/10 text-gray-400 border-gray-500/20">
+        Inactive
+      </Badge>
+    );
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.display_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesRole = !roleFilter || user.role === roleFilter;
-    
+
     return matchesSearch && matchesRole;
   });
 
-  const uniqueRoles = [...new Set(users.map(user => user.role))];
+  const uniqueRoles = [...new Set(users.map((user) => user.role))];
 
   if (loading) {
     return (
@@ -251,8 +284,10 @@ export function UserManagementTable() {
               className="px-3 py-2 bg-surface border border-default rounded-md text-primary"
             >
               <option value="">All Roles</option>
-              {uniqueRoles.map(role => (
-                <option key={role} value={role}>{role}</option>
+              {uniqueRoles.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
               ))}
             </select>
             <Button
@@ -289,38 +324,39 @@ export function UserManagementTable() {
                             <User className="w-4 h-4 text-secondary" />
                           </div>
                           <div>
-                            <div className="font-medium text-primary">{user.display_name}</div>
-                            <div className="text-sm text-secondary">{user.email}</div>
+                            <div className="font-medium text-primary">
+                              {user.display_name}
+                            </div>
+                            <div className="text-sm text-secondary">
+                              {user.email}
+                            </div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {getRoleBadge(user.role || 'user')}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(user)}
-                      </TableCell>
+                      <TableCell>{getRoleBadge(user.role || "user")}</TableCell>
+                      <TableCell>{getStatusBadge(user)}</TableCell>
                       <TableCell className="text-secondary">
                         {new Date(user.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-secondary">
-                        {user.last_sign_in_at 
+                        {user.last_sign_in_at
                           ? new Date(user.last_sign_in_at).toLocaleDateString()
-                          : 'Never'
-                        }
+                          : "Never"}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <select
-                            value={user.role || 'user'}
-                            onChange={(e) => updateUserRole(user.id, e.target.value)}
+                            value={user.role || "user"}
+                            onChange={(e) =>
+                              updateUserRole(user.id, e.target.value)
+                            }
                             className="px-2 py-1 text-sm bg-surface border border-default rounded text-primary"
                           >
                             <option value="user">User</option>
                             <option value="moderator">Moderator</option>
                             <option value="admin">Admin</option>
                           </select>
-                          
+
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
@@ -333,9 +369,12 @@ export function UserManagementTable() {
                             </AlertDialogTrigger>
                             <AlertDialogContent className="bg-surface border-default">
                               <AlertDialogHeader>
-                                <AlertDialogTitle className="text-primary">Delete User</AlertDialogTitle>
+                                <AlertDialogTitle className="text-primary">
+                                  Delete User
+                                </AlertDialogTitle>
                                 <AlertDialogDescription className="text-secondary">
-                                  Are you sure you want to delete {user.email}? This action cannot be undone.
+                                  Are you sure you want to delete {user.email}?
+                                  This action cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -365,7 +404,9 @@ export function UserManagementTable() {
                 No Users Found
               </h3>
               <p className="text-secondary">
-                {searchTerm || roleFilter ? 'No users match your search criteria.' : 'No users found.'}
+                {searchTerm || roleFilter
+                  ? "No users match your search criteria."
+                  : "No users found."}
               </p>
             </div>
           )}

@@ -1,8 +1,17 @@
-import { apiClient, TableRow, TableInsert, TableUpdate } from '../client/ApiClient';
-import { supabase } from '@/integrations/supabase/client';
-import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { ApiResponse } from '@/types/common';
-import { isTradeAlert } from '@/types/guards';
+import {
+  apiClient,
+  TableRow,
+  TableInsert,
+  TableUpdate,
+} from "../client/ApiClient";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  CreateTradeAlertDto,
+  UpdateTradeAlertDto,
+  TradeAlertResponseDto,
+} from "@/domain/dtos/trading/CreateTradeAlertDto";
+import { ApiResponse } from "@/types/common";
+import { isTradeAlert } from "@/types/guards";
 
 export interface TradeAlertWithProfile extends TradeAlertResponseDto {
   creator?: {
@@ -31,30 +40,34 @@ export class TradingApiService {
   private async isUserAdmin(userId: string): Promise<boolean> {
     try {
       const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('access_level, role')
-        .eq('id', userId)
+        .from("profiles")
+        .select("access_level, role")
+        .eq("id", userId)
         .single();
 
       if (error) {
-        console.error('Error checking user admin status:', error);
+        logger.error("Error checking user admin status:", error);
         return false;
       }
 
-      return profile?.access_level === 'admin' || profile?.role === 'admin';
+      return profile?.access_level === "admin" || profile?.role === "admin";
     } catch (error) {
-      console.error('Error in isUserAdmin:', error);
+      logger.error("Error in isUserAdmin:", error);
       return false;
     }
   }
 
-  async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
+  async createAlert(
+    dto: CreateTradeAlertDto,
+    userId: string
+  ): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
-      console.log('TradingApiService - Creating alert with DTO:', dto);
-      console.log('TradingApiService - User ID:', userId);
-      
-      const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
-      const insertData: TableInsert<'trade_alerts'> = {
+      logger.log("TradingApiService - Creating alert with DTO:", dto);
+      logger.log("TradingApiService - User ID:", userId);
+
+      const isLimitOrder =
+        dto.tradeType === "buy_limit" || dto.tradeType === "sell_limit";
+      const insertData: TableInsert<"trade_alerts"> = {
         asset_name: dto.assetName,
         tradermade_symbol: dto.tradermadeSymbol,
         trade_type: dto.tradeType,
@@ -67,28 +80,28 @@ export class TradingApiService {
         tp5: dto.tp5,
         notes: dto.notes,
         user_id: userId,
-        status: isLimitOrder ? 'pending' : 'active'
+        status: isLimitOrder ? "pending" : "active",
       };
 
-      console.log('TradingApiService - Insert data:', insertData);
+      logger.log("TradingApiService - Insert data:", insertData);
 
-      const result = await apiClient.insert('trade_alerts', insertData);
-      
-      console.log('TradingApiService - Insert result:', result);
-      
+      const result = await apiClient.insert("trade_alerts", insertData);
+
+      logger.log("TradingApiService - Insert result:", result);
+
       if (!result.success || !result.data) {
         return {
           success: false,
-          error: result.error || 'Failed to create alert',
-          data: undefined
+          error: result.error || "Failed to create alert",
+          data: undefined,
         };
       }
 
       if (!isTradeAlert(result.data)) {
         return {
           success: false,
-          error: 'Invalid trade alert data received',
-          data: undefined
+          error: "Invalid trade alert data received",
+          data: undefined,
         };
       }
 
@@ -110,29 +123,29 @@ export class TradingApiService {
         notes: result.data.notes,
         closeReason: result.data.close_reason,
         createdAt: result.data.created_at,
-        updatedAt: result.data.updated_at
+        updatedAt: result.data.updated_at,
       };
 
       // Dispatch custom event to notify about new signal
-      window.dispatchEvent(new CustomEvent('signal-posted'));
+      window.dispatchEvent(new CustomEvent("signal-posted"));
 
       // Send push notification to subscribed users via Edge Function (best-effort)
       try {
         // Fetch author profile to enrich notifications
         const { data: author } = await (supabase as any)
-          .from('public_profiles')
-          .select('display_name, avatar_url')
-          .eq('id', responseDto.userId)
+          .from("public_profiles")
+          .select("display_name, avatar_url")
+          .eq("id", responseDto.userId)
           .single();
 
         const notificationPayload = {
           signal_id: responseDto.id,
-          alert_type: 'signal_created',
+          alert_type: "signal_created",
           target_price: responseDto.entryPrice,
           triggered_price: responseDto.entryPrice,
-          notification_type: 'signal_created',
-          delivery_channels: ['push'],
-          segments: ['Subscribed Users'],
+          notification_type: "signal_created",
+          delivery_channels: ["push"],
+          segments: ["Subscribed Users"],
           asset_name: responseDto.assetName,
           symbol: responseDto.tradermadeSymbol,
           trade_type: responseDto.tradeType,
@@ -142,127 +155,139 @@ export class TradingApiService {
           author_name: author?.display_name,
           author_avatar_url: author?.avatar_url,
         };
-        await supabase.functions.invoke('signal-notification-dispatcher', {
-          body: { notifications: [notificationPayload] }
+        await supabase.functions.invoke("signal-notification-dispatcher", {
+          body: { notifications: [notificationPayload] },
         });
       } catch (notifyError) {
-        console.error('Failed to dispatch push notification for new signal:', notifyError);
+        logger.error(
+          "Failed to dispatch push notification for new signal:",
+          notifyError
+        );
       }
 
       // Broadcast realtime in-app notification
       try {
         // Enrich realtime payload with author info
         const { data: author } = await (supabase as any)
-          .from('public_profiles')
-          .select('display_name, avatar_url')
-          .eq('id', responseDto.userId)
+          .from("public_profiles")
+          .select("display_name, avatar_url")
+          .eq("id", responseDto.userId)
           .single();
 
-        await supabase
-          .channel('instant-alerts')
-          .send({
-            type: 'broadcast',
-            event: 'signal_created',
-            payload: {
-              signal_id: responseDto.id,
-              asset_name: responseDto.assetName,
-              symbol: responseDto.tradermadeSymbol,
-              trade_type: responseDto.tradeType,
-              entry_price: responseDto.entryPrice,
-              stop_loss: responseDto.stopLoss,
-              author_id: responseDto.userId,
-              author_name: author?.display_name,
-              author_avatar_url: author?.avatar_url,
-              timestamp: new Date().toISOString(),
-              urgency: 'normal'
-            }
-          });
+        await supabase.channel("instant-alerts").send({
+          type: "broadcast",
+          event: "signal_created",
+          payload: {
+            signal_id: responseDto.id,
+            asset_name: responseDto.assetName,
+            symbol: responseDto.tradermadeSymbol,
+            trade_type: responseDto.tradeType,
+            entry_price: responseDto.entryPrice,
+            stop_loss: responseDto.stopLoss,
+            author_id: responseDto.userId,
+            author_name: author?.display_name,
+            author_avatar_url: author?.avatar_url,
+            timestamp: new Date().toISOString(),
+            urgency: "normal",
+          },
+        });
       } catch (broadcastError) {
-        console.error('Failed to broadcast realtime new signal event:', broadcastError);
+        logger.error(
+          "Failed to broadcast realtime new signal event:",
+          broadcastError
+        );
       }
 
       return {
         success: true,
         data: responseDto,
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }
 
-  async updateAlert(id: string, dto: UpdateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
+  async updateAlert(
+    id: string,
+    dto: UpdateTradeAlertDto,
+    userId: string
+  ): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
-      console.log('TradingApiService - Updating alert:', { id, dto, userId });
+      logger.log("TradingApiService - Updating alert:", { id, dto, userId });
 
       // First get the alert to check ownership
-      const alertResult = await apiClient.select('trade_alerts', {
-        eq: { column: 'id', value: id }
+      const alertResult = await apiClient.select("trade_alerts", {
+        eq: { column: "id", value: id },
       });
 
-      if (!alertResult.success || !alertResult.data || alertResult.data.length === 0) {
-        console.log('TradingApiService - Alert not found:', id);
+      if (
+        !alertResult.success ||
+        !alertResult.data ||
+        alertResult.data.length === 0
+      ) {
+        logger.log("TradingApiService - Alert not found:", id);
         return {
           success: false,
-          error: 'Alert not found',
-          data: undefined
+          error: "Alert not found",
+          data: undefined,
         };
       }
 
       const alert = alertResult.data[0];
-      console.log('TradingApiService - Found alert:', { 
-        alertId: alert.id, 
-        alertUserId: alert.user_id, 
-        requestUserId: userId 
+      logger.log("TradingApiService - Found alert:", {
+        alertId: alert.id,
+        alertUserId: alert.user_id,
+        requestUserId: userId,
       });
 
       // Only the owner (educator who posted it) can update
       const isOwner = alert.user_id === userId;
 
-      console.log('TradingApiService - Authorization check:', { 
-        isOwner, 
-        canUpdate: isOwner 
+      logger.log("TradingApiService - Authorization check:", {
+        isOwner,
+        canUpdate: isOwner,
       });
 
       if (!isOwner) {
         return {
           success: false,
-          error: 'Only the educator who posted this signal can edit it',
-          data: undefined
+          error: "Only the educator who posted this signal can edit it",
+          data: undefined,
         };
       }
 
-      const updateData: TableUpdate<'trade_alerts'> = {
+      const updateData: TableUpdate<"trade_alerts"> = {
         status: dto.status,
         tp_hits: dto.tpHits,
         close_reason: dto.closeReason,
         notes: dto.notes,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
-      console.log('TradingApiService - Updating with data:', updateData);
+      logger.log("TradingApiService - Updating with data:", updateData);
 
-      const result = await apiClient.update('trade_alerts', id, updateData);
-      
-      console.log('TradingApiService - Update result:', result);
-      
+      const result = await apiClient.update("trade_alerts", id, updateData);
+
+      logger.log("TradingApiService - Update result:", result);
+
       if (!result.success || !result.data) {
         return {
           success: false,
-          error: result.error || 'Failed to update alert',
-          data: undefined
+          error: result.error || "Failed to update alert",
+          data: undefined,
         };
       }
 
       if (!isTradeAlert(result.data)) {
         return {
           success: false,
-          error: 'Invalid trade alert data received',
-          data: undefined
+          error: "Invalid trade alert data received",
+          data: undefined,
         };
       }
 
@@ -284,102 +309,105 @@ export class TradingApiService {
         notes: result.data.notes,
         closeReason: result.data.close_reason,
         createdAt: result.data.created_at,
-        updatedAt: result.data.updated_at
+        updatedAt: result.data.updated_at,
       };
 
-// After successful update, dispatch push and realtime notifications (best-effort)
-try {
-  // Fetch author profile to enrich notifications
-  const { data: author } = await (supabase as any)
-    .from('public_profiles')
-    .select('display_name, avatar_url')
-    .eq('id', responseDto.userId)
-    .single();
+      // After successful update, dispatch push and realtime notifications (best-effort)
+      try {
+        // Fetch author profile to enrich notifications
+        const { data: author } = await (supabase as any)
+          .from("public_profiles")
+          .select("display_name, avatar_url")
+          .eq("id", responseDto.userId)
+          .single();
 
-  // Push notification via Edge Function
-  const notificationPayload = {
-    signal_id: responseDto.id,
-    alert_type: 'signal_updated',
-    target_price: responseDto.entryPrice,
-    triggered_price: responseDto.entryPrice,
-    notification_type: 'signal_updated',
-    delivery_channels: ['push'],
-    segments: ['Subscribed Users'],
-    asset_name: responseDto.assetName,
-    symbol: responseDto.tradermadeSymbol,
-    trade_type: responseDto.tradeType,
-    entry_price: responseDto.entryPrice,
-    stop_loss: responseDto.stopLoss,
-    author_id: responseDto.userId,
-    author_name: author?.display_name,
-    author_avatar_url: author?.avatar_url,
-    status: responseDto.status,
-    tp_hits: responseDto.tpHits,
-    close_reason: responseDto.closeReason,
-    notes: responseDto.notes,
-  };
-  await supabase.functions.invoke('signal-notification-dispatcher', {
-    body: { notifications: [notificationPayload] }
-  });
+        // Push notification via Edge Function
+        const notificationPayload = {
+          signal_id: responseDto.id,
+          alert_type: "signal_updated",
+          target_price: responseDto.entryPrice,
+          triggered_price: responseDto.entryPrice,
+          notification_type: "signal_updated",
+          delivery_channels: ["push"],
+          segments: ["Subscribed Users"],
+          asset_name: responseDto.assetName,
+          symbol: responseDto.tradermadeSymbol,
+          trade_type: responseDto.tradeType,
+          entry_price: responseDto.entryPrice,
+          stop_loss: responseDto.stopLoss,
+          author_id: responseDto.userId,
+          author_name: author?.display_name,
+          author_avatar_url: author?.avatar_url,
+          status: responseDto.status,
+          tp_hits: responseDto.tpHits,
+          close_reason: responseDto.closeReason,
+          notes: responseDto.notes,
+        };
+        await supabase.functions.invoke("signal-notification-dispatcher", {
+          body: { notifications: [notificationPayload] },
+        });
 
-  // Realtime broadcast for instant in-app toast
-  await supabase
-    .channel('instant-alerts')
-    .send({
-      type: 'broadcast',
-      event: 'signal_updated',
-      payload: {
-        signal_id: responseDto.id,
-        asset_name: responseDto.assetName,
-        symbol: responseDto.tradermadeSymbol,
-        status: responseDto.status,
-        tp_hits: responseDto.tpHits,
-        close_reason: responseDto.closeReason,
-        notes: responseDto.notes,
-        author_id: responseDto.userId,
-        author_name: author?.display_name,
-        author_avatar_url: author?.avatar_url,
-        timestamp: new Date().toISOString(),
-        urgency: 'normal'
+        // Realtime broadcast for instant in-app toast
+        await supabase.channel("instant-alerts").send({
+          type: "broadcast",
+          event: "signal_updated",
+          payload: {
+            signal_id: responseDto.id,
+            asset_name: responseDto.assetName,
+            symbol: responseDto.tradermadeSymbol,
+            status: responseDto.status,
+            tp_hits: responseDto.tpHits,
+            close_reason: responseDto.closeReason,
+            notes: responseDto.notes,
+            author_id: responseDto.userId,
+            author_name: author?.display_name,
+            author_avatar_url: author?.avatar_url,
+            timestamp: new Date().toISOString(),
+            urgency: "normal",
+          },
+        });
+      } catch (notifyErr) {
+        logger.error(
+          "Failed to dispatch signal_updated notifications:",
+          notifyErr
+        );
       }
-    });
-} catch (notifyErr) {
-  console.error('Failed to dispatch signal_updated notifications:', notifyErr);
-}
 
-return {
-  success: true,
-  data: responseDto,
-  error: undefined
-};
+      return {
+        success: true,
+        data: responseDto,
+        error: undefined,
+      };
     } catch (error) {
-      console.error('TradingApiService - Update error:', error);
+      logger.error("TradingApiService - Update error:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }
 
-  async getAllAlerts(userId: string): Promise<ApiResponse<TradeAlertResponseDto[]>> {
+  async getAllAlerts(
+    userId: string
+  ): Promise<ApiResponse<TradeAlertResponseDto[]>> {
     try {
-      const result = await apiClient.select('trade_alerts', {
-        eq: { column: 'user_id', value: userId },
-        order: { column: 'created_at', ascending: false }
+      const result = await apiClient.select("trade_alerts", {
+        eq: { column: "user_id", value: userId },
+        order: { column: "created_at", ascending: false },
       });
 
       if (!result.success || !result.data) {
         return {
           success: false,
-          error: result.error || 'Failed to fetch alerts',
-          data: undefined
+          error: result.error || "Failed to fetch alerts",
+          data: undefined,
         };
       }
 
       const responseDtos: TradeAlertResponseDto[] = result.data
         .filter(isTradeAlert)
-        .map(alert => ({
+        .map((alert) => ({
           id: alert.id,
           userId: alert.user_id,
           assetName: alert.asset_name,
@@ -397,37 +425,39 @@ return {
           notes: alert.notes,
           closeReason: alert.close_reason,
           createdAt: alert.created_at,
-          updatedAt: alert.updated_at
+          updatedAt: alert.updated_at,
         }));
 
       return {
         success: true,
         data: responseDtos,
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }
 
   // NEW: Get all public signals with user profile information
-  async getAllPublicAlertsWithProfiles(): Promise<ApiResponse<TradeAlertWithProfile[]>> {
+  async getAllPublicAlertsWithProfiles(): Promise<
+    ApiResponse<TradeAlertWithProfile[]>
+  > {
     try {
       // First get all trade alerts
       const { data: alertsData, error: alertsError } = await supabase
-        .from('trade_alerts')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("trade_alerts")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (alertsError) {
         return {
           success: false,
           error: alertsError.message,
-          data: undefined
+          data: undefined,
         };
       }
 
@@ -435,35 +465,37 @@ return {
         return {
           success: true,
           data: [],
-          error: undefined
+          error: undefined,
         };
       }
 
       // Get all unique user IDs from the alerts
-      const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
+      const userIds = [...new Set(alertsData.map((alert) => alert.user_id))];
 
       // Fetch profiles for these users
-      const { data: profilesData, error: profilesError } = await (supabase as any)
-        .from('public_profiles')
-        .select('*')
-        .in('id', userIds);
+      const { data: profilesData, error: profilesError } = await (
+        supabase as any
+      )
+        .from("public_profiles")
+        .select("*")
+        .in("id", userIds);
 
       if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
+        logger.error("Error fetching profiles:", profilesError);
         // Continue without profiles if there's an error
       }
 
       // Create a map of user_id to profile for quick lookup
       const profilesMap = new Map();
       if (profilesData) {
-        profilesData.forEach(profile => {
+        profilesData.forEach((profile) => {
           profilesMap.set(profile.id, profile);
         });
       }
 
       const responseDtos: TradeAlertWithProfile[] = alertsData
         .filter(isTradeAlert)
-        .map(alert => {
+        .map((alert) => {
           const profile = profilesMap.get(alert.user_id);
           return {
             id: alert.id,
@@ -484,50 +516,55 @@ return {
             closeReason: alert.close_reason,
             createdAt: alert.created_at,
             updatedAt: alert.updated_at,
-            creator: profile ? {
-              id: profile.id,
-              display_name: profile.display_name || 'Anonymous User',
-              role: profile.role || 'user',
-              avatar_url: profile.avatar_url,
-              user_type: profile.user_type,
-              access_level: profile.access_level
-            } : undefined
+            creator: profile
+              ? {
+                  id: profile.id,
+                  display_name: profile.display_name || "Anonymous User",
+                  role: profile.role || "user",
+                  avatar_url: profile.avatar_url,
+                  user_type: profile.user_type,
+                  access_level: profile.access_level,
+                }
+              : undefined,
           };
         });
 
       return {
         success: true,
         data: responseDtos,
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }
 
-  async getAlertsByStatus(status: 'pending' | 'active' | 'closed', userId: string): Promise<ApiResponse<TradeAlertResponseDto[]>> {
+  async getAlertsByStatus(
+    status: "pending" | "active" | "closed",
+    userId: string
+  ): Promise<ApiResponse<TradeAlertResponseDto[]>> {
     try {
-      const result = await apiClient.select('trade_alerts', {
-        eq: { column: 'user_id', value: userId },
-        order: { column: 'created_at', ascending: false }
+      const result = await apiClient.select("trade_alerts", {
+        eq: { column: "user_id", value: userId },
+        order: { column: "created_at", ascending: false },
       });
 
       if (!result.success || !result.data) {
         return {
           success: false,
-          error: result.error || 'Failed to fetch alerts',
-          data: undefined
+          error: result.error || "Failed to fetch alerts",
+          data: undefined,
         };
       }
 
       const filteredAlerts = result.data
         .filter(isTradeAlert)
-        .filter(alert => alert.status === status)
-        .map(alert => ({
+        .filter((alert) => alert.status === status)
+        .map((alert) => ({
           id: alert.id,
           userId: alert.user_id,
           assetName: alert.asset_name,
@@ -545,19 +582,19 @@ return {
           notes: alert.notes,
           closeReason: alert.close_reason,
           createdAt: alert.created_at,
-          updatedAt: alert.updated_at
+          updatedAt: alert.updated_at,
         }));
 
       return {
         success: true,
         data: filteredAlerts,
-        error: undefined
+        error: undefined,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }
@@ -565,15 +602,19 @@ return {
   async deleteAlert(id: string, userId: string): Promise<ApiResponse<void>> {
     try {
       // First verify ownership or admin status
-      const alertResult = await apiClient.select('trade_alerts', {
-        eq: { column: 'id', value: id }
+      const alertResult = await apiClient.select("trade_alerts", {
+        eq: { column: "id", value: id },
       });
 
-      if (!alertResult.success || !alertResult.data || alertResult.data.length === 0) {
+      if (
+        !alertResult.success ||
+        !alertResult.data ||
+        alertResult.data.length === 0
+      ) {
         return {
           success: false,
-          error: 'Alert not found',
-          data: undefined
+          error: "Alert not found",
+          data: undefined,
         };
       }
 
@@ -584,17 +625,17 @@ return {
       if (!isOwner && !isAdmin) {
         return {
           success: false,
-          error: 'Unauthorized to delete this alert',
-          data: undefined
+          error: "Unauthorized to delete this alert",
+          data: undefined,
         };
       }
 
-      return await apiClient.delete('trade_alerts', id);
+      return await apiClient.delete("trade_alerts", id);
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: undefined
+        error: error instanceof Error ? error.message : "Unknown error",
+        data: undefined,
       };
     }
   }

@@ -1,12 +1,24 @@
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Bell, CheckCircle, XCircle, RefreshCw, AlertTriangle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNotifications } from '@/contexts/NotificationsContext';
-import { toast } from '@/hooks/use-toast';
+import React, { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Bell,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  AlertTriangle,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationsContext";
+import { toast } from "@/hooks/use-toast";
 
 interface SubscriptionStatus {
   exists: boolean;
@@ -35,16 +47,19 @@ export const SubscriptionMonitor: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('onesignal-verify-subscription', {
-        body: { user_id: user.id }
-      });
+      const { data, error } = await supabase.functions.invoke(
+        "onesignal-verify-subscription",
+        {
+          body: { user_id: user.id },
+        }
+      );
 
       if (error) {
-        console.warn('Subscription verification failed:', error);
+        logger.warn("Subscription verification failed:", error);
         toast({
-          title: 'Verification Failed',
-          description: 'Could not verify subscription status',
-          variant: 'destructive'
+          title: "Verification Failed",
+          description: "Could not verify subscription status",
+          variant: "destructive",
         });
         return;
       }
@@ -52,7 +67,7 @@ export const SubscriptionMonitor: React.FC = () => {
       setStatus(data);
       setLastChecked(new Date());
     } catch (err) {
-      console.error('Subscription check error:', err);
+      logger.error("Subscription check error:", err);
     } finally {
       setLoading(false);
     }
@@ -62,19 +77,19 @@ export const SubscriptionMonitor: React.FC = () => {
     try {
       setLoading(true);
       const result = await requestPermission();
-      
+
       if (result.success) {
         toast({
-          title: 'Resubscribed Successfully',
-          description: 'Push notifications are now active'
+          title: "Resubscribed Successfully",
+          description: "Push notifications are now active",
         });
         // Recheck status after successful resubscription
         setTimeout(() => checkSubscriptionStatus(), 2000);
       } else {
         toast({
-          title: 'Resubscription Failed',
-          description: result.error || 'Could not reestablish subscription',
-          variant: 'destructive'
+          title: "Resubscription Failed",
+          description: result.error || "Could not reestablish subscription",
+          variant: "destructive",
         });
       }
     } finally {
@@ -86,7 +101,7 @@ export const SubscriptionMonitor: React.FC = () => {
   useEffect(() => {
     if (user?.id) {
       checkSubscriptionStatus();
-      
+
       // Check every 5 minutes
       const interval = setInterval(checkSubscriptionStatus, 5 * 60 * 1000);
       return () => clearInterval(interval);
@@ -97,7 +112,7 @@ export const SubscriptionMonitor: React.FC = () => {
 
   const getStatusBadge = () => {
     if (!status) return <Badge variant="secondary">Unknown</Badge>;
-    
+
     if (status.subscribed && hasSubscription) {
       return <Badge className="bg-green-500 text-white">Active</Badge>;
     } else if (status.exists && !status.subscribed) {
@@ -109,10 +124,18 @@ export const SubscriptionMonitor: React.FC = () => {
     }
   };
 
-  const needsAttention = status && (!status.subscribed || !hasSubscription || !status.inSubscribedSegment);
+  const needsAttention =
+    status &&
+    (!status.subscribed || !hasSubscription || !status.inSubscribedSegment);
 
   return (
-    <Card className={needsAttention ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950' : ''}>
+    <Card
+      className={
+        needsAttention
+          ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-950"
+          : ""
+      }
+    >
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bell className="h-5 w-5" />
@@ -133,25 +156,31 @@ export const SubscriptionMonitor: React.FC = () => {
                 ) : (
                   <XCircle className="h-4 w-4 text-red-500" />
                 )}
-                <span>OneSignal User: {status.exists ? 'Exists' : 'Missing'}</span>
+                <span>
+                  OneSignal User: {status.exists ? "Exists" : "Missing"}
+                </span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {status.subscribed ? (
                   <CheckCircle className="h-4 w-4 text-green-500" />
                 ) : (
                   <XCircle className="h-4 w-4 text-red-500" />
                 )}
-                <span>Push Subscription: {status.subscribed ? 'Active' : 'Inactive'}</span>
+                <span>
+                  Push Subscription: {status.subscribed ? "Active" : "Inactive"}
+                </span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {hasSubscription ? (
                   <CheckCircle className="h-4 w-4 text-green-500" />
                 ) : (
                   <XCircle className="h-4 w-4 text-red-500" />
                 )}
-                <span>Local Status: {hasSubscription ? 'Ready' : 'Not Ready'}</span>
+                <span>
+                  Local Status: {hasSubscription ? "Ready" : "Not Ready"}
+                </span>
               </div>
             </div>
 
@@ -162,11 +191,15 @@ export const SubscriptionMonitor: React.FC = () => {
                 ) : (
                   <AlertTriangle className="h-4 w-4 text-yellow-500" />
                 )}
-                <span>In Segment: {status.inSubscribedSegment ? 'Yes' : 'No'}</span>
+                <span>
+                  In Segment: {status.inSubscribedSegment ? "Yes" : "No"}
+                </span>
               </div>
-              
+
               <div>
-                <span className="text-muted-foreground">Active Subscriptions: </span>
+                <span className="text-muted-foreground">
+                  Active Subscriptions:{" "}
+                </span>
                 <Badge variant="outline">
                   {status.enabledSubscriptions}/{status.totalSubscriptions}
                 </Badge>
@@ -174,7 +207,10 @@ export const SubscriptionMonitor: React.FC = () => {
 
               {status.subscriptionDetails.length > 0 && (
                 <div className="text-xs text-muted-foreground">
-                  <p>Types: {status.subscriptionDetails.map(s => s.type).join(', ')}</p>
+                  <p>
+                    Types:{" "}
+                    {status.subscriptionDetails.map((s) => s.type).join(", ")}
+                  </p>
                 </div>
               )}
             </div>
@@ -188,16 +224,14 @@ export const SubscriptionMonitor: React.FC = () => {
             onClick={checkSubscriptionStatus}
             disabled={loading}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+            />
             Check Status
           </Button>
 
           {needsAttention && (
-            <Button
-              size="sm"
-              onClick={handleResubscribe}
-              disabled={loading}
-            >
+            <Button size="sm" onClick={handleResubscribe} disabled={loading}>
               <Bell className="h-4 w-4 mr-2" />
               Resubscribe
             </Button>

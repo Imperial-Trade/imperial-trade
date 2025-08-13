@@ -63,7 +63,7 @@ export class AccountRequest {
     try {
       const existingRequest = await this.getByEmail(normalizedEmail);
       if (existingRequest) {
-        throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
+        throw new Error("An account request with this email already exists. Please click the 'Check Request Status' button below to view or update your request.");
       }
     } catch (e) {
       console.warn('getByEmail pre-check failed, proceeding with insert:', e);
@@ -97,7 +97,7 @@ export class AccountRequest {
         msg.includes('duplicate key') ||
         (insertError as any).code === '23505'
       ) {
-        throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
+        throw new Error("An account request with this email already exists. Please click the 'Check Request Status' button below to view or update your request.");
       }
       throw insertError;
     }

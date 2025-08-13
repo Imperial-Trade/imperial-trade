@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -154,58 +154,139 @@ export const useInstantAlerts = () => {
     }
   }, []);
 
-  useEffect(() => {
-    console.log('🔔 Setting up instant alert notifications...');
+  // Realtime connection state
+  const channelRef = useRef<any>(null);
+  const monitorRef = useRef<any>(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
-    // Subscribe to instant alert channel
-    const channel = supabase
-      .channel('instant-alerts')
-      .on('broadcast', { event: 'alert_triggered' }, ({ payload }) => {
-        handleAlertNotification(payload as AlertNotification);
-      })
-      .on('broadcast', { event: 'signal_created' }, ({ payload }) => {
-        handleSignalCreated(payload);
-      })
-      .on('broadcast', { event: 'signal_updated' }, ({ payload }) => {
-        handleSignalUpdated(payload);
-      })
-      .subscribe((status) => {
-        console.log('📡 Instant alerts subscription status:', status);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Successfully subscribed to instant alerts');
-          
-          // Notification permission is handled centrally by NotificationsContext
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Failed to subscribe to instant alerts');
-          toast.error('Alert notifications unavailable', {
-            description: 'Failed to connect to real-time alerts'
+  useEffect(() => {
+    console.log('🔔 Setting up instant alert notifications with resilience...');
+
+    const MAX_RETRIES = 5;
+    const BASE_DELAY = 1000;
+    const JITTER = 300;
+
+    let attempts = 0;
+    let subscribed = false;
+    let reconnectTimer: number | null = null;
+    let handshakeTimer: number | null = null;
+    let delayedErrorTimer: number | null = null;
+
+    const clearTimers = () => {
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+      if (handshakeTimer) { clearTimeout(handshakeTimer); handshakeTimer = null; }
+      if (delayedErrorTimer) { clearTimeout(delayedErrorTimer); delayedErrorTimer = null; }
+    };
+
+    const scheduleReconnect = () => {
+      if (reconnectTimer) return;
+      attempts += 1;
+      setIsSubscribed(false);
+      if (attempts > MAX_RETRIES) {
+        console.error('❌ Instant alerts failed after retries');
+        return;
+      }
+      const delay = Math.min(BASE_DELAY * Math.pow(2, attempts - 1) + Math.random() * JITTER, 15000);
+      console.log(`⏳ Reconnecting to instant alerts in ${delay}ms (attempt ${attempts}/${MAX_RETRIES})`);
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = null;
+        connect();
+      }, delay) as unknown as number;
+    };
+
+    const connect = () => {
+      // Remove existing channel if any
+      if (channelRef.current) {
+        try { supabase.removeChannel(channelRef.current); } catch {}
+        channelRef.current = null;
+      }
+      subscribed = false;
+
+      const ch = supabase
+        .channel('instant-alerts')
+        .on('broadcast', { event: 'alert_triggered' }, ({ payload }) => {
+          handleAlertNotification(payload as AlertNotification);
+        })
+        .on('broadcast', { event: 'signal_created' }, ({ payload }) => {
+          handleSignalCreated(payload);
+        })
+        .on('broadcast', { event: 'signal_updated' }, ({ payload }) => {
+          handleSignalUpdated(payload);
+        })
+        .subscribe((status) => {
+          console.log('📡 Instant alerts subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Successfully subscribed to instant alerts');
+            subscribed = true;
+            attempts = 0;
+            setIsSubscribed(true);
+
+            // Ensure fallback monitoring channel exists
+            if (!monitorRef.current) {
+              monitorRef.current = supabase
+                .channel('alert-monitoring-changes')
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'alert_monitoring', filter: 'is_active=eq.false' }, (payload) => {
+                  console.log('📊 Alert monitoring change detected:', payload);
+                })
+                .subscribe();
+            }
+
+            if (handshakeTimer) { clearTimeout(handshakeTimer); handshakeTimer = null; }
+            if (delayedErrorTimer) { clearTimeout(delayedErrorTimer); delayedErrorTimer = null; }
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn('⚠️ Instant alerts channel issue, scheduling reconnect...');
+            scheduleReconnect();
+          }
+        });
+
+      channelRef.current = ch;
+
+      // Handshake timeout
+      handshakeTimer = window.setTimeout(() => {
+        if (!subscribed) {
+          console.warn('⚠️ Instant alerts handshake timeout');
+          scheduleReconnect();
+        }
+      }, 5000) as unknown as number;
+
+      // Delayed user-facing message after 10s if still not connected
+      delayedErrorTimer = window.setTimeout(() => {
+        if (!subscribed) {
+          toast.message('Alert notifications temporarily unavailable', {
+            description: 'Still connecting… We will keep trying in the background.'
           });
         }
-      });
+      }, 10000) as unknown as number;
+    };
 
-    // Also listen to alert_monitoring table changes for additional reliability
-    const alertMonitoringChannel = supabase
-      .channel('alert-monitoring-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'alert_monitoring',
-          filter: 'is_active=eq.false' // Listen for alerts being deactivated (triggered)
-        },
-        (payload) => {
-          console.log('📊 Alert monitoring change detected:', payload);
-          // Additional fallback notification handling could go here
-        }
-      )
-      .subscribe();
+    connect();
+
+    const onOnline = () => {
+      if (!subscribed) {
+        attempts = 0;
+        scheduleReconnect();
+      }
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && !subscribed) {
+        attempts = 0;
+        scheduleReconnect();
+      }
+    };
+
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisible);
+      clearTimers();
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      if (monitorRef.current) supabase.removeChannel(monitorRef.current);
+      channelRef.current = null;
+      monitorRef.current = null;
       console.log('🔕 Cleaning up instant alert subscriptions');
-      supabase.removeChannel(channel);
-      supabase.removeChannel(alertMonitoringChannel);
     };
   }, [handleAlertNotification, handleSignalCreated, handleSignalUpdated]);
 

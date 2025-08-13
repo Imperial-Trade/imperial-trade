@@ -182,6 +182,33 @@ try {
       })
     )
 
+    const emailPayload = {
+      app_id: ONESIGNAL_APP_ID,
+      include_email_tokens: [user.email],
+      email_subject: 'Trade Imperial — Secure Password Reset',
+      email_body: html,
+      email_preheader: 'Secure password reset for your Trade Imperial account.',
+      target_channel: 'email' as const,
+      from_email: 'no-reply@tradeimperial.com',
+      from_name: 'Trade Imperial',
+      external_id: correlationId,
+    }
+
+    // Log a safe, minimal view of the outbound payload (no HTML content)
+    try {
+      const bodyBytes = new TextEncoder().encode(html).length
+      console.log('OneSignal email payload', {
+        correlationId,
+        to: user.email,
+        subject: emailPayload.email_subject,
+        from_email: emailPayload.from_email,
+        from_name: emailPayload.from_name,
+        body_bytes: bodyBytes,
+      })
+    } catch (_) {
+      console.log('OneSignal email payload (size only)', { correlationId })
+    }
+
     const onesignalResponse = await fetch('https://onesignal.com/api/v1/notifications', {
       method: 'POST',
       headers: {
@@ -189,17 +216,7 @@ try {
         'Content-Type': 'application/json',
         'Idempotency-Key': correlationId,
       },
-      body: JSON.stringify({
-        app_id: ONESIGNAL_APP_ID,
-        include_email_tokens: [user.email],
-        email_subject: 'Reset your Trade Imperial password',
-        email_body: html,
-        email_preheader: 'Reset your Trade Imperial password securely.',
-        target_channel: 'email',
-        from_email: 'no-reply@tradeimperial.com',
-        from_name: 'Trade Imperial',
-        external_id: correlationId,
-      }),
+      body: JSON.stringify(emailPayload),
     })
 
 if (!onesignalResponse.ok) {

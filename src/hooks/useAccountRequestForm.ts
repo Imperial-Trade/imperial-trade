@@ -14,7 +14,7 @@ const getErrorMessage = (error: any): string => {
   
   // Check for unique constraint violation (email already exists)
   if (error?.message?.includes('already exists') || error?.message?.includes('account_requests_email_unique')) {
-    return "An account request with this email already exists. Please use the status checker to view or update your existing request.";
+    return "An account request with this email already exists. Please click the 'Check Request Status' button below to view or update your request.";
   }
   
   // Check for rate limiting errors

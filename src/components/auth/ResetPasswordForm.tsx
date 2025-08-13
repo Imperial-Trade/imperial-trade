@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { PasswordStrengthMeter } from "@/components/security/PasswordStrengthMeter";
 
 const resetPasswordSchema = z.object({
@@ -36,6 +36,7 @@ export const ResetPasswordForm: React.FC = () => {
   const [resetComplete, setResetComplete] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
   const [isValidLink, setIsValidLink] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -75,26 +76,49 @@ export const ResetPasswordForm: React.FC = () => {
     const validateSession = async () => {
       setIsValidating(true);
       try {
-        const { access_token, refresh_token, type } = parseTokens();
-        console.info('[ResetPassword] Validating link', { hasAccess: !!access_token, hasRefresh: !!refresh_token, type });
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const searchParams = new URLSearchParams(window.location.search);
+        const access_token = hashParams.get('access_token') || searchParams.get('access_token');
+        const refresh_token = hashParams.get('refresh_token') || searchParams.get('refresh_token');
+        const type = hashParams.get('type') || searchParams.get('type');
+        const token_hash = searchParams.get('token_hash');
+        console.info('[ResetPassword] Link params', { hasAccess: !!access_token, hasRefresh: !!refresh_token, type, hasTokenHash: !!token_hash });
 
+        // Step 1: If we only have token_hash, prompt user to continue securely
+        if (!access_token && !refresh_token && token_hash && type === 'recovery') {
+          setNeedsVerification(true);
+          setIsValidLink(true);
+          setIsValidating(false);
+          return;
+        }
+
+        // Step 2: After verification, Supabase redirects back with access/refresh tokens
         if (type === 'recovery' && access_token && refresh_token) {
           const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
           if (error) {
             console.error('[ResetPassword] setSession error', error);
             setIsValidLink(false);
-            return;
-          }
-          if (data?.session) {
+          } else if (data?.session) {
             console.info('[ResetPassword] Session set successfully');
             setIsValidLink(true);
-            cleanUrl();
-            return;
+            // Clean URL of tokens
+            try {
+              const url = new URL(window.location.href);
+              url.hash = '';
+              const params = new URLSearchParams(url.search);
+              params.delete('access_token');
+              params.delete('refresh_token');
+              params.delete('type');
+              params.delete('token_hash');
+              url.search = params.toString();
+              window.history.replaceState({}, document.title, url.toString());
+            } catch {}
           }
-        } else {
-          console.warn('[ResetPassword] Invalid link parameters');
+          setIsValidating(false);
+          return;
         }
 
+        console.warn('[ResetPassword] Invalid or expired link');
         setIsValidLink(false);
       } catch (error) {
         console.error('[ResetPassword] Session validation error:', error);
@@ -106,6 +130,72 @@ export const ResetPasswordForm: React.FC = () => {
 
     validateSession();
   }, []);
+
+  const continueSecurely = async () => {
+    setIsValidating(true);
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const token_hash = searchParams.get('token_hash');
+      const type = searchParams.get('type');
+
+      if (type !== 'recovery' || !token_hash) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid link',
+          description: 'The verification link is missing or invalid. Please request a new reset email.'
+        });
+        setNeedsVerification(false);
+        setIsValidLink(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.verifyOtp({
+        type: 'recovery',
+        token_hash,
+      });
+
+      if (error) {
+        console.error('[ResetPassword] verifyOtp error', error);
+        toast({
+          variant: 'destructive',
+          title: 'Verification failed',
+          description: error.message || 'The link may have expired. Please request a new one.'
+        });
+        setIsValidLink(false);
+        return;
+      }
+
+      console.info('[ResetPassword] Link verified successfully');
+      setIsValidLink(true);
+      setNeedsVerification(false);
+
+      // Clean URL params
+      try {
+        const url = new URL(window.location.href);
+        url.hash = '';
+        const params = new URLSearchParams(url.search);
+        params.delete('type');
+        params.delete('token_hash');
+        url.search = params.toString();
+        window.history.replaceState({}, document.title, url.toString());
+      } catch {}
+
+      toast({
+        title: 'Link verified',
+        description: 'You can now set a new password.'
+      });
+    } catch (err) {
+      console.error('[ResetPassword] continueSecurely error', err);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not verify the link. Please try again.'
+      });
+      setIsValidLink(false);
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   const onSubmit = async (data: ResetPasswordData) => {
     setIsSubmitting(true);
@@ -192,6 +282,26 @@ export const ResetPasswordForm: React.FC = () => {
               Redirecting you to the dashboard...
             </p>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (needsVerification) {
+    return (
+      <Card className="glass-effect border-default">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center text-lime-200">
+            Verify Your Reset Request
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-slate-50 text-center">
+            For your security, click the button below to confirm this password reset.
+          </p>
+          <Button className="w-full" onClick={continueSecurely}>
+            Continue securely
+          </Button>
         </CardContent>
       </Card>
     );

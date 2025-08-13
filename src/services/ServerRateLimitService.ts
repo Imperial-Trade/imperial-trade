@@ -1,8 +1,9 @@
-import { supabase } from "@/integrations/supabase/client";
+
+import { supabase } from '@/integrations/supabase/client';
 
 interface ServerRateLimitCheck {
   identifier: string;
-  limitType: "ip" | "email";
+  limitType: 'ip' | 'email';
   maxAttempts: number;
   windowMs: number;
 }
@@ -24,21 +25,19 @@ class ServerRateLimitService {
     return ServerRateLimitService.instance;
   }
 
-  async checkRateLimit(
-    params: ServerRateLimitCheck
-  ): Promise<ServerRateLimitResult> {
+  async checkRateLimit(params: ServerRateLimitCheck): Promise<ServerRateLimitResult> {
     try {
-      logger.log("Checking server-side rate limit:", params);
-
+      console.log('Checking server-side rate limit:', params);
+      
       const { data, error } = await supabase.functions.invoke(
-        "account-request-rate-limit",
+        'account-request-rate-limit',
         {
           body: params,
         }
       );
 
       if (error) {
-        logger.error("Server rate limit check error:", error);
+        console.error('Server rate limit check error:', error);
         // Fail open - allow request if server check fails
         return {
           allowed: true,
@@ -49,7 +48,7 @@ class ServerRateLimitService {
 
       return data as ServerRateLimitResult;
     } catch (error) {
-      logger.error("Rate limit service error:", error);
+      console.error('Rate limit service error:', error);
       // Fail open for better UX
       return {
         allowed: true,
@@ -62,7 +61,7 @@ class ServerRateLimitService {
   async checkEmailRateLimit(email: string): Promise<ServerRateLimitResult> {
     return this.checkRateLimit({
       identifier: email.toLowerCase(),
-      limitType: "email",
+      limitType: 'email',
       maxAttempts: 5, // 5 requests per email per day
       windowMs: 24 * 60 * 60 * 1000, // 24 hours
     });
@@ -71,7 +70,7 @@ class ServerRateLimitService {
   async checkIPRateLimit(ip: string): Promise<ServerRateLimitResult> {
     return this.checkRateLimit({
       identifier: ip,
-      limitType: "ip",
+      limitType: 'ip',
       maxAttempts: 10, // 10 requests per IP per hour
       windowMs: 60 * 60 * 1000, // 1 hour
     });
@@ -83,15 +82,13 @@ class ServerRateLimitService {
       // Try to get real IP from the request
       const userAgent = navigator.userAgent;
       const timestamp = Date.now();
-
+      
       // Create a deterministic but unique identifier for this session
-      const sessionId = btoa(
-        `${userAgent}-${Math.floor(timestamp / (1000 * 60 * 60))}`
-      ).substring(0, 12);
-
+      const sessionId = btoa(`${userAgent}-${Math.floor(timestamp / (1000 * 60 * 60))}`).substring(0, 12);
+      
       return `session-${sessionId}`;
     } catch {
-      return "fallback-client";
+      return 'fallback-client';
     }
   }
 }

@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
@@ -9,17 +10,17 @@ export function SidebarTriggerButton() {
   // Handle escape key to close sidebar
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && openMobile) {
+      if (e.key === 'Escape' && openMobile) {
         setOpenMobile(false);
       }
     };
 
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [openMobile, setOpenMobile]);
 
   const handleClick = () => {
-    logger.log("Sidebar trigger clicked, current state:", openMobile);
+    console.log('Sidebar trigger clicked, current state:', openMobile);
     setOpenMobile(!openMobile);
   };
 
@@ -32,19 +33,15 @@ export function SidebarTriggerButton() {
       aria-label={openMobile ? "Close sidebar" : "Open sidebar"}
     >
       <div className="relative">
-        <Menu
+        <Menu 
           className={`h-5 w-5 transition-all duration-200 ${
-            openMobile
-              ? "opacity-0 rotate-180 scale-0"
-              : "opacity-100 rotate-0 scale-100"
-          }`}
+            openMobile ? 'opacity-0 rotate-180 scale-0' : 'opacity-100 rotate-0 scale-100'
+          }`} 
         />
-        <X
+        <X 
           className={`h-5 w-5 absolute top-0 left-0 transition-all duration-200 ${
-            openMobile
-              ? "opacity-100 rotate-0 scale-100"
-              : "opacity-0 rotate-180 scale-0"
-          }`}
+            openMobile ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 rotate-180 scale-0'
+          }`} 
         />
       </div>
     </Button>

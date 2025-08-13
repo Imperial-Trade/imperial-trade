@@ -1,21 +1,15 @@
-import { tradingApiService } from "../services/TradingApiService";
-import { adminTradingService } from "../services/AdminTradingService";
-import {
-  CreateTradeAlertDto,
-  UpdateTradeAlertDto,
-  TradeAlertResponseDto,
-} from "@/domain/dtos/trading/CreateTradeAlertDto";
-import { apiClient } from "../client/ApiClient";
+
+import { tradingApiService } from '../services/TradingApiService';
+import { adminTradingService } from '../services/AdminTradingService';
+import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import { apiClient } from '../client/ApiClient';
 
 // Legacy wrapper for backward compatibility
 export class TradeAlert {
-  static async getByStatus(
-    status: "pending" | "active" | "closed",
-    userId: string
-  ): Promise<TradeAlertResponseDto[]> {
+  static async getByStatus(status: 'pending' | 'active' | 'closed', userId: string): Promise<TradeAlertResponseDto[]> {
     const result = await tradingApiService.getAlertsByStatus(status, userId);
     if (!result.success) {
-      throw new Error(result.error || "Failed to fetch alerts by status");
+      throw new Error(result.error || 'Failed to fetch alerts by status');
     }
     return result.data || [];
   }
@@ -23,7 +17,7 @@ export class TradeAlert {
   static async list(userId: string): Promise<TradeAlertResponseDto[]> {
     const result = await tradingApiService.getAllAlerts(userId);
     if (!result.success) {
-      throw new Error(result.error || "Failed to fetch alerts");
+      throw new Error(result.error || 'Failed to fetch alerts');
     }
     return result.data || [];
   }
@@ -32,17 +26,17 @@ export class TradeAlert {
   static async listAllForAdmin(): Promise<TradeAlertResponseDto[]> {
     const result = await adminTradingService.getAllAlertsForAdmin();
     if (!result.success) {
-      throw new Error(result.error || "Failed to fetch all alerts for admin");
+      throw new Error(result.error || 'Failed to fetch all alerts for admin');
     }
     return result.data || [];
   }
 
   static async getById(id: string): Promise<TradeAlertResponseDto | null> {
     try {
-      const result = await apiClient.select("trade_alerts", {
-        eq: { column: "id", value: id },
+      const result = await apiClient.select('trade_alerts', {
+        eq: { column: 'id', value: id }
       });
-
+      
       if (!result.success || !result.data || result.data.length === 0) {
         return null;
       }
@@ -66,33 +60,26 @@ export class TradeAlert {
         notes: alert.notes,
         closeReason: alert.close_reason,
         createdAt: alert.created_at,
-        updatedAt: alert.updated_at,
+        updatedAt: alert.updated_at
       };
     } catch (error) {
-      logger.error("Error fetching alert by ID:", error);
+      console.error('Error fetching alert by ID:', error);
       return null;
     }
   }
 
-  static async create(
-    entityData: CreateTradeAlertDto,
-    userId: string
-  ): Promise<TradeAlertResponseDto> {
+  static async create(entityData: CreateTradeAlertDto, userId: string): Promise<TradeAlertResponseDto> {
     const result = await tradingApiService.createAlert(entityData, userId);
     if (!result.success) {
-      throw new Error(result.error || "Failed to create alert");
+      throw new Error(result.error || 'Failed to create alert');
     }
     return result.data!;
   }
 
-  static async update(
-    id: string,
-    entityData: UpdateTradeAlertDto,
-    userId: string
-  ): Promise<TradeAlertResponseDto> {
+  static async update(id: string, entityData: UpdateTradeAlertDto, userId: string): Promise<TradeAlertResponseDto> {
     const result = await tradingApiService.updateAlert(id, entityData, userId);
     if (!result.success) {
-      throw new Error(result.error || "Failed to update alert");
+      throw new Error(result.error || 'Failed to update alert');
     }
     return result.data!;
   }
@@ -100,17 +87,10 @@ export class TradeAlert {
   static async delete(id: string, userId: string): Promise<void> {
     const result = await tradingApiService.deleteAlert(id, userId);
     if (!result.success) {
-      throw new Error(result.error || "Failed to delete alert");
+      throw new Error(result.error || 'Failed to delete alert');
     }
   }
 }
 
 // Keep other classes as simple wrappers for now
-export {
-  TradeJournalEntry,
-  TradingStrategy,
-  TradingGroup,
-  GroupJournalEntry,
-  VerifiedTrader,
-  TradeHistory,
-} from "../base/BaseEntity";
+export { TradeJournalEntry, TradingStrategy, TradingGroup, GroupJournalEntry, VerifiedTrader, TradeHistory } from '../base/BaseEntity';

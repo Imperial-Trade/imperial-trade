@@ -1,39 +1,36 @@
-import { useEffect, useMemo, useCallback } from "react";
-import { useWebSocketPrices } from "@/contexts/WebSocketPriceContext";
+
+import { useEffect, useMemo, useCallback } from 'react';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 
 interface PriceFeedData {
   prices: Record<string, number>;
-  connectionStatus: "connecting" | "connected" | "disconnected" | "error";
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   priceSource: string;
 }
 
 export function useWebSocketPriceFeed(symbols: string[] = []): PriceFeedData {
-  const { prices, connectionStatus, subscribe, unsubscribe } =
-    useWebSocketPrices();
+  const { prices, connectionStatus, subscribe, unsubscribe } = useWebSocketPrices();
 
   // Filter out empty or invalid symbols
   const validSymbols = useMemo(() => {
-    return symbols.filter((symbol) => symbol && symbol.trim().length > 0);
+    return symbols.filter(symbol => symbol && symbol.trim().length > 0);
   }, [symbols]);
 
   useEffect(() => {
     if (validSymbols.length === 0) return;
 
-    logger.log("useWebSocketPriceFeed - Subscribing to symbols:", validSymbols);
+    console.log('useWebSocketPriceFeed - Subscribing to symbols:', validSymbols);
     subscribe(validSymbols);
 
     return () => {
-      logger.log(
-        "useWebSocketPriceFeed - Unsubscribing from symbols:",
-        validSymbols
-      );
+      console.log('useWebSocketPriceFeed - Unsubscribing from symbols:', validSymbols);
       unsubscribe(validSymbols);
     };
   }, [validSymbols, subscribe, unsubscribe]);
 
   const formattedPrices = useMemo(() => {
     const result: Record<string, number> = {};
-    validSymbols.forEach((symbol) => {
+    validSymbols.forEach(symbol => {
       const priceData = prices[symbol];
       if (priceData) {
         result[symbol] = priceData.price;
@@ -45,6 +42,6 @@ export function useWebSocketPriceFeed(symbols: string[] = []): PriceFeedData {
   return {
     prices: formattedPrices,
     connectionStatus,
-    priceSource: "WebSocket",
+    priceSource: 'WebSocket'
   };
 }

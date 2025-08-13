@@ -1,31 +1,26 @@
-import React, { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Heart,
-  MessageSquare,
-  Share2,
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Heart, 
+  MessageSquare, 
+  Share2, 
   MoreHorizontal,
   Reply,
   Edit,
-  Trash2,
-} from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+  Trash2
+} from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 
 interface ForumPostProps {
   post: {
@@ -58,22 +53,22 @@ export const ForumPost: React.FC<ForumPostProps> = ({
   onLike,
   onReply,
   onEdit,
-  onDelete,
+  onDelete
 }) => {
   const [showReplyForm, setShowReplyForm] = useState(false);
-  const [replyContent, setReplyContent] = useState("");
+  const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleReply = async () => {
     if (!replyContent.trim()) return;
-
+    
     setIsSubmitting(true);
     try {
       await onReply(post.id, replyContent);
-      setReplyContent("");
+      setReplyContent('');
       setShowReplyForm(false);
     } catch (error) {
-      logger.error("Failed to post reply:", error);
+      console.error('Failed to post reply:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -81,16 +76,11 @@ export const ForumPost: React.FC<ForumPostProps> = ({
 
   const getCategoryColor = (category: string) => {
     switch (category.toLowerCase()) {
-      case "trading":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "analysis":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "discussion":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-      case "education":
-        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      case 'trading': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'analysis': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'discussion': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      case 'education': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
 
@@ -115,7 +105,7 @@ export const ForumPost: React.FC<ForumPostProps> = ({
               </p>
             </div>
           </div>
-
+          
           <div className="flex items-center gap-2">
             <Badge className={getCategoryColor(post.category)}>
               {post.category}
@@ -132,7 +122,7 @@ export const ForumPost: React.FC<ForumPostProps> = ({
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </DropdownMenuItem>
-                  <DropdownMenuItem
+                  <DropdownMenuItem 
                     onClick={() => onDelete?.(post.id)}
                     className="text-destructive"
                   >
@@ -144,46 +134,40 @@ export const ForumPost: React.FC<ForumPostProps> = ({
             )}
           </div>
         </div>
-
+        
         <CardTitle className="text-xl">{post.title}</CardTitle>
       </CardHeader>
-
+      
       <CardContent>
         <div className="space-y-4">
           <div className="prose prose-sm max-w-none dark:prose-invert">
-            {post.content.split("\n").map((paragraph, index) => (
+            {post.content.split('\n').map((paragraph, index) => (
               <p key={index}>{paragraph}</p>
             ))}
           </div>
-
+          
           {post.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {post.tags.map((tag) => (
+              {post.tags.map(tag => (
                 <Badge key={tag} variant="secondary" className="text-xs">
                   #{tag}
                 </Badge>
               ))}
             </div>
           )}
-
+          
           <div className="flex items-center justify-between pt-2 border-t">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onLike(post.id)}
-                className={
-                  post.isLiked ? "text-red-500 hover:text-red-600" : ""
-                }
+                className={post.isLiked ? 'text-red-500 hover:text-red-600' : ''}
               >
-                <Heart
-                  className={`h-4 w-4 mr-1 ${
-                    post.isLiked ? "fill-current" : ""
-                  }`}
-                />
+                <Heart className={`h-4 w-4 mr-1 ${post.isLiked ? 'fill-current' : ''}`} />
                 {post.likes}
               </Button>
-
+              
               <Button
                 variant="ghost"
                 size="sm"
@@ -192,14 +176,14 @@ export const ForumPost: React.FC<ForumPostProps> = ({
                 <MessageSquare className="h-4 w-4 mr-1" />
                 {post.replies}
               </Button>
-
+              
               <Button variant="ghost" size="sm">
                 <Share2 className="h-4 w-4 mr-1" />
                 Share
               </Button>
             </div>
           </div>
-
+          
           {showReplyForm && (
             <div className="space-y-3 pt-3 border-t">
               <Textarea
@@ -214,7 +198,7 @@ export const ForumPost: React.FC<ForumPostProps> = ({
                   size="sm"
                   onClick={() => {
                     setShowReplyForm(false);
-                    setReplyContent("");
+                    setReplyContent('');
                   }}
                 >
                   Cancel
@@ -225,7 +209,7 @@ export const ForumPost: React.FC<ForumPostProps> = ({
                   disabled={!replyContent.trim() || isSubmitting}
                 >
                   <Reply className="h-4 w-4 mr-1" />
-                  {isSubmitting ? "Posting..." : "Reply"}
+                  {isSubmitting ? 'Posting...' : 'Reply'}
                 </Button>
               </div>
             </div>

@@ -1,22 +1,20 @@
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Lock, LogIn, UserPlus } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useUserExistenceCheck } from "@/hooks/useUserExistenceCheck";
-import { PasswordSetup } from "./PasswordSetup";
+
+import React, { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useUserExistenceCheck } from '@/hooks/useUserExistenceCheck';
+import { PasswordSetup } from './PasswordSetup';
 
 interface UserExistenceCheckProps {
   accountRequest: any;
 }
 
-export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({
-  accountRequest,
-}) => {
+export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({ accountRequest }) => {
   const [userExists, setUserExists] = useState<boolean | null>(null);
-  const { checkUserExists, isChecking, error, clearError } =
-    useUserExistenceCheck({ accountRequest });
+  const { checkUserExists, isChecking, error, clearError } = useUserExistenceCheck({ accountRequest });
 
   useEffect(() => {
     const checkUser = async () => {
@@ -38,7 +36,7 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({
   };
 
   const handlePasswordSetupSuccess = () => {
-    logger.log("Password setup completed successfully");
+    console.log('Password setup completed successfully');
     // PasswordSetup component handles the dashboard redirect
   };
 
@@ -82,11 +80,8 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({
             Account Already Exists
           </h3>
           <p className="text-gray-300 mb-6">
-            An account with the email{" "}
-            <span className="font-medium text-white">
-              {accountRequest.email}
-            </span>{" "}
-            already exists. Please sign in to access your account.
+            An account with the email <span className="font-medium text-white">{accountRequest.email}</span> already exists. 
+            Please sign in to access your account.
           </p>
         </div>
 
@@ -102,9 +97,9 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">Account Type:</span>
             <span className="text-white">
-              {accountRequest.account_type === "educator"
-                ? "Educator / IB Partner"
-                : "Standard Member"}
+              {accountRequest.account_type === 'educator' 
+                ? 'Educator / IB Partner' 
+                : 'Standard Member'}
             </span>
           </div>
         </div>
@@ -116,10 +111,9 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({
               Sign In to Your Account
             </Button>
           </Link>
-
+          
           <p className="text-xs text-gray-400 text-center">
-            If you're having trouble signing in, please contact support for
-            assistance.
+            If you're having trouble signing in, please contact support for assistance.
           </p>
         </div>
       </div>
@@ -135,8 +129,7 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({
           Complete Your Registration
         </h3>
         <p className="text-gray-300 mb-6">
-          Your account request has been approved! Create your password to
-          complete registration and gain access.
+          Your account request has been approved! Create your password to complete registration and gain access.
         </p>
       </div>
 
@@ -152,9 +145,9 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Account Type:</span>
           <span className="text-white">
-            {accountRequest.account_type === "educator"
-              ? "Educator / IB Partner"
-              : "Standard Member"}
+            {accountRequest.account_type === 'educator' 
+              ? 'Educator / IB Partner' 
+              : 'Standard Member'}
           </span>
         </div>
         {accountRequest.approved_at && (
@@ -167,8 +160,8 @@ export const UserExistenceCheck: React.FC<UserExistenceCheckProps> = ({
         )}
       </div>
 
-      <PasswordSetup
-        accountRequest={accountRequest}
+      <PasswordSetup 
+        accountRequest={accountRequest} 
         onSuccess={handlePasswordSetupSuccess}
       />
     </div>

@@ -1,6 +1,7 @@
-import { useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { testUserExistenceFunction } from "@/utils/testUserExistence";
+
+import { useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { testUserExistenceFunction } from '@/utils/testUserExistence';
 
 interface UseUserExistenceCheckReturn {
   checkUserExists: (email: string) => Promise<boolean>;
@@ -13,9 +14,7 @@ interface UseUserExistenceCheckOptions {
   accountRequest?: any;
 }
 
-export const useUserExistenceCheck = (
-  options: UseUserExistenceCheckOptions = {}
-): UseUserExistenceCheckReturn => {
+export const useUserExistenceCheck = (options: UseUserExistenceCheckOptions = {}): UseUserExistenceCheckReturn => {
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,89 +22,70 @@ export const useUserExistenceCheck = (
     setError(null);
   }, []);
 
-  const checkUserExists = useCallback(
-    async (email: string): Promise<boolean> => {
-      setIsChecking(true);
-      setError(null);
+  const checkUserExists = useCallback(async (email: string): Promise<boolean> => {
+    setIsChecking(true);
+    setError(null);
 
-      try {
-        logger.log("=== STARTING USER EXISTENCE CHECK ===");
-        logger.log("Email:", email);
-        logger.log("Account request status:", options.accountRequest?.status);
-        logger.log("Supabase client ready:", !!supabase);
-        logger.log("Functions available:", !!supabase.functions);
+    try {
+      console.log('=== STARTING USER EXISTENCE CHECK ===');
+      console.log('Email:', email);
+      console.log('Account request status:', options.accountRequest?.status);
+      console.log('Supabase client ready:', !!supabase);
+      console.log('Functions available:', !!supabase.functions);
+      
+      console.log('Calling edge function check-user-existence...');
+      const startTime = Date.now();
+      
+      // First run diagnostic test
+      console.log('Running diagnostic test...');
+      await testUserExistenceFunction(email.toLowerCase().trim());
+      
+      const { data, error } = await supabase.functions.invoke('check-user-existence', {
+        body: { email: email.toLowerCase().trim() }
+      });
+      
+      const endTime = Date.now();
+      console.log('Edge function call completed in:', endTime - startTime, 'ms');
+      console.log('Raw response data:', data);
+      console.log('Raw response error:', error);
 
-        logger.log("Calling edge function check-user-existence...");
-        const startTime = Date.now();
-
-        // First run diagnostic test
-        logger.log("Running diagnostic test...");
-        await testUserExistenceFunction(email.toLowerCase().trim());
-
-        const { data, error } = await supabase.functions.invoke(
-          "check-user-existence",
-          {
-            body: { email: email.toLowerCase().trim() },
-          }
-        );
-
-        const endTime = Date.now();
-        logger.log(
-          "Edge function call completed in:",
-          endTime - startTime,
-          "ms"
-        );
-        logger.log("Raw response data:", data);
-        logger.log("Raw response error:", error);
-
-        if (error) {
-          logger.error("=== EDGE FUNCTION ERROR ===");
-          logger.error("Error object:", error);
-          logger.error("Error message:", error.message);
-          logger.error("Error details:", error.details);
-          logger.error("Error hint:", error.hint);
-          logger.error("Error code:", error.code);
-
-          // NO FALLBACK - Surface the real error
-          setError(`Edge function failed: ${error.message || "Unknown error"}`);
-          return false;
-        }
-
-        logger.log("=== EDGE FUNCTION SUCCESS ===");
-        logger.log("Data received:", data);
-        logger.log("User exists value:", data?.userExists);
-
-        const userExists = data?.userExists || false;
-        logger.log("Final result - User exists:", userExists);
-        logger.log("=== USER EXISTENCE CHECK COMPLETE ===");
-
-        return userExists;
-      } catch (error) {
-        logger.error("=== NETWORK/UNEXPECTED ERROR ===");
-        logger.error("Error type:", typeof error);
-        logger.error("Error constructor:", error?.constructor?.name);
-        logger.error(
-          "Error message:",
-          error instanceof Error ? error.message : String(error)
-        );
-        logger.error(
-          "Error stack:",
-          error instanceof Error ? error.stack : "No stack trace"
-        );
-
+      if (error) {
+        console.error('=== EDGE FUNCTION ERROR ===');
+        console.error('Error object:', error);
+        console.error('Error message:', error.message);
+        console.error('Error details:', error.details);
+        console.error('Error hint:', error.hint);
+        console.error('Error code:', error.code);
+        
         // NO FALLBACK - Surface the real error
-        setError(
-          `Network error: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
-        );
+        setError(`Edge function failed: ${error.message || 'Unknown error'}`);
         return false;
-      } finally {
-        setIsChecking(false);
       }
-    },
-    [options.accountRequest]
-  );
+
+      console.log('=== EDGE FUNCTION SUCCESS ===');
+      console.log('Data received:', data);
+      console.log('User exists value:', data?.userExists);
+      
+      const userExists = data?.userExists || false;
+      console.log('Final result - User exists:', userExists);
+      console.log('=== USER EXISTENCE CHECK COMPLETE ===');
+      
+      return userExists;
+      
+    } catch (error) {
+      console.error('=== NETWORK/UNEXPECTED ERROR ===');
+      console.error('Error type:', typeof error);
+      console.error('Error constructor:', error?.constructor?.name);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // NO FALLBACK - Surface the real error
+      setError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
+    } finally {
+      setIsChecking(false);
+    }
+  }, [options.accountRequest]);
 
   return {
     checkUserExists,

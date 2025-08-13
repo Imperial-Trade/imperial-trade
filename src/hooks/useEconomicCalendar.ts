@@ -1,11 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import {
-  economicCalendarService,
-  EconomicEvent,
-  EconomicCalendarRequest,
-} from "@/services/EconomicCalendarService";
-import { cacheService } from "@/services/CacheService";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { economicCalendarService, EconomicEvent, EconomicCalendarRequest } from '@/services/EconomicCalendarService';
+import { cacheService } from '@/services/CacheService';
+import { useToast } from '@/hooks/use-toast';
 
 interface UseEconomicCalendarOptions {
   autoRefresh?: boolean;
@@ -47,7 +43,7 @@ export function useEconomicCalendar(
     autoRefresh = false,
     refreshInterval = 300000, // 5 minutes
     enableRealtime = false,
-    maxRetries = 3,
+    maxRetries = 3
   } = options;
 
   const [events, setEvents] = useState<EconomicEvent[]>([]);
@@ -57,9 +53,9 @@ export function useEconomicCalendar(
   const [retryCount, setRetryCount] = useState(0);
 
   // Filter states
-  const [dateRange, setDateRange] = useState("this_week");
-  const [currency, setCurrency] = useState("all");
-  const [impact, setImpact] = useState("all");
+  const [dateRange, setDateRange] = useState('this_week');
+  const [currency, setCurrency] = useState('all');
+  const [impact, setImpact] = useState('all');
 
   const { toast } = useToast();
 
@@ -69,7 +65,7 @@ export function useEconomicCalendar(
     setError(null);
     setEvents([]);
     setLastUpdated(new Date());
-    logger.log("Economic Calendar feature is coming soon!");
+    console.log('Economic Calendar feature is coming soon!');
   }, []);
 
   // Auto-refresh disabled for coming soon state
@@ -89,17 +85,17 @@ export function useEconomicCalendar(
 
   // Memoized statistics (returns zeros for coming soon state)
   const stats = useMemo(() => {
-    return {
+    return { 
       total: 0,
       high: 0,
       medium: 0,
-      low: 0,
+      low: 0
     };
   }, []);
 
   const clearCache = useCallback(() => {
     // Cache clearing disabled for coming soon state
-    logger.log("Cache clearing is coming soon!");
+    console.log('Cache clearing is coming soon!');
   }, []);
 
   return {
@@ -117,8 +113,8 @@ export function useEconomicCalendar(
       impact,
       setDateRange,
       setCurrency,
-      setImpact,
+      setImpact
     },
-    stats,
+    stats
   };
 }

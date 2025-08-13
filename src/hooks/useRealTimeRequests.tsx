@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { AccountRequest } from "@/api/entities";
+
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { AccountRequest } from '@/api/entities';
 
 export const useRealTimeRequests = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -13,7 +14,7 @@ export const useRealTimeRequests = () => {
       const data = await AccountRequest.list();
       setRequests(data);
     } catch (error) {
-      logger.error("Error loading requests:", error);
+      console.error('Error loading requests:', error);
     } finally {
       setLoading(false);
     }
@@ -24,33 +25,33 @@ export const useRealTimeRequests = () => {
 
     // Set up real-time subscription
     const channel = supabase
-      .channel("account_requests_changes")
+      .channel('account_requests_changes')
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "*",
-          schema: "public",
-          table: "account_requests",
+          event: '*',
+          schema: 'public',
+          table: 'account_requests'
         },
         (payload) => {
-          logger.log("Real-time update:", payload);
-
-          if (payload.eventType === "INSERT") {
-            setNewRequestCount((prev) => prev + 1);
-            setRequests((prev) => [payload.new, ...prev]);
-
+          console.log('Real-time update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            setNewRequestCount(prev => prev + 1);
+            setRequests(prev => [payload.new, ...prev]);
+            
             // Notifications are handled centrally on create; avoid duplicates here
-          } else if (payload.eventType === "UPDATE") {
-            setRequests((prev) =>
-              prev.map((req) => (req.id === payload.new.id ? payload.new : req))
+          } else if (payload.eventType === 'UPDATE') {
+            setRequests(prev => 
+              prev.map(req => 
+                req.id === payload.new.id ? payload.new : req
+              )
             );
-
+            
             // Check if it's a resubmission
             // Resubmission notifications handled centrally; avoid duplicates here
-          } else if (payload.eventType === "DELETE") {
-            setRequests((prev) =>
-              prev.filter((req) => req.id !== payload.old.id)
-            );
+          } else if (payload.eventType === 'DELETE') {
+            setRequests(prev => prev.filter(req => req.id !== payload.old.id));
           }
         }
       )
@@ -70,6 +71,6 @@ export const useRealTimeRequests = () => {
     newRequestCount,
     loading,
     loadRequests,
-    clearNewRequestCount,
+    clearNewRequestCount
   };
 };

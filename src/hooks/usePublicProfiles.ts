@@ -1,7 +1,8 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 
 const PublicProfileSchema = z.object({
   id: z.string().uuid(),
@@ -21,13 +22,13 @@ export const usePublicProfiles = (userIds: string[]) => {
   }, [userIds]);
 
   const query = useQuery({
-    queryKey: ["public-profiles", ids.sort().join(",")],
+    queryKey: ['public-profiles', ids.sort().join(',')],
     queryFn: async () => {
       if (!ids.length) return [] as PublicProfile[];
       const { data, error } = await supabase
-        .from("public_profiles")
-        .select("id, display_name, avatar_url, role, user_type, access_level")
-        .in("id", ids);
+        .from('public_profiles')
+        .select('id, display_name, avatar_url, role, user_type, access_level')
+        .in('id', ids);
       if (error) {
         throw new Error(error.message);
       }
@@ -39,7 +40,7 @@ export const usePublicProfiles = (userIds: string[]) => {
     gcTime: 5 * 60_000,
     meta: {
       onError: (err: unknown) => {
-        logger.warn("usePublicProfiles error:", err);
+        console.warn('usePublicProfiles error:', err);
       },
     },
   });

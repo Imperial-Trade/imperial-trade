@@ -1,9 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import {
-  marketDataService,
-  MarketDataPoint,
-  MarketDataRequest,
-} from "@/services/MarketDataService";
+
+import { useState, useEffect, useCallback } from 'react';
+import { marketDataService, MarketDataPoint, MarketDataRequest } from '@/services/MarketDataService';
 
 interface UseMarketDataReturn {
   data: MarketDataPoint[];
@@ -13,10 +10,7 @@ interface UseMarketDataReturn {
   lastUpdated: Date | null;
 }
 
-export const useMarketData = (
-  symbols: string[],
-  enabled: boolean = true
-): UseMarketDataReturn => {
+export const useMarketData = (symbols: string[], enabled: boolean = true): UseMarketDataReturn => {
   const [data, setData] = useState<MarketDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,17 +25,15 @@ export const useMarketData = (
     try {
       const request: MarketDataRequest = {
         symbols,
-        includeVolume: true,
+        includeVolume: true
       };
 
       const result = await marketDataService.getMarketData(request);
       setData(result);
       setLastUpdated(new Date());
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch market data"
-      );
-      logger.error("useMarketData error:", err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch market data');
+      console.error('useMarketData error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +48,6 @@ export const useMarketData = (
     isLoading,
     error,
     refetch: fetchData,
-    lastUpdated,
+    lastUpdated
   };
 };

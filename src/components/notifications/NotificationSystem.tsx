@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,7 @@ const NotificationSystem = () => {
       const cooldown = 5000; // 5 seconds cooldown
 
       if (now - lastNotificationTime < cooldown) {
-        logger.warn("Notification suppressed due to cooldown.");
+        console.warn("Notification suppressed due to cooldown.");
         return;
       }
 

@@ -54,7 +54,7 @@ export default function Education() {
           setGroupedVideos(sortedGroups);
         }
       } catch (error) {
-        logger.error("Error initializing page:", error);
+        console.error("Error initializing page:", error);
         setUser(null);
       } finally {
         setIsLoading(false);

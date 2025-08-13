@@ -1,6 +1,6 @@
-import { useEffect, useCallback, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useEffect, useCallback, useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AlertNotification {
   signal_id: string;
@@ -9,174 +9,147 @@ interface AlertNotification {
   triggered_price: number;
   notification_type: string;
   timestamp: string;
-  urgency: "critical" | "high" | "normal";
+  urgency: 'critical' | 'high' | 'normal';
 }
 
 export const useInstantAlerts = () => {
   const handleAlertNotification = useCallback((payload: AlertNotification) => {
-    logger.log("🚨 INSTANT ALERT RECEIVED:", payload);
-
+    console.log('🚨 INSTANT ALERT RECEIVED:', payload);
+    
     const { alert_type, target_price, triggered_price, urgency } = payload;
-
+    
     // Format alert message
-    const alertTypeDisplay = alert_type.replace("_", " ").toUpperCase();
-    const priceDirection = triggered_price >= target_price ? "📈" : "📉";
-    const urgencyEmoji =
-      urgency === "critical" ? "🚨" : urgency === "high" ? "⚡" : "💰";
-
+    const alertTypeDisplay = alert_type.replace('_', ' ').toUpperCase();
+    const priceDirection = triggered_price >= target_price ? '📈' : '📉';
+    const urgencyEmoji = urgency === 'critical' ? '🚨' : urgency === 'high' ? '⚡' : '💰';
+    
     const title = `${urgencyEmoji} ${alertTypeDisplay} TRIGGERED!`;
-    const message = `${priceDirection} Target: $${target_price.toFixed(
-      2
-    )} | Triggered: $${triggered_price.toFixed(2)}`;
-
+    const message = `${priceDirection} Target: $${target_price.toFixed(2)} | Triggered: $${triggered_price.toFixed(2)}`;
+    
     // Show toast notification with appropriate styling
-    if (urgency === "critical") {
+    if (urgency === 'critical') {
       toast.error(title, {
         description: message,
         duration: 10000, // Show critical alerts for 10 seconds
-        className: "border-destructive bg-destructive/10 text-destructive",
+        className: 'border-destructive bg-destructive/10 text-destructive',
         action: {
-          label: "View Signal",
+          label: 'View Signal',
           onClick: () => {
             // Navigate to signal detail - could be enhanced
-            logger.log("Navigate to signal:", payload.signal_id);
-          },
-        },
+            console.log('Navigate to signal:', payload.signal_id);
+          }
+        }
       });
     } else {
       toast.success(title, {
         description: message,
         duration: 7000, // Show other alerts for 7 seconds
-        className: "border-primary bg-primary/10 text-primary",
+        className: 'border-primary bg-primary/10 text-primary',
         action: {
-          label: "View Signal",
+          label: 'View Signal',
           onClick: () => {
-            logger.log("Navigate to signal:", payload.signal_id);
-          },
-        },
+            console.log('Navigate to signal:', payload.signal_id);
+          }
+        }
       });
     }
 
     // Play sound notification (browser permitting)
-    if ("Notification" in window && Notification.permission === "granted") {
+    if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, {
         body: message,
-        icon: "/favicon.ico",
-        requireInteraction: urgency === "critical",
+        icon: '/favicon.ico',
+        requireInteraction: urgency === 'critical'
       });
     }
 
     // Browser beep for urgent alerts
-    if (urgency === "critical") {
+    if (urgency === 'critical') {
       // Create audio beep
       try {
-        const audioContext = new (window.AudioContext ||
-          (window as any).webkitAudioContext)();
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
-
+        
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-
+        
         oscillator.frequency.value = 800; // High pitch for urgency
         gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-
+        
         oscillator.start();
         oscillator.stop(audioContext.currentTime + 0.2);
       } catch (error) {
-        logger.log("Audio notification not available");
+        console.log('Audio notification not available');
       }
     }
   }, []);
 
   const handleSignalCreated = useCallback((payload: any) => {
-    logger.log("🆕 NEW SIGNAL CREATED:", payload);
+    console.log('🆕 NEW SIGNAL CREATED:', payload);
 
-    const asset = payload.asset_name || payload.symbol || "New Signal";
-    const type = (payload.trade_type || "").toUpperCase();
+    const asset = payload.asset_name || payload.symbol || 'New Signal';
+    const type = (payload.trade_type || '').toUpperCase();
     const entry = payload.entry_price;
 
-    const author = (payload.author_name || "").trim();
+    const author = (payload.author_name || '').trim();
 
-    const title = author
-      ? `${author} posted a new signal`
-      : `New Signal Created`;
+    const title = author ? `${author} posted a new signal` : `New Signal Created`;
     const details = [
       asset,
       type ? type : undefined,
       entry ? `@ $${Number(entry).toFixed(2)}` : undefined,
-      payload.stop_loss
-        ? `SL $${Number(payload.stop_loss).toFixed(2)}`
-        : undefined,
-    ]
-      .filter(Boolean)
-      .join(" • ");
+      payload.stop_loss ? `SL $${Number(payload.stop_loss).toFixed(2)}` : undefined
+    ].filter(Boolean).join(' • ');
 
     toast.success(title, {
       description: details,
       duration: 6000,
-      className: "border-primary bg-primary/10 text-primary",
+      className: 'border-primary bg-primary/10 text-primary',
       action: {
-        label: "View",
-        onClick: () => logger.log("Navigate to signal:", payload.signal_id),
-      },
+        label: 'View',
+        onClick: () => console.log('Navigate to signal:', payload.signal_id)
+      }
     });
 
-    if ("Notification" in window && Notification.permission === "granted") {
+    if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, {
         body: details,
-        icon: "/favicon.ico",
+        icon: '/favicon.ico'
       });
     }
   }, []);
 
   const handleSignalUpdated = useCallback((payload: any) => {
-    logger.log("♻️ SIGNAL UPDATED:", payload);
+    console.log('♻️ SIGNAL UPDATED:', payload);
 
-    const asset = payload.asset_name || payload.symbol || "Signal";
-    const author = (payload.author_name || "").trim();
+    const asset = payload.asset_name || payload.symbol || 'Signal';
+    const author = (payload.author_name || '').trim();
     const title = author ? `${author} updated signal` : `Signal updated`;
 
-    const status = payload.status
-      ? String(payload.status).toUpperCase()
-      : undefined;
-    const tpHits =
-      Array.isArray(payload.tp_hits) && payload.tp_hits.length
-        ? `TP hits ${payload.tp_hits.join(",")}`
-        : undefined;
-    const closeReason = payload.close_reason
-      ? `Close: ${String(payload.close_reason).replace("_", " ")}`
-      : undefined;
-    const notes = payload.notes
-      ? String(payload.notes).length > 80
-        ? String(payload.notes).slice(0, 77) + "..."
-        : String(payload.notes)
-      : undefined;
+    const status = payload.status ? String(payload.status).toUpperCase() : undefined;
+    const tpHits = Array.isArray(payload.tp_hits) && payload.tp_hits.length ? `TP hits ${payload.tp_hits.join(',')}` : undefined;
+    const closeReason = payload.close_reason ? `Close: ${String(payload.close_reason).replace('_',' ')}` : undefined;
+    const notes = payload.notes ? (String(payload.notes).length > 80 ? String(payload.notes).slice(0,77) + '...' : String(payload.notes)) : undefined;
 
-    const details = [
-      asset,
-      status ? `Status ${status}` : undefined,
-      tpHits,
-      closeReason,
-      notes,
-    ]
+    const details = [asset, status ? `Status ${status}` : undefined, tpHits, closeReason, notes]
       .filter(Boolean)
-      .join(" • ");
+      .join(' • ');
 
     toast.message(title, {
-      description: details || "Signal details updated",
+      description: details || 'Signal details updated',
       duration: 6000,
-      className: "border-primary bg-primary/10 text-primary",
+      className: 'border-primary bg-primary/10 text-primary',
       action: {
-        label: "View",
-        onClick: () => logger.log("Navigate to signal:", payload.signal_id),
-      },
+        label: 'View',
+        onClick: () => console.log('Navigate to signal:', payload.signal_id)
+      }
     });
 
-    if ("Notification" in window && Notification.permission === "granted") {
+    if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, {
-        body: details || "Signal details updated",
-        icon: "/favicon.ico",
+        body: details || 'Signal details updated',
+        icon: '/favicon.ico'
       });
     }
   }, []);
@@ -187,7 +160,7 @@ export const useInstantAlerts = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
-    logger.log("🔔 Setting up instant alert notifications with resilience...");
+    console.log('🔔 Setting up instant alert notifications with resilience...');
 
     const MAX_RETRIES = 5;
     const BASE_DELAY = 1000;
@@ -200,18 +173,9 @@ export const useInstantAlerts = () => {
     let delayedErrorTimer: number | null = null;
 
     const clearTimers = () => {
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-      }
-      if (handshakeTimer) {
-        clearTimeout(handshakeTimer);
-        handshakeTimer = null;
-      }
-      if (delayedErrorTimer) {
-        clearTimeout(delayedErrorTimer);
-        delayedErrorTimer = null;
-      }
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+      if (handshakeTimer) { clearTimeout(handshakeTimer); handshakeTimer = null; }
+      if (delayedErrorTimer) { clearTimeout(delayedErrorTimer); delayedErrorTimer = null; }
     };
 
     const scheduleReconnect = () => {
@@ -219,16 +183,11 @@ export const useInstantAlerts = () => {
       attempts += 1;
       setIsSubscribed(false);
       if (attempts > MAX_RETRIES) {
-        logger.error("❌ Instant alerts failed after retries");
+        console.error('❌ Instant alerts failed after retries');
         return;
       }
-      const delay = Math.min(
-        BASE_DELAY * Math.pow(2, attempts - 1) + Math.random() * JITTER,
-        15000
-      );
-      logger.log(
-        `⏳ Reconnecting to instant alerts in ${delay}ms (attempt ${attempts}/${MAX_RETRIES})`
-      );
+      const delay = Math.min(BASE_DELAY * Math.pow(2, attempts - 1) + Math.random() * JITTER, 15000);
+      console.log(`⏳ Reconnecting to instant alerts in ${delay}ms (attempt ${attempts}/${MAX_RETRIES})`);
       reconnectTimer = window.setTimeout(() => {
         reconnectTimer = null;
         connect();
@@ -238,28 +197,26 @@ export const useInstantAlerts = () => {
     const connect = () => {
       // Remove existing channel if any
       if (channelRef.current) {
-        try {
-          supabase.removeChannel(channelRef.current);
-        } catch {}
+        try { supabase.removeChannel(channelRef.current); } catch {}
         channelRef.current = null;
       }
       subscribed = false;
 
       const ch = supabase
-        .channel("instant-alerts")
-        .on("broadcast", { event: "alert_triggered" }, ({ payload }) => {
+        .channel('instant-alerts')
+        .on('broadcast', { event: 'alert_triggered' }, ({ payload }) => {
           handleAlertNotification(payload as AlertNotification);
         })
-        .on("broadcast", { event: "signal_created" }, ({ payload }) => {
+        .on('broadcast', { event: 'signal_created' }, ({ payload }) => {
           handleSignalCreated(payload);
         })
-        .on("broadcast", { event: "signal_updated" }, ({ payload }) => {
+        .on('broadcast', { event: 'signal_updated' }, ({ payload }) => {
           handleSignalUpdated(payload);
         })
         .subscribe((status) => {
-          logger.log("📡 Instant alerts subscription status:", status);
-          if (status === "SUBSCRIBED") {
-            logger.log("✅ Successfully subscribed to instant alerts");
+          console.log('📡 Instant alerts subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Successfully subscribed to instant alerts');
             subscribed = true;
             attempts = 0;
             setIsSubscribed(true);
@@ -267,102 +224,70 @@ export const useInstantAlerts = () => {
             // Ensure fallback monitoring channel exists
             if (!monitorRef.current) {
               monitorRef.current = supabase
-                .channel("alert-monitoring-changes")
+                .channel('alert-monitoring-changes')
                 // Fallback 1: Alert monitoring deactivation implies a trigger
                 .on(
-                  "postgres_changes",
-                  {
-                    event: "UPDATE",
-                    schema: "public",
-                    table: "alert_monitoring",
-                  },
+                  'postgres_changes',
+                  { event: 'UPDATE', schema: 'public', table: 'alert_monitoring' },
                   (payload: any) => {
                     try {
                       const newRow = payload.new as any;
                       const oldRow = payload.old as any;
-                      logger.log(
-                        "📊 Alert monitoring change detected:",
-                        payload
-                      );
+                      console.log('📊 Alert monitoring change detected:', payload);
                       if (oldRow?.is_active && newRow?.is_active === false) {
-                        const alertType = String(
-                          newRow?.alert_type || "unknown"
-                        );
-                        const urgency: "critical" | "high" | "normal" =
-                          alertType === "stop_loss"
-                            ? "critical"
-                            : alertType.startsWith("take_profit")
-                            ? "high"
-                            : "normal";
+                        const alertType = String(newRow?.alert_type || 'unknown');
+                        const urgency: 'critical' | 'high' | 'normal' =
+                          alertType === 'stop_loss'
+                            ? 'critical'
+                            : alertType.startsWith('take_profit')
+                            ? 'high'
+                            : 'normal';
                         handleAlertNotification({
-                          signal_id: String(newRow?.signal_id || ""),
+                          signal_id: String(newRow?.signal_id || ''),
                           alert_type: alertType,
                           target_price: Number(newRow?.target_price ?? 0),
-                          triggered_price: Number(
-                            newRow?.current_price ?? newRow?.target_price ?? 0
-                          ),
-                          notification_type: "db_fallback",
+                          triggered_price: Number(newRow?.current_price ?? newRow?.target_price ?? 0),
+                          notification_type: 'db_fallback',
                           timestamp: new Date().toISOString(),
                           urgency,
                         });
                       }
                     } catch (err) {
-                      logger.warn(
-                        "Failed to process alert_monitoring fallback",
-                        err
-                      );
+                      console.warn('Failed to process alert_monitoring fallback', err);
                     }
                   }
                 )
                 // Fallback 2: New trade alerts
                 .on(
-                  "postgres_changes",
-                  { event: "INSERT", schema: "public", table: "trade_alerts" },
+                  'postgres_changes',
+                  { event: 'INSERT', schema: 'public', table: 'trade_alerts' },
                   (payload: any) => {
                     try {
                       handleSignalCreated(payload.new);
                     } catch (err) {
-                      logger.warn(
-                        "Failed to process trade_alerts INSERT fallback",
-                        err
-                      );
+                      console.warn('Failed to process trade_alerts INSERT fallback', err);
                     }
                   }
                 )
                 // Fallback 3: Trade alert updates (status, tp hits, etc.)
                 .on(
-                  "postgres_changes",
-                  { event: "UPDATE", schema: "public", table: "trade_alerts" },
+                  'postgres_changes',
+                  { event: 'UPDATE', schema: 'public', table: 'trade_alerts' },
                   (payload: any) => {
                     try {
                       handleSignalUpdated(payload.new);
                     } catch (err) {
-                      logger.warn(
-                        "Failed to process trade_alerts UPDATE fallback",
-                        err
-                      );
+                      console.warn('Failed to process trade_alerts UPDATE fallback', err);
                     }
                   }
                 )
                 .subscribe();
             }
 
-            if (handshakeTimer) {
-              clearTimeout(handshakeTimer);
-              handshakeTimer = null;
-            }
-            if (delayedErrorTimer) {
-              clearTimeout(delayedErrorTimer);
-              delayedErrorTimer = null;
-            }
-          } else if (
-            status === "CHANNEL_ERROR" ||
-            status === "TIMED_OUT" ||
-            status === "CLOSED"
-          ) {
-            logger.warn(
-              "⚠️ Instant alerts channel issue, scheduling reconnect..."
-            );
+            if (handshakeTimer) { clearTimeout(handshakeTimer); handshakeTimer = null; }
+            if (delayedErrorTimer) { clearTimeout(delayedErrorTimer); delayedErrorTimer = null; }
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn('⚠️ Instant alerts channel issue, scheduling reconnect...');
             scheduleReconnect();
           }
         });
@@ -372,7 +297,7 @@ export const useInstantAlerts = () => {
       // Handshake timeout
       handshakeTimer = window.setTimeout(() => {
         if (!subscribed) {
-          logger.warn("⚠️ Instant alerts handshake timeout");
+          console.warn('⚠️ Instant alerts handshake timeout');
           scheduleReconnect();
         }
       }, 5000) as unknown as number;
@@ -380,9 +305,8 @@ export const useInstantAlerts = () => {
       // Delayed user-facing message after 10s if still not connected
       delayedErrorTimer = window.setTimeout(() => {
         if (!subscribed) {
-          toast.message("Alert notifications temporarily unavailable", {
-            description:
-              "Still connecting… We will keep trying in the background.",
+          toast.message('Alert notifications temporarily unavailable', {
+            description: 'Still connecting… We will keep trying in the background.'
           });
         }
       }, 10000) as unknown as number;
@@ -398,42 +322,39 @@ export const useInstantAlerts = () => {
     };
 
     const onVisible = () => {
-      if (document.visibilityState === "visible" && !subscribed) {
+      if (document.visibilityState === 'visible' && !subscribed) {
         attempts = 0;
         scheduleReconnect();
       }
     };
 
-    window.addEventListener("online", onOnline);
-    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
-      window.removeEventListener("online", onOnline);
-      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisible);
       clearTimers();
       if (channelRef.current) supabase.removeChannel(channelRef.current);
       if (monitorRef.current) supabase.removeChannel(monitorRef.current);
       channelRef.current = null;
       monitorRef.current = null;
-      logger.log("🔕 Cleaning up instant alert subscriptions");
+      console.log('🔕 Cleaning up instant alert subscriptions');
     };
   }, [handleAlertNotification, handleSignalCreated, handleSignalUpdated]);
 
   return {
     // Could expose methods for manual alert testing, muting, etc.
-    testAlert: useCallback(
-      (alertType: string = "take_profit_1") => {
-        handleAlertNotification({
-          signal_id: "test-123",
-          alert_type: alertType,
-          target_price: 3400,
-          triggered_price: 3401,
-          notification_type: "take_profit_hit",
-          timestamp: new Date().toISOString(),
-          urgency: alertType === "stop_loss" ? "critical" : "high",
-        });
-      },
-      [handleAlertNotification]
-    ),
+    testAlert: useCallback((alertType: string = 'take_profit_1') => {
+      handleAlertNotification({
+        signal_id: 'test-123',
+        alert_type: alertType,
+        target_price: 3400,
+        triggered_price: 3401,
+        notification_type: 'take_profit_hit',
+        timestamp: new Date().toISOString(),
+        urgency: alertType === 'stop_loss' ? 'critical' : 'high'
+      });
+    }, [handleAlertNotification])
   };
 };

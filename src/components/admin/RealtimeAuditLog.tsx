@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  adminAuditService,
-  AuditLogEntry,
-} from "@/api/services/AdminAuditService";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { adminAuditService, AuditLogEntry } from '@/api/services/AdminAuditService';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -15,17 +13,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
-  FileText,
-  Search,
-  Filter,
+} from '@/components/ui/table';
+import { 
+  FileText, 
+  Search, 
+  Filter, 
   RefreshCw,
   Shield,
   User,
   Database,
-  Settings,
-} from "lucide-react";
+  Settings
+} from 'lucide-react';
 
 interface RealtimeAuditLogProps {
   maxEntries?: number;
@@ -34,26 +32,26 @@ interface RealtimeAuditLogProps {
 export function RealtimeAuditLog({ maxEntries = 50 }: RealtimeAuditLogProps) {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterAction, setFilterAction] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterAction, setFilterAction] = useState<string>('');
 
   useEffect(() => {
     loadAuditLogs();
-
+    
     // Set up real-time subscription for new audit logs
     const channel = supabase
-      .channel("audit-logs-changes")
+      .channel('audit-logs-changes')
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "INSERT",
-          schema: "public",
-          table: "audit_logs",
+          event: 'INSERT',
+          schema: 'public',
+          table: 'audit_logs'
         },
         (payload) => {
-          logger.log("New audit log entry:", payload.new);
+          console.log('New audit log entry:', payload.new);
           const newEntry = payload.new as AuditLogEntry;
-          setAuditLogs((prev) => [newEntry, ...prev.slice(0, maxEntries - 1)]);
+          setAuditLogs(prev => [newEntry, ...prev.slice(0, maxEntries - 1)]);
         }
       )
       .subscribe();
@@ -67,66 +65,50 @@ export function RealtimeAuditLog({ maxEntries = 50 }: RealtimeAuditLogProps) {
     try {
       setLoading(true);
       const result = await adminAuditService.getAuditLogs(maxEntries);
-
+      
       if (result.success && result.data) {
         setAuditLogs(result.data);
       }
     } catch (error) {
-      logger.error("Error loading audit logs:", error);
+      console.error('Error loading audit logs:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const getActionIcon = (action: string) => {
-    if (action.includes("user")) return <User className="w-4 h-4" />;
-    if (action.includes("admin")) return <Shield className="w-4 h-4" />;
-    if (action.includes("system")) return <Settings className="w-4 h-4" />;
-    if (action.includes("database")) return <Database className="w-4 h-4" />;
+    if (action.includes('user')) return <User className="w-4 h-4" />;
+    if (action.includes('admin')) return <Shield className="w-4 h-4" />;
+    if (action.includes('system')) return <Settings className="w-4 h-4" />;
+    if (action.includes('database')) return <Database className="w-4 h-4" />;
     return <FileText className="w-4 h-4" />;
   };
 
   const getActionBadge = (action: string) => {
-    if (action.includes("delete") || action.includes("remove")) {
-      return (
-        <Badge className="bg-red-500/10 text-red-400 border-red-500/20">
-          Destructive
-        </Badge>
-      );
+    if (action.includes('delete') || action.includes('remove')) {
+      return <Badge className="bg-red-500/10 text-red-400 border-red-500/20">Destructive</Badge>;
     }
-    if (action.includes("create") || action.includes("add")) {
-      return (
-        <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
-          Create
-        </Badge>
-      );
+    if (action.includes('create') || action.includes('add')) {
+      return <Badge className="bg-green-500/10 text-green-400 border-green-500/20">Create</Badge>;
     }
-    if (action.includes("update") || action.includes("modify")) {
-      return (
-        <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
-          Update
-        </Badge>
-      );
+    if (action.includes('update') || action.includes('modify')) {
+      return <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">Update</Badge>;
     }
-    return (
-      <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-        Read
-      </Badge>
-    );
+    return <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">Read</Badge>;
   };
 
-  const filteredLogs = auditLogs.filter((log) => {
-    const matchesSearch =
+  const filteredLogs = auditLogs.filter(log => {
+    const matchesSearch = 
       log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.admin_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.target_entity.toLowerCase().includes(searchTerm.toLowerCase());
-
+    
     const matchesFilter = !filterAction || log.action.includes(filterAction);
-
+    
     return matchesSearch && matchesFilter;
   });
 
-  const uniqueActions = [...new Set(auditLogs.map((log) => log.action))];
+  const uniqueActions = [...new Set(auditLogs.map(log => log.action))];
 
   if (loading) {
     return (
@@ -167,10 +149,8 @@ export function RealtimeAuditLog({ maxEntries = 50 }: RealtimeAuditLogProps) {
               className="px-3 py-2 bg-surface border border-default rounded-md text-primary"
             >
               <option value="">All Actions</option>
-              {uniqueActions.map((action) => (
-                <option key={action} value={action}>
-                  {action}
-                </option>
+              {uniqueActions.map(action => (
+                <option key={action} value={action}>{action}</option>
               ))}
             </select>
             <Button
@@ -207,13 +187,13 @@ export function RealtimeAuditLog({ maxEntries = 50 }: RealtimeAuditLogProps) {
                           <span className="text-secondary">{log.action}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-secondary">
-                        {log.admin_email}
-                      </TableCell>
+                      <TableCell className="text-secondary">{log.admin_email}</TableCell>
                       <TableCell className="text-secondary">
                         {log.target_entity}:{log.target_id.substring(0, 8)}...
                       </TableCell>
-                      <TableCell>{getActionBadge(log.action)}</TableCell>
+                      <TableCell>
+                        {getActionBadge(log.action)}
+                      </TableCell>
                       <TableCell className="text-secondary">
                         {new Date(log.created_at).toLocaleString()}
                       </TableCell>
@@ -224,13 +204,14 @@ export function RealtimeAuditLog({ maxEntries = 50 }: RealtimeAuditLogProps) {
                               View Details
                             </summary>
                             <pre className="mt-2 text-xs bg-surface/50 p-2 rounded overflow-x-auto">
-                              {typeof log.details === "string"
-                                ? log.details
-                                : JSON.stringify(log.details, null, 2)}
+                              {typeof log.details === 'string' 
+                                ? log.details 
+                                : JSON.stringify(log.details, null, 2)
+                              }
                             </pre>
                           </details>
                         ) : (
-                          "No details"
+                          'No details'
                         )}
                       </TableCell>
                     </TableRow>
@@ -245,9 +226,7 @@ export function RealtimeAuditLog({ maxEntries = 50 }: RealtimeAuditLogProps) {
                 No Audit Logs
               </h3>
               <p className="text-secondary">
-                {searchTerm || filterAction
-                  ? "No logs match your search criteria."
-                  : "No audit logs found."}
+                {searchTerm || filterAction ? 'No logs match your search criteria.' : 'No audit logs found.'}
               </p>
             </div>
           )}

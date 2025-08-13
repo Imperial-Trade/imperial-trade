@@ -1,37 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Search,
-  Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertCircle,
-  Mail,
-  Send,
-} from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { useRealTimeRequests } from "@/hooks/useRealTimeRequests";
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Search, Eye, CheckCircle, XCircle, Clock, AlertCircle, Mail, Send } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useRealTimeRequests } from '@/hooks/useRealTimeRequests';
 
 interface AccountRequest {
   id: string;
@@ -39,7 +19,7 @@ interface AccountRequest {
   email: string;
   phone_number?: string;
   reason?: string;
-  status: "pending" | "approved" | "rejected";
+  status: 'pending' | 'approved' | 'rejected';
   account_type: string;
   vt_market_account_number?: string;
   website?: string;
@@ -53,91 +33,62 @@ interface AccountRequest {
 
 const REJECTION_TEMPLATES = [
   {
-    value: "incomplete_info",
-    label: "Incomplete Information",
-    text: "Your application lacks required information. Please provide complete details about your trading experience and background.",
+    value: 'incomplete_info',
+    label: 'Incomplete Information',
+    text: 'Your application lacks required information. Please provide complete details about your trading experience and background.'
   },
   {
-    value: "verification_failed",
-    label: "Verification Failed",
-    text: "We were unable to verify the information provided in your application. Please ensure all details are accurate and up-to-date.",
+    value: 'verification_failed',
+    label: 'Verification Failed',
+    text: 'We were unable to verify the information provided in your application. Please ensure all details are accurate and up-to-date.'
   },
   {
-    value: "insufficient_experience",
-    label: "Insufficient Experience",
-    text: "Based on your application, you may need more trading experience before joining our community. We encourage you to continue learning and reapply in the future.",
+    value: 'insufficient_experience',
+    label: 'Insufficient Experience',
+    text: 'Based on your application, you may need more trading experience before joining our community. We encourage you to continue learning and reapply in the future.'
   },
   {
-    value: "invalid_account",
-    label: "Invalid Account Details",
-    text: "The VT Markets account information provided could not be verified. Please check your account details and resubmit.",
+    value: 'invalid_account',
+    label: 'Invalid Account Details',
+    text: 'The VT Markets account information provided could not be verified. Please check your account details and resubmit.'
   },
   {
-    value: "custom",
-    label: "Custom Reason",
-    text: "",
-  },
+    value: 'custom',
+    label: 'Custom Reason',
+    text: ''
+  }
 ];
 
 export const DirectAccountRequestManagement: React.FC = () => {
-  const { requests, loading, loadRequests, clearNewRequestCount } =
-    useRealTimeRequests();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedRequest, setSelectedRequest] = useState<AccountRequest | null>(
-    null
-  );
+  const { requests, loading, loadRequests, clearNewRequestCount } = useRealTimeRequests();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedRequest, setSelectedRequest] = useState<AccountRequest | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
     clearNewRequestCount();
   }, [clearNewRequestCount]);
 
-  const filteredRequests = requests.filter((request) => {
-    const matchesSearch =
-      request.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || request.status === statusFilter;
+  const filteredRequests = requests.filter(request => {
+    const matchesSearch = request.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         request.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending":
-        return (
-          <Badge
-            variant="outline"
-            className="border-yellow-300 text-yellow-700 bg-yellow-50"
-          >
-            <Clock className="w-3 h-3 mr-1" />
-            Pending
-          </Badge>
-        );
-      case "approved":
-        return (
-          <Badge
-            variant="outline"
-            className="border-green-300 text-green-700 bg-green-50"
-          >
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Approved
-          </Badge>
-        );
-      case "rejected":
-        return (
-          <Badge
-            variant="outline"
-            className="border-red-300 text-red-700 bg-red-50"
-          >
-            <XCircle className="w-3 h-3 mr-1" />
-            Rejected
-          </Badge>
-        );
+      case 'pending':
+        return <Badge variant="outline" className="border-yellow-300 text-yellow-700 bg-yellow-50"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
+      case 'approved':
+        return <Badge variant="outline" className="border-green-300 text-green-700 bg-green-50"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="border-red-300 text-red-700 bg-red-50"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -147,12 +98,12 @@ export const DirectAccountRequestManagement: React.FC = () => {
     setActionLoading(request.id);
     try {
       const { error } = await supabase
-        .from("account_requests")
-        .update({
-          status: "approved",
-          updated_at: new Date().toISOString(),
+        .from('account_requests')
+        .update({ 
+          status: 'approved',
+          updated_at: new Date().toISOString()
         })
-        .eq("id", request.id);
+        .eq('id', request.id);
 
       if (error) throw error;
 
@@ -166,7 +117,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
 
       loadRequests();
     } catch (error) {
-      logger.error("Error approving request:", error);
+      console.error('Error approving request:', error);
       toast({
         title: "Error",
         description: "Failed to approve request. Please try again.",
@@ -181,13 +132,13 @@ export const DirectAccountRequestManagement: React.FC = () => {
     setActionLoading(request.id);
     try {
       const { error } = await supabase
-        .from("account_requests")
-        .update({
-          status: "rejected",
+        .from('account_requests')
+        .update({ 
+          status: 'rejected',
           rejection_reason: reason,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
-        .eq("id", request.id);
+        .eq('id', request.id);
 
       if (error) throw error;
 
@@ -201,11 +152,11 @@ export const DirectAccountRequestManagement: React.FC = () => {
 
       loadRequests();
       setRejectionDialogOpen(false);
-      setRejectionReason("");
-      setSelectedTemplate("");
+      setRejectionReason('');
+      setSelectedTemplate('');
       setSelectedRequest(null);
     } catch (error) {
-      logger.error("Error rejecting request:", error);
+      console.error('Error rejecting request:', error);
       toast({
         title: "Error",
         description: "Failed to reject request. Please try again.",
@@ -218,19 +169,19 @@ export const DirectAccountRequestManagement: React.FC = () => {
 
   const handleTemplateChange = (templateValue: string) => {
     setSelectedTemplate(templateValue);
-    const template = REJECTION_TEMPLATES.find((t) => t.value === templateValue);
-    if (template && templateValue !== "custom") {
+    const template = REJECTION_TEMPLATES.find(t => t.value === templateValue);
+    if (template && templateValue !== 'custom') {
       setRejectionReason(template.text);
-    } else if (templateValue === "custom") {
-      setRejectionReason("");
+    } else if (templateValue === 'custom') {
+      setRejectionReason('');
     }
   };
 
   const openRejectionDialog = (request: AccountRequest) => {
     setSelectedRequest(request);
     setRejectionDialogOpen(true);
-    setRejectionReason("");
-    setSelectedTemplate("");
+    setRejectionReason('');
+    setSelectedTemplate('');
   };
 
   if (loading) {
@@ -245,19 +196,11 @@ export const DirectAccountRequestManagement: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-foreground">
-            Account Request Management
-          </h3>
-          <p className="text-muted-foreground">
-            Review and manage account access requests
-          </p>
+          <h3 className="text-lg font-semibold text-foreground">Account Request Management</h3>
+          <p className="text-muted-foreground">Review and manage account access requests</p>
         </div>
-        <Badge
-          variant="outline"
-          className="bg-blue-50 border-blue-200 text-blue-800"
-        >
-          {filteredRequests.length} Request
-          {filteredRequests.length !== 1 ? "s" : ""}
+        <Badge variant="outline" className="bg-blue-50 border-blue-200 text-blue-800">
+          {filteredRequests.length} Request{filteredRequests.length !== 1 ? 's' : ''}
         </Badge>
       </div>
 
@@ -277,18 +220,10 @@ export const DirectAccountRequestManagement: React.FC = () => {
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent className="bg-background border-border">
-            <SelectItem value="all" className="text-foreground">
-              All Statuses
-            </SelectItem>
-            <SelectItem value="pending" className="text-foreground">
-              Pending
-            </SelectItem>
-            <SelectItem value="approved" className="text-foreground">
-              Approved
-            </SelectItem>
-            <SelectItem value="rejected" className="text-foreground">
-              Rejected
-            </SelectItem>
+            <SelectItem value="all" className="text-foreground">All Statuses</SelectItem>
+            <SelectItem value="pending" className="text-foreground">Pending</SelectItem>
+            <SelectItem value="approved" className="text-foreground">Approved</SelectItem>
+            <SelectItem value="rejected" className="text-foreground">Rejected</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -300,13 +235,11 @@ export const DirectAccountRequestManagement: React.FC = () => {
             <CardContent className="flex items-center justify-center py-8">
               <div className="text-center">
                 <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">
-                  No requests found
-                </h3>
+                <h3 className="text-lg font-medium text-foreground mb-2">No requests found</h3>
                 <p className="text-muted-foreground">
-                  {searchTerm || statusFilter !== "all"
-                    ? "Try adjusting your search or filter criteria"
-                    : "No account requests have been submitted yet"}
+                  {searchTerm || statusFilter !== 'all' 
+                    ? 'Try adjusting your search or filter criteria'
+                    : 'No account requests have been submitted yet'}
                 </p>
               </div>
             </CardContent>
@@ -317,95 +250,61 @@ export const DirectAccountRequestManagement: React.FC = () => {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-lg text-foreground">
-                      {request.full_name}
-                    </CardTitle>
-                    <p className="text-muted-foreground mt-1">
-                      {request.email}
-                    </p>
+                    <CardTitle className="text-lg text-foreground">{request.full_name}</CardTitle>
+                    <p className="text-muted-foreground mt-1">{request.email}</p>
                     {request.phone_number && (
-                      <p className="text-sm text-muted-foreground">
-                        {request.phone_number}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{request.phone_number}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
                     {getStatusBadge(request.status)}
-                    {request.resubmission_count &&
-                      request.resubmission_count > 0 && (
-                        <Badge
-                          variant="outline"
-                          className="border-orange-300 text-orange-700 bg-orange-50"
-                        >
-                          Resubmitted {request.resubmission_count}x
-                        </Badge>
-                      )}
+                    {request.resubmission_count && request.resubmission_count > 0 && (
+                      <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-50">
+                        Resubmitted {request.resubmission_count}x
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Account Type
-                    </p>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {request.account_type}
-                    </p>
+                    <p className="text-sm font-medium text-foreground">Account Type</p>
+                    <p className="text-sm text-muted-foreground capitalize">{request.account_type}</p>
                   </div>
                   {request.vt_market_account_number && (
                     <div>
-                      <p className="text-sm font-medium text-foreground">
-                        VT Markets Account
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {request.vt_market_account_number}
-                      </p>
+                      <p className="text-sm font-medium text-foreground">VT Markets Account</p>
+                      <p className="text-sm text-muted-foreground">{request.vt_market_account_number}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      Submitted
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(request.created_at).toLocaleDateString()}
-                    </p>
+                    <p className="text-sm font-medium text-foreground">Submitted</p>
+                    <p className="text-sm text-muted-foreground">{new Date(request.created_at).toLocaleDateString()}</p>
                   </div>
                   {request.website && (
                     <div>
-                      <p className="text-sm font-medium text-foreground">
-                        Website
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {request.website}
-                      </p>
+                      <p className="text-sm font-medium text-foreground">Website</p>
+                      <p className="text-sm text-muted-foreground">{request.website}</p>
                     </div>
                   )}
                 </div>
 
                 {request.reason && (
                   <div className="mb-4">
-                    <p className="text-sm font-medium text-foreground mb-1">
-                      Reason for Request
-                    </p>
-                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded border">
-                      {request.reason}
-                    </p>
+                    <p className="text-sm font-medium text-foreground mb-1">Reason for Request</p>
+                    <p className="text-sm text-muted-foreground bg-muted p-3 rounded border">{request.reason}</p>
                   </div>
                 )}
 
                 {request.rejection_reason && (
                   <div className="mb-4">
-                    <p className="text-sm font-medium text-red-700 mb-1">
-                      Rejection Reason
-                    </p>
-                    <p className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">
-                      {request.rejection_reason}
-                    </p>
+                    <p className="text-sm font-medium text-red-700 mb-1">Rejection Reason</p>
+                    <p className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-200">{request.rejection_reason}</p>
                   </div>
                 )}
 
-                {request.status === "pending" && (
+                {request.status === 'pending' && (
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       onClick={() => handleApprove(request)}
@@ -413,9 +312,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
                       className="bg-green-600 hover:bg-green-700 text-white flex-1"
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      {actionLoading === request.id
-                        ? "Approving..."
-                        : "Approve"}
+                      {actionLoading === request.id ? 'Approving...' : 'Approve'}
                     </Button>
                     <Button
                       onClick={() => openRejectionDialog(request)}
@@ -429,7 +326,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
                   </div>
                 )}
 
-                {request.status !== "pending" && (
+                {request.status !== 'pending' && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Mail className="w-4 h-4" />
                     <span>Email notification sent</span>
@@ -445,29 +342,18 @@ export const DirectAccountRequestManagement: React.FC = () => {
       <Dialog open={rejectionDialogOpen} onOpenChange={setRejectionDialogOpen}>
         <DialogContent className="max-w-md bg-background border-border">
           <DialogHeader>
-            <DialogTitle className="text-foreground">
-              Reject Request
-            </DialogTitle>
+            <DialogTitle className="text-foreground">Reject Request</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="template" className="text-foreground">
-                Rejection Reason Template
-              </Label>
-              <Select
-                value={selectedTemplate}
-                onValueChange={handleTemplateChange}
-              >
+              <Label htmlFor="template" className="text-foreground">Rejection Reason Template</Label>
+              <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
                 <SelectTrigger className="bg-background text-foreground border-border">
                   <SelectValue placeholder="Select a template or write custom reason" />
                 </SelectTrigger>
                 <SelectContent className="bg-background border-border">
                   {REJECTION_TEMPLATES.map((template) => (
-                    <SelectItem
-                      key={template.value}
-                      value={template.value}
-                      className="text-foreground"
-                    >
+                    <SelectItem key={template.value} value={template.value} className="text-foreground">
                       {template.label}
                     </SelectItem>
                   ))}
@@ -475,9 +361,7 @@ export const DirectAccountRequestManagement: React.FC = () => {
               </Select>
             </div>
             <div>
-              <Label htmlFor="reason" className="text-foreground">
-                Rejection Reason
-              </Label>
+              <Label htmlFor="reason" className="text-foreground">Rejection Reason</Label>
               <Textarea
                 id="reason"
                 placeholder="Provide a clear reason for rejection..."
@@ -489,20 +373,12 @@ export const DirectAccountRequestManagement: React.FC = () => {
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <Button
-                onClick={() =>
-                  selectedRequest &&
-                  handleReject(selectedRequest, rejectionReason)
-                }
-                disabled={
-                  !rejectionReason.trim() ||
-                  actionLoading === selectedRequest?.id
-                }
+                onClick={() => selectedRequest && handleReject(selectedRequest, rejectionReason)}
+                disabled={!rejectionReason.trim() || actionLoading === selectedRequest?.id}
                 className="bg-red-600 hover:bg-red-700 text-white flex-1"
               >
                 <Send className="w-4 h-4 mr-2" />
-                {actionLoading === selectedRequest?.id
-                  ? "Rejecting..."
-                  : "Send Rejection"}
+                {actionLoading === selectedRequest?.id ? 'Rejecting...' : 'Send Rejection'}
               </Button>
               <Button
                 onClick={() => setRejectionDialogOpen(false)}

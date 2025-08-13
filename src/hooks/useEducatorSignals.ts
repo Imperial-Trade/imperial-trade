@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EducatorAnalytics {
   total_signals: number;
@@ -39,32 +40,30 @@ export function useEducatorSignals() {
     try {
       // Get basic signal counts from trade_alerts
       const { data: signals, error: signalsError } = await supabase
-        .from("trade_alerts")
-        .select("*")
-        .eq("user_id", user.id);
+        .from('trade_alerts')
+        .select('*')
+        .eq('user_id', user.id);
 
       if (signalsError) {
-        logger.error("Error loading signals:", signalsError);
+        console.error('Error loading signals:', signalsError);
         return;
       }
 
       // Calculate analytics from signals data
       const mockAnalytics: EducatorAnalytics = {
         total_signals: signals?.length || 0,
-        active_signals:
-          signals?.filter((s) => s.status === "active").length || 0,
-        closed_signals:
-          signals?.filter((s) => s.status === "closed").length || 0,
+        active_signals: signals?.filter(s => s.status === 'active').length || 0,
+        closed_signals: signals?.filter(s => s.status === 'closed').length || 0,
         total_followers: 0, // Will be updated when we have followers data
         total_views: 0,
         total_copies: 0,
         avg_success_rate: 0.75, // Mock data for now
-        avg_performance_score: 85, // Mock data for now
+        avg_performance_score: 85 // Mock data for now
       };
 
       setAnalytics(mockAnalytics);
     } catch (error) {
-      logger.error("Error loading analytics:", error);
+      console.error('Error loading analytics:', error);
     }
   };
 
@@ -76,43 +75,40 @@ export function useEducatorSignals() {
       // For now, return empty array as we'll implement followers later
       setFollowers([]);
     } catch (error) {
-      logger.error("Error loading followers:", error);
+      console.error('Error loading followers:', error);
     }
   };
 
   // Send signal notification using edge function
   const notifyFollowers = async (signalId: string, message: string) => {
     try {
-      await supabase.functions.invoke("signal-notification-dispatcher", {
+      await supabase.functions.invoke('signal-notification-dispatcher', {
         body: {
           signal_id: signalId,
           message,
-          notification_type: "signal_update",
-        },
+          notification_type: 'signal_update'
+        }
       });
     } catch (error) {
-      logger.error("Error sending notifications:", error);
+      console.error('Error sending notifications:', error);
     }
   };
 
   // Update signal analytics - simplified version
-  const updateSignalAnalytics = async (
-    signalId: string,
-    updates: Partial<{
-      followers_count: number;
-      engagement_score: number;
-      performance_score: number;
-      total_views: number;
-      total_copies: number;
-      success_rate: number;
-      avg_profit_loss: number;
-    }>
-  ) => {
+  const updateSignalAnalytics = async (signalId: string, updates: Partial<{
+    followers_count: number;
+    engagement_score: number;
+    performance_score: number;
+    total_views: number;
+    total_copies: number;
+    success_rate: number;
+    avg_profit_loss: number;
+  }>) => {
     try {
       // For now, just log the update - can be enhanced later with proper RPC
-      logger.log("Updating signal analytics:", signalId, updates);
+      console.log('Updating signal analytics:', signalId, updates);
     } catch (error) {
-      logger.error("Error updating signal analytics:", error);
+      console.error('Error updating signal analytics:', error);
     }
   };
 
@@ -125,14 +121,14 @@ export function useEducatorSignals() {
 
       // Set up real-time subscriptions for trade_alerts table
       const analyticsChannel = supabase
-        .channel("educator-analytics")
+        .channel('educator-analytics')
         .on(
-          "postgres_changes",
+          'postgres_changes',
           {
-            event: "*",
-            schema: "public",
-            table: "trade_alerts",
-            filter: `user_id=eq.${user.id}`,
+            event: '*',
+            schema: 'public',
+            table: 'trade_alerts',
+            filter: `user_id=eq.${user.id}`
           },
           () => {
             loadAnalytics();
@@ -153,6 +149,6 @@ export function useEducatorSignals() {
     notifyFollowers,
     updateSignalAnalytics,
     refreshAnalytics: loadAnalytics,
-    refreshFollowers: loadFollowers,
+    refreshFollowers: loadFollowers
   };
 }

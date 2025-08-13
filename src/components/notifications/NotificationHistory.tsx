@@ -1,19 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { Search, Filter, Bell, Check, X, Clock } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Search, Filter, Bell, Check, X, Clock } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 interface NotificationDelivery {
   id: string;
@@ -21,7 +15,7 @@ interface NotificationDelivery {
   onesignal_id: string | null;
   title: string;
   message: string;
-  status: "sent" | "delivered" | "opened" | "failed";
+  status: 'sent' | 'delivered' | 'opened' | 'failed';
   sent_at: string;
   delivered_at: string | null;
   error_message: string | null;
@@ -32,12 +26,10 @@ interface NotificationDelivery {
 
 export const NotificationHistory: React.FC = () => {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<NotificationDelivery[]>(
-    []
-  );
+  const [notifications, setNotifications] = useState<NotificationDelivery[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
@@ -52,16 +44,16 @@ export const NotificationHistory: React.FC = () => {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-
+      
       let query = supabase
-        .from("push_notification_deliveries")
-        .select("*")
-        .eq("user_id", user?.id)
-        .order("sent_at", { ascending: false })
+        .from('push_notification_deliveries')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('sent_at', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
 
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
       }
 
       const { data, error } = await query;
@@ -69,21 +61,21 @@ export const NotificationHistory: React.FC = () => {
       if (error) throw error;
 
       // Transform data to match interface types
-      const transformedData = (data || []).map((item) => ({
+      const transformedData = (data || []).map(item => ({
         ...item,
-        status: item.status as "sent" | "delivered" | "opened" | "failed",
+        status: item.status as 'sent' | 'delivered' | 'opened' | 'failed',
         metadata: item.metadata as Record<string, any>,
       }));
 
       if (page === 1) {
         setNotifications(transformedData);
       } else {
-        setNotifications((prev) => [...prev, ...transformedData]);
+        setNotifications(prev => [...prev, ...transformedData]);
       }
 
       setHasMore((data || []).length === pageSize);
     } catch (error) {
-      logger.error("Error loading notifications:", error);
+      console.error('Error loading notifications:', error);
     } finally {
       setLoading(false);
     }
@@ -91,11 +83,11 @@ export const NotificationHistory: React.FC = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "delivered":
+      case 'delivered':
         return <Check className="w-4 h-4 text-green-500" />;
-      case "opened":
+      case 'opened':
         return <Bell className="w-4 h-4 text-blue-500" />;
-      case "failed":
+      case 'failed':
         return <X className="w-4 h-4 text-red-500" />;
       default:
         return <Clock className="w-4 h-4 text-yellow-500" />;
@@ -104,21 +96,20 @@ export const NotificationHistory: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "delivered":
-        return "default";
-      case "opened":
-        return "secondary";
-      case "failed":
-        return "destructive";
+      case 'delivered':
+        return 'default';
+      case 'opened':
+        return 'secondary';
+      case 'failed':
+        return 'destructive';
       default:
-        return "outline";
+        return 'outline';
     }
   };
 
-  const filteredNotifications = notifications.filter(
-    (notification) =>
-      notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      notification.message.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredNotifications = notifications.filter(notification =>
+    notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    notification.message.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSearchChange = (value: string) => {
@@ -131,7 +122,7 @@ export const NotificationHistory: React.FC = () => {
   };
 
   const loadMore = () => {
-    setPage((prev) => prev + 1);
+    setPage(prev => prev + 1);
   };
 
   return (
@@ -139,9 +130,7 @@ export const NotificationHistory: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Notification History</h3>
-          <p className="text-muted-foreground">
-            View your notification delivery history
-          </p>
+          <p className="text-muted-foreground">View your notification delivery history</p>
         </div>
       </div>
 
@@ -158,10 +147,7 @@ export const NotificationHistory: React.FC = () => {
                 className="pl-10"
               />
             </div>
-            <Select
-              value={statusFilter}
-              onValueChange={handleStatusFilterChange}
-            >
+            <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
               <SelectTrigger className="w-48">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue />
@@ -183,9 +169,7 @@ export const NotificationHistory: React.FC = () => {
         {loading && page === 1 ? (
           <Card>
             <CardContent className="pt-6">
-              <div className="text-center text-muted-foreground">
-                Loading notifications...
-              </div>
+              <div className="text-center text-muted-foreground">Loading notifications...</div>
             </CardContent>
           </Card>
         ) : filteredNotifications.length === 0 ? (
@@ -193,13 +177,12 @@ export const NotificationHistory: React.FC = () => {
             <CardContent className="pt-6">
               <div className="text-center py-8">
                 <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  No notifications found
-                </h3>
+                <h3 className="text-lg font-semibold mb-2">No notifications found</h3>
                 <p className="text-muted-foreground">
-                  {searchTerm || statusFilter !== "all"
+                  {searchTerm || statusFilter !== 'all' 
                     ? "Try adjusting your search or filter criteria"
-                    : "You haven't received any notifications yet"}
+                    : "You haven't received any notifications yet"
+                  }
                 </p>
               </div>
             </CardContent>
@@ -224,19 +207,11 @@ export const NotificationHistory: React.FC = () => {
                           </p>
                           <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
                             <span>
-                              Sent{" "}
-                              {formatDistanceToNow(
-                                new Date(notification.sent_at),
-                                { addSuffix: true }
-                              )}
+                              Sent {formatDistanceToNow(new Date(notification.sent_at), { addSuffix: true })}
                             </span>
                             {notification.delivered_at && (
                               <span>
-                                Delivered{" "}
-                                {formatDistanceToNow(
-                                  new Date(notification.delivered_at),
-                                  { addSuffix: true }
-                                )}
+                                Delivered {formatDistanceToNow(new Date(notification.delivered_at), { addSuffix: true })}
                               </span>
                             )}
                             {notification.platform && (
@@ -250,7 +225,7 @@ export const NotificationHistory: React.FC = () => {
                           </Badge>
                         </div>
                       </div>
-
+                      
                       {notification.error_message && (
                         <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
                           <p className="text-sm text-red-700">
@@ -259,19 +234,18 @@ export const NotificationHistory: React.FC = () => {
                         </div>
                       )}
 
-                      {notification.metadata &&
-                        Object.keys(notification.metadata).length > 0 && (
-                          <details className="mt-3">
-                            <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground">
-                              View details
-                            </summary>
-                            <div className="mt-2 p-3 bg-muted rounded-md">
-                              <pre className="text-xs overflow-auto">
-                                {JSON.stringify(notification.metadata, null, 2)}
-                              </pre>
-                            </div>
-                          </details>
-                        )}
+                      {notification.metadata && Object.keys(notification.metadata).length > 0 && (
+                        <details className="mt-3">
+                          <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground">
+                            View details
+                          </summary>
+                          <div className="mt-2 p-3 bg-muted rounded-md">
+                            <pre className="text-xs overflow-auto">
+                              {JSON.stringify(notification.metadata, null, 2)}
+                            </pre>
+                          </div>
+                        </details>
+                      )}
                     </div>
                   </div>
                 </CardContent>

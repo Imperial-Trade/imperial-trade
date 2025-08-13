@@ -1,30 +1,22 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useSignalRealtime as useSignalRealtimeContext } from "@/contexts/SignalRealtimeContext";
-import {
-  TradeAlertWithProfile,
-  tradingApiService,
-} from "@/api/services/TradingApiService";
-import {
-  UpdateTradeAlertDto,
-  TradeAlertResponseDto,
-} from "@/domain/dtos/trading/CreateTradeAlertDto";
+
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSignalRealtime as useSignalRealtimeContext } from '@/contexts/SignalRealtimeContext';
+import { TradeAlertWithProfile, tradingApiService } from '@/api/services/TradingApiService';
+import { UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
 interface UseSignalRealtimeReturn {
   alerts: TradeAlertWithProfile[];
   isLoading: boolean;
   error: string | null;
-  connectionStatus: "connecting" | "connected" | "disconnected" | "error";
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   nextRetryAt: number | null;
-  updateAlert: (
-    id: string,
-    dto: UpdateTradeAlertDto
-  ) => Promise<TradeAlertResponseDto | null>;
+  updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
   refreshAlerts: () => Promise<void>;
   lastUpdated: Date | null;
 }
 
 export const useSignalRealtime = (
-  userId: string = "",
+  userId: string = '', 
   showAllSignals: boolean = false
 ): UseSignalRealtimeReturn => {
   const {
@@ -35,7 +27,7 @@ export const useSignalRealtime = (
     subscribe,
     unsubscribe,
     refreshSignals,
-    nextRetryAt,
+    nextRetryAt
   } = useSignalRealtimeContext();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -44,30 +36,25 @@ export const useSignalRealtime = (
   // Since RLS policies now handle filtering, we can return all signals from the context
   // The database will only return educator/admin signals due to the RLS policy
   const filteredAlerts = useMemo(() => {
-    logger.log("useSignalRealtime - RLS-filtered signals from context:", {
+    console.log('useSignalRealtime - RLS-filtered signals from context:', {
       totalSignals: signals.length,
       showAllSignals,
-      userId: userId || "empty",
+      userId: userId || 'empty'
     });
 
     // RLS policies handle filtering automatically, so we can return all signals
     // These are already filtered to only show educator/admin signals
-    logger.log(
-      "useSignalRealtime - Returning RLS-filtered signals:",
-      signals.length
-    );
+    console.log('useSignalRealtime - Returning RLS-filtered signals:', signals.length);
     return signals;
   }, [signals, showAllSignals, userId]);
 
   // Subscribe to realtime updates - always subscribe since RLS handles filtering
   useEffect(() => {
-    logger.log(
-      "useSignalRealtime - Subscribing to RLS-filtered real-time updates"
-    );
+    console.log('useSignalRealtime - Subscribing to RLS-filtered real-time updates');
     subscribe();
-
+    
     return () => {
-      logger.log("useSignalRealtime - Unsubscribing from real-time updates");
+      console.log('useSignalRealtime - Unsubscribing from real-time updates');
       unsubscribe();
     };
   }, [subscribe, unsubscribe]);
@@ -77,56 +64,43 @@ export const useSignalRealtime = (
     setError(realtimeError);
   }, [realtimeError]);
 
-  const updateAlert = useCallback(
-    async (
-      id: string,
-      dto: UpdateTradeAlertDto
-    ): Promise<TradeAlertResponseDto | null> => {
-      if (!userId || !userId.trim()) {
-        logger.warn("useSignalRealtime - Cannot update alert: invalid userId");
+  const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
+    if (!userId || !userId.trim()) {
+      console.warn('useSignalRealtime - Cannot update alert: invalid userId');
+      return null;
+    }
+
+    try {
+      setIsLoading(true);
+      const result = await tradingApiService.updateAlert(id, dto, userId);
+      
+      if (result.success && result.data) {
+        // The realtime context will handle the update automatically
+        return result.data;
+      } else {
+        console.error('useSignalRealtime - Failed to update alert:', result.error);
+        setError(result.error || 'Failed to update alert');
         return null;
       }
-
-      try {
-        setIsLoading(true);
-        const result = await tradingApiService.updateAlert(id, dto, userId);
-
-        if (result.success && result.data) {
-          // The realtime context will handle the update automatically
-          return result.data;
-        } else {
-          logger.error(
-            "useSignalRealtime - Failed to update alert:",
-            result.error
-          );
-          setError(result.error || "Failed to update alert");
-          return null;
-        }
-      } catch (error) {
-        logger.error("useSignalRealtime - Error updating alert:", error);
-        setError(error instanceof Error ? error.message : "Unknown error");
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [userId]
-  );
+    } catch (error) {
+      console.error('useSignalRealtime - Error updating alert:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
 
   const handleRefreshAlerts = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      logger.log("useSignalRealtime - Manually refreshing RLS-filtered alerts");
+      console.log('useSignalRealtime - Manually refreshing RLS-filtered alerts');
       await refreshSignals();
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to refresh alerts";
+      const errorMessage = err instanceof Error ? err.message : 'Failed to refresh alerts';
       setError(errorMessage);
-      logger.error(
-        "useSignalRealtime - Failed to refresh alerts:",
-        errorMessage
-      );
+      console.error('useSignalRealtime - Failed to refresh alerts:', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -140,6 +114,6 @@ export const useSignalRealtime = (
     nextRetryAt,
     updateAlert,
     refreshAlerts: handleRefreshAlerts,
-    lastUpdated,
+    lastUpdated
   };
 };

@@ -1,6 +1,6 @@
-import { useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface OrderTriggerPayload {
   orderId: string;
@@ -14,65 +14,57 @@ interface OrderTriggerPayload {
 export const useOrderTriggerMonitor = (userId?: string) => {
   const { toast } = useToast();
 
-  const handleOrderTrigger = useCallback(
-    (payload: OrderTriggerPayload) => {
-      // Only show notification for current user's orders
-      if (userId && payload.userId === userId) {
-        toast({
-          title: "🎯 Limit Order Triggered!",
-          description: `Your ${payload.tradeType.replace("_", " ")} order for ${
-            payload.assetName
-          } at $${payload.entryPrice} is now active`,
-          duration: 5000,
+  const handleOrderTrigger = useCallback((payload: OrderTriggerPayload) => {
+    // Only show notification for current user's orders
+    if (userId && payload.userId === userId) {
+      toast({
+        title: "🎯 Limit Order Triggered!",
+        description: `Your ${payload.tradeType.replace('_', ' ')} order for ${payload.assetName} at $${payload.entryPrice} is now active`,
+        duration: 5000,
+      });
+
+      // Optional: Play notification sound
+      try {
+        const audio = new Audio('/notification.mp3');
+        audio.volume = 0.3;
+        audio.play().catch(() => {
+          // Ignore audio errors (user interaction required)
         });
-
-        // Optional: Play notification sound
-        try {
-          const audio = new Audio("/notification.mp3");
-          audio.volume = 0.3;
-          audio.play().catch(() => {
-            // Ignore audio errors (user interaction required)
-          });
-        } catch (error) {
-          // Ignore audio errors
-        }
-
-        // Optional: Browser notification (requires permission)
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("Limit Order Triggered", {
-            body: `${payload.assetName} ${payload.tradeType.replace(
-              "_",
-              " "
-            )} at $${payload.entryPrice}`,
-            icon: "/favicon.ico",
-            tag: `order-${payload.orderId}`,
-          });
-        }
+      } catch (error) {
+        // Ignore audio errors
       }
-    },
-    [userId, toast]
-  );
+
+      // Optional: Browser notification (requires permission)
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Limit Order Triggered', {
+          body: `${payload.assetName} ${payload.tradeType.replace('_', ' ')} at $${payload.entryPrice}`,
+          icon: '/favicon.ico',
+          tag: `order-${payload.orderId}`,
+        });
+      }
+    }
+  }, [userId, toast]);
 
   useEffect(() => {
     if (!userId) return;
 
-    logger.log("🔔 Setting up order trigger monitoring for user:", userId);
+    console.log('🔔 Setting up order trigger monitoring for user:', userId);
 
     // Subscribe to order trigger broadcasts
     const channel = supabase
-      .channel("order-triggers")
-      .on("broadcast", { event: "order_triggered" }, ({ payload }) => {
-        logger.log("📢 Order trigger received:", payload);
+      .channel('order-triggers')
+      .on('broadcast', { event: 'order_triggered' }, ({ payload }) => {
+        console.log('📢 Order trigger received:', payload);
         handleOrderTrigger(payload as OrderTriggerPayload);
       })
       .subscribe((status) => {
-        logger.log("📡 Order trigger subscription status:", status);
+        console.log('📡 Order trigger subscription status:', status);
       });
 
     // Notification permission is handled centrally by NotificationsContext
 
     return () => {
-      logger.log("🔕 Cleaning up order trigger monitoring");
+      console.log('🔕 Cleaning up order trigger monitoring');
       supabase.removeChannel(channel);
     };
   }, [userId, handleOrderTrigger]);
@@ -80,14 +72,12 @@ export const useOrderTriggerMonitor = (userId?: string) => {
   // Manual trigger function for testing/manual activation
   const triggerOrderMonitor = useCallback(async () => {
     try {
-      logger.log("🚀 Manually triggering order monitor...");
-
-      const { data, error } = await supabase.functions.invoke(
-        "order-trigger-monitor"
-      );
-
+      console.log('🚀 Manually triggering order monitor...');
+      
+      const { data, error } = await supabase.functions.invoke('order-trigger-monitor');
+      
       if (error) {
-        logger.error("❌ Error triggering order monitor:", error);
+        console.error('❌ Error triggering order monitor:', error);
         toast({
           title: "Monitor Error",
           description: "Failed to run order monitor",
@@ -96,8 +86,8 @@ export const useOrderTriggerMonitor = (userId?: string) => {
         return false;
       }
 
-      logger.log("✅ Order monitor completed:", data);
-
+      console.log('✅ Order monitor completed:', data);
+      
       if (data.triggered > 0) {
         toast({
           title: "Orders Processed",
@@ -107,7 +97,7 @@ export const useOrderTriggerMonitor = (userId?: string) => {
 
       return true;
     } catch (error) {
-      logger.error("💥 Fatal error calling order monitor:", error);
+      console.error('💥 Fatal error calling order monitor:', error);
       toast({
         title: "Monitor Error",
         description: "Failed to run order monitor",

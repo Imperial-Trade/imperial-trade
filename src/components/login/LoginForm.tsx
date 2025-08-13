@@ -36,7 +36,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     try {
       await onSubmit(data);
     } catch (error) {
-      logger.error("Login error:", error);
+      console.error("Login error:", error);
     }
   };
 

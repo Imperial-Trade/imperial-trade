@@ -1,120 +1,82 @@
-import React, { useState, useCallback, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Search,
-  Filter,
-  X,
-  Download,
-  RefreshCw,
-  Clock,
-  CheckCircle,
-  XCircle,
-  User,
-  Mail,
+import React, { useState, useCallback, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Search, 
+  Filter, 
+  X, 
+  Download, 
+  RefreshCw, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  User, 
+  Mail, 
   Phone,
   Shield,
   Calendar,
-  Settings,
-} from "lucide-react";
-import { AuditLog } from "@/api/entities";
-import { supabase } from "@/integrations/supabase/client";
-import { motion, AnimatePresence } from "framer-motion";
-import { ProfessionalButton } from "@/components/ui/professional-button";
-import { ProfessionalToast } from "@/components/ui/professional-toast";
-import { useProfessionalToast } from "@/hooks/useProfessionalToast";
-import { useOptimizedRealTimeRequests } from "@/hooks/useOptimizedRealTimeRequests";
-import { useOptimizedFiltering } from "@/hooks/useOptimizedFiltering";
-import { useOptimizedSearch } from "@/hooks/useOptimizedSearch";
-import { useOptimizedRetry } from "@/hooks/useOptimizedRetry";
+  Settings
+} from 'lucide-react';
+import { AuditLog } from '@/api/entities';
+import { supabase } from '@/integrations/supabase/client';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ProfessionalButton } from '@/components/ui/professional-button';
+import { ProfessionalToast } from '@/components/ui/professional-toast';
+import { useProfessionalToast } from '@/hooks/useProfessionalToast';
+import { useOptimizedRealTimeRequests } from '@/hooks/useOptimizedRealTimeRequests';
+import { useOptimizedFiltering } from '@/hooks/useOptimizedFiltering';
+import { useOptimizedSearch } from '@/hooks/useOptimizedSearch';
+import { useOptimizedRetry } from '@/hooks/useOptimizedRetry';
 
 export const OptimizedAccountRequestManagement: React.FC = () => {
-  const {
-    requests,
-    newRequestCount,
-    loading,
-    error,
-    loadRequests,
-    clearNewRequestCount,
-  } = useOptimizedRealTimeRequests();
-
+  const { requests, newRequestCount, loading, error, loadRequests, clearNewRequestCount } = useOptimizedRealTimeRequests();
+  
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState<string>("");
   const [showRejectForm, setShowRejectForm] = useState<string | null>(null);
-
+  
   // Filter states
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [resubmissionFilter, setResubmissionFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("created_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [resubmissionFilter, setResubmissionFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  const {
-    searchTerm,
-    debouncedSearchTerm,
-    handleSearchChange,
-    clearSearch,
-    isSearching,
-  } = useOptimizedSearch("", {
+  const { searchTerm, debouncedSearchTerm, handleSearchChange, clearSearch, isSearching } = useOptimizedSearch('', {
     delay: 300,
-    minLength: 1,
+    minLength: 1
   });
 
-  const {
-    toasts,
-    success,
-    error: showError,
-    celebrate,
-    withProgress,
-    updateToast,
-    removeToast,
-  } = useProfessionalToast();
+  const { toasts, success, error: showError, celebrate, withProgress, updateToast, removeToast } = useProfessionalToast();
 
-  const filterOptions = useMemo(
-    () => ({
-      statusFilter,
-      searchTerm: debouncedSearchTerm,
-      resubmissionFilter,
-      sortBy,
-      sortOrder,
-    }),
-    [statusFilter, debouncedSearchTerm, resubmissionFilter, sortBy, sortOrder]
-  );
+  const filterOptions = useMemo(() => ({
+    statusFilter,
+    searchTerm: debouncedSearchTerm,
+    resubmissionFilter,
+    sortBy,
+    sortOrder
+  }), [statusFilter, debouncedSearchTerm, resubmissionFilter, sortBy, sortOrder]);
 
-  const { filteredRequests, stats } = useOptimizedFiltering(
-    requests,
-    filterOptions
-  );
+  const { filteredRequests, stats } = useOptimizedFiltering(requests, filterOptions);
 
   // Optimized approval with retry logic
   const { execute: executeApproval } = useOptimizedRetry(
     async (requestId: string, userEmail: string) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const { data, error } = await supabase.functions.invoke(
-        "account-approval",
-        {
-          body: {
-            requestId: requestId,
-            status: "approved",
-          },
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase.functions.invoke('account-approval', {
+        body: {
+          requestId: requestId,
+          status: 'approved'
         }
-      );
+      });
 
       if (error) {
-        throw new Error(error.message || "Failed to approve account request");
+        throw new Error(error.message || 'Failed to approve account request');
       }
 
       await AuditLog.create({
@@ -122,40 +84,35 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
         admin_email: user?.email || "admin",
         target_entity: "account_requests",
         target_id: requestId,
-        details: {
+        details: { 
           user_email: userEmail,
-          user_created: true,
-        },
+          user_created: true 
+        }
       });
 
       return data;
     },
     {
       maxAttempts: 3,
-      initialDelay: 1000,
+      initialDelay: 1000
     }
   );
 
   // Optimized rejection with retry logic
   const { execute: executeRejection } = useOptimizedRetry(
     async (requestId: string, userEmail: string, reason: string) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const { data, error } = await supabase.functions.invoke(
-        "account-approval",
-        {
-          body: {
-            requestId: requestId,
-            status: "rejected",
-            rejectionReason: reason,
-          },
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase.functions.invoke('account-approval', {
+        body: {
+          requestId: requestId,
+          status: 'rejected',
+          rejectionReason: reason
         }
-      );
+      });
 
       if (error) {
-        throw new Error(error.message || "Failed to reject account request");
+        throw new Error(error.message || 'Failed to reject account request');
       }
 
       await AuditLog.create({
@@ -163,176 +120,137 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
         admin_email: user?.email || "admin",
         target_entity: "account_requests",
         target_id: requestId,
-        details: {
+        details: { 
           user_email: userEmail,
-          rejection_reason: reason,
-        },
+          rejection_reason: reason
+        }
       });
 
       return data;
     },
     {
       maxAttempts: 3,
-      initialDelay: 1000,
+      initialDelay: 1000
     }
   );
 
-  const handleApprove = useCallback(
-    async (requestId: string, userEmail: string) => {
-      setActionLoading(requestId);
+  const handleApprove = useCallback(async (requestId: string, userEmail: string) => {
+    setActionLoading(requestId);
+    
+    const progressToastId = withProgress(
+      "Approving Account",
+      "Creating user account and setting up profile..."
+    );
 
-      const progressToastId = withProgress(
-        "Approving Account",
-        "Creating user account and setting up profile..."
-      );
+    try {
+      updateToast(progressToastId, { progress: 25 });
+      
+      await executeApproval(requestId, userEmail);
 
-      try {
-        updateToast(progressToastId, { progress: 25 });
+      updateToast(progressToastId, { 
+        progress: 75,
+        title: "Almost Done",
+        description: "Finalizing account setup..."
+      });
 
-        await executeApproval(requestId, userEmail);
-
-        updateToast(progressToastId, {
-          progress: 75,
-          title: "Almost Done",
-          description: "Finalizing account setup...",
-        });
-
-        updateToast(progressToastId, { progress: 100 });
-
-        setTimeout(() => {
-          removeToast(progressToastId);
-          celebrate(
-            "Account Approved! 🎉",
-            `${userEmail} has been approved and can now access the platform.`
-          );
-        }, 500);
-
-        setActionSuccess(requestId);
-        setTimeout(() => setActionSuccess(null), 2000);
-      } catch (error) {
-        logger.error("Error approving request:", error);
+      updateToast(progressToastId, { progress: 100 });
+      
+      setTimeout(() => {
         removeToast(progressToastId);
-        showError(
-          "Approval Failed",
-          error instanceof Error
-            ? error.message
-            : "Failed to approve account request. Please try again."
+        celebrate(
+          "Account Approved! 🎉",
+          `${userEmail} has been approved and can now access the platform.`
         );
-      } finally {
-        setActionLoading(null);
-      }
-    },
-    [
-      executeApproval,
-      withProgress,
-      updateToast,
-      removeToast,
-      celebrate,
-      showError,
-    ]
-  );
+      }, 500);
 
-  const handleReject = useCallback(
-    async (requestId: string, userEmail: string) => {
-      if (!rejectionReason.trim()) {
-        showError(
-          "Rejection Reason Required",
-          "Please provide a reason for rejection before proceeding."
-        );
-        return;
-      }
+      setActionSuccess(requestId);
+      setTimeout(() => setActionSuccess(null), 2000);
 
-      setActionLoading(requestId);
-
-      const progressToastId = withProgress(
-        "Rejecting Request",
-        "Processing rejection and sending notification..."
+    } catch (error) {
+      console.error("Error approving request:", error);
+      removeToast(progressToastId);
+      showError(
+        "Approval Failed",
+        error instanceof Error ? error.message : "Failed to approve account request. Please try again."
       );
+    } finally {
+      setActionLoading(null);
+    }
+  }, [executeApproval, withProgress, updateToast, removeToast, celebrate, showError]);
 
-      try {
-        updateToast(progressToastId, { progress: 50 });
+  const handleReject = useCallback(async (requestId: string, userEmail: string) => {
+    if (!rejectionReason.trim()) {
+      showError("Rejection Reason Required", "Please provide a reason for rejection before proceeding.");
+      return;
+    }
 
-        await executeRejection(requestId, userEmail, rejectionReason);
+    setActionLoading(requestId);
+    
+    const progressToastId = withProgress(
+      "Rejecting Request",
+      "Processing rejection and sending notification..."
+    );
 
-        updateToast(progressToastId, { progress: 100 });
+    try {
+      updateToast(progressToastId, { progress: 50 });
+      
+      await executeRejection(requestId, userEmail, rejectionReason);
 
-        setTimeout(() => {
-          removeToast(progressToastId);
-          success(
-            "Request Rejected",
-            `${userEmail}'s request has been rejected and they have been notified.`
-          );
-        }, 500);
+      updateToast(progressToastId, { progress: 100 });
 
-        setActionSuccess(requestId);
-        setTimeout(() => setActionSuccess(null), 2000);
-
-        setRejectionReason("");
-        setShowRejectForm(null);
-      } catch (error) {
-        logger.error("Error rejecting request:", error);
+      setTimeout(() => {
         removeToast(progressToastId);
-        showError(
-          "Rejection Failed",
-          error instanceof Error
-            ? error.message
-            : "Failed to reject account request. Please try again."
+        success(
+          "Request Rejected",
+          `${userEmail}'s request has been rejected and they have been notified.`
         );
-      } finally {
-        setActionLoading(null);
-      }
-    },
-    [
-      rejectionReason,
-      executeRejection,
-      withProgress,
-      updateToast,
-      removeToast,
-      success,
-      showError,
-    ]
-  );
+      }, 500);
+
+      setActionSuccess(requestId);
+      setTimeout(() => setActionSuccess(null), 2000);
+
+      setRejectionReason("");
+      setShowRejectForm(null);
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+      removeToast(progressToastId);
+      showError(
+        "Rejection Failed",
+        error instanceof Error ? error.message : "Failed to reject account request. Please try again."
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  }, [rejectionReason, executeRejection, withProgress, updateToast, removeToast, success, showError]);
 
   const handleClearFilters = useCallback(() => {
-    setStatusFilter("all");
+    setStatusFilter('all');
     clearSearch();
-    setResubmissionFilter("all");
-    setSortBy("created_at");
-    setSortOrder("desc");
+    setResubmissionFilter('all');
+    setSortBy('created_at');
+    setSortOrder('desc');
   }, [clearSearch]);
 
   const handleExportRequests = useCallback(() => {
-    const headers = [
-      "Email",
-      "Full Name",
-      "Status",
-      "Account Type",
-      "VT Account",
-      "Created At",
-      "Resubmission Count",
-    ];
+    const headers = ['Email', 'Full Name', 'Status', 'Account Type', 'VT Account', 'Created At', 'Resubmission Count'];
     const csvContent = [
-      headers.join(","),
-      ...filteredRequests.map((request) =>
-        [
-          request.email,
-          `"${request.full_name}"`,
-          request.status,
-          request.account_type,
-          request.vt_market_account_number || "",
-          new Date(request.created_at).toLocaleDateString(),
-          request.resubmission_count || 0,
-        ].join(",")
-      ),
-    ].join("\n");
+      headers.join(','),
+      ...filteredRequests.map(request => [
+        request.email,
+        `"${request.full_name}"`,
+        request.status,
+        request.account_type,
+        request.vt_market_account_number || '',
+        new Date(request.created_at).toLocaleDateString(),
+        request.resubmission_count || 0
+      ].join(','))
+    ].join('\n');
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
+    const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = `account-requests-${
-      new Date().toISOString().split("T")[0]
-    }.csv`;
+    a.download = `account-requests-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   }, [filteredRequests]);
@@ -340,47 +258,23 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
   const getStatusBadge = useCallback((status: string) => {
     switch (status) {
       case "pending":
-        return (
-          <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 font-medium">
-            <Clock className="w-3 h-3 mr-1" />
-            Pending
-          </Badge>
-        );
+        return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 font-medium"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
       case "approved":
-        return (
-          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 font-medium">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Approved
-          </Badge>
-        );
+        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20 font-medium"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
       case "rejected":
-        return (
-          <Badge className="bg-red-500/10 text-red-600 border-red-500/20 font-medium">
-            <XCircle className="w-3 h-3 mr-1" />
-            Rejected
-          </Badge>
-        );
+        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20 font-medium"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
       default:
-        return (
-          <Badge className="bg-muted text-muted-foreground border font-medium">
-            Unknown
-          </Badge>
-        );
+        return <Badge className="bg-muted text-muted-foreground border font-medium">Unknown</Badge>;
     }
   }, []);
 
-  const hasActiveFilters =
-    statusFilter !== "all" ||
-    debouncedSearchTerm !== "" ||
-    resubmissionFilter !== "all";
+  const hasActiveFilters = statusFilter !== 'all' || debouncedSearchTerm !== '' || resubmissionFilter !== 'all';
 
   if (loading && !requests.length) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">
-            Account Request Management
-          </h2>
+          <h2 className="text-2xl font-bold text-foreground">Account Request Management</h2>
         </div>
         <Card>
           <CardContent className="p-6 text-center">
@@ -396,16 +290,12 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">
-            Account Request Management
-          </h2>
+          <h2 className="text-2xl font-bold text-foreground">Account Request Management</h2>
         </div>
         <Card>
           <CardContent className="p-6 text-center">
             <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              Error Loading Requests
-            </h3>
+            <h3 className="text-xl font-semibold text-foreground mb-2">Error Loading Requests</h3>
             <p className="text-muted-foreground mb-4">{error}</p>
             <Button onClick={loadRequests} className="gap-2">
               <RefreshCw className="w-4 h-4" />
@@ -423,14 +313,10 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
         {/* Header with Actions */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">
-              Account Request Management
-            </h2>
-            <p className="text-muted-foreground mt-1">
-              Review and manage account requests with advanced filtering
-            </p>
+            <h2 className="text-2xl font-bold text-foreground">Account Request Management</h2>
+            <p className="text-muted-foreground mt-1">Review and manage account requests with advanced filtering</p>
           </div>
-
+          
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -447,9 +333,7 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
               className="hover:bg-accent"
               disabled={loading}
             >
-              <RefreshCw
-                className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
@@ -461,60 +345,44 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Total
-                  </p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {stats.total}
-                  </p>
+                  <p className="text-sm font-medium text-muted-foreground">Total</p>
+                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
                 </div>
                 <User className="w-8 h-8 text-blue-600" />
               </div>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Pending
-                  </p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {stats.pending}
-                  </p>
+                  <p className="text-sm font-medium text-muted-foreground">Pending</p>
+                  <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
                 </div>
                 <Clock className="w-8 h-8 text-yellow-600" />
               </div>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Approved
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {stats.approved}
-                  </p>
+                  <p className="text-sm font-medium text-muted-foreground">Approved</p>
+                  <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Rejected
-                  </p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {stats.rejected}
-                  </p>
+                  <p className="text-sm font-medium text-muted-foreground">Rejected</p>
+                  <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
                 </div>
                 <XCircle className="w-8 h-8 text-red-600" />
               </div>
@@ -548,7 +416,7 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
                   )}
                 </div>
               </div>
-
+              
               <div className="flex gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-32 bg-background border-border">
@@ -562,19 +430,14 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
                   </SelectContent>
                 </Select>
 
-                <Select
-                  value={resubmissionFilter}
-                  onValueChange={setResubmissionFilter}
-                >
+                <Select value={resubmissionFilter} onValueChange={setResubmissionFilter}>
                   <SelectTrigger className="w-40 bg-background border-border">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Requests</SelectItem>
                     <SelectItem value="original">Original Only</SelectItem>
-                    <SelectItem value="resubmitted">
-                      Resubmitted Only
-                    </SelectItem>
+                    <SelectItem value="resubmitted">Resubmitted Only</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -592,12 +455,10 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
 
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    setSortOrder(sortOrder === "asc" ? "desc" : "asc")
-                  }
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                   className="hover:bg-accent"
                 >
-                  {sortOrder === "asc" ? "↑" : "↓"}
+                  {sortOrder === 'asc' ? '↑' : '↓'}
                 </Button>
               </div>
             </div>
@@ -605,10 +466,9 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground font-medium">
-                  Showing {filteredRequests.length} of {requests.length}{" "}
-                  requests
+                  Showing {filteredRequests.length} of {requests.length} requests
                 </span>
-
+                
                 {hasActiveFilters && (
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">
@@ -636,13 +496,12 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
           <Card>
             <CardContent className="p-6 text-center">
               <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-foreground mb-2">
-                No Account Requests
-              </h3>
+              <h3 className="text-xl font-semibold text-foreground mb-2">No Account Requests</h3>
               <p className="text-muted-foreground">
-                {hasActiveFilters
+                {hasActiveFilters 
                   ? "No requests match your current filters. Try adjusting your search criteria."
-                  : "There are currently no account requests to review."}
+                  : "There are currently no account requests to review."
+                }
               </p>
             </CardContent>
           </Card>
@@ -672,64 +531,40 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-sm">
                             <Mail className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-muted-foreground font-medium">
-                              Email:
-                            </span>
-                            <span className="text-foreground">
-                              {request.email}
-                            </span>
+                            <span className="text-muted-foreground font-medium">Email:</span>
+                            <span className="text-foreground">{request.email}</span>
                           </div>
                           <div className="flex items-center gap-2 text-sm">
                             <Phone className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-muted-foreground font-medium">
-                              Phone:
-                            </span>
-                            <span className="text-foreground">
-                              {request.phone_number || "Not provided"}
-                            </span>
+                            <span className="text-muted-foreground font-medium">Phone:</span>
+                            <span className="text-foreground">{request.phone_number || "Not provided"}</span>
                           </div>
                           <div className="flex items-center gap-2 text-sm">
                             <Shield className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-muted-foreground font-medium">
-                              VT Account:
-                            </span>
-                            <span className="text-foreground">
-                              {request.vt_market_account_number}
-                            </span>
+                            <span className="text-muted-foreground font-medium">VT Account:</span>
+                            <span className="text-foreground">{request.vt_market_account_number}</span>
                           </div>
                         </div>
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-sm">
                             <User className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-muted-foreground font-medium">
-                              Type:
-                            </span>
+                            <span className="text-muted-foreground font-medium">Type:</span>
                             <span className="text-foreground">
-                              {request.account_type === "user"
-                                ? "Standard Member"
-                                : "Educator / IB Partner"}
+                              {request.account_type === "user" ? "Standard Member" : "Educator / IB Partner"}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 text-sm">
                             <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-muted-foreground font-medium">
-                              Submitted:
-                            </span>
+                            <span className="text-muted-foreground font-medium">Submitted:</span>
                             <span className="text-foreground">
-                              {new Date(
-                                request.created_at
-                              ).toLocaleDateString()}
+                              {new Date(request.created_at).toLocaleDateString()}
                             </span>
                           </div>
                           {request.resubmission_count > 0 && (
                             <div className="flex items-center gap-2 text-sm">
                               <RefreshCw className="w-4 h-4 text-orange-500" />
-                              <span className="text-muted-foreground font-medium">
-                                Resubmissions:
-                              </span>
-                              <span className="text-orange-600 font-medium">
-                                {request.resubmission_count}
-                              </span>
+                              <span className="text-muted-foreground font-medium">Resubmissions:</span>
+                              <span className="text-orange-600 font-medium">{request.resubmission_count}</span>
                             </div>
                           )}
                         </div>
@@ -737,9 +572,7 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
 
                       {request.reason && (
                         <div className="bg-muted p-3 rounded-lg border">
-                          <h4 className="font-semibold text-foreground mb-2">
-                            Reason for Joining:
-                          </h4>
+                          <h4 className="font-semibold text-foreground mb-2">Reason for Joining:</h4>
                           <p className="text-muted-foreground text-sm leading-relaxed">
                             {request.reason}
                           </p>
@@ -748,9 +581,7 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
 
                       {request.rejection_reason && (
                         <div className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                          <h4 className="font-semibold text-red-700 dark:text-red-400 mb-2">
-                            Rejection Reason:
-                          </h4>
+                          <h4 className="font-semibold text-red-700 dark:text-red-400 mb-2">Rejection Reason:</h4>
                           <p className="text-red-600 dark:text-red-300 text-sm leading-relaxed">
                             {request.rejection_reason}
                           </p>
@@ -764,9 +595,7 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
                           className="flex gap-3 pt-4 border-t"
                         >
                           <ProfessionalButton
-                            onClick={() =>
-                              handleApprove(request.id, request.email)
-                            }
+                            onClick={() => handleApprove(request.id, request.email)}
                             isLoading={actionLoading === request.id}
                             isSuccess={actionSuccess === request.id}
                             loadingText="Approving..."
@@ -776,7 +605,7 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
                             <CheckCircle className="w-4 h-4 mr-2" />
                             Approve
                           </ProfessionalButton>
-
+                          
                           <ProfessionalButton
                             onClick={() => setShowRejectForm(request.id)}
                             variant="outline"
@@ -799,16 +628,12 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
                             <Textarea
                               placeholder="Please provide a reason for rejection..."
                               value={rejectionReason}
-                              onChange={(e) =>
-                                setRejectionReason(e.target.value)
-                              }
+                              onChange={(e) => setRejectionReason(e.target.value)}
                               className="bg-background border focus:border-ring"
                             />
                             <div className="flex gap-2">
                               <ProfessionalButton
-                                onClick={() =>
-                                  handleReject(request.id, request.email)
-                                }
+                                onClick={() => handleReject(request.id, request.email)}
                                 isLoading={actionLoading === request.id}
                                 isSuccess={actionSuccess === request.id}
                                 disabled={!rejectionReason.trim()}
@@ -818,7 +643,7 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
                               >
                                 Confirm Rejection
                               </ProfessionalButton>
-
+                              
                               <ProfessionalButton
                                 onClick={() => {
                                   setShowRejectForm(null);
@@ -843,7 +668,7 @@ export const OptimizedAccountRequestManagement: React.FC = () => {
       </div>
 
       {/* Toast notifications */}
-      {toasts.map((toast) => (
+      {toasts.map(toast => (
         <ProfessionalToast
           key={toast.id}
           {...toast}

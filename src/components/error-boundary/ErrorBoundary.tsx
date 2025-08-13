@@ -1,7 +1,8 @@
-import React, { Component, ErrorInfo, ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -25,8 +26,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    logger.error("ErrorBoundary caught an error:", error, errorInfo);
-
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
@@ -52,18 +53,19 @@ export class ErrorBoundary extends Component<Props, State> {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-red-600">
-              {this.props.componentName
+              {this.props.componentName 
                 ? `The ${this.props.componentName} component encountered an error and couldn't render properly.`
-                : "This component encountered an error and couldn't render properly."}
+                : 'This component encountered an error and couldn\'t render properly.'
+              }
             </p>
-
-            {process.env.NODE_ENV === "development" && this.state.error && (
+            
+            {process.env.NODE_ENV === 'development' && this.state.error && (
               <div className="bg-red-100 p-3 rounded text-xs text-red-800 font-mono overflow-auto">
                 {this.state.error.message}
               </div>
             )}
-
-            <Button
+            
+            <Button 
               onClick={this.handleRetry}
               variant="outline"
               size="sm"

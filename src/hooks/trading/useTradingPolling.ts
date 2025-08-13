@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+
+import { useEffect, useRef } from 'react';
 
 interface UseTradingPollingOptions {
   shouldUseFallback: boolean;
@@ -13,7 +14,7 @@ export const useTradingPolling = ({
   shouldUseFallback,
   shouldFetchAlerts,
   fetchAlertsFallback,
-  setUsingFallback,
+  setUsingFallback
 }: UseTradingPollingOptions) => {
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -28,9 +29,7 @@ export const useTradingPolling = ({
       return;
     }
 
-    logger.log(
-      "Real-time connection failed, switching to HTTP polling fallback"
-    );
+    console.log('Real-time connection failed, switching to HTTP polling fallback');
     setUsingFallback(true);
     fetchAlertsFallback();
 
@@ -48,10 +47,5 @@ export const useTradingPolling = ({
         clearTimeout(pollingTimeoutRef.current);
       }
     };
-  }, [
-    shouldUseFallback,
-    shouldFetchAlerts,
-    fetchAlertsFallback,
-    setUsingFallback,
-  ]);
+  }, [shouldUseFallback, shouldFetchAlerts, fetchAlertsFallback, setUsingFallback]);
 };

@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,12 +11,9 @@ interface NoRequestFoundProps {
   onCheckAnother: () => void;
 }
 
-export const NoRequestFound: React.FC<NoRequestFoundProps> = ({
-  email,
-  onCheckAnother,
-}) => {
+export const NoRequestFound: React.FC<NoRequestFoundProps> = ({ email, onCheckAnother }) => {
   const handleCheckAnother = () => {
-    logger.log("NoRequestFound: Checking another email");
+    console.log('NoRequestFound: Checking another email');
     onCheckAnother();
   };
 
@@ -31,12 +29,10 @@ export const NoRequestFound: React.FC<NoRequestFoundProps> = ({
           No Account Request Found
         </h3>
         <p className="text-gray-300 mb-4">
-          We couldn't find an account request for{" "}
-          <span className="font-medium text-white">{email}</span>
+          We couldn't find an account request for <span className="font-medium text-white">{email}</span>
         </p>
         <p className="text-sm text-gray-400">
-          To access our platform, you'll need to submit an account request
-          first.
+          To access our platform, you'll need to submit an account request first.
         </p>
       </div>
 
@@ -46,9 +42,7 @@ export const NoRequestFound: React.FC<NoRequestFoundProps> = ({
           <ul className="space-y-2 text-sm text-gray-300">
             <li className="flex items-start gap-2">
               <ArrowRight className="w-4 h-4 mt-0.5 text-yellow-400 flex-shrink-0" />
-              <span>
-                Submit a new account request using the same email address
-              </span>
+              <span>Submit a new account request using the same email address</span>
             </li>
             <li className="flex items-start gap-2">
               <ArrowRight className="w-4 h-4 mt-0.5 text-yellow-400 flex-shrink-0" />
@@ -64,12 +58,14 @@ export const NoRequestFound: React.FC<NoRequestFoundProps> = ({
 
       <div className="space-y-3">
         <Link to={createPageUrl("account-request")}>
-          <Button className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12">
+          <Button 
+            className="w-full bg-accent-green hover:bg-green-500 text-white font-semibold py-3 h-12"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Submit Account Request
           </Button>
         </Link>
-
+        
         <Button
           variant="outline"
           className="w-full border-white/20 text-white/80 hover:bg-white/10"

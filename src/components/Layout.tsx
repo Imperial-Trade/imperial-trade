@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { ComplianceFooter } from "@/components/compliance/ComplianceFooter"
 import { NotificationsPanel } from "@/components/notifications/NotificationsPanel"
+import OneSignalInitializer from "@/components/integrations/OneSignalInitializer"
 
 function DashboardHeader() {
   const { openMobile } = useSidebar();
@@ -328,6 +329,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   // For dashboard pages, use sidebar layout
   return (
     <SidebarProvider defaultOpen={false}>
+      <OneSignalInitializer />
       <div className="min-h-screen w-full bg-background">
         <ErrorBoundary componentName="Header">
           <DashboardHeader />

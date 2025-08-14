@@ -38,37 +38,58 @@ export default function UnifiedPermissionFlow({
 
   // Determine if we should show the flow
   useEffect(() => {
+    console.log('[UnifiedFlow] State check:', {
+      autoShow,
+      initialized,
+      user: !!user,
+      isGranted,
+      permission,
+      supportsWebPush: platformInfo.supportsWebPush,
+      isInAppBrowser: platformInfo.isInAppBrowser,
+      isPrivateBrowsing: platformInfo.isPrivateBrowsing,
+      isPWA: platformInfo.isPWA,
+      requiresPWAForPush: platformInfo.requiresPWAForPush,
+      platformSpecific: platformInfo.platformSpecific
+    });
+
     if (!autoShow || !initialized || !user) {
+      console.log('[UnifiedFlow] Hidden: Missing requirements');
       setIsVisible(false);
       return;
     }
 
     // Don't show if already granted and working
     if (isGranted) {
+      console.log('[UnifiedFlow] Hidden: Already granted');
       setIsVisible(false);
       return;
     }
 
     // Don't show if permission is denied (user actively blocked)
     if (permission === 'denied') {
+      console.log('[UnifiedFlow] Hidden: Permission denied');
       setIsVisible(false);
       return;
     }
 
     // Don't show in unsupported scenarios
     if (!platformInfo.supportsWebPush || platformInfo.isInAppBrowser || platformInfo.isPrivateBrowsing) {
+      console.log('[UnifiedFlow] Hidden: Unsupported scenario');
       setIsVisible(false);
       return;
     }
 
-    // Show for default permission state
+    // Show for default permission state on supported platforms
     if (permission === 'default') {
+      console.log('[UnifiedFlow] Showing permission flow');
       setIsVisible(true);
       
       // Determine starting step based on platform
       if (platformInfo.requiresPWAForPush && !platformInfo.isPWA) {
+        console.log('[UnifiedFlow] Starting with PWA install step');
         setCurrentStep('pwa_install');
       } else {
+        console.log('[UnifiedFlow] Starting with permission step');
         setCurrentStep('permission');
       }
     }

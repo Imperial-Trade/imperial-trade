@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 const NotificationPermissionBanner: React.FC = () => {
-  const { isPromptDismissed, requestPermission, dismissPrompt, initialized, permission, isIframeBlocked, browserInfo, browserInstructions } = useNotifications();
+  const { isPromptDismissed, requestPermission, dismissPrompt, initialized, permission, isIframeBlocked, browserInfo, browserInstructions, isGranted } = useNotifications();
   const { hasSeenWelcome } = useWelcome();
   const [requesting, setRequesting] = useState(false);
   const [ready, setReady] = useState(false);
@@ -22,17 +22,29 @@ const NotificationPermissionBanner: React.FC = () => {
     }
   }, [hasSeenWelcome]);
 
-  // Debug logging for banner visibility
-  console.log('NotificationPermissionBanner visibility check:', {
+  // Enhanced debug logging for banner visibility
+  console.log('🔔 NotificationPermissionBanner visibility check:', {
     hasSeenWelcome,
     ready,
     isPromptDismissed,
     initialized,
     permission,
-    isIframeBlocked
+    isGranted,
+    isIframeBlocked,
+    shouldShow: hasSeenWelcome && ready && !isPromptDismissed && initialized && !isGranted
   });
 
-  if (!hasSeenWelcome || !ready || isPromptDismissed) return null;
+  // Show banner if user has seen welcome, we're ready, prompt not dismissed, OneSignal initialized, and notifications not granted
+  if (!hasSeenWelcome || !ready || isPromptDismissed || !initialized || isGranted) {
+    console.log('🔔 Banner hidden because:', {
+      noWelcome: !hasSeenWelcome,
+      notReady: !ready,
+      dismissed: isPromptDismissed,
+      notInitialized: !initialized,
+      alreadyGranted: isGranted
+    });
+    return null;
+  }
 
   return (
     <aside

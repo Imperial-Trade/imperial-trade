@@ -64,6 +64,8 @@ import NotFound from "@/pages/NotFound";
 import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
 import OneSignalInitializer from "@/components/integrations/OneSignalInitializer";
 import { setupNotificationClickHandler } from "@/utils/notificationHandlers";
+import NotificationSystem from "@/components/notifications/NotificationSystem";
+import NotificationsPanel from "@/components/notifications/NotificationsPanel";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -95,6 +97,8 @@ function App() {
                 <NavigationGuard>
                   <SignalRealtimeProvider>
                     <WebSocketPriceProvider>
+                      <NotificationSystem />
+                      <NotificationsPanel />
                       <Routes>
                         {/* Landing Routes */}
                         <Route

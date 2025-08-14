@@ -14,10 +14,10 @@ const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onClose, className 
     canInstall,
     isIOSDevice,
     isInstalled,
-    showIOSInstructions,
     hasInstallPrompt,
     installPWA,
     getIOSInstructions,
+    getIOSWebPushSupport,
     dismissIOSInstructions
   } = usePWAInstallation();
 
@@ -47,6 +47,7 @@ const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onClose, className 
   };
 
   const instructions = getIOSInstructions();
+  const supportsWebPush = getIOSWebPushSupport();
 
   return (
     <AnimatePresence>
@@ -82,7 +83,7 @@ const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onClose, className 
             }
           </p>
 
-          {isIOSDevice && showIOSInstructions ? (
+          {isIOSDevice ? (
             <div className="space-y-3">
               <div className="bg-muted/50 rounded-md p-3">
                 <div className="flex items-center gap-2 mb-2">
@@ -97,9 +98,16 @@ const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({ onClose, className 
                   ))}
                 </ol>
               </div>
-              <p className="text-xs text-amber-600 dark:text-amber-400">
-                ⚠️ Push notifications only work after installing as an app (iOS 16.4+)
-              </p>
+              {!supportsWebPush && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  ⚠️ Push notifications require iOS 16.4+. You can still install the app for better experience.
+                </p>
+              )}
+              {supportsWebPush && (
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  ✅ Your iOS version supports push notifications after installation.
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex gap-2">

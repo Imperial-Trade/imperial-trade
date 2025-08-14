@@ -61,6 +61,11 @@ export function usePWAInstallation() {
     return majorVersion > 16 || (majorVersion === 16 && minorVersion >= 4);
   }, [checkIfIOS]);
 
+  // Get iOS web push support status
+  const getIOSWebPushSupport = useCallback(() => {
+    return checkIOSWebPushSupport();
+  }, [checkIOSWebPushSupport]);
+
   // Initialize PWA state
   useEffect(() => {
     const browserInfo = detectBrowser();
@@ -76,7 +81,7 @@ export function usePWAInstallation() {
       isStandalone,
       isInstalled,
       canInstall: !isInstalled && (installPrompt !== null || isIOSDevice),
-      showIOSInstructions: isIOSDevice && !isInstalled && supportsWebPush,
+      showIOSInstructions: isIOSDevice && !isInstalled,
       isInstallable: installPrompt !== null
     }));
   }, [installPrompt, checkIfInstalled, checkIfIOS, checkIOSWebPushSupport]);
@@ -149,21 +154,13 @@ export function usePWAInstallation() {
     }));
   }, []);
 
-  // Check if iOS instructions were dismissed
-  useEffect(() => {
-    const dismissed = localStorage.getItem('ios_install_dismissed');
-    if (dismissed && state.isIOSDevice) {
-      setState(prev => ({
-        ...prev,
-        showIOSInstructions: false
-      }));
-    }
-  }, [state.isIOSDevice]);
+  // Check if iOS instructions were dismissed (removed - always show instructions when needed)
 
   return {
     ...state,
     installPWA,
     getIOSInstructions,
+    getIOSWebPushSupport,
     dismissIOSInstructions,
     hasInstallPrompt: installPrompt !== null
   };

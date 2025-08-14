@@ -34,6 +34,9 @@ export function useOneSignal() {
     isStandalone: false,
     isInAppBrowser: false
   };
+  
+  // Enhanced Safari PWA detection
+  const isSafariPWA = browserInfo.isIOS && browserInfo.isStandalone;
   const browserConfig = getBrowserSpecificConfig(browserInfo);
   useEffect(() => {
     let cancelled = false;
@@ -734,6 +737,24 @@ export function useOneSignal() {
             success: false, 
             error: "Notification permission is granted but WebPush subscription failed. Please try again or check browser settings." 
           };
+        }
+      }
+
+      // **Safari PWA special handling - skip native browser prompt**
+      if (isSafariPWA) {
+        if (debug) console.info('[OneSignal] Safari PWA detected, using direct OneSignal permission flow');
+        
+        try {
+          const permission = await os.Notifications.requestPermission();
+          if (permission) {
+            await ensureSubscription(browserConfig.subscriptionTimeout, true);
+            return { success: true };
+          } else {
+            return { success: false, error: 'denied' };
+          }
+        } catch (error) {
+          console.error('[OneSignal] Safari PWA permission request failed:', error);
+          return { success: false, error: 'safari_pwa_failed', details: error };
         }
       }
 

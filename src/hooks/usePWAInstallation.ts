@@ -28,7 +28,7 @@ export function usePWAInstallation() {
     browserInfo: detectBrowser()
   });
 
-  // Check if app is installed (running in standalone mode)
+  // Enhanced PWA installation detection
   const checkIfInstalled = useCallback(() => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
                         (window.navigator as any).standalone === true ||
@@ -42,6 +42,15 @@ export function usePWAInstallation() {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }, []);
+
+  // Enhanced Safari PWA detection
+  const checkIfSafariPWA = useCallback(() => {
+    const isIOSDevice = checkIfIOS();
+    const isStandalone = checkIfInstalled();
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+    
+    return isIOSDevice && isStandalone && isSafari;
+  }, [checkIfIOS, checkIfInstalled]);
 
   // Check if iOS version supports Web Push (16.4+)
   const checkIOSWebPushSupport = useCallback(() => {
@@ -162,6 +171,7 @@ export function usePWAInstallation() {
     getIOSInstructions,
     getIOSWebPushSupport,
     dismissIOSInstructions,
-    hasInstallPrompt: installPrompt !== null
+    hasInstallPrompt: installPrompt !== null,
+    isSafariPWA: checkIfSafariPWA()
   };
 }

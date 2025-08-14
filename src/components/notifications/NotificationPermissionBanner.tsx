@@ -27,7 +27,8 @@ const NotificationPermissionBanner: React.FC = () => {
     isStandalone,
     showIOSInstructions,
     canInstall,
-    isInstalled
+    isInstalled,
+    isSafariPWA
   } = usePWAInstallation();
   
   const [isVisible, setIsVisible] = useState(false);
@@ -45,12 +46,12 @@ const NotificationPermissionBanner: React.FC = () => {
     return () => clearTimeout(timer);
   }, [hasSeenWelcome]);
 
-  // Check if we should show PWA prompt for iOS users
+  // Check if we should show PWA prompt for iOS users (but not Safari PWA)
   useEffect(() => {
-    if (isIOSDevice && !isStandalone && showIOSInstructions && permission !== 'granted') {
+    if (isIOSDevice && !isStandalone && !isSafariPWA && showIOSInstructions && permission !== 'granted') {
       setShowPWAPrompt(true);
     }
-  }, [isIOSDevice, isStandalone, showIOSInstructions, permission]);
+  }, [isIOSDevice, isStandalone, isSafariPWA, showIOSInstructions, permission]);
 
   // Don't show if conditions aren't met
   if (!isVisible || !initialized || permission === 'granted' || !user) {
@@ -63,8 +64,8 @@ const NotificationPermissionBanner: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // For iOS users, we need PWA installation first
-      if (isIOSDevice && !isStandalone) {
+      // For iOS Safari browser users (not PWA), we need PWA installation first
+      if (isIOSDevice && !isStandalone && !isSafariPWA) {
         toast.info("iPhone users need to install the app first", {
           description: "Follow the installation guide to enable notifications"
         });
@@ -144,11 +145,13 @@ const NotificationPermissionBanner: React.FC = () => {
         </div>
 
         <p className="text-sm text-muted-foreground mb-4">
-          {isIOSDevice && !isStandalone
+          {isIOSDevice && !isStandalone && !isSafariPWA
             ? 'iPhone users need to install the app to receive push notifications (iOS 16.4+)'
-            : isDenied
-              ? 'Please enable notifications in your browser settings to receive real-time trading signals.'
-              : 'Get instant alerts for new trading signals and market updates.'
+            : isSafariPWA
+              ? 'Enable notifications to receive real-time trading signals in your PWA.'
+              : isDenied
+                ? 'Please enable notifications in your browser settings to receive real-time trading signals.'
+                : 'Get instant alerts for new trading signals and market updates.'
           }
         </p>
 
@@ -164,10 +167,12 @@ const NotificationPermissionBanner: React.FC = () => {
               onClick={handleRequestPermission}
               disabled={isLoading}
               size="sm"
+              variant={isSafariPWA ? "pwa-primary" : "default"}
               className="flex-1"
             >
               {isLoading ? 'Requesting...' : 
-               isIOSDevice && !isStandalone ? 'Show Install Guide' :
+               isIOSDevice && !isStandalone && !isSafariPWA ? 'Show Install Guide' :
+               isSafariPWA ? 'Subscribe' :
                isDenied ? 'Open Settings' : 'Enable Now'}
             </Button>
             <Button

@@ -108,13 +108,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     isGranted: isGranted && !!user,
     hasSubscription,
     isIframeBlocked,
-    // Fix: Hide prompt if explicitly dismissed, not initialized, no user, OR actually subscribed in database
-    isPromptDismissed: dismissed || !user || !initialized || dbSubscriptionStatus === 'subscribed',
+    // Only hide prompt if explicitly dismissed, no user, OR actually granted/subscribed
+    isPromptDismissed: dismissed || !user || (permission === 'granted' && dbSubscriptionStatus === 'subscribed'),
     requestPermission,
     dismissPrompt,
     browserInfo,
     browserInstructions,
-  }), [permission, initialized, isGranted, hasSubscription, dismissed, user, isIframeBlocked, requestPermission, dismissPrompt, browserInfo, browserInstructions, dbSubscriptionStatus]);
+  }), [permission, initialized, isGranted, hasSubscription, dismissed, user, isIframeBlocked, requestPermission, dismissPrompt, browserInfo, browserInstructions, dbSubscriptionStatus, permission]);
 
   return (
     <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useOneSignal } from '@/hooks/useOneSignal';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NotificationsContextValue {
   permission: NotificationPermission | 'unsupported';
@@ -33,6 +34,23 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   // Track previous permission to only reset dismissal when user manually changes settings
   const prevPermissionRef = useRef<NotificationPermission | 'unsupported' | undefined>(undefined);
 
+  // Auto-verify subscription when user logs in
+  useEffect(() => {
+    if (user && initialized && permission === 'granted') {
+      // Start the pg_notify listener for real-time notifications
+      supabase.functions.invoke('signal-pgnotify-listener')
+        .then(() => console.log('📡 PG Notify listener started'))
+        .catch(err => console.error('❌ Failed to start PG Notify listener:', err));
+
+      // Verify current subscription status
+      supabase.functions.invoke('onesignal-verify-subscription', {
+        body: { user_id: user.id }
+      })
+        .then(({ data }) => console.log('✅ Subscription verified:', data))
+        .catch(err => console.error('❌ Subscription verification failed:', err));
+    }
+  }, [user, initialized, permission]);
+
   useEffect(() => {
     // Only reset dismissal if permission transitioned from a decided state back to default
     if (
@@ -58,7 +76,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     isGranted: isGranted && !!user,
     hasSubscription,
     isIframeBlocked,
-    isPromptDismissed: dismissed || !user || permission === 'denied' || !initialized || (permission === 'granted' && hasSubscription),
+    // Fix: Only dismiss prompt if explicitly dismissed OR denied. Don't auto-dismiss on subscription.
+    isPromptDismissed: dismissed || !user || permission === 'denied' || !initialized,
     requestPermission,
     dismissPrompt,
     browserInfo,

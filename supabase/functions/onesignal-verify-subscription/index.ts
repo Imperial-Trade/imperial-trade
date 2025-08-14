@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
     let playerSubscribed = false;
     let playerData = null;
 
-    // First try to verify using Users API by external_id
+    // Use User-Centric API to check subscription status
     try {
       const userResponse = await fetch(`https://api.onesignal.com/apps/${appId}/users/by/external_id/${targetUserId}`, {
         method: "GET",
@@ -84,83 +84,51 @@ Deno.serve(async (req: Request) => {
       });
 
       if (userResponse.ok) {
-        playerData = await userResponse.json();
+        const userData = await userResponse.json();
+        playerData = userData;
         playerExists = true;
-        // Check if user has any active web push subscriptions
-        const subscriptions = playerData.subscriptions || [];
-        playerSubscribed = subscriptions.some((sub: any) => 
-          sub.type === "WebPush" && sub.enabled
-        );
-        console.log(`[OneSignal Verify] User found via Users API: ${subscriptions.length} subscriptions`);
+        
+        // Check if user has any active subscriptions (email or web push)
+        const subscriptions = userData.subscriptions || [];
+        const webPushSubs = subscriptions.filter((sub: any) => sub.type === "WebPush");
+        const emailSubs = subscriptions.filter((sub: any) => sub.type === "Email");
+        
+        // User is considered subscribed if they have any active subscription
+        playerSubscribed = webPushSubs.some((sub: any) => sub.enabled) || 
+                          emailSubs.some((sub: any) => sub.enabled);
+        
+        console.log(`[OneSignal Verify] User found via Users API: ${subscriptions.length} total subscriptions (${webPushSubs.length} WebPush, ${emailSubs.length} Email)`);
+        console.log(`[OneSignal Verify] Subscription status: ${playerSubscribed ? 'subscribed' : 'not subscribed'}`);
       } else {
         console.log(`[OneSignal Verify] User not found via Users API: ${userResponse.status}`);
         
-        // Fallback: try legacy Players API if playerId is provided
-        if (playerId) {
-          playerResponse = await fetch(`https://api.onesignal.com/players/${playerId}?app_id=${appId}`, {
-            method: "GET",
-            headers: {
-              Authorization: `Basic ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (playerResponse.ok) {
-            playerData = await playerResponse.json();
-            playerExists = true;
-            playerSubscribed = playerData.valid_player === true && playerData.notification_types > 0;
-            console.log(`[OneSignal Verify] Player found via Players API: valid=${playerData.valid_player}, types=${playerData.notification_types}`);
-          } else {
-            console.log(`[OneSignal Verify] Player not found via Players API: ${playerResponse.status}`);
-          }
-        }
+        // For new users or users without subscriptions, this is normal
+        // Don't try legacy API as it can cause confusion
+        playerExists = false;
+        playerSubscribed = false;
+        playerData = null;
       }
     } catch (error) {
-      console.error(`[OneSignal Verify] Error checking user/player:`, error);
+      console.error(`[OneSignal Verify] Error checking user subscription:`, error);
+      playerExists = false;
+      playerSubscribed = false;
+      playerData = null;
     }
 
-    // Check if user is in "Subscribed Users" segment
-    let segmentResponse;
+    // Check if user is in "Subscribed Users" segment (simplified approach)
     let inSubscribedSegment = false;
 
     try {
-      // Get "Subscribed Users" segment (this is the default segment ID for subscribed users)
-      segmentResponse = await fetch(`https://api.onesignal.com/apps/${appId}/segments`, {
-        method: "GET",
-        headers: {
-          Authorization: `Basic ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (segmentResponse.ok) {
-        const segments = await segmentResponse.json();
-        const subscribedSegment = segments.segments?.find((seg: any) => 
-          seg.name === "Subscribed Users" || seg.name === "Active Users"
-        );
-
-        if (subscribedSegment) {
-          // Check if user is in this segment by external_user_id
-          const segmentUsersResponse = await fetch(
-            `https://api.onesignal.com/apps/${appId}/segments/${subscribedSegment.id}`,
-            {
-              method: "GET",
-              headers: {
-                Authorization: `Basic ${apiKey}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (segmentUsersResponse.ok) {
-            const segmentData = await segmentUsersResponse.json();
-            console.log(`[OneSignal Verify] Segment check completed for ${subscribedSegment.name}`);
-            inSubscribedSegment = true; // Simplified check for now
-          }
-        }
+      // For User-Centric API, segments are less reliable for individual users
+      // Instead, rely on the direct subscription status from user data
+      if (playerExists && playerSubscribed) {
+        inSubscribedSegment = true;
+        console.log(`[OneSignal Verify] User is considered in subscribed segment based on active subscriptions`);
+      } else {
+        console.log(`[OneSignal Verify] User not in subscribed segment - no active subscriptions found`);
       }
     } catch (error) {
-      console.error(`[OneSignal Verify] Error checking segments:`, error);
+      console.error(`[OneSignal Verify] Error determining segment status:`, error);
     }
 
     // Check database subscription status

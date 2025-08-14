@@ -560,14 +560,33 @@ export function useOneSignal() {
         try {
           if (debug) console.info(`[OneSignal] WebPush subscribe() attempt ${attempt}/${browserConfig.maxRetries} (${browserInfo.name})`);
           
-          // **Phase 1: Robust WebPush subscription with exponential backoff**
+          // **Phase 1: Always request browser permission first for ALL browsers**
+          // This ensures browser settings show "Allow" instead of "Ask (default)"
+          if (debug) console.info(`[OneSignal] Requesting browser permission first (${browserInfo.name})`);
+          
+          // Request native browser permission explicitly
+          const browserPermission = await withTimeout(
+            Notification.requestPermission(), 
+            browserConfig.permissionTimeout
+          );
+          
+          if (browserPermission !== 'granted') {
+            throw new Error(`Browser permission denied: ${browserPermission}`);
+          }
+          
+          if (debug) console.info(`[OneSignal] Browser permission granted (${browserInfo.name})`);
+          
+          // Small delay to ensure permission is properly set
+          await new Promise(r => setTimeout(r, 300));
+          
+          // Now create OneSignal subscription
           if (browserInfo.name === 'Safari') {
-            // Safari needs special handling
+            // Safari needs special handling after browser permission
             await withTimeout(os.Notifications.requestPermission(), browserConfig.permissionTimeout);
             await new Promise(r => setTimeout(r, 500)); // Small delay for Safari
             await withTimeout(os.Notifications.subscribe(), browserConfig.subscriptionTimeout);
           } else {
-            // Standard approach for other browsers
+            // Standard OneSignal subscription for other browsers (after browser permission)
             await withTimeout(os.Notifications.subscribe(), browserConfig.subscriptionTimeout);
           }
         } catch (e) {

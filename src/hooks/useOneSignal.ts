@@ -532,7 +532,7 @@ export function useOneSignal() {
   };
 
   // **PHASE 1: Production-Grade Subscription with Robust Player ID Generation**
-  const ensureSubscription = async (maxWaitMs: number = 20000): Promise<boolean> => {
+  const ensureSubscription = async (maxWaitMs: number = 20000, skipNativePermission: boolean = false): Promise<boolean> => {
     try {
       const os = (window as any).OneSignal;
       if (!os?.Notifications || !os?.User?.PushSubscription) {
@@ -560,24 +560,27 @@ export function useOneSignal() {
         try {
           if (debug) console.info(`[OneSignal] WebPush subscribe() attempt ${attempt}/${browserConfig.maxRetries} (${browserInfo.name})`);
           
-          // **Phase 1: Always request browser permission first for ALL browsers**
-          // This ensures browser settings show "Allow" instead of "Ask (default)"
-          if (debug) console.info(`[OneSignal] Requesting browser permission first (${browserInfo.name})`);
-          
-          // Request native browser permission explicitly
-          const browserPermission = await withTimeout(
-            Notification.requestPermission(), 
-            browserConfig.permissionTimeout
-          );
-          
-          if (browserPermission !== 'granted') {
-            throw new Error(`Browser permission denied: ${browserPermission}`);
+          // **Only request browser permission if not skipped (for custom banner flow)**
+          if (!skipNativePermission) {
+            if (debug) console.info(`[OneSignal] Requesting browser permission first (${browserInfo.name})`);
+            
+            // Request native browser permission explicitly
+            const browserPermission = await withTimeout(
+              Notification.requestPermission(), 
+              browserConfig.permissionTimeout
+            );
+            
+            if (browserPermission !== 'granted') {
+              throw new Error(`Browser permission denied: ${browserPermission}`);
+            }
+            
+            if (debug) console.info(`[OneSignal] Browser permission granted (${browserInfo.name})`);
+            
+            // Small delay to ensure permission is properly set
+            await new Promise(r => setTimeout(r, 300));
+          } else {
+            if (debug) console.info(`[OneSignal] Skipping native permission request - handled by custom banner (${browserInfo.name})`);
           }
-          
-          if (debug) console.info(`[OneSignal] Browser permission granted (${browserInfo.name})`);
-          
-          // Small delay to ensure permission is properly set
-          await new Promise(r => setTimeout(r, 300));
           
           // Now create OneSignal subscription
           if (browserInfo.name === 'Safari') {
@@ -688,7 +691,7 @@ export function useOneSignal() {
       if (permission === 'granted') {
         if (debug) console.info(`[OneSignal] Permission already granted, ensuring WebPush subscription exists`);
         
-        const subscriptionCreated = await ensureSubscription(15000);
+        const subscriptionCreated = await ensureSubscription(15000, true);
         if (subscriptionCreated) {
           // **Phase 3: Enhanced backend sync and verification**
           try {
@@ -723,11 +726,29 @@ export function useOneSignal() {
         }
       }
 
-      // **Phase 3: Enhanced subscription flow with comprehensive error handling**
+      // **Phase 3: Enhanced subscription flow - expects browser permission already granted**
       try {
-        if (debug) console.info(`[OneSignal] Creating WebPush subscription for ${browserInfo.name}`);
+        if (debug) console.info(`[OneSignal] Creating WebPush subscription for ${browserInfo.name} (permission should already be granted)`);
         
-        const subscriptionResult = await ensureSubscription(browserConfig.subscriptionTimeout);
+        // **Verify browser permission is already granted**
+        const currentPermission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+        if (currentPermission !== 'granted') {
+          return { 
+            success: false, 
+            error: `Browser permission required but not granted: ${currentPermission}. Please enable notifications first.`,
+            details: { 
+              step: 'permission_check',
+              browser: browserInfo.name,
+              permission: currentPermission 
+            }
+          };
+        }
+        
+        if (debug) console.info(`[OneSignal] Browser permission confirmed as granted (${browserInfo.name})`);
+        
+        // **Create OneSignal subscription with native permission already handled**
+        if (debug) console.info(`[OneSignal] Calling ensureSubscription with skipNativePermission=true`);
+        const subscriptionResult = await ensureSubscription(browserConfig.subscriptionTimeout, true);
         
         if (!subscriptionResult) {
           const errorDetails = {

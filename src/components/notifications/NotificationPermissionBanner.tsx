@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 const NotificationPermissionBanner: React.FC = () => {
-  const { isPromptDismissed, requestPermission, dismissPrompt, initialized, permission, isIframeBlocked } = useNotifications();
+  const { isPromptDismissed, requestPermission, dismissPrompt, initialized, permission, isIframeBlocked, browserInfo, browserInstructions } = useNotifications();
   const { hasSeenWelcome } = useWelcome();
   const [requesting, setRequesting] = useState(false);
   const [ready, setReady] = useState(false);
@@ -84,22 +84,29 @@ const NotificationPermissionBanner: React.FC = () => {
                         variant: 'destructive' as any 
                       });
                     } else if (result.error) {
-                      // Enhanced error handling based on specific failure
+                      // Enhanced error handling with browser-specific messages
                       const errorTitle = result.details?.step === 'user_creation' 
                         ? 'OneSignal setup failed'
                         : result.details?.step === 'onesignal_subscribe'
                         ? 'Subscription failed'
                         : result.details?.step === 'native_permission'
                         ? 'Permission request failed'
+                        : result.details?.browser 
+                        ? `${result.details.browser} setup incomplete`
                         : 'Setup incomplete';
                       
-                      const errorDescription = result.error.includes('iframe') 
-                        ? 'Open in a new tab to enable notifications'
-                        : result.error.includes('denied')
-                        ? 'Check browser settings to allow notifications'
-                        : result.error.includes('failed to create')
-                        ? 'Please try again or contact support'
-                        : result.error;
+                      let errorDescription = result.error;
+                      
+                      // Provide browser-specific guidance
+                      if (result.details?.instructions) {
+                        errorDescription = `${result.error}\n\n${result.details.instructions}`;
+                      } else if (result.error.includes('iframe')) {
+                        errorDescription = 'Open in a new tab to enable notifications';
+                      } else if (result.error.includes('denied')) {
+                        errorDescription = browserInstructions || 'Check browser settings to allow notifications';
+                      } else if (result.error.includes('not supported')) {
+                        errorDescription = `${result.error}. Please update your browser or try a different one.`;
+                      }
 
                       toast({ 
                         title: errorTitle,
@@ -132,7 +139,7 @@ const NotificationPermissionBanner: React.FC = () => {
           <p className="mt-2 text-[11px] sm:text-xs text-muted-foreground">
             {isIframeBlocked
               ? 'Push notifications are blocked in preview. Open in a new tab to enable.'
-              : 'No prompt? Check site settings (lock icon) → Notifications.'}
+              : browserInstructions || 'No prompt? Check site settings (lock icon) → Notifications.'}
           </p>
         ) : null}
       </div>

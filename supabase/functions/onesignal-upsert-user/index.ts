@@ -96,19 +96,52 @@ Deno.serve(async (req: Request) => {
 
     let userExists = false;
     let existingUser: any = null;
+    let orphanedUserFound = false;
+    
     if (getUserRes.ok) {
       existingUser = await safeJson(getUserRes);
       userExists = !!existingUser?.identity?.external_id;
-      console.log(`OneSignal user exists: ${userExists}`, existingUser?.identity?.external_id);
+      console.log(`[OneSignal Upsert] User exists with external_id: ${userExists}`, existingUser?.identity?.external_id);
       
       // PHASE 3: Enhanced logging for player_id tracking
       if (playerId) {
         console.log(`[OneSignal Upsert] Processing with player_id: ${playerId}`);
       }
+    } else {
+      // **MIGRATION FIX: Check for orphaned users without external_id**
+      if (playerId) {
+        console.log(`[OneSignal Upsert] User not found by external_id, checking for orphaned user with player_id: ${playerId}`);
+        
+        try {
+          // Search for existing user by player_id (subscription_id)
+          const searchRes = await fetch(`https://api.onesignal.com/apps/${appId}/users?limit=1`, {
+            method: "GET",
+            headers: {
+              Authorization: `Basic ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          });
+          
+          if (searchRes.ok) {
+            const searchData = await safeJson(searchRes);
+            const foundUser = searchData?.users?.find((u: any) => 
+              u.subscriptions?.some((s: any) => s.id === playerId)
+            );
+            
+            if (foundUser && !foundUser.identity?.external_id) {
+              console.log(`[OneSignal Upsert] Found orphaned user with player_id: ${playerId}, will link to external_id: ${externalId}`);
+              existingUser = foundUser;
+              orphanedUserFound = true;
+            }
+          }
+        } catch (searchError) {
+          console.warn(`[OneSignal Upsert] Failed to search for orphaned user:`, searchError);
+        }
+      }
     }
 
-    // STEP 2: If user doesn't exist, create it
-    if (!userExists) {
+    // STEP 2: If user doesn't exist or orphaned user found, create/update it
+    if (!userExists || orphanedUserFound) {
       const createUserPayload: any = {
         identity: { external_id: externalId },
         properties: { tags },
@@ -132,8 +165,16 @@ Deno.serve(async (req: Request) => {
         createUserPayload.subscriptions = subscriptions;
       }
 
-      const createRes = await fetch(`https://api.onesignal.com/apps/${appId}/users`, {
-        method: "POST",
+      // **MIGRATION FIX: Use PATCH for orphaned users to add external_id**
+      const apiMethod = orphanedUserFound ? "PATCH" : "POST";
+      const apiUrl = orphanedUserFound 
+        ? `https://api.onesignal.com/apps/${appId}/users/${existingUser.id}`
+        : `https://api.onesignal.com/apps/${appId}/users`;
+      
+      console.log(`[OneSignal Upsert] ${apiMethod} request to ${apiUrl} for external_id: ${externalId}`);
+      
+      const createRes = await fetch(apiUrl, {
+        method: apiMethod,
         headers: {
           Authorization: `Basic ${apiKey}`,
           "Content-Type": "application/json",
@@ -146,10 +187,11 @@ Deno.serve(async (req: Request) => {
         return new Response(
           JSON.stringify({
             success: true,
-            action: "created_user",
+            action: orphanedUserFound ? "linked_orphaned_user" : "created_user",
             email_subscription_added: !!email,
-            user_exists: false,
+            user_exists: orphanedUserFound,
             player_id: playerId || null, // PHASE 3: Include player_id in response
+            external_id_linked: true,
             response: responseData,
           }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }

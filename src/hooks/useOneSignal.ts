@@ -356,44 +356,55 @@ export function useOneSignal() {
               }
             }
 
+            // **CRITICAL FIX: Login user IMMEDIATELY to ensure proper external_id linkage**
             if (user?.id) {
-              // Login immediately if we have a subscription to ensure proper user linking
-              const hasSub = !!(ps?.optedIn || ps?.id);
-              if (hasSub) {
-                (window as any).OneSignal.login(user.id);
-                // Attach email identity and tags
-                const applyIdentity = async () => {
-                  try {
-                    if (user?.email) {
-                      const osUser = (window as any).OneSignal?.User;
-                      if (osUser?.addEmail) {
-                        await osUser.addEmail(user.email);
-                        try { if (debug) console.info('[OneSignal] Email identity attached:', user.email); } catch {}
-                      }
-                      // Also add email as a tag for easy segmentation/search
-                      const emailTag = { email: user.email } as Record<string, string>;
-                      if (osUser?.addTags) {
-                        await osUser.addTags(emailTag);
-                      } else if ((window as any).OneSignal?.sendTags) {
-                        await (window as any).OneSignal.sendTags(emailTag);
-                      }
+              // Always login regardless of subscription status to establish external_id
+              (window as any).OneSignal.login(user.id);
+              console.log(`[OneSignal] User logged in with external_id: ${user.id}`);
+              
+              // Create/update user in backend to ensure proper linkage
+              ensureOneSignalUser().then(success => {
+                if (success) {
+                  console.log('[OneSignal] User creation/update successful');
+                } else {
+                  console.warn('[OneSignal] User creation/update failed');
+                }
+              }).catch(err => {
+                console.warn('[OneSignal] User creation/update error:', err);
+              });
+              
+              // Attach email identity and tags
+              const applyIdentity = async () => {
+                try {
+                  if (user?.email) {
+                    const osUser = (window as any).OneSignal?.User;
+                    if (osUser?.addEmail) {
+                      await osUser.addEmail(user.email);
+                      try { if (debug) console.info('[OneSignal] Email identity attached:', user.email); } catch {}
                     }
-                    const tags: Record<string, string> = {};
-                    if (profile?.role) tags["role"] = String(profile.role);
-                    if (profile?.user_type) tags["user_type"] = String(profile.user_type);
-                    if (Object.keys(tags).length > 0) {
-                      if ((window as any).OneSignal.User?.addTags) {
-                        await (window as any).OneSignal.User.addTags(tags);
-                      } else if ((window as any).OneSignal.sendTags) {
-                        await (window as any).OneSignal.sendTags(tags);
-                      }
+                    // Also add email as a tag for easy segmentation/search
+                    const emailTag = { email: user.email } as Record<string, string>;
+                    if (osUser?.addTags) {
+                      await osUser.addTags(emailTag);
+                    } else if ((window as any).OneSignal?.sendTags) {
+                      await (window as any).OneSignal.sendTags(emailTag);
                     }
-                  } catch {}
-                };
-                applyIdentity().catch(() => {});
-              } else {
-                try { if (debug) console.info('[OneSignal] User logged in but no push subscription yet; will login after subscription is created.'); } catch {}
-              }
+                  }
+                  const tags: Record<string, string> = {};
+                  if (profile?.role) tags["role"] = String(profile.role);
+                  if (profile?.user_type) tags["user_type"] = String(profile.user_type);
+                  if (Object.keys(tags).length > 0) {
+                    if ((window as any).OneSignal.User?.addTags) {
+                      await (window as any).OneSignal.User.addTags(tags);
+                    } else if ((window as any).OneSignal.sendTags) {
+                      await (window as any).OneSignal.sendTags(tags);
+                    }
+                  }
+                } catch (err) {
+                  console.warn('[OneSignal] Apply identity error:', err);
+                }
+              };
+              applyIdentity().catch(() => {});
             } else {
               (window as any).OneSignal.logout?.();
             }
@@ -701,44 +712,46 @@ export function useOneSignal() {
         };
       }
 
-      // **Handle already granted permission with robust verification**
-      if (permission === 'granted') {
-        if (debug) console.info(`[OneSignal] Permission already granted, ensuring WebPush subscription exists`);
-        
-        const subscriptionCreated = await ensureSubscription(15000, false);
-        if (subscriptionCreated) {
-          // **Phase 3: Enhanced backend sync and verification**
-          try {
-            await ensureOneSignalUser();
-            const verification = await verifySubscription();
-            
-            if (verification.local) {
-              // Update database status
-              await updateUserSubscriptionStatus(true, os.User?.PushSubscription?.id);
-              return { 
-                success: true, 
-                details: { 
-                  alreadyGranted: true, 
-                  subscriptionCreated, 
-                  verification,
-                  playerId: os.User?.PushSubscription?.id
-                } 
-              };
-            } else {
-              console.warn('[OneSignal] Verification failed but local subscription exists');
-              return { success: true, details: { alreadyGranted: true, verificationWarning: true } };
+        // **Handle already granted permission with robust verification**
+        if (permission === 'granted') {
+          if (debug) console.info(`[OneSignal] Permission already granted, ensuring WebPush subscription exists`);
+          
+          // **CRITICAL FIX: Ensure user is created BEFORE subscription**
+          await ensureOneSignalUser();
+          
+          const subscriptionCreated = await ensureSubscription(15000, false);
+          if (subscriptionCreated) {
+            // **Phase 3: Enhanced backend sync and verification**
+            try {
+              const verification = await verifySubscription();
+              
+              if (verification.local) {
+                // Update database status
+                await updateUserSubscriptionStatus(true, os.User?.PushSubscription?.id);
+                return { 
+                  success: true, 
+                  details: { 
+                    alreadyGranted: true, 
+                    subscriptionCreated, 
+                    verification,
+                    playerId: os.User?.PushSubscription?.id
+                  } 
+                };
+              } else {
+                console.warn('[OneSignal] Verification failed but local subscription exists');
+                return { success: true, details: { alreadyGranted: true, verificationWarning: true } };
+              }
+            } catch (syncError) {
+              console.warn('[OneSignal] Backend sync failed but subscription exists:', syncError);
+              return { success: true, details: { alreadyGranted: true, syncWarning: true } };
             }
-          } catch (syncError) {
-            console.warn('[OneSignal] Backend sync failed but subscription exists:', syncError);
-            return { success: true, details: { alreadyGranted: true, syncWarning: true } };
+          } else {
+            return { 
+              success: false, 
+              error: "Notification permission is granted but WebPush subscription failed. Please try again or check browser settings." 
+            };
           }
-        } else {
-          return { 
-            success: false, 
-            error: "Notification permission is granted but WebPush subscription failed. Please try again or check browser settings." 
-          };
         }
-      }
 
       // **Safari PWA special handling - skip native browser prompt**
       if (isSafariPWA) {
@@ -761,6 +774,10 @@ export function useOneSignal() {
       // **Phase 3: Enhanced subscription flow - request browser permission if needed**
       try {
         if (debug) console.info(`[OneSignal] Creating WebPush subscription for ${browserInfo.name}`);
+        
+        // **CRITICAL FIX: Ensure user is created BEFORE subscription**
+        console.log('[OneSignal] Ensuring OneSignal user exists before subscription...');
+        await ensureOneSignalUser();
         
         // **Create OneSignal subscription (uses native browser permission dialog)**
         if (debug) console.info(`[OneSignal] Calling ensureSubscription with native permission dialog`);

@@ -30,9 +30,33 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       return false;
     }
   });
+  const [dbSubscriptionStatus, setDbSubscriptionStatus] = useState<string>('unknown');
 
   // Track previous permission to only reset dismissal when user manually changes settings
   const prevPermissionRef = useRef<NotificationPermission | 'unsupported' | undefined>(undefined);
+
+  // Fetch user's subscription status from database
+  useEffect(() => {
+    if (user) {
+      const fetchSubscriptionStatus = async () => {
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('onesignal_subscription_status')
+            .eq('id', user.id)
+            .single();
+          
+          if (data?.onesignal_subscription_status) {
+            setDbSubscriptionStatus(data.onesignal_subscription_status);
+          }
+        } catch (err) {
+          console.error('❌ Failed to fetch subscription status:', err);
+        }
+      };
+      
+      fetchSubscriptionStatus();
+    }
+  }, [user]);
 
   // Auto-verify subscription when user logs in
   useEffect(() => {
@@ -46,7 +70,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
       supabase.functions.invoke('onesignal-verify-subscription', {
         body: { user_id: user.id }
       })
-        .then(({ data }) => console.log('✅ Subscription verified:', data))
+        .then(({ data }) => {
+          console.log('✅ Subscription verified:', data);
+          // Update local state with verified status
+          if (data?.subscription_status) {
+            setDbSubscriptionStatus(data.subscription_status);
+          }
+        })
         .catch(err => console.error('❌ Subscription verification failed:', err));
     }
   }, [user, initialized, permission]);
@@ -76,13 +106,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     isGranted: isGranted && !!user,
     hasSubscription,
     isIframeBlocked,
-    // Fix: Only dismiss prompt if explicitly dismissed OR denied. Don't auto-dismiss on subscription.
-    isPromptDismissed: dismissed || !user || permission === 'denied' || !initialized,
+    // Fix: Hide prompt if explicitly dismissed, denied, not initialized, no user, OR actually subscribed in database
+    isPromptDismissed: dismissed || !user || permission === 'denied' || !initialized || dbSubscriptionStatus === 'subscribed',
     requestPermission,
     dismissPrompt,
     browserInfo,
     browserInstructions,
-  }), [permission, initialized, isGranted, hasSubscription, dismissed, user, isIframeBlocked, requestPermission, dismissPrompt, browserInfo, browserInstructions]);
+  }), [permission, initialized, isGranted, hasSubscription, dismissed, user, isIframeBlocked, requestPermission, dismissPrompt, browserInfo, browserInstructions, dbSubscriptionStatus]);
 
   return (
     <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>

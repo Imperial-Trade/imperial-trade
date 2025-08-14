@@ -196,30 +196,30 @@ if (isSignalCreated) {
         'Authorization': `Basic ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(() => {
+      body: JSON.stringify((() => {
         const base: any = {
           app_id: appId,
           headings: { en: title },
           contents: { en: body },
-data: {
-  signal_id: payload.signal_id,
-  alert_type: payload.alert_type,
-  target_price: payload.target_price,
-  triggered_price: payload.triggered_price,
-  notification_type: payload.notification_type,
-  asset_name: payload.asset_name,
-  symbol: payload.symbol,
-  trade_type: payload.trade_type,
-  entry_price: payload.entry_price,
-  stop_loss: payload.stop_loss,
-  author_id: payload.author_id,
-  author_name: payload.author_name,
-  author_avatar_url: payload.author_avatar_url,
-  status: payload.status,
-  tp_hits: payload.tp_hits,
-  close_reason: payload.close_reason,
-  notes: payload.notes,
-},
+          data: {
+            signal_id: payload.signal_id,
+            alert_type: payload.alert_type,
+            target_price: payload.target_price,
+            triggered_price: payload.triggered_price,
+            notification_type: payload.notification_type,
+            asset_name: payload.asset_name,
+            symbol: payload.symbol,
+            trade_type: payload.trade_type,
+            entry_price: payload.entry_price,
+            stop_loss: payload.stop_loss,
+            author_id: payload.author_id,
+            author_name: payload.author_name,
+            author_avatar_url: payload.author_avatar_url,
+            status: payload.status,
+            tp_hits: payload.tp_hits,
+            close_reason: payload.close_reason,
+            notes: payload.notes,
+          },
         };
         if (payload.user_ids && payload.user_ids.length > 0) {
           base.include_external_user_ids = payload.user_ids;

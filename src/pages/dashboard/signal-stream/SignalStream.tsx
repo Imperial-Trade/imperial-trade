@@ -7,6 +7,8 @@ import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useThrottledWebSocketPrice } from '@/hooks/useThrottledWebSocketPrice';
+import { useRenderOptimization } from '@/hooks/useRenderOptimization';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +16,9 @@ import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { usePublicProfiles } from '@/hooks/usePublicProfiles';
 
 export default function SignalStream() {
+  // Performance monitoring
+  useRenderOptimization('SignalStream');
+  
   const {
     user,
     profile
@@ -76,101 +81,101 @@ export default function SignalStream() {
 
   const { profilesMap } = usePublicProfiles(creatorIds);
 
-  // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
+  // Apply user filters directly to all alerts - optimized processing
   const alerts = useMemo(() => {
     console.log('SignalStream - Processing alerts:', allAlerts.length);
-    console.log('SignalStream - All alerts with creators:', allAlerts.map(a => ({
-      id: a.id,
-      asset: a.assetName,
-      creator: a.creator?.display_name,
-      creatorId: a.creator?.id,
-      role: a.creator?.role,
-      userType: a.creator?.user_type,
-      accessLevel: a.creator?.access_level
-    })));
+    
+    // Early return if no alerts
+    if (allAlerts.length === 0) return [];
 
-    // Enrich creators with public_profiles data
-    const enriched = allAlerts.map(a => {
-      const cid = a.creator?.id;
+    // Single pass enrichment and filtering
+    const result = [];
+    const searchLower = filters.search?.toLowerCase();
+    
+    for (const alert of allAlerts) {
+      // Enrich creator data
+      const cid = alert.creator?.id;
       const profile = cid ? profilesMap[cid] : undefined;
-      if (profile) {
-        return {
-          ...a,
-          creator: {
-            ...a.creator,
-            id: cid,
-            display_name: profile.display_name ?? a.creator?.display_name ?? 'Member',
-            avatar_url: profile.avatar_url ?? a.creator?.avatar_url,
-            role: profile.role ?? a.creator?.role,
-            user_type: profile.user_type ?? a.creator?.user_type,
-            access_level: profile.access_level ?? a.creator?.access_level
-          }
-        };
-      }
-      return a;
-    });
+      const enrichedAlert = profile ? {
+        ...alert,
+        creator: {
+          ...alert.creator,
+          id: cid,
+          display_name: profile.display_name ?? alert.creator?.display_name ?? 'Member',
+          avatar_url: profile.avatar_url ?? alert.creator?.avatar_url,
+          role: profile.role ?? alert.creator?.role,
+          user_type: profile.user_type ?? alert.creator?.user_type,
+          access_level: profile.access_level ?? alert.creator?.access_level
+        }
+      } : alert;
 
-    let filteredAlerts = enriched;
+      // Apply filters in order of likelihood to fail fast
+      if (filters.educator && filters.educator !== enrichedAlert.creator?.id) continue;
+      if (filters.status && enrichedAlert.status !== filters.status) continue;
+      if (filters.tradeType && !enrichedAlert.tradeType.includes(filters.tradeType)) continue;
+      if (searchLower && !(
+        enrichedAlert.assetName.toLowerCase().includes(searchLower) ||
+        enrichedAlert.tradermadeSymbol.toLowerCase().includes(searchLower) ||
+        enrichedAlert.creator?.display_name?.toLowerCase().includes(searchLower)
+      )) continue;
 
-    // Apply user filters
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filteredAlerts = filteredAlerts.filter(alert => 
-        alert.assetName.toLowerCase().includes(searchLower) || 
-        alert.tradermadeSymbol.toLowerCase().includes(searchLower) || 
-        alert.creator?.display_name?.toLowerCase().includes(searchLower)
-      );
+      result.push(enrichedAlert);
     }
-    if (filters.status) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.status === filters.status);
-    }
-    if (filters.tradeType) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.tradeType.includes(filters.tradeType));
-    }
-    if (filters.educator) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
-    }
-    return filteredAlerts;
-  }, [allAlerts, filters, profilesMap]);
+    
+    return result;
+  }, [allAlerts, filters.search, filters.status, filters.tradeType, filters.educator, profilesMap]);
 
+  // Compute derived data in a single pass for efficiency
   const {
     activeAlerts,
     closedAlerts,
     educatorOptions,
     signalCounts
   } = useMemo(() => {
-    const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
-    const closed = alerts.filter(a => a.status === 'closed');
-
-    // Get unique educators for filter dropdown, prefer fetched names
+    const active = [];
+    const closed = [];
+    let buyCount = 0;
+    let sellCount = 0;
     const educatorsMap = new Map();
-    allAlerts.forEach(alert => {
+
+    // Single pass through alerts for all computations
+    for (const alert of alerts) {
+      // Categorize by status
+      if (alert.status === 'active' || alert.status === 'pending') {
+        active.push(alert);
+      } else if (alert.status === 'closed') {
+        closed.push(alert);
+      }
+
+      // Count trade types
+      if (alert.tradeType.includes('buy')) buyCount++;
+      if (alert.tradeType.includes('sell')) sellCount++;
+    }
+
+    // Get educators from allAlerts (not filtered alerts)
+    for (const alert of allAlerts) {
       const cid = alert.creator?.id;
-      if (!cid) return;
+      if (!cid) continue;
       if (alert.creator && (alert.creator.user_type === 'educator' || alert.creator.access_level === 'admin' || alert.creator.role === 'admin')) {
         const prof = profilesMap[cid];
         const name = (prof?.display_name ?? alert.creator.display_name ?? 'Unknown Educator');
-        educatorsMap.set(cid, {
-          id: cid,
-          name
-        });
+        educatorsMap.set(cid, { id: cid, name });
       }
-    });
+    }
+
     const educatorsList = Array.from(educatorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
-    // Calculate signal counts for filter badges
-    const counts = {
-      total: alerts.length,
-      active: active.length,
-      closed: closed.length,
-      buy: alerts.filter(a => a.tradeType.includes('buy')).length,
-      sell: alerts.filter(a => a.tradeType.includes('sell')).length
-    };
     return {
       activeAlerts: active,
       closedAlerts: closed,
       educatorOptions: educatorsList,
-      signalCounts: counts
+      signalCounts: {
+        total: alerts.length,
+        active: active.length,
+        closed: closed.length,
+        buy: buyCount,
+        sell: sellCount
+      }
     };
   }, [alerts, allAlerts, profilesMap]);
 
@@ -178,13 +183,14 @@ export default function SignalStream() {
     return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
   }, [closedAlerts]);
 
+  // Extract symbols from active alerts for price subscription
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
-    activeAlerts.forEach(alert => {
+    for (const alert of activeAlerts) {
       if (alert?.tradermadeSymbol) {
         symbolSet.add(alert.tradermadeSymbol);
       }
-    });
+    }
     const symbolList = Array.from(symbolSet);
     
     // Only log in development to reduce console noise
@@ -195,35 +201,14 @@ export default function SignalStream() {
     return symbolList;
   }, [activeAlerts]);
 
-  const {
-    connectionStatus: priceConnectionStatus,
-    dataSource: priceSource,
-    subscribe,
-    unsubscribe
-  } = useWebSocketPrices();
-
-  // Live prices mapping removed to prevent top-level re-renders caused by frequent price ticks
-
-  // Subscribe to symbols for live price updates with memoized callback
-  const symbolsKey = useMemo(() => symbols.join(','), [symbols]);
+  // Use throttled WebSocket price subscription to reduce render frequency
+  const { connectionStatus: priceConnectionStatus } = useThrottledWebSocketPrice(symbols, {
+    throttleMs: 250, // Batch subscriptions for 250ms
+    enableBatching: true
+  });
   
-  useEffect(() => {
-    if (symbols.length > 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('SignalStream - Subscribing to symbols:', symbols);
-      }
-      subscribe(symbols);
-    }
-    
-    return () => {
-      if (symbols.length > 0) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('SignalStream - Unsubscribing from symbols:', symbols);
-        }
-        unsubscribe(symbols);
-      }
-    };
-  }, [symbolsKey, subscribe, unsubscribe]); // Use symbolsKey instead of symbols array
+  // Use 'WebSocket' as price source for compatibility
+  const priceSource = 'WebSocket';
 
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);

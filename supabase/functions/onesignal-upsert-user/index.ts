@@ -18,6 +18,7 @@ interface UpsertRequestBody {
   user_id?: string;
   email?: string;
   tags?: Record<string, string>;
+  player_id?: string; // PHASE 2: Add player_id for enhanced linking
 }
 
 Deno.serve(async (req: Request) => {
@@ -60,6 +61,7 @@ Deno.serve(async (req: Request) => {
     const externalId = body.user_id || authUser?.id || "";
     const email = body.email || (authUser?.email as string | undefined) || undefined;
     const tags = body.tags || {};
+    const playerId = body.player_id; // PHASE 2: Extract player_id for enhanced user linking
 
     if (!externalId) {
       return new Response(
@@ -98,6 +100,11 @@ Deno.serve(async (req: Request) => {
       existingUser = await safeJson(getUserRes);
       userExists = !!existingUser?.identity?.external_id;
       console.log(`OneSignal user exists: ${userExists}`, existingUser?.identity?.external_id);
+      
+      // PHASE 3: Enhanced logging for player_id tracking
+      if (playerId) {
+        console.log(`[OneSignal Upsert] Processing with player_id: ${playerId}`);
+      }
     }
 
     // STEP 2: If user doesn't exist, create it
@@ -133,6 +140,7 @@ Deno.serve(async (req: Request) => {
             action: "created_user",
             email_subscription_added: !!email,
             user_exists: false,
+            player_id: playerId || null, // PHASE 3: Include player_id in response
             response: responseData,
           }),
           { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -211,6 +219,7 @@ Deno.serve(async (req: Request) => {
           user_exists: userExists,
           email_subscription_updated: subscriptionAttempt?.ok || false,
           tags_updated: tagsAttempt?.ok || false,
+          player_id: playerId || null, // PHASE 3: Include player_id in response
           subscription_response: subscriptionAttempt?.json,
           tags_response: tagsAttempt?.text ? (() => { try { return JSON.parse(tagsAttempt.text); } catch { return {}; } })() : null,
         }),

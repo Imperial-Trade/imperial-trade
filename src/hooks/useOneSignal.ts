@@ -295,7 +295,7 @@ export function useOneSignal() {
     };
   }, [user?.id, profile?.role, profile?.user_type, browserInfo.name]);
   
-  // Ensure the OneSignal User exists and has email subscription on server
+  // PHASE 3: Enhanced OneSignal User Creation with Player ID validation
   const ensureOneSignalUser = async (): Promise<boolean> => {
     try {
       if (!user?.id) return false;
@@ -324,7 +324,41 @@ export function useOneSignal() {
     }
   };
 
-  // Verify subscription helper - both locally and server-side
+  // PHASE 3: Enhanced User creation WITH player_id linking
+  const ensureOneSignalUserWithPlayerId = async (playerId: string): Promise<boolean> => {
+    try {
+      if (!user?.id || !playerId) {
+        console.warn('[OneSignal] Missing user_id or player_id for user sync');
+        return false;
+      }
+      
+      const tags: Record<string, string> = {};
+      if (profile?.role) tags.role = String(profile.role);
+      if (profile?.user_type) tags.user_type = String(profile.user_type);
+      
+      const { data, error } = await supabase.functions.invoke('onesignal-upsert-user', { 
+        body: { 
+          user_id: user.id,
+          email: user.email,
+          tags,
+          player_id: playerId  // Include player_id for proper linking
+        } 
+      });
+      
+      if (error) {
+        console.warn('[OneSignal] User sync with player_id failed:', error);
+        return false;
+      }
+      
+      if (debug) console.info('[OneSignal] User synced with player_id successfully:', { playerId, data });
+      return data?.success || false;
+    } catch (err) {
+      console.error('[OneSignal] ensureOneSignalUserWithPlayerId error:', err);
+      return false;
+    }
+  };
+
+  // PHASE 3: Enhanced subscription verification with player_id validation
   const verifySubscription = async (): Promise<{ local: boolean; remote?: any; error?: string }> => {
     try {
       const os = (window as any).OneSignal;
@@ -335,14 +369,19 @@ export function useOneSignal() {
       const optedIn = ps?.optedIn;
       const localSubscribed = !!(subscriptionId && optedIn);
       
-      // Also verify server-side if user is available
+      // Enhanced server-side verification with player_id
       let remoteVerification = null;
       if (user?.id) {
         try {
           const { data: remoteData } = await supabase.functions.invoke('onesignal-verify-subscription', {
-            body: { user_id: user.id }
+            body: { 
+              user_id: user.id,
+              player_id: subscriptionId // Pass player_id for verification
+            }
           });
-          remoteVerification = remoteData;
+          remoteVerification = remoteData?.subscription_status;
+          
+          if (debug) console.info('[OneSignal] Remote verification result:', remoteVerification);
         } catch (err) {
           console.warn('[OneSignal] Remote verification failed:', err);
         }
@@ -351,7 +390,7 @@ export function useOneSignal() {
       return { 
         local: localSubscribed, 
         remote: remoteVerification,
-        error: !localSubscribed && !remoteVerification?.subscribed ? "Not subscribed" : undefined
+        error: !localSubscribed && !remoteVerification?.is_subscribed ? "Not subscribed" : undefined
       };
     } catch (err) {
       return { local: false, error: `Verification failed: ${err.message}` };
@@ -466,12 +505,8 @@ const requestPermission = async (): Promise<{ success: boolean; error?: string; 
 
       if (debug) console.info(`[OneSignal] Starting permission request flow for ${browserInfo.name} ${browserInfo.version}...`);
       
-      // STEP 1: FIRST ensure OneSignal user exists to prevent duplication
-      const userCreated = await ensureOneSignalUser();
-      if (!userCreated) {
-        console.warn('[OneSignal] Failed to create OneSignal user. Continuing with subscription attempt...');
-        return { success: false, error: "Failed to create OneSignal user", details: { step: "user_creation" } };
-      }
+  // PHASE 2: Synchronize Flow Order - Subscription FIRST, then User Creation with Player ID
+      if (debug) console.info('[OneSignal] Starting synchronized flow: Subscription → Player ID → User Creation');
       
       // Wait briefly for OneSignal SDK readiness (Notifications available)
       await withTimeout(
@@ -573,15 +608,46 @@ const requestPermission = async (): Promise<{ success: boolean; error?: string; 
         }
       }
 
-      // STEP 5: ALWAYS login user immediately after successful subscription
+      // PHASE 2 & 3: Enhanced Player ID Generation and User Data Sync
       if (subscribed && user?.id) {
         try {
-          if (debug) console.info('[OneSignal] Logging in user and setting up identity...');
+          if (debug) console.info('[OneSignal] Starting enhanced user data synchronization...');
           
-          // Login FIRST - this is critical for proper user linking
-          await withTimeout(Promise.resolve(os?.login?.(user.id)), 3000).catch(() => {});
+          // STEP 1: Ensure we have a valid player_id
+          let playerId = null;
+          let attempts = 0;
+          const maxAttempts = 5;
           
-          // Then set up identity and tags in parallel
+          while (!playerId && attempts < maxAttempts) {
+            attempts++;
+            try {
+              // Wait for player_id generation
+              await new Promise(r => setTimeout(r, attempts * 500)); // Progressive delay
+              
+              const psId = os?.User?.PushSubscription?.id;
+              if (psId) {
+                playerId = psId;
+                if (debug) console.info(`[OneSignal] Player ID obtained on attempt ${attempts}:`, playerId);
+                break;
+              }
+              
+              if (debug) console.warn(`[OneSignal] Player ID not available, attempt ${attempts}/${maxAttempts}`);
+            } catch (e) {
+              console.warn(`[OneSignal] Error getting player ID on attempt ${attempts}:`, e);
+            }
+          }
+          
+          if (!playerId) {
+            console.error('[OneSignal] Failed to obtain player_id after', maxAttempts, 'attempts');
+            return { success: false, error: "Failed to generate player_id", details: { step: "player_id_generation" } };
+          }
+          
+          // STEP 2: Login with user ID first
+          await withTimeout(Promise.resolve(os?.login?.(user.id)), 3000).catch((e) => {
+            console.warn('[OneSignal] Login failed:', e);
+          });
+          
+          // STEP 3: Set up identity and tags
           const ops: Promise<any>[] = [];
           if (user?.email) {
             const osUser = os?.User;
@@ -599,16 +665,23 @@ const requestPermission = async (): Promise<{ success: boolean; error?: string; 
           }
           await Promise.allSettled(ops);
           
-          // Verify the subscription worked
+          // STEP 4: Create/Update OneSignal user with PLAYER_ID
+          const userSyncResult = await ensureOneSignalUserWithPlayerId(playerId);
+          if (!userSyncResult) {
+            console.warn('[OneSignal] User sync with player_id failed, but subscription exists');
+          }
+          
+          // STEP 5: Final verification
           const verification = await verifySubscription();
           if (verification.local && debug) {
-            console.info('[OneSignal] Complete setup successful - user subscribed and logged in', verification);
+            console.info('[OneSignal] Enhanced sync completed successfully:', { playerId, verification });
           } else if (!verification.local) {
-            console.warn('[OneSignal] Subscription verification failed', verification);
+            console.warn('[OneSignal] Subscription verification failed after sync:', verification);
           }
 
         } catch (err) {
-          console.warn('[OneSignal] Error during user login/identity setup:', err);
+          console.error('[OneSignal] Enhanced sync error:', err);
+          return { success: false, error: `User sync failed: ${err.message}`, details: { step: "user_sync", originalError: err } };
         }
       }
       // STEP 5: Final verification

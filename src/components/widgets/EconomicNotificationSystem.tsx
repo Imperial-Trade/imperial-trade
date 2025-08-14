@@ -97,12 +97,8 @@ export default function EconomicNotificationSystem({
     return () => clearInterval(interval);
   }, [events, enabled, notifyMinutesBefore, notifiedEvents]);
 
-  // Request notification permission on mount
-  useEffect(() => {
-    if (enabled && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, [enabled]);
+  // Note: Notification permission is handled by NotificationPermissionBanner
+  // Don't request permission here to avoid competing with custom banner
 
   return null; // This component doesn't render anything
 }

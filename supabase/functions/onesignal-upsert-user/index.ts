@@ -113,14 +113,29 @@ Deno.serve(async (req: Request) => {
         identity: { external_id: externalId },
         properties: { tags },
       };
+      
+      // Add subscriptions array for both email and push
+      const subscriptions = [];
+      
       if (email) {
-        createUserPayload.subscriptions = [
-          {
-            type: "Email",
-            token: email,
-            enabled: true,
-          },
-        ];
+        subscriptions.push({
+          type: "Email",
+          token: email,
+          enabled: true,
+        });
+      }
+      
+      // If player_id is provided, add push subscription
+      if (playerId) {
+        subscriptions.push({
+          type: "WebPush",
+          token: playerId,
+          enabled: true,
+        });
+      }
+      
+      if (subscriptions.length > 0) {
+        createUserPayload.subscriptions = subscriptions;
       }
 
       const createRes = await fetch(`https://api.onesignal.com/apps/${appId}/users`, {
@@ -152,8 +167,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // STEP 3: User exists or creation failed - update email subscription and tags
-    let subscriptionAttempt: { ok: boolean; status: number; text?: string; json?: any } | null = null;
+    // STEP 3: User exists or creation failed - update subscriptions and tags
+    let emailSubscriptionAttempt: { ok: boolean; status: number; text?: string; json?: any } | null = null;
+    let pushSubscriptionAttempt: { ok: boolean; status: number; text?: string; json?: any } | null = null;
     let tagsAttempt: { ok: boolean; status: number; text?: string } | null = null;
 
     // Update email subscription if email provided
@@ -184,11 +200,47 @@ Deno.serve(async (req: Request) => {
           subJson = {};
         }
       }
-      subscriptionAttempt = { 
+      emailSubscriptionAttempt = { 
         ok: subRes.ok, 
         status: subRes.status, 
         text: subText,
         json: subJson
+      };
+    }
+
+    // Update push subscription if player_id provided
+    if (playerId) {
+      const pushSubRes = await fetch(
+        `https://api.onesignal.com/apps/${appId}/users/by/external_id/${externalId}/subscriptions`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            subscription: {
+              type: "WebPush",
+              token: playerId,
+              enabled: true,
+            },
+          }),
+        }
+      );
+      const pushSubText = await safeText(pushSubRes);
+      let pushSubJson = null;
+      if (pushSubRes.ok && pushSubText) {
+        try {
+          pushSubJson = JSON.parse(pushSubText);
+        } catch {
+          pushSubJson = {};
+        }
+      }
+      pushSubscriptionAttempt = { 
+        ok: pushSubRes.ok, 
+        status: pushSubRes.status, 
+        text: pushSubText,
+        json: pushSubJson
       };
     }
 
@@ -210,17 +262,23 @@ Deno.serve(async (req: Request) => {
       tagsAttempt = { ok: tagsRes.ok, status: tagsRes.status, text: await safeText(tagsRes) };
     }
 
-    // Return success if at least subscription or tags update succeeded
-    if ((subscriptionAttempt?.ok || !email) && (tagsAttempt?.ok || Object.keys(tags).length === 0)) {
+    // Return success if subscriptions and tags updates succeeded
+    const emailOk = emailSubscriptionAttempt?.ok || !email;
+    const pushOk = pushSubscriptionAttempt?.ok || !playerId;
+    const tagsOk = tagsAttempt?.ok || Object.keys(tags).length === 0;
+    
+    if (emailOk && pushOk && tagsOk) {
       return new Response(
         JSON.stringify({
           success: true,
           action: userExists ? "updated_existing_user" : "updated_user_after_creation_failed",
           user_exists: userExists,
-          email_subscription_updated: subscriptionAttempt?.ok || false,
+          email_subscription_updated: emailSubscriptionAttempt?.ok || false,
+          push_subscription_updated: pushSubscriptionAttempt?.ok || false,
           tags_updated: tagsAttempt?.ok || false,
-          player_id: playerId || null, // PHASE 3: Include player_id in response
-          subscription_response: subscriptionAttempt?.json,
+          player_id: playerId || null,
+          email_subscription_response: emailSubscriptionAttempt?.json,
+          push_subscription_response: pushSubscriptionAttempt?.json,
           tags_response: tagsAttempt?.text ? (() => { try { return JSON.parse(tagsAttempt.text); } catch { return {}; } })() : null,
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -233,8 +291,10 @@ Deno.serve(async (req: Request) => {
         success: false,
         error: "Failed to update OneSignal user subscriptions/tags",
         user_exists: userExists,
-        subscription_status: subscriptionAttempt?.status,
-        subscription_response: subscriptionAttempt?.text,
+        email_subscription_status: emailSubscriptionAttempt?.status,
+        email_subscription_response: emailSubscriptionAttempt?.text,
+        push_subscription_status: pushSubscriptionAttempt?.status,
+        push_subscription_response: pushSubscriptionAttempt?.text,
         tags_status: tagsAttempt?.status,
         tags_response: tagsAttempt?.text,
       }),

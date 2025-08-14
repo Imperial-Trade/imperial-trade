@@ -1,0 +1,318 @@
+/**
+ * Unified Permission Flow - Phase 2: Unified Permission Flow
+ * Eliminates dual prompts and provides platform-aware permission handling
+ */
+
+import { useState, useCallback, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useOneSignal } from "@/hooks/useOneSignal";
+import { usePWAInstallation } from "@/hooks/usePWAInstallation";
+import { detectPlatform, getPlatformInstructions } from "@/utils/platformDetection";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, Bell, Download, Settings, X } from "lucide-react";
+import { toast } from "sonner";
+
+interface UnifiedPermissionFlowProps {
+  onClose?: () => void;
+  autoShow?: boolean;
+  className?: string;
+}
+
+export default function UnifiedPermissionFlow({ 
+  onClose, 
+  autoShow = true, 
+  className = "" 
+}: UnifiedPermissionFlowProps) {
+  const { user } = useAuth();
+  const { initialized, requestPermission, permission, isGranted, browserInfo } = useOneSignal();
+  const { installPWA, canInstall, isIOSDevice, showIOSInstructions, getIOSInstructions } = usePWAInstallation();
+  
+  const [isVisible, setIsVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState<'permission' | 'pwa_install' | 'ios_guide' | 'settings'>('permission');
+  
+  const platformInfo = detectPlatform();
+  const instructions = getPlatformInstructions(platformInfo);
+
+  // Determine if we should show the flow
+  useEffect(() => {
+    if (!autoShow || !initialized || !user) {
+      setIsVisible(false);
+      return;
+    }
+
+    // Don't show if already granted and working
+    if (isGranted) {
+      setIsVisible(false);
+      return;
+    }
+
+    // Don't show if permission is denied (user actively blocked)
+    if (permission === 'denied') {
+      setIsVisible(false);
+      return;
+    }
+
+    // Don't show in unsupported scenarios
+    if (!platformInfo.supportsWebPush || platformInfo.isInAppBrowser || platformInfo.isPrivateBrowsing) {
+      setIsVisible(false);
+      return;
+    }
+
+    // Show for default permission state
+    if (permission === 'default') {
+      setIsVisible(true);
+      
+      // Determine starting step based on platform
+      if (platformInfo.requiresPWAForPush && !platformInfo.isPWA) {
+        setCurrentStep('pwa_install');
+      } else {
+        setCurrentStep('permission');
+      }
+    }
+  }, [autoShow, initialized, user, isGranted, permission, platformInfo, browserInfo.name]);
+
+  const handlePermissionRequest = useCallback(async () => {
+    if (!initialized || isLoading) return;
+
+    setIsLoading(true);
+    
+    try {
+      const result = await requestPermission();
+      
+      if (result.success) {
+        toast.success("Push notifications enabled successfully!");
+        setIsVisible(false);
+        onClose?.();
+      } else {
+        // Handle specific error cases
+        if (result.error === 'denied') {
+          setCurrentStep('settings');
+          toast.error("Notifications were blocked. Please enable them in browser settings.");
+        } else if (result.error?.includes('timeout')) {
+          toast.error("Request timed out. Please try again.");
+        } else {
+          toast.error(result.error || "Failed to enable notifications");
+        }
+      }
+    } catch (error) {
+      console.error('[UnifiedFlow] Permission request failed:', error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [initialized, isLoading, requestPermission, onClose]);
+
+  const handlePWAInstall = useCallback(async () => {
+    if (!canInstall) return;
+
+    setIsLoading(true);
+    
+    try {
+      await installPWA();
+      toast.success("App installed! Notifications will be available after restart.");
+      setIsVisible(false);
+      onClose?.();
+    } catch (error) {
+      console.error('[UnifiedFlow] PWA install failed:', error);
+      toast.error("Failed to install app");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [canInstall, installPWA, onClose]);
+
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+    onClose?.();
+  }, [onClose]);
+
+  if (!isVisible) return null;
+
+  // Render based on current step
+  const renderContent = () => {
+    switch (currentStep) {
+      case 'pwa_install':
+        return (
+          <>
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Download className="h-5 w-5 text-primary" />
+                Install App for Notifications
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {platformInfo.platform === 'ios' 
+                  ? "On iOS, notifications work best when the app is installed to your home screen."
+                  : "Install this app for the best notification experience."
+                }
+              </p>
+              
+              {isIOSDevice && !canInstall ? (
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground">
+                    To install on iOS Safari:
+                  </div>
+                  <ol className="text-sm space-y-1 list-decimal list-inside text-muted-foreground">
+                    <li>Tap the Share button</li>
+                    <li>Scroll down and tap "Add to Home Screen"</li>
+                    <li>Tap "Add" in the top right</li>
+                    <li>Open the app from your home screen</li>
+                  </ol>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handlePWAInstall}
+                    disabled={!canInstall || isLoading}
+                    className="flex-1"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {isLoading ? 'Installing...' : 'Install App'}
+                  </Button>
+                </div>
+              )}
+              
+              <Button
+                variant="outline"
+                onClick={() => setCurrentStep('permission')}
+                className="w-full"
+              >
+                Continue Without Installing
+              </Button>
+            </CardContent>
+          </>
+        );
+
+      case 'settings':
+        return (
+          <>
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Settings className="h-5 w-5 text-orange-500" />
+                Enable in Browser Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start gap-3 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Notifications are currently blocked</p>
+                  <p className="text-xs text-muted-foreground">
+                    You'll need to enable them in your browser settings first.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <p className="text-sm font-medium">To enable notifications:</p>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  {browserInfo.name === 'Chrome' && (
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Click the lock icon in the address bar</li>
+                      <li>Set Notifications to "Allow"</li>
+                      <li>Refresh this page</li>
+                    </ol>
+                  )}
+                  {browserInfo.name === 'Safari' && (
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Go to Safari → Settings → Websites</li>
+                      <li>Click Notifications on the left</li>
+                      <li>Set this site to "Allow"</li>
+                    </ol>
+                  )}
+                  {browserInfo.name === 'Firefox' && (
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Click the shield icon in the address bar</li>
+                      <li>Click "Turn off Blocking"</li>
+                      <li>Refresh this page</li>
+                    </ol>
+                  )}
+                  {!['Chrome', 'Safari', 'Firefox'].includes(browserInfo.name) && (
+                    <p>Please check your browser's notification settings for this site.</p>
+                  )}
+                </div>
+              </div>
+              
+              <Button
+                variant="outline"
+                onClick={() => window.location.reload()}
+                className="w-full"
+              >
+                Refresh Page
+              </Button>
+            </CardContent>
+          </>
+        );
+
+      default: // 'permission'
+        return (
+          <>
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Bell className="h-5 w-5 text-primary" />
+                Enable Push Notifications
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Get instant alerts for trading signals, market updates, and important announcements.
+              </p>
+              
+              <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                <span className="text-sm font-medium">Platform Support</span>
+                <Badge variant={platformInfo.hasStableDelivery ? "default" : "secondary"}>
+                  {platformInfo.platform} {platformInfo.browser}
+                </Badge>
+              </div>
+              
+              {instructions && (
+                <div className="text-sm text-muted-foreground bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
+                  💡 {instructions}
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Button
+                  onClick={handlePermissionRequest}
+                  disabled={isLoading || !initialized}
+                  className="flex-1"
+                >
+                  <Bell className="h-4 w-4 mr-2" />
+                  {isLoading ? 'Enabling...' : 'Enable Notifications'}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleClose}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {platformInfo.hasNotificationQuirks && (
+                <div className="text-xs text-muted-foreground">
+                  <strong>Note:</strong> {
+                    platformInfo.platform === 'ios' 
+                      ? 'On iOS, notifications work best in installed PWAs and may be delayed in Safari.'
+                      : 'This platform may have specific notification behaviors.'
+                  }
+                </div>
+              )}
+            </CardContent>
+          </>
+        );
+    }
+  };
+
+  return (
+    <div className={`fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 ${className}`}>
+      <Card className="w-full max-w-md">
+        {renderContent()}
+      </Card>
+    </div>
+  );
+}

@@ -1,11 +1,11 @@
 import React from "react";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
-import NotificationPermissionBanner from "@/components/notifications/NotificationPermissionBanner";
+import UnifiedPermissionFlow from "@/components/notifications/UnifiedPermissionFlow";
 
 const OneSignalInitializer: React.FC = () => {
   return (
     <NotificationsProvider>
-      <NotificationPermissionBanner />
+      <UnifiedPermissionFlow autoShow={true} />
     </NotificationsProvider>
   );
 };

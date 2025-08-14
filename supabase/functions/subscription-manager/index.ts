@@ -160,7 +160,7 @@ serve(async (req) => {
       }
 
       case 'cleanup': {
-        // Clean up old inactive subscriptions (older than 30 days)
+        // Enhanced cleanup with health recovery
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
         
         const { error } = await supabase
@@ -177,10 +177,63 @@ serve(async (req) => {
           );
         }
 
-        log('Cleanup completed successfully');
+        // Also refresh user profile subscription status
+        if (user_id) {
+          await supabase
+            .from('profiles')
+            .update({
+              onesignal_last_verified_at: new Date().toISOString()
+            })
+            .eq('id', user_id);
+        }
+
+        log('Cleanup and refresh completed successfully');
 
         return new Response(
           JSON.stringify({ success: true, message: 'Cleanup completed' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'health_check': {
+        if (!user_id) {
+          return new Response(
+            JSON.stringify({ error: 'Missing required field: user_id' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Verify subscription health across all systems
+        const { data: subscriptions } = await supabase
+          .from('push_subscriptions')
+          .select('*')
+          .eq('user_id', user_id)
+          .eq('subscription_active', true);
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('push_subscription_active, onesignal_subscription_status, onesignal_last_verified_at')
+          .eq('id', user_id)
+          .single();
+
+        const health = {
+          has_active_subscriptions: (subscriptions?.length || 0) > 0,
+          profile_status: profile?.push_subscription_active || false,
+          last_verified: profile?.onesignal_last_verified_at,
+          needs_refresh: false
+        };
+
+        // Check if refresh is needed
+        if (profile?.onesignal_last_verified_at) {
+          const lastVerified = new Date(profile.onesignal_last_verified_at);
+          const hoursSince = (Date.now() - lastVerified.getTime()) / (1000 * 60 * 60);
+          health.needs_refresh = hoursSince > 24;
+        } else {
+          health.needs_refresh = true;
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, health }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

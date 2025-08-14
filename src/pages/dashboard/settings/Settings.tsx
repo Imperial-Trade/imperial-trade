@@ -13,6 +13,7 @@ import { User as UserIcon, Bell, Shield, Palette, Download } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { toast } from '@/hooks/use-toast';
+import NotificationDeliveryMonitor from '@/components/notifications/NotificationDeliveryMonitor';
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -251,6 +252,13 @@ export default function Settings() {
                   }))
                 }
               />
+            </div>
+            
+            <Separator />
+            
+            {/* Delivery Monitor */}
+            <div className="pt-4">
+              <NotificationDeliveryMonitor />
             </div>
           </CardContent>
         </Card>

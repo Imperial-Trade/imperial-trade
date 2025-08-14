@@ -39,12 +39,54 @@ export function useOneSignal() {
 
         if (debug) console.info(`[OneSignal] Initializing for ${browserInfo.name} ${browserInfo.version}${browserInfo.isMobile ? ' (mobile)' : ''}`);
 
-        // Get public config (appId) from secure Edge Function
-        const { data, error } = await supabase.functions.invoke("onesignal-config", {
-          method: "GET",
-        });
-        if (error || !data?.appId) {
-          console.warn("OneSignal config not available:", error || data);
+        // **PHASE 1: Enhanced Configuration Loading with Retry Logic**
+        let configData = null;
+        let configAttempts = 0;
+        const maxConfigAttempts = 3;
+        
+        while (configAttempts < maxConfigAttempts && !configData) {
+          configAttempts++;
+          try {
+            if (debug) console.info(`[OneSignal] Loading config (attempt ${configAttempts}/${maxConfigAttempts})`);
+            
+            const { data, error } = await withTimeout(
+              supabase.functions.invoke("onesignal-config", { method: "GET" }),
+              10000
+            );
+            
+            if (error) {
+              console.warn(`[OneSignal] Config error (attempt ${configAttempts}):`, error);
+              if (configAttempts === maxConfigAttempts) {
+                throw new Error(`Configuration failed after ${maxConfigAttempts} attempts: ${error.message || 'Unknown error'}`);
+              }
+              await new Promise(r => setTimeout(r, 1000 * configAttempts)); // Progressive delay
+              continue;
+            }
+            
+            if (!data?.appId) {
+              console.warn(`[OneSignal] Invalid config data (attempt ${configAttempts}):`, data);
+              if (configAttempts === maxConfigAttempts) {
+                throw new Error('OneSignal App ID not found in configuration');
+              }
+              await new Promise(r => setTimeout(r, 1000 * configAttempts));
+              continue;
+            }
+            
+            configData = data;
+            if (debug) console.info('[OneSignal] Configuration loaded successfully:', { appId: data.appId, initialized: data.initialized });
+            
+          } catch (configError) {
+            console.warn(`[OneSignal] Config attempt ${configAttempts} failed:`, configError);
+            if (configAttempts === maxConfigAttempts) {
+              console.error('[OneSignal] All configuration attempts failed. Please check Supabase secrets.');
+              return;
+            }
+            await new Promise(r => setTimeout(r, 1000 * configAttempts));
+          }
+        }
+        
+        if (!configData) {
+          console.error('[OneSignal] Failed to load configuration after all attempts');
           return;
         }
 
@@ -82,74 +124,118 @@ export function useOneSignal() {
 
         if (cancelled) return;
 
-        // Enhanced OneSignal initialization with singleton pattern
+          // **PHASE 2: Enhanced OneSignal SDK Initialization with Robust Error Handling**
         if (typeof window !== 'undefined') {
           window.OneSignal = window.OneSignal || ([] as any[]);
           
           // Prevent multiple initializations
           if ((window as any).OneSignal?.__IMPERIAL_INIT_DONE__) {
-            if (debug) console.info('[OneSignal] Already initialized, skipping');
-            setInitialized(true);
+            if (debug) console.info('[OneSignal] Already initialized, checking ready state');
+            
+            // Verify the existing initialization is still functional
+            try {
+              const isReady = !!(window as any).OneSignal?.Notifications;
+              if (isReady) {
+                setInitialized(true);
+                return;
+              } else {
+                console.warn('[OneSignal] Previous initialization not functional, reinitializing');
+                (window as any).OneSignal.__IMPERIAL_INIT_DONE__ = false;
+              }
+            } catch (e) {
+              console.warn('[OneSignal] Error checking previous initialization:', e);
+              (window as any).OneSignal.__IMPERIAL_INIT_DONE__ = false;
+            }
+          }
+
+          // **Enhanced SDK readiness detection with exponential backoff**
+          let sdkReady = false;
+          let readyAttempts = 0;
+          const maxReadyAttempts = 20;
+          const timeout = browserConfig.subscriptionTimeout;
+          const startTime = Date.now();
+          
+          while (!sdkReady && readyAttempts < maxReadyAttempts && (Date.now() - startTime) < timeout) {
+            readyAttempts++;
+            
+            try {
+              if ((window as any).OneSignal?.init) {
+                sdkReady = true;
+                if (debug) console.info(`[OneSignal] SDK ready after ${readyAttempts} attempts`);
+                break;
+              }
+            } catch (e) {
+              if (debug) console.warn(`[OneSignal] SDK readiness check ${readyAttempts} failed:`, e);
+            }
+            
+            const delay = Math.min(100 * Math.pow(1.2, readyAttempts), 1000);
+            await new Promise(r => setTimeout(r, delay));
+          }
+          
+          if (!sdkReady) {
+            console.error(`[OneSignal] SDK not ready after ${readyAttempts} attempts and ${Date.now() - startTime}ms`);
             return;
           }
 
-          // Wait for SDK to be fully ready with browser-specific timeout
-          await new Promise<void>((resolve) => {
-            const timeout = browserConfig.subscriptionTimeout;
-            const startTime = Date.now();
-            
-            const checkReady = () => {
-              try {
-                if ((window as any).OneSignal?.init) {
-                  resolve();
-                  return;
-                }
-              } catch {}
-              
-              if (Date.now() - startTime < timeout) {
-                setTimeout(checkReady, 100);
-              } else {
-                console.warn('[OneSignal] SDK readiness timeout');
-                resolve();
-              }
-            };
-            checkReady();
-          });
-
-          // Initialize with browser-specific configuration
-          window.OneSignal.push(function () {
+          // **Enhanced initialization with comprehensive error handling**
+          const initPromise = new Promise<void>((resolve, reject) => {
             try {
-              const initConfig = {
-                appId: data.appId,
-                allowLocalhostAsSecureOrigin: true,
-                // PHASE 1: Complete OneSignal prompt suppression
-                autoRegister: false, // Disable for ALL browsers
-                notifyButton: { enable: false },
-                promptOptions: {
-                  autoPrompt: false, // Critical: prevents all automatic prompts
-                  customPromptOptions: {
-                    autoPrompt: false
-                  }
-                },
-                slidedown: { enabled: false },
-                bell: { enabled: false },
-                ...(data.safariWebId && { safari_web_id: data.safariWebId }),
-                // Browser-specific optimizations
-                ...(browserInfo.name === 'Safari' && {
-                  autoResubscribe: true
-                }),
-                ...(browserInfo.name === 'Firefox' && {
-                  persistNotification: true // Better for Firefox
-                })
-              };
-              
-              (window as any).OneSignal.init(initConfig);
-              (window as any).OneSignal.__IMPERIAL_INIT_DONE__ = true;
-              
-              if (debug) console.info('[OneSignal] SDK initialized with config:', initConfig);
-            } catch (error) {
-              console.error('[OneSignal] Initialization error:', error);
+              window.OneSignal.push(function () {
+                try {
+                  const initConfig = {
+                    appId: configData.appId,
+                    allowLocalhostAsSecureOrigin: true,
+                    // **PHASE 1: Complete OneSignal prompt suppression**
+                    autoRegister: false,
+                    notifyButton: { enable: false },
+                    promptOptions: {
+                      autoPrompt: false,
+                      customPromptOptions: { autoPrompt: false }
+                    },
+                    slidedown: { enabled: false },
+                    bell: { enabled: false },
+                    ...(configData.safariWebId && { safari_web_id: configData.safariWebId }),
+                    // Browser-specific optimizations
+                    ...(browserInfo.name === 'Safari' && { autoResubscribe: true }),
+                    ...(browserInfo.name === 'Firefox' && { persistNotification: true })
+                  };
+                  
+                  if (debug) console.info('[OneSignal] Initializing with config:', initConfig);
+                  
+                  (window as any).OneSignal.init(initConfig);
+                  (window as any).OneSignal.__IMPERIAL_INIT_DONE__ = true;
+                  
+                  // **Enhanced post-initialization verification**
+                  setTimeout(() => {
+                    try {
+                      const isReady = !!(window as any).OneSignal?.Notifications && !!(window as any).OneSignal?.User;
+                      if (isReady) {
+                        if (debug) console.info('[OneSignal] Initialization verified successfully');
+                        resolve();
+                      } else {
+                        console.warn('[OneSignal] Initialization completed but SDK not fully ready');
+                        reject(new Error('SDK initialization incomplete'));
+                      }
+                    } catch (e) {
+                      console.error('[OneSignal] Post-initialization verification failed:', e);
+                      reject(e);
+                    }
+                  }, 500);
+                  
+                } catch (initError) {
+                  console.error('[OneSignal] Initialization error:', initError);
+                  reject(initError);
+                }
+              });
+            } catch (pushError) {
+              console.error('[OneSignal] Failed to push initialization function:', pushError);
+              reject(pushError);
             }
+          });
+          
+          await withTimeout(initPromise, 10000).catch(timeoutError => {
+            console.error('[OneSignal] Initialization timeout:', timeoutError);
+            throw timeoutError;
           });
         }
 
@@ -483,13 +569,42 @@ export function useOneSignal() {
   // **PHASE 3: Production-Grade Permission Request with Enhanced Error Handling**
   const requestPermission = async (): Promise<{ success: boolean; error?: string; details?: any }> => {
     try {
+      // **PHASE 3: Enhanced Initialization and SDK Readiness Checks**
       if (!initialized) {
-        return { success: false, error: "OneSignal not initialized. Please wait and try again." };
+        console.warn('[OneSignal] SDK not initialized when permission requested');
+        return { 
+          success: false, 
+          error: "Push notification system is loading. Please wait a moment and try again.",
+          details: { reason: 'not_initialized', initialized }
+        };
       }
 
       const os = (window as any).OneSignal;
       if (!os) {
-        return { success: false, error: "OneSignal SDK not available. Please refresh the page." };
+        console.error('[OneSignal] SDK object not available');
+        return { 
+          success: false, 
+          error: "Push notification system unavailable. Please refresh the page and try again.",
+          details: { reason: 'sdk_unavailable' }
+        };
+      }
+      
+      // **Enhanced SDK component readiness verification**
+      if (!os.Notifications || !os.User || !os.User.PushSubscription) {
+        console.warn('[OneSignal] SDK components not ready:', {
+          notifications: !!os.Notifications,
+          user: !!os.User,
+          pushSubscription: !!os.User?.PushSubscription
+        });
+        return { 
+          success: false, 
+          error: "Push notification components are still loading. Please try again in a few seconds.",
+          details: { reason: 'components_not_ready', components: {
+            notifications: !!os.Notifications,
+            user: !!os.User,
+            pushSubscription: !!os.User?.PushSubscription
+          }}
+        };
       }
 
       if (debug) console.info(`[OneSignal] Starting WebPush permission request for ${browserInfo.name} ${browserInfo.version}`);

@@ -23,7 +23,16 @@ export function useOneSignal() {
   
   // Browser detection for compatibility
   const browserInfo = typeof window !== 'undefined' ? detectBrowser() : { 
-    name: 'Unknown', version: '0', isSupported: false, isMobile: false, requiresSpecialHandling: true 
+    name: 'Unknown', 
+    version: '0', 
+    isSupported: false, 
+    isMobile: false, 
+    requiresSpecialHandling: true,
+    isIOS: false,
+    isIOSWebPushSupported: false,
+    isPWACapable: false,
+    isStandalone: false,
+    isInAppBrowser: false
   };
   const browserConfig = getBrowserSpecificConfig(browserInfo);
   useEffect(() => {

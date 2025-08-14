@@ -9,12 +9,8 @@ const NotificationPermissionBanner: React.FC = () => {
   const { hasSeenWelcome } = useWelcome();
   const [requesting, setRequesting] = useState(false);
   const [ready, setReady] = useState(false);
-  useEffect(() => {
-    if (permission === 'denied') {
-      // Auto-close only when user explicitly denies
-      dismissPrompt();
-    }
-  }, [permission, dismissPrompt]);
+  
+  const isDenied = permission === 'denied';
 
   // Wait until the welcome animation completes before showing the banner
   useEffect(() => {
@@ -50,8 +46,15 @@ const NotificationPermissionBanner: React.FC = () => {
             <Bell className="h-4 w-4 text-foreground" />
           </div>
           <div className="flex-1 text-xs sm:text-sm">
-            <h2 className="text-sm font-medium">Enable push notifications</h2>
-            <p className="mt-0.5 text-muted-foreground">Stay on top of live signals, TP hits, and risk alerts.</p>
+            <h2 className="text-sm font-medium">
+              {isDenied ? 'Re-enable push notifications' : 'Enable push notifications'}
+            </h2>
+            <p className="mt-0.5 text-muted-foreground">
+              {isDenied 
+                ? 'Notifications are blocked. Re-enable them to get alerts for signals, TP hits, and risk updates.'
+                : 'Stay on top of live signals, TP hits, and risk alerts.'
+              }
+            </p>
           </div>
         </div>
         <div className="mt-3 flex items-center justify-end gap-2">
@@ -62,7 +65,7 @@ const NotificationPermissionBanner: React.FC = () => {
                 onClick={() => window.open(window.location.href, '_blank', 'noopener,noreferrer')}
                 title="Open the app in a new tab to enable notifications"
               >
-                Open in new tab
+                {isDenied ? 'Allow in browser settings' : 'Open in new tab'}
               </Button>
               <Button size="sm" variant="ghost" onClick={dismissPrompt}>
                 Not now
@@ -140,16 +143,18 @@ const NotificationPermissionBanner: React.FC = () => {
                 {requesting ? (
                   <span className="mr-2 inline-flex h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.125em]" />
                 ) : null}
-                {requesting ? 'Enabling…' : 'Enable notifications'}
+                {requesting ? 'Enabling…' : isDenied ? 'Allow in browser settings' : 'Enable notifications'}
               </Button>
             </>
           )}
         </div>
-        {!requesting && initialized && (permission === 'default' || isIframeBlocked) ? (
+        {!requesting && initialized && (permission === 'default' || permission === 'denied' || isIframeBlocked) ? (
           <p className="mt-2 text-[11px] sm:text-xs text-muted-foreground">
-            {isIframeBlocked
-              ? 'Push notifications are blocked in preview. Open in a new tab to enable.'
-              : browserInstructions || 'No prompt? Check site settings (lock icon) → Notifications.'}
+            {isDenied
+              ? 'Click the lock/bell icon in your browser address bar, then select "Allow" for notifications.'
+              : isIframeBlocked
+                ? 'Push notifications are blocked in preview. Open in a new tab to enable.'
+                : browserInstructions || 'No prompt? Check site settings (lock icon) → Notifications.'}
           </p>
         ) : null}
       </div>

@@ -106,8 +106,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     isGranted: isGranted && !!user,
     hasSubscription,
     isIframeBlocked,
-    // Fix: Hide prompt if explicitly dismissed, denied, not initialized, no user, OR actually subscribed in database
-    isPromptDismissed: dismissed || !user || permission === 'denied' || !initialized || dbSubscriptionStatus === 'subscribed',
+    // Fix: Hide prompt if explicitly dismissed, not initialized, no user, OR actually subscribed in database
+    isPromptDismissed: dismissed || !user || !initialized || dbSubscriptionStatus === 'subscribed',
     requestPermission,
     dismissPrompt,
     browserInfo,

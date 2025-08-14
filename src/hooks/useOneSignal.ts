@@ -613,25 +613,43 @@ const requestPermission = async (): Promise<{ success: boolean; error?: string; 
         try {
           if (debug) console.info('[OneSignal] Starting enhanced user data synchronization...');
           
-          // STEP 1: Ensure we have a valid player_id
+          // STEP 1: Ensure we have a valid player_id with improved timing
           let playerId = null;
           let attempts = 0;
-          const maxAttempts = 5;
+          const maxAttempts = 8; // Increased attempts
           
           while (!playerId && attempts < maxAttempts) {
             attempts++;
             try {
-              // Wait for player_id generation
-              await new Promise(r => setTimeout(r, attempts * 500)); // Progressive delay
+              // Progressive delay: 1s, 2s, 3s, 4s, 5s, 6s, 7s, 8s
+              await new Promise(r => setTimeout(r, attempts * 1000));
               
               const psId = os?.User?.PushSubscription?.id;
+              const altId = os?.User?.PushSubscription?.token;
+              
               if (psId) {
                 playerId = psId;
                 if (debug) console.info(`[OneSignal] Player ID obtained on attempt ${attempts}:`, playerId);
                 break;
+              } else if (altId && attempts > 3) {
+                // Use token as fallback after a few attempts
+                playerId = altId;
+                if (debug) console.info(`[OneSignal] Using subscription token as player ID on attempt ${attempts}:`, playerId);
+                break;
               }
               
-              if (debug) console.warn(`[OneSignal] Player ID not available, attempt ${attempts}/${maxAttempts}`);
+              if (debug) console.warn(`[OneSignal] Player ID not available, attempt ${attempts}/${maxAttempts}, checking again...`);
+              
+              // Force refresh subscription state
+              try {
+                const currentState = os?.User?.PushSubscription;
+                if (debug) console.info(`[OneSignal] Current subscription state:`, {
+                  id: currentState?.id,
+                  token: currentState?.token,
+                  optedIn: currentState?.optedIn
+                });
+              } catch {}
+              
             } catch (e) {
               console.warn(`[OneSignal] Error getting player ID on attempt ${attempts}:`, e);
             }
@@ -639,13 +657,17 @@ const requestPermission = async (): Promise<{ success: boolean; error?: string; 
           
           if (!playerId) {
             console.error('[OneSignal] Failed to obtain player_id after', maxAttempts, 'attempts');
-            return { success: false, error: "Failed to generate player_id", details: { step: "player_id_generation" } };
+            // Continue without player_id for now, let OneSignal handle internally
+            if (debug) console.warn('[OneSignal] Proceeding without player_id - OneSignal SDK will manage subscription internally');
           }
           
           // STEP 2: Login with user ID first
-          await withTimeout(Promise.resolve(os?.login?.(user.id)), 3000).catch((e) => {
+          await withTimeout(Promise.resolve(os?.login?.(user.id)), 5000).catch((e) => {
             console.warn('[OneSignal] Login failed:', e);
           });
+          
+          // Wait a bit for login to complete
+          await new Promise(r => setTimeout(r, 1000));
           
           // STEP 3: Set up identity and tags
           const ops: Promise<any>[] = [];

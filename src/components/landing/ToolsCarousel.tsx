@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Brain, Search, Calculator, BookOpen, BarChart, Activity } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import ContentSection from "./ContentSection";
@@ -52,12 +52,16 @@ const tools = [
 export default function ToolsCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveIndex((prevIndex) => (prevIndex + 1) % tools.length);
-    }, 4000);
-    return () => clearInterval(interval);
+  // Memoize the carousel rotation function to prevent recreation
+  const rotateCarousel = useCallback(() => {
+    setActiveIndex((prevIndex) => (prevIndex + 1) % tools.length);
   }, []);
+
+  // Stable interval with longer duration to reduce render frequency
+  useEffect(() => {
+    const interval = setInterval(rotateCarousel, 6000); // Increased from 4s to 6s
+    return () => clearInterval(interval);
+  }, [rotateCarousel]);
 
   return (
     <section className="relative w-full bg-gradient-to-br from-background via-surface/50 to-background py-24 z-10 overflow-hidden">
@@ -86,55 +90,59 @@ export default function ToolsCarousel() {
                 const sign = Math.sign(offset);
                 const absOffset = Math.abs(offset);
 
-                // Determine if the item is "behind" in the rotation for seamless looping
-                const isBehind = Math.abs(offset) > tools.length / 2;
-                const displayOffset = isBehind
-                  ? (tools.length - absOffset) * -sign
-                  : offset;
+                // Memoize transform calculations to reduce computation
+                const transformValues = useMemo(() => {
+                  const isBehind = Math.abs(offset) > tools.length / 2;
+                  const displayOffset = isBehind
+                    ? (tools.length - absOffset) * -sign
+                    : offset;
 
-                const transform = {
-                  rotateY: displayOffset * -20,
-                  translateX: displayOffset * 200,
-                  scale: absOffset === 0 ? 1.2 : 0.7,
-                  zIndex: tools.length - absOffset,
-                };
+                  return {
+                    rotateY: displayOffset * -20,
+                    translateX: displayOffset * 200,
+                    scale: absOffset === 0 ? 1.2 : 0.7,
+                    zIndex: tools.length - absOffset,
+                    opacity: absOffset <= 2 ? 1 : 0,
+                    blur: absOffset === 0 ? "blur(0)" : "blur(2px)",
+                  };
+                }, [offset, absOffset, sign]);
 
-                const opacity = absOffset <= 2 ? 1 : 0;
-                const blur = absOffset === 0 ? "blur(0)" : "blur(2px)";
-
-                // Different card sizes for center vs side items
-                const cardWidth = absOffset === 0 ? "w-[480px]" : "w-80";
-                const cardHeight = absOffset === 0 ? "h-72" : "h-52";
-                const iconSize = absOffset === 0 ? "w-16 h-16" : "w-10 h-10";
-                const titleSize = absOffset === 0 ? "text-2xl" : "text-lg";
-                const descSize = absOffset === 0 ? "text-base" : "text-sm";
-                const padding = absOffset === 0 ? "p-8" : "p-4";
+                // Memoize CSS classes to prevent string recalculation
+                const cardClasses = useMemo(() => ({
+                  cardWidth: absOffset === 0 ? "w-[480px]" : "w-80",
+                  cardHeight: absOffset === 0 ? "h-72" : "h-52",
+                  iconSize: absOffset === 0 ? "w-16 h-16" : "w-10 h-10",
+                  titleSize: absOffset === 0 ? "text-2xl" : "text-lg",
+                  descSize: absOffset === 0 ? "text-base" : "text-sm",
+                  padding: absOffset === 0 ? "p-8" : "p-4",
+                }), [absOffset]);
 
                 return (
                   <div
                     key={tool.name}
-                    className="absolute w-full h-full transition-all duration-700 ease-out"
+                    className="absolute w-full h-full will-change-transform"
                     style={{
-                      transform: `translateX(${transform.translateX}px) rotateY(${transform.rotateY}deg) scale(${transform.scale})`,
-                      zIndex: transform.zIndex,
-                      opacity: opacity,
-                      filter: blur,
+                      transform: `translateX(${transformValues.translateX}px) rotateY(${transformValues.rotateY}deg) scale(${transformValues.scale})`,
+                      zIndex: transformValues.zIndex,
+                      opacity: transformValues.opacity,
+                      filter: transformValues.blur,
                       transformOrigin: "center center",
+                      transition: "transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.7s ease-out, filter 0.7s ease-out",
                     }}
                   >
                     <Card
-                      className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${cardWidth} ${cardHeight} text-center bg-card/80 backdrop-blur-sm border border-border/50 ${padding} rounded-2xl flex flex-col justify-center items-center shadow-xl hover:shadow-2xl transition-all duration-300`}
+                      className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${cardClasses.cardWidth} ${cardClasses.cardHeight} text-center bg-card/80 backdrop-blur-sm border border-border/50 ${cardClasses.padding} rounded-2xl flex flex-col justify-center items-center shadow-xl hover:shadow-2xl transition-shadow duration-300`}
                     >
                       <div className={`${absOffset === 0 ? 'mb-6' : 'mb-4'} p-4 rounded-full bg-gradient-to-br from-surface/50 to-background/50 backdrop-blur-sm`}>
                         <tool.icon
-                          className={`${iconSize} ${tool.color} mx-auto`}
+                          className={`${cardClasses.iconSize} ${tool.color} mx-auto`}
                         />
                       </div>
-                      <h3 className={`${titleSize} font-bold text-primary mb-3`}>
+                      <h3 className={`${cardClasses.titleSize} font-bold text-primary mb-3`}>
                         {tool.name}
                       </h3>
                       <p
-                        className={`text-muted-foreground ${descSize} leading-relaxed`}
+                        className={`text-muted-foreground ${cardClasses.descSize} leading-relaxed`}
                       >
                         {tool.description}
                       </p>

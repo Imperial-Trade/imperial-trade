@@ -158,13 +158,18 @@ export const useInstantAlerts = () => {
   const channelRef = useRef<any>(null);
   const monitorRef = useRef<any>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const connectionAttempts = useRef(0);
+  const lastConnectionAttempt = useRef(0);
+  const isConnecting = useRef(false);
 
   useEffect(() => {
-    console.log('🔔 Setting up instant alert notifications with resilience...');
+    console.log('🔔 Setting up instant alert notifications with enhanced resilience...');
 
     const MAX_RETRIES = 5;
-    const BASE_DELAY = 1000;
-    const JITTER = 300;
+    const BASE_DELAY = 2000; // Increased base delay
+    const JITTER = 500;
+    const MIN_CONNECTION_INTERVAL = 5000; // Minimum 5 seconds between connection attempts
+    const MAX_DELAY = 30000; // Maximum 30 seconds between retries
 
     let attempts = 0;
     let subscribed = false;
@@ -179,15 +184,34 @@ export const useInstantAlerts = () => {
     };
 
     const scheduleReconnect = () => {
-      if (reconnectTimer) return;
+      if (reconnectTimer || isConnecting.current) return;
+      
+      // Exponential backoff with connection interval enforcement
+      const now = Date.now();
+      const timeSinceLastAttempt = now - lastConnectionAttempt.current;
+      
+      if (timeSinceLastAttempt < MIN_CONNECTION_INTERVAL) {
+        const additionalDelay = MIN_CONNECTION_INTERVAL - timeSinceLastAttempt;
+        console.log(`⚠️ Rate limiting reconnection, waiting additional ${additionalDelay}ms`);
+        reconnectTimer = window.setTimeout(() => {
+          reconnectTimer = null;
+          scheduleReconnect();
+        }, additionalDelay) as unknown as number;
+        return;
+      }
+
       attempts += 1;
       setIsSubscribed(false);
       if (attempts > MAX_RETRIES) {
-        console.error('❌ Instant alerts failed after retries');
+        console.error(`❌ Instant alerts failed after ${MAX_RETRIES} retries`);
+        connectionAttempts.current = attempts;
         return;
       }
-      const delay = Math.min(BASE_DELAY * Math.pow(2, attempts - 1) + Math.random() * JITTER, 15000);
-      console.log(`⏳ Reconnecting to instant alerts in ${delay}ms (attempt ${attempts}/${MAX_RETRIES})`);
+      
+      const exponentialDelay = Math.min(BASE_DELAY * Math.pow(2, attempts - 1), MAX_DELAY);
+      const delay = exponentialDelay + Math.random() * JITTER;
+      
+      console.log(`⏳ Reconnecting to instant alerts in ${delay.toFixed(0)}ms (attempt ${attempts}/${MAX_RETRIES})`);
       reconnectTimer = window.setTimeout(() => {
         reconnectTimer = null;
         connect();
@@ -195,6 +219,14 @@ export const useInstantAlerts = () => {
     };
 
     const connect = () => {
+      if (isConnecting.current) {
+        console.log('⚠️ Connection already in progress, skipping');
+        return;
+      }
+      
+      isConnecting.current = true;
+      lastConnectionAttempt.current = Date.now();
+      
       // Remove existing channel if any
       if (channelRef.current) {
         try { supabase.removeChannel(channelRef.current); } catch {}
@@ -219,6 +251,8 @@ export const useInstantAlerts = () => {
             console.log('✅ Successfully subscribed to instant alerts');
             subscribed = true;
             attempts = 0;
+            isConnecting.current = false;
+            connectionAttempts.current = 0;
             setIsSubscribed(true);
 
             // Ensure fallback monitoring channel exists
@@ -288,6 +322,7 @@ export const useInstantAlerts = () => {
             if (delayedErrorTimer) { clearTimeout(delayedErrorTimer); delayedErrorTimer = null; }
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             console.warn('⚠️ Instant alerts channel issue, scheduling reconnect...');
+            isConnecting.current = false;
             scheduleReconnect();
           }
         });

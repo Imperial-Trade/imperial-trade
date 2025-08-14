@@ -16,6 +16,7 @@ interface NotificationPayload {
   delivery_channels: string[];
   user_ids?: string[]; // target specific external_user_ids (Supabase user.id)
   segments?: string[]; // OneSignal segments, defaults to ['Subscribed Users']
+  include_creator?: boolean; // Whether to include signal creator in notifications
   // Optional enrichment for "signal_created" notifications
   asset_name?: string;
   symbol?: string;
@@ -299,12 +300,18 @@ async function sendInAppNotification(payload: NotificationPayload, supabase: any
           });
       }
     } else {
-      // Send to all active users (excluding the signal creator)
-      const { data: activeUsers } = await supabase
+      // Send to all active users (optionally including the signal creator)
+      const queryBuilder = supabase
         .from('profiles')
         .select('id')
-        .eq('account_status', 'active')
-        .neq('id', payload.author_id || '');
+        .eq('account_status', 'active');
+      
+      // Only exclude creator if include_creator flag is false or not set
+      if (!payload.include_creator && payload.author_id) {
+        queryBuilder.neq('id', payload.author_id);
+      }
+
+      const { data: activeUsers } = await queryBuilder;
 
       if (activeUsers && activeUsers.length > 0) {
         const notifications = activeUsers.map(user => ({
@@ -315,6 +322,8 @@ async function sendInAppNotification(payload: NotificationPayload, supabase: any
         await supabase
           .from('user_notifications')
           .insert(notifications);
+        
+        console.log(`📧 Created ${notifications.length} in-app notifications${payload.include_creator && payload.author_id ? ' (including creator)' : ''}`);
       }
     }
 

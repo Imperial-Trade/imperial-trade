@@ -210,12 +210,8 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
     return () => clearInterval(interval);
   }, [upcomingEvents, getTimeUntilEvent, eventAlerts, notificationsEnabled]);
 
-  // Request notification permission on mount
-  useEffect(() => {
-    if (notificationsEnabled && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, [notificationsEnabled]);
+  // Note: Notification permission is handled by NotificationPermissionBanner
+  // Don't request permission here to avoid competing with custom banner
 
   // Auto-subscribe on mount if enabled
   useEffect(() => {

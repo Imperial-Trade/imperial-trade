@@ -26,6 +26,16 @@ const NotificationPermissionBanner: React.FC = () => {
     }
   }, [hasSeenWelcome]);
 
+  // Debug logging for banner visibility
+  console.log('NotificationPermissionBanner visibility check:', {
+    hasSeenWelcome,
+    ready,
+    isPromptDismissed,
+    initialized,
+    permission,
+    isIframeBlocked
+  });
+
   if (!hasSeenWelcome || !ready || isPromptDismissed) return null;
 
   return (

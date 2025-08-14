@@ -41,3 +41,12 @@ verify_jwt = true
 
 [functions.check-account-request-status]
 verify_jwt = false
+
+[functions.signal-notification-dispatcher]
+verify_jwt = false
+
+[functions.test-notifications]
+verify_jwt = false
+
+[functions.subscription-manager]
+verify_jwt = false

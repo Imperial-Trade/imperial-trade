@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
 
@@ -146,14 +147,17 @@ async function sendTelegramNotification(payload: NotificationPayload): Promise<b
   }
 }
 
+// PHASE 2: Enhanced Push Notification with Better Error Handling and Logging
 async function sendPushNotification(payload: NotificationPayload): Promise<boolean> {
   try {
     const apiKey = Deno.env.get('ONESIGNAL_API_KEY');
     const appId = Deno.env.get('ONESIGNAL_APP_ID');
     if (!apiKey || !appId) {
-      console.log('⚠️ OneSignal not configured');
+      console.log('⚠️ OneSignal not configured - missing API key or App ID');
       return false;
     }
+
+    console.log(`📱 Preparing push notification for signal ${payload.signal_id}`);
 
 const isSignalCreated = payload.notification_type === 'signal_created';
 const isSignalUpdated = payload.notification_type === 'signal_updated';
@@ -190,64 +194,140 @@ if (isSignalCreated) {
   body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
 }
 
+    const notificationPayload = (() => {
+      const base: any = {
+        app_id: appId,
+        headings: { en: title },
+        contents: { en: body },
+        data: {
+          signal_id: payload.signal_id,
+          alert_type: payload.alert_type,
+          target_price: payload.target_price,
+          triggered_price: payload.triggered_price,
+          notification_type: payload.notification_type,
+          asset_name: payload.asset_name,
+          symbol: payload.symbol,
+          trade_type: payload.trade_type,
+          entry_price: payload.entry_price,
+          stop_loss: payload.stop_loss,
+          author_id: payload.author_id,
+          author_name: payload.author_name,
+          author_avatar_url: payload.author_avatar_url,
+          status: payload.status,
+          tp_hits: payload.tp_hits,
+          close_reason: payload.close_reason,
+          notes: payload.notes,
+        },
+      };
+      if (payload.user_ids && payload.user_ids.length > 0) {
+        base.include_external_user_ids = payload.user_ids;
+      } else if (payload.segments && payload.segments.length > 0) {
+        base.included_segments = payload.segments;
+      } else {
+        base.included_segments = ['Subscribed Users'];
+      }
+      return base;
+    })();
+
+    console.log(`📡 Sending OneSignal notification:`, JSON.stringify(notificationPayload, null, 2));
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     const response = await fetch('https://api.onesignal.com/notifications', {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify((() => {
-        const base: any = {
-          app_id: appId,
-          headings: { en: title },
-          contents: { en: body },
-          data: {
-            signal_id: payload.signal_id,
-            alert_type: payload.alert_type,
-            target_price: payload.target_price,
-            triggered_price: payload.triggered_price,
-            notification_type: payload.notification_type,
-            asset_name: payload.asset_name,
-            symbol: payload.symbol,
-            trade_type: payload.trade_type,
-            entry_price: payload.entry_price,
-            stop_loss: payload.stop_loss,
-            author_id: payload.author_id,
-            author_name: payload.author_name,
-            author_avatar_url: payload.author_avatar_url,
-            status: payload.status,
-            tp_hits: payload.tp_hits,
-            close_reason: payload.close_reason,
-            notes: payload.notes,
-          },
-        };
-        if (payload.user_ids && payload.user_ids.length > 0) {
-          base.include_external_user_ids = payload.user_ids;
-        } else if (payload.segments && payload.segments.length > 0) {
-          base.included_segments = payload.segments;
-        } else {
-          base.included_segments = ['Subscribed Users'];
-        }
-        return base;
-      })()),
-      signal: AbortSignal.timeout(10000)
+      body: JSON.stringify(notificationPayload),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error(`❌ OneSignal API error: ${response.status} ${errText}`);
+      console.error(`❌ OneSignal API error: ${response.status} - ${errText}`);
+      console.error(`❌ Request payload was:`, JSON.stringify(notificationPayload, null, 2));
       return false;
     }
 
-    console.log('✅ Push notification sent via OneSignal');
+    const result = await response.json();
+    console.log('✅ Push notification sent via OneSignal:', result);
+    
+    if (result.errors && result.errors.length > 0) {
+      console.error('⚠️ OneSignal returned errors:', result.errors);
+      return false;
+    }
+
     return true;
   } catch (error) {
-    console.error('❌ Push notification exception:', error);
+    if (error.name === 'AbortError') {
+      console.error('❌ OneSignal request timeout after 10 seconds');
+    } else {
+      console.error('❌ Push notification exception:', error);
+    }
     return false;
   }
 }
 
-async function processNotification(payload: NotificationPayload): Promise<Record<string, boolean>> {
+async function sendInAppNotification(payload: NotificationPayload, supabase: any): Promise<boolean> {
+  try {
+    // Create in-app notification records for real-time delivery
+    const notificationData = {
+      title: `New ${payload.trade_type?.toUpperCase() || 'Signal'}`,
+      message: `${payload.asset_name || payload.symbol || 'Unknown'} - Entry: ${payload.entry_price || payload.target_price}`,
+      type: 'new_signal',
+      data: {
+        signal_id: payload.signal_id,
+        asset_name: payload.asset_name,
+        trade_type: payload.trade_type,
+        entry_price: payload.entry_price,
+        author_name: payload.author_name
+      }
+    };
+
+    // If specific user_ids are provided, send to those users
+    if (payload.user_ids && payload.user_ids.length > 0) {
+      for (const userId of payload.user_ids) {
+        await supabase
+          .from('user_notifications')
+          .insert({
+            user_id: userId,
+            ...notificationData
+          });
+      }
+    } else {
+      // Send to all active users (excluding the signal creator)
+      const { data: activeUsers } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('account_status', 'active')
+        .neq('id', payload.author_id || '');
+
+      if (activeUsers && activeUsers.length > 0) {
+        const notifications = activeUsers.map(user => ({
+          user_id: user.id,
+          ...notificationData
+        }));
+
+        await supabase
+          .from('user_notifications')
+          .insert(notifications);
+      }
+    }
+
+    console.log('✅ In-app notifications created successfully');
+    return true;
+
+  } catch (error) {
+    console.error('❌ Error sending in-app notification:', error);
+    return false;
+  }
+}
+
+async function processNotification(payload: NotificationPayload, supabase: any): Promise<Record<string, boolean>> {
   const deliveryResults: Record<string, boolean> = {};
 
   // Send to all requested channels in parallel for speed
@@ -261,6 +341,8 @@ async function processNotification(payload: NotificationPayload): Promise<Record
         return { channel, success: await sendTelegramNotification(payload) };
       case 'push':
         return { channel, success: await sendPushNotification(payload) };
+      case 'in_app':
+        return { channel, success: await sendInAppNotification(payload, supabase) };
       default:
         console.warn(`⚠️ Unknown delivery channel: ${channel}`);
         return { channel, success: false };
@@ -372,7 +454,7 @@ serve(async (req) => {
         console.log('ℹ️ Unable to enrich notification with author info:', enrichErr);
       }
       
-      const deliveryResults = await processNotification(notification);
+      const deliveryResults = await processNotification(notification, supabase);
       const processingTime = Date.now() - startTime;
       
       // Update notification status in database

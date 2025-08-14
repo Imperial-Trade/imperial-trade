@@ -1106,6 +1106,51 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_delivery_log: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          delivery_channel: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          notification_type: string
+          opened_at: string | null
+          sent_at: string
+          signal_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          delivery_channel: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type: string
+          opened_at?: string | null
+          sent_at?: string
+          signal_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          delivery_channel?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type?: string
+          opened_at?: string | null
+          sent_at?: string
+          signal_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           admin_id: string
@@ -1520,6 +1565,45 @@ export type Database = {
           sent_at?: string
           status?: string
           title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          created_at: string
+          device_type: string | null
+          id: string
+          last_verified_at: string | null
+          platform: string | null
+          player_id: string
+          subscription_active: boolean
+          subscription_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_type?: string | null
+          id?: string
+          last_verified_at?: string | null
+          platform?: string | null
+          player_id: string
+          subscription_active?: boolean
+          subscription_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_type?: string | null
+          id?: string
+          last_verified_at?: string | null
+          platform?: string | null
+          player_id?: string
+          subscription_active?: boolean
+          subscription_date?: string
           updated_at?: string
           user_id?: string
         }

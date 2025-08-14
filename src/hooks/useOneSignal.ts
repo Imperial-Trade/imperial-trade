@@ -301,8 +301,9 @@ export function useOneSignal() {
                   // Browser-specific permission handling
                   if (newPermission === 'granted' && browserInfo.requiresSpecialHandling) {
                     // For Safari and Firefox, ensure subscription is created
+                    console.info('[OneSignal] Permission change handler triggering ensureSubscription');
                     setTimeout(() => {
-                      ensureSubscription(browserConfig.subscriptionTimeout).catch(console.warn);
+                      ensureSubscription(browserConfig.subscriptionTimeout, true).catch(console.warn);
                     }, 1000);
                   }
                 }
@@ -397,7 +398,8 @@ export function useOneSignal() {
               const hasSub = !!(ps?.optedIn || ps?.id);
               if (currentPerm === 'granted' && !hasSub) {
                 if (debug) console.info('[OneSignal] Permission granted but no subscription found. Ensuring subscription...');
-                ensureSubscription(20000)
+                console.info('[OneSignal] SDK initialization triggering ensureSubscription');
+                ensureSubscription(20000, true)
                   .then((ok) => {
                     if (ok) {
                       if (debug) console.info('[OneSignal] Auto-subscribe completed.');

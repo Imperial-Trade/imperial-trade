@@ -62,7 +62,7 @@ import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
 import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
-import OneSignalInitializer from "@/components/integrations/OneSignalInitializer";
+
 import { setupNotificationClickHandler } from "@/utils/notificationHandlers";
 import NotificationSystem from "@/components/notifications/NotificationSystem";
 import NotificationsPanel from "@/components/notifications/NotificationsPanel";
@@ -93,7 +93,6 @@ function App() {
             <ScrollToTop />
             <AuthProvider>
               <WelcomeProvider>
-                <OneSignalInitializer />
                 <NavigationGuard>
                   <SignalRealtimeProvider>
                     <WebSocketPriceProvider>

@@ -114,7 +114,7 @@ const LivePriceWidgetComponent = ({
     };
 
     updateAge();
-    const interval = setInterval(updateAge, 1000);
+    const interval = setInterval(updateAge, 5000);
     return () => clearInterval(interval);
   }, [lastUpdated]);
 

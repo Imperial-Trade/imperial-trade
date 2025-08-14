@@ -89,7 +89,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     };
 
     updateAge();
-    const interval = setInterval(updateAge, 1000);
+    const interval = setInterval(updateAge, 5000);
     return () => clearInterval(interval);
   }, [lastUpdated]);
 

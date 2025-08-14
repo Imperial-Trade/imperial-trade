@@ -91,7 +91,7 @@ export function useOptimizedLivePrice(
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [prices, symbol, debounceMs, getPrice, debouncedPrice.price]);
+  }, [prices, symbol, debounceMs, getPrice]);
 
   const refreshPrice = useCallback(() => {
     contextRefreshPrice(symbol);

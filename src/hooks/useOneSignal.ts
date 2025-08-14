@@ -702,7 +702,7 @@ export function useOneSignal() {
       if (permission === 'granted') {
         if (debug) console.info(`[OneSignal] Permission already granted, ensuring WebPush subscription exists`);
         
-        const subscriptionCreated = await ensureSubscription(15000, true);
+        const subscriptionCreated = await ensureSubscription(15000, false);
         if (subscriptionCreated) {
           // **Phase 3: Enhanced backend sync and verification**
           try {
@@ -737,27 +737,11 @@ export function useOneSignal() {
         }
       }
 
-      // **Phase 3: Enhanced subscription flow - expects browser permission already granted**
+      // **Phase 3: Enhanced subscription flow - request browser permission if needed**
       try {
-        if (debug) console.info(`[OneSignal] Creating WebPush subscription for ${browserInfo.name} (permission should already be granted)`);
+        if (debug) console.info(`[OneSignal] Creating WebPush subscription for ${browserInfo.name}`);
         
-        // **Verify browser permission is already granted**
-        const currentPermission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
-        if (currentPermission !== 'granted') {
-          return { 
-            success: false, 
-            error: `Browser permission required but not granted: ${currentPermission}. Please enable notifications first.`,
-            details: { 
-              step: 'permission_check',
-              browser: browserInfo.name,
-              permission: currentPermission 
-            }
-          };
-        }
-        
-        if (debug) console.info(`[OneSignal] Browser permission confirmed as granted (${browserInfo.name})`);
-        
-        // **Create OneSignal subscription with native permission already handled**
+        // **Create OneSignal subscription (will handle permission request internally)**
         if (debug) console.info(`[OneSignal] Calling ensureSubscription with skipNativePermission=true`);
         const subscriptionResult = await ensureSubscription(browserConfig.subscriptionTimeout, true);
         

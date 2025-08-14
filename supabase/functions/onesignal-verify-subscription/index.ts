@@ -86,10 +86,10 @@ Deno.serve(async (req: Request) => {
       if (userResponse.ok) {
         playerData = await userResponse.json();
         playerExists = true;
-        // Check if user has any active push subscriptions
+        // Check if user has any active web push subscriptions
         const subscriptions = playerData.subscriptions || [];
         playerSubscribed = subscriptions.some((sub: any) => 
-          (sub.type === "AndroidPush" || sub.type === "iOSPush" || sub.type === "WebPush") && sub.enabled
+          sub.type === "WebPush" && sub.enabled
         );
         console.log(`[OneSignal Verify] User found via Users API: ${subscriptions.length} subscriptions`);
       } else {

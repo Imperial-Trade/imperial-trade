@@ -125,10 +125,10 @@ Deno.serve(async (req: Request) => {
         });
       }
       
-      // If player_id is provided, add push subscription with correct type
+      // If player_id is provided, add web push subscription
       if (playerId) {
         subscriptions.push({
-          type: "AndroidPush",
+          type: "WebPush",
           token: playerId,
           enabled: true,
         });
@@ -220,7 +220,7 @@ Deno.serve(async (req: Request) => {
           },
           body: JSON.stringify({
             subscription: {
-              type: "AndroidPush",
+              type: "WebPush",
               token: playerId,
               enabled: true,
             },

@@ -229,7 +229,7 @@ if (isSignalCreated) {
           base.included_segments = ['Subscribed Users'];
         }
         return base;
-      })(),
+      })()),
       signal: AbortSignal.timeout(10000)
     });
 

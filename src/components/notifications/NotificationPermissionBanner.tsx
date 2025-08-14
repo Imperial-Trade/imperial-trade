@@ -1,192 +1,198 @@
-import React, { useEffect, useState } from 'react';
-import { useNotifications } from '@/contexts/NotificationsContext';
-import { useWelcome } from '@/contexts/WelcomeContext';
-import { Button } from '@/components/ui/button';
-import { Bell } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-const NotificationPermissionBanner: React.FC = () => {
-  const { isPromptDismissed, requestPermission, dismissPrompt, initialized, permission, isIframeBlocked, browserInfo, browserInstructions, isGranted } = useNotifications();
-  const { hasSeenWelcome } = useWelcome();
-  const [requesting, setRequesting] = useState(false);
-  const [ready, setReady] = useState(false);
-  
-  const isDenied = permission === 'denied';
+import React, { useState, useEffect } from "react";
+import { Bell, X, Smartphone, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNotifications } from "@/contexts/NotificationsContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWelcome } from "@/contexts/WelcomeContext";
+import { useOneSignal } from "@/hooks/useOneSignal";
+import { getBrowserInstructions } from "@/utils/browserDetection";
+import { usePWAInstallation } from "@/hooks/usePWAInstallation";
+import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
+import { toast } from "sonner";
 
-  // Wait until the welcome animation completes before showing the banner
+const NotificationPermissionBanner: React.FC = () => {
+  const { user } = useAuth();
+  const { hasSeenWelcome } = useWelcome();
+  const { 
+    permission, 
+    isIframeBlocked, 
+    browserInfo, 
+    browserInstructions,
+    requestPermission,
+    initialized 
+  } = useOneSignal();
+  
+  const {
+    isIOSDevice,
+    isStandalone,
+    showIOSInstructions,
+    canInstall,
+    isInstalled
+  } = usePWAInstallation();
+  
+  const [isVisible, setIsVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPWAPrompt, setShowPWAPrompt] = useState(false);
+
+  // Show banner logic
   useEffect(() => {
-    if (hasSeenWelcome) {
-      const id = setTimeout(() => setReady(true), 400);
-      return () => clearTimeout(id);
-    } else {
-      setReady(false);
-    }
+    if (!hasSeenWelcome) return;
+    
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, [hasSeenWelcome]);
 
-  // Enhanced debug logging for banner visibility
-  console.log('🔔 NotificationPermissionBanner visibility check:', {
-    hasSeenWelcome,
-    ready,
-    isPromptDismissed,
-    initialized,
-    permission,
-    isGranted,
-    isIframeBlocked,
-    shouldShow: hasSeenWelcome && ready && !isPromptDismissed && initialized && !isGranted
-  });
+  // Check if we should show PWA prompt for iOS users
+  useEffect(() => {
+    if (isIOSDevice && !isStandalone && showIOSInstructions && permission !== 'granted') {
+      setShowPWAPrompt(true);
+    }
+  }, [isIOSDevice, isStandalone, showIOSInstructions, permission]);
 
-  // Show banner if user has seen welcome, we're ready, prompt not dismissed, OneSignal initialized, and notifications not granted
-  if (!hasSeenWelcome || !ready || isPromptDismissed || !initialized || isGranted) {
-    console.log('🔔 Banner hidden because:', {
-      noWelcome: !hasSeenWelcome,
-      notReady: !ready,
-      dismissed: isPromptDismissed,
-      notInitialized: !initialized,
-      alreadyGranted: isGranted
-    });
-    return null;
+  // Don't show if conditions aren't met
+  if (!isVisible || !initialized || permission === 'granted' || !user) {
+    return showPWAPrompt ? <PWAInstallBanner onClose={() => setShowPWAPrompt(false)} /> : null;
+  }
+
+  const isDenied = permission === 'denied';
+  
+  const handleRequestPermission = async () => {
+    setIsLoading(true);
+    
+    try {
+      // For iOS users, we need PWA installation first
+      if (isIOSDevice && !isStandalone) {
+        toast.info("iPhone users need to install the app first", {
+          description: "Follow the installation guide to enable notifications"
+        });
+        setShowPWAPrompt(true);
+        return;
+      }
+
+      const result = await requestPermission();
+      
+      if (result.success) {
+        toast.success("Notifications enabled!", {
+          description: "You'll now receive real-time trading signals"
+        });
+        setIsVisible(false);
+      } else {
+        if (result.error === 'denied') {
+          toast.error("Notifications blocked", {
+            description: browserInstructions
+          });
+        } else if (result.error === 'iframe_blocked') {
+          toast.warning("Please open in main browser", {
+            description: "Notifications don't work in embedded windows"
+          });
+        } else {
+          toast.error("Failed to enable notifications", {
+            description: result.error || "Please try again or check browser settings"
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Permission request error:', error);
+      toast.error("Something went wrong", {
+        description: "Please try again or check your browser settings"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDismiss = () => {
+    setIsVisible(false);
+  };
+
+  if (showPWAPrompt) {
+    return <PWAInstallBanner onClose={() => setShowPWAPrompt(false)} />;
   }
 
   return (
-    <aside
-      role="region"
-      aria-label="Notifications permission prompt"
-      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto w-[calc(100%-1.5rem)] sm:max-w-lg rounded-lg border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-lg"
-    >
-      <div className="px-4 py-3 sm:px-5 sm:py-4">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-md bg-muted p-1.5" aria-hidden="true">
-            <Bell className="h-4 w-4 text-foreground" />
-          </div>
-          <div className="flex-1 text-xs sm:text-sm">
-            <h2 className="text-sm font-medium">
-              {isDenied ? 'Re-enable push notifications' : 'Enable push notifications'}
-            </h2>
-            <p className="mt-0.5 text-muted-foreground">
-              {isDenied 
-                ? 'Notifications are blocked. Re-enable them to get alerts for signals, TP hits, and risk updates.'
-                : 'Stay on top of live signals, TP hits, and risk alerts.'
+    <div className="fixed bottom-4 left-4 right-4 z-50 max-w-md mx-auto">
+      <div className="bg-card border border-border rounded-lg shadow-lg p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {isIOSDevice && !isStandalone ? (
+              <Smartphone className="h-5 w-5 text-amber-500" />
+            ) : isDenied ? (
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+            ) : (
+              <Bell className="h-5 w-5 text-primary" />
+            )}
+            <h3 className="font-semibold text-foreground">
+              {isIOSDevice && !isStandalone 
+                ? 'Install App for Notifications'
+                : isDenied 
+                  ? 'Notifications Blocked' 
+                  : 'Enable Notifications'
               }
+            </h3>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDismiss}
+            className="h-6 w-6 p-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-4">
+          {isIOSDevice && !isStandalone
+            ? 'iPhone users need to install the app to receive push notifications (iOS 16.4+)'
+            : isDenied
+              ? 'Please enable notifications in your browser settings to receive real-time trading signals.'
+              : 'Get instant alerts for new trading signals and market updates.'
+          }
+        </p>
+
+        {isIframeBlocked ? (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 mb-4">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Notifications are not available in embedded windows. Please open this page in your main browser.
             </p>
           </div>
-        </div>
-        <div className="mt-3 flex items-center justify-end gap-2">
-          {isIframeBlocked ? (
-            <>
-              <Button
-                size="sm"
-                onClick={() => window.open(window.location.href, '_blank', 'noopener,noreferrer')}
-                title="Open the app in a new tab to enable notifications"
-              >
-                {isDenied ? 'Allow in browser settings' : 'Open in new tab'}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={dismissPrompt}>
-                Not now
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button size="sm" variant="ghost" onClick={dismissPrompt}>
-                Not now
-              </Button>
-              <Button
-                size="sm"
-                onClick={async () => {
-                  try {
-                    setRequesting(true);
-                    
-                    // **First request native browser permission**
-                    if (typeof Notification !== 'undefined') {
-                      const browserPermission = await Notification.requestPermission();
-                      
-                      if (browserPermission !== 'granted') {
-                        toast({ 
-                          title: 'Notifications blocked', 
-                          description: 'Use the browser site settings (lock icon) to Allow notifications.', 
-                          variant: 'destructive' as any 
-                        });
-                        return;
-                      }
-                    }
-                    
-                    // **Now proceed with OneSignal subscription**
-                    const result = await requestPermission();
-                    const current = typeof Notification !== 'undefined' ? Notification.permission : permission;
-                    
-                    if (result.success) {
-                      toast({ 
-                        title: 'Push notifications enabled', 
-                        description: 'You will receive alerts even when the app is closed.' 
-                      });
-                      dismissPrompt();
-                    } else if (current === 'denied') {
-                      toast({ 
-                        title: 'Notifications blocked', 
-                        description: 'Use the browser site settings (lock icon) to Allow notifications.', 
-                        variant: 'destructive' as any 
-                      });
-                    } else if (result.error) {
-                      // Enhanced error handling with browser-specific messages
-                      const errorTitle = result.details?.step === 'user_creation' 
-                        ? 'OneSignal setup failed'
-                        : result.details?.step === 'onesignal_subscribe'
-                        ? 'Subscription failed'
-                        : result.details?.step === 'native_permission'
-                        ? 'Permission request failed'
-                        : result.details?.browser 
-                        ? `${result.details.browser} setup incomplete`
-                        : 'Setup incomplete';
-                      
-                      let errorDescription = result.error;
-                      
-                      // Provide browser-specific guidance
-                      if (result.details?.instructions) {
-                        errorDescription = `${result.error}\n\n${result.details.instructions}`;
-                      } else if (result.error.includes('iframe')) {
-                        errorDescription = 'Open in a new tab to enable notifications';
-                      } else if (result.error.includes('denied')) {
-                        errorDescription = browserInstructions || 'Check browser settings to allow notifications';
-                      } else if (result.error.includes('not supported')) {
-                        errorDescription = `${result.error}. Please update your browser or try a different one.`;
-                      }
+        ) : (
+          <div className="flex gap-2">
+            <Button
+              onClick={handleRequestPermission}
+              disabled={isLoading}
+              size="sm"
+              className="flex-1"
+            >
+              {isLoading ? 'Requesting...' : 
+               isIOSDevice && !isStandalone ? 'Show Install Guide' :
+               isDenied ? 'Open Settings' : 'Enable Now'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDismiss}
+            >
+              Later
+            </Button>
+          </div>
+        )}
 
-                      toast({ 
-                        title: errorTitle,
-                        description: errorDescription,
-                        variant: 'destructive' as any 
-                      });
-                    } else {
-                      toast({ 
-                        title: 'No prompt shown?', 
-                        description: "If you didn't see a prompt, open site settings (lock icon) → Notifications." 
-                      });
-                    }
-                  } finally {
-                    setRequesting(false);
-                  }
-                }}
-                disabled={requesting}
-                aria-disabled={requesting}
-                title={requesting ? 'Request in progress…' : undefined}
-              >
-                {requesting ? (
-                  <span className="mr-2 inline-flex h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent align-[-0.125em]" />
-                ) : null}
-                {requesting ? 'Enabling…' : isDenied ? 'Allow in browser settings' : 'Enable notifications'}
-              </Button>
-            </>
-          )}
-        </div>
-        {!requesting && initialized && (permission === 'default' || permission === 'denied' || isIframeBlocked) ? (
-          <p className="mt-2 text-[11px] sm:text-xs text-muted-foreground">
-            {isDenied
-              ? 'Click the lock/bell icon in your browser address bar, then select "Allow" for notifications.'
-              : isIframeBlocked
-                ? 'Push notifications are blocked in preview. Open in a new tab to enable.'
-                : browserInstructions || 'No prompt? Check site settings (lock icon) → Notifications.'}
+        {browserInfo.isInAppBrowser && (
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+            ⚠️ Detected in-app browser. Open in {browserInfo.isIOS ? 'Safari' : 'Chrome'} for best experience.
           </p>
-        ) : null}
+        )}
+
+        {!browserInfo.isSupported && (
+          <p className="text-xs text-destructive mt-2">
+            ⚠️ Your browser doesn't support push notifications. Please update or use Chrome/Safari.
+          </p>
+        )}
       </div>
-    </aside>
+    </div>
   );
 };
 

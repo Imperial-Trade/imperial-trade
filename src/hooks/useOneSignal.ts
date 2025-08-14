@@ -665,10 +665,14 @@ const requestPermission = async (): Promise<{ success: boolean; error?: string; 
           }
           await Promise.allSettled(ops);
           
-          // STEP 4: Create/Update OneSignal user with PLAYER_ID
+          // STEP 4: Create/Update OneSignal user with PLAYER_ID - CRITICAL for push notifications
+          if (debug) console.info('[OneSignal] Creating/updating OneSignal user with player_id:', playerId);
           const userSyncResult = await ensureOneSignalUserWithPlayerId(playerId);
           if (!userSyncResult) {
             console.warn('[OneSignal] User sync with player_id failed, but subscription exists');
+            // Still try to update local database even if OneSignal sync failed
+          } else {
+            if (debug) console.info('[OneSignal] OneSignal user successfully linked with player_id:', playerId);
           }
           
           // STEP 5: Update user profile with subscription status

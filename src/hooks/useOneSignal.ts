@@ -122,11 +122,20 @@ export function useOneSignal() {
               const initConfig = {
                 appId: data.appId,
                 allowLocalhostAsSecureOrigin: true,
+                // PHASE 1: Complete OneSignal prompt suppression
+                autoRegister: false, // Disable for ALL browsers
                 notifyButton: { enable: false },
+                promptOptions: {
+                  autoPrompt: false, // Critical: prevents all automatic prompts
+                  customPromptOptions: {
+                    autoPrompt: false
+                  }
+                },
+                slidedown: { enabled: false },
+                bell: { enabled: false },
                 ...(data.safariWebId && { safari_web_id: data.safariWebId }),
                 // Browser-specific optimizations
                 ...(browserInfo.name === 'Safari' && {
-                  autoRegister: false, // Manual registration for Safari
                   autoResubscribe: true
                 }),
                 ...(browserInfo.name === 'Firefox' && {

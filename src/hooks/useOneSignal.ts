@@ -177,6 +177,40 @@ export function useOneSignal() {
             return;
           }
 
+          // **PHASE 1: Pre-initialization prompt blocking**
+          // Block all OneSignal prompts globally before initialization
+          if (typeof window !== 'undefined') {
+            (window as any)._onesignalInitOptions = {
+              notifyButton: { enable: false },
+              promptOptions: { autoPrompt: false },
+              slidedown: { enabled: false },
+              bell: { enabled: false },
+              autoRegister: false
+            };
+            
+            // Global prompt blocking override
+            if (!(window as any)._oneSignalPromptBlocked) {
+              const originalPrompt = window.OneSignal?.showSlidedownPrompt;
+              const originalNativePrompt = window.OneSignal?.showNativePrompt;
+              const originalHttpPrompt = window.OneSignal?.showHttpPrompt;
+              
+              window.OneSignal.showSlidedownPrompt = () => {
+                if (debug) console.info('[OneSignal] Blocked slidedown prompt');
+                return Promise.resolve();
+              };
+              window.OneSignal.showNativePrompt = () => {
+                if (debug) console.info('[OneSignal] Blocked native prompt');
+                return Promise.resolve();
+              };
+              window.OneSignal.showHttpPrompt = () => {
+                if (debug) console.info('[OneSignal] Blocked HTTP prompt');
+                return Promise.resolve();
+              };
+              
+              (window as any)._oneSignalPromptBlocked = true;
+            }
+          }
+
           // **Enhanced initialization with comprehensive error handling**
           const initPromise = new Promise<void>((resolve, reject) => {
             try {
@@ -185,18 +219,32 @@ export function useOneSignal() {
                   const initConfig = {
                     appId: configData.appId,
                     allowLocalhostAsSecureOrigin: true,
-                    // **PHASE 1: Complete OneSignal prompt suppression**
+                    // **PHASE 1: Complete OneSignal prompt suppression - multiple layers**
                     autoRegister: false,
+                    autoResubscribe: false,
                     notifyButton: { enable: false },
                     promptOptions: {
                       autoPrompt: false,
-                      customPromptOptions: { autoPrompt: false }
+                      slidedown: { enabled: false },
+                      customPromptOptions: { 
+                        autoPrompt: false,
+                        slidedown: { enabled: false }
+                      }
                     },
-                    slidedown: { enabled: false },
-                    bell: { enabled: false },
+                    slidedown: { 
+                      enabled: false,
+                      autoPrompt: false
+                    },
+                    bell: { 
+                      enabled: false,
+                      showLauncher: false
+                    },
+                    showCredit: false,
+                    // Disable all automatic prompts
+                    suppressAutoPrompts: true,
                     ...(configData.safariWebId && { safari_web_id: configData.safariWebId }),
                     // Browser-specific optimizations
-                    ...(browserInfo.name === 'Safari' && { autoResubscribe: true }),
+                    ...(browserInfo.name === 'Safari' && { autoResubscribe: false }),
                     ...(browserInfo.name === 'Firefox' && { persistNotification: true })
                   };
                   
@@ -512,14 +560,33 @@ export function useOneSignal() {
         try {
           if (debug) console.info(`[OneSignal] WebPush subscribe() attempt ${attempt}/${browserConfig.maxRetries} (${browserInfo.name})`);
           
-          // **Phase 1: Robust WebPush subscription with exponential backoff**
+          // **Phase 1: Always request browser permission first for ALL browsers**
+          // This ensures browser settings show "Allow" instead of "Ask (default)"
+          if (debug) console.info(`[OneSignal] Requesting browser permission first (${browserInfo.name})`);
+          
+          // Request native browser permission explicitly
+          const browserPermission = await withTimeout(
+            Notification.requestPermission(), 
+            browserConfig.permissionTimeout
+          );
+          
+          if (browserPermission !== 'granted') {
+            throw new Error(`Browser permission denied: ${browserPermission}`);
+          }
+          
+          if (debug) console.info(`[OneSignal] Browser permission granted (${browserInfo.name})`);
+          
+          // Small delay to ensure permission is properly set
+          await new Promise(r => setTimeout(r, 300));
+          
+          // Now create OneSignal subscription
           if (browserInfo.name === 'Safari') {
-            // Safari needs special handling
+            // Safari needs special handling after browser permission
             await withTimeout(os.Notifications.requestPermission(), browserConfig.permissionTimeout);
             await new Promise(r => setTimeout(r, 500)); // Small delay for Safari
             await withTimeout(os.Notifications.subscribe(), browserConfig.subscriptionTimeout);
           } else {
-            // Standard approach for other browsers
+            // Standard OneSignal subscription for other browsers (after browser permission)
             await withTimeout(os.Notifications.subscribe(), browserConfig.subscriptionTimeout);
           }
         } catch (e) {

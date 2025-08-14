@@ -82,11 +82,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [user, initialized, permission]);
 
   useEffect(() => {
-    // Only reset dismissal if permission transitioned from a decided state back to default
+    // Reset dismissal if permission transitioned from a decided state back to default
+    // OR force show banner when permission is denied (for recovery)
     if (
-      permission === 'default' &&
+      (permission === 'default' &&
       dismissed &&
-      (prevPermissionRef.current === 'granted' || prevPermissionRef.current === 'denied')
+      (prevPermissionRef.current === 'granted' || prevPermissionRef.current === 'denied')) ||
+      permission === 'denied'
     ) {
       setDismissed(false);
       try { localStorage.removeItem(DISMISS_KEY); } catch {}
@@ -106,8 +108,8 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     isGranted: isGranted && !!user,
     hasSubscription,
     isIframeBlocked,
-    // Fix: Hide prompt if explicitly dismissed, denied, not initialized, no user, OR actually subscribed in database
-    isPromptDismissed: dismissed || !user || permission === 'denied' || !initialized || dbSubscriptionStatus === 'subscribed',
+    // Fix: Hide prompt if explicitly dismissed, not initialized, no user, OR actually subscribed in database
+    isPromptDismissed: dismissed || !user || !initialized || dbSubscriptionStatus === 'subscribed',
     requestPermission,
     dismissPrompt,
     browserInfo,

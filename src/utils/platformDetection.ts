@@ -139,7 +139,8 @@ export function detectPlatform(): PlatformInfo {
     
     if (isIOS) {
       // iOS Web Push support in Safari 16.4+ and PWAs
-      return (iosMajor > 16 || (iosMajor === 16 && iosMinor >= 4)) && 
+      const hasIOSWebPushSupport = iosMajor > 16 || (iosMajor === 16 && iosMinor >= 4);
+      return hasIOSWebPushSupport && 
              (browser === 'Safari' || platformSpecific.isIOSSafariPWA);
     }
     
@@ -158,7 +159,8 @@ export function detectPlatform(): PlatformInfo {
   
   const requiresPWAForPush = (() => {
     if (isIOS && browser === 'Safari') {
-      return iosMajor >= 16; // iOS Safari needs PWA for reliable push
+      // Only require PWA if not already in PWA mode
+      return iosMajor >= 16 && !isStandalone;
     }
     return false;
   })();

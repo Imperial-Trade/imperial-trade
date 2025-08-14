@@ -4,12 +4,10 @@ import { Outlet } from 'react-router-dom';
 import DashboardNav from './DashboardNav';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
-import OneSignalInitializer from '@/components/integrations/OneSignalInitializer';
 
 export const DashboardLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
-      <OneSignalInitializer />
       {/* Sophisticated Background Effects */}
       <div className="fixed inset-0 bg-gradient-to-br from-background via-muted/30 to-background pointer-events-none">
         {/* Animated mesh gradient background */}

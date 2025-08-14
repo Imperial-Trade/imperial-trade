@@ -747,6 +747,7 @@ export function useOneSignal() {
         if (debug) console.info(`[OneSignal] Browser permission confirmed as granted (${browserInfo.name})`);
         
         // **Create OneSignal subscription with native permission already handled**
+        if (debug) console.info(`[OneSignal] Calling ensureSubscription with skipNativePermission=true`);
         const subscriptionResult = await ensureSubscription(browserConfig.subscriptionTimeout, true);
         
         if (!subscriptionResult) {

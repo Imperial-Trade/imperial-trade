@@ -383,7 +383,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Authorization: allow only admin/educator/moderator to invoke dispatcher
+    // Authorization: allow service role (from database triggers) or admin/educator/moderator users
     const authHeader = req.headers.get('Authorization') || '';
     if (!authHeader.startsWith('Bearer ')) {
       return new Response(
@@ -393,29 +393,39 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const supabaseAuth = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!);
-    const { data: authData, error: authErr } = await supabaseAuth.auth.getUser(token);
-    if (authErr || !authData?.user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    let allowed = false;
-    for (const role of ['admin','educator','moderator']) {
-      const { data: hasRole, error: roleErr } = await supabase.rpc('has_role', { _user_id: authData.user.id, _role: role });
-      if (roleErr) {
-        console.error('🔐 Role check error:', roleErr);
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // Check if this is a service role request (from database trigger)
+    if (token === serviceRoleKey) {
+      console.log('🔐 Service role authentication successful (database trigger)');
+    } else {
+      // This is a user request, validate user permissions
+      const supabaseAuth = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!);
+      const { data: authData, error: authErr } = await supabaseAuth.auth.getUser(token);
+      if (authErr || !authData?.user) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized - Invalid user token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      if (hasRole) { allowed = true; break; }
-    }
 
-    if (!allowed) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      let allowed = false;
+      for (const role of ['admin','educator','moderator']) {
+        const { data: hasRole, error: roleErr } = await supabase.rpc('has_role', { _user_id: authData.user.id, _role: role });
+        if (roleErr) {
+          console.error('🔐 Role check error:', roleErr);
+        }
+        if (hasRole) { allowed = true; break; }
+      }
+
+      if (!allowed) {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden - Insufficient permissions' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log('🔐 User authentication successful');
     }
 
     const { notifications } = await req.json();

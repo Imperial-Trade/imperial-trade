@@ -73,27 +73,50 @@ Deno.serve(async (req: Request) => {
     let playerSubscribed = false;
     let playerData = null;
 
-    if (playerId) {
-      try {
-        playerResponse = await fetch(`https://api.onesignal.com/players/${playerId}?app_id=${appId}`, {
-          method: "GET",
-          headers: {
-            Authorization: `Basic ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-        });
+    // First try to verify using Users API by external_id
+    try {
+      const userResponse = await fetch(`https://api.onesignal.com/apps/${appId}/users/by/external_id/${targetUserId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Basic ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-        if (playerResponse.ok) {
-          playerData = await playerResponse.json();
-          playerExists = true;
-          playerSubscribed = playerData.valid_player === true && playerData.notification_types > 0;
-          console.log(`[OneSignal Verify] Player found: valid=${playerData.valid_player}, types=${playerData.notification_types}`);
-        } else {
-          console.log(`[OneSignal Verify] Player not found or error: ${playerResponse.status}`);
+      if (userResponse.ok) {
+        playerData = await userResponse.json();
+        playerExists = true;
+        // Check if user has any active push subscriptions
+        const subscriptions = playerData.subscriptions || [];
+        playerSubscribed = subscriptions.some((sub: any) => 
+          (sub.type === "AndroidPush" || sub.type === "iOSPush" || sub.type === "WebPush") && sub.enabled
+        );
+        console.log(`[OneSignal Verify] User found via Users API: ${subscriptions.length} subscriptions`);
+      } else {
+        console.log(`[OneSignal Verify] User not found via Users API: ${userResponse.status}`);
+        
+        // Fallback: try legacy Players API if playerId is provided
+        if (playerId) {
+          playerResponse = await fetch(`https://api.onesignal.com/players/${playerId}?app_id=${appId}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Basic ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (playerResponse.ok) {
+            playerData = await playerResponse.json();
+            playerExists = true;
+            playerSubscribed = playerData.valid_player === true && playerData.notification_types > 0;
+            console.log(`[OneSignal Verify] Player found via Players API: valid=${playerData.valid_player}, types=${playerData.notification_types}`);
+          } else {
+            console.log(`[OneSignal Verify] Player not found via Players API: ${playerResponse.status}`);
+          }
         }
-      } catch (error) {
-        console.error(`[OneSignal Verify] Error checking player:`, error);
       }
+    } catch (error) {
+      console.error(`[OneSignal Verify] Error checking user/player:`, error);
     }
 
     // Check if user is in "Subscribed Users" segment

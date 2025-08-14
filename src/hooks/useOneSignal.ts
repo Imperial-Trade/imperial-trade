@@ -741,9 +741,9 @@ export function useOneSignal() {
       try {
         if (debug) console.info(`[OneSignal] Creating WebPush subscription for ${browserInfo.name}`);
         
-        // **Create OneSignal subscription (will handle permission request internally)**
-        if (debug) console.info(`[OneSignal] Calling ensureSubscription with skipNativePermission=true`);
-        const subscriptionResult = await ensureSubscription(browserConfig.subscriptionTimeout, true);
+        // **Create OneSignal subscription (uses native browser permission dialog)**
+        if (debug) console.info(`[OneSignal] Calling ensureSubscription with native permission dialog`);
+        const subscriptionResult = await ensureSubscription(browserConfig.subscriptionTimeout, false);
         
         if (!subscriptionResult) {
           const errorDetails = {

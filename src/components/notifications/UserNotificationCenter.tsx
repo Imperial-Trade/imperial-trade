@@ -5,7 +5,7 @@ import { Bell, Settings, History } from 'lucide-react';
 import { NotificationPreferences } from './NotificationPreferences';
 import { NotificationHistory } from './NotificationHistory';
 import { useNotifications } from '@/contexts/NotificationsContext';
-import NotificationPermissionBanner from './NotificationPermissionBanner';
+import UnifiedPermissionFlow from './UnifiedPermissionFlow';
 
 export const UserNotificationCenter: React.FC = () => {
   const { isGranted, permission } = useNotifications();
@@ -22,7 +22,7 @@ export const UserNotificationCenter: React.FC = () => {
       </div>
 
       {/* Show permission banner if needed */}
-      {permission !== 'granted' && <NotificationPermissionBanner />}
+      {permission !== 'granted' && <UnifiedPermissionFlow autoShow={false} />}
 
       <Tabs defaultValue="preferences" className="w-full">
         <TabsList className="grid w-full grid-cols-2">

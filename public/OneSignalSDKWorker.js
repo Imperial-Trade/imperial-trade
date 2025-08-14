@@ -13,8 +13,8 @@ try {
     const title = data.title || 'New Notification';
     const options = {
       body: data.body || 'You have a new notification',
-      icon: data.icon || '/favicon.ico',
-      badge: data.badge || '/favicon.ico',
+      icon: data.icon || '/android-chrome-192x192.png',
+      badge: data.badge || '/android-chrome-192x192.png',
       data: data
     };
     

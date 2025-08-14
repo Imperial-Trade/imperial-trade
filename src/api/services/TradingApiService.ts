@@ -142,9 +142,8 @@ export class TradingApiService {
           author_name: author?.display_name,
           author_avatar_url: author?.avatar_url,
         };
-        await supabase.functions.invoke('signal-notification-dispatcher', {
-          body: { notifications: [notificationPayload] }
-        });
+        // Notification will be handled by database trigger via signal-pgnotify-listener
+        console.log('Signal created - notification will be dispatched via database trigger');
       } catch (notifyError) {
         console.error('Failed to dispatch push notification for new signal:', notifyError);
       }

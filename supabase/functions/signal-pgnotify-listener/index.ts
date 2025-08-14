@@ -60,22 +60,41 @@ Deno.serve(async (req) => {
             )) {
               console.log('[PG Notify] Triggering notification for admin/educator signal');
               
+              // Fetch author information for enrichment
+              const { data: authorProfile } = await supabase
+                .from('public_profiles')
+                .select('display_name, avatar_url')
+                .eq('id', signalData.user_id)
+                .single();
+              
               // Call the signal notification dispatcher
               const { error } = await supabase.functions.invoke('signal-notification-dispatcher', {
                 body: {
-                  signal_id: signalData.id,
-                  user_id: signalData.user_id,
-                  asset_name: signalData.asset_name,
-                  trade_type: signalData.trade_type,
-                  entry_price: signalData.entry_price,
-                  stop_loss: signalData.stop_loss,
-                  tp1: signalData.tp1,
-                  tp2: signalData.tp2,
-                  tp3: signalData.tp3,
-                  tp4: signalData.tp4,
-                  tp5: signalData.tp5,
-                  tradermade_symbol: signalData.tradermade_symbol,
-                  created_at: signalData.created_at
+                  notifications: [{
+                    signal_id: signalData.id,
+                    user_id: signalData.user_id,
+                    asset_name: signalData.asset_name,
+                    trade_type: signalData.trade_type,
+                    entry_price: signalData.entry_price,
+                    stop_loss: signalData.stop_loss,
+                    tp1: signalData.tp1,
+                    tp2: signalData.tp2,
+                    tp3: signalData.tp3,
+                    tp4: signalData.tp4,
+                    tp5: signalData.tp5,
+                    symbol: signalData.tradermade_symbol,
+                    tradermade_symbol: signalData.tradermade_symbol,
+                    created_at: signalData.created_at,
+                    notification_type: 'signal_created',
+                    alert_type: 'signal_created',
+                    target_price: signalData.entry_price,
+                    triggered_price: signalData.entry_price,
+                    status: signalData.status,
+                    author_id: signalData.user_id,
+                    author_name: authorProfile?.display_name || 'Unknown',
+                    author_avatar_url: authorProfile?.avatar_url,
+                    delivery_channels: ['push']
+                  }]
                 }
               });
 

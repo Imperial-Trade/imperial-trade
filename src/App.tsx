@@ -63,6 +63,7 @@ import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
 import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
 import OneSignalInitializer from "@/components/integrations/OneSignalInitializer";
+import { setupNotificationClickHandler } from "@/utils/notificationHandlers";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +75,11 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Setup notification click handler on app initialization
+  React.useEffect(() => {
+    setupNotificationClickHandler();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

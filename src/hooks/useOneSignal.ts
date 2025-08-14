@@ -671,6 +671,9 @@ const requestPermission = async (): Promise<{ success: boolean; error?: string; 
             console.warn('[OneSignal] User sync with player_id failed, but subscription exists');
           }
           
+          // STEP 5: Update user profile with subscription status
+          await updateUserSubscriptionStatus(true, playerId);
+          
           // STEP 5: Final verification
           const verification = await verifySubscription();
           if (verification.local && debug) {
@@ -712,6 +715,31 @@ const requestPermission = async (): Promise<{ success: boolean; error?: string; 
           console.warn('[OneSignal] No subscription detected after permission flow. Verify Web Push configuration for origin:', location.origin);
         }
       } catch {}
+    }
+  };
+
+  // Function to update user subscription status in database
+  const updateUserSubscriptionStatus = async (isSubscribed: boolean, playerId?: string) => {
+    if (!user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          push_subscription_active: isSubscribed,
+          onesignal_subscription_status: isSubscribed ? 'subscribed' : 'unsubscribed',
+          onesignal_last_verified_at: new Date().toISOString(),
+          onesignal_player_id: playerId || null
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('[OneSignal] Error updating subscription status:', error);
+      } else {
+        console.log('[OneSignal] User subscription status updated in database');
+      }
+    } catch (error) {
+      console.error('[OneSignal] Database update failed:', error);
     }
   };
 

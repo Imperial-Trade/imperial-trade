@@ -26,8 +26,44 @@ try {
   self.addEventListener('notificationclick', function(event) {
     console.log('[OneSignal SW] Fallback notification click handler');
     event.notification.close();
+    
+    // Extract signal data from notification
+    const notificationData = event.notification.data || {};
+    const signalId = notificationData.signal_id || notificationData.signalId;
+    
+    // Determine target URL based on notification type
+    let targetUrl = '/';
+    if (signalId || notificationData.type === 'signal_created') {
+      targetUrl = '/dashboard/signal-stream';
+      if (signalId) {
+        targetUrl += `?signal=${signalId}`;
+      }
+    } else if (notificationData.url) {
+      targetUrl = notificationData.url;
+    }
+    
     event.waitUntil(
-      clients.openWindow(event.notification.data?.url || '/')
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+        // Try to focus existing window first
+        for (let i = 0; i < clientList.length; i++) {
+          const client = clientList[i];
+          const clientUrl = new URL(client.url);
+          if (clientUrl.origin === self.location.origin) {
+            console.log('[OneSignal SW] Focusing existing window and navigating to:', targetUrl);
+            client.focus();
+            client.postMessage({
+              type: 'NOTIFICATION_CLICK',
+              url: targetUrl,
+              data: notificationData
+            });
+            return client;
+          }
+        }
+        
+        // No existing window found, open new one
+        console.log('[OneSignal SW] Opening new window:', targetUrl);
+        return clients.openWindow(targetUrl);
+      })
     );
   });
 }

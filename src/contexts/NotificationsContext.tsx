@@ -58,7 +58,7 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     isGranted: isGranted && !!user,
     hasSubscription,
     isIframeBlocked,
-    isPromptDismissed: dismissed || !user || permission === 'denied' || permission === 'granted' || (isGranted && !!user),
+    isPromptDismissed: dismissed || !user || permission === 'denied' || (isGranted && !!user && hasSubscription),
     requestPermission,
     dismissPrompt,
     browserInfo,

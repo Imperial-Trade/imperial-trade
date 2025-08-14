@@ -1304,8 +1304,12 @@ export type Database = {
           legal_accepted_at: string | null
           legal_version: string | null
           location: string | null
+          onesignal_last_verified_at: string | null
+          onesignal_player_id: string | null
+          onesignal_subscription_status: string | null
           phone_number: string | null
           profile_type: string | null
+          push_subscription_active: boolean | null
           real_name: string | null
           registration_source:
             | Database["public"]["Enums"]["registration_source_enum"]
@@ -1341,8 +1345,12 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          onesignal_last_verified_at?: string | null
+          onesignal_player_id?: string | null
+          onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
+          push_subscription_active?: boolean | null
           real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
@@ -1378,8 +1386,12 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          onesignal_last_verified_at?: string | null
+          onesignal_player_id?: string | null
+          onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
+          push_subscription_active?: boolean | null
           real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]

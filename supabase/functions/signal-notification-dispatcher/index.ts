@@ -272,7 +272,62 @@ if (isSignalCreated) {
   }
 }
 
-async function processNotification(payload: NotificationPayload): Promise<Record<string, boolean>> {
+async function sendInAppNotification(payload: NotificationPayload, supabase: any): Promise<boolean> {
+  try {
+    // Create in-app notification records for real-time delivery
+    const notificationData = {
+      title: `New ${payload.trade_type?.toUpperCase() || 'Signal'}`,
+      message: `${payload.asset_name || payload.symbol || 'Unknown'} - Entry: ${payload.entry_price || payload.target_price}`,
+      type: 'new_signal',
+      data: {
+        signal_id: payload.signal_id,
+        asset_name: payload.asset_name,
+        trade_type: payload.trade_type,
+        entry_price: payload.entry_price,
+        author_name: payload.author_name
+      }
+    };
+
+    // If specific user_ids are provided, send to those users
+    if (payload.user_ids && payload.user_ids.length > 0) {
+      for (const userId of payload.user_ids) {
+        await supabase
+          .from('user_notifications')
+          .insert({
+            user_id: userId,
+            ...notificationData
+          });
+      }
+    } else {
+      // Send to all active users (excluding the signal creator)
+      const { data: activeUsers } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('account_status', 'active')
+        .neq('id', payload.author_id || '');
+
+      if (activeUsers && activeUsers.length > 0) {
+        const notifications = activeUsers.map(user => ({
+          user_id: user.id,
+          ...notificationData
+        }));
+
+        await supabase
+          .from('user_notifications')
+          .insert(notifications);
+      }
+    }
+
+    console.log('✅ In-app notifications created successfully');
+    return true;
+
+  } catch (error) {
+    console.error('❌ Error sending in-app notification:', error);
+    return false;
+  }
+}
+
+async function processNotification(payload: NotificationPayload, supabase: any): Promise<Record<string, boolean>> {
   const deliveryResults: Record<string, boolean> = {};
 
   // Send to all requested channels in parallel for speed
@@ -286,6 +341,8 @@ async function processNotification(payload: NotificationPayload): Promise<Record
         return { channel, success: await sendTelegramNotification(payload) };
       case 'push':
         return { channel, success: await sendPushNotification(payload) };
+      case 'in_app':
+        return { channel, success: await sendInAppNotification(payload, supabase) };
       default:
         console.warn(`⚠️ Unknown delivery channel: ${channel}`);
         return { channel, success: false };
@@ -397,7 +454,7 @@ serve(async (req) => {
         console.log('ℹ️ Unable to enrich notification with author info:', enrichErr);
       }
       
-      const deliveryResults = await processNotification(notification);
+      const deliveryResults = await processNotification(notification, supabase);
       const processingTime = Date.now() - startTime;
       
       // Update notification status in database

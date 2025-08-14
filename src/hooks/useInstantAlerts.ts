@@ -302,14 +302,14 @@ export const useInstantAlerts = () => {
         }
       }, 5000) as unknown as number;
 
-      // Delayed user-facing message after 10s if still not connected
+      // Delayed user-facing message after 15s if still not connected
       delayedErrorTimer = window.setTimeout(() => {
         if (!subscribed) {
           toast.message('Alert notifications temporarily unavailable', {
             description: 'Still connecting… We will keep trying in the background.'
           });
         }
-      }, 10000) as unknown as number;
+      }, 15000) as unknown as number;
     };
 
     connect();

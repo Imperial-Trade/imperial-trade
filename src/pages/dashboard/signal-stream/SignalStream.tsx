@@ -179,15 +179,20 @@ export default function SignalStream() {
   }, [closedAlerts]);
 
   const symbols = useMemo(() => {
-    const symbolSet = new Set();
+    const symbolSet = new Set<string>();
     activeAlerts.forEach(alert => {
-      if (alert && alert.tradermadeSymbol) {
+      if (alert?.tradermadeSymbol) {
         symbolSet.add(alert.tradermadeSymbol);
       }
     });
     const symbolList = Array.from(symbolSet);
-    console.log('SignalStream - Final symbols for price feed:', symbolList);
-    return symbolList as string[];
+    
+    // Only log in development to reduce console noise
+    if (process.env.NODE_ENV === 'development') {
+      console.log('SignalStream - Final symbols for price feed:', symbolList);
+    }
+    
+    return symbolList;
   }, [activeAlerts]);
 
   const {
@@ -199,20 +204,26 @@ export default function SignalStream() {
 
   // Live prices mapping removed to prevent top-level re-renders caused by frequent price ticks
 
-  // Subscribe to symbols for live price updates
+  // Subscribe to symbols for live price updates with memoized callback
+  const symbolsKey = useMemo(() => symbols.join(','), [symbols]);
+  
   useEffect(() => {
     if (symbols.length > 0) {
-      console.log('SignalStream - Subscribing to symbols:', symbols);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('SignalStream - Subscribing to symbols:', symbols);
+      }
       subscribe(symbols);
     }
     
     return () => {
       if (symbols.length > 0) {
-        console.log('SignalStream - Unsubscribing from symbols:', symbols);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('SignalStream - Unsubscribing from symbols:', symbols);
+        }
         unsubscribe(symbols);
       }
     };
-  }, [symbols, subscribe, unsubscribe]);
+  }, [symbolsKey, subscribe, unsubscribe]); // Use symbolsKey instead of symbols array
 
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);

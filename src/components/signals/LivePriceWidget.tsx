@@ -3,6 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { useThrottledPrice } from '@/hooks/useThrottledPrice';
+import { useConnectionStabilizer } from '@/hooks/useConnectionStabilizer';
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
   if (!symbol) return {
@@ -48,22 +50,34 @@ const LivePriceWidgetComponent = ({
   onStopLossHit,
   onOrderActivation
 }) => {
-  // Use the optimized live price hook directly
+  // Use the optimized live price hook with throttling for performance
   const {
-    price: currentPrice,
+    price: rawPrice,
     change,
     changePercent,
     isLoading,
     error,
     lastUpdated,
-    connectionStatus,
+    connectionStatus: rawConnectionStatus,
     dataSource,
     priceUpdateSource,
     refreshPrice
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
-    debounceMs: 25,
+    debounceMs: 50, // Slightly increased for better performance
     pauseOnInput: false
+  });
+
+  // Throttle price updates to reduce render frequency
+  const { price: currentPrice } = useThrottledPrice(rawPrice, {
+    throttleMs: 100,
+    maxUpdatesPerSecond: 8
+  });
+
+  // Stabilize connection status to prevent rapid UI changes
+  const { status: connectionStatus } = useConnectionStabilizer(rawConnectionStatus, {
+    debounceMs: 500,
+    stabilityThreshold: 1500
   });
 
   const [priceChange, setPriceChange] = useState(null);
@@ -192,16 +206,18 @@ const LivePriceWidgetComponent = ({
     const hasAlreadyHitTP = currentHits.length > 0;
     const buffer = alert.entry_price * 0.0001;
 
-    // Enhanced logging for debugging
-    console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.tradermade_symbol}):`, {
-      currentPrice: price,
-      entryPrice: alert.entry_price,
-      tradeType: alert.trade_type,
-      stopLoss: alert.stop_loss,
-      buffer: buffer,
-      currentHits: currentHits,
-      isBuy: isBuy
-    });
+    // Enhanced logging for debugging (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[PRICE CHECK] ${alert.asset_name} (${alert.tradermade_symbol}):`, {
+        currentPrice: price,
+        entryPrice: alert.entry_price,
+        tradeType: alert.trade_type,
+        stopLoss: alert.stop_loss,
+        buffer: buffer,
+        currentHits: currentHits,
+        isBuy: isBuy
+      });
+    }
 
     // Priority 1: Check Stop Loss first (highest priority)
     const stopLossHit = isBuy ? price <= alert.stop_loss - buffer : price >= alert.stop_loss + buffer;
@@ -222,12 +238,14 @@ const LivePriceWidgetComponent = ({
     // Priority 2: Validate trade direction before checking TP levels
     const isPriceInProfitDirection = isBuy ? price > alert.entry_price : price < alert.entry_price;
     if (!isPriceInProfitDirection) {
-      console.log(`[DIRECTION CHECK] Price not in profit direction for ${alert.asset_name}:`, {
-        currentPrice: price,
-        entryPrice: alert.entry_price,
-        tradeType: alert.trade_type,
-        isPriceInProfitDirection
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[DIRECTION CHECK] Price not in profit direction for ${alert.asset_name}:`, {
+          currentPrice: price,
+          entryPrice: alert.entry_price,
+          tradeType: alert.trade_type,
+          isPriceInProfitDirection
+        });
+      }
       // Don't process TP levels if price is not moving in profitable direction
       return;
     }
@@ -316,16 +334,18 @@ const LivePriceWidgetComponent = ({
     }
   }, [currentPrice, checkLevels]);
 
-  // Debug logging
+  // Debug logging (development only)
   useEffect(() => {
-    console.log(`LivePriceWidget Debug for ${alert.asset_name}:`, {
-      alertSymbol: alert.tradermade_symbol,
-      currentPrice: currentPrice,
-      connectionStatus,
-      priceUpdateSource,
-      entryPrice: alert.entry_price,
-      stopLoss: alert.stop_loss
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`LivePriceWidget Debug for ${alert.asset_name}:`, {
+        alertSymbol: alert.tradermade_symbol,
+        currentPrice: currentPrice,
+        connectionStatus,
+        priceUpdateSource,
+        entryPrice: alert.entry_price,
+        stopLoss: alert.stop_loss
+      });
+    }
   }, [currentPrice, connectionStatus, priceUpdateSource, alert]);
   // Format price with dynamic decimal places
   const formatPrice = useCallback((price) => {

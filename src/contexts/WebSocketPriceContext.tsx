@@ -69,7 +69,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) return;
     const pending = Array.from(pendingSubscribeBatchRef.current);
     if (pending.length === 0) return;
-    console.log('📤 Sending batched subscription for:', pending);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📤 Sending batched subscription for:', pending);
+    }
     socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: pending }));
     pendingSubscribeBatchRef.current.clear();
     subscribeFlushTimerRef.current = null;
@@ -173,12 +175,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             const isUltraFastTick = data.is_ultra_fast_tick === true;
             const tickTimestamp = data.tick_timestamp || Date.now();
             
-            if (isUltraFastTick) {
-              console.log(`⚡ ULTRA-FAST TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
-            } else if (isInstitutionalTick) {
-              console.log(`💎 INSTITUTIONAL TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
-            } else {
-              console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${data.price}`);
+            // Log price updates only in development or for ultra-fast ticks
+            if (process.env.NODE_ENV === 'development') {
+              if (isUltraFastTick) {
+                console.log(`⚡ ULTRA-FAST TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
+              } else if (isInstitutionalTick) {
+                console.log(`💎 INSTITUTIONAL TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
+              } else {
+                console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${data.price}`);
+              }
             }
             
             // Calculate percentage change if we have previous price

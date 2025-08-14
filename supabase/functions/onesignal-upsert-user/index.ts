@@ -202,18 +202,54 @@ Deno.serve(async (req: Request) => {
       };
     }
 
-    // Note: WebPush subscriptions are managed by OneSignal SDK automatically
-    // We only log the player_id for tracking purposes
+    // **PHASE 4: Enhanced WebPush Player ID Handling with Database Sync**
     if (playerId) {
-      console.log(`[OneSignal Upsert] Player ID received for user ${externalId}: ${playerId}`);
-      console.log(`[OneSignal Upsert] WebPush subscription will be handled by OneSignal SDK internally`);
-      // Mark as successful since we don't need to manually create WebPush subscriptions
-      pushSubscriptionAttempt = { 
-        ok: true, 
-        status: 200, 
-        text: "WebPush subscription handled by SDK",
-        json: { message: "WebPush subscription managed by OneSignal SDK" }
-      };
+      console.log(`[OneSignal Upsert] WebPush Player ID received for user ${externalId}: ${playerId}`);
+      
+      try {
+        // **Phase 4: Update database with player_id for future verification**
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            onesignal_player_id: playerId,
+            push_subscription_active: true,
+            onesignal_subscription_status: 'subscribed',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', externalId);
+        
+        if (updateError) {
+          console.warn(`[OneSignal Upsert] Database update failed for player_id ${playerId}:`, updateError);
+        } else {
+          console.log(`[OneSignal Upsert] Database updated with WebPush player_id: ${playerId}`);
+        }
+        
+        // **Phase 4: Mark as successful - WebPush subscriptions are managed by SDK**
+        pushSubscriptionAttempt = { 
+          ok: true, 
+          status: 200, 
+          text: "WebPush subscription tracked and database updated",
+          json: { 
+            message: "WebPush subscription managed by OneSignal SDK",
+            player_id: playerId,
+            database_updated: !updateError
+          }
+        };
+        
+      } catch (dbError) {
+        console.error(`[OneSignal Upsert] Database sync error for player_id ${playerId}:`, dbError);
+        // Still mark as successful since the OneSignal side works
+        pushSubscriptionAttempt = { 
+          ok: true, 
+          status: 200, 
+          text: "WebPush subscription handled by SDK (database sync failed)",
+          json: { 
+            message: "WebPush subscription managed by OneSignal SDK",
+            player_id: playerId,
+            database_sync_error: dbError.message
+          }
+        };
+      }
     }
 
     // Update tags

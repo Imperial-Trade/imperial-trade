@@ -73,7 +73,11 @@ Deno.serve(async (req: Request) => {
     let playerSubscribed = false;
     let playerData = null;
 
-    // Use User-Centric API to check subscription status
+    // **PHASE 2: Enhanced User-Centric API with WebPush Focus**
+    let webPushSubscribed = false;
+    let emailSubscribed = false;
+    let hasActiveWebPush = false;
+    
     try {
       const userResponse = await fetch(`https://api.onesignal.com/apps/${appId}/users/by/external_id/${targetUserId}`, {
         method: "GET",
@@ -88,44 +92,89 @@ Deno.serve(async (req: Request) => {
         playerData = userData;
         playerExists = true;
         
-        // Check if user has any active subscriptions (email or web push)
+        // **Phase 2: Separate WebPush and Email subscription analysis**
         const subscriptions = userData.subscriptions || [];
         const webPushSubs = subscriptions.filter((sub: any) => sub.type === "WebPush");
         const emailSubs = subscriptions.filter((sub: any) => sub.type === "Email");
         
-        // User is considered subscribed if they have any active subscription
-        playerSubscribed = webPushSubs.some((sub: any) => sub.enabled) || 
-                          emailSubs.some((sub: any) => sub.enabled);
+        // **Critical: Only check WebPush for push notification verification**
+        webPushSubscribed = webPushSubs.some((sub: any) => sub.enabled && sub.token);
+        emailSubscribed = emailSubs.some((sub: any) => sub.enabled);
+        hasActiveWebPush = webPushSubs.some((sub: any) => sub.enabled && sub.token && sub.id);
         
-        console.log(`[OneSignal Verify] User found via Users API: ${subscriptions.length} total subscriptions (${webPushSubs.length} WebPush, ${emailSubs.length} Email)`);
-        console.log(`[OneSignal Verify] Subscription status: ${playerSubscribed ? 'subscribed' : 'not subscribed'}`);
-      } else {
-        console.log(`[OneSignal Verify] User not found via Users API: ${userResponse.status}`);
+        // **Phase 2: Enhanced logging for WebPush vs Email distinction**
+        console.log(`[OneSignal Verify] User found via Users API: ${subscriptions.length} total subscriptions`);
+        console.log(`[OneSignal Verify] - WebPush subscriptions: ${webPushSubs.length} (${webPushSubs.filter(sub => sub.enabled).length} enabled)`);
+        console.log(`[OneSignal Verify] - Email subscriptions: ${emailSubs.length} (${emailSubs.filter(sub => sub.enabled).length} enabled)`);
+        console.log(`[OneSignal Verify] WebPush status: ${webPushSubscribed ? 'subscribed' : 'not subscribed'}`);
+        console.log(`[OneSignal Verify] Email status: ${emailSubscribed ? 'subscribed' : 'not subscribed'}`);
         
-        // For new users or users without subscriptions, this is normal
-        // Don't try legacy API as it can cause confusion
+        // **Phase 2: Player ID validation for WebPush**
+        if (playerId && webPushSubs.length > 0) {
+          const matchingWebPush = webPushSubs.find((sub: any) => sub.id === playerId);
+          if (matchingWebPush) {
+            console.log(`[OneSignal Verify] Player ID ${playerId} matched to WebPush subscription`);
+          } else {
+            console.log(`[OneSignal Verify] Player ID ${playerId} not found in WebPush subscriptions`);
+          }
+        }
+        
+      } else if (userResponse.status === 404) {
+        console.log(`[OneSignal Verify] User not found via Users API: ${userResponse.status} (normal for new users)`);
         playerExists = false;
-        playerSubscribed = false;
+        webPushSubscribed = false;
+        emailSubscribed = false;
         playerData = null;
+      } else {
+        console.log(`[OneSignal Verify] Users API error: ${userResponse.status}`);
+        
+        // **Phase 2: Fallback to player-specific API if user lookup fails**
+        if (playerId) {
+          console.log(`[OneSignal Verify] Attempting fallback player lookup for: ${playerId}`);
+          try {
+            const playerResponse = await fetch(`https://api.onesignal.com/apps/${appId}/players/${playerId}`, {
+              method: "GET",
+              headers: {
+                Authorization: `Basic ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+            });
+            
+            if (playerResponse.ok) {
+              const playerData = await playerResponse.json();
+              playerExists = true;
+              webPushSubscribed = playerData.invalid_identifier !== true;
+              console.log(`[OneSignal Verify] Fallback player lookup successful: ${webPushSubscribed ? 'valid' : 'invalid'}`);
+            }
+          } catch (fallbackError) {
+            console.warn(`[OneSignal Verify] Fallback player lookup failed:`, fallbackError);
+          }
+        }
       }
     } catch (error) {
       console.error(`[OneSignal Verify] Error checking user subscription:`, error);
       playerExists = false;
-      playerSubscribed = false;
+      webPushSubscribed = false;
+      emailSubscribed = false;
       playerData = null;
     }
+    
+    // **Phase 2: Set primary subscription status based on WebPush only**
+    playerSubscribed = webPushSubscribed;
 
-    // Check if user is in "Subscribed Users" segment (simplified approach)
+    // **Phase 2: Enhanced segment checking with WebPush focus**
     let inSubscribedSegment = false;
 
     try {
-      // For User-Centric API, segments are less reliable for individual users
-      // Instead, rely on the direct subscription status from user data
-      if (playerExists && playerSubscribed) {
+      // **Phase 2: Base segment status on WebPush subscription specifically**
+      if (playerExists && webPushSubscribed && hasActiveWebPush) {
         inSubscribedSegment = true;
-        console.log(`[OneSignal Verify] User is considered in subscribed segment based on active subscriptions`);
+        console.log(`[OneSignal Verify] User is in subscribed segment - has active WebPush subscription`);
+      } else if (playerExists && emailSubscribed && !webPushSubscribed) {
+        inSubscribedSegment = false; // Email-only users are not considered for push notifications
+        console.log(`[OneSignal Verify] User has email subscription but no WebPush - not in push segment`);
       } else {
-        console.log(`[OneSignal Verify] User not in subscribed segment - no active subscriptions found`);
+        console.log(`[OneSignal Verify] User not in subscribed segment - no active WebPush subscriptions`);
       }
     } catch (error) {
       console.error(`[OneSignal Verify] Error determining segment status:`, error);
@@ -145,13 +194,16 @@ Deno.serve(async (req: Request) => {
       console.error('Error fetching profile subscription status:', dbError);
     }
 
-    // Determine overall subscription status
-    const isSubscribed = playerExists && playerSubscribed;
+    // **PHASE 2: Production-Grade Subscription Status Determination**
+    const isSubscribed = playerExists && webPushSubscribed; // Focus on WebPush only
     const verificationStatus = {
       user_id: targetUserId,
       player_id: playerId,
       player_exists: playerExists,
-      player_subscribed: playerSubscribed,
+      player_subscribed: playerSubscribed, // This is now webPushSubscribed
+      webpush_subscribed: webPushSubscribed,
+      email_subscribed: emailSubscribed,
+      has_active_webpush: hasActiveWebPush,
       in_subscribed_segment: inSubscribedSegment,
       is_subscribed: isSubscribed,
       database_status: {
@@ -165,7 +217,9 @@ Deno.serve(async (req: Request) => {
         session_count: playerData.session_count,
         last_active: playerData.last_active,
         created_at: playerData.created_at,
+        subscriptions_count: playerData.subscriptions?.length || 0
       } : null,
+      verification_method: playerId ? 'player_id_provided' : 'user_lookup_only',
       verified_at: new Date().toISOString(),
     };
 
@@ -175,21 +229,39 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         subscription_status: verificationStatus,
+        // **Phase 2: Enhanced recommendations with WebPush-specific guidance**
         recommendations: (() => {
           const recs = [];
+          
           if (!isSubscribed) {
-            recs.push(
-              "User should grant push notification permissions",
-              "Check if notifications are blocked in browser/device settings",
-              "Try re-initializing OneSignal SDK",
-              "Verify OneSignal configuration is correct"
-            );
+            if (!playerExists) {
+              recs.push(
+                "User not found in OneSignal - ensure user creation completed",
+                "Verify OneSignal SDK initialization completed successfully"
+              );
+            } else if (!webPushSubscribed) {
+              recs.push(
+                "WebPush subscription not active - user should grant push notification permissions",
+                "Check if notifications are blocked in browser/device settings",
+                "Verify browser supports push notifications (Chrome, Firefox, Safari, Edge)",
+                "Ensure site is accessed via HTTPS for push notifications"
+              );
+            }
           }
           
-          // Check for player ID mismatch
-          if (dbSubscriptionStatus?.onesignal_player_id && 
+          // **Enhanced player ID diagnostics**
+          if (dbSubscriptionStatus?.onesignal_player_id && playerId &&
               dbSubscriptionStatus.onesignal_player_id !== playerId) {
             recs.push("Player ID mismatch detected - database sync required");
+          }
+          
+          if (!playerId && webPushSubscribed) {
+            recs.push("WebPush subscription exists but player ID not provided for verification");
+          }
+          
+          // **Email vs WebPush distinction**
+          if (emailSubscribed && !webPushSubscribed) {
+            recs.push("User has email subscription but needs WebPush subscription for push notifications");
           }
           
           return recs;

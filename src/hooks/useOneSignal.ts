@@ -397,7 +397,7 @@ export function useOneSignal() {
     }
   };
 
-  // Enhanced subscription creation with browser-specific handling
+  // **PHASE 1: Production-Grade Subscription with Robust Player ID Generation**
   const ensureSubscription = async (maxWaitMs: number = 20000): Promise<boolean> => {
     try {
       const os = (window as any).OneSignal;
@@ -410,23 +410,23 @@ export function useOneSignal() {
       const already = !!(ps?.optedIn || ps?.id);
       if (already) {
         setHasSubscription(true);
-        if (debug) console.info(`[OneSignal] Subscription already exists (${browserInfo.name})`);
+        if (debug) console.info(`[OneSignal] WebPush subscription already exists (${browserInfo.name}) - Player ID: ${ps?.id}`);
         return true;
       }
 
-      // Use browser-specific timeout and retry configuration
+      // **Enhanced browser-specific timeout and retry configuration**
       const actualTimeout = Math.min(maxWaitMs, browserConfig.subscriptionTimeout);
       const start = Date.now();
       let attempt = 0;
       
-      if (debug) console.info(`[OneSignal] Starting subscription for ${browserInfo.name} (timeout: ${actualTimeout}ms)`);
+      if (debug) console.info(`[OneSignal] Starting WebPush subscription for ${browserInfo.name} (timeout: ${actualTimeout}ms)`);
 
       while (Date.now() - start < actualTimeout) {
         attempt += 1;
         try {
-          if (debug) console.info(`[OneSignal] subscribe() attempt ${attempt}/${browserConfig.maxRetries} (${browserInfo.name})`);
+          if (debug) console.info(`[OneSignal] WebPush subscribe() attempt ${attempt}/${browserConfig.maxRetries} (${browserInfo.name})`);
           
-          // Browser-specific subscription approach
+          // **Phase 1: Robust WebPush subscription with exponential backoff**
           if (browserInfo.name === 'Safari') {
             // Safari needs special handling
             await withTimeout(os.Notifications.requestPermission(), browserConfig.permissionTimeout);
@@ -480,267 +480,176 @@ export function useOneSignal() {
     }
   };
 
-const requestPermission = async (): Promise<{ success: boolean; error?: string; details?: any }> => {
+  // **PHASE 3: Production-Grade Permission Request with Enhanced Error Handling**
+  const requestPermission = async (): Promise<{ success: boolean; error?: string; details?: any }> => {
     try {
-      if (isIframeBlocked) {
-        const error = "Notifications permission cannot be requested within an iframe preview. Open in a new tab.";
-        console.warn(error);
-        return { success: false, error };
+      if (!initialized) {
+        return { success: false, error: "OneSignal not initialized. Please wait and try again." };
       }
 
-      // Browser compatibility check
-      if (!browserInfo.isSupported) {
-        const error = `Browser ${browserInfo.name} ${browserInfo.version} is not supported for push notifications`;
-        console.warn(error);
+      const os = (window as any).OneSignal;
+      if (!os) {
+        return { success: false, error: "OneSignal SDK not available. Please refresh the page." };
+      }
+
+      if (debug) console.info(`[OneSignal] Starting WebPush permission request for ${browserInfo.name} ${browserInfo.version}`);
+
+      // **Enhanced pre-checks with user-friendly messages**
+      if (typeof Notification === 'undefined') {
         return { 
           success: false, 
-          error, 
+          error: `Push notifications are not supported in ${browserInfo.name}. Please use Chrome, Firefox, Safari, or Edge.` 
+        };
+      }
+
+      // **Handle already granted permission with robust verification**
+      if (permission === 'granted') {
+        if (debug) console.info(`[OneSignal] Permission already granted, ensuring WebPush subscription exists`);
+        
+        const subscriptionCreated = await ensureSubscription(15000);
+        if (subscriptionCreated) {
+          // **Phase 3: Enhanced backend sync and verification**
+          try {
+            await ensureOneSignalUser();
+            const verification = await verifySubscription();
+            
+            if (verification.local) {
+              // Update database status
+              await updateUserSubscriptionStatus(true, os.User?.PushSubscription?.id);
+              return { 
+                success: true, 
+                details: { 
+                  alreadyGranted: true, 
+                  subscriptionCreated, 
+                  verification,
+                  playerId: os.User?.PushSubscription?.id
+                } 
+              };
+            } else {
+              console.warn('[OneSignal] Verification failed but local subscription exists');
+              return { success: true, details: { alreadyGranted: true, verificationWarning: true } };
+            }
+          } catch (syncError) {
+            console.warn('[OneSignal] Backend sync failed but subscription exists:', syncError);
+            return { success: true, details: { alreadyGranted: true, syncWarning: true } };
+          }
+        } else {
+          return { 
+            success: false, 
+            error: "Notification permission is granted but WebPush subscription failed. Please try again or check browser settings." 
+          };
+        }
+      }
+
+      // **Phase 3: Enhanced subscription flow with comprehensive error handling**
+      try {
+        if (debug) console.info(`[OneSignal] Creating WebPush subscription for ${browserInfo.name}`);
+        
+        const subscriptionResult = await ensureSubscription(browserConfig.subscriptionTimeout);
+        
+        if (!subscriptionResult) {
+          const errorDetails = {
+            browser: browserInfo.name,
+            version: browserInfo.version,
+            permission: typeof Notification !== 'undefined' ? Notification.permission : 'unknown',
+            oneSignalReady: !!(window as any).OneSignal,
+            pushSubscriptionAPI: !!os?.User?.PushSubscription,
+            isSecureContext: typeof window !== 'undefined' ? window.isSecureContext : false
+          };
+          
+          // **Enhanced user-friendly error messages**
+          let userMessage = `WebPush subscription failed in ${browserInfo.name}.`;
+          if (errorDetails.permission === 'denied') {
+            userMessage = `Notifications are blocked in ${browserInfo.name}. Please enable them in browser settings and try again.`;
+          } else if (!errorDetails.isSecureContext) {
+            userMessage = 'Push notifications require a secure connection (HTTPS). Please access the site via HTTPS.';
+          } else if (browserInfo.name === 'Safari') {
+            userMessage = 'Safari requires explicit permission. Please allow notifications when prompted and try again.';
+          }
+          
+          return { 
+            success: false, 
+            error: userMessage, 
+            details: errorDetails 
+          };
+        }
+
+        // **Update permission state and get player_id**
+        if (typeof Notification !== 'undefined') {
+          setPermission(Notification.permission);
+        }
+        
+        const playerId = os.User?.PushSubscription?.id;
+        if (debug && playerId) {
+          console.info(`[OneSignal] WebPush subscription successful - Player ID: ${playerId}`);
+        }
+
+        // **Phase 3: Robust backend synchronization with graceful degradation**
+        let syncSuccess = false;
+        let verificationResult = null;
+        
+        try {
+          // Try user sync first
+          if (playerId) {
+            syncSuccess = await ensureOneSignalUserWithPlayerId(playerId);
+          } else {
+            syncSuccess = await ensureOneSignalUser();
+          }
+          
+          // Try verification (don't fail if this fails)
+          verificationResult = await verifySubscription();
+          
+          // Update database subscription status
+          await updateUserSubscriptionStatus(true, playerId);
+          
+        } catch (backendError) {
+          console.warn('[OneSignal] Backend sync failed but WebPush subscription successful:', backendError);
+          // Don't fail the entire flow - local subscription is what matters most
+        }
+
+        return { 
+          success: true, 
+          details: { 
+            browser: browserInfo.name,
+            playerId,
+            syncSuccess,
+            verification: verificationResult,
+            subscriptionResult: true
+          }
+        };
+
+      } catch (subscriptionError) {
+        console.error(`[OneSignal] WebPush subscription error for ${browserInfo.name}:`, subscriptionError);
+        
+        // **Enhanced user-friendly error messages**
+        let userMessage = `Failed to enable notifications in ${browserInfo.name}. Please try again.`;
+        if (subscriptionError.message?.includes('denied')) {
+          userMessage = `You denied notification permission. Please enable notifications in ${browserInfo.name} settings and try again.`;
+        } else if (subscriptionError.message?.includes('timeout')) {
+          userMessage = `Request timed out. Please check your internet connection and try again.`;
+        }
+        
+        return { 
+          success: false, 
+          error: userMessage,
           details: { 
             browser: browserInfo.name, 
-            version: browserInfo.version,
-            instructions: getBrowserInstructions(browserInfo)
+            originalError: subscriptionError.message,
+            errorType: 'subscription_failed'
           }
         };
       }
 
-      if (debug) console.info(`[OneSignal] Starting permission request flow for ${browserInfo.name} ${browserInfo.version}...`);
-      
-  // PHASE 2: Synchronize Flow Order - Subscription FIRST, then User Creation with Player ID
-      if (debug) console.info('[OneSignal] Starting synchronized flow: Subscription → Player ID → User Creation');
-      
-      // Wait briefly for OneSignal SDK readiness (Notifications available)
-      await withTimeout(
-        new Promise<void>((resolve) => {
-          const start = Date.now();
-          const check = () => {
-            try {
-              const os = (window as any).OneSignal;
-              if (os?.Notifications) return resolve();
-            } catch {}
-            if (Date.now() - start > 7000) return resolve();
-            setTimeout(check, 50);
-          };
-          check();
-        }),
-        7000
-      ).catch(() => {});
-
-      const os = (window as any).OneSignal;
-      const currentPerm = typeof Notification !== 'undefined' ? Notification.permission : 'default';
-      const ps = os?.User?.PushSubscription;
-      const alreadySub = !!(ps?.optedIn || ps?.id);
-      
-      if (currentPerm === 'granted' && alreadySub) {
-        try {
-          setHasSubscription(true);
-          // Ensure user is logged in even if already subscribed
-          if (user?.id) {
-            await withTimeout(Promise.resolve(os?.login?.(user.id)), 3000).catch(() => {});
-            if (debug) console.info('[OneSignal] User already subscribed and logged in');
-          }
-        } catch {}
-        return { success: true };
-      }
-
-      let subscribed = alreadySub;
-
-      // STEP 2: Browser-specific subscription approach
-      if (!subscribed && os?.Notifications) {
-        try {
-          if (debug) console.info(`[OneSignal] Attempting ${browserInfo.name} subscription...`);
-          
-          if (browserInfo.name === 'Safari') {
-            // Safari requires explicit permission request first
-            if (os.Notifications.requestPermission) {
-              await withTimeout(os.Notifications.requestPermission(), browserConfig.permissionTimeout).catch(() => {});
-              await new Promise(r => setTimeout(r, 1000)); // Give Safari time to process
-            }
-            if (os.Notifications.subscribe) {
-              await withTimeout(os.Notifications.subscribe(), browserConfig.subscriptionTimeout).catch(() => {});
-            }
-          } else if (browserInfo.name === 'Firefox') {
-            // Firefox works better with longer timeouts
-            if (os.Notifications.subscribe) {
-              await withTimeout(os.Notifications.subscribe(), browserConfig.subscriptionTimeout).catch(() => {});
-            }
-          } else {
-            // Chrome/Edge standard approach
-            if (os.Notifications.subscribe) {
-              await withTimeout(os.Notifications.subscribe(), browserConfig.subscriptionTimeout).catch(() => {});
-            }
-          }
-          
-          // Check subscription state
-          const sid = os?.User?.PushSubscription?.id ?? null;
-          const opted = !!os?.User?.PushSubscription?.optedIn;
-          setHasSubscription(!!(sid || opted));
-          subscribed = !!(sid || opted);
-          
-          if (subscribed && debug) {
-            console.info(`[OneSignal] ${browserInfo.name} subscription successful:`, { id: sid, optedIn: opted });
-          }
-        } catch (e) {
-          console.warn(`[OneSignal] ${browserInfo.name} subscription failed:`, e);
-        }
-      }
-
-      // STEP 3: Fallback to requestPermission() then ensureSubscription for failed attempts
-      if (!subscribed && os?.Notifications?.requestPermission) {
-        try {
-          if (debug) console.info(`[OneSignal] Fallback: requesting permission for ${browserInfo.name}...`);
-          await withTimeout(os.Notifications.requestPermission(), browserConfig.permissionTimeout).catch(() => {});
-          subscribed = await ensureSubscription(browserConfig.subscriptionTimeout);
-        } catch (e) {
-          console.warn(`[OneSignal] Permission request fallback failed for ${browserInfo.name}:`, e);
-        }
-      }
-
-      // STEP 4: Final fallback: native Notification API (for browsers that support it)
-      if (!subscribed && typeof Notification !== 'undefined' && Notification.permission === 'default' && Notification.requestPermission) {
-        try {
-          if (debug) console.info(`[OneSignal] Final fallback: native API for ${browserInfo.name}...`);
-          const res = await withTimeout(Promise.resolve(Notification.requestPermission()), browserConfig.permissionTimeout).catch(() => 'default');
-          if (res === 'granted') {
-            subscribed = await ensureSubscription(browserConfig.subscriptionTimeout);
-          }
-        } catch (e) {
-          console.warn(`[OneSignal] Native API fallback failed for ${browserInfo.name}:`, e);
-        }
-      }
-
-      // PHASE 2 & 3: Enhanced Player ID Generation and User Data Sync
-      if (subscribed && user?.id) {
-        try {
-          if (debug) console.info('[OneSignal] Starting enhanced user data synchronization...');
-          
-          // STEP 1: Ensure we have a valid player_id with improved timing
-          let playerId = null;
-          let attempts = 0;
-          const maxAttempts = 8; // Increased attempts
-          
-          while (!playerId && attempts < maxAttempts) {
-            attempts++;
-            try {
-              // Progressive delay: 1s, 2s, 3s, 4s, 5s, 6s, 7s, 8s
-              await new Promise(r => setTimeout(r, attempts * 1000));
-              
-              const psId = os?.User?.PushSubscription?.id;
-              const altId = os?.User?.PushSubscription?.token;
-              
-              if (psId) {
-                playerId = psId;
-                if (debug) console.info(`[OneSignal] Player ID obtained on attempt ${attempts}:`, playerId);
-                break;
-              } else if (altId && attempts > 3) {
-                // Use token as fallback after a few attempts
-                playerId = altId;
-                if (debug) console.info(`[OneSignal] Using subscription token as player ID on attempt ${attempts}:`, playerId);
-                break;
-              }
-              
-              if (debug) console.warn(`[OneSignal] Player ID not available, attempt ${attempts}/${maxAttempts}, checking again...`);
-              
-              // Force refresh subscription state
-              try {
-                const currentState = os?.User?.PushSubscription;
-                if (debug) console.info(`[OneSignal] Current subscription state:`, {
-                  id: currentState?.id,
-                  token: currentState?.token,
-                  optedIn: currentState?.optedIn
-                });
-              } catch {}
-              
-            } catch (e) {
-              console.warn(`[OneSignal] Error getting player ID on attempt ${attempts}:`, e);
-            }
-          }
-          
-          if (!playerId) {
-            console.error('[OneSignal] Failed to obtain player_id after', maxAttempts, 'attempts');
-            // Continue without player_id for now, let OneSignal handle internally
-            if (debug) console.warn('[OneSignal] Proceeding without player_id - OneSignal SDK will manage subscription internally');
-          }
-          
-          // STEP 2: Login with user ID first
-          await withTimeout(Promise.resolve(os?.login?.(user.id)), 5000).catch((e) => {
-            console.warn('[OneSignal] Login failed:', e);
-          });
-          
-          // Wait a bit for login to complete
-          await new Promise(r => setTimeout(r, 1000));
-          
-          // STEP 3: Set up identity and tags
-          const ops: Promise<any>[] = [];
-          if (user?.email) {
-            const osUser = os?.User;
-            if (osUser?.addEmail) ops.push(withTimeout(osUser.addEmail(user.email), 3000).catch(() => {}));
-            const emailTag = { email: user.email } as Record<string, string>;
-            if (osUser?.addTags) ops.push(withTimeout(osUser.addTags(emailTag), 3000).catch(() => {}));
-            else if (os?.sendTags) ops.push(withTimeout(os.sendTags(emailTag), 3000).catch(() => {}));
-          }
-          const tags: Record<string, string> = {};
-          if (profile?.role) tags["role"] = String(profile.role);
-          if (profile?.user_type) tags["user_type"] = String(profile.user_type);
-          if (Object.keys(tags).length) {
-            if (os?.User?.addTags) ops.push(withTimeout(os.User.addTags(tags), 3000).catch(() => {}));
-            else if (os?.sendTags) ops.push(withTimeout(os.sendTags(tags), 3000).catch(() => {}));
-          }
-          await Promise.allSettled(ops);
-          
-          // STEP 4: Create/Update OneSignal user with PLAYER_ID - CRITICAL for push notifications
-          if (debug) console.info('[OneSignal] Creating/updating OneSignal user with player_id:', playerId);
-          const userSyncResult = await ensureOneSignalUserWithPlayerId(playerId);
-          if (!userSyncResult) {
-            console.warn('[OneSignal] User sync with player_id failed, but subscription exists');
-            // Still try to update local database even if OneSignal sync failed
-          } else {
-            if (debug) console.info('[OneSignal] OneSignal user successfully linked with player_id:', playerId);
-          }
-          
-          // STEP 5: Update user profile with subscription status
-          await updateUserSubscriptionStatus(true, playerId);
-          
-          // STEP 5: Final verification
-          const verification = await verifySubscription();
-          if (verification.local && debug) {
-            console.info('[OneSignal] Enhanced sync completed successfully:', { playerId, verification });
-          } else if (!verification.local) {
-            console.warn('[OneSignal] Subscription verification failed after sync:', verification);
-          }
-
-        } catch (err) {
-          console.error('[OneSignal] Enhanced sync error:', err);
-          return { success: false, error: `User sync failed: ${err.message}`, details: { step: "user_sync", originalError: err } };
-        }
-      }
-      // STEP 5: Final verification
-      const verification = await verifySubscription();
-      const success = verification.local || verification.remote?.subscribed;
-      
-      if (debug) console.info('[OneSignal] Permission request completed:', { 
-        subscribed, 
-        verification,
-        success 
-      });
-
+    } catch (error) {
+      console.error(`[OneSignal] Critical permission request error:`, error);
       return { 
-        success, 
-        error: success ? undefined : verification.error || "Subscription verification failed",
-        details: { verification, subscribed }
-      };
-    } catch (err) {
-      console.error('[OneSignal] requestPermission error:', err);
-      return { success: false, error: `Permission request failed: ${err.message}`, details: { originalError: err } };
-    } finally {
-      try { if (typeof Notification !== 'undefined') setPermission(Notification.permission); } catch {}
-      try {
-        const ps = (window as any).OneSignal?.User?.PushSubscription;
-        const sid = ps?.id ?? null;
-        setHasSubscription(!!(ps?.optedIn ?? sid));
-        if (!sid && !ps?.optedIn) {
-          console.warn('[OneSignal] No subscription detected after permission flow. Verify Web Push configuration for origin:', location.origin);
+        success: false, 
+        error: "An unexpected error occurred. Please refresh the page and try again.",
+        details: { 
+          originalError: error.message,
+          errorType: 'critical_error'
         }
-      } catch {}
+      };
     }
   };
 

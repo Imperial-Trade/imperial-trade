@@ -11,6 +11,8 @@ interface NotificationsContextValue {
   isPromptDismissed: boolean;
   requestPermission: () => Promise<{ success: boolean; error?: string; details?: any }>;
   dismissPrompt: () => void;
+  browserInfo?: any;
+  browserInstructions?: string;
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined);
@@ -18,7 +20,7 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
 const DISMISS_KEY = 'notifications:permission:dismissed:v1';
 
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { initialized, permission, isGranted, hasSubscription, requestPermission, isIframeBlocked } = useOneSignal();
+  const { initialized, permission, isGranted, hasSubscription, requestPermission, isIframeBlocked, browserInfo, browserInstructions } = useOneSignal();
   const { user } = useAuth();
   const [dismissed, setDismissed] = useState<boolean>(() => {
     try {
@@ -56,10 +58,12 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
     isGranted: isGranted && !!user,
     hasSubscription,
     isIframeBlocked,
-    isPromptDismissed: dismissed || !user || permission === 'denied' || permission === 'granted' || (isGranted && !!user),
+    isPromptDismissed: dismissed || !user || permission === 'denied' || !initialized || (permission === 'granted' && hasSubscription),
     requestPermission,
     dismissPrompt,
-  }), [permission, initialized, isGranted, hasSubscription, dismissed, user, isIframeBlocked, requestPermission, dismissPrompt]);
+    browserInfo,
+    browserInstructions,
+  }), [permission, initialized, isGranted, hasSubscription, dismissed, user, isIframeBlocked, requestPermission, dismissPrompt, browserInfo, browserInstructions]);
 
   return (
     <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>

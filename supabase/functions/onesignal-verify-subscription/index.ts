@@ -140,6 +140,20 @@ Deno.serve(async (req: Request) => {
       console.error(`[OneSignal Verify] Error checking segments:`, error);
     }
 
+    // Check database subscription status
+    let dbSubscriptionStatus = null;
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('push_subscription_active, onesignal_subscription_status, onesignal_player_id')
+        .eq('id', targetUserId)
+        .single();
+      
+      dbSubscriptionStatus = profile;
+    } catch (dbError) {
+      console.error('Error fetching profile subscription status:', dbError);
+    }
+
     // Determine overall subscription status
     const isSubscribed = playerExists && playerSubscribed;
     const verificationStatus = {
@@ -149,6 +163,11 @@ Deno.serve(async (req: Request) => {
       player_subscribed: playerSubscribed,
       in_subscribed_segment: inSubscribedSegment,
       is_subscribed: isSubscribed,
+      database_status: {
+        push_subscription_active: dbSubscriptionStatus?.push_subscription_active || false,
+        onesignal_subscription_status: dbSubscriptionStatus?.onesignal_subscription_status || 'unknown',
+        stored_player_id: dbSubscriptionStatus?.onesignal_player_id || null
+      },
       player_data: playerData ? {
         valid_player: playerData.valid_player,
         notification_types: playerData.notification_types,
@@ -165,12 +184,25 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         subscription_status: verificationStatus,
-        recommendations: !isSubscribed ? [
-          "User should grant push notification permissions",
-          "Check if notifications are blocked in browser/device settings",
-          "Try re-initializing OneSignal SDK",
-          "Verify OneSignal configuration is correct"
-        ] : []
+        recommendations: (() => {
+          const recs = [];
+          if (!isSubscribed) {
+            recs.push(
+              "User should grant push notification permissions",
+              "Check if notifications are blocked in browser/device settings",
+              "Try re-initializing OneSignal SDK",
+              "Verify OneSignal configuration is correct"
+            );
+          }
+          
+          // Check for player ID mismatch
+          if (dbSubscriptionStatus?.onesignal_player_id && 
+              dbSubscriptionStatus.onesignal_player_id !== playerId) {
+            recs.push("Player ID mismatch detected - database sync required");
+          }
+          
+          return recs;
+        })()
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

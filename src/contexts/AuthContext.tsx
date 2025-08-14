@@ -136,6 +136,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Fetch profile data in background - don't block UI
           setTimeout(() => {
             fetchProfile(session.user.id).then(setProfile);
+            // Check OneSignal subscription status after login
+            checkOneSignalSubscriptionStatus(session.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -163,12 +165,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Set main loading to false immediately after getting initial session
       setLoading(false);
       
-      if (session?.user) {
-        // Load profile in background
-        setTimeout(() => {
-          fetchProfile(session.user.id).then(setProfile);
-        }, 0);
-      }
+        if (session?.user) {
+          // Load profile in background
+          setTimeout(() => {
+            fetchProfile(session.user.id).then(setProfile);
+            // Check OneSignal subscription status on initial load
+            checkOneSignalSubscriptionStatus(session.user.id);
+          }, 0);
+        }
     });
 
     return () => subscription.unsubscribe();
@@ -195,6 +199,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }).catch(() => {});
     } catch {}
   }, [user?.id, user?.email, profile?.role, profile?.user_type]);
+
+  const checkOneSignalSubscriptionStatus = async (userId: string) => {
+    try {
+      // Check if we've already verified this session
+      const sessionKey = `onesignal_verified_${userId}_${Date.now().toString().slice(0, -5)}`;
+      if (sessionStorage.getItem(sessionKey)) {
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('push_subscription_active, onesignal_last_verified_at')
+        .eq('id', userId)
+        .single();
+
+      // Skip if recently verified and active
+      if (profile?.push_subscription_active && profile?.onesignal_last_verified_at) {
+        const lastVerified = new Date(profile.onesignal_last_verified_at);
+        const daysSinceVerification = (Date.now() - lastVerified.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceVerification < 7) {
+          sessionStorage.setItem(sessionKey, 'true');
+          return;
+        }
+      }
+
+      // Verify current OneSignal subscription status
+      const { data: verificationResult } = await supabase.functions.invoke('onesignal-verify-subscription', {
+        body: { user_id: userId }
+      });
+
+      if (verificationResult?.success) {
+        const { subscription_status } = verificationResult;
+        
+        // Update database with current status
+        await supabase
+          .from('profiles')
+          .update({
+            onesignal_subscription_status: subscription_status.is_subscribed ? 'subscribed' : 'unsubscribed',
+            push_subscription_active: subscription_status.is_subscribed,
+            onesignal_last_verified_at: new Date().toISOString(),
+            onesignal_player_id: subscription_status.player_id || null
+          })
+          .eq('id', userId);
+
+        // Mark this session as verified
+        sessionStorage.setItem(sessionKey, 'true');
+        console.log('[Auth] OneSignal subscription verified:', subscription_status.is_subscribed);
+      }
+    } catch (error) {
+      console.error('[Auth] Error checking OneSignal subscription:', error);
+    }
+  };
 
 
   const signOut = async () => {

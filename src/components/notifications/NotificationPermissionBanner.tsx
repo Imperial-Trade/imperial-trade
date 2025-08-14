@@ -93,6 +93,22 @@ const NotificationPermissionBanner: React.FC = () => {
                 onClick={async () => {
                   try {
                     setRequesting(true);
+                    
+                    // **First request native browser permission**
+                    if (typeof Notification !== 'undefined') {
+                      const browserPermission = await Notification.requestPermission();
+                      
+                      if (browserPermission !== 'granted') {
+                        toast({ 
+                          title: 'Notifications blocked', 
+                          description: 'Use the browser site settings (lock icon) to Allow notifications.', 
+                          variant: 'destructive' as any 
+                        });
+                        return;
+                      }
+                    }
+                    
+                    // **Now proceed with OneSignal subscription**
                     const result = await requestPermission();
                     const current = typeof Notification !== 'undefined' ? Notification.permission : permission;
                     

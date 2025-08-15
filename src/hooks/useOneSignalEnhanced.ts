@@ -378,13 +378,19 @@ export function useOneSignalEnhanced() {
         setInitialized(true);
         console.info('[OneSignal CRITICAL DEBUG] Setup completed - triggering auto-prompt check');
         
-        // **CRITICAL FIX: Enhanced auto-trigger with comprehensive debugging - ONLY for authenticated users**
+      // **CRITICAL FIX: Enhanced auto-trigger ONLY for non-iOS PWA authenticated users**
         if (user?.id) {
           console.info('[OneSignal CRITICAL DEBUG] Setup completed for authenticated user - scheduling auto-prompt check');
-          setTimeout(() => {
-            console.info('[OneSignal CRITICAL DEBUG] Auto-trigger delay expired for user:', user.id.substring(0, 8) + '...');
-            triggerNativePromptIfEligible();
-          }, 2000); // Ensure OneSignal is fully ready
+          
+          // Skip auto-trigger for iOS PWA (handled by interaction listener)
+          if (safariPWAInfo.isSafariPWA && browserInfo.isIOS) {
+            console.info('[OneSignal CRITICAL DEBUG] iOS PWA detected - skipping immediate auto-trigger, using interaction listener instead');
+          } else {
+            setTimeout(() => {
+              console.info('[OneSignal CRITICAL DEBUG] Auto-trigger delay expired for user:', user.id.substring(0, 8) + '...');
+              triggerNativePromptIfEligible();
+            }, 2000); // Ensure OneSignal is fully ready
+          }
         } else {
           console.info('[OneSignal CRITICAL DEBUG] Setup completed but user not authenticated - skipping auto-prompt');
         }
@@ -898,11 +904,54 @@ export function useOneSignalEnhanced() {
     }
   };
 
-  // **Enhanced auto-trigger effect with multiple retry mechanisms**
+  // **iOS PWA: Add first user interaction listener after login for native prompt**
+  useEffect(() => {
+    if (!initialized || !user?.id || !safariPWAInfo.isSafariPWA || !browserInfo.isIOS) {
+      return;
+    }
+
+    console.info('[OneSignal CRITICAL DEBUG] iOS PWA user logged in - setting up first interaction listener');
+    
+    let hasTriggeredOnce = false;
+    
+    const handleFirstInteraction = () => {
+      if (hasTriggeredOnce) return;
+      hasTriggeredOnce = true;
+      
+      console.info('[OneSignal CRITICAL DEBUG] First user interaction detected on iOS PWA - triggering native prompt');
+      
+      // Small delay to ensure the interaction is complete
+      setTimeout(() => {
+        requestPermission().then(result => {
+          console.info('[OneSignal CRITICAL DEBUG] iOS PWA interaction-triggered permission result:', result);
+        });
+      }, 100);
+      
+      // Remove listeners after first use
+      document.removeEventListener('click', handleFirstInteraction, true);
+      document.removeEventListener('touchstart', handleFirstInteraction, true);
+    };
+    
+    // Add listeners for first user interaction
+    document.addEventListener('click', handleFirstInteraction, true);
+    document.addEventListener('touchstart', handleFirstInteraction, true);
+    
+    return () => {
+      document.removeEventListener('click', handleFirstInteraction, true);
+      document.removeEventListener('touchstart', handleFirstInteraction, true);
+    };
+  }, [initialized, user?.id, safariPWAInfo.isSafariPWA, browserInfo.isIOS, requestPermission]);
+
+  // **Enhanced auto-trigger effect for non-iOS devices only**
   useEffect(() => {
     if (!initialized || !user?.id) {
-      // Clear any pending timers if user logs out
       console.info('[OneSignal CRITICAL DEBUG] User not authenticated or OneSignal not initialized - clearing any pending prompts');
+      return;
+    }
+
+    // Skip auto-trigger for iOS PWA (handled by interaction listener above)
+    if (safariPWAInfo.isSafariPWA && browserInfo.isIOS) {
+      console.info('[OneSignal CRITICAL DEBUG] iOS PWA detected - skipping auto-trigger, using interaction listener instead');
       return;
     }
 
@@ -925,7 +974,7 @@ export function useOneSignalEnhanced() {
       clearTimeout(initialTimer);
       clearTimeout(backupTimer);
     };
-  }, [initialized, user?.id, permission, hasSubscription, profile?.push_subscription_active, profile?.onesignal_player_id]);
+  }, [initialized, user?.id, safariPWAInfo.isSafariPWA, browserInfo.isIOS]);
 
   return {
     initialized,

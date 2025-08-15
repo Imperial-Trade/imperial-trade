@@ -1,16 +1,24 @@
 try {
-  // Enhanced service worker with error handling and logging
-  console.log('[OneSignal SW] Loading OneSignal Service Worker...');
-  importScripts('https://cdn.onesignal.com/sdks/OneSignalSDKWorker.js');
-  console.log('[OneSignal SW] OneSignal Service Worker loaded successfully');
+  // Enhanced service worker with error handling and logging - Web SDK v16 compatible
+  console.log('[OneSignal SW] Loading OneSignal Service Worker v16...');
+  importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+  console.log('[OneSignal SW] OneSignal Service Worker v16 loaded successfully');
 } catch (error) {
-  console.error('[OneSignal SW] Failed to load OneSignal Service Worker:', error);
+  console.error('[OneSignal SW] Failed to load OneSignal Service Worker v16:', error);
   
-  // Fallback registration
-  self.addEventListener('push', function(event) {
-    console.log('[OneSignal SW] Fallback push handler activated');
-    const data = event.data ? event.data.json() : {};
-    const title = data.title || 'New Notification';
+  // Fallback to legacy version
+  try {
+    console.log('[OneSignal SW] Attempting fallback to legacy OneSignal Service Worker...');
+    importScripts('https://cdn.onesignal.com/sdks/OneSignalSDKWorker.js');
+    console.log('[OneSignal SW] Legacy OneSignal Service Worker loaded successfully');
+  } catch (legacyError) {
+    console.error('[OneSignal SW] Failed to load legacy OneSignal Service Worker:', legacyError);
+    
+    // Final fallback registration
+    self.addEventListener('push', function(event) {
+      console.log('[OneSignal SW] Fallback push handler activated');
+      const data = event.data ? event.data.json() : {};
+      const title = data.title || 'New Notification';
     const options = {
       body: data.body || 'You have a new notification',
       icon: data.icon || '/android-chrome-192x192.png',

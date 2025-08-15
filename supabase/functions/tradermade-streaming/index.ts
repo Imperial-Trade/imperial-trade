@@ -6,12 +6,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Prefer dedicated WS/HTTP keys if available; fallback to TRADERMADE_API_KEY
-const WS_API_KEY = Deno.env.get('TRADERMADE_WS_API_KEY') || Deno.env.get('TRADERMADE_API_KEY') || '';
-const HTTP_API_KEY = Deno.env.get('TRADERMADE_HTTP_API_KEY') || Deno.env.get('TRADERMADE_API_KEY') || '';
+// Use TRADERMADE_REST_API_KEY for HTTP fallback, TRADERMADE_API_KEY for WS
+const WS_API_KEY = Deno.env.get('TRADERMADE_API_KEY') || '';
+const HTTP_API_KEY = Deno.env.get('TRADERMADE_REST_API_KEY') || Deno.env.get('TRADERMADE_API_KEY') || '';
 
-// Tradermade symbol configuration
+// Tradermade symbol configuration with normalization mapping
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
+
+// Symbol normalization mapping: frontend symbol -> Tradermade symbol
+const SYMBOL_MAPPING: Record<string, string> = {
+  'XAUUSD': 'XAUUSD',
+  'XAU/USD': 'XAUUSD', 
+  'GOLD': 'XAUUSD',
+  'BTCUSD': 'BTCUSD',
+  'BTC/USD': 'BTCUSD',
+  'BITCOIN': 'BTCUSD',
+  'USA30': 'USA30USD',
+  'USA30USD': 'USA30USD',
+  'US30': 'USA30USD',
+  'NAS100': 'NAS100USD', 
+  'NAS100USD': 'NAS100USD',
+  'NASDAQ': 'NAS100USD',
+  'EURUSD': 'EURUSD',
+  'EUR/USD': 'EURUSD'
+};
+
+// Reverse mapping for responses: Tradermade symbol -> canonical frontend symbol
+const REVERSE_SYMBOL_MAPPING: Record<string, string> = {
+  'XAUUSD': 'XAUUSD',
+  'BTCUSD': 'BTCUSD', 
+  'USA30USD': 'USA30',
+  'NAS100USD': 'NAS100',
+  'EURUSD': 'EURUSD'
+};
 
 interface TradermadePriceData {
   symbol: string;
@@ -42,10 +69,22 @@ let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();
 const RATE_LIMIT_PER_MINUTE = 30;
 
-// Validate and normalize symbols
+// Validate and normalize symbols using mapping
 function validateSymbol(symbol: string): string | null {
   const upperSymbol = symbol.toUpperCase().trim();
-  return TRADERMADE_SYMBOLS.includes(upperSymbol) ? upperSymbol : null;
+  const tradermadeSymbol = SYMBOL_MAPPING[upperSymbol];
+  return tradermadeSymbol || null;
+}
+
+// Normalize frontend symbol to Tradermade symbol
+function normalizeToTradermade(symbol: string): string {
+  const upperSymbol = symbol.toUpperCase().trim();
+  return SYMBOL_MAPPING[upperSymbol] || symbol;
+}
+
+// Convert Tradermade symbol back to frontend canonical symbol
+function normalizeToFrontend(tradermadeSymbol: string): string {
+  return REVERSE_SYMBOL_MAPPING[tradermadeSymbol] || tradermadeSymbol;
 }
 
 // Cache management
@@ -372,9 +411,9 @@ serve(async (req) => {
           }
 
           // Handle price updates - support multiple formats
-          let symbol = data.symbol || data.instrument;
-          if (symbol && (data.bid || data.ask || data.price || data.mid)) {
-            symbol = symbol.toUpperCase();
+          let tradermadeSymbol = data.symbol || data.instrument;
+          if (tradermadeSymbol && (data.bid || data.ask || data.price || data.mid)) {
+            tradermadeSymbol = tradermadeSymbol.toUpperCase();
             
             // Calculate mid price from available data
             let price = data.mid || data.price;
@@ -387,12 +426,15 @@ serve(async (req) => {
             price = parseFloat(price);
             
             if (!price || price <= 0 || isNaN(price)) {
-              console.log(`⚠️ Invalid price data for ${symbol}:`, data);
+              console.log(`⚠️ Invalid price data for ${tradermadeSymbol}:`, data);
               return;
             }
             
+            // Convert Tradermade symbol to frontend canonical symbol for consistency
+            const frontendSymbol = normalizeToFrontend(tradermadeSymbol);
+            
             const priceUpdate: TradermadePriceData = {
-              symbol: symbol,
+              symbol: frontendSymbol, // Use frontend canonical symbol
               price: price,
               bid: data.bid ? parseFloat(data.bid) : price,
               ask: data.ask ? parseFloat(data.ask) : price,
@@ -401,12 +443,15 @@ serve(async (req) => {
               changePercent: 0
             };
 
-            // Cache the update
-            setCachedPrice(symbol, priceUpdate);
+            // Cache using Tradermade symbol for API consistency
+            setCachedPrice(tradermadeSymbol, priceUpdate);
+            
+            // Also cache using frontend symbol for client access
+            setCachedPrice(frontendSymbol, priceUpdate);
 
-            // Send to client if subscribed
-            if (clientSubscriptions.has(symbol) && socket.readyState === WebSocket.OPEN) {
-              console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${price}`);
+            // Send to client if subscribed (check both symbol formats)
+            if ((clientSubscriptions.has(tradermadeSymbol) || clientSubscriptions.has(frontendSymbol)) && socket.readyState === WebSocket.OPEN) {
+              console.log(`💰 LIVE PRICE UPDATE: ${frontendSymbol} (${tradermadeSymbol}) = $${price}`);
               const tickTs = (typeof data.ts === 'string' || typeof data.ts === 'number') ? Number(data.ts) : Date.now();
               socket.send(JSON.stringify({
                 type: 'price_update',
@@ -544,25 +589,46 @@ serve(async (req) => {
           return true;
         });
 
-        filtered.forEach(symbol => clientSubscriptions.add(symbol));
-        console.log('✅ Client subscribed to:', filtered);
+        // Add both Tradermade and frontend symbols to subscriptions for dual lookup
+        filtered.forEach(symbol => {
+          const tradermadeSymbol = normalizeToTradermade(symbol);
+          const frontendSymbol = normalizeToFrontend(tradermadeSymbol);
+          clientSubscriptions.add(symbol);
+          clientSubscriptions.add(tradermadeSymbol);
+          clientSubscriptions.add(frontendSymbol);
+        });
+        console.log('✅ Client subscribed to:', filtered, '(normalized for dual lookup)');
 
-        // Send cached data immediately if available
+        // Send cached data immediately if available, or fetch fresh data
         for (const symbol of filtered) {
-          const cached = getCachedPrice(symbol);
+          // Try both symbol formats for cache lookup
+          const tradermadeSymbol = normalizeToTradermade(symbol);
+          const frontendSymbol = normalizeToFrontend(symbol);
+          
+          let cached = getCachedPrice(symbol) || getCachedPrice(tradermadeSymbol) || getCachedPrice(frontendSymbol);
+          
           if (cached) {
+            console.log(`📋 Sending cached price for ${symbol}: $${cached.price}`);
             socket.send(JSON.stringify({
               type: 'price_update',
               ...cached
             }));
-          } else if (!connectionHealthy) {
-            // Fetch via HTTP if WebSocket is down
-            const data = await fetchTradermadePrice(symbol);
+          } else {
+            // Always fetch fresh data immediately for new subscriptions
+            console.log(`🔄 Fetching fresh price for new subscription: ${symbol} (${tradermadeSymbol})`);
+            const data = await fetchTradermadePrice(tradermadeSymbol);
             if (data) {
+              // Ensure frontend symbol format for consistency
+              const normalizedData = {
+                ...data,
+                symbol: normalizeToFrontend(data.symbol)
+              };
+              
               socket.send(JSON.stringify({
                 type: 'price_update',
-                ...data
+                ...normalizedData
               }));
+              console.log(`✅ Sent fresh price for ${symbol}: $${data.price}`);
             }
           }
         }

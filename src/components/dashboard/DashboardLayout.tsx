@@ -4,8 +4,38 @@ import { Outlet } from 'react-router-dom';
 import DashboardNav from './DashboardNav';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
+import { MobileOptimizedLayout } from '@/components/mobile/MobileOptimizedLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const DashboardLayout: React.FC = () => {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <MobileOptimizedLayout>
+        <div className="min-h-screen bg-background">
+          {/* Mobile-optimized background effects */}
+          <div className="fixed inset-0 bg-gradient-to-br from-background via-muted/20 to-background pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/3 via-transparent to-accent/3"></div>
+          </div>
+
+          {/* Mobile Navigation Header */}
+          <div className="mobile-header fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border/50">
+            <DashboardNav />
+          </div>
+          
+          {/* Main Content with mobile spacing */}
+          <main className="relative pt-16 pb-safe-bottom">
+            <Suspense fallback={<LoadingSpinner />}>
+              <Outlet />
+            </Suspense>
+          </main>
+        </div>
+      </MobileOptimizedLayout>
+    );
+  }
+
+  // Desktop layout (unchanged)
   return (
     <div className="min-h-screen bg-background">
       {/* Sophisticated Background Effects */}

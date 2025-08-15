@@ -148,6 +148,17 @@ export default {
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},
+			screens: {
+				'xs': '475px',
+				'touch': { 'raw': '(hover: none) and (pointer: coarse)' },
+				'no-touch': { 'raw': '(hover: hover) and (pointer: fine)' }
+			},
+			spacing: {
+				'safe-top': 'var(--safe-area-top)',
+				'safe-bottom': 'var(--safe-area-bottom)',
+				'safe-left': 'var(--safe-area-left)',
+				'safe-right': 'var(--safe-area-right)'
+			},
 			keyframes: {
 				'accordion-down': {
 					from: {
@@ -168,7 +179,11 @@ export default {
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'slide-up-mobile': 'slideUpMobile 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+				'slide-down-mobile': 'slideDownMobile 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+				'bounce-in': 'bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+				'shimmer': 'shimmer 1.5s infinite'
 			}
 		}
 	},

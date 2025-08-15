@@ -1,0 +1,296 @@
+/* Mobile App Optimizations for Imperial Trading Platform */
+
+/* iOS Safe Area Support */
+:root {
+  --safe-area-top: env(safe-area-inset-top);
+  --safe-area-bottom: env(safe-area-inset-bottom);
+  --safe-area-left: env(safe-area-inset-left);
+  --safe-area-right: env(safe-area-inset-right);
+  
+  /* Mobile-specific variables */
+  --mobile-nav-height: 64px;
+  --mobile-bottom-nav-height: 80px;
+  --mobile-touch-target: 44px;
+  --mobile-header-height: calc(64px + var(--safe-area-top));
+}
+
+/* Native App Feel */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection for specific elements */
+.selectable,
+input,
+textarea,
+[contenteditable] {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+/* Smooth scrolling for mobile */
+html {
+  scroll-behavior: smooth;
+  -webkit-scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+}
+
+/* Touch-friendly interactions */
+.touch-target {
+  min-height: var(--mobile-touch-target);
+  min-width: var(--mobile-touch-target);
+}
+
+/* Active states for mobile */
+.mobile-active:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Native-style buttons */
+.mobile-button {
+  border-radius: 12px;
+  min-height: 48px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-button:active {
+  transform: scale(0.98);
+  opacity: 0.8;
+}
+
+/* Mobile navigation */
+.mobile-nav {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: var(--safe-area-bottom);
+}
+
+/* Mobile header with safe area */
+.mobile-header {
+  padding-top: var(--safe-area-top);
+  height: var(--mobile-header-height);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Pull-to-refresh styling */
+.pull-to-refresh {
+  overscroll-behavior-y: contain;
+}
+
+/* Haptic feedback ready elements */
+.haptic-light {
+  cursor: pointer;
+}
+
+.haptic-medium {
+  cursor: pointer;
+}
+
+.haptic-heavy {
+  cursor: pointer;
+}
+
+/* Mobile card optimizations */
+.mobile-card {
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-card:active {
+  transform: scale(0.99);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Swipe gesture indicators */
+.swipe-indicator {
+  position: relative;
+  overflow: hidden;
+}
+
+.swipe-indicator::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.swipe-indicator.swiping::after {
+  left: 100%;
+}
+
+/* Mobile-optimized form controls */
+.mobile-input {
+  border-radius: 12px;
+  min-height: 48px;
+  font-size: 16px; /* Prevents zoom on iOS */
+  padding: 12px 16px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-input:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsla(var(--primary), 0.1);
+  outline: none;
+}
+
+/* Mobile-specific animations */
+@keyframes slideUpMobile {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDownMobile {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-slide-up-mobile {
+  animation: slideUpMobile 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-down-mobile {
+  animation: slideDownMobile 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-bounce-in {
+  animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Status bar styling for PWA */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .status-bar-overlay {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Hide scrollbars on mobile while maintaining functionality */
+.mobile-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile-optimized loading states */
+.mobile-skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Dark mode optimizations for mobile */
+@media (prefers-color-scheme: dark) {
+  .mobile-nav {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .mobile-card {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  
+  .mobile-card:active {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Tablet-specific adjustments */
+@media (min-width: 640px) and (max-width: 1024px) {
+  :root {
+    --mobile-nav-height: 72px;
+    --mobile-bottom-nav-height: 88px;
+  }
+  
+  .mobile-button {
+    min-height: 52px;
+  }
+  
+  .mobile-input {
+    min-height: 52px;
+  }
+}
+
+/* Landscape mobile optimizations */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .mobile-header {
+    height: calc(56px + var(--safe-area-top));
+  }
+  
+  .mobile-nav {
+    height: 64px;
+  }
+  
+  .mobile-button {
+    min-height: 40px;
+  }
+}

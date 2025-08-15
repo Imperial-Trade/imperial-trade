@@ -461,25 +461,25 @@ export function useOneSignalEnhanced() {
         return false;
       }
 
-      // **Enhanced iOS PWA Subscription Verification with Player ID Capture**
-      const pushSub = (window as any).OneSignal?.User?.PushSubscription;
-      if (pushSub?.optedIn || pushSub?.id) {
-        const playerId = pushSub.id;
-        setHasSubscription(true);
-        console.log(`[OneSignal] Subscription verified with Player ID: ${playerId}`);
-        
-        // **CRITICAL: Ensure Player ID is stored in database for iOS PWA users**
-        if (playerId && safariPWAInfo.isSafariPWA) {
-          console.log('[OneSignal] iOS PWA detected - updating user with Player ID');
-          try {
-            await ensureOneSignalUserWithPlayerId(playerId);
-          } catch (e) {
-            console.warn('[OneSignal] Failed to update user with Player ID:', e);
+        // **Enhanced iOS PWA Subscription Verification with Player ID Capture**
+        const pushSub = (window as any).OneSignal?.User?.PushSubscription;
+        if (pushSub?.optedIn || pushSub?.id) {
+          const playerId = pushSub.id;
+          setHasSubscription(true);
+          console.log(`[OneSignal] Subscription verified with Player ID: ${playerId}`);
+          
+          // **CRITICAL: Always ensure Player ID is stored for all platforms, especially iOS PWA**
+          if (playerId) {
+            console.log('[OneSignal] Updating user with Player ID');
+            try {
+              await ensureOneSignalUserWithPlayerId(playerId);
+            } catch (e) {
+              console.warn('[OneSignal] Failed to update user with Player ID:', e);
+            }
           }
+          
+          return true;
         }
-        
-        return true;
-      }
 
       // Check permission first
       if (permission === 'denied') {

@@ -6,8 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Use the configured TRADERMADE_API_KEY for both WS and HTTP
-const API_KEY = Deno.env.get('TRADERMADE_API_KEY') || '';
+// Separate API keys for streaming and REST operations
+const STREAMING_API_KEY = Deno.env.get('TRADERMADE_API_KEY') || '';
+const REST_API_KEY = Deno.env.get('TRADERMADE_REST_API_KEY') || '';
+
+console.log('🔑 API Key Configuration:');
+console.log(`📡 Streaming key configured: ${STREAMING_API_KEY ? '✅' : '❌'}`);
+console.log(`🌐 REST key configured: ${REST_API_KEY ? '✅' : '❌'}`);
 
 // Tradermade symbol configuration
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
@@ -101,16 +106,16 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
     return getCachedPrice(symbol, true); // Allow stale data when rate limited
   }
 
-  if (!API_KEY) {
-    console.error('❌ TRADERMADE_API_KEY not configured');
+  if (!REST_API_KEY) {
+    console.error('❌ TRADERMADE_REST_API_KEY not configured for HTTP requests');
     return getCachedPrice(symbol, true);
   }
 
   try {
     globalRateLimitCount++;
     
-    const url = `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${API_KEY}`;
-    console.log(`🔄 Fetching HTTP price for ${symbol}`);
+    const url = `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${REST_API_KEY}`;
+    console.log(`🔄 Fetching HTTP price for ${symbol} using REST API key`);
     
     const response = await fetch(url, {
       method: 'GET',
@@ -242,14 +247,14 @@ serve(async (req) => {
   let heartbeatInterval: number | null = null;
   let connectionHealthy = true;
 
-  // Enhanced Tradermade WebSocket connection
+  // Enhanced Tradermade WebSocket connection with streaming API key
   async function connectToTradermade() {
-    if (!API_KEY) {
-      console.error('❌ TRADERMADE_API_KEY not configured');
+    if (!STREAMING_API_KEY) {
+      console.error('❌ TRADERMADE_API_KEY (streaming) not configured for WebSocket connections');
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type: 'error',
-          message: 'Tradermade API key not configured',
+          message: 'Tradermade streaming API key not configured',
           timestamp: new Date().toISOString()
         }));
       }
@@ -260,17 +265,18 @@ serve(async (req) => {
     }
 
     try {
-      console.log('🔌 Connecting to Tradermade WebSocket...');
+      console.log('🔌 Connecting to Tradermade WebSocket using streaming API key...');
       tradermadeSocket = new WebSocket(`wss://marketdata.tradermade.com/feedadv`);
 
       tradermadeSocket.onopen = () => {
-        console.log('✅ Connected to Tradermade WebSocket');
+        console.log('✅ Connected to Tradermade WebSocket with streaming key');
         connectionHealthy = true;
         
-        // Authenticate with proper symbol subscription
+        // Authenticate with proper symbol subscription using streaming key
         if (tradermadeSocket) {
+          console.log('📡 Authenticating WebSocket with streaming API key');
           tradermadeSocket.send(JSON.stringify({
-            userKey: API_KEY,
+            userKey: STREAMING_API_KEY,
             symbol: TRADERMADE_SYMBOLS.join(',')
           }));
         }

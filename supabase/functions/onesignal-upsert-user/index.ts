@@ -127,10 +127,10 @@ Deno.serve(async (req: Request) => {
     if (!existingUser) {
       console.log('📝 Creating new OneSignal user...');
       
-      // MINIMAL tags only - avoid plan limits completely
-      const minimalTags = {
-        role: String(tags.role || 'user'),
-        platform: String(tags.platform || 'web')
+      // CRITICAL: Absolute minimal tags to avoid OneSignal plan limits
+      const essentialTags = {
+        role: String(tags.role || 'user').substring(0, 20), // Truncate for safety
+        platform: 'web' // Hardcode to web to avoid any issues
       };
 
       const createPayload = {
@@ -138,7 +138,7 @@ Deno.serve(async (req: Request) => {
           external_id: externalId,
         },
         properties: {
-          tags: minimalTags,  // Only 2 essential tags
+          tags: essentialTags,  // Only 2 essential tags - no more!
         },
         subscriptions: []
       };
@@ -172,15 +172,15 @@ Deno.serve(async (req: Request) => {
     } else {
       console.log('🔄 Updating existing OneSignal user...');
       
-      // MINIMAL tags only - avoid plan limits completely
-      const minimalTags = {
-        role: String(tags.role || 'user'),
-        platform: String(tags.platform || 'web')
+      // CRITICAL: Absolute minimal tags to avoid OneSignal plan limits
+      const essentialTags = {
+        role: String(tags.role || 'user').substring(0, 20), // Truncate for safety
+        platform: 'web' // Hardcode to web to avoid any issues
       };
       
       const updatePayload = {
         properties: {
-          tags: minimalTags,  // Only 2 essential tags
+          tags: essentialTags,  // Only 2 essential tags - no more!
         },
         subscriptions: []
       };

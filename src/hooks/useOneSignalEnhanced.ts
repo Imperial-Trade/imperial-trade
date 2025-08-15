@@ -421,8 +421,7 @@ export function useOneSignalEnhanced() {
                 player_id: playerId,
                 tags: {
                   role: profile?.role || 'user',
-                  platform: safariPWAInfo.isIOS ? 'ios' : 'web',
-                  capture_timestamp: new Date().toISOString()
+                  platform: 'web' // Simplified to avoid tag limits
                 }
               }
             }),
@@ -487,7 +486,7 @@ export function useOneSignalEnhanced() {
         email: user.email,
         tags: {
           role: profile?.role || 'user',
-          platform: safariPWAInfo.isIOS ? 'ios' : 'web'
+          platform: 'web' // Simplified to avoid tag limits
         }
       };
 

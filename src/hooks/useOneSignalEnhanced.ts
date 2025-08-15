@@ -169,26 +169,11 @@ export function useOneSignalEnhanced() {
                     notifyButton: { enable: false },
                     bell: { enabled: false },
                     showCredit: false,
-                    // Enable native slidedown with custom styling and messaging
-                    autoPrompt: true, // Enable auto-prompt after login
-                    slidedown: {
-                      enabled: true,
-                      autoPrompt: true, // Will show after login
-                      text: {
-                        actionMessage: "Get instant alerts for premium trading signals and market opportunities!",
-                        acceptButton: "Enable Notifications",
-                        cancelButton: "Not Now"
-                      },
-                      color: {
-                        primary: "#000000", // Black background
-                        text: "#FFFFFF", // White text
-                        accent: "#3B82F6" // Blue accent for buttons
-                      }
-                    },
+                    // Configure native slidedown prompt
                     promptOptions: {
                       slidedown: {
                         enabled: true,
-                        actionMessage: "Get instant alerts for premium trading signals and market opportunities!",
+                        actionMessage: "Get instant alerts for premium trading signals and market opportunities! Stay ahead of the market with real-time notifications.",
                         acceptButtonText: "Enable Notifications", 
                         cancelButtonText: "Not Now"
                       }

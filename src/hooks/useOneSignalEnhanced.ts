@@ -168,14 +168,14 @@ export function useOneSignalEnhanced() {
                     autoResubscribe: false,
                     notifyButton: { enable: false },
                     promptOptions: { 
-                      autoPrompt: false,
+                      autoPrompt: false, // We'll trigger manually after login
                       slidedown: { enabled: true, autoPrompt: false },
                       fullscreen: { enabled: false }
                     },
                     slidedown: { enabled: true, autoPrompt: false },
                     bell: { enabled: false },
                     showCredit: false,
-                    suppressAutoPrompts: true,
+                    suppressAutoPrompts: false, // Allow native prompts
                     disableSlidedown: false,
                     suppressNativePrompt: false,
                   };
@@ -228,14 +228,6 @@ export function useOneSignalEnhanced() {
                   const newPermission = Notification.permission;
                   setPermission(newPermission);
                   if (debug) console.info('[OneSignal] Permission changed to:', newPermission);
-                  
-                  // For iOS PWA, ensure subscription is captured when permission is granted
-                  if (newPermission === 'granted' && safariPWAInfo.isSafariPWA) {
-                    console.info('[OneSignal] iOS PWA permission granted - ensuring subscription');
-                    setTimeout(() => {
-                      ensureSubscription(browserConfig.subscriptionTimeout, true).catch(console.warn);
-                    }, 1000);
-                  }
                 }
               } catch (e) {
                 console.warn('[OneSignal] Permission change handler error:', e);
@@ -243,6 +235,20 @@ export function useOneSignalEnhanced() {
             };
 
             (window as any).OneSignal.Notifications?.addEventListener?.("permissionChange", handlePermissionChange);
+            
+            // Auto-trigger native slidedown after user login (but only if not granted yet)
+            if (user?.id && permission === 'default') {
+              console.log('[OneSignal] User logged in - triggering native slidedown after delay');
+              setTimeout(() => {
+                try {
+                  (window as any).OneSignal.Slidedown.promptPush().catch((e: any) => {
+                    console.warn('[OneSignal] Auto-prompt failed:', e);
+                  });
+                } catch (e) {
+                  console.warn('[OneSignal] Auto-prompt error:', e);
+                }
+              }, 2000); // 2 second delay after login
+            }
 
             // **Enhanced push subscription tracking with Player ID capture**
             const ps = (window as any).OneSignal?.User?.PushSubscription;
@@ -261,85 +267,33 @@ export function useOneSignalEnhanced() {
                       isIOSPWA: safariPWAInfo.isSafariPWA
                     });
 
-          // **CRITICAL PHASE 1: EMERGENCY Player ID Capture for ALL users**
-          if (hasValidSub && id) {
-            console.log('[OneSignal] 🎯 CRITICAL: Player ID captured:', id.substring(0, 8) + '...', 
-              safariPWAInfo.isSafariPWA ? '(iOS PWA)' : '(Standard Web)');
-            
-            // **EMERGENCY FIX - Force immediate backend sync with comprehensive retry logic**
-            const performCriticalSync = async () => {
-              try {
-                console.log('[OneSignal] 🚨 CRITICAL EMERGENCY SYNC: Starting immediate Player ID sync...');
-                
-                // Immediate call to upsert-user with emergency flag
-                const { data: syncResult, error: syncError } = await supabase.functions.invoke('onesignal-upsert-user', {
-                  body: {
-                    user_id: user?.id,
-                    email: user?.email,
-                    player_id: id,
-                    emergency_sync: true,
-                    force_update: true,
-                    retry_on_failure: true,
-                    modern_user_model: true,
-                    tags: {
-                      user_type: profile?.user_type || 'member',
-                      access_level: profile?.access_level || 'user',
-                      display_name: profile?.display_name || user?.email?.split('@')[0] || 'Unknown',
-                      registration_date: new Date().toISOString(),
-                      device_type: safariPWAInfo.isSafariPWA ? 'ios_pwa' : browserInfo.name || 'web',
-                      browser: browserInfo.name || 'unknown',
-                      is_ios_pwa: safariPWAInfo.isSafariPWA.toString(),
-                      emergency_captured_at: new Date().toISOString(),
-                      player_id_captured: 'true'
+                    // Sync player ID with backend when subscription is active
+                    if (hasValidSub && id && user?.id) {
+                      console.log('[OneSignal] Player ID captured:', id.substring(0, 8) + '...', 
+                        safariPWAInfo.isSafariPWA ? '(iOS PWA)' : '(Standard Web)');
+                      
+                      // Simple sync with backend
+                      setTimeout(async () => {
+                        try {
+                          await supabase.functions.invoke('onesignal-upsert-user', {
+                            body: {
+                              user_id: user.id,
+                              email: user.email,
+                              player_id: id,
+                              tags: {
+                                user_type: profile?.user_type || 'member',
+                                access_level: profile?.access_level || 'user',
+                                device_type: safariPWAInfo.isSafariPWA ? 'ios_pwa' : 'web',
+                                browser: browserInfo.name || 'unknown'
+                              }
+                            }
+                          });
+                          console.log('[OneSignal] User synced successfully');
+                        } catch (syncError) {
+                          console.warn('[OneSignal] User sync failed:', syncError);
+                        }
+                      }, 1000);
                     }
-                  }
-                });
-                
-                if (syncError) {
-                  console.error('[OneSignal] 🚨 CRITICAL: Emergency sync failed:', syncError);
-                  
-                  // FALLBACK: Direct database update
-                  console.log('[OneSignal] 🔄 FALLBACK: Attempting direct database update...');
-                  const { error: dbError } = await supabase
-                    .from('profiles')
-                    .update({
-                      onesignal_player_id: id,
-                      push_subscription_active: true,
-                      last_notification_sync: new Date().toISOString()
-                    })
-                    .eq('id', user?.id);
-                  
-                  if (dbError) {
-                    console.error('[OneSignal] 💥 FALLBACK FAILED:', dbError);
-                  } else {
-                    console.log('[OneSignal] ✅ FALLBACK SUCCESS: Player ID saved via direct database update');
-                  }
-                } else {
-                  console.log('[OneSignal] ✅ CRITICAL SUCCESS: Emergency sync completed successfully!', syncResult);
-                  
-                  // Verify sync worked
-                  setTimeout(async () => {
-                    const { data: verification } = await supabase
-                      .from('profiles')
-                      .select('onesignal_player_id, push_subscription_active')
-                      .eq('id', user?.id)
-                      .single();
-                    
-                    if (verification?.onesignal_player_id === id) {
-                      console.log('[OneSignal] ✅ VERIFICATION SUCCESS: Player ID confirmed in database');
-                    } else {
-                      console.error('[OneSignal] ❌ VERIFICATION FAILED: Player ID not found in database');
-                    }
-                  }, 2000);
-                }
-              } catch (emergencyError) {
-                console.error('[OneSignal] 💥 CRITICAL EMERGENCY SYNC ERROR:', emergencyError);
-              }
-            };
-            
-            // Start critical sync immediately (non-blocking)
-            performCriticalSync();
-          }
                   } catch (e) {
                     console.warn('[OneSignal] Subscription state update error:', e);
                   }

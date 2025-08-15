@@ -5,7 +5,7 @@ import { Bell, Settings, History } from 'lucide-react';
 import { NotificationPreferences } from './NotificationPreferences';
 import { NotificationHistory } from './NotificationHistory';
 import { useNotifications } from '@/contexts/NotificationsContext';
-import UnifiedPermissionFlow from './UnifiedPermissionFlow';
+// UnifiedPermissionFlow removed - using OneSignal native prompt only
 
 export const UserNotificationCenter: React.FC = () => {
   const { isGranted, permission } = useNotifications();
@@ -21,8 +21,7 @@ export const UserNotificationCenter: React.FC = () => {
         </div>
       </div>
 
-      {/* Show permission banner if needed */}
-      {permission !== 'granted' && <UnifiedPermissionFlow autoShow={false} />}
+      {/* OneSignal native prompt handles permission requests automatically after login */}
 
       <Tabs defaultValue="preferences" className="w-full">
         <TabsList className="grid w-full grid-cols-2">

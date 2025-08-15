@@ -327,12 +327,11 @@ export function useOneSignalEnhanced() {
                     }
                   }
                   
-                  const tags: Record<string, string> = {
-                    platform: safariPWAInfo.isIOS ? 'ios' : 'web',
-                    is_pwa: safariPWAInfo.isSafariPWA ? 'true' : 'false'
+                   // Minimal tags to avoid OneSignal plan limits
+                   const tags: Record<string, string> = {
+                    platform: safariPWAInfo.isIOS ? 'ios' : 'web'
                   };
                   if (profile?.role) tags["role"] = String(profile.role);
-                  if (profile?.user_type) tags["user_type"] = String(profile.user_type);
                   
                   if (Object.keys(tags).length > 0) {
                     if ((window as any).OneSignal.User?.addTags) {
@@ -385,7 +384,6 @@ export function useOneSignalEnhanced() {
             player_id: playerId,
             tags: {
               role: profile?.role || 'user',
-              user_type: profile?.user_type || 'member',
               platform: safariPWAInfo.isIOS ? 'ios' : 'web'
             }
           }
@@ -419,7 +417,6 @@ export function useOneSignalEnhanced() {
         email: user.email,
         tags: {
           role: profile?.role || 'user',
-          user_type: profile?.user_type || 'member',
           platform: safariPWAInfo.isIOS ? 'ios' : 'web'
         }
       };

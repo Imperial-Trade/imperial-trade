@@ -140,9 +140,7 @@ export const NotificationStatusButton: React.FC<NotificationStatusButtonProps> =
   const Icon = statusInfo.icon;
 
   return (
-    <div className={`space-y-3 ${className}`}>
-      <NotificationExplainer />
-      
+    <div className={`space-y-2 ${className}`}>
       <div className="flex items-center justify-between">
         <Button
           variant={statusInfo.variant}

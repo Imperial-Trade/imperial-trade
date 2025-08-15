@@ -207,11 +207,15 @@ export function useOneSignalEnhanced() {
                     notifyButton: { enable: false },
                     bell: { enabled: false },
                     showCredit: false,
+                    // CRITICAL: Disable ALL automatic prompts - native only
                     promptOptions: {
                       slidedown: { enabled: false },
-                      customlink: { enabled: false },
-                      bell: { enabled: false }
-                    }
+                      customlink: { enabled: false }, 
+                      bell: { enabled: false },
+                      native: { enabled: false } // Prevent auto-native prompts
+                    },
+                    // Additional safeguards against auto-prompts
+                    welcomeNotification: { disable: true }
                   };
                   
                   if (debug) console.info('[OneSignal] Initializing with v16 config:', initConfig);
@@ -1053,77 +1057,90 @@ export function useOneSignalEnhanced() {
     }
   };
 
-  // **iOS PWA: Add first user interaction listener after login for native prompt**
+  // **UNIVERSAL FIRST-INTERACTION LISTENER: Extend to all platforms for native prompt**
   useEffect(() => {
-    if (!initialized || !user?.id || !safariPWAInfo.isSafariPWA || !browserInfo.isIOS) {
+    if (!initialized || !user?.id) {
       return;
     }
 
-    console.info('[OneSignal CRITICAL DEBUG] iOS PWA user logged in - setting up first interaction listener');
+    console.info('[OneSignal CRITICAL DEBUG] User logged in - setting up universal first interaction listener');
     
     let hasTriggeredOnce = false;
     
-    const handleFirstInteraction = () => {
+    const handleFirstInteraction = async () => {
       if (hasTriggeredOnce) return;
       hasTriggeredOnce = true;
       
-      console.info('[OneSignal CRITICAL DEBUG] First user interaction detected on iOS PWA - triggering native prompt');
+      console.info('[OneSignal CRITICAL DEBUG] First user interaction detected - checking if native prompt needed');
       
-      // Small delay to ensure the interaction is complete
-      setTimeout(() => {
-        requestPermission().then(result => {
-          console.info('[OneSignal CRITICAL DEBUG] iOS PWA interaction-triggered permission result:', result);
-        });
-      }, 100);
+      // Check if this device needs prompt
+      let deviceNeedsPrompt = true;
+      if (user?.id && deviceInfo?.fingerprint) {
+        try {
+          const { data } = await supabase
+            .rpc('should_show_onesignal_prompt', {
+              p_user_id: user.id,
+              p_device_fingerprint: deviceInfo.fingerprint
+            });
+          deviceNeedsPrompt = data === true;
+          console.info(`[OneSignal CRITICAL DEBUG] Device needs prompt (interaction check): ${deviceNeedsPrompt}`);
+        } catch (dbError) {
+          console.warn('[OneSignal CRITICAL DEBUG] Device DB check failed during interaction:', dbError);
+        }
+      }
+      
+      // Only prompt if conditions are met
+      if (permission === 'default' && !hasSubscription && deviceNeedsPrompt && browserInfo.isSupported) {
+        console.info('[OneSignal CRITICAL DEBUG] Triggering native prompt on first interaction');
+        
+        // Small delay to ensure the interaction is complete
+        setTimeout(() => {
+          requestPermission().then(result => {
+            console.info('[OneSignal CRITICAL DEBUG] Interaction-triggered permission result:', result);
+          });
+        }, 100);
+      } else {
+        console.info('[OneSignal CRITICAL DEBUG] Native prompt not needed on interaction');
+      }
       
       // Remove listeners after first use
       document.removeEventListener('click', handleFirstInteraction, true);
       document.removeEventListener('touchstart', handleFirstInteraction, true);
+      document.removeEventListener('keydown', handleFirstInteraction, true);
     };
     
-    // Add listeners for first user interaction
+    // Add listeners for first user interaction (all platforms)
     document.addEventListener('click', handleFirstInteraction, true);
     document.addEventListener('touchstart', handleFirstInteraction, true);
+    document.addEventListener('keydown', handleFirstInteraction, true);
     
     return () => {
       document.removeEventListener('click', handleFirstInteraction, true);
       document.removeEventListener('touchstart', handleFirstInteraction, true);
+      document.removeEventListener('keydown', handleFirstInteraction, true);
     };
-  }, [initialized, user?.id, safariPWAInfo.isSafariPWA, browserInfo.isIOS, requestPermission]);
+  }, [initialized, user?.id, permission, hasSubscription, deviceInfo?.fingerprint, browserInfo.isSupported, requestPermission]);
 
-  // **Enhanced auto-trigger effect for non-iOS devices only**
+  // **BACKUP AUTO-TRIGGER: 8-10 seconds after login if interaction hasn't fired**
   useEffect(() => {
     if (!initialized || !user?.id) {
       console.info('[OneSignal CRITICAL DEBUG] User not authenticated or OneSignal not initialized - clearing any pending prompts');
       return;
     }
 
-    // Skip auto-trigger for iOS PWA (handled by interaction listener above)
-    if (safariPWAInfo.isSafariPWA && browserInfo.isIOS) {
-      console.info('[OneSignal CRITICAL DEBUG] iOS PWA detected - skipping auto-trigger, using interaction listener instead');
-      return;
-    }
-
     console.info('[OneSignal CRITICAL DEBUG] Auto-trigger effect triggered for authenticated user:', user.id.substring(0, 8) + '...');
     
-    // Initial delay to ensure OneSignal is fully ready
-    const initialTimer = setTimeout(() => {
-      console.info('[OneSignal CRITICAL DEBUG] Initial auto-trigger check after user login');
-      triggerNativePromptIfEligible();
-    }, 3000);
-
-    // Backup retry for edge cases
+    // Backup trigger for cases where user interacted within login flow
     const backupTimer = setTimeout(() => {
       console.info('[OneSignal CRITICAL DEBUG] Backup auto-trigger check for authenticated user');
       triggerNativePromptIfEligible();
     }, 8000);
 
     return () => {
-      console.info('[OneSignal CRITICAL DEBUG] Cleaning up auto-trigger timers');
-      clearTimeout(initialTimer);
+      console.info('[OneSignal CRITICAL DEBUG] Cleaning up backup auto-trigger timer');
       clearTimeout(backupTimer);
     };
-  }, [initialized, user?.id, safariPWAInfo.isSafariPWA, browserInfo.isIOS]);
+  }, [initialized, user?.id]);
 
   return {
     initialized,

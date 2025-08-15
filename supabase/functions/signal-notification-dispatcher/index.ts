@@ -488,11 +488,12 @@ serve(async (req) => {
               );
               
               if (missingPlayerIds.length > 0) {
-              console.warn(`⚠️ ${missingPlayerIds.length} targeted users missing Player IDs:`, missingPlayerIds);
+                console.warn(`⚠️ ${missingPlayerIds.length} targeted users missing Player IDs:`, missingPlayerIds);
+              }
+              
+              // Update notification to only target users with valid Player IDs
+              notification.user_ids = validTargetIds;
             }
-            
-            // Update notification to only target users with valid Player IDs
-            notification.user_ids = targetedWithPlayerIds;
           }
         } catch (e) {
           console.error('❌ Error filtering users by Player ID:', e);

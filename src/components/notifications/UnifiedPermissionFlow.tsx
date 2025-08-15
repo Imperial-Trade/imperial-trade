@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOneSignal } from "@/hooks/useOneSignal";
 import { usePWAInstallation } from "@/hooks/usePWAInstallation";
 import { detectPlatform, getPlatformInstructions } from "@/utils/platformDetection";
+import { detectSafariPWA } from "@/utils/safariPWADetection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,7 @@ export default function UnifiedPermissionFlow({
   const [currentStep, setCurrentStep] = useState<'permission' | 'pwa_install' | 'ios_guide' | 'settings'>('permission');
   
   const platformInfo = detectPlatform();
+  const safariPWAInfo = detectSafariPWA();
   const instructions = getPlatformInstructions(platformInfo);
 
   // Determine if we should show the flow
@@ -84,8 +86,20 @@ export default function UnifiedPermissionFlow({
       console.log('[UnifiedFlow] Showing permission flow');
       setIsVisible(true);
       
-      // Determine starting step based on platform
-      if (platformInfo.requiresPWAForPush && !platformInfo.isPWA) {
+      // **PHASE 5: iOS PWA-specific flow enforcement**
+      if (platformInfo.platform === 'ios') {
+        // For iOS, strictly enforce PWA installation before push notifications
+        if (!safariPWAInfo.isStandalone && !safariPWAInfo.isSafariPWA) {
+          console.log('[UnifiedFlow] iOS user not in PWA mode - showing PWA install step');
+          setCurrentStep('pwa_install');
+        } else if (!safariPWAInfo.hasWebPushSupport) {
+          console.log('[UnifiedFlow] iOS version does not support web push');
+          setCurrentStep('settings');
+        } else {
+          console.log('[UnifiedFlow] iOS PWA user - showing permission step');
+          setCurrentStep('permission');
+        }
+      } else if (platformInfo.requiresPWAForPush && !platformInfo.isPWA) {
         console.log('[UnifiedFlow] Starting with PWA install step');
         setCurrentStep('pwa_install');
       } else {

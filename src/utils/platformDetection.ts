@@ -98,10 +98,26 @@ export function detectPlatform(): PlatformInfo {
   
   const { name: browser, version: browserVersion } = browserDetection();
   
-  // Enhanced PWA detection
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                      (window.navigator as any).standalone === true ||
-                      document.referrer.includes('android-app://');
+  // **PHASE 2: Enhanced PWA detection with iOS Safari standalone mode verification**
+  const isStandalone = (() => {
+    // Standard PWA detection
+    if (window.matchMedia('(display-mode: standalone)').matches) return true;
+    
+    // iOS Safari PWA detection
+    if ((window.navigator as any).standalone === true) return true;
+    
+    // Android Chrome detection
+    if (document.referrer.includes('android-app://')) return true;
+    
+    // Additional iOS PWA verification for Safari
+    if (isIOS && /Safari/.test(ua) && !/Chrome/.test(ua)) {
+      // Check if running in standalone mode by testing navigation bar visibility
+      const heightRatio = window.screen.height / window.innerHeight;
+      if (heightRatio < 1.1) return true; // Likely standalone if height ratio is close to 1
+    }
+    
+    return false;
+  })();
                       
   const isPWACapable = 'serviceWorker' in navigator && 
                        'PushManager' in window && 

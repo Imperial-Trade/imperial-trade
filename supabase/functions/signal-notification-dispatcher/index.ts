@@ -446,6 +446,41 @@ serve(async (req) => {
       
       console.log(`🚨 Processing ${notification.alert_type} for signal ${notification.signal_id}`);
       
+      // **PHASE 4: Enhanced notification targeting with iOS PWA Player ID verification**
+      // Filter users to only those with valid OneSignal Player IDs for reliable delivery
+      if (notification.delivery_channels.includes('push')) {
+        try {
+          const { data: subscribedUsers } = await supabase
+            .from('profiles')
+            .select('id, onesignal_player_id, push_subscription_active')
+            .eq('account_status', 'active')
+            .eq('push_subscription_active', true)
+            .not('onesignal_player_id', 'is', null);
+          
+          console.log(`📊 Found ${subscribedUsers?.length || 0} users with valid OneSignal Player IDs`);
+          
+          // If we have specific user targeting and some users don't have Player IDs, log this
+          if (notification.user_ids && subscribedUsers) {
+            const targetedWithPlayerIds = subscribedUsers
+              .filter(u => notification.user_ids!.includes(u.id))
+              .map(u => u.id);
+            
+            const missingPlayerIds = notification.user_ids.filter(id => 
+              !subscribedUsers.some(u => u.id === id)
+            );
+            
+            if (missingPlayerIds.length > 0) {
+              console.warn(`⚠️ ${missingPlayerIds.length} targeted users missing Player IDs:`, missingPlayerIds);
+            }
+            
+            // Update notification to only target users with valid Player IDs
+            notification.user_ids = targetedWithPlayerIds;
+          }
+        } catch (e) {
+          console.error('❌ Error filtering users by Player ID:', e);
+        }
+      }
+      
       // Enrich notification with author/profile and signal fields if missing (for push/title rendering)
       try {
         const { data: ownerRow } = await supabase

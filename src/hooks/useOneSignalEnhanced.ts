@@ -378,12 +378,15 @@ export function useOneSignalEnhanced() {
         setInitialized(true);
         console.info('[OneSignal CRITICAL DEBUG] Setup completed - triggering auto-prompt check');
         
-        // **CRITICAL FIX: Enhanced auto-trigger with comprehensive debugging**
+        // **CRITICAL FIX: Enhanced auto-trigger with comprehensive debugging - ONLY for authenticated users**
         if (user?.id) {
+          console.info('[OneSignal CRITICAL DEBUG] Setup completed for authenticated user - scheduling auto-prompt check');
           setTimeout(() => {
-            console.info('[OneSignal CRITICAL DEBUG] Auto-trigger delay expired, checking conditions...');
+            console.info('[OneSignal CRITICAL DEBUG] Auto-trigger delay expired for user:', user.id.substring(0, 8) + '...');
             triggerNativePromptIfEligible();
           }, 2000); // Ensure OneSignal is fully ready
+        } else {
+          console.info('[OneSignal CRITICAL DEBUG] Setup completed but user not authenticated - skipping auto-prompt');
         }
 
       } catch (error) {
@@ -657,6 +660,13 @@ export function useOneSignalEnhanced() {
     try {
       console.info('[OneSignal CRITICAL DEBUG] === PERMISSION REQUEST STARTED ===');
       
+      // **HARD GUARD: Ensure user is authenticated before requesting permissions**
+      if (!user?.id) {
+        const error = 'User must be logged in to enable push notifications';
+        console.warn('[OneSignal]', error);
+        return { success: false, error, details: { authenticated: false } };
+      }
+      
       if (!browserInfo.isSupported) {
         const error = `Browser ${browserInfo.name} ${browserInfo.version} is not supported`;
         console.warn('[OneSignal]', error);
@@ -890,22 +900,28 @@ export function useOneSignalEnhanced() {
 
   // **Enhanced auto-trigger effect with multiple retry mechanisms**
   useEffect(() => {
-    if (!initialized || !user?.id) return;
+    if (!initialized || !user?.id) {
+      // Clear any pending timers if user logs out
+      console.info('[OneSignal CRITICAL DEBUG] User not authenticated or OneSignal not initialized - clearing any pending prompts');
+      return;
+    }
 
-    console.info('[OneSignal CRITICAL DEBUG] Auto-trigger effect triggered');
+    console.info('[OneSignal CRITICAL DEBUG] Auto-trigger effect triggered for authenticated user:', user.id.substring(0, 8) + '...');
     
     // Initial delay to ensure OneSignal is fully ready
     const initialTimer = setTimeout(() => {
+      console.info('[OneSignal CRITICAL DEBUG] Initial auto-trigger check after user login');
       triggerNativePromptIfEligible();
     }, 3000);
 
     // Backup retry for edge cases
     const backupTimer = setTimeout(() => {
-      console.info('[OneSignal CRITICAL DEBUG] Backup auto-trigger check...');
+      console.info('[OneSignal CRITICAL DEBUG] Backup auto-trigger check for authenticated user');
       triggerNativePromptIfEligible();
     }, 8000);
 
     return () => {
+      console.info('[OneSignal CRITICAL DEBUG] Cleaning up auto-trigger timers');
       clearTimeout(initialTimer);
       clearTimeout(backupTimer);
     };

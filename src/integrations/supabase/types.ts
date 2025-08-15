@@ -2905,6 +2905,15 @@ export type Database = {
           triggered: boolean
         }[]
       }
+      should_user_receive_notification: {
+        Args: {
+          p_notification_type: string
+          p_priority_level?: number
+          p_signal_author_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       update_expired_sessions: {
         Args: Record<PropertyKey, never>
         Returns: number

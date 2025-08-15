@@ -17,6 +17,8 @@ interface UpsertRequestBody {
   tags?: Record<string, string>;
   player_id?: string;
   external_id?: string;
+  device_fingerprint?: string;
+  device_info?: Record<string, any>;
 }
 
 Deno.serve(async (req: Request) => {
@@ -63,6 +65,8 @@ Deno.serve(async (req: Request) => {
     const email = body.email || (authUser?.email as string | undefined) || undefined;
     const tags = body.tags || {};
     const playerId = body.player_id;
+    const deviceFingerprint = body.device_fingerprint;
+    const deviceInfo = body.device_info || {};
     
     console.log('🔍 Processing request:', {
       externalId: externalId?.substring(0, 8) + '...',
@@ -207,9 +211,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Step 3: Update Supabase profile with push subscription status
+    // Step 3: Update Supabase with device-specific subscription info
     if (playerId) {
       try {
+        // Update main profile for compatibility (keep legacy behavior)
         const { error: profileError } = await supabase
           .from('profiles')
           .update({ 
@@ -217,6 +222,8 @@ Deno.serve(async (req: Request) => {
             push_subscription_active: true,
             onesignal_subscription_status: 'subscribed',
             onesignal_last_verified_at: new Date().toISOString(),
+            device_fingerprint: deviceFingerprint,
+            last_device_info: deviceInfo,
             updated_at: new Date().toISOString()
           })
           .eq('id', externalId);
@@ -226,8 +233,35 @@ Deno.serve(async (req: Request) => {
         } else {
           console.log('✅ Profile updated with player ID');
         }
+
+        // **CROSS-DEVICE FIX: Store device-specific subscription**
+        if (deviceFingerprint) {
+          const { error: deviceError } = await supabase
+            .from('device_subscriptions')
+            .upsert({
+              user_id: externalId,
+              device_fingerprint: deviceFingerprint,
+              onesignal_player_id: playerId,
+              device_info: deviceInfo,
+              browser_name: deviceInfo.browser_name || 'Unknown',
+              browser_version: deviceInfo.browser_version || 'Unknown',
+              platform: deviceInfo.platform || 'Unknown',
+              is_mobile: deviceInfo.is_mobile || false,
+              is_active: true,
+              last_seen_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'user_id,device_fingerprint'
+            });
+
+          if (deviceError) {
+            console.warn('⚠️ Device subscription update failed:', deviceError);
+          } else {
+            console.log('✅ Device subscription updated successfully');
+          }
+        }
       } catch (profileErr) {
-        console.warn('⚠️ Profile update error:', profileErr);
+        console.warn('⚠️ Profile/device update error:', profileErr);
       }
     }
 

@@ -9,6 +9,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { withTimeout } from "@/api/client/utils/timeout";
 import { detectBrowser, getBrowserSpecificConfig, getBrowserInstructions } from "@/utils/browserDetection";
 import { detectSafariPWA } from "@/utils/safariPWADetection";
+import { 
+  generateDeviceFingerprint, 
+  getStoredDeviceFingerprint, 
+  storeDeviceFingerprint,
+  checkDeviceSubscriptionStatus,
+  setDeviceSubscriptionStatus,
+  type DeviceInfo 
+} from "@/utils/deviceFingerprint";
 
 declare global {
   interface Window {
@@ -24,6 +32,8 @@ export function useOneSignalEnhanced() {
   );
   
   const [hasSubscription, setHasSubscription] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
+  const [deviceHasSubscription, setDeviceHasSubscription] = useState(false);
   const isIframeBlocked = typeof window !== 'undefined' && window.self !== window.top;
   const debug = (() => { try { return localStorage.getItem('onesignal_debug') === '1'; } catch { return false; } })();
   
@@ -50,16 +60,34 @@ export function useOneSignalEnhanced() {
 
     const setupOneSignal = async () => {
       try {
+        // **CROSS-DEVICE FIX: Generate device fingerprint first**
+        const currentDeviceInfo = generateDeviceFingerprint();
+        setDeviceInfo(currentDeviceInfo);
+        
+        let storedFingerprint = getStoredDeviceFingerprint();
+        if (!storedFingerprint) {
+          storeDeviceFingerprint(currentDeviceInfo.fingerprint);
+          storedFingerprint = currentDeviceInfo.fingerprint;
+        }
+
         // **CRITICAL DEBUG: Enhanced logging for auto-trigger failure analysis**
-        console.info(`[OneSignal CRITICAL DEBUG] Starting initialization for user: ${user?.id?.substring(0, 8)}...`);
-        console.info(`[OneSignal CRITICAL DEBUG] Browser: ${browserInfo.name} ${browserInfo.version}, Mobile: ${browserInfo.isMobile}, Supported: ${browserInfo.isSupported}`);
-        console.info(`[OneSignal CRITICAL DEBUG] Current permission: ${permission}, hasSubscription: ${hasSubscription}`);
-        console.info(`[OneSignal CRITICAL DEBUG] Profile status: push_active=${profile?.push_subscription_active}, player_id=${profile?.onesignal_player_id ? 'exists' : 'missing'}`);
+        console.info(`[OneSignal CROSS-DEVICE DEBUG] Starting initialization for user: ${user?.id?.substring(0, 8)}...`);
+        console.info(`[OneSignal CROSS-DEVICE DEBUG] Device fingerprint: ${currentDeviceInfo.fingerprint}`);
+        console.info(`[OneSignal CROSS-DEVICE DEBUG] Browser: ${browserInfo.name} ${browserInfo.version}, Mobile: ${browserInfo.isMobile}, Supported: ${browserInfo.isSupported}`);
+        console.info(`[OneSignal CROSS-DEVICE DEBUG] Current permission: ${permission}, hasSubscription: ${hasSubscription}`);
+        console.info(`[OneSignal CROSS-DEVICE DEBUG] Profile status: push_active=${profile?.push_subscription_active}, player_id=${profile?.onesignal_player_id ? 'exists' : 'missing'}`);
 
         // Check browser compatibility first
         if (!browserInfo.isSupported) {
           console.warn(`[OneSignal] Browser ${browserInfo.name} ${browserInfo.version} is not supported for push notifications`);
           return;
+        }
+
+        // **CROSS-DEVICE FIX: Check device-specific subscription status**
+        if (user?.id) {
+          const deviceHasSub = await checkDeviceSubscriptionStatus(user.id, currentDeviceInfo.fingerprint);
+          setDeviceHasSubscription(deviceHasSub);
+          console.info(`[OneSignal CROSS-DEVICE DEBUG] Device subscription status: ${deviceHasSub}`);
         }
 
         if (debug) console.info(`[OneSignal] Initializing for ${browserInfo.name} ${browserInfo.version}${browserInfo.isMobile ? ' (mobile)' : ''}`);
@@ -413,6 +441,16 @@ export function useOneSignalEnhanced() {
                 user_id: user.id,
                 email: user.email,
                 player_id: playerId,
+                device_fingerprint: deviceInfo?.fingerprint,
+                device_info: deviceInfo ? {
+                  browser_name: deviceInfo.browserName,
+                  browser_version: deviceInfo.browserVersion,
+                  platform: deviceInfo.platform,
+                  is_mobile: deviceInfo.isMobile,
+                  screen_resolution: deviceInfo.screenResolution,
+                  timezone: deviceInfo.timezone,
+                  language: deviceInfo.language
+                } : {},
                 tags: {
                   role: profile?.role || 'user',
                   platform: 'web' // Simplified to avoid tag limits
@@ -682,10 +720,26 @@ export function useOneSignalEnhanced() {
     }
   };
 
-  // **CRITICAL FIX: Enhanced auto-trigger with comprehensive debugging and retry logic**
+  // **CROSS-DEVICE FIX: Enhanced auto-trigger with device-specific eligibility**
   const triggerNativePromptIfEligible = async () => {
     try {
-      console.info('[OneSignal CRITICAL DEBUG] === AUTO-TRIGGER ELIGIBILITY CHECK ===');
+      console.info('[OneSignal CROSS-DEVICE DEBUG] === AUTO-TRIGGER ELIGIBILITY CHECK ===');
+      
+      // Check device-specific subscription status
+      let deviceNeedsPrompt = true;
+      if (user?.id && deviceInfo?.fingerprint) {
+        try {
+          const { data } = await supabase
+            .rpc('should_show_onesignal_prompt', {
+              p_user_id: user.id,
+              p_device_fingerprint: deviceInfo.fingerprint
+            });
+          deviceNeedsPrompt = data === true;
+          console.info(`[OneSignal CROSS-DEVICE DEBUG] Device needs prompt (DB check): ${deviceNeedsPrompt}`);
+        } catch (dbError) {
+          console.warn('[OneSignal CROSS-DEVICE DEBUG] Device DB check failed, defaulting to local check:', dbError);
+        }
+      }
       
       // Debug all conditions in detail
       const conditions = {
@@ -694,24 +748,27 @@ export function useOneSignalEnhanced() {
         oneSignalReady: !!(window as any).OneSignal?.Notifications,
         permission: permission,
         hasSubscription: hasSubscription,
+        deviceHasSubscription: deviceHasSubscription,
+        deviceNeedsPrompt: deviceNeedsPrompt,
         browserSupported: browserInfo.isSupported,
         notIframeBlocked: !isIframeBlocked,
-        profilePushActive: profile?.push_subscription_active,
-        profilePlayerId: !!profile?.onesignal_player_id
+        hasDeviceInfo: !!deviceInfo?.fingerprint
       };
       
-      console.info('[OneSignal CRITICAL DEBUG] Condition details:', conditions);
+      console.info('[OneSignal CROSS-DEVICE DEBUG] Condition details:', conditions);
       
+      // **CROSS-DEVICE LOGIC: Check device-specific status instead of global profile**
       const shouldAutoPrompt = (
         conditions.initialized && 
         conditions.userExists && 
         conditions.oneSignalReady &&
         conditions.permission === 'default' && 
         !conditions.hasSubscription && 
+        !conditions.deviceHasSubscription &&
+        conditions.deviceNeedsPrompt &&
         conditions.browserSupported &&
         conditions.notIframeBlocked &&
-        !conditions.profilePushActive &&
-        !conditions.profilePlayerId
+        conditions.hasDeviceInfo
       );
       
       console.info(`[OneSignal CRITICAL DEBUG] Should auto-prompt: ${shouldAutoPrompt}`);
@@ -720,12 +777,50 @@ export function useOneSignalEnhanced() {
         console.info('[OneSignal CRITICAL DEBUG] ✅ All conditions met - triggering native prompt');
         
         const result = await requestPermission();
-        console.info('[OneSignal CRITICAL DEBUG] Auto-trigger result:', result);
+        console.info('[OneSignal CROSS-DEVICE DEBUG] Auto-trigger result:', result);
+        
+        // **CROSS-DEVICE FIX: Store device subscription status on success**
+        if (result.success && user?.id && deviceInfo?.fingerprint) {
+          try {
+            setDeviceSubscriptionStatus(user.id, deviceInfo.fingerprint, true);
+            console.info('[OneSignal CROSS-DEVICE DEBUG] Device subscription status stored locally');
+            
+            // Store in database
+            const { data: playerId } = await supabase
+              .from('device_subscriptions')
+              .insert({
+                user_id: user.id,
+                device_fingerprint: deviceInfo.fingerprint,
+                onesignal_player_id: (window as any).OneSignal?.User?.PushSubscription?.id || 'pending',
+                device_info: {
+                  browser_name: deviceInfo.browserName,
+                  browser_version: deviceInfo.browserVersion,
+                  platform: deviceInfo.platform,
+                  is_mobile: deviceInfo.isMobile,
+                  screen_resolution: deviceInfo.screenResolution,
+                  timezone: deviceInfo.timezone,
+                  language: deviceInfo.language
+                },
+                browser_name: deviceInfo.browserName,
+                browser_version: deviceInfo.browserVersion,
+                platform: deviceInfo.platform,
+                is_mobile: deviceInfo.isMobile
+              })
+              .select('id')
+              .single();
+            
+            if (playerId) {
+              console.info('[OneSignal CROSS-DEVICE DEBUG] Device subscription stored in database');
+            }
+          } catch (storeError) {
+            console.warn('[OneSignal CROSS-DEVICE DEBUG] Failed to store device subscription:', storeError);
+          }
+        }
         
         if (!result.success) {
-          console.warn('[OneSignal CRITICAL DEBUG] Auto-trigger failed, scheduling retry in 10s');
+          console.warn('[OneSignal CROSS-DEVICE DEBUG] Auto-trigger failed, scheduling retry in 10s');
           setTimeout(() => {
-            console.info('[OneSignal CRITICAL DEBUG] Retry attempt...');
+            console.info('[OneSignal CROSS-DEVICE DEBUG] Retry attempt...');
             triggerNativePromptIfEligible();
           }, 10000);
         }
@@ -734,15 +829,16 @@ export function useOneSignalEnhanced() {
         const blockers = Object.entries(conditions)
           .filter(([key, value]) => {
             if (key === 'permission') return value !== 'default';
-            if (key === 'hasSubscription' || key === 'profilePushActive' || key === 'profilePlayerId') return value === true;
+            if (key === 'hasSubscription' || key === 'deviceHasSubscription') return value === true;
+            if (key === 'deviceNeedsPrompt') return value === false;
             return value === false;
           })
           .map(([key]) => key);
         
-        console.info(`[OneSignal CRITICAL DEBUG] ❌ Not triggering due to: ${blockers.join(', ')}`);
+        console.info(`[OneSignal CROSS-DEVICE DEBUG] ❌ Not triggering due to: ${blockers.join(', ')}`);
       }
     } catch (error) {
-      console.error('[OneSignal CRITICAL DEBUG] Auto-trigger check failed:', error);
+      console.error('[OneSignal CROSS-DEVICE DEBUG] Auto-trigger check failed:', error);
     }
   };
 
@@ -773,6 +869,8 @@ export function useOneSignalEnhanced() {
     initialized,
     permission,
     hasSubscription,
+    deviceHasSubscription,
+    deviceInfo,
     isGranted,
     isIframeBlocked,
     requestPermission,

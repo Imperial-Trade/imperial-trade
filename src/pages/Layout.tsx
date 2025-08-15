@@ -8,6 +8,7 @@ import { useVoiceRecognition } from '@/components/layout/VoiceRecognition';
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from '@/components/AppSidebar';
 import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
+import OneSignalInitializer from '@/components/integrations/OneSignalInitializer';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -79,30 +80,31 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-[100vh] max-h-[100vh] h-[100vh] flex w-full bg-gradient-to-br from-background via-background to-background/95 overflow-hidden">
-        <AppSidebar />
-        
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Header
-            user={user}
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-            isListening={isListening}
-            toggleVoiceRecognition={toggleVoiceRecognition}
-            getUserAccessLevel={getUserAccessLevel}
-            getAccessLevelDisplay={getAccessLevelDisplay}
-          />
-          <NotificationsPanel />
+    <OneSignalInitializer>
+      <SidebarProvider>
+        <div className="min-h-[100vh] max-h-[100vh] h-[100vh] flex w-full bg-gradient-to-br from-background via-background to-background/95 overflow-hidden">
+          <AppSidebar />
+          
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <Header
+              user={user}
+              sidebarOpen={sidebarOpen}
+              setSidebarOpen={setSidebarOpen}
+              isListening={isListening}
+              toggleVoiceRecognition={toggleVoiceRecognition}
+              getUserAccessLevel={getUserAccessLevel}
+              getAccessLevelDisplay={getAccessLevelDisplay}
+            />
 
-          <main className="flex-1 overflow-auto pt-16 overscroll-contain">
-            <div className="min-h-full">
-              {children}
-            </div>
-          </main>
+            <main className="flex-1 overflow-auto pt-16 overscroll-contain">
+              <div className="min-h-full">
+                {children}
+              </div>
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </OneSignalInitializer>
   );
 };
 

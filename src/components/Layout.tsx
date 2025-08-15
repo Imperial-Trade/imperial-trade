@@ -329,12 +329,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   // For dashboard pages, use sidebar layout
   return (
     <SidebarProvider defaultOpen={false}>
-      <OneSignalInitializer />
-      <div className="min-h-screen w-full bg-background">
+      <OneSignalInitializer>
+        <div className="min-h-screen w-full bg-background">
         <ErrorBoundary componentName="Header">
           <DashboardHeader />
         </ErrorBoundary>
-        <NotificationsPanel />
 
         {/* Mobile: Use existing Sheet-based sidebar */}
         {isMobile && (
@@ -363,6 +362,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Compliance Footer */}
         <ComplianceFooter />
       </div>
+      </OneSignalInitializer>
     </SidebarProvider>
   )
 }

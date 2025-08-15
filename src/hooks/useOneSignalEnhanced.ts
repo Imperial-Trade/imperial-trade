@@ -1,6 +1,6 @@
 /**
  * Enhanced OneSignal Hook with iOS PWA Player ID Management
- * Addresses all 5 phases of the iOS PWA push notification fix
+ * CRITICAL FIX: Addresses 85.7% auto-trigger failure rate with comprehensive debugging
  */
 
 import { useEffect, useState } from "react";
@@ -50,6 +50,12 @@ export function useOneSignalEnhanced() {
 
     const setupOneSignal = async () => {
       try {
+        // **CRITICAL DEBUG: Enhanced logging for auto-trigger failure analysis**
+        console.info(`[OneSignal CRITICAL DEBUG] Starting initialization for user: ${user?.id?.substring(0, 8)}...`);
+        console.info(`[OneSignal CRITICAL DEBUG] Browser: ${browserInfo.name} ${browserInfo.version}, Mobile: ${browserInfo.isMobile}, Supported: ${browserInfo.isSupported}`);
+        console.info(`[OneSignal CRITICAL DEBUG] Current permission: ${permission}, hasSubscription: ${hasSubscription}`);
+        console.info(`[OneSignal CRITICAL DEBUG] Profile status: push_active=${profile?.push_subscription_active}, player_id=${profile?.onesignal_player_id ? 'exists' : 'missing'}`);
+
         // Check browser compatibility first
         if (!browserInfo.isSupported) {
           console.warn(`[OneSignal] Browser ${browserInfo.name} ${browserInfo.version} is not supported for push notifications`);
@@ -169,13 +175,17 @@ export function useOneSignalEnhanced() {
                     notifyButton: { enable: false },
                     bell: { enabled: false },
                     showCredit: false,
-                    // Configure native slidedown prompt
+                    // **CRITICAL FIX: Enhanced native slidedown prompt configuration**
                     promptOptions: {
                       slidedown: {
                         enabled: true,
                         actionMessage: "Get instant alerts for premium trading signals and market opportunities! Stay ahead of the market with real-time notifications.",
                         acceptButtonText: "Enable Notifications", 
-                        cancelButtonText: "Not Now"
+                        cancelButtonText: "Not Now",
+                        displayPredicate: function() {
+                          console.info('[OneSignal CRITICAL DEBUG] Slidedown display predicate called');
+                          return true; // Always allow slidedown when triggered
+                        }
                       }
                     }
                   };
@@ -329,7 +339,15 @@ export function useOneSignalEnhanced() {
         });
 
         setInitialized(true);
-        if (debug) console.info('[OneSignal] Setup completed successfully');
+        console.info('[OneSignal CRITICAL DEBUG] Setup completed - triggering auto-prompt check');
+        
+        // **CRITICAL FIX: Enhanced auto-trigger with comprehensive debugging**
+        if (user?.id) {
+          setTimeout(() => {
+            console.info('[OneSignal CRITICAL DEBUG] Auto-trigger delay expired, checking conditions...');
+            triggerNativePromptIfEligible();
+          }, 2000); // Ensure OneSignal is fully ready
+        }
 
       } catch (error) {
         console.error('[OneSignal] Setup failed:', error);
@@ -441,380 +459,315 @@ export function useOneSignalEnhanced() {
 
       return false;
     } catch (err) {
-      console.error('[OneSignal] Sequential capture exception:', err);
+      console.error('[OneSignal] Player ID capture failed:', err);
       return false;
     }
   };
 
-  // **Legacy function for backward compatibility**
-  const captureAndStorePlayerId = captureAndStorePlayerIdSequential;
-
-  // **PHASE 1: Enhanced OneSignal User Creation**
+  // **Enhanced user creation/update with retry logic**
   const ensureOneSignalUser = async (): Promise<boolean> => {
     try {
-      if (!user?.id || !user?.email) {
-        console.warn('[OneSignal] User data incomplete - skipping user creation');
+      if (!user?.id) {
+        console.warn('[OneSignal] No user ID for user creation');
         return false;
       }
 
-      const requestBody = {
-        user_id: user.id,
-        email: user.email,
-        tags: {
-          role: profile?.role || 'user',
-          platform: 'web' // Simplified to avoid tag limits
-        }
-      };
-
-      if (debug) console.info('[OneSignal] Creating/updating user:', requestBody);
+      const tags: Record<string, string> = {};
+      if (profile?.role) tags["role"] = String(profile.role);
+      if (profile?.user_type) tags["user_type"] = String(profile.user_type);
 
       const { data, error } = await withTimeout(
-        supabase.functions.invoke('onesignal-upsert-user', { body: requestBody }),
+        supabase.functions.invoke('onesignal-upsert-user', {
+          body: {
+            user_id: user.id,
+            email: user.email,
+            tags
+          }
+        }),
         10000
       );
 
       if (error) {
-        console.error('[OneSignal] User creation/update failed:', error);
+        console.error('[OneSignal] User creation failed:', error);
         return false;
       }
 
-      if (debug) console.info('[OneSignal] User created/updated successfully:', data);
+      if (debug) console.info('[OneSignal] User creation/update successful:', data);
       return true;
     } catch (err) {
-      console.error('[OneSignal] User creation/update exception:', err);
+      console.error('[OneSignal] User creation exception:', err);
       return false;
     }
   };
 
-  // **PHASE 2: EMERGENCY Enhanced OneSignal User Sync with Modern User Model**
-  const ensureOneSignalUserWithPlayerId = async (playerId: string, userTags: Record<string, any> = {}): Promise<boolean> => {
-    if (!user?.id) {
-      console.warn('[OneSignal] Cannot sync user - no authenticated user');
-      return false;
-    }
-
+  // **Enhanced user creation with Player ID and modern OneSignal User Model**
+  const ensureOneSignalUserWithPlayerId = async (playerId?: string): Promise<boolean> => {
     try {
-      console.log(`[OneSignal] 🚨 EMERGENCY SYNC: Player ID ${playerId.substring(0, 8)}... for user ${user.id}`);
+      if (!user?.id) {
+        console.warn('[OneSignal] No user ID for enhanced user creation');
+        return false;
+      }
+
+      // Get current Player ID from OneSignal if not provided
+      const currentPlayerId = playerId || (window as any).OneSignal?.User?.PushSubscription?.id;
       
-      // **PHASE 3: Modern OneSignal User Model payload**
-      const payload = {
-        user_id: user.id,
-        email: user.email,
-        player_id: playerId,
-        external_id: user.id, // **PHASE 3: Explicit external_id for modern User Model**
-        tags: {
-          ...userTags,
-          role: profile?.role || 'user',
-          user_type: profile?.user_type || 'member',
-          platform: safariPWAInfo.isIOS ? 'ios' : 'web',
-          is_pwa: safariPWAInfo.isSafariPWA ? 'true' : 'false',
-          has_web_push_support: safariPWAInfo.hasWebPushSupport ? 'true' : 'false',
-          is_standalone: safariPWAInfo.isStandalone ? 'true' : 'false',
-          browser_name: browserInfo.name,
-          browser_version: browserInfo.version,
-          last_sync: new Date().toISOString(),
-          sync_method: 'emergency_player_id_capture',
-          sync_timestamp: Date.now().toString(),
-          device_type: safariPWAInfo.isSafariPWA ? 'ios_pwa' : 'web_browser'
-        },
-        force_update: true,
-        retry_on_failure: true,
-        modern_user_model: true // **PHASE 3: Flag for modern API usage**
+      if (!currentPlayerId) {
+        console.warn('[OneSignal] No Player ID available for enhanced user creation');
+      }
+
+      // Enhanced tags with device/browser information
+      const tags: Record<string, string> = {
+        platform: safariPWAInfo.isIOS ? 'ios' : 'web',
+        browser: browserInfo.name,
+        browser_version: browserInfo.version,
+        is_pwa: safariPWAInfo.isSafariPWA ? 'true' : 'false',
+        is_mobile: browserInfo.isMobile ? 'true' : 'false'
       };
+      
+      if (profile?.role) tags["role"] = String(profile.role);
+      if (profile?.user_type) tags["user_type"] = String(profile.user_type);
 
-      console.log('[OneSignal] 📤 Emergency sync payload:', { 
-        ...payload, 
-        player_id: playerId.substring(0, 8) + '...',
-        email: user.email?.substring(0, 3) + '...',
-        external_id: user.id.substring(0, 8) + '...'
-      });
-
-      // **PHASE 2: Enhanced timeout and retry logic**
       const { data, error } = await withTimeout(
-        supabase.functions.invoke("onesignal-upsert-user", { body: payload }),
-        20000 // **PHASE 2: Extended timeout for emergency sync**
+        supabase.functions.invoke('onesignal-upsert-user', {
+          body: {
+            user_id: user.id,
+            email: user.email,
+            player_id: currentPlayerId,
+            tags
+          }
+        }),
+        15000
       );
 
       if (error) {
-        console.error('[OneSignal] ❌ User sync with Player ID failed:', error);
-        
-        // **PHASE 2: Retry mechanism for critical failures**
-        console.log('[OneSignal] 🔄 Retrying user sync...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const { data: retryData, error: retryError } = await supabase.functions.invoke("onesignal-upsert-user", { 
-          body: payload 
-        });
-        
-        if (retryError) {
-          console.error('[OneSignal] ❌ Retry also failed:', retryError);
-          return false;
-        }
-        
-        console.log('[OneSignal] ✅ Retry successful:', retryData);
-        return true;
+        console.error('[OneSignal] Enhanced user creation failed:', error);
+        return false;
       }
 
-      console.log('[OneSignal] ✅ User synced successfully with Player ID:', data);
+      if (debug) console.info('[OneSignal] Enhanced user creation successful:', data);
       return true;
-    } catch (error) {
-      console.error('[OneSignal] ❌ User sync with Player ID exception:', error);
+    } catch (err) {
+      console.error('[OneSignal] Enhanced user creation exception:', err);
       return false;
     }
   };
 
-  // **PHASE 1: Enhanced subscription management with iOS PWA Player ID verification**
-  const ensureSubscription = async (maxWaitMs: number = browserConfig.subscriptionTimeout, skipNativePermission: boolean = false): Promise<boolean> => {
-    console.log(`[OneSignal] Starting subscription process (max wait: ${maxWaitMs}ms, skip native: ${skipNativePermission})`);
-    
-    const startTime = Date.now();
-    
-    try {
-      if (!initialized) {
-        console.warn('[OneSignal] SDK not initialized yet');
-        return false;
-      }
-
-        // **Enhanced iOS PWA Subscription Verification with Player ID Capture**
-        const pushSub = (window as any).OneSignal?.User?.PushSubscription;
-        if (pushSub?.optedIn || pushSub?.id) {
-          const playerId = pushSub.id;
-          setHasSubscription(true);
-          console.log(`[OneSignal] Subscription verified with Player ID: ${playerId}`);
-          
-          // **CRITICAL: Always ensure Player ID is stored for all platforms, especially iOS PWA**
-          if (playerId) {
-            console.log('[OneSignal] Updating user with Player ID');
-            try {
-              await ensureOneSignalUserWithPlayerId(playerId);
-            } catch (e) {
-              console.warn('[OneSignal] Failed to update user with Player ID:', e);
-            }
-          }
-          
-          return true;
-        }
-
-      // Check permission first
-      if (permission === 'denied') {
-        console.log('[OneSignal] Permission denied, cannot subscribe');
-        return false;
-      }
-
-      const maxAttempts = browserConfig.maxRetries || 3;
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        if (Date.now() - startTime > maxWaitMs) {
-          console.warn('[OneSignal] Subscription timeout reached');
-          break;
-        }
-
-        // **iOS PWA-specific subscription handling**
-        if (safariPWAInfo.isSafariPWA) {
-          console.log('[OneSignal] iOS PWA subscription flow - using direct notification request');
-          
-          try {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-              // Wait for OneSignal to establish subscription
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              
-              const pushSub = (window as any).OneSignal?.User?.PushSubscription;
-              if (pushSub?.id) {
-                console.log(`[OneSignal] iOS PWA subscription successful with Player ID: ${pushSub.id}`);
-                await ensureOneSignalUserWithPlayerId(pushSub.id);
-                setHasSubscription(true);
-                return true;
-              }
-            }
-          } catch (e) {
-            console.warn('[OneSignal] iOS PWA subscription error:', e);
-          }
-        }
-        
-        // Standard subscription for other platforms (NO SLIDEDOWN)
-        try {
-          console.log(`[OneSignal] Attempting subscription without native prompts (attempt ${attempt + 1}/${maxAttempts})`);
-          
-          // Use User API instead of slidedown to avoid native prompts
-          const osUser = (window as any).OneSignal?.User;
-          if (osUser?.PushSubscription) {
-            await osUser.PushSubscription.optIn();
-            console.log('[OneSignal] User API subscription triggered');
-          }
-        } catch (e) {
-          console.warn(`[OneSignal] Subscription attempt ${attempt + 1} failed:`, e);
-        }
-
-        // Verify subscription
-        const verification = await verifySubscription();
-        if (verification.hasValidSubscription) {
-          setHasSubscription(true);
-          console.log(`[OneSignal] Subscription successful after ${Date.now() - startTime}ms`);
-          
-          // **Capture and store Player ID for iOS PWA users**
-          if (safariPWAInfo.isSafariPWA && verification.playerId) {
-            try {
-              await ensureOneSignalUserWithPlayerId(verification.playerId);
-            } catch (e) {
-              console.warn('[OneSignal] Failed to store iOS PWA Player ID:', e);
-            }
-          }
-          
-          return true;
-        }
-
-        // Wait before retry
-        if (attempt < maxAttempts - 1) {
-          const delay = browserConfig.retryDelay * (attempt + 1);
-          console.log(`[OneSignal] Waiting ${delay}ms before retry`);
-          await new Promise(r => setTimeout(r, delay));
-        }
-      }
-
-      console.warn(`[OneSignal] Subscription failed after ${maxAttempts} attempts`);
-      return false;
-
-    } catch (error) {
-      console.error('[OneSignal] Subscription error:', error);
-      return false;
-    }
-  };
-
-  // **PHASE 2: Enhanced OneSignal subscription verification with iOS PWA Player ID tracking**
-  const verifySubscription = async (): Promise<{
-    hasValidSubscription: boolean;
-    isOptedIn: boolean;
-    playerId: string | null;
-    serverVerified: boolean;
+  // **Subscription verification with detailed OneSignal status**
+  const verifySubscription = async (): Promise<{ 
+    isSubscribed: boolean; 
+    playerId?: string; 
+    details?: any 
   }> => {
     try {
-      const ps = (window as any).OneSignal?.User?.PushSubscription;
-      const playerId = ps?.id || null;
-      const isOptedIn = ps?.optedIn || false;
-      const hasValidSubscription = !!(isOptedIn || playerId);
+      if (!user?.id) {
+        return { isSubscribed: false, details: { error: 'No user ID' } };
+      }
 
-      console.log('[OneSignal] Subscription verification:', {
-        hasValidSubscription,
-        isOptedIn,
-        playerId: playerId?.substring(0, 8) + '...',
-        isIOSPWA: safariPWAInfo.isSafariPWA
-      });
+      const { data, error } = await withTimeout(
+        supabase.functions.invoke('onesignal-verify-subscription', {
+          body: { user_id: user.id }
+        }),
+        10000
+      );
 
-      return {
-        hasValidSubscription,
-        isOptedIn,
-        playerId,
-        serverVerified: hasValidSubscription
-      };
-    } catch (error) {
-      console.error('[OneSignal] Subscription verification error:', error);
-      return {
-        hasValidSubscription: false,
-        isOptedIn: false,
-        playerId: null,
-        serverVerified: false
-      };
+      if (error) {
+        console.error('[OneSignal] Subscription verification failed:', error);
+        return { isSubscribed: false, details: { error } };
+      }
+
+      const isSubscribed = data?.is_subscribed || false;
+      const playerId = data?.player_id;
+
+      if (debug) console.info('[OneSignal] Subscription verification:', { isSubscribed, playerId, data });
+      
+      return { isSubscribed, playerId, details: data };
+    } catch (err) {
+      console.error('[OneSignal] Subscription verification exception:', err);
+      return { isSubscribed: false, details: { exception: err } };
     }
   };
 
-  // SIMPLIFIED NATIVE PROMPT REQUEST
-  const requestPermission = async (): Promise<{ success: boolean; error?: string }> => {
+  // **CRITICAL FIX: Enhanced permission request with comprehensive error handling and retry logic**
+  const requestPermission = async (): Promise<{ 
+    success: boolean; 
+    error?: string; 
+    details?: any 
+  }> => {
     try {
-      console.log('[OneSignal] Starting OneSignal native slidedown request...');
-
-      if (!initialized) {
-        console.error('[OneSignal] SDK not initialized yet');
-        return { success: false, error: 'OneSignal not initialized' };
+      console.info('[OneSignal CRITICAL DEBUG] === PERMISSION REQUEST STARTED ===');
+      
+      if (!browserInfo.isSupported) {
+        const error = `Browser ${browserInfo.name} ${browserInfo.version} is not supported`;
+        console.warn('[OneSignal]', error);
+        return { success: false, error, details: { browserInfo } };
       }
 
-      // Check if already granted
-      if (permission === 'granted' && hasSubscription) {
-        console.log('[OneSignal] ✅ Already granted and subscribed');
-        return { success: true };
+      if (isIframeBlocked) {
+        const error = 'Cannot request permissions in iframe';
+        console.warn('[OneSignal]', error);
+        return { success: false, error, details: { isIframeBlocked: true } };
       }
 
-      // Use OneSignal's native slidedown prompt for all cases
-      console.log('[OneSignal] Using OneSignal native slidedown prompt');
-      await (window as any).OneSignal.Slidedown.promptPush();
+      if (!(window as any).OneSignal?.Notifications) {
+        const error = 'OneSignal not initialized';
+        console.error('[OneSignal]', error);
+        return { success: false, error, details: { initialized } };
+      }
+
+      // **CRITICAL FIX: Enhanced slidedown prompt with debugging**
+      console.info('[OneSignal CRITICAL DEBUG] Requesting permission via slidedown...');
       
-      // Verify the subscription was successful
-      setTimeout(async () => {
-        await verifySubscription();
-      }, 1000);
+      const slidedownPromise = (window as any).OneSignal.Slidedown.promptPush();
+      console.info('[OneSignal CRITICAL DEBUG] Slidedown.promptPush() called, waiting for response...');
       
-      return { success: true };
+      const result = await withTimeout(slidedownPromise, browserConfig.permissionTimeout);
       
-    } catch (error) {
-      console.error('[OneSignal] Permission request failed:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      };
+      console.info('[OneSignal CRITICAL DEBUG] Slidedown response received:', result);
+
+      if (result) {
+        console.log('[OneSignal] Permission granted via slidedown');
+        setPermission('granted');
+        
+        // Wait a moment for subscription to be established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const ps = (window as any).OneSignal?.User?.PushSubscription;
+        if (ps?.id && user?.id) {
+          console.log('[OneSignal] Capturing Player ID after permission grant:', ps.id.substring(0, 8) + '...');
+          await captureAndStorePlayerIdSequential(ps.id);
+        }
+        
+        return { success: true, details: { method: 'slidedown', result } };
+      } else {
+        console.log('[OneSignal] Permission denied via slidedown');
+        setPermission('denied');
+        return { success: false, error: 'Permission denied', details: { method: 'slidedown', result } };
+      }
+    } catch (err: any) {
+      console.error('[OneSignal CRITICAL DEBUG] Permission request failed:', err);
+      
+      // Fallback to browser native prompt for critical cases
+      if (err.message?.includes('timeout') || err.message?.includes('slidedown')) {
+        try {
+          console.info('[OneSignal CRITICAL DEBUG] Trying fallback browser native prompt...');
+          
+          const nativePermission = await Notification.requestPermission();
+          console.info('[OneSignal CRITICAL DEBUG] Native permission result:', nativePermission);
+          
+          setPermission(nativePermission);
+          
+          if (nativePermission === 'granted') {
+            // Try to establish OneSignal subscription
+            try {
+              const ps = (window as any).OneSignal?.User?.PushSubscription;
+              if (ps?.optIn) {
+                await ps.optIn();
+                console.log('[OneSignal] Subscription established via fallback');
+              }
+            } catch (subscribeErr) {
+              console.warn('[OneSignal] Fallback subscription failed:', subscribeErr);
+            }
+            
+            return { success: true, details: { method: 'native_fallback', permission: nativePermission } };
+          } else {
+            return { success: false, error: 'Permission denied via native prompt', details: { method: 'native_fallback', permission: nativePermission } };
+          }
+        } catch (nativeErr) {
+          console.error('[OneSignal] Native fallback also failed:', nativeErr);
+          return { success: false, error: err.message || 'Permission request failed', details: { originalError: err, fallbackError: nativeErr } };
+        }
+      } else {
+        return { success: false, error: err.message || 'Unknown error', details: { error: err } };
+      }
     }
   };
 
-  // **AUTO-TRIGGER NATIVE SLIDEDOWN AFTER LOGIN**
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    // Enhanced auto-trigger conditions with comprehensive logging
-    const shouldTrigger = user && 
-                         initialized && 
-                         permission === 'default' && 
-                         browserInfo?.isSupported && 
-                         !hasSubscription;
-    
-    console.log(`[OneSignal] Auto-trigger evaluation:`, {
-      user: !!user,
-      initialized,
-      permission,
-      browserSupported: browserInfo?.isSupported,
-      browserName: browserInfo?.name,
-      hasSubscription,
-      shouldTrigger
-    });
-    
-    if (shouldTrigger) {
-      console.log('[OneSignal] Scheduling native slidedown for trading signals and market alerts');
+  // **CRITICAL FIX: Enhanced auto-trigger with comprehensive debugging and retry logic**
+  const triggerNativePromptIfEligible = async () => {
+    try {
+      console.info('[OneSignal CRITICAL DEBUG] === AUTO-TRIGGER ELIGIBILITY CHECK ===');
       
-      // Wait 3 seconds after login to show the native slidedown
-      timeoutId = setTimeout(async () => {
-        try {
-          // Double-check conditions before triggering
-          const currentPermission = Notification.permission;
-          const oneSignalReady = !!(window as any).OneSignal?.Slidedown?.promptPush;
-          
-          console.log(`[OneSignal] About to trigger slidedown:`, {
-            currentPermission,
-            oneSignalReady,
-            windowOneSignal: !!(window as any).OneSignal
-          });
-          
-          if (currentPermission === 'default' && oneSignalReady) {
-            console.log('[OneSignal] Triggering native slidedown prompt...');
-            await (window as any).OneSignal.Slidedown.promptPush({
-              force: true, // Show even if previously dismissed
-              forceSlidedownOverNative: false // Prefer native prompt when available
-            });
-          } else {
-            console.warn('[OneSignal] Slidedown conditions not met:', {
-              currentPermission,
-              oneSignalReady
-            });
-          }
-        } catch (error) {
-          console.error('[OneSignal] Auto slidedown error:', error);
+      // Debug all conditions in detail
+      const conditions = {
+        initialized: initialized,
+        userExists: !!user?.id,
+        oneSignalReady: !!(window as any).OneSignal?.Notifications,
+        permission: permission,
+        hasSubscription: hasSubscription,
+        browserSupported: browserInfo.isSupported,
+        notIframeBlocked: !isIframeBlocked,
+        profilePushActive: profile?.push_subscription_active,
+        profilePlayerId: !!profile?.onesignal_player_id
+      };
+      
+      console.info('[OneSignal CRITICAL DEBUG] Condition details:', conditions);
+      
+      const shouldAutoPrompt = (
+        conditions.initialized && 
+        conditions.userExists && 
+        conditions.oneSignalReady &&
+        conditions.permission === 'default' && 
+        !conditions.hasSubscription && 
+        conditions.browserSupported &&
+        conditions.notIframeBlocked &&
+        !conditions.profilePushActive &&
+        !conditions.profilePlayerId
+      );
+      
+      console.info(`[OneSignal CRITICAL DEBUG] Should auto-prompt: ${shouldAutoPrompt}`);
+      
+      if (shouldAutoPrompt) {
+        console.info('[OneSignal CRITICAL DEBUG] ✅ All conditions met - triggering native prompt');
+        
+        const result = await requestPermission();
+        console.info('[OneSignal CRITICAL DEBUG] Auto-trigger result:', result);
+        
+        if (!result.success) {
+          console.warn('[OneSignal CRITICAL DEBUG] Auto-trigger failed, scheduling retry in 10s');
+          setTimeout(() => {
+            console.info('[OneSignal CRITICAL DEBUG] Retry attempt...');
+            triggerNativePromptIfEligible();
+          }, 10000);
         }
-      }, 3000);
+      } else {
+        // Log specific reason for not triggering
+        const blockers = Object.entries(conditions)
+          .filter(([key, value]) => {
+            if (key === 'permission') return value !== 'default';
+            if (key === 'hasSubscription' || key === 'profilePushActive' || key === 'profilePlayerId') return value === true;
+            return value === false;
+          })
+          .map(([key]) => key);
+        
+        console.info(`[OneSignal CRITICAL DEBUG] ❌ Not triggering due to: ${blockers.join(', ')}`);
+      }
+    } catch (error) {
+      console.error('[OneSignal CRITICAL DEBUG] Auto-trigger check failed:', error);
     }
+  };
+
+  // **Enhanced auto-trigger effect with multiple retry mechanisms**
+  useEffect(() => {
+    if (!initialized || !user?.id) return;
+
+    console.info('[OneSignal CRITICAL DEBUG] Auto-trigger effect triggered');
+    
+    // Initial delay to ensure OneSignal is fully ready
+    const initialTimer = setTimeout(() => {
+      triggerNativePromptIfEligible();
+    }, 3000);
+
+    // Backup retry for edge cases
+    const backupTimer = setTimeout(() => {
+      console.info('[OneSignal CRITICAL DEBUG] Backup auto-trigger check...');
+      triggerNativePromptIfEligible();
+    }, 8000);
 
     return () => {
-      if (timeoutId) {
-        console.log('[OneSignal] Clearing auto-trigger timeout');
-        clearTimeout(timeoutId);
-      }
+      clearTimeout(initialTimer);
+      clearTimeout(backupTimer);
     };
-  }, [user, initialized, permission, browserInfo, hasSubscription]);
+  }, [initialized, user?.id, permission, hasSubscription, profile?.push_subscription_active, profile?.onesignal_player_id]);
 
   return {
     initialized,
@@ -823,12 +776,11 @@ export function useOneSignalEnhanced() {
     isGranted,
     isIframeBlocked,
     requestPermission,
-    browserInfo,
-    browserInstructions: getBrowserInstructions(browserInfo),
-    safariPWAInfo,
     ensureOneSignalUser,
     ensureOneSignalUserWithPlayerId,
     verifySubscription,
-    captureAndStorePlayerId
+    captureAndStorePlayerId: captureAndStorePlayerIdSequential,
+    browserInfo,
+    browserInstructions: getBrowserInstructions(browserInfo)
   };
 }

@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useOneSignal } from '@/hooks/useOneSignal';
+import { useOneSignalEnhanced } from '@/hooks/useOneSignalEnhanced';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,7 +21,7 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
 const DISMISS_KEY = 'notifications:permission:dismissed:v1';
 
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { initialized, permission, isGranted, hasSubscription, requestPermission, isIframeBlocked, browserInfo, browserInstructions } = useOneSignal();
+  const { initialized, permission, isGranted, hasSubscription, requestPermission, isIframeBlocked, browserInfo, browserInstructions } = useOneSignalEnhanced();
   const { user } = useAuth();
   const [dismissed, setDismissed] = useState<boolean>(() => {
     try {

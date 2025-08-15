@@ -35,9 +35,27 @@ export function detectSafariPWA(): SafariPWAInfo {
   // Detect Safari (not Chrome or other browsers)
   const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent) && !/CriOS/.test(userAgent);
   
-  // Detect standalone mode (PWA)
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                      (window.navigator as any).standalone === true;
+  // **Enhanced standalone mode (PWA) detection for Safari**
+  const isStandalone = (() => {
+    // Standard PWA display mode detection
+    if (window.matchMedia('(display-mode: standalone)').matches) return true;
+    
+    // iOS Safari specific standalone detection
+    if ((window.navigator as any).standalone === true) return true;
+    
+    // Additional iOS Safari PWA verification
+    if (isIOS && isSafari) {
+      // Check viewport dimensions to detect Safari PWA mode
+      const heightRatio = window.screen.height / window.innerHeight;
+      // In Safari PWA, the height ratio should be close to 1 (no browser UI)
+      if (heightRatio < 1.15) return true;
+      
+      // Check if status bar is hidden (Safari PWA indicator)
+      if ((window.navigator as any).standalone !== false && !document.referrer) return true;
+    }
+    
+    return false;
+  })();
   
   // Safari PWA is iOS + Safari + standalone
   const isSafariPWA = isIOS && isSafari && isStandalone;

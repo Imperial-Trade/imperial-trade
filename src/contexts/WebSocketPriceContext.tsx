@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PriceData {
   symbol: string;
@@ -65,6 +66,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const pendingSubscribeBatchRef = useRef<Set<string>>(new Set());
   const subscribeFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastRefreshAttemptRef = useRef<Map<string, number>>(new Map());
+
   const flushPendingSubscriptions = useCallback(() => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) return;
     const pending = Array.from(pendingSubscribeBatchRef.current);
@@ -268,6 +270,71 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }
   }, [getReconnectDelay, prices]);
 
+  const fetchInitialPrices = useCallback(async (symbols: string[]) => {
+    const unique = Array.from(new Set(symbols.filter(Boolean)));
+    if (unique.length === 0) return;
+
+    try {
+      console.log('🧭 Bootstrap initial prices via HTTP for:', unique);
+      const { data, error } = await supabase.functions.invoke('tradermade-streaming', {
+        body: { symbols: unique },
+      });
+
+      if (error) {
+        console.error('❌ Initial price bootstrap failed:', error);
+        return;
+      }
+
+      if (data?.success && data.prices) {
+        const now = new Date();
+        const updates: Record<string, PriceData> = {};
+        const sources: Record<string, 'http'> = {} as any;
+
+        unique.forEach((s) => {
+          const norm = normalizeSymbol(s);
+          // Try both normalized and raw key from function response
+          const p = data.prices[norm] || data.prices[s] || null;
+
+          if (p && typeof p.price === 'number' && p.price > 0) {
+            updates[norm] = {
+              symbol: norm,
+              price: p.price,
+              change: typeof p.change === 'number' ? p.change : 0,
+              changePercent: typeof p.changePercent === 'number' ? p.changePercent : 0,
+              timestamp: p.timestamp || now.toISOString(),
+              bid: p.bid,
+              ask: p.ask,
+              tick_timestamp: p.timestamp ? Date.parse(p.timestamp) : now.getTime(),
+              is_institutional_tick: false,
+              is_ultra_fast_tick: false,
+              update_frequency: 'http_bootstrap',
+            };
+            sources[norm] = 'http';
+          }
+        });
+
+        if (Object.keys(updates).length > 0) {
+          setPrices(prev => ({ ...prev, ...updates }));
+          setPriceUpdateSources(prev => ({ ...prev, ...sources }));
+          setLastUpdated(now);
+
+          // Clear any existing symbol errors we successfully bootstrapped
+          setErrors(prev => {
+            const next = { ...prev };
+            Object.keys(updates).forEach(sym => { delete next[sym]; });
+            return next;
+          });
+        } else {
+          console.warn('⚠️ No valid prices returned in bootstrap', data);
+        }
+      } else {
+        console.warn('⚠️ Unexpected bootstrap response:', data);
+      }
+    } catch (e) {
+      console.error('❌ Error bootstrapping initial prices:', e);
+    }
+  }, [normalizeSymbol]);
+
   const subscribe = useCallback((symbols: string[]) => {
     // Normalize and validate symbols FIRST
     const normalized = symbols
@@ -289,16 +356,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     });
 
     if (toSubscribe.length === 0) {
-      // All symbols already subscribed - no need to log this repeatedly
+      // All symbols already subscribed
       return;
     }
 
-    // Only log new subscriptions to reduce console spam
     if (process.env.NODE_ENV === 'development') {
       console.log('📡 New subscription for symbols:', toSubscribe);
     }
 
-    // Enqueue for batched send (deduplicated)
+    // Enqueue for batched WS subscription send (deduplicated)
     toSubscribe.forEach(s => pendingSubscribeBatchRef.current.add(s));
 
     // Connect if needed
@@ -306,13 +372,17 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       connect();
     }
 
-    // Batch subscription requests to reduce network calls
+    // Batch subscription requests to WS
     if (!subscribeFlushTimerRef.current) {
       subscribeFlushTimerRef.current = setTimeout(() => {
         flushPendingSubscriptions();
-      }, 100); // Increased from 50ms to 100ms to batch more efficiently
+      }, 100);
     }
-  }, [connect, flushPendingSubscriptions, normalizeSymbol]);
+
+    // Bootstrap initial prices immediately via HTTP to avoid empty UI
+    // This is safe and low-frequency (only when a symbol transitions 0 -> 1)
+    fetchInitialPrices(toSubscribe);
+  }, [connect, flushPendingSubscriptions, normalizeSymbol, fetchInitialPrices]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     // Normalize like subscribe
@@ -368,7 +438,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return prices[norm] || null;
   }, [prices, normalizeSymbol]);
 
-  // Auto-connect on mount and add connection health monitoring
   useEffect(() => {
     connect();
     
@@ -402,7 +471,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     };
   }, [connect]);
 
-  // One-second stale tick refresher: ensure <=1.2s between updates by nudging the stream
   useEffect(() => {
     if (connectionStatus !== 'connected') return;
     const interval = setInterval(() => {

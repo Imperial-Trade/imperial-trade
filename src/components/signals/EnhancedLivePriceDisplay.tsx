@@ -20,10 +20,25 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   onPriceUpdate,
   className = ''
 }) => {
-  // Symbol should already be the tradermadeSymbol from AssetSelector
-  // Simplified mapping function since AssetSelector now provides correct symbols
-  const mapSymbolForAPI = (symbol: string): string => {
-    return symbol; // AssetSelector now sends tradermadeSymbol directly
+  // Map frontend symbols to standardized Tradermade API symbols (no slashes)
+  const mapSymbolForAPI = (frontendSymbol: string): string => {
+    const s = (frontendSymbol || '').toUpperCase().trim();
+    const symbolMap: Record<string, string> = {
+      'GOLD': 'XAUUSD',
+      'XAU/USD': 'XAUUSD',
+      'XAUUSD': 'XAUUSD',
+      'BTC/USD': 'BTCUSD',
+      'BTCUSD': 'BTCUSD',
+      'NAS100': 'NAS100USD',
+      'NASDAQ': 'NAS100USD',
+      'NAS100USD': 'NAS100USD',
+      'USA30': 'USA30USD',
+      'US30': 'USA30USD',
+      'USA30USD': 'USA30USD',
+      'EUR/USD': 'EURUSD',
+      'EURUSD': 'EURUSD'
+    };
+    return symbolMap[s] || s;
   };
   const apiSymbol = mapSymbolForAPI(symbol);
   
@@ -49,7 +64,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const [prevPrice, setPrevPrice] = useState<number>(0);
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
 
-  // Update data age every second - simplified
+  // Update data age every second
   useEffect(() => {
     const updateAge = () => {
       if (!lastUpdated) {
@@ -57,22 +72,24 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         return;
       }
       
-      const diffMs = Date.now() - lastUpdated.getTime();
+      const now = new Date();
+      const diffMs = now.getTime() - lastUpdated.getTime();
       const diffSeconds = Math.floor(diffMs / 1000);
       
       if (diffSeconds < 30) {
         setDataAge('Live');
       } else if (diffSeconds < 60) {
-        setDataAge(`${diffSeconds}s`);
+        setDataAge(`${diffSeconds}s ago`);
       } else if (diffSeconds < 3600) {
-        setDataAge(`${Math.floor(diffSeconds / 60)}m`);
+        const minutes = Math.floor(diffSeconds / 60);
+        setDataAge(`${minutes}m ago`);
       } else {
         setDataAge('Stale');
       }
     };
 
     updateAge();
-    const interval = setInterval(updateAge, 10000); // Reduced frequency
+    const interval = setInterval(updateAge, 5000);
     return () => clearInterval(interval);
   }, [lastUpdated]);
 
@@ -233,10 +250,33 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
       connectionStatus === 'error' ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
       'border-border'
     } ${className}`}>
-      {/* Simplified Header */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="text-white font-medium">
-          {assetName}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div className="text-white font-medium">
+              Live Price for {assetName}
+            </div>
+            {priceUpdateSource === 'websocket_institutional' && (
+              <div className="px-2 py-0.5 bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 rounded-full text-xs text-emerald-400 font-medium">
+                ⚡ 250ms
+              </div>
+            )}
+          </div>
+          {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && (
+            <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
+              {/* Status text and effects hidden for a smoother interface */}
+              {dataAge && (
+                <span className={`${
+                  dataAge === 'Live' ? 'text-green-400' : 
+                  dataAge === 'Stale' ? 'text-red-400' : 
+                  'text-yellow-400'
+                }`}>
+                  {dataAge}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         
         <Button
@@ -316,18 +356,16 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Simplified Footer */}
+      {/* Footer */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 text-xs text-gray-400">
-          {dataAge && (
-            <span className={`${
-              dataAge === 'Live' ? 'text-green-400' : 
-              dataAge === 'Stale' ? 'text-red-400' : 
-              'text-yellow-400'
-            }`}>
-              {dataAge}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-xs text-gray-400">
+            <Clock className="w-3 h-3" />
+            <span>
+              {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
             </span>
-          )}
+          </div>
+          <ConnectionHealthBadge className="ml-2" />
         </div>
         
         {onUseCurrentPrice && (
@@ -338,6 +376,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             onClick={() => onUseCurrentPrice(price)}
             className="border-accent-green/30 text-accent-green hover:bg-accent-green/20 h-7 px-3 text-xs"
             disabled={isRefreshing || !!error || price <= 0}
+            aria-disabled={isRefreshing || !!error || price <= 0}
             title={price > 0 ? 'Use current price' : 'Price not available yet'}
           >
             Use Current Price

@@ -6,13 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Separate API keys for streaming and REST operations
-const STREAMING_API_KEY = Deno.env.get('TRADERMADE_API_KEY') || '';
-const REST_API_KEY = Deno.env.get('TRADERMADE_REST_API_KEY') || '';
-
-console.log('🔑 API Key Configuration:');
-console.log(`📡 Streaming key configured: ${STREAMING_API_KEY ? '✅' : '❌'}`);
-console.log(`🌐 REST key configured: ${REST_API_KEY ? '✅' : '❌'}`);
+// Prefer dedicated WS/HTTP keys if available; fallback to TRADERMADE_API_KEY
+const WS_API_KEY = Deno.env.get('TRADERMADE_WS_API_KEY') || Deno.env.get('TRADERMADE_API_KEY') || '';
+const HTTP_API_KEY = Deno.env.get('TRADERMADE_HTTP_API_KEY') || Deno.env.get('TRADERMADE_API_KEY') || '';
 
 // Tradermade symbol configuration
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
@@ -38,25 +34,13 @@ interface ErrorMessage {
   timestamp: string;
 }
 
-// Global shared resources for the single Tradermade connection
-let sharedTradermadeSocket: WebSocket | null = null;
-let globalSubscribedSymbols = new Set<string>();
-let clientConnections = new Set<WebSocket>();
-let reconnectTimeout: number | null = null;
-let heartbeatInterval: number | null = null;
-let isConnectingToTradermade = false;
+// Cache configuration - optimized for ultra-fast 250ms ticks
+const priceCache = new Map<string, TradermadePriceData>();
+const CACHE_TTL = 1000; // 1 second for ultra-fast updates
 
-// Price cache for all symbols
-const priceCache = new Map<string, { data: TradermadePriceData; timestamp: number }>();
-const CACHE_TTL = 30000; // 30 seconds
-const STALE_CACHE_TTL = 300000; // 5 minutes - for fallback data
-
-// Enhanced rate limiting with cooldown periods
 let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();
-let rateLimitCooldownUntil = 0;
-const RATE_LIMIT_PER_MINUTE = 15; // Very conservative
-const COOLDOWN_DURATION = 120000; // 2 minutes cooldown after hitting rate limit
+const RATE_LIMIT_PER_MINUTE = 30;
 
 // Validate and normalize symbols
 function validateSymbol(symbol: string): string | null {
@@ -64,36 +48,27 @@ function validateSymbol(symbol: string): string | null {
   return TRADERMADE_SYMBOLS.includes(upperSymbol) ? upperSymbol : null;
 }
 
-// Enhanced cache management
-function getCachedPrice(symbol: string, allowStale = false): TradermadePriceData | null {
+// Cache management
+function getCachedPrice(symbol: string): TradermadePriceData | null {
   const cached = priceCache.get(symbol);
   if (!cached) return null;
   
-  const age = Date.now() - cached.timestamp;
-  const maxAge = allowStale ? STALE_CACHE_TTL : CACHE_TTL;
-  
-  if (age > maxAge) {
-    if (!allowStale) priceCache.delete(symbol);
+  const age = Date.now() - new Date(cached.timestamp).getTime();
+  if (age > CACHE_TTL) {
+    priceCache.delete(symbol);
     return null;
   }
   
-  return cached.data;
+  return cached;
 }
 
 function setCachedPrice(symbol: string, data: TradermadePriceData): void {
-  priceCache.set(symbol, { data, timestamp: Date.now() });
+  priceCache.set(symbol, data);
 }
 
-// Enhanced rate limiting with backoff
+// Rate limiting
 function isRateLimited(): boolean {
   const now = Date.now();
-  
-  // Check if we're in cooldown period
-  if (rateLimitCooldownUntil > now) {
-    return true;
-  }
-  
-  // Reset rate limit counter every minute
   if (now - lastRateLimitReset > 60000) {
     globalRateLimitCount = 0;
     lastRateLimitReset = now;
@@ -102,28 +77,34 @@ function isRateLimited(): boolean {
   return globalRateLimitCount >= RATE_LIMIT_PER_MINUTE;
 }
 
-function activateRateLimitCooldown(): void {
-  rateLimitCooldownUntil = Date.now() + COOLDOWN_DURATION;
-  console.log(`🔴 Rate limit cooldown activated for ${COOLDOWN_DURATION / 1000}s`);
-}
-
-// HTTP API fetching with enhanced error handling
+// Fetch price from Tradermade HTTP API with better error handling
 async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData | null> {
   if (isRateLimited()) {
-    console.log(`⚠️ Rate limited - using cached data for ${symbol}`);
-    return getCachedPrice(symbol, true);
+    console.log('⚠️ Rate limited - using cached data');
+    return getCachedPrice(symbol);
   }
 
-  if (!REST_API_KEY) {
-    console.error('❌ TRADERMADE_REST_API_KEY not configured');
-    return getCachedPrice(symbol, true);
+  const apiKey = HTTP_API_KEY;
+  console.log('🔑 HTTP API Key check:', apiKey ? `Found (${apiKey.substring(0, 8)}...)` : 'Missing');
+  
+  if (!apiKey) {
+    console.error('❌ TRADERMADE_HTTP_API_KEY/TRADERMADE_API_KEY not found for HTTP request');
+    return getCachedPrice(symbol) || {
+      symbol,
+      price: 0,
+      bid: 0,
+      ask: 0,
+      timestamp: new Date().toISOString(),
+      change: 0,
+      changePercent: 0
+    };
   }
 
   try {
     globalRateLimitCount++;
     
-    const url = `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${REST_API_KEY}`;
-    console.log(`🔄 HTTP request for ${symbol} (count: ${globalRateLimitCount})`);
+    const url = `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${apiKey}`;
+    console.log(`🔄 Fetching HTTP price for ${symbol} (endpoint logged, API key masked)`);
     
     const response = await fetch(url, {
       method: 'GET',
@@ -134,17 +115,15 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
     });
 
     if (!response.ok) {
-      console.error(`❌ HTTP ${response.status} for ${symbol}: ${response.statusText}`);
-      
-      if (response.status === 429) {
-        activateRateLimitCooldown();
-      }
-      
-      return getCachedPrice(symbol, true);
+      console.error(`❌ HTTP request failed for ${symbol}: ${response.status} ${response.statusText}`);
+      const errorText = await response.text().catch(() => 'No response body');
+      console.error(`Response body:`, errorText);
+      return getCachedPrice(symbol);
     }
 
     const data = await response.json();
-    
+    console.log(`✅ Tradermade HTTP response for ${symbol}:`, JSON.stringify(data, null, 2));
+
     if (data.quotes && Array.isArray(data.quotes) && data.quotes.length > 0) {
       const quote = data.quotes[0];
       const mid = quote.mid || (quote.bid && quote.ask ? (quote.bid + quote.ask) / 2 : null);
@@ -162,247 +141,26 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
         };
 
         setCachedPrice(symbol, priceData);
-        console.log(`✅ Fresh price for ${symbol}: $${price}`);
+        console.log(`💰 Cached price for ${symbol}: $${price}`);
         return priceData;
       }
     }
 
-    console.warn(`⚠️ No valid price data for ${symbol}`);
-    return getCachedPrice(symbol, true);
-    
+    console.warn(`⚠️ No valid price data for ${symbol} in response:`, data);
+    return getCachedPrice(symbol);
   } catch (error) {
-    console.error(`❌ Fetch error for ${symbol}:`, error.message);
-    return getCachedPrice(symbol, true);
+    console.error(`❌ Error fetching price for ${symbol}:`, error.message || error);
+    return getCachedPrice(symbol);
   }
-}
-
-// Single shared Tradermade WebSocket connection
-async function connectSharedTradermadeSocket() {
-  if (isConnectingToTradermade || sharedTradermadeSocket?.readyState === WebSocket.OPEN) {
-    return;
-  }
-
-  if (!STREAMING_API_KEY) {
-    console.error('❌ TRADERMADE_API_KEY not configured for WebSocket');
-    startHttpFallbackForAllClients();
-    return;
-  }
-
-  isConnectingToTradermade = true;
-
-  try {
-    console.log('🔌 Creating shared Tradermade WebSocket connection...');
-    sharedTradermadeSocket = new WebSocket(`wss://marketdata.tradermade.com/feedadv`);
-
-    sharedTradermadeSocket.onopen = () => {
-      console.log('✅ Shared Tradermade WebSocket connected');
-      isConnectingToTradermade = false;
-      
-      // Authenticate with all symbols to get general feed
-      if (sharedTradermadeSocket) {
-        console.log('📡 Authenticating shared WebSocket');
-        sharedTradermadeSocket.send(JSON.stringify({
-          userKey: STREAMING_API_KEY,
-          symbol: TRADERMADE_SYMBOLS.join(',')
-        }));
-      }
-
-      // Start heartbeat for shared connection
-      if (heartbeatInterval) clearInterval(heartbeatInterval);
-      heartbeatInterval = setInterval(() => {
-        if (sharedTradermadeSocket?.readyState === WebSocket.OPEN) {
-          sharedTradermadeSocket.send(JSON.stringify({ type: 'ping' }));
-        }
-      }, 30000);
-
-      // Broadcast connection status to all clients
-      broadcastToClients({
-        type: 'connection_status',
-        status: 'connected',
-        dataSource: 'tradermade',
-        timestamp: new Date().toISOString()
-      });
-    };
-
-    sharedTradermadeSocket.onmessage = (event) => {
-      try {
-        // Handle text responses
-        if (typeof event.data === 'string' && !event.data.startsWith('{')) {
-          console.log('📋 Tradermade:', event.data);
-          
-          // Handle rate limit messages
-          if (event.data.includes('User Key Used to many times')) {
-            console.log('🔴 Shared connection hit rate limit - activating cooldown');
-            activateRateLimitCooldown();
-            startHttpFallbackForAllClients();
-          }
-          return;
-        }
-
-        const data = JSON.parse(event.data);
-        
-        // Process price updates
-        let symbol = data.symbol || data.instrument;
-        if (symbol && (data.bid || data.ask || data.price || data.mid)) {
-          symbol = symbol.toUpperCase();
-          
-          let price = data.mid || data.price;
-          if (!price && data.bid && data.ask) {
-            price = (parseFloat(data.bid) + parseFloat(data.ask)) / 2;
-          } else if (!price) {
-            price = data.bid || data.ask;
-          }
-          
-          price = parseFloat(price);
-          
-          if (price > 0 && !isNaN(price)) {
-            const priceUpdate: TradermadePriceData = {
-              symbol: symbol,
-              price: price,
-              bid: data.bid ? parseFloat(data.bid) : price,
-              ask: data.ask ? parseFloat(data.ask) : price,
-              timestamp: new Date().toISOString(),
-              change: 0,
-              changePercent: 0
-            };
-
-            // Cache the update
-            setCachedPrice(symbol, priceUpdate);
-
-            // Broadcast to all interested clients
-            broadcastToClients({
-              type: 'price_update',
-              ...priceUpdate,
-              dataSource: 'websocket_shared'
-            });
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error parsing shared Tradermade message:', error.message);
-      }
-    };
-
-    sharedTradermadeSocket.onclose = (event) => {
-      console.log(`🔌 Shared Tradermade WebSocket closed: ${event.code} ${event.reason}`);
-      isConnectingToTradermade = false;
-      
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-      }
-
-      // Schedule reconnection with backoff
-      if (!reconnectTimeout && clientConnections.size > 0) {
-        const backoffMs = 10000; // 10 second fixed delay
-        console.log(`🔄 Shared connection will reconnect in ${backoffMs}ms`);
-        reconnectTimeout = setTimeout(() => {
-          reconnectTimeout = null;
-          if (clientConnections.size > 0) {
-            connectSharedTradermadeSocket();
-          }
-        }, backoffMs);
-      }
-
-      // Start HTTP fallback for all clients
-      startHttpFallbackForAllClients();
-
-      // Notify all clients of disconnection
-      broadcastToClients({
-        type: 'connection_status',
-        status: 'disconnected',
-        reconnecting: true,
-        timestamp: new Date().toISOString()
-      });
-    };
-
-    sharedTradermadeSocket.onerror = (error) => {
-      console.error('❌ Shared Tradermade WebSocket error:', error);
-      isConnectingToTradermade = false;
-      startHttpFallbackForAllClients();
-    };
-
-  } catch (error) {
-    console.error('❌ Error creating shared Tradermade connection:', error);
-    isConnectingToTradermade = false;
-    startHttpFallbackForAllClients();
-  }
-}
-
-// Broadcast message to all connected clients
-function broadcastToClients(message: any) {
-  for (const client of clientConnections) {
-    if (client.readyState === WebSocket.OPEN) {
-      try {
-        client.send(JSON.stringify(message));
-      } catch (error) {
-        console.error('❌ Error broadcasting to client:', error);
-      }
-    }
-  }
-}
-
-// HTTP fallback for all clients with smart batching
-function startHttpFallbackForAllClients() {
-  if (globalSubscribedSymbols.size === 0 || isRateLimited()) {
-    return;
-  }
-
-  console.log('📡 Starting HTTP fallback for all clients...');
-  
-  const symbolsToFetch = Array.from(globalSubscribedSymbols);
-  
-  const batchFetch = async () => {
-    if (isRateLimited()) {
-      console.log('⚠️ HTTP fallback rate limited - broadcasting cached data');
-      // Broadcast cached data
-      for (const symbol of symbolsToFetch) {
-        const cached = getCachedPrice(symbol, true);
-        if (cached) {
-          broadcastToClients({
-            type: 'price_update',
-            ...cached,
-            dataSource: 'http_cached'
-          });
-        }
-      }
-      return;
-    }
-
-    // Fetch fresh data with delays between requests
-    for (const symbol of symbolsToFetch) {
-      try {
-        const data = await fetchTradermadePrice(symbol);
-        if (data) {
-          broadcastToClients({
-            type: 'price_update',
-            ...data,
-            dataSource: 'http_fallback'
-          });
-        }
-      } catch (error) {
-        console.error(`❌ HTTP fallback error for ${symbol}:`, error);
-      }
-      
-      // Add delay between requests to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-  };
-
-  // Execute batch fetch every 15 seconds during fallback
-  const fallbackInterval = setInterval(() => {
-    if (sharedTradermadeSocket?.readyState === WebSocket.OPEN || clientConnections.size === 0) {
-      clearInterval(fallbackInterval);
-      return;
-    }
-    batchFetch();
-  }, 15000);
 }
 
 serve(async (req) => {
-  console.log(`📞 ${req.method} request from ${req.headers.get('origin')}`);
+  console.log(`📞 Incoming request: ${req.method} from ${req.headers.get('origin')}`);
+  console.log(`📝 Headers:`, Object.fromEntries(req.headers.entries()));
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('✅ Handling CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -460,7 +218,11 @@ serve(async (req) => {
   const { headers } = req;
   const upgradeHeader = headers.get("upgrade") || "";
 
+  console.log(`🔌 WebSocket upgrade request: "${upgradeHeader}"`);
+  console.log(`📋 All headers:`, Object.fromEntries(headers.entries()));
+
   if (upgradeHeader.toLowerCase() !== "websocket") {
+    console.error(`❌ Expected WebSocket upgrade, got: "${upgradeHeader}"`);
     return new Response("Expected WebSocket connection", { 
       status: 400,
       headers: corsHeaders 
@@ -470,120 +232,393 @@ serve(async (req) => {
   const { socket, response } = Deno.upgradeWebSocket(req);
   
   let clientSubscriptions = new Set<string>();
+  let tradermadeSocket: WebSocket | null = null;
+  let reconnectTimeout: number | null = null;
+  let heartbeatInterval: number | null = null;
+  let connectionHealthy = true;
+  const actionTracker = new Map<string, { type: 'subscribe' | 'unsubscribe'; ts: number }>();
 
-  // Client message handling
-  socket.onmessage = (event) => {
+  // Connect to Tradermade WebSocket with enhanced error handling
+  async function connectToTradermade() {
+    const apiKey = WS_API_KEY;
+    console.log('🔑 WebSocket API Key check:', apiKey ? `Found (${apiKey.substring(0, 8)}...)` : 'Missing');
+    
+    if (!apiKey) {
+      console.error('❌ TRADERMADE_WS_API_KEY/TRADERMADE_API_KEY not found in environment');
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: 'error',
+          message: 'Tradermade WS API key not configured - please check environment variables',
+          timestamp: new Date().toISOString()
+        }));
+      }
+      
+      // Fall back to HTTP API for all symbols
+      console.log('🔄 Falling back to HTTP API due to missing WS API key...');
+      for (const symbol of TRADERMADE_SYMBOLS) {
+        fetchTradermadePrice(symbol).then(data => {
+          if (data && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'price_update',
+              ...data
+            }));
+          }
+        });
+      }
+      return;
+    }
+
+    try {
+      console.log('🔌 Connecting to Tradermade WebSocket with API key...');
+      tradermadeSocket = new WebSocket(`wss://marketdata.tradermade.com/feedadv`);
+
+      tradermadeSocket.onopen = () => {
+        console.log('✅ Connected to Tradermade WebSocket');
+        connectionHealthy = true;
+        
+        // Authenticate
+        if (tradermadeSocket) {
+          tradermadeSocket.send(JSON.stringify({
+            userKey: apiKey,
+            symbol: TRADERMADE_SYMBOLS.join(',')
+          }));
+        }
+
+        // Set up ultra-fast 250ms institutional tick updates
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        heartbeatInterval = setInterval(() => {
+          if (tradermadeSocket?.readyState === WebSocket.OPEN) {
+            // Send heartbeat every 12th tick (3 seconds) to maintain connection
+            if (Date.now() % 3000 < 250) {
+              tradermadeSocket.send(JSON.stringify({ type: 'ping' }));
+            }
+          }
+          
+          // Send ultra-fast institutional-grade tick prices every 250ms for all subscribed symbols
+          if (socket.readyState === WebSocket.OPEN && clientSubscriptions.size > 0) {
+            console.log('⚡ Sending ULTRA-FAST tick prices for', clientSubscriptions.size, 'symbols');
+            for (const symbol of clientSubscriptions) {
+              const cached = getCachedPrice(symbol);
+              if (cached) {
+                // Add micro-timestamp for ultra-fast institutional precision
+                const tickData = {
+                  type: 'price_update',
+                  ...cached,
+                  tick_timestamp: Date.now(),
+                  is_institutional_tick: true,
+                  is_ultra_fast_tick: true,
+                  update_frequency: '250ms'
+                };
+                socket.send(JSON.stringify(tickData));
+                console.log(`⚡ ULTRA-FAST TICK: ${symbol} = $${cached.price} @ ${new Date().toISOString()}`);
+              } else {
+                // Fetch fresh price if no cache available
+                fetchTradermadePrice(symbol).then(data => {
+                  if (data && socket.readyState === WebSocket.OPEN) {
+                    const tickData = {
+                      type: 'price_update',
+                      ...data,
+                      tick_timestamp: Date.now(),
+                      is_institutional_tick: true,
+                      is_ultra_fast_tick: true,
+                      update_frequency: '250ms'
+                    };
+                    socket.send(JSON.stringify(tickData));
+                    console.log(`⚡ FRESH ULTRA-FAST TICK: ${symbol} = $${data.price} @ ${new Date().toISOString()}`);
+                  }
+                });
+              }
+            }
+          }
+        }, 250); // Ultra-fast 250ms tick intervals
+
+        // Notify client of connection
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'connection_status',
+            status: 'connected',
+            dataSource: 'tradermade',
+            timestamp: new Date().toISOString()
+          }));
+        }
+      };
+
+      tradermadeSocket.onmessage = (event) => {
+        try {
+          // Handle raw text messages (like "Connected")
+          if (typeof event.data === 'string' && !event.data.startsWith('{')) {
+            console.log('📋 Tradermade text message:', event.data);
+            
+            if (event.data.toLowerCase().includes('connected')) {
+              console.log('✅ Tradermade authentication successful');
+            }
+            return;
+          }
+
+          const data = JSON.parse(event.data);
+          console.log('📊 Raw Tradermade message:', event.data);
+          console.log('📊 Parsed Tradermade data:', JSON.stringify(data, null, 2));
+
+          // Handle authentication response
+          if (data.message && (data.message.includes('connected') || data.message.includes('Connected'))) {
+            console.log('✅ Tradermade authentication successful');
+            return;
+          }
+
+          // Handle heartbeat/ping responses
+          if (data.type === 'pong' || data.message === 'pong') {
+            console.log('💓 Heartbeat response from Tradermade');
+            return;
+          }
+
+          // Handle price updates - support multiple formats
+          let symbol = data.symbol || data.instrument;
+          if (symbol && (data.bid || data.ask || data.price || data.mid)) {
+            symbol = symbol.toUpperCase();
+            
+            // Calculate mid price from available data
+            let price = data.mid || data.price;
+            if (!price && data.bid && data.ask) {
+              price = (parseFloat(data.bid) + parseFloat(data.ask)) / 2;
+            } else if (!price) {
+              price = data.bid || data.ask;
+            }
+            
+            price = parseFloat(price);
+            
+            if (!price || price <= 0 || isNaN(price)) {
+              console.log(`⚠️ Invalid price data for ${symbol}:`, data);
+              return;
+            }
+            
+            const priceUpdate: TradermadePriceData = {
+              symbol: symbol,
+              price: price,
+              bid: data.bid ? parseFloat(data.bid) : price,
+              ask: data.ask ? parseFloat(data.ask) : price,
+              timestamp: new Date().toISOString(),
+              change: 0,
+              changePercent: 0
+            };
+
+            // Cache the update
+            setCachedPrice(symbol, priceUpdate);
+
+            // Send to client if subscribed
+            if (clientSubscriptions.has(symbol) && socket.readyState === WebSocket.OPEN) {
+              console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${price}`);
+              const tickTs = (typeof data.ts === 'string' || typeof data.ts === 'number') ? Number(data.ts) : Date.now();
+              socket.send(JSON.stringify({
+                type: 'price_update',
+                ...priceUpdate,
+                tick_timestamp: tickTs
+              }));
+            }
+          } else {
+            console.log('ℹ️ Non-price message from Tradermade:', JSON.stringify(data));
+          }
+        } catch (error) {
+          console.error('❌ Error parsing Tradermade message:', error.message || error);
+          console.error('❌ Raw message data:', event.data);
+        }
+      };
+
+      tradermadeSocket.onclose = (event) => {
+        console.log(`🔌 Tradermade WebSocket closed: ${event.code} ${event.reason}`);
+        connectionHealthy = false;
+        
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+
+        // Enhanced ultra-fast reconnection for 250ms requirements
+        if (!reconnectTimeout) {
+          console.log('🚀 Ultra-fast reconnection - attempting immediate reconnect...');
+          reconnectTimeout = setTimeout(() => {
+            reconnectTimeout = null;
+            if (socket.readyState === WebSocket.OPEN) {
+              console.log('🔄 Reconnecting for ultra-fast 250ms ticks...');
+              connectToTradermade();
+            }
+          }, 1000); // Reduced from 5000ms to 1000ms for ultra-fast recovery
+        }
+
+        // Notify client with enhanced status
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'connection_status',
+            status: 'disconnected',
+            reconnecting: true,
+            ultra_fast_mode: true,
+            timestamp: new Date().toISOString()
+          }));
+        }
+      };
+
+      tradermadeSocket.onerror = (error) => {
+        console.error('❌ Tradermade WebSocket error:', error.message || error);
+        console.error('❌ WebSocket error details:', {
+          readyState: tradermadeSocket?.readyState,
+          url: tradermadeSocket?.url
+        });
+        connectionHealthy = false;
+        
+        // Notify client of error
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'error',
+            message: 'Tradermade WebSocket connection error',
+            timestamp: new Date().toISOString()
+          }));
+        }
+      };
+
+    } catch (error) {
+      console.error('❌ Error connecting to Tradermade:', error.message || error);
+      connectionHealthy = false;
+      
+      // Notify client of connection error
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          type: 'error',
+          message: 'Failed to establish Tradermade connection',
+          timestamp: new Date().toISOString()
+        }));
+      }
+      
+      // Fall back to HTTP for all symbols
+      console.log('📡 Falling back to HTTP API for all symbols...');
+      const symbolsToFetch = clientSubscriptions.size > 0 ? Array.from(clientSubscriptions) : TRADERMADE_SYMBOLS;
+      
+      for (const symbol of symbolsToFetch) {
+        fetchTradermadePrice(symbol).then(data => {
+          if (data && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+              type: 'price_update',
+              ...data
+            }));
+          }
+        }).catch(err => {
+          console.error(`Failed to fetch HTTP price for ${symbol}:`, err);
+        });
+      }
+    }
+  }
+
+  // Client WebSocket handlers
+  socket.onopen = () => {
+    console.log('🎯 Client connected to Tradermade streaming');
+    
+    // Immediately send connection status
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'connection_status',
+        status: 'connecting',
+        dataSource: 'tradermade',
+        timestamp: new Date().toISOString()
+      }));
+    }
+    
+    connectToTradermade();
+  };
+
+  socket.onmessage = async (event) => {
     try {
       const message: SubscriptionMessage = JSON.parse(event.data);
       console.log('📨 Client message:', message);
 
-      if (message.action === 'subscribe') {
+      if (message.action === 'subscribe' && Array.isArray(message.symbols)) {
+        const now = Date.now();
         const validSymbols = message.symbols
           .map(validateSymbol)
           .filter((s): s is string => s !== null);
-        
-        // Update client subscriptions
-        validSymbols.forEach(symbol => {
-          clientSubscriptions.add(symbol);
-          globalSubscribedSymbols.add(symbol);
+
+        const filtered = validSymbols.filter((symbol) => {
+          const last = actionTracker.get(symbol);
+          if (last && last.type === 'subscribe' && (now - last.ts) < 200) {
+            // Ignore rapid duplicate subscribe
+            return false;
+          }
+          actionTracker.set(symbol, { type: 'subscribe', ts: now });
+          return true;
         });
-        
-        console.log('📡 Client subscribed to:', validSymbols);
-        
-        // Send cached prices immediately if available
-        validSymbols.forEach(symbol => {
+
+        filtered.forEach(symbol => clientSubscriptions.add(symbol));
+        console.log('✅ Client subscribed to:', filtered);
+
+        // Send cached data immediately if available
+        for (const symbol of filtered) {
           const cached = getCachedPrice(symbol);
           if (cached) {
             socket.send(JSON.stringify({
               type: 'price_update',
-              ...cached,
-              dataSource: 'cache'
+              ...cached
             }));
+          } else if (!connectionHealthy) {
+            // Fetch via HTTP if WebSocket is down
+            const data = await fetchTradermadePrice(symbol);
+            if (data) {
+              socket.send(JSON.stringify({
+                type: 'price_update',
+                ...data
+              }));
+            }
           }
-        });
-        
-      } else if (message.action === 'unsubscribe') {
+        }
+      } else if (message.action === 'unsubscribe' && Array.isArray(message.symbols)) {
+        const now = Date.now();
         const validSymbols = message.symbols
           .map(validateSymbol)
           .filter((s): s is string => s !== null);
-        
-        // Update client subscriptions
-        validSymbols.forEach(symbol => {
-          clientSubscriptions.delete(symbol);
-          
-          // Remove from global subscriptions if no other clients need it
-          let stillNeeded = false;
-          for (const client of clientConnections) {
-            if (client !== socket && client.readyState === WebSocket.OPEN) {
-              // Check if other clients need this symbol (simplified check)
-              stillNeeded = true;
-              break;
-            }
+
+        const filtered = validSymbols.filter((symbol) => {
+          const last = actionTracker.get(symbol);
+          // Ignore unsubscribe if just subscribed within 300ms, or repeated rapid unsubscribes
+          if (last && ((last.type === 'subscribe' && (now - last.ts) < 300) || (last.type === 'unsubscribe' && (now - last.ts) < 200))) {
+            return false;
           }
-          if (!stillNeeded) {
-            globalSubscribedSymbols.delete(symbol);
-          }
+          actionTracker.set(symbol, { type: 'unsubscribe', ts: now });
+          return true;
         });
-        
-        console.log('📡 Client unsubscribed from:', validSymbols);
+
+        filtered.forEach(symbol => clientSubscriptions.delete(symbol));
+        console.log('❌ Client unsubscribed from:', filtered);
       }
     } catch (error) {
-      console.error('❌ Error parsing client message:', error);
-    }
-  };
-
-  socket.onopen = () => {
-    console.log('🔌 Client WebSocket connected');
-    clientConnections.add(socket);
-    
-    // Connect to shared Tradermade socket if needed
-    if (!sharedTradermadeSocket || sharedTradermadeSocket.readyState !== WebSocket.OPEN) {
-      connectSharedTradermadeSocket();
+      console.error('❌ Error handling client message:', error);
+      const errorMsg: ErrorMessage = {
+        type: 'error',
+        message: 'Invalid message format',
+        timestamp: new Date().toISOString()
+      };
+      socket.send(JSON.stringify(errorMsg));
     }
   };
 
   socket.onclose = () => {
-    console.log('🔌 Client WebSocket disconnected');
+    console.log('👋 Client disconnected');
     
-    // Remove client from connections
-    clientConnections.delete(socket);
-    
-    // Update global subscriptions
-    clientSubscriptions.forEach(symbol => {
-      let stillNeeded = false;
-      for (const client of clientConnections) {
-        if (client.readyState === WebSocket.OPEN) {
-          stillNeeded = true;
-          break;
-        }
-      }
-      if (!stillNeeded) {
-        globalSubscribedSymbols.delete(symbol);
-      }
-    });
-    
-    // Close shared connection if no clients left
-    if (clientConnections.size === 0) {
-      console.log('🔌 No clients left - closing shared Tradermade connection');
-      if (sharedTradermadeSocket) {
-        sharedTradermadeSocket.close();
-        sharedTradermadeSocket = null;
-      }
-      
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-        reconnectTimeout = null;
-      }
-      
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-      }
-      
-      globalSubscribedSymbols.clear();
+    // Cleanup
+    if (tradermadeSocket) {
+      tradermadeSocket.close();
+    }
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+    }
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
     }
     
     clientSubscriptions.clear();
+  };
+
+  socket.onerror = (error) => {
+    console.error('❌ Client WebSocket error:', error.message || error);
+    console.error('❌ Client socket details:', {
+      readyState: socket.readyState,
+      url: socket.url
+    });
   };
 
   return response;

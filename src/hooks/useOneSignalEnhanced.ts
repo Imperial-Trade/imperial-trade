@@ -665,15 +665,38 @@ export function useOneSignalEnhanced() {
         return { success: false, error, details: { initialized } };
       }
 
-      // **CRITICAL FIX: Enhanced slidedown prompt with debugging**
-      console.info('[OneSignal CRITICAL DEBUG] Requesting permission via slidedown...');
+      // **CRITICAL FIX: iOS Safari PWA - Use direct notification permission**
+      console.info('[OneSignal CRITICAL DEBUG] Requesting permission...');
       
-      const slidedownPromise = (window as any).OneSignal.Slidedown.promptPush();
-      console.info('[OneSignal CRITICAL DEBUG] Slidedown.promptPush() called, waiting for response...');
+      let result;
       
-      const result = await withTimeout(slidedownPromise, browserConfig.permissionTimeout);
+      // For iOS Safari PWA, use OneSignal's notification request directly
+      if (safariPWAInfo.isSafariPWA || browserInfo.isIOS) {
+        console.info('[OneSignal CRITICAL DEBUG] iOS Safari PWA detected - using OneSignal.Notifications.requestPermission()');
+        
+        try {
+          result = await (window as any).OneSignal.Notifications.requestPermission();
+          console.info('[OneSignal CRITICAL DEBUG] iOS Safari permission result:', result);
+        } catch (iosError) {
+          console.warn('[OneSignal CRITICAL DEBUG] iOS direct permission failed, trying PushSubscription.optIn():', iosError);
+          
+          // Fallback to PushSubscription optIn for iOS
+          const ps = (window as any).OneSignal?.User?.PushSubscription;
+          if (ps?.optIn) {
+            result = await ps.optIn();
+            console.info('[OneSignal CRITICAL DEBUG] iOS PushSubscription.optIn() result:', result);
+          } else {
+            throw new Error('iOS OneSignal methods not available');
+          }
+        }
+      } else {
+        // For other browsers, use slidedown
+        console.info('[OneSignal CRITICAL DEBUG] Using slidedown for non-iOS browser...');
+        const slidedownPromise = (window as any).OneSignal.Slidedown.promptPush();
+        result = await withTimeout(slidedownPromise, browserConfig.permissionTimeout);
+      }
       
-      console.info('[OneSignal CRITICAL DEBUG] Slidedown response received:', result);
+      console.info('[OneSignal CRITICAL DEBUG] Permission response received:', result);
 
       if (result) {
         console.log('[OneSignal] Permission granted via slidedown');

@@ -67,6 +67,8 @@ import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
 import { setupNotificationClickHandler } from "@/utils/notificationHandlers";
 import NotificationSystem from "@/components/notifications/NotificationSystem";
 import NotificationsPanel from "@/components/notifications/NotificationsPanel";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
+import { GlobalNotificationBanner } from "@/components/layout/GlobalNotificationBanner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,18 +91,20 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
-            <PostHogPageViewTracker />
-            <ScrollToTop />
-              <AuthProvider>
-                <AutoRecoveryProvider>
-                  <WelcomeProvider>
-                    <NavigationGuard>
-                      <SignalRealtimeProvider>
-                        <WebSocketPriceProvider>
-                          <NotificationSystem />
-                          <NotificationsPanel />
-                      <Routes>
+            <BrowserRouter>
+              <PostHogPageViewTracker />
+              <ScrollToTop />
+                <AuthProvider>
+                  <NotificationsProvider>
+                    <AutoRecoveryProvider>
+                      <WelcomeProvider>
+                        <NavigationGuard>
+                          <SignalRealtimeProvider>
+                            <WebSocketPriceProvider>
+                              <NotificationSystem />
+                              <NotificationsPanel />
+                              <GlobalNotificationBanner />
+                        <Routes>
                         {/* Landing Routes */}
                         <Route
                           path="/"
@@ -293,12 +297,13 @@ function App() {
                         />
                         <Route path="*" element={<NotFound />} />
                         </Routes>
-                      </WebSocketPriceProvider>
-                    </SignalRealtimeProvider>
-                  </NavigationGuard>
-                </WelcomeProvider>
-              </AutoRecoveryProvider>
-            </AuthProvider>
+                            </WebSocketPriceProvider>
+                          </SignalRealtimeProvider>
+                        </NavigationGuard>
+                      </WelcomeProvider>
+                    </AutoRecoveryProvider>
+                  </NotificationsProvider>
+                </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>

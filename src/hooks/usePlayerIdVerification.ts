@@ -5,13 +5,13 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOneSignal } from "./useOneSignal";
+import { useOneSignalEnhanced } from "./useOneSignalEnhanced";
 import { detectSafariPWA } from "@/utils/safariPWADetection";
 import { supabase } from "@/integrations/supabase/client";
 
 export function usePlayerIdVerification() {
   const { user } = useAuth();
-  const { initialized, hasSubscription } = useOneSignal();
+  const { initialized, hasSubscription } = useOneSignalEnhanced();
   const [isVerifying, setIsVerifying] = useState(false);
   const [hasValidPlayerId, setHasValidPlayerId] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<

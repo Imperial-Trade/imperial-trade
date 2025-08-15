@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOneSignal } from "@/hooks/useOneSignal";
+import { useOneSignalEnhanced } from "@/hooks/useOneSignalEnhanced";
 import { usePWAInstallation } from "@/hooks/usePWAInstallation";
 import { detectPlatform, getPlatformInstructions } from "@/utils/platformDetection";
 import { detectSafariPWA } from "@/utils/safariPWADetection";
@@ -27,7 +27,7 @@ export default function UnifiedPermissionFlow({
   className = "" 
 }: UnifiedPermissionFlowProps) {
   const { user } = useAuth();
-  const { initialized, requestPermission, permission, isGranted, browserInfo } = useOneSignal();
+  const { initialized, requestPermission, permission, isGranted, browserInfo } = useOneSignalEnhanced();
   const { installPWA, canInstall, isIOSDevice, showIOSInstructions, getIOSInstructions } = usePWAInstallation();
   
   const [isVisible, setIsVisible] = useState(false);

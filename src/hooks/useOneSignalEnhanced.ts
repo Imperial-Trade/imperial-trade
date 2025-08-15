@@ -170,10 +170,8 @@ export function useOneSignalEnhanced() {
 
         if (cancelled) return;
 
-        // **PHASE 2: Enhanced OneSignal SDK Initialization**
+        // **PHASE 2: V16-Compatible OneSignal SDK Initialization**
         if (typeof window !== 'undefined') {
-          window.OneSignal = window.OneSignal || ([] as any[]);
-          
           // Prevent multiple initializations
           if ((window as any).OneSignal?.__IMPERIAL_INIT_DONE__) {
             if (debug) console.info('[OneSignal] Already initialized, checking ready state');
@@ -193,11 +191,14 @@ export function useOneSignalEnhanced() {
             }
           }
 
-          // Enhanced SDK initialization with comprehensive error handling
+          // **V16 CRITICAL FIX: Use direct initialization or OneSignalDeferred**
           const initPromise = new Promise<void>((resolve, reject) => {
-            try {
-              window.OneSignal.push(function () {
-                try {
+            const attemptInitialization = () => {
+              try {
+                // Check if OneSignal is available as constructor (v16 style)
+                if ((window as any).OneSignal && typeof (window as any).OneSignal.init === 'function') {
+                  console.info('[OneSignal] Using v16 direct initialization');
+                  
                   const initConfig = {
                     appId: configData.appId,
                     allowLocalhostAsSecureOrigin: true,
@@ -206,68 +207,163 @@ export function useOneSignalEnhanced() {
                     notifyButton: { enable: false },
                     bell: { enabled: false },
                     showCredit: false,
-                    // **CRITICAL FIX: Enhanced native slidedown prompt configuration for all platforms**
                     promptOptions: {
-                      slidedown: {
-                        enabled: true,
-                        actionMessage: "🚀 Get instant alerts for premium trading signals, take-profit hits, and critical market opportunities! Never miss a profitable trade again.",
-                        acceptButtonText: "Enable Trading Alerts", 
-                        cancelButtonText: "Maybe Later",
-                        displayPredicate: function() {
-                          console.info('[OneSignal CRITICAL DEBUG] Slidedown display predicate called');
-                          return true; // Always allow slidedown when triggered
-                        }
-                      },
-                      customlink: {
-                        enabled: false // Disable custom link to ensure only native prompt
-                      },
-                      bell: {
-                        enabled: false // Disable bell to ensure only native prompt
-                      }
+                      slidedown: { enabled: false },
+                      customlink: { enabled: false },
+                      bell: { enabled: false }
                     }
                   };
                   
-                  if (debug) console.info('[OneSignal] Initializing with config:', initConfig);
+                  if (debug) console.info('[OneSignal] Initializing with v16 config:', initConfig);
                   
                   (window as any).OneSignal.init(initConfig);
                   (window as any).OneSignal.__IMPERIAL_INIT_DONE__ = true;
                   
-                  setTimeout(() => {
+                  // Enhanced readiness polling with 20-second timeout
+                  let pollAttempts = 0;
+                  const maxPollAttempts = 40; // 20 seconds at 500ms intervals
+                  
+                  const pollForReadiness = () => {
+                    pollAttempts++;
                     try {
-                      const isReady = !!(window as any).OneSignal?.Notifications && !!(window as any).OneSignal?.User;
+                      const notifications = (window as any).OneSignal?.Notifications;
+                      const user = (window as any).OneSignal?.User;
+                      const isReady = !!(notifications && user);
+                      
                       if (isReady) {
-                        if (debug) console.info('[OneSignal] Initialization verified successfully');
+                        console.info(`[OneSignal] SDK ready after ${pollAttempts * 500}ms`);
                         resolve();
+                      } else if (pollAttempts >= maxPollAttempts) {
+                        console.error(`[OneSignal] SDK failed to become ready after ${maxPollAttempts * 500}ms`);
+                        console.error('[OneSignal] SDK state:', {
+                          OneSignal: !!(window as any).OneSignal,
+                          Notifications: !!notifications,
+                          User: !!user
+                        });
+                        reject(new Error('SDK readiness timeout'));
                       } else {
-                        console.warn('[OneSignal] Initialization completed but SDK not fully ready');
-                        reject(new Error('SDK initialization incomplete'));
+                        if (pollAttempts % 4 === 0) { // Log every 2 seconds
+                          console.info(`[OneSignal] Waiting for SDK readiness... (${pollAttempts * 500}ms)`);
+                        }
+                        setTimeout(pollForReadiness, 500);
                       }
                     } catch (e) {
-                      console.error('[OneSignal] Post-initialization verification failed:', e);
+                      console.error('[OneSignal] Readiness check error:', e);
                       reject(e);
                     }
-                  }, 500);
+                  };
                   
-                } catch (initError) {
-                  console.error('[OneSignal] Initialization error:', initError);
-                  reject(initError);
+                  pollForReadiness();
+                  
+                } else if ((window as any).OneSignalDeferred) {
+                  console.info('[OneSignal] Using OneSignalDeferred pattern');
+                  
+                  (window as any).OneSignalDeferred.push(function(OneSignal: any) {
+                    try {
+                      const initConfig = {
+                        appId: configData.appId,
+                        allowLocalhostAsSecureOrigin: true,
+                        autoRegister: false,
+                        autoResubscribe: false,
+                        notifyButton: { enable: false },
+                        bell: { enabled: false },
+                        showCredit: false,
+                        promptOptions: {
+                          slidedown: { enabled: false },
+                          customlink: { enabled: false },
+                          bell: { enabled: false }
+                        }
+                      };
+                      
+                      OneSignal.init(initConfig);
+                      (window as any).OneSignal = OneSignal;
+                      (window as any).OneSignal.__IMPERIAL_INIT_DONE__ = true;
+                      
+                      console.info('[OneSignal] OneSignalDeferred initialization complete');
+                      resolve();
+                      
+                    } catch (deferredError) {
+                      console.error('[OneSignal] OneSignalDeferred error:', deferredError);
+                      reject(deferredError);
+                    }
+                  });
+                  
+                } else {
+                  console.warn('[OneSignal] Neither direct init nor OneSignalDeferred available, falling back to legacy pattern');
+                  
+                  // Fallback to legacy pattern
+                  window.OneSignal = window.OneSignal || [];
+                  (window.OneSignal as any[]).push(function () {
+                    try {
+                      const initConfig = {
+                        appId: configData.appId,
+                        allowLocalhostAsSecureOrigin: true,
+                        autoRegister: false,
+                        autoResubscribe: false,
+                        notifyButton: { enable: false },
+                        bell: { enabled: false },
+                        showCredit: false,
+                        promptOptions: {
+                          slidedown: { enabled: false },
+                          customlink: { enabled: false },
+                          bell: { enabled: false }
+                        }
+                      };
+                      
+                      (window as any).OneSignal.init(initConfig);
+                      (window as any).OneSignal.__IMPERIAL_INIT_DONE__ = true;
+                      
+                      setTimeout(() => {
+                        try {
+                          const isReady = !!(window as any).OneSignal?.Notifications && !!(window as any).OneSignal?.User;
+                          if (isReady) {
+                            console.info('[OneSignal] Legacy initialization verified');
+                            resolve();
+                          } else {
+                            console.error('[OneSignal] Legacy initialization failed readiness check');
+                            reject(new Error('Legacy SDK initialization incomplete'));
+                          }
+                        } catch (e) {
+                          console.error('[OneSignal] Legacy verification failed:', e);
+                          reject(e);
+                        }
+                      }, 1000);
+                      
+                    } catch (legacyError) {
+                      console.error('[OneSignal] Legacy initialization error:', legacyError);
+                      reject(legacyError);
+                    }
+                  });
                 }
-              });
-            } catch (pushError) {
-              console.error('[OneSignal] Failed to push initialization function:', pushError);
-              reject(pushError);
-            }
+                
+              } catch (initError) {
+                console.error('[OneSignal] Initialization attempt failed:', initError);
+                reject(initError);
+              }
+            };
+
+            // Try initialization with a small delay to ensure SDK is loaded
+            setTimeout(attemptInitialization, 100);
           });
           
-          await withTimeout(initPromise, 10000).catch(timeoutError => {
-            console.error('[OneSignal] Initialization timeout:', timeoutError);
+          await withTimeout(initPromise, 25000).catch(timeoutError => {
+            console.error('[OneSignal] Extended initialization timeout (25s):', timeoutError);
+            console.error('[OneSignal] Final SDK state check:', {
+              OneSignal: !!(window as any).OneSignal,
+              OneSignalDeferred: !!(window as any).OneSignalDeferred,
+              hasInit: typeof (window as any).OneSignal?.init === 'function',
+              Notifications: !!(window as any).OneSignal?.Notifications,
+              User: !!(window as any).OneSignal?.User
+            });
             throw timeoutError;
           });
         }
 
-        // **PHASE 3: Enhanced User Linking and Permission Observation**
-        window.OneSignal.push(function () {
+        // **PHASE 3: V16-Compatible User Linking and Permission Observation**
+        const setupListeners = () => {
           try {
+            console.info('[OneSignal] Setting up v16-compatible listeners...');
+            
             // Enhanced permission change listener
             const handlePermissionChange = () => {
               try { 
@@ -373,17 +469,29 @@ export function useOneSignalEnhanced() {
           } catch (e) {
             console.error('[OneSignal] Setup error:', e);
           }
-        });
+        };
+        
+        // Set up listeners directly (v16 compatible)
+        setupListeners();
 
         setInitialized(true);
         console.info('[OneSignal CRITICAL DEBUG] Setup completed - triggering auto-prompt check');
         
-        // **CRITICAL FIX: Enhanced auto-trigger with comprehensive debugging**
+      // **CRITICAL FIX: Enhanced auto-trigger ONLY for non-iOS PWA authenticated users**
         if (user?.id) {
-          setTimeout(() => {
-            console.info('[OneSignal CRITICAL DEBUG] Auto-trigger delay expired, checking conditions...');
-            triggerNativePromptIfEligible();
-          }, 2000); // Ensure OneSignal is fully ready
+          console.info('[OneSignal CRITICAL DEBUG] Setup completed for authenticated user - scheduling auto-prompt check');
+          
+          // Skip auto-trigger for iOS PWA (handled by interaction listener)
+          if (safariPWAInfo.isSafariPWA && browserInfo.isIOS) {
+            console.info('[OneSignal CRITICAL DEBUG] iOS PWA detected - skipping immediate auto-trigger, using interaction listener instead');
+          } else {
+            setTimeout(() => {
+              console.info('[OneSignal CRITICAL DEBUG] Auto-trigger delay expired for user:', user.id.substring(0, 8) + '...');
+              triggerNativePromptIfEligible();
+            }, 2000); // Ensure OneSignal is fully ready
+          }
+        } else {
+          console.info('[OneSignal CRITICAL DEBUG] Setup completed but user not authenticated - skipping auto-prompt');
         }
 
       } catch (error) {
@@ -648,14 +756,52 @@ export function useOneSignalEnhanced() {
     }
   };
 
+  // Post-permission sync with backend
+  const syncSubscriptionStatus = async (playerId?: string) => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('onesignal-upsert-user', {
+        body: {
+          user_id: user.id,
+          email: user.email,
+          player_id: playerId,
+          device_fingerprint: deviceInfo?.fingerprint,
+          device_info: deviceInfo
+        }
+      });
+      
+      if (error) {
+        console.warn('[OneSignal] Sync failed:', error);
+      } else {
+        console.info('[OneSignal] Subscription status synced successfully');
+        
+        // Update device-specific subscription status
+        if (playerId && deviceInfo?.fingerprint) {
+          setDeviceSubscriptionStatus(user.id, deviceInfo.fingerprint, true);
+          setDeviceHasSubscription(true);
+        }
+      }
+    } catch (syncError) {
+      console.warn('[OneSignal] Sync error:', syncError);
+    }
+  };
+
   // **CRITICAL FIX: Enhanced permission request with comprehensive error handling and retry logic**
-  const requestPermission = async (): Promise<{ 
+  const requestPermission = async (): Promise<{
     success: boolean; 
     error?: string; 
     details?: any 
   }> => {
     try {
       console.info('[OneSignal CRITICAL DEBUG] === PERMISSION REQUEST STARTED ===');
+      
+      // **HARD GUARD: Ensure user is authenticated before requesting permissions**
+      if (!user?.id) {
+        const error = 'User must be logged in to enable push notifications';
+        console.warn('[OneSignal]', error);
+        return { success: false, error, details: { authenticated: false } };
+      }
       
       if (!browserInfo.isSupported) {
         const error = `Browser ${browserInfo.name} ${browserInfo.version} is not supported`;
@@ -680,36 +826,51 @@ export function useOneSignalEnhanced() {
       
       let result;
       
-      // For iOS Safari PWA, use OneSignal's notification request directly
+      // **V16 CRITICAL FIX: Use proper v16 methods for permission requests**
       if (safariPWAInfo.isSafariPWA || browserInfo.isIOS) {
-        console.info('[OneSignal CRITICAL DEBUG] iOS Safari PWA detected - using OneSignal.Notifications.requestPermission()');
+        console.info('[OneSignal CRITICAL DEBUG] iOS Safari PWA detected - using v16 permission flow');
         
         try {
-          result = await (window as any).OneSignal.Notifications.requestPermission();
-          console.info('[OneSignal CRITICAL DEBUG] iOS Safari permission result:', result);
-        } catch (iosError) {
-          console.warn('[OneSignal CRITICAL DEBUG] iOS direct permission failed, trying PushSubscription.optIn():', iosError);
-          
-          // Fallback to PushSubscription optIn for iOS
-          const ps = (window as any).OneSignal?.User?.PushSubscription;
-          if (ps?.optIn) {
-            result = await ps.optIn();
-            console.info('[OneSignal CRITICAL DEBUG] iOS PushSubscription.optIn() result:', result);
+          // Try v16 Notifications.requestPermission first
+          if ((window as any).OneSignal.Notifications?.requestPermission) {
+            result = await (window as any).OneSignal.Notifications.requestPermission();
+            console.info('[OneSignal CRITICAL DEBUG] v16 Notifications.requestPermission result:', result);
           } else {
-            throw new Error('iOS OneSignal methods not available');
+            // Fallback to PushSubscription optIn for iOS
+            const ps = (window as any).OneSignal?.User?.PushSubscription;
+            if (ps?.optIn) {
+              result = await ps.optIn();
+              console.info('[OneSignal CRITICAL DEBUG] iOS PushSubscription.optIn() result:', result);
+            } else {
+              throw new Error('iOS OneSignal v16 methods not available');
+            }
           }
+        } catch (iosError) {
+          console.warn('[OneSignal CRITICAL DEBUG] iOS permission failed:', iosError);
+          throw iosError;
         }
       } else {
-        // For other browsers, use slidedown
-        console.info('[OneSignal CRITICAL DEBUG] Using slidedown for non-iOS browser...');
-        const slidedownPromise = (window as any).OneSignal.Slidedown.promptPush();
-        result = await withTimeout(slidedownPromise, browserConfig.permissionTimeout);
+        // **NATIVE PROMPT ONLY: Use OneSignal.Notifications.requestPermission for all non-iOS browsers**
+        console.info('[OneSignal CRITICAL DEBUG] Using native permission prompt for non-iOS browser...');
+        
+        try {
+          // Use direct native permission request only - no slidedown
+          if ((window as any).OneSignal.Notifications?.requestPermission) {
+            result = await (window as any).OneSignal.Notifications.requestPermission();
+            console.info('[OneSignal CRITICAL DEBUG] Native permission result:', result);
+          } else {
+            throw new Error('OneSignal v16 Notifications.requestPermission method not available');
+          }
+        } catch (permissionError) {
+          console.warn('[OneSignal CRITICAL DEBUG] Native permission failed:', permissionError);
+          throw permissionError;
+        }
       }
       
       console.info('[OneSignal CRITICAL DEBUG] Permission response received:', result);
 
       if (result) {
-        console.log('[OneSignal] Permission granted via slidedown');
+        console.log('[OneSignal] Permission granted via native prompt');
         setPermission('granted');
         
         // Wait a moment for subscription to be established
@@ -719,19 +880,23 @@ export function useOneSignalEnhanced() {
         if (ps?.id && user?.id) {
           console.log('[OneSignal] Capturing Player ID after permission grant:', ps.id.substring(0, 8) + '...');
           await captureAndStorePlayerIdSequential(ps.id);
+          
+          // Sync with backend after successful subscription
+          await syncSubscriptionStatus(ps.id);
         }
         
-        return { success: true, details: { method: 'slidedown', result } };
+        setHasSubscription(true);
+        return { success: true, details: { method: 'native_prompt', result, synced: true } };
       } else {
-        console.log('[OneSignal] Permission denied via slidedown');
+        console.log('[OneSignal] Permission denied via native prompt');
         setPermission('denied');
-        return { success: false, error: 'Permission denied', details: { method: 'slidedown', result } };
+        return { success: false, error: 'Permission denied', details: { method: 'native_prompt', result } };
       }
     } catch (err: any) {
       console.error('[OneSignal CRITICAL DEBUG] Permission request failed:', err);
       
       // Fallback to browser native prompt for critical cases
-      if (err.message?.includes('timeout') || err.message?.includes('slidedown')) {
+      if (err.message?.includes('timeout') || err.message?.includes('permission')) {
         try {
           console.info('[OneSignal CRITICAL DEBUG] Trying fallback browser native prompt...');
           
@@ -888,28 +1053,77 @@ export function useOneSignalEnhanced() {
     }
   };
 
-  // **Enhanced auto-trigger effect with multiple retry mechanisms**
+  // **iOS PWA: Add first user interaction listener after login for native prompt**
   useEffect(() => {
-    if (!initialized || !user?.id) return;
+    if (!initialized || !user?.id || !safariPWAInfo.isSafariPWA || !browserInfo.isIOS) {
+      return;
+    }
 
-    console.info('[OneSignal CRITICAL DEBUG] Auto-trigger effect triggered');
+    console.info('[OneSignal CRITICAL DEBUG] iOS PWA user logged in - setting up first interaction listener');
+    
+    let hasTriggeredOnce = false;
+    
+    const handleFirstInteraction = () => {
+      if (hasTriggeredOnce) return;
+      hasTriggeredOnce = true;
+      
+      console.info('[OneSignal CRITICAL DEBUG] First user interaction detected on iOS PWA - triggering native prompt');
+      
+      // Small delay to ensure the interaction is complete
+      setTimeout(() => {
+        requestPermission().then(result => {
+          console.info('[OneSignal CRITICAL DEBUG] iOS PWA interaction-triggered permission result:', result);
+        });
+      }, 100);
+      
+      // Remove listeners after first use
+      document.removeEventListener('click', handleFirstInteraction, true);
+      document.removeEventListener('touchstart', handleFirstInteraction, true);
+    };
+    
+    // Add listeners for first user interaction
+    document.addEventListener('click', handleFirstInteraction, true);
+    document.addEventListener('touchstart', handleFirstInteraction, true);
+    
+    return () => {
+      document.removeEventListener('click', handleFirstInteraction, true);
+      document.removeEventListener('touchstart', handleFirstInteraction, true);
+    };
+  }, [initialized, user?.id, safariPWAInfo.isSafariPWA, browserInfo.isIOS, requestPermission]);
+
+  // **Enhanced auto-trigger effect for non-iOS devices only**
+  useEffect(() => {
+    if (!initialized || !user?.id) {
+      console.info('[OneSignal CRITICAL DEBUG] User not authenticated or OneSignal not initialized - clearing any pending prompts');
+      return;
+    }
+
+    // Skip auto-trigger for iOS PWA (handled by interaction listener above)
+    if (safariPWAInfo.isSafariPWA && browserInfo.isIOS) {
+      console.info('[OneSignal CRITICAL DEBUG] iOS PWA detected - skipping auto-trigger, using interaction listener instead');
+      return;
+    }
+
+    console.info('[OneSignal CRITICAL DEBUG] Auto-trigger effect triggered for authenticated user:', user.id.substring(0, 8) + '...');
     
     // Initial delay to ensure OneSignal is fully ready
     const initialTimer = setTimeout(() => {
+      console.info('[OneSignal CRITICAL DEBUG] Initial auto-trigger check after user login');
       triggerNativePromptIfEligible();
     }, 3000);
 
     // Backup retry for edge cases
     const backupTimer = setTimeout(() => {
-      console.info('[OneSignal CRITICAL DEBUG] Backup auto-trigger check...');
+      console.info('[OneSignal CRITICAL DEBUG] Backup auto-trigger check for authenticated user');
       triggerNativePromptIfEligible();
     }, 8000);
 
     return () => {
+      console.info('[OneSignal CRITICAL DEBUG] Cleaning up auto-trigger timers');
       clearTimeout(initialTimer);
       clearTimeout(backupTimer);
     };
-  }, [initialized, user?.id, permission, hasSubscription, profile?.push_subscription_active, profile?.onesignal_player_id]);
+  }, [initialized, user?.id, safariPWAInfo.isSafariPWA, browserInfo.isIOS]);
 
   return {
     initialized,

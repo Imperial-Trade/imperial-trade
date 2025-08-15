@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
-
+import { MarketHoursService } from '@/services/MarketHoursService';
 interface OptimizedLivePriceData {
   price: number;
   change: number;
@@ -58,9 +58,16 @@ export function useOptimizedLivePrice(
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Subscribe to symbol on mount
+  // Subscribe to symbol on mount (skip when market is closed)
   useEffect(() => {
     if (!symbol) return;
+
+    const status = MarketHoursService.getMarketStatus(symbol);
+    if (!status.isOpen) {
+      // Ensure we are not subscribed when market is closed
+      unsubscribe([symbol]);
+      return;
+    }
 
     subscribe([symbol]);
 
@@ -126,8 +133,9 @@ export function useOptimizedLivePrice(
   }, [prices, symbol, debounceMs, getPrice]);
 
   const refreshPrice = useCallback(() => {
+    if (marketStatus && !marketStatus.isOpen) return; // Do not fetch when market is closed
     contextRefreshPrice(symbol);
-  }, [contextRefreshPrice, symbol]);
+  }, [contextRefreshPrice, symbol, marketStatus]);
 
   // Get error for this specific symbol or global error
   const symbolError = errors[symbol] || errors.global || null;

@@ -19,6 +19,10 @@ interface Profile {
   approved_by: string | null;
   created_at: string | null;
   updated_at: string | null;
+  push_subscription_active: boolean | null;
+  onesignal_player_id: string | null;
+  onesignal_subscription_status: string | null;
+  onesignal_last_verified_at: string | null;
 }
 
 interface AuthContextType {
@@ -73,7 +77,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           approved_at,
           approved_by,
           created_at,
-          updated_at
+          updated_at,
+          push_subscription_active,
+          onesignal_player_id,
+          onesignal_subscription_status,
+          onesignal_last_verified_at
         `)
         .eq('id', userId)
         .single();

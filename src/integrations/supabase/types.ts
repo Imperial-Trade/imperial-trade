@@ -665,6 +665,54 @@ export type Database = {
         }
         Relationships: []
       }
+      device_subscriptions: {
+        Row: {
+          browser_name: string | null
+          browser_version: string | null
+          created_at: string | null
+          device_fingerprint: string
+          device_info: Json | null
+          id: string
+          is_active: boolean | null
+          is_mobile: boolean | null
+          last_seen_at: string | null
+          onesignal_player_id: string
+          platform: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          browser_name?: string | null
+          browser_version?: string | null
+          created_at?: string | null
+          device_fingerprint: string
+          device_info?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_mobile?: boolean | null
+          last_seen_at?: string | null
+          onesignal_player_id: string
+          platform?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          browser_name?: string | null
+          browser_version?: string | null
+          created_at?: string | null
+          device_fingerprint?: string
+          device_info?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_mobile?: boolean | null
+          last_seen_at?: string | null
+          onesignal_player_id?: string
+          platform?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       economic_events: {
         Row: {
           actual_value: string | null
@@ -1374,9 +1422,11 @@ export type Database = {
           cover_position_x: string | null
           cover_position_y: string | null
           created_at: string | null
+          device_fingerprint: string | null
           display_name: string | null
           engagement_score: number | null
           id: string
+          last_device_info: Json | null
           last_login: string | null
           legal_accepted: boolean
           legal_accepted_at: string | null
@@ -1417,9 +1467,11 @@ export type Database = {
           cover_position_x?: string | null
           cover_position_y?: string | null
           created_at?: string | null
+          device_fingerprint?: string | null
           display_name?: string | null
           engagement_score?: number | null
           id: string
+          last_device_info?: Json | null
           last_login?: string | null
           legal_accepted?: boolean
           legal_accepted_at?: string | null
@@ -1460,9 +1512,11 @@ export type Database = {
           cover_position_x?: string | null
           cover_position_y?: string | null
           created_at?: string | null
+          device_fingerprint?: string | null
           display_name?: string | null
           engagement_score?: number | null
           id?: string
+          last_device_info?: Json | null
           last_login?: string | null
           legal_accepted?: boolean
           legal_accepted_at?: string | null
@@ -2888,6 +2942,15 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_user_active_devices: {
+        Args: { p_user_id: string }
+        Returns: {
+          device_fingerprint: string
+          device_info: Json
+          last_seen_at: string
+          onesignal_player_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2904,6 +2967,10 @@ export type Database = {
           target_price: number
           triggered: boolean
         }[]
+      }
+      should_show_onesignal_prompt: {
+        Args: { p_device_fingerprint: string; p_user_id: string }
+        Returns: boolean
       }
       should_user_receive_notification: {
         Args: {

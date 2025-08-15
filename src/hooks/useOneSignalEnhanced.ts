@@ -255,11 +255,21 @@ export function useOneSignalEnhanced() {
                       isIOSPWA: safariPWAInfo.isSafariPWA
                     });
 
-                    // **CRITICAL: Capture Player ID for iOS PWA users**
-                    if (hasValidSub && id && safariPWAInfo.isSafariPWA) {
-                      console.log('[OneSignal] iOS PWA Player ID captured:', id.substring(0, 8) + '...');
-                      ensureOneSignalUserWithPlayerId(id).catch(console.warn);
-                    }
+          // **CRITICAL: Capture Player ID for all users, enhanced for iOS PWA**
+          if (hasValidSub && id) {
+            console.log('[OneSignal] Player ID captured:', id.substring(0, 8) + '...', 
+              safariPWAInfo.isSafariPWA ? '(iOS PWA)' : '(Standard Web)');
+            
+            // Force immediate sync for ALL users with Player IDs
+            ensureOneSignalUserWithPlayerId(id).catch(err => {
+              console.warn('[OneSignal] Player ID sync failed:', err);
+              // Retry mechanism for critical failures
+              setTimeout(() => {
+                console.log('[OneSignal] Retrying Player ID sync...');
+                ensureOneSignalUserWithPlayerId(id).catch(console.warn);
+              }, 2000);
+            });
+          }
                   } catch (e) {
                     console.warn('[OneSignal] Subscription state update error:', e);
                   }

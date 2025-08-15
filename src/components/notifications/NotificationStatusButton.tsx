@@ -6,6 +6,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { NotificationExplainer } from './NotificationExplainer';
 
 interface NotificationStatusButtonProps {
   className?: string;
@@ -139,28 +140,32 @@ export const NotificationStatusButton: React.FC<NotificationStatusButtonProps> =
   const Icon = statusInfo.icon;
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <Button
-        variant={statusInfo.variant}
-        size="sm"
-        onClick={handleAction}
-        disabled={isChecking}
-        className="flex items-center gap-2"
-      >
-        {isChecking ? (
-          <RefreshCw className="h-4 w-4 animate-spin" />
-        ) : (
-          <Icon className="h-4 w-4" />
-        )}
-        {showLabel && statusInfo.label}
-      </Button>
+    <div className={`space-y-3 ${className}`}>
+      <NotificationExplainer />
       
-      {statusInfo.variant === 'destructive' && (
-        <Badge variant="outline" className="text-xs">
-          <Settings className="h-3 w-3 mr-1" />
-          Browser Settings
-        </Badge>
-      )}
+      <div className="flex items-center justify-between">
+        <Button
+          variant={statusInfo.variant}
+          size="sm"
+          onClick={handleAction}
+          disabled={isChecking}
+          className="flex items-center gap-2"
+        >
+          {isChecking ? (
+            <RefreshCw className="h-4 w-4 animate-spin" />
+          ) : (
+            <Icon className="h-4 w-4" />
+          )}
+          {showLabel && statusInfo.label}
+        </Button>
+        
+        {statusInfo.variant === 'destructive' && (
+          <Badge variant="outline" className="text-xs">
+            <Settings className="h-3 w-3 mr-1" />
+            Browser Settings
+          </Badge>
+        )}
+      </div>
     </div>
   );
 };

@@ -208,16 +208,7 @@ export function useOneSignalEnhanced() {
                     bell: { enabled: false },
                     showCredit: false,
                     promptOptions: {
-                      slidedown: {
-                        enabled: true,
-                        actionMessage: "🚀 Get instant alerts for premium trading signals, take-profit hits, and critical market opportunities! Never miss a profitable trade again.",
-                        acceptButtonText: "Enable Trading Alerts", 
-                        cancelButtonText: "Maybe Later",
-                        displayPredicate: function() {
-                          console.info('[OneSignal CRITICAL DEBUG] Slidedown display predicate called');
-                          return true;
-                        }
-                      },
+                      slidedown: { enabled: false },
                       customlink: { enabled: false },
                       bell: { enabled: false }
                     }
@@ -278,16 +269,7 @@ export function useOneSignalEnhanced() {
                         bell: { enabled: false },
                         showCredit: false,
                         promptOptions: {
-                          slidedown: {
-                            enabled: true,
-                            actionMessage: "🚀 Get instant alerts for premium trading signals, take-profit hits, and critical market opportunities! Never miss a profitable trade again.",
-                            acceptButtonText: "Enable Trading Alerts", 
-                            cancelButtonText: "Maybe Later",
-                            displayPredicate: function() {
-                              console.info('[OneSignal CRITICAL DEBUG] Slidedown display predicate called');
-                              return true;
-                            }
-                          },
+                          slidedown: { enabled: false },
                           customlink: { enabled: false },
                           bell: { enabled: false }
                         }
@@ -322,16 +304,7 @@ export function useOneSignalEnhanced() {
                         bell: { enabled: false },
                         showCredit: false,
                         promptOptions: {
-                          slidedown: {
-                            enabled: true,
-                            actionMessage: "🚀 Get instant alerts for premium trading signals, take-profit hits, and critical market opportunities! Never miss a profitable trade again.",
-                            acceptButtonText: "Enable Trading Alerts", 
-                            cancelButtonText: "Maybe Later",
-                            displayPredicate: function() {
-                              console.info('[OneSignal CRITICAL DEBUG] Slidedown display predicate called');
-                              return true;
-                            }
-                          },
+                          slidedown: { enabled: false },
                           customlink: { enabled: false },
                           bell: { enabled: false }
                         }
@@ -877,36 +850,27 @@ export function useOneSignalEnhanced() {
           throw iosError;
         }
       } else {
-        // **V16 FIX: For other browsers, use proper v16 slidedown method**
-        console.info('[OneSignal CRITICAL DEBUG] Using v16 slidedown for non-iOS browser...');
+        // **NATIVE PROMPT ONLY: Use OneSignal.Notifications.requestPermission for all non-iOS browsers**
+        console.info('[OneSignal CRITICAL DEBUG] Using native permission prompt for non-iOS browser...');
         
         try {
-          // Try v16 slidedown method
-          if ((window as any).OneSignal.Slidedown?.promptPush) {
-            const slidedownPromise = (window as any).OneSignal.Slidedown.promptPush();
-            result = await withTimeout(slidedownPromise, browserConfig.permissionTimeout);
-          } else if ((window as any).OneSignal.Notifications?.requestPermission) {
-            // Fallback to direct permission request
-            result = await (window as any).OneSignal.Notifications.requestPermission();
-          } else {
-            throw new Error('OneSignal v16 permission methods not available');
-          }
-        } catch (slidedownError) {
-          console.warn('[OneSignal CRITICAL DEBUG] Slidedown failed, trying direct permission:', slidedownError);
-          
-          // Final fallback to direct permission request
+          // Use direct native permission request only - no slidedown
           if ((window as any).OneSignal.Notifications?.requestPermission) {
             result = await (window as any).OneSignal.Notifications.requestPermission();
+            console.info('[OneSignal CRITICAL DEBUG] Native permission result:', result);
           } else {
-            throw slidedownError;
+            throw new Error('OneSignal v16 Notifications.requestPermission method not available');
           }
+        } catch (permissionError) {
+          console.warn('[OneSignal CRITICAL DEBUG] Native permission failed:', permissionError);
+          throw permissionError;
         }
       }
       
       console.info('[OneSignal CRITICAL DEBUG] Permission response received:', result);
 
       if (result) {
-        console.log('[OneSignal] Permission granted via slidedown');
+        console.log('[OneSignal] Permission granted via native prompt');
         setPermission('granted');
         
         // Wait a moment for subscription to be established
@@ -922,17 +886,17 @@ export function useOneSignalEnhanced() {
         }
         
         setHasSubscription(true);
-        return { success: true, details: { method: 'slidedown', result, synced: true } };
+        return { success: true, details: { method: 'native_prompt', result, synced: true } };
       } else {
-        console.log('[OneSignal] Permission denied via slidedown');
+        console.log('[OneSignal] Permission denied via native prompt');
         setPermission('denied');
-        return { success: false, error: 'Permission denied', details: { method: 'slidedown', result } };
+        return { success: false, error: 'Permission denied', details: { method: 'native_prompt', result } };
       }
     } catch (err: any) {
       console.error('[OneSignal CRITICAL DEBUG] Permission request failed:', err);
       
       // Fallback to browser native prompt for critical cases
-      if (err.message?.includes('timeout') || err.message?.includes('slidedown')) {
+      if (err.message?.includes('timeout') || err.message?.includes('permission')) {
         try {
           console.info('[OneSignal CRITICAL DEBUG] Trying fallback browser native prompt...');
           

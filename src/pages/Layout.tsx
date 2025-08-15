@@ -8,7 +8,7 @@ import { useVoiceRecognition } from '@/components/layout/VoiceRecognition';
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from '@/components/AppSidebar';
 import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
-import { PushPermissionReminder } from '@/components/notifications/PushPermissionReminder';
+
 import OneSignalInitializer from '@/components/integrations/OneSignalInitializer';
 
 interface LayoutProps {
@@ -104,7 +104,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
             </main>
           </div>
           
-          <PushPermissionReminder />
+          
         </div>
       </SidebarProvider>
     </OneSignalInitializer>

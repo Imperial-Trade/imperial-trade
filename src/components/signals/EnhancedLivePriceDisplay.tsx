@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
+import { MarketStatusBadge } from '@/components/ui/MarketStatusBadge';
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -52,7 +53,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     connectionStatus,
     dataSource,
     priceUpdateSource,
-    refreshPrice
+    refreshPrice,
+    marketStatus
   } = useOptimizedLivePrice(apiSymbol, {
     enableSmartPausing: false, // Keep connection active for trading signals
     debounceMs: 50, // Ultra-fast updates for trading (50ms)
@@ -292,6 +294,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </Button>
       </div>
 
+      {/* Market Status */}
+      <div className="mb-3">
+        <MarketStatusBadge marketStatus={marketStatus} />
+      </div>
+
       {/* Error State */}
       {error && (
         <div className="flex items-center gap-2 mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
@@ -326,14 +333,21 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             {error ? (
               <div className="text-gray-500 font-mono text-xl">---.--</div>
             ) : (
-              <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-                isLoading || isRefreshing ? 'animate-pulse' : ''
-              } ${
-                priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
-                priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
-                'text-accent-green'
-              }`}>
-                ${formatPrice(price)}
+              <div className="flex flex-col">
+                <div className={`font-mono text-xl font-bold transition-all duration-300 ${
+                  isLoading || isRefreshing ? 'animate-pulse' : ''
+                } ${
+                  priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
+                  priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
+                  marketStatus?.isOpen ? 'text-accent-green' : 'text-gray-400'
+                }`}>
+                  ${formatPrice(marketStatus?.isOpen ? price : (marketStatus?.lastKnownPrice || price))}
+                </div>
+                {!marketStatus?.isOpen && marketStatus?.lastKnownPrice && (
+                  <div className="text-xs text-gray-500 font-normal">
+                    Last price when market was open
+                  </div>
+                )}
               </div>
             )}
             

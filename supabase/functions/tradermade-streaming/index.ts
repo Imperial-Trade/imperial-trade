@@ -48,6 +48,11 @@ interface TradermadePriceData {
   timestamp: string;
   change: number;
   changePercent: number;
+  marketStatus?: {
+    isOpen: boolean;
+    sessionName?: string;
+    lastKnownPrice?: number;
+  };
 }
 
 interface SubscriptionMessage {
@@ -63,7 +68,9 @@ interface ErrorMessage {
 
 // Cache configuration - optimized for ultra-fast 250ms ticks
 const priceCache = new Map<string, TradermadePriceData>();
+const lastKnownPrices = new Map<string, { price: number; timestamp: number; }>();
 const CACHE_TTL = 1000; // 1 second for ultra-fast updates
+const LAST_KNOWN_TTL = 86400000; // 24 hours for last known prices
 
 let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();
@@ -103,6 +110,60 @@ function getCachedPrice(symbol: string): TradermadePriceData | null {
 
 function setCachedPrice(symbol: string, data: TradermadePriceData): void {
   priceCache.set(symbol, data);
+}
+
+// Market status helper function
+function getMarketStatus(symbol: string): { isOpen: boolean; sessionName?: string } {
+  const now = new Date();
+  const utcHour = now.getUTCHours() + (now.getUTCMinutes() / 60);
+  const currentDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  // Crypto markets - 24/7
+  if (symbol.includes('BTC') || symbol.includes('ETH')) {
+    return { isOpen: true, sessionName: '24/7 Trading' };
+  }
+  
+  // Forex markets - Sunday 22:00 UTC to Friday 22:00 UTC
+  if (symbol.includes('USD') && !symbol.includes('100')) {
+    if (currentDay === 0 && utcHour < 22) { // Sunday before 22:00
+      return { isOpen: false, sessionName: 'Weekend - Forex Closed' };
+    }
+    if (currentDay === 5 && utcHour >= 22) { // Friday after 22:00
+      return { isOpen: false, sessionName: 'Weekend - Forex Closed' };
+    }
+    if (currentDay === 6) { // Saturday
+      return { isOpen: false, sessionName: 'Weekend - Forex Closed' };
+    }
+    return { isOpen: true, sessionName: 'Forex Session' };
+  }
+  
+  // US Stock Indices (9:30 AM - 4:00 PM EST = 14:30 - 21:00 UTC)
+  if (symbol.includes('NAS100') || symbol.includes('USA30') || symbol.includes('US30')) {
+    const isTradingDay = [1, 2, 3, 4, 5].includes(currentDay); // Monday to Friday
+    const isTradingHours = utcHour >= 14.5 && utcHour < 21;
+    
+    if (!isTradingDay || !isTradingHours) {
+      return { isOpen: false, sessionName: 'After Hours - Market Closed' };
+    }
+    return { isOpen: true, sessionName: 'US Market Session' };
+  }
+  
+  // Commodities (Sunday 22:00 UTC to Friday 22:00 UTC)
+  if (symbol.includes('XAU') || symbol.includes('GOLD')) {
+    if (currentDay === 0 && utcHour < 22) {
+      return { isOpen: false, sessionName: 'Weekend - Commodities Closed' };
+    }
+    if (currentDay === 5 && utcHour >= 22) {
+      return { isOpen: false, sessionName: 'Weekend - Commodities Closed' };
+    }
+    if (currentDay === 6) {
+      return { isOpen: false, sessionName: 'Weekend - Commodities Closed' };
+    }
+    return { isOpen: true, sessionName: 'Commodities Session' };
+  }
+  
+  // Default to open
+  return { isOpen: true, sessionName: 'Trading Session' };
 }
 
 // Rate limiting
@@ -169,6 +230,12 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
       const price = mid || quote.ask || quote.bid || 0;
       
       if (price > 0) {
+        // Get market status and store last known price
+        const marketStatus = getMarketStatus(symbol);
+        if (marketStatus.isOpen && price > 0) {
+          lastKnownPrices.set(symbol, { price, timestamp: Date.now() });
+        }
+
         const priceData: TradermadePriceData = {
           symbol: symbol,
           price: price,
@@ -176,7 +243,12 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
           ask: quote.ask || price,
           timestamp: new Date().toISOString(),
           change: 0,
-          changePercent: 0
+          changePercent: 0,
+          marketStatus: {
+            isOpen: marketStatus.isOpen,
+            sessionName: marketStatus.sessionName,
+            lastKnownPrice: marketStatus.isOpen ? undefined : lastKnownPrices.get(symbol)?.price
+          }
         };
 
         setCachedPrice(symbol, priceData);
@@ -433,6 +505,12 @@ serve(async (req) => {
             // Convert Tradermade symbol to frontend canonical symbol for consistency
             const frontendSymbol = normalizeToFrontend(tradermadeSymbol);
             
+            // Get market status and store last known price
+            const marketStatus = getMarketStatus(tradermadeSymbol);
+            if (marketStatus.isOpen && price > 0) {
+              lastKnownPrices.set(tradermadeSymbol, { price, timestamp: Date.now() });
+            }
+
             const priceUpdate: TradermadePriceData = {
               symbol: frontendSymbol, // Use frontend canonical symbol
               price: price,
@@ -440,7 +518,12 @@ serve(async (req) => {
               ask: data.ask ? parseFloat(data.ask) : price,
               timestamp: new Date().toISOString(),
               change: 0,
-              changePercent: 0
+              changePercent: 0,
+              marketStatus: {
+                isOpen: marketStatus.isOpen,
+                sessionName: marketStatus.sessionName,
+                lastKnownPrice: marketStatus.isOpen ? undefined : lastKnownPrices.get(tradermadeSymbol)?.price
+              }
             };
 
             // Cache using Tradermade symbol for API consistency

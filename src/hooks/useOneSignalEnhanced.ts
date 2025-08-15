@@ -635,8 +635,9 @@ export function useOneSignalEnhanced() {
         return { isSubscribed: false, details: { error } };
       }
 
-      const isSubscribed = data?.is_subscribed || false;
-      const playerId = data?.player_id;
+      // Parse subscription status with backward compatibility
+      const isSubscribed = data?.subscription_status?.is_subscribed ?? data?.is_subscribed ?? false;
+      const playerId = data?.subscription_status?.details?.player_id ?? data?.player_id ?? null;
 
       if (debug) console.info('[OneSignal] Subscription verification:', { isSubscribed, playerId, data });
       

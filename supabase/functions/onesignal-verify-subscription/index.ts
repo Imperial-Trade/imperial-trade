@@ -85,9 +85,8 @@ async function handler(req: Request): Promise<Response> {
     let hasActiveWebpush = false;
     let playerData: any = null;
 
-    // Try to fetch user from OneSignal Users API
-    if (player_id) {
-      try {
+    // Always try to fetch user from OneSignal Users API by external_id
+    try {
         const userResponse = await fetch(`https://api.onesignal.com/apps/${oneSignalAppId}/users/by/external_id/${user_id}`, {
           method: 'GET',
           headers: {
@@ -135,7 +134,7 @@ async function handler(req: Request): Promise<Response> {
       console.log(`[OneSignal Verify] User not in subscribed segment - no active WebPush subscriptions`);
     }
 
-    // Build response in expected format
+    // Build response in expected format with backward compatibility
     const response = {
       success: true,
       subscription_status: {
@@ -153,7 +152,10 @@ async function handler(req: Request): Promise<Response> {
           player_id: player_id || null,
           database_status: profileExists ? 'found' : 'not_found'
         }
-      }
+      },
+      // Add top-level fields for backward compatibility
+      is_subscribed: hasActiveWebpush,
+      player_id: player_id || null
     };
 
     return new Response(

@@ -30,7 +30,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWelcome } from "@/contexts/WelcomeContext";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
-import { PushNotificationTester } from "@/components/notifications/PushNotificationTester";
+
 
 interface StatCardProps {
   title: string;
@@ -525,10 +525,6 @@ export const DashboardHome: React.FC = () => {
         </Card>
       </div>
 
-      {/* Push Notification Tester - Temporary for debugging */}
-      <div className="relative z-20 container mx-auto px-6 py-8">
-        <PushNotificationTester />
-      </div>
     </div>
   );
 };

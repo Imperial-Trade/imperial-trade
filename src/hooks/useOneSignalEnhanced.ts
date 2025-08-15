@@ -777,6 +777,31 @@ export function useOneSignalEnhanced() {
     }
   };
 
+  // **AUTO-TRIGGER NATIVE SLIDEDOWN AFTER LOGIN**
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (user && initialized && permission === 'default' && browserInfo.isSupported) {
+      // Wait 3 seconds after login to show the native slidedown
+      timeoutId = setTimeout(async () => {
+        try {
+          if (debug) console.info('[OneSignal] Auto-triggering native slidedown for logged-in user...');
+          
+          // Only show if still default permission and OneSignal is ready
+          if (Notification.permission === 'default' && window.OneSignal) {
+            await window.OneSignal.Slidedown.promptPush();
+          }
+        } catch (error) {
+          console.error('[OneSignal] Auto slidedown error:', error);
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [user, initialized, permission, browserInfo.isSupported, debug]);
+
   return {
     initialized,
     permission,

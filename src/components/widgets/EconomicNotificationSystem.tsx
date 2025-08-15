@@ -97,8 +97,8 @@ export default function EconomicNotificationSystem({
     return () => clearInterval(interval);
   }, [events, enabled, notifyMinutesBefore, notifiedEvents]);
 
-  // Note: Notification permission is handled by NotificationPermissionBanner
-  // Don't request permission here to avoid competing with custom banner
+  // Note: Notification permission is handled by OneSignal native slidedown
+  // Don't request permission here to avoid competing with OneSignal prompt
 
   return null; // This component doesn't render anything
 }

@@ -388,7 +388,7 @@ export function useOneSignalEnhanced() {
     };
   }, [user?.id, profile?.role, profile?.user_type, browserInfo.name]);
   
-  // **CRITICAL: Sequential Player ID Capture - Prevents race conditions**
+  // **CRITICAL: Sequential Player ID Capture with Upsert Logic - Prevents race conditions**
   const captureAndStorePlayerIdSequential = async (playerId: string): Promise<boolean> => {
     try {
       if (!user?.id || !playerId) {
@@ -409,25 +409,38 @@ export function useOneSignalEnhanced() {
         }
       }
 
-      // Step 2: Database transaction with validation
-      const { data: currentProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('onesignal_player_id, push_subscription_active')
-        .eq('id', user.id)
-        .single();
+      // Step 2: Upsert device subscription directly with conflict resolution
+      if (deviceInfo) {
+        try {
+          const { error: deviceError } = await supabase
+            .from('device_subscriptions')
+            .upsert({
+              user_id: user.id,
+              device_fingerprint: deviceInfo.fingerprint,
+              onesignal_player_id: playerId,
+              browser_name: deviceInfo.browserName,
+              browser_version: deviceInfo.browserVersion,
+              platform: deviceInfo.platform,
+              is_mobile: deviceInfo.isMobile,
+              device_info: deviceInfo as any, // Cast to any to match Json type
+              is_active: true,
+              last_seen_at: new Date().toISOString()
+            }, {
+              onConflict: 'user_id,device_fingerprint',
+              ignoreDuplicates: false
+            });
 
-      if (fetchError) {
-        console.error('[OneSignal] Failed to fetch current profile:', fetchError);
-        return false;
+          if (deviceError) {
+            console.error('[OneSignal] Device subscription upsert failed:', deviceError);
+          } else {
+            console.log('[OneSignal] ✓ Device subscription upserted successfully');
+          }
+        } catch (deviceUpsertError) {
+          console.error('[OneSignal] Device upsert error:', deviceUpsertError);
+        }
       }
 
-      // Step 3: Only update if Player ID is different or missing
-      if (currentProfile?.onesignal_player_id === playerId) {
-        console.log('[OneSignal] Player ID already stored correctly');
-        return true;
-      }
-
-      // Step 4: Backend sync with retry logic
+      // Step 3: Backend sync with retry logic
       let attempts = 0;
       const maxAttempts = 3;
       

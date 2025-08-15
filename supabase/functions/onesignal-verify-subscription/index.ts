@@ -179,7 +179,6 @@ async function handler(req: Request): Promise<Response> {
       }
     );
   }
-}
 
 // Serve the handler
 Deno.serve(handler);

@@ -167,17 +167,32 @@ export function useOneSignalEnhanced() {
                     autoRegister: false,
                     autoResubscribe: false,
                     notifyButton: { enable: false },
-                    promptOptions: { 
-                      autoPrompt: false, // We'll trigger manually after login
-                      slidedown: { enabled: true, autoPrompt: false },
-                      fullscreen: { enabled: false }
-                    },
-                    slidedown: { enabled: true, autoPrompt: false },
                     bell: { enabled: false },
                     showCredit: false,
-                    suppressAutoPrompts: false, // Allow native prompts
-                    disableSlidedown: false,
-                    suppressNativePrompt: false,
+                    // Enable native slidedown with custom styling and messaging
+                    autoPrompt: true, // Enable auto-prompt after login
+                    slidedown: {
+                      enabled: true,
+                      autoPrompt: true, // Will show after login
+                      text: {
+                        actionMessage: "Get instant alerts for premium trading signals and market opportunities!",
+                        acceptButton: "Enable Notifications",
+                        cancelButton: "Not Now"
+                      },
+                      color: {
+                        primary: "#000000", // Black background
+                        text: "#FFFFFF", // White text
+                        accent: "#3B82F6" // Blue accent for buttons
+                      }
+                    },
+                    promptOptions: {
+                      slidedown: {
+                        enabled: true,
+                        actionMessage: "Get instant alerts for premium trading signals and market opportunities!",
+                        acceptButtonText: "Enable Notifications", 
+                        cancelButtonText: "Not Now"
+                      }
+                    }
                   };
                   
                   if (debug) console.info('[OneSignal] Initializing with config:', initConfig);
@@ -236,18 +251,28 @@ export function useOneSignalEnhanced() {
 
             (window as any).OneSignal.Notifications?.addEventListener?.("permissionChange", handlePermissionChange);
             
-            // Auto-trigger native slidedown after user login (but only if not granted yet)
-            if (user?.id && permission === 'default') {
-              console.log('[OneSignal] User logged in - triggering native slidedown after delay');
+            // Auto-trigger native slidedown after user login
+            if (user?.id && (permission === 'default' || permission === 'denied')) {
+              console.log('[OneSignal] User logged in - triggering native slidedown for trading signals');
               setTimeout(() => {
                 try {
-                  (window as any).OneSignal.Slidedown.promptPush().catch((e: any) => {
-                    console.warn('[OneSignal] Auto-prompt failed:', e);
-                  });
+                  // Use OneSignal's built-in slidedown prompt with custom messaging
+                  if ((window as any).OneSignal?.Slidedown?.promptPush) {
+                    (window as any).OneSignal.Slidedown.promptPush({
+                      force: true, // Show even if previously dismissed
+                      forceSlidedownOverNative: false // Prefer native prompt when available
+                    }).catch((e: any) => {
+                      console.warn('[OneSignal] Auto-prompt failed:', e);
+                    });
+                  } else if ((window as any).OneSignal?.showSlidedownPrompt) {
+                    (window as any).OneSignal.showSlidedownPrompt().catch((e: any) => {
+                      console.warn('[OneSignal] Fallback prompt failed:', e);
+                    });
+                  }
                 } catch (e) {
                   console.warn('[OneSignal] Auto-prompt error:', e);
                 }
-              }, 2000); // 2 second delay after login
+              }, 3000); // 3 second delay after login for better UX
             }
 
             // **Enhanced push subscription tracking with Player ID capture**

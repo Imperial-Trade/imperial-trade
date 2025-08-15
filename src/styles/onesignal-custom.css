@@ -1,0 +1,79 @@
+/* OneSignal Custom Styling - Black Theme for Native Slidedown */
+
+/* Override OneSignal slidedown colors to match black background design */
+.onesignal-slidedown-container {
+  background-color: #000000 !important;
+  border: 1px solid #333333 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.onesignal-slidedown-container .onesignal-slidedown-content {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+.onesignal-slidedown-container .onesignal-slidedown-body {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+.onesignal-slidedown-container .slidedown-body-message {
+  color: #FFFFFF !important;
+  font-weight: 500 !important;
+}
+
+.onesignal-slidedown-container .slidedown-button {
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  padding: 10px 20px !important;
+  margin: 0 5px !important;
+}
+
+.onesignal-slidedown-container .slidedown-button.slidedown-allow-button {
+  background-color: #3B82F6 !important;
+  border: 1px solid #3B82F6 !important;
+  color: #FFFFFF !important;
+}
+
+.onesignal-slidedown-container .slidedown-button.slidedown-allow-button:hover {
+  background-color: #2563EB !important;
+  border-color: #2563EB !important;
+}
+
+.onesignal-slidedown-container .slidedown-button.slidedown-cancel-button {
+  background-color: transparent !important;
+  border: 1px solid #6B7280 !important;
+  color: #9CA3AF !important;
+}
+
+.onesignal-slidedown-container .slidedown-button.slidedown-cancel-button:hover {
+  background-color: #374151 !important;
+  border-color: #9CA3AF !important;
+  color: #FFFFFF !important;
+}
+
+.onesignal-slidedown-container .slidedown-logo {
+  display: none !important;
+}
+
+/* Ensure proper z-index for slidedown */
+.onesignal-slidedown-container {
+  z-index: 999999 !important;
+}
+
+/* Custom styling for desktop browsers */
+@media (min-width: 768px) {
+  .onesignal-slidedown-container {
+    max-width: 400px !important;
+    margin: 0 auto !important;
+  }
+}
+
+/* Custom styling for mobile devices */
+@media (max-width: 767px) {
+  .onesignal-slidedown-container {
+    width: 90% !important;
+    margin: 0 auto !important;
+  }
+}

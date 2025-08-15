@@ -97,12 +97,13 @@ Deno.serve(async (req: Request) => {
       }
     };
 
-    // Step 1: Check if user exists in OneSignal by external_id
+    // Step 1: Check if user exists in OneSignal using correct User Model API
     console.log(`🔍 Checking for existing OneSignal user with external_id: ${externalId.substring(0, 8)}...`);
     
-    const userFilterUrl = `https://onesignal.com/api/v1/apps/${appId}/users?external_id=${encodeURIComponent(externalId)}`;
+    // Use the correct OneSignal User Model API endpoint
+    const userLookupUrl = `https://api.onesignal.com/apps/${appId}/users/by/external_id/${encodeURIComponent(externalId)}`;
     
-    const checkResponse = await fetch(userFilterUrl, {
+    const checkResponse = await fetch(userLookupUrl, {
       method: "GET",
       headers: {
         "Authorization": `Basic ${apiKey}`,
@@ -112,11 +113,10 @@ Deno.serve(async (req: Request) => {
 
     let existingUser = null;
     if (checkResponse.ok) {
-      const checkData = await safeJson(checkResponse);
-      if (checkData.users && checkData.users.length > 0) {
-        existingUser = checkData.users[0];
-        console.log(`✅ Found existing user: ${existingUser.id}`);
-      }
+      existingUser = await safeJson(checkResponse);
+      console.log(`✅ Found existing user: ${existingUser.identity?.external_id}`);
+    } else if (checkResponse.status === 404) {
+      console.log(`📝 User not found, will create new user`);
     } else {
       console.warn(`⚠️ User check failed: ${checkResponse.status} ${await safeText(checkResponse)}`);
     }
@@ -127,12 +127,19 @@ Deno.serve(async (req: Request) => {
     if (!existingUser) {
       console.log('📝 Creating new OneSignal user...');
       
+      // Reduce tags to essential only to avoid plan limits
+      const essentialTags = {
+        role: tags.role || 'user',
+        user_type: tags.user_type || 'member',
+        platform: tags.platform || 'web'
+      };
+
       const createPayload = {
         identity: {
           external_id: externalId,
         },
         properties: {
-          tags: tags,
+          tags: essentialTags,
         },
         subscriptions: []
       };
@@ -146,7 +153,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const createResponse = await fetch(`https://onesignal.com/api/v1/apps/${appId}/users`, {
+      const createResponse = await fetch(`https://api.onesignal.com/apps/${appId}/users`, {
         method: "POST",
         headers: {
           "Authorization": `Basic ${apiKey}`,
@@ -166,9 +173,16 @@ Deno.serve(async (req: Request) => {
     } else {
       console.log('🔄 Updating existing OneSignal user...');
       
+      // Reduce tags to essential only to avoid plan limits
+      const essentialTags = {
+        role: tags.role || 'user',
+        user_type: tags.user_type || 'member',
+        platform: tags.platform || 'web'
+      };
+      
       const updatePayload = {
         properties: {
-          tags: { ...existingUser.properties?.tags, ...tags },
+          tags: { ...existingUser.properties?.tags, ...essentialTags },
         },
         subscriptions: []
       };
@@ -182,7 +196,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const updateResponse = await fetch(`https://onesignal.com/api/v1/apps/${appId}/users/by/external_id/${encodeURIComponent(externalId)}`, {
+      const updateResponse = await fetch(`https://api.onesignal.com/apps/${appId}/users/by/external_id/${encodeURIComponent(externalId)}`, {
         method: "PATCH",
         headers: {
           "Authorization": `Basic ${apiKey}`,
@@ -208,7 +222,9 @@ Deno.serve(async (req: Request) => {
           .from('profiles')
           .update({ 
             onesignal_player_id: playerId,
-            push_notifications_enabled: true,
+            push_subscription_active: true,
+            onesignal_subscription_status: 'subscribed',
+            onesignal_last_verified_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', externalId);

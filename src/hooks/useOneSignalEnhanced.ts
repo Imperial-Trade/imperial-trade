@@ -277,32 +277,13 @@ export function useOneSignalEnhanced() {
                       isIOSPWA: safariPWAInfo.isSafariPWA
                     });
 
-                    // Sync player ID with backend when subscription is active
+                    // CRITICAL: Capture and store Player ID immediately when subscription is active
                     if (hasValidSub && id && user?.id) {
                       console.log('[OneSignal] Player ID captured:', id.substring(0, 8) + '...', 
                         safariPWAInfo.isSafariPWA ? '(iOS PWA)' : '(Standard Web)');
                       
-                      // Simple sync with backend
-                      setTimeout(async () => {
-                        try {
-                          await supabase.functions.invoke('onesignal-upsert-user', {
-                            body: {
-                              user_id: user.id,
-                              email: user.email,
-                              player_id: id,
-                              tags: {
-                                user_type: profile?.user_type || 'member',
-                                access_level: profile?.access_level || 'user',
-                                device_type: safariPWAInfo.isSafariPWA ? 'ios_pwa' : 'web',
-                                browser: browserInfo.name || 'unknown'
-                              }
-                            }
-                          });
-                          console.log('[OneSignal] User synced successfully');
-                        } catch (syncError) {
-                          console.warn('[OneSignal] User sync failed:', syncError);
-                        }
-                      }, 1000);
+                      // Immediate Player ID capture and backend sync
+                      captureAndStorePlayerId(id);
                     }
                   } catch (e) {
                     console.warn('[OneSignal] Subscription state update error:', e);
@@ -386,7 +367,46 @@ export function useOneSignalEnhanced() {
     };
   }, [user?.id, profile?.role, profile?.user_type, browserInfo.name]);
   
-  // **PHASE 1: Enhanced OneSignal User Creation with iOS PWA Player ID Capture**
+  // **CRITICAL: Player ID Capture Function - Ensures Player ID is never null**
+  const captureAndStorePlayerId = async (playerId: string): Promise<boolean> => {
+    try {
+      if (!user?.id || !playerId) {
+        console.warn('[OneSignal] Missing user ID or player ID for capture');
+        return false;
+      }
+
+      console.log('[OneSignal] Capturing Player ID:', playerId.substring(0, 8) + '...');
+
+      const { data, error } = await withTimeout(
+        supabase.functions.invoke('onesignal-upsert-user', {
+          body: {
+            user_id: user.id,
+            email: user.email,
+            player_id: playerId,
+            tags: {
+              role: profile?.role || 'user',
+              user_type: profile?.user_type || 'member',
+              platform: safariPWAInfo.isIOS ? 'ios' : 'web'
+            }
+          }
+        }),
+        10000
+      );
+
+      if (error) {
+        console.error('[OneSignal] Player ID capture failed:', error);
+        return false;
+      }
+
+      console.log('[OneSignal] Player ID captured and stored successfully');
+      return true;
+    } catch (err) {
+      console.error('[OneSignal] Player ID capture exception:', err);
+      return false;
+    }
+  };
+
+  // **PHASE 1: Enhanced OneSignal User Creation**
   const ensureOneSignalUser = async (): Promise<boolean> => {
     try {
       if (!user?.id || !user?.email) {
@@ -400,8 +420,7 @@ export function useOneSignalEnhanced() {
         tags: {
           role: profile?.role || 'user',
           user_type: profile?.user_type || 'member',
-          platform: safariPWAInfo.isIOS ? 'ios' : 'web',
-          is_pwa: safariPWAInfo.isSafariPWA ? 'true' : 'false'
+          platform: safariPWAInfo.isIOS ? 'ios' : 'web'
         }
       };
 
@@ -704,6 +723,7 @@ export function useOneSignalEnhanced() {
     safariPWAInfo,
     ensureOneSignalUser,
     ensureOneSignalUserWithPlayerId,
-    verifySubscription
+    verifySubscription,
+    captureAndStorePlayerId
   };
 }

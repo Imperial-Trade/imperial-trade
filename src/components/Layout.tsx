@@ -17,7 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { ComplianceFooter } from "@/components/compliance/ComplianceFooter"
 import { NotificationsPanel } from "@/components/notifications/NotificationsPanel"
-import { NotificationStatusButton } from "@/components/notifications/NotificationStatusButton"
+
 
 
 function DashboardHeader() {
@@ -102,10 +102,9 @@ function DashboardHeader() {
       </div>
 
       <div className={`w-full max-w-7xl flex items-center ${isHeaderCollapsed ? 'justify-end' : 'justify-center'}`}>
-        {/* Desktop Notification Button and Navigation */}
+        {/* Desktop Navigation */}
         {!isHeaderCollapsed && (
           <div className="flex items-center gap-4">
-            <NotificationStatusButton showLabel={false} />
             <nav className="hidden lg:flex items-center gap-1 bg-muted/30 rounded-2xl p-1 backdrop-blur-sm border border-border/50">
             {navigationItems.map(item => {
               const isActive = location.pathname === item.to;

@@ -11,7 +11,7 @@ export interface AssetOption {
 
 // Use centralized asset registry for consistent symbol handling
 const SUPPORTED_ASSETS: AssetOption[] = Object.values(ASSET_REGISTRY).map(asset => ({
-  symbol: asset.symbol,
+  symbol: asset.tradermadeSymbol, // Use tradermadeSymbol for price feeds
   name: asset.name,
   category: asset.category
 }));

@@ -87,17 +87,18 @@ export function MobileOptimizedLayout({
     <div className={cn(
       'ios-app-container relative overflow-x-hidden',
       showBottomNav && 'pb-[calc(5rem+var(--safe-area-bottom))]',
-      showHeader && 'pt-[var(--mobile-header-height)]',
       className
     )}>
-      {/* iOS-style header */}
+      {/* iOS-style header - positioned absolute for transparent status bar */}
       {showHeader && (
-        <MobileHeader
-          title={headerTitle}
-          showBackButton={showBackButton}
-          onBack={onBack}
-          rightElement={headerRightElement}
-        />
+        <div className="fixed top-[var(--safe-area-top)] left-0 right-0 z-30">
+          <MobileHeader
+            title={headerTitle}
+            showBackButton={showBackButton}
+            onBack={onBack}
+            rightElement={headerRightElement}
+          />
+        </div>
       )}
       
       {/* Pull to refresh indicator */}
@@ -107,10 +108,11 @@ export function MobileOptimizedLayout({
         </div>
       )}
       
-      {/* Main content */}
+      {/* Main content - full height with header spacing when needed */}
       <main className={cn(
-        'min-h-[calc(100vh-var(--safe-area-top))]',
-        enablePullToRefresh && 'pull-to-refresh'
+        'min-h-[100vh]',
+        enablePullToRefresh && 'pull-to-refresh',
+        showHeader && 'pt-[calc(var(--safe-area-top)+var(--mobile-header-height))]'
       )}>
         {children}
       </main>

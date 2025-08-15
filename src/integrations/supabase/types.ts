@@ -1349,6 +1349,8 @@ export type Database = {
           legal_accepted_at: string | null
           legal_version: string | null
           location: string | null
+          notification_prompt_dismissed_at: string | null
+          onesignal_last_sync_at: string | null
           onesignal_last_verified_at: string | null
           onesignal_player_id: string | null
           onesignal_subscription_status: string | null
@@ -1390,6 +1392,8 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          notification_prompt_dismissed_at?: string | null
+          onesignal_last_sync_at?: string | null
           onesignal_last_verified_at?: string | null
           onesignal_player_id?: string | null
           onesignal_subscription_status?: string | null
@@ -1431,6 +1435,8 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          notification_prompt_dismissed_at?: string | null
+          onesignal_last_sync_at?: string | null
           onesignal_last_verified_at?: string | null
           onesignal_player_id?: string | null
           onesignal_subscription_status?: string | null

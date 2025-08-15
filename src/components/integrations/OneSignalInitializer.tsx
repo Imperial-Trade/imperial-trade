@@ -13,7 +13,10 @@ const OneSignalInitializer: React.FC = () => {
   return (
     <NotificationsProvider>
       <UnifiedPermissionFlow autoShow={true} />
-      <NotificationDebugPanel />
+      {/* EMERGENCY: Always show debug panel during testing */}
+      <div className="fixed top-4 right-4 z-50">
+        <NotificationDebugPanel />
+      </div>
       {isAdmin && (
         <>
           <OneSignalEmergencyPanel />

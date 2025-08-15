@@ -286,7 +286,7 @@ Deno.serve(async (req: Request) => {
       
       try {
         const updateData: any = {
-          last_notification_sync: new Date().toISOString(),
+          onesignal_last_sync_at: new Date().toISOString(),
         };
         
         // Handle Player ID updates

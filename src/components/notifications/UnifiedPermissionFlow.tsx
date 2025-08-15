@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { useOneSignalEnhanced } from "@/hooks/useOneSignalEnhanced";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import NotificationForceReset from './NotificationForceReset';
+import PlayerIdRecoveryPanel from './PlayerIdRecoveryPanel';
 
 interface UnifiedPermissionFlowProps {
   autoShow?: boolean;
@@ -36,17 +38,20 @@ const UnifiedPermissionFlow: React.FC<UnifiedPermissionFlowProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [permissionState, setPermissionState] = useState<'unknown' | 'granted' | 'denied' | 'default'>('unknown');
 
-  // Auto-show logic for new users or those without notifications
+  // EMERGENCY FIX: Clear localStorage barriers and force prompt display
   useEffect(() => {
-    if (!profile || !isInitialized) return;
-
-    const shouldShow = autoShow && 
-      notificationPermission !== 'granted' && 
-      !hasSubscription &&
-      !localStorage.getItem('notification_banner_dismissed');
-
-    setIsVisible(shouldShow);
-  }, [profile, isInitialized, notificationPermission, hasSubscription, autoShow]);
+    // Clear all notification-related localStorage on mount
+    localStorage.removeItem('notification_banner_dismissed');
+    localStorage.removeItem('onesignal_permission_dismissed');
+    localStorage.removeItem('push_prompt_dismissed');
+    console.log('🚨 EMERGENCY: Cleared notification localStorage barriers');
+    
+    // Force show if OneSignal is initialized and user exists (EMERGENCY MODE)
+    if (isInitialized && profile) {
+      console.log('🚨 EMERGENCY: Forcing notification prompt display');
+      setIsVisible(true);
+    }
+  }, [isInitialized, profile]);
 
   // Update permission state when OneSignal state changes
   useEffect(() => {
@@ -110,7 +115,9 @@ const UnifiedPermissionFlow: React.FC<UnifiedPermissionFlowProps> = ({
 
   const handleClose = () => {
     setIsVisible(false);
-    localStorage.setItem('notification_banner_dismissed', 'true');
+    // EMERGENCY FIX: Don't persist dismissal for now
+    // localStorage.setItem('notification_banner_dismissed', 'true');
+    console.log('🚨 EMERGENCY: Notification prompt closed (not persisted)');
     onClose?.();
   };
 
@@ -255,6 +262,12 @@ const UnifiedPermissionFlow: React.FC<UnifiedPermissionFlowProps> = ({
             ✅ Works on all modern browsers and PWA installations
           </p>
         </CardContent>
+        
+        {/* Emergency Tools */}
+        <div className="px-6 pb-6 space-y-4">
+          <NotificationForceReset />
+          <PlayerIdRecoveryPanel />
+        </div>
       </Card>
     </div>
   );

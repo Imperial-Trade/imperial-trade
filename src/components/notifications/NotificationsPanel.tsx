@@ -15,15 +15,11 @@ export const NotificationsPanel: React.FC = () => {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent side="right" className="w-full sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notifications
-          </SheetTitle>
-          <SheetDescription>Recent alerts and updates</SheetDescription>
-        </SheetHeader>
-        <div className="mt-4">
+      <SheetContent 
+        side="right" 
+        className="w-full sm:max-w-lg p-0 bg-background/95 backdrop-blur-md border-l border-border/50 shadow-2xl"
+      >
+        <div className="h-full overflow-hidden">
           <NotificationCenter />
         </div>
       </SheetContent>

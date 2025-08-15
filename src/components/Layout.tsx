@@ -334,7 +334,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <ErrorBoundary componentName="Header">
           <DashboardHeader />
         </ErrorBoundary>
-        <NotificationsPanel />
 
         {/* Mobile: Use existing Sheet-based sidebar */}
         {isMobile && (

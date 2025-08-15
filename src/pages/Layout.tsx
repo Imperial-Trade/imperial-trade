@@ -95,7 +95,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
               getUserAccessLevel={getUserAccessLevel}
               getAccessLevelDisplay={getAccessLevelDisplay}
             />
-            <NotificationsPanel />
 
             <main className="flex-1 overflow-auto pt-16 overscroll-contain">
               <div className="min-h-full">

@@ -18,7 +18,6 @@ export const DashboardLayout: React.FC = () => {
 
       {/* Top Navigation */}
       <DashboardNav />
-      <NotificationsPanel />
       
       {/* Main Content with Dynamic Top Padding */}
       <main className="relative" style={{ paddingTop: 'var(--header-height, 4rem)' }}>

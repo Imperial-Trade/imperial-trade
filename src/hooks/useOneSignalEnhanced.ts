@@ -255,73 +255,84 @@ export function useOneSignalEnhanced() {
                       isIOSPWA: safariPWAInfo.isSafariPWA
                     });
 
-          // **CRITICAL PHASE 1: Aggressive Player ID Capture for ALL users**
+          // **CRITICAL PHASE 1: EMERGENCY Player ID Capture for ALL users**
           if (hasValidSub && id) {
-            console.log('[OneSignal] 🎯 Player ID captured:', id.substring(0, 8) + '...', 
+            console.log('[OneSignal] 🎯 CRITICAL: Player ID captured:', id.substring(0, 8) + '...', 
               safariPWAInfo.isSafariPWA ? '(iOS PWA)' : '(Standard Web)');
             
-            // **PHASE 1: EMERGENCY FIX - Force immediate backend sync for ALL Player IDs**
-            const performEmergencySync = async () => {
+            // **EMERGENCY FIX - Force immediate backend sync with comprehensive retry logic**
+            const performCriticalSync = async () => {
               try {
-                console.log('[OneSignal] 🚨 EMERGENCY SYNC: Starting immediate Player ID sync...');
+                console.log('[OneSignal] 🚨 CRITICAL EMERGENCY SYNC: Starting immediate Player ID sync...');
                 
-                // Multiple retry attempts with exponential backoff
-                let attempts = 0;
-                const maxAttempts = 5;
-                
-                while (attempts < maxAttempts) {
-                  attempts++;
-                  try {
-                    console.log(`[OneSignal] 🔄 Sync attempt ${attempts}/${maxAttempts} for Player ID: ${id.substring(0, 8)}...`);
-                    
-                    const syncResult = await ensureOneSignalUserWithPlayerId(id);
-                    if (syncResult) {
-                      console.log('[OneSignal] ✅ Emergency sync successful!');
-                      break;
-                    } else {
-                      throw new Error('Sync returned false');
-                    }
-                  } catch (syncError) {
-                    console.warn(`[OneSignal] ⚠️ Sync attempt ${attempts} failed:`, syncError);
-                    
-                    if (attempts === maxAttempts) {
-                      console.error('[OneSignal] 🚨 All sync attempts failed for Player ID:', id.substring(0, 8) + '...');
-                      // Final fallback: direct database update
-                      try {
-                        const { error: dbError } = await supabase
-                          .from('profiles')
-                          .update({
-                            onesignal_player_id: id,
-                            push_subscription_active: true,
-                            onesignal_subscription_status: 'subscribed',
-                            onesignal_last_verified_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                          })
-                          .eq('id', user?.id);
-                        
-                        if (dbError) {
-                          console.error('[OneSignal] 💥 Final fallback database update failed:', dbError);
-                        } else {
-                          console.log('[OneSignal] 🛠️ Final fallback: Player ID saved to database');
-                        }
-                      } catch (finalError) {
-                        console.error('[OneSignal] 💥 Complete sync failure:', finalError);
-                      }
-                    } else {
-                      // Exponential backoff: 1s, 2s, 4s, 8s
-                      const delay = Math.pow(2, attempts - 1) * 1000;
-                      console.log(`[OneSignal] ⏳ Waiting ${delay}ms before retry...`);
-                      await new Promise(resolve => setTimeout(resolve, delay));
+                // Immediate call to upsert-user with emergency flag
+                const { data: syncResult, error: syncError } = await supabase.functions.invoke('onesignal-upsert-user', {
+                  body: {
+                    user_id: user?.id,
+                    email: user?.email,
+                    player_id: id,
+                    emergency_sync: true,
+                    force_update: true,
+                    retry_on_failure: true,
+                    modern_user_model: true,
+                    tags: {
+                      user_type: profile?.user_type || 'member',
+                      access_level: profile?.access_level || 'user',
+                      display_name: profile?.display_name || user?.email?.split('@')[0] || 'Unknown',
+                      registration_date: new Date().toISOString(),
+                      device_type: safariPWAInfo.isSafariPWA ? 'ios_pwa' : browserInfo.name || 'web',
+                      browser: browserInfo.name || 'unknown',
+                      is_ios_pwa: safariPWAInfo.isSafariPWA.toString(),
+                      emergency_captured_at: new Date().toISOString(),
+                      player_id_captured: 'true'
                     }
                   }
+                });
+                
+                if (syncError) {
+                  console.error('[OneSignal] 🚨 CRITICAL: Emergency sync failed:', syncError);
+                  
+                  // FALLBACK: Direct database update
+                  console.log('[OneSignal] 🔄 FALLBACK: Attempting direct database update...');
+                  const { error: dbError } = await supabase
+                    .from('profiles')
+                    .update({
+                      onesignal_player_id: id,
+                      push_subscription_active: true,
+                      last_notification_sync: new Date().toISOString()
+                    })
+                    .eq('id', user?.id);
+                  
+                  if (dbError) {
+                    console.error('[OneSignal] 💥 FALLBACK FAILED:', dbError);
+                  } else {
+                    console.log('[OneSignal] ✅ FALLBACK SUCCESS: Player ID saved via direct database update');
+                  }
+                } else {
+                  console.log('[OneSignal] ✅ CRITICAL SUCCESS: Emergency sync completed successfully!', syncResult);
+                  
+                  // Verify sync worked
+                  setTimeout(async () => {
+                    const { data: verification } = await supabase
+                      .from('profiles')
+                      .select('onesignal_player_id, push_subscription_active')
+                      .eq('id', user?.id)
+                      .single();
+                    
+                    if (verification?.onesignal_player_id === id) {
+                      console.log('[OneSignal] ✅ VERIFICATION SUCCESS: Player ID confirmed in database');
+                    } else {
+                      console.error('[OneSignal] ❌ VERIFICATION FAILED: Player ID not found in database');
+                    }
+                  }, 2000);
                 }
               } catch (emergencyError) {
-                console.error('[OneSignal] 💥 Emergency sync error:', emergencyError);
+                console.error('[OneSignal] 💥 CRITICAL EMERGENCY SYNC ERROR:', emergencyError);
               }
             };
             
-            // Start emergency sync without blocking
-            performEmergencySync();
+            // Start critical sync immediately (non-blocking)
+            performCriticalSync();
           }
                   } catch (e) {
                     console.warn('[OneSignal] Subscription state update error:', e);

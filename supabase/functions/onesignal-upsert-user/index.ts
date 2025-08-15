@@ -23,6 +23,8 @@ interface UpsertRequestBody {
   force_update?: boolean; // PHASE 2: Force backend updates
   retry_on_failure?: boolean; // PHASE 2: Retry logic flag
   modern_user_model?: boolean; // PHASE 3: Modern OneSignal API flag
+  emergency_sync?: boolean; // CRITICAL: Emergency sync flag
+  capture_failed?: boolean; // CRITICAL: Capture failure flag
 }
 
 Deno.serve(async (req: Request) => {
@@ -62,6 +64,9 @@ Deno.serve(async (req: Request) => {
       }
     } catch {}
 
+    console.log('📋 Request body:', JSON.stringify(body, null, 2));
+
+    // Extract and validate request data
     const externalId = body.external_id || body.user_id || authUser?.id || "";
     const email = body.email || (authUser?.email as string | undefined) || undefined;
     const tags = body.tags || {};
@@ -69,6 +74,20 @@ Deno.serve(async (req: Request) => {
     const forceUpdate = body.force_update || false; // PHASE 2: Force update flag
     const retryOnFailure = body.retry_on_failure || false; // PHASE 2: Retry flag
     const useModernUserModel = body.modern_user_model || false; // PHASE 3: Modern API flag
+    const emergencySync = body.emergency_sync || false; // CRITICAL: Emergency sync flag
+    const captureFailure = body.capture_failed || false; // CRITICAL: Capture failure flag
+    
+    console.log('🔍 CRITICAL Processing request:', {
+      externalId: externalId?.substring(0, 8) + '...',
+      email: email?.substring(0, 3) + '...',
+      hasPlayerId: !!playerId,
+      emergencySync,
+      captureFailure,
+      forceUpdate,
+      retryOnFailure,
+      useModernUserModel,
+      tagsCount: Object.keys(tags).length
+    });
 
     if (!externalId) {
       return new Response(
@@ -254,86 +273,112 @@ Deno.serve(async (req: Request) => {
       };
     }
 
-    // **PHASE 4: EMERGENCY WebPush Player ID Handling with Enhanced Database Sync**
-    if (playerId) {
-      console.log(`[OneSignal Upsert] 🚨 EMERGENCY: WebPush Player ID received for user ${externalId}: ${playerId.substring(0, 8)}...`);
+    // **CRITICAL EMERGENCY: Always update Supabase profile with latest status**
+    console.log('💾 CRITICAL: Updating Supabase profile...');
+    
+    let updateSuccess = false;
+    let updateAttempts = 0;
+    const maxUpdateAttempts = emergencySync ? 10 : 5; // More attempts for emergency
+    
+    while (!updateSuccess && updateAttempts < maxUpdateAttempts) {
+      updateAttempts++;
+      console.log(`📝 CRITICAL Profile update attempt ${updateAttempts}/${maxUpdateAttempts}...`);
       
       try {
-        // **PHASE 4: Enhanced database update with comprehensive tracking**
-        const updateData = {
-          onesignal_player_id: playerId,
-          push_subscription_active: true,
-          onesignal_subscription_status: 'subscribed',
-          onesignal_last_verified_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+        const updateData: any = {
+          last_notification_sync: new Date().toISOString(),
         };
         
-        console.log(`[OneSignal Upsert] 💾 Updating database for user ${externalId} with:`, {
-          ...updateData,
-          onesignal_player_id: playerId.substring(0, 8) + '...'
-        });
+        // Handle Player ID updates
+        if (playerId) {
+          updateData.onesignal_player_id = playerId;
+          updateData.push_subscription_active = true;
+          console.log('🆔 CRITICAL: Including Player ID in update:', playerId.substring(0, 8) + '...');
+        } else if (captureFailure) {
+          // Mark that we attempted but failed to capture
+          updateData.push_subscription_active = false;
+          console.log('❌ CRITICAL: Marking Player ID capture failure');
+        }
         
-        const { error: updateError, data: updateResult } = await supabase
+        // Emergency sync always forces these fields
+        if (emergencySync) {
+          updateData.push_subscription_active = !!playerId;
+          console.log('🚨 EMERGENCY: Force updating subscription status:', !!playerId);
+        }
+        
+        const { error: profileError, data: profileResult } = await supabase
           .from('profiles')
           .update(updateData)
           .eq('id', externalId)
           .select('id, onesignal_player_id, push_subscription_active');
-        
-        if (updateError) {
-          console.error(`[OneSignal Upsert] 💥 Database update failed for player_id ${playerId.substring(0, 8)}...:`, updateError);
           
-          // **PHASE 2: Retry mechanism for database failures**
-          if (retryOnFailure) {
-            console.log(`[OneSignal Upsert] 🔄 Retrying database update...`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            const { error: retryError } = await supabase
-              .from('profiles')
-              .update(updateData)
-              .eq('id', externalId);
-            
-            if (retryError) {
-              console.error(`[OneSignal Upsert] 💥 Retry also failed:`, retryError);
-            } else {
-              console.log(`[OneSignal Upsert] ✅ Retry successful!`);
+        if (profileError) {
+          console.error(`❌ CRITICAL Profile update attempt ${updateAttempts} failed:`, profileError);
+          if (updateAttempts === maxUpdateAttempts) {
+            console.error('❌ CRITICAL: All profile update attempts failed');
+            // Don't throw for emergency sync - continue with OneSignal operations
+            if (!emergencySync) {
+              throw profileError;
             }
+          } else {
+            // Exponential backoff for retries
+            const delay = Math.pow(2, updateAttempts - 1) * 1000;
+            console.log(`⏳ CRITICAL: Waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
           }
         } else {
-          console.log(`[OneSignal Upsert] ✅ Database updated successfully with WebPush player_id: ${playerId.substring(0, 8)}...`);
-          console.log(`[OneSignal Upsert] 📊 Update result:`, updateResult);
+          updateSuccess = true;
+          console.log('✅ CRITICAL SUCCESS: Profile updated successfully');
+          console.log('📊 CRITICAL Update result:', profileResult);
+          
+          // Track success for push subscription attempt
+          if (playerId) {
+            pushSubscriptionAttempt = { 
+              ok: true, 
+              status: 200, 
+              text: "CRITICAL: WebPush Player ID successfully stored",
+              json: { 
+                message: "CRITICAL: Emergency Player ID sync successful",
+                player_id: playerId.substring(0, 8) + '...',
+                database_updated: true,
+                emergency_sync: emergencySync,
+                force_update: forceUpdate,
+                modern_user_model: useModernUserModel,
+                external_id: externalId?.substring(0, 8) + '...',
+                update_attempts: updateAttempts,
+                profile_result: profileResult
+              }
+            };
+          }
         }
-        
-        // **PHASE 4: Enhanced success tracking**
-        pushSubscriptionAttempt = { 
-          ok: true, 
-          status: 200, 
-          text: "WebPush subscription tracked and database updated",
-          json: { 
-            message: "WebPush subscription managed by OneSignal SDK",
-            player_id: playerId.substring(0, 8) + '...',
-            database_updated: !updateError,
-            force_update: forceUpdate,
-            modern_user_model: useModernUserModel,
-            external_id: externalId,
-            retry_attempted: retryOnFailure && updateError
+      } catch (updateError) {
+        console.error(`❌ CRITICAL Profile update attempt ${updateAttempts} error:`, updateError);
+        if (updateAttempts === maxUpdateAttempts) {
+          console.error('❌ CRITICAL: Profile update completely failed');
+          
+          // For emergency sync, still mark as partially successful
+          if (emergencySync && playerId) {
+            pushSubscriptionAttempt = { 
+              ok: false, 
+              status: 500, 
+              text: "CRITICAL: Emergency sync - database update failed but OneSignal handled",
+              json: { 
+                message: "CRITICAL: Emergency Player ID captured but database sync failed",
+                player_id: playerId.substring(0, 8) + '...',
+                database_sync_error: updateError.message,
+                emergency_sync: true,
+                external_id: externalId?.substring(0, 8) + '...'
+              }
+            };
           }
-        };
-        
-      } catch (dbError) {
-        console.error(`[OneSignal Upsert] 💥 Database sync exception for player_id ${playerId.substring(0, 8)}...:`, dbError);
-        
-        // **PHASE 2: Still mark as partially successful since OneSignal side works**
-        pushSubscriptionAttempt = { 
-          ok: false, // Change to false for database errors
-          status: 500, 
-          text: "WebPush subscription handled by SDK but database sync failed",
-          json: { 
-            message: "WebPush subscription managed by OneSignal SDK",
-            player_id: playerId.substring(0, 8) + '...',
-            database_sync_error: dbError.message,
-            external_id: externalId
+          
+          if (!emergencySync) {
+            throw updateError;
           }
-        };
+        } else {
+          const delay = Math.pow(2, updateAttempts - 1) * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
     }
 

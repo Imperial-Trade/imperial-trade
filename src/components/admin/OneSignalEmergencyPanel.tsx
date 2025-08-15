@@ -99,43 +99,26 @@ export default function OneSignalEmergencyPanel() {
   const runEmergencyPlayerIdFix = async () => {
     setIsRunningEmergencyFix(true);
     try {
-      toast.info('🚨 Starting emergency Player ID fix...');
+      console.log('🚨 Running emergency Player ID fix...');
       
-      // Get all users missing Player IDs but have active subscriptions
-      const { data: brokenUsers, error } = await supabase
-        .from('profiles')
-        .select('id, real_name, display_name')
-        .eq('account_status', 'active')
-        .eq('push_subscription_active', true)
-        .is('onesignal_player_id', null);
-
-      if (error) throw error;
-
-      const testResult: EmergencyTestResult = {
-        test_type: 'emergency_player_id_fix',
-        success: false,
-        timestamp: new Date().toISOString(),
-        data: {
-          broken_users_found: brokenUsers.length,
-          users: brokenUsers.map(u => ({ id: u.id, name: u.display_name || u.real_name }))
-        }
-      };
-
-      if (brokenUsers.length === 0) {
-        testResult.success = true;
-        testResult.data.message = 'No users found with broken Player ID state';
-        toast.success('✅ No broken Player ID states found!');
-      } else {
-        // This would trigger client-side Player ID recapture for all broken users
-        testResult.data.message = `Found ${brokenUsers.length} users with broken Player ID state`;
-        toast.warning(`⚠️ Found ${brokenUsers.length} users needing Player ID recapture`);
+      const { data: fixResult, error: fixError } = await supabase.functions.invoke('onesignal-player-id-emergency-fix');
+      
+      if (fixError) {
+        console.error('❌ Emergency fix failed:', fixError);
+        toast.error(`Emergency Fix Failed: ${fixError.message || "Unknown error occurred"}`);
+        return;
       }
-
-      setTestResults(prev => [testResult, ...prev.slice(0, 9)]);
+      
+      console.log('✅ Emergency fix completed:', fixResult);
+      
+      toast.success(`Emergency Fix Complete: Processed ${fixResult.results?.total_users || 0} users. ${fixResult.results?.successful_operations || 0} successful, ${fixResult.results?.failed_operations || 0} failed.`);
+      
+      // Refresh stats after fix
+      await fetchEmergencyStats();
       
     } catch (error) {
       console.error('Emergency fix failed:', error);
-      toast.error('Emergency fix failed: ' + error.message);
+      toast.error("Emergency Fix Failed - Check console for details");
     } finally {
       setIsRunningEmergencyFix(false);
     }

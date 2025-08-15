@@ -111,21 +111,22 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const connect = useCallback(() => {
+    // Prevent duplicate connections
     if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
-      console.log('🔄 WebSocket already connected or connecting, skipping duplicate connection');
       return;
     }
 
     setConnectionStatus('connecting');
     
     try {
-      // Connect to Tradermade streaming WebSocket
       const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming`;
-      console.log('🔌 Connecting to Tradermade WebSocket:', wsUrl);
-      console.log('🔍 WebSocket readyState before connection:', socketRef.current?.readyState);
+      
+      // Close existing socket if it exists and is not already closed
+      if (socketRef.current && socketRef.current.readyState !== WebSocket.CLOSED) {
+        socketRef.current.close();
+      }
       
       socketRef.current = new WebSocket(wsUrl);
-      console.log('🆕 Created new WebSocket instance');
 
       socketRef.current.onopen = () => {
         console.log('✅ WebSocket connected to Tradermade streaming');
@@ -268,12 +269,12 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, [getReconnectDelay, prices]);
 
   const subscribe = useCallback((symbols: string[]) => {
-    console.log('📡 Subscribing request received for symbols:', symbols);
-
     // Normalize and validate symbols FIRST
     const normalized = symbols
       .map(normalizeSymbol)
       .filter(Boolean);
+
+    if (normalized.length === 0) return;
 
     // Reference-counted subscriptions: only send to server when count transitions 0 -> 1
     const toSubscribe: string[] = [];
@@ -288,24 +289,30 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     });
 
     if (toSubscribe.length === 0) {
-      console.log('📡 All symbols already referenced, skipping network subscribe');
+      // All symbols already subscribed - no need to log this repeatedly
       return;
     }
 
-    // Enqueue for batched send
+    // Only log new subscriptions to reduce console spam
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📡 New subscription for symbols:', toSubscribe);
+    }
+
+    // Enqueue for batched send (deduplicated)
     toSubscribe.forEach(s => pendingSubscribeBatchRef.current.add(s));
 
+    // Connect if needed
     if (socketRef.current?.readyState !== WebSocket.OPEN) {
-      console.log('🔄 WebSocket not ready, attempting connection');
       connect();
     }
 
+    // Batch subscription requests to reduce network calls
     if (!subscribeFlushTimerRef.current) {
       subscribeFlushTimerRef.current = setTimeout(() => {
         flushPendingSubscriptions();
-      }, 50);
+      }, 100); // Increased from 50ms to 100ms to batch more efficiently
     }
-  }, [connect, flushPendingSubscriptions]);
+  }, [connect, flushPendingSubscriptions, normalizeSymbol]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     // Normalize like subscribe

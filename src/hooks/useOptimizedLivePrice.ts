@@ -51,9 +51,14 @@ export function useOptimizedLivePrice(
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Subscribe to symbol on mount
+  // Subscribe to symbol on mount - optimized to reduce duplicate calls
   useEffect(() => {
     if (!symbol) return;
+
+    // Only log in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔔 Subscribing to optimized price feed for', symbol);
+    }
 
     subscribe([symbol]);
 

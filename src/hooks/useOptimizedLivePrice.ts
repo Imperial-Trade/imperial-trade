@@ -69,7 +69,7 @@ export function useOptimizedLivePrice(
     };
   }, [symbol, subscribe, unsubscribe]);
 
-  // Update market status
+  // Update market status with real-time countdown
   useEffect(() => {
     const updateMarketStatus = async () => {
       try {
@@ -89,7 +89,7 @@ export function useOptimizedLivePrice(
     };
 
     updateMarketStatus();
-    const interval = setInterval(updateMarketStatus, 60000); // Update every minute
+    const interval = setInterval(updateMarketStatus, 1000); // Update every second for live countdown
     
     return () => clearInterval(interval);
   }, [symbol, debouncedPrice.price]);

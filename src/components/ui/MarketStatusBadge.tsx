@@ -12,49 +12,26 @@ interface MarketStatusBadgeProps {
 }
 
 export function MarketStatusBadge({ marketStatus, className }: MarketStatusBadgeProps) {
-  if (!marketStatus) return null;
+  if (!marketStatus || marketStatus.isOpen) return null; // Only show when market is closed
 
-  const { isOpen, sessionName, timeUntilNext } = marketStatus;
-
-  const getStatusConfig = () => {
-    if (isOpen) {
-      return {
-        icon: Activity,
-        text: 'Market Open',
-        className: 'text-accent-green bg-accent-green/10 border-accent-green/30',
-        detail: sessionName,
-        countdown: timeUntilNext ? `Closes in ${timeUntilNext}` : ''
-      };
-    } else {
-      return {
-        icon: XCircle,
-        text: 'Market Closed',
-        className: 'text-red-400 bg-red-400/10 border-red-400/30',
-        detail: sessionName,
-        countdown: timeUntilNext ? `Opens in ${timeUntilNext}` : ''
-      };
-    }
-  };
-
-  const config = getStatusConfig();
-  const Icon = config.icon;
+  const { sessionName, timeUntilNext } = marketStatus;
 
   return (
     <div className={cn(
-      'flex items-center gap-2 px-2 py-1 rounded-md border text-xs transition-all',
-      config.className,
+      'flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all',
+      'text-red-400 bg-red-400/10 border-red-400/30',
       className
     )}>
-      <Icon className="w-3 h-3" />
-      <div className="flex flex-col">
-        <span className="font-medium">{config.text}</span>
-        {config.detail && (
-          <span className="text-xs opacity-80">{config.detail}</span>
+      <XCircle className="w-4 h-4" />
+      <div className="flex flex-col gap-1">
+        <span className="font-medium">Market Closed</span>
+        {sessionName && (
+          <span className="text-xs opacity-80">{sessionName}</span>
         )}
-        {config.countdown && (
-          <div className="flex items-center gap-1 text-xs opacity-70">
-            <Clock className="w-2.5 h-2.5" />
-            <span>{config.countdown}</span>
+        {timeUntilNext && (
+          <div className="flex items-center gap-1 text-xs opacity-90">
+            <Clock className="w-3 h-3" />
+            <span>Opens in {timeUntilNext}</span>
           </div>
         )}
       </div>

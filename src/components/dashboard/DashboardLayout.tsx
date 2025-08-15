@@ -14,7 +14,10 @@ export const DashboardLayout: React.FC = () => {
     return (
       <MobileOptimizedLayout>
         <div className="min-h-screen bg-background">
-          {/* Background effects removed on mobile to show pure video */}
+          {/* Mobile-optimized background effects */}
+          <div className="fixed inset-0 bg-gradient-to-br from-background via-muted/20 to-background pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/3 via-transparent to-accent/3"></div>
+          </div>
 
           {/* Mobile Navigation Header */}
           <div className="mobile-header fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border/50">

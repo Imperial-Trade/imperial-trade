@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOneSignal } from "@/hooks/useOneSignal";
+import { useOneSignalEnhanced } from "@/hooks/useOneSignalEnhanced";
 import { supabase } from "@/integrations/supabase/client";
 import { detectPlatform, getPlatformConfig } from "@/utils/platformDetection";
 
@@ -29,7 +29,7 @@ interface HealthCheckResult {
 
 export function useSubscriptionHealth() {
   const { user } = useAuth();
-  const { initialized, hasSubscription, isGranted } = useOneSignal();
+  const { initialized, hasSubscription, isGranted } = useOneSignalEnhanced();
   const [health, setHealth] = useState<SubscriptionHealth>({
     status: 'unknown',
     lastCheck: null,

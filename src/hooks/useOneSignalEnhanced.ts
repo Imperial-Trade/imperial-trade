@@ -167,11 +167,32 @@ export function useOneSignalEnhanced() {
                     autoRegister: false,
                     autoResubscribe: false,
                     notifyButton: { enable: false },
-                    promptOptions: { autoPrompt: false },
-                    slidedown: { enabled: false },
                     bell: { enabled: false },
                     showCredit: false,
-                    suppressAutoPrompts: true,
+                    // Enable native slidedown with custom styling and messaging
+                    autoPrompt: true, // Enable auto-prompt after login
+                    slidedown: {
+                      enabled: true,
+                      autoPrompt: true, // Will show after login
+                      text: {
+                        actionMessage: "Get instant alerts for premium trading signals and market opportunities!",
+                        acceptButton: "Enable Notifications",
+                        cancelButton: "Not Now"
+                      },
+                      color: {
+                        primary: "#000000", // Black background
+                        text: "#FFFFFF", // White text
+                        accent: "#3B82F6" // Blue accent for buttons
+                      }
+                    },
+                    promptOptions: {
+                      slidedown: {
+                        enabled: true,
+                        actionMessage: "Get instant alerts for premium trading signals and market opportunities!",
+                        acceptButtonText: "Enable Notifications", 
+                        cancelButtonText: "Not Now"
+                      }
+                    }
                   };
                   
                   if (debug) console.info('[OneSignal] Initializing with config:', initConfig);
@@ -222,14 +243,6 @@ export function useOneSignalEnhanced() {
                   const newPermission = Notification.permission;
                   setPermission(newPermission);
                   if (debug) console.info('[OneSignal] Permission changed to:', newPermission);
-                  
-                  // For iOS PWA, ensure subscription is captured when permission is granted
-                  if (newPermission === 'granted' && safariPWAInfo.isSafariPWA) {
-                    console.info('[OneSignal] iOS PWA permission granted - ensuring subscription');
-                    setTimeout(() => {
-                      ensureSubscription(browserConfig.subscriptionTimeout, true).catch(console.warn);
-                    }, 1000);
-                  }
                 }
               } catch (e) {
                 console.warn('[OneSignal] Permission change handler error:', e);
@@ -237,6 +250,30 @@ export function useOneSignalEnhanced() {
             };
 
             (window as any).OneSignal.Notifications?.addEventListener?.("permissionChange", handlePermissionChange);
+            
+            // Auto-trigger native slidedown after user login
+            if (user?.id && (permission === 'default' || permission === 'denied')) {
+              console.log('[OneSignal] User logged in - triggering native slidedown for trading signals');
+              setTimeout(() => {
+                try {
+                  // Use OneSignal's built-in slidedown prompt with custom messaging
+                  if ((window as any).OneSignal?.Slidedown?.promptPush) {
+                    (window as any).OneSignal.Slidedown.promptPush({
+                      force: true, // Show even if previously dismissed
+                      forceSlidedownOverNative: false // Prefer native prompt when available
+                    }).catch((e: any) => {
+                      console.warn('[OneSignal] Auto-prompt failed:', e);
+                    });
+                  } else if ((window as any).OneSignal?.showSlidedownPrompt) {
+                    (window as any).OneSignal.showSlidedownPrompt().catch((e: any) => {
+                      console.warn('[OneSignal] Fallback prompt failed:', e);
+                    });
+                  }
+                } catch (e) {
+                  console.warn('[OneSignal] Auto-prompt error:', e);
+                }
+              }, 3000); // 3 second delay after login for better UX
+            }
 
             // **Enhanced push subscription tracking with Player ID capture**
             const ps = (window as any).OneSignal?.User?.PushSubscription;
@@ -255,85 +292,33 @@ export function useOneSignalEnhanced() {
                       isIOSPWA: safariPWAInfo.isSafariPWA
                     });
 
-          // **CRITICAL PHASE 1: EMERGENCY Player ID Capture for ALL users**
-          if (hasValidSub && id) {
-            console.log('[OneSignal] 🎯 CRITICAL: Player ID captured:', id.substring(0, 8) + '...', 
-              safariPWAInfo.isSafariPWA ? '(iOS PWA)' : '(Standard Web)');
-            
-            // **EMERGENCY FIX - Force immediate backend sync with comprehensive retry logic**
-            const performCriticalSync = async () => {
-              try {
-                console.log('[OneSignal] 🚨 CRITICAL EMERGENCY SYNC: Starting immediate Player ID sync...');
-                
-                // Immediate call to upsert-user with emergency flag
-                const { data: syncResult, error: syncError } = await supabase.functions.invoke('onesignal-upsert-user', {
-                  body: {
-                    user_id: user?.id,
-                    email: user?.email,
-                    player_id: id,
-                    emergency_sync: true,
-                    force_update: true,
-                    retry_on_failure: true,
-                    modern_user_model: true,
-                    tags: {
-                      user_type: profile?.user_type || 'member',
-                      access_level: profile?.access_level || 'user',
-                      display_name: profile?.display_name || user?.email?.split('@')[0] || 'Unknown',
-                      registration_date: new Date().toISOString(),
-                      device_type: safariPWAInfo.isSafariPWA ? 'ios_pwa' : browserInfo.name || 'web',
-                      browser: browserInfo.name || 'unknown',
-                      is_ios_pwa: safariPWAInfo.isSafariPWA.toString(),
-                      emergency_captured_at: new Date().toISOString(),
-                      player_id_captured: 'true'
+                    // Sync player ID with backend when subscription is active
+                    if (hasValidSub && id && user?.id) {
+                      console.log('[OneSignal] Player ID captured:', id.substring(0, 8) + '...', 
+                        safariPWAInfo.isSafariPWA ? '(iOS PWA)' : '(Standard Web)');
+                      
+                      // Simple sync with backend
+                      setTimeout(async () => {
+                        try {
+                          await supabase.functions.invoke('onesignal-upsert-user', {
+                            body: {
+                              user_id: user.id,
+                              email: user.email,
+                              player_id: id,
+                              tags: {
+                                user_type: profile?.user_type || 'member',
+                                access_level: profile?.access_level || 'user',
+                                device_type: safariPWAInfo.isSafariPWA ? 'ios_pwa' : 'web',
+                                browser: browserInfo.name || 'unknown'
+                              }
+                            }
+                          });
+                          console.log('[OneSignal] User synced successfully');
+                        } catch (syncError) {
+                          console.warn('[OneSignal] User sync failed:', syncError);
+                        }
+                      }, 1000);
                     }
-                  }
-                });
-                
-                if (syncError) {
-                  console.error('[OneSignal] 🚨 CRITICAL: Emergency sync failed:', syncError);
-                  
-                  // FALLBACK: Direct database update
-                  console.log('[OneSignal] 🔄 FALLBACK: Attempting direct database update...');
-                  const { error: dbError } = await supabase
-                    .from('profiles')
-                    .update({
-                      onesignal_player_id: id,
-                      push_subscription_active: true,
-                      last_notification_sync: new Date().toISOString()
-                    })
-                    .eq('id', user?.id);
-                  
-                  if (dbError) {
-                    console.error('[OneSignal] 💥 FALLBACK FAILED:', dbError);
-                  } else {
-                    console.log('[OneSignal] ✅ FALLBACK SUCCESS: Player ID saved via direct database update');
-                  }
-                } else {
-                  console.log('[OneSignal] ✅ CRITICAL SUCCESS: Emergency sync completed successfully!', syncResult);
-                  
-                  // Verify sync worked
-                  setTimeout(async () => {
-                    const { data: verification } = await supabase
-                      .from('profiles')
-                      .select('onesignal_player_id, push_subscription_active')
-                      .eq('id', user?.id)
-                      .single();
-                    
-                    if (verification?.onesignal_player_id === id) {
-                      console.log('[OneSignal] ✅ VERIFICATION SUCCESS: Player ID confirmed in database');
-                    } else {
-                      console.error('[OneSignal] ❌ VERIFICATION FAILED: Player ID not found in database');
-                    }
-                  }, 2000);
-                }
-              } catch (emergencyError) {
-                console.error('[OneSignal] 💥 CRITICAL EMERGENCY SYNC ERROR:', emergencyError);
-              }
-            };
-            
-            // Start critical sync immediately (non-blocking)
-            performCriticalSync();
-          }
                   } catch (e) {
                     console.warn('[OneSignal] Subscription state update error:', e);
                   }
@@ -600,12 +585,16 @@ export function useOneSignalEnhanced() {
           }
         }
         
-        // Standard subscription for other platforms
+        // Standard subscription for other platforms (NO SLIDEDOWN)
         try {
-          console.log(`[OneSignal] Requesting push subscription (attempt ${attempt + 1}/${maxAttempts})`);
+          console.log(`[OneSignal] Attempting subscription without native prompts (attempt ${attempt + 1}/${maxAttempts})`);
           
-          const subscriptionResult = await (window as any).OneSignal.Slidedown.promptPush();
-          console.log('[OneSignal] Subscription result:', subscriptionResult);
+          // Use User API instead of slidedown to avoid native prompts
+          const osUser = (window as any).OneSignal?.User;
+          if (osUser?.PushSubscription) {
+            await osUser.PushSubscription.optIn();
+            console.log('[OneSignal] User API subscription triggered');
+          }
         } catch (e) {
           console.warn(`[OneSignal] Subscription attempt ${attempt + 1} failed:`, e);
         }
@@ -682,36 +671,39 @@ export function useOneSignalEnhanced() {
     }
   };
 
-  // Request permission with enhanced iOS PWA handling
+  // SIMPLIFIED NATIVE PROMPT REQUEST
   const requestPermission = async (): Promise<{ success: boolean; error?: string }> => {
     try {
+      console.log('[OneSignal] Starting OneSignal native slidedown request...');
+
       if (!initialized) {
+        console.error('[OneSignal] SDK not initialized yet');
         return { success: false, error: 'OneSignal not initialized' };
       }
 
       // Check if already granted
       if (permission === 'granted' && hasSubscription) {
+        console.log('[OneSignal] ✅ Already granted and subscribed');
         return { success: true };
       }
 
-      // For iOS PWA, verify we're in standalone mode
-      if (safariPWAInfo.isIOS && !safariPWAInfo.isSafariPWA) {
-        return { 
-          success: false, 
-          error: 'iOS users must install the app as PWA for push notifications' 
-        };
-      }
-
-      const success = await ensureSubscription();
+      // Use OneSignal's native slidedown prompt for all cases
+      console.log('[OneSignal] Using OneSignal native slidedown prompt');
+      await (window as any).OneSignal.Slidedown.promptPush();
       
-      if (success) {
-        return { success: true };
-      } else {
-        return { success: false, error: 'Failed to enable notifications' };
-      }
+      // Verify the subscription was successful
+      setTimeout(async () => {
+        await verifySubscription();
+      }, 1000);
+      
+      return { success: true };
+      
     } catch (error) {
-      console.error('[OneSignal] Permission request error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      console.error('[OneSignal] Permission request failed:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
     }
   };
 

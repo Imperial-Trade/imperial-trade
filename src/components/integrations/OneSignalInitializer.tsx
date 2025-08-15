@@ -1,6 +1,5 @@
 import React from "react";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
-import UnifiedPermissionFlow from "@/components/notifications/UnifiedPermissionFlow";
 import NotificationDebugPanel from "@/components/notifications/NotificationDebugPanel";
 import OneSignalEmergencyPanel from "@/components/admin/OneSignalEmergencyPanel";
 import NotificationTestingPanel from "@/components/admin/NotificationTestingPanel";
@@ -12,10 +11,12 @@ const OneSignalInitializer: React.FC = () => {
 
   return (
     <NotificationsProvider>
-      <UnifiedPermissionFlow autoShow={true} />
-      <NotificationDebugPanel />
+      {/* Only OneSignal native prompt will be used - no custom UI */}
       {isAdmin && (
         <>
+          <div className="fixed top-4 right-4 z-50">
+            <NotificationDebugPanel />
+          </div>
           <OneSignalEmergencyPanel />
           <NotificationTestingPanel />
         </>

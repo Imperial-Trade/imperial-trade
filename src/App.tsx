@@ -67,8 +67,6 @@ import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
 import { setupNotificationClickHandler } from "@/utils/notificationHandlers";
 import NotificationSystem from "@/components/notifications/NotificationSystem";
 import NotificationsPanel from "@/components/notifications/NotificationsPanel";
-import { NotificationsProvider } from "@/contexts/NotificationsContext";
-import { GlobalNotificationBanner } from "@/components/layout/GlobalNotificationBanner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -95,7 +93,6 @@ function App() {
               <PostHogPageViewTracker />
               <ScrollToTop />
                 <AuthProvider>
-                  <NotificationsProvider>
                     <AutoRecoveryProvider>
                       <WelcomeProvider>
                         <NavigationGuard>
@@ -103,7 +100,6 @@ function App() {
                             <WebSocketPriceProvider>
                               <NotificationSystem />
                               <NotificationsPanel />
-                              <GlobalNotificationBanner />
                         <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -302,7 +298,6 @@ function App() {
                         </NavigationGuard>
                       </WelcomeProvider>
                     </AutoRecoveryProvider>
-                  </NotificationsProvider>
                 </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>

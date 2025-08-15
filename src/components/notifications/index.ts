@@ -1,1 +1,1 @@
-export { NotificationPromptBanner } from './NotificationPromptBanner';
+// Notifications module - OneSignal native prompt only system

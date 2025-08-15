@@ -37,8 +37,8 @@ export function useOneSignalEnhanced() {
   const isIframeBlocked = typeof window !== 'undefined' && window.self !== window.top;
   const debug = (() => { try { return localStorage.getItem('onesignal_debug') === '1'; } catch { return false; } })();
   
-  // Force debug mode for evaluation
-  console.log('🔔 OneSignal Hook - Initializing with debug mode');
+  // Enhanced debug logging
+  console.log('🔔 OneSignal Enhanced Hook - Starting initialization');
   
   // Enhanced browser and PWA detection
   const browserInfo = typeof window !== 'undefined' ? detectBrowser() : { 
@@ -206,17 +206,23 @@ export function useOneSignalEnhanced() {
                     notifyButton: { enable: false },
                     bell: { enabled: false },
                     showCredit: false,
-                    // **CRITICAL FIX: Enhanced native slidedown prompt configuration**
+                    // **CRITICAL FIX: Enhanced native slidedown prompt configuration for all platforms**
                     promptOptions: {
                       slidedown: {
                         enabled: true,
-                        actionMessage: "Get instant alerts for premium trading signals and market opportunities! Stay ahead of the market with real-time notifications.",
-                        acceptButtonText: "Enable Notifications", 
-                        cancelButtonText: "Not Now",
+                        actionMessage: "🚀 Get instant alerts for premium trading signals, take-profit hits, and critical market opportunities! Never miss a profitable trade again.",
+                        acceptButtonText: "Enable Trading Alerts", 
+                        cancelButtonText: "Maybe Later",
                         displayPredicate: function() {
                           console.info('[OneSignal CRITICAL DEBUG] Slidedown display predicate called');
                           return true; // Always allow slidedown when triggered
                         }
+                      },
+                      customlink: {
+                        enabled: false // Disable custom link to ensure only native prompt
+                      },
+                      bell: {
+                        enabled: false // Disable bell to ensure only native prompt
                       }
                     }
                   };

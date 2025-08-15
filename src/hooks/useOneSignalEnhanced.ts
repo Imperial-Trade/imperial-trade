@@ -3,7 +3,7 @@
  * CRITICAL FIX: Addresses 85.7% auto-trigger failure rate with comprehensive debugging
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { withTimeout } from "@/api/client/utils/timeout";
@@ -791,6 +791,44 @@ export function useOneSignalEnhanced() {
     }
   };
 
+  /**
+   * Wait for OneSignal player ID with polling
+   * Essential for iOS PWA where player ID capture can be delayed
+   */
+  const waitForPlayerId = useCallback(async (maxAttempts = 10, interval = 1000): Promise<string | null> => {
+    console.log('🔄 [OneSignal] Waiting for player ID...');
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        if (!window.OneSignal) {
+          console.log(`⏳ [OneSignal] OneSignal not ready, attempt ${attempt}/${maxAttempts}`);
+          await new Promise(resolve => setTimeout(resolve, interval));
+          continue;
+        }
+
+        const ps = (window as any).OneSignal?.User?.PushSubscription;
+        const playerId = ps?.id;
+        if (playerId) {
+          console.log('✅ [OneSignal] Player ID captured:', playerId.substring(0, 8) + '...');
+          return playerId;
+        }
+        
+        console.log(`⏳ [OneSignal] No player ID yet, attempt ${attempt}/${maxAttempts}`);
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, interval));
+        }
+      } catch (error) {
+        console.warn(`❌ [OneSignal] Error getting player ID, attempt ${attempt}:`, error);
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, interval));
+        }
+      }
+    }
+    
+    console.warn('⚠️ [OneSignal] Failed to get player ID after all attempts');
+    return null;
+  }, []);
+
   // **CRITICAL FIX: Enhanced permission request with comprehensive error handling and retry logic**
   const requestPermission = async (): Promise<{
     success: boolean; 
@@ -877,16 +915,18 @@ export function useOneSignalEnhanced() {
         console.log('[OneSignal] Permission granted via native prompt');
         setPermission('granted');
         
-        // Wait a moment for subscription to be established
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const ps = (window as any).OneSignal?.User?.PushSubscription;
-        if (ps?.id && user?.id) {
-          console.log('[OneSignal] Capturing Player ID after permission grant:', ps.id.substring(0, 8) + '...');
-          await captureAndStorePlayerIdSequential(ps.id);
-          
-          // Sync with backend after successful subscription
-          await syncSubscriptionStatus(ps.id);
+        // Wait for and capture player ID with enhanced polling
+        try {
+          const playerId = await waitForPlayerId(15, 1000); // Wait up to 15 seconds
+          if (playerId && user?.id) {
+            await captureAndStorePlayerIdSequential(playerId);
+            // Sync with backend after successful subscription
+            await syncSubscriptionStatus(playerId);
+          } else {
+            console.warn('⚠️ [OneSignal] No player ID available after permission grant');
+          }
+        } catch (playerIdError) {
+          console.warn('❌ [OneSignal] Error capturing player ID:', playerIdError);
         }
         
         setHasSubscription(true);
@@ -1155,6 +1195,7 @@ export function useOneSignalEnhanced() {
     ensureOneSignalUserWithPlayerId,
     verifySubscription,
     captureAndStorePlayerId: captureAndStorePlayerIdSequential,
+    waitForPlayerId,
     browserInfo,
     browserInstructions: getBrowserInstructions(browserInfo)
   };

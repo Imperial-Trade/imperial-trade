@@ -235,30 +235,6 @@ export function useOneSignalEnhanced() {
             };
 
             (window as any).OneSignal.Notifications?.addEventListener?.("permissionChange", handlePermissionChange);
-            
-            // Auto-trigger native slidedown after user login
-            if (user?.id && (permission === 'default' || permission === 'denied')) {
-              console.log('[OneSignal] User logged in - triggering native slidedown for trading signals');
-              setTimeout(() => {
-                try {
-                  // Use OneSignal's built-in slidedown prompt with custom messaging
-                  if ((window as any).OneSignal?.Slidedown?.promptPush) {
-                    (window as any).OneSignal.Slidedown.promptPush({
-                      force: true, // Show even if previously dismissed
-                      forceSlidedownOverNative: false // Prefer native prompt when available
-                    }).catch((e: any) => {
-                      console.warn('[OneSignal] Auto-prompt failed:', e);
-                    });
-                  } else if ((window as any).OneSignal?.showSlidedownPrompt) {
-                    (window as any).OneSignal.showSlidedownPrompt().catch((e: any) => {
-                      console.warn('[OneSignal] Fallback prompt failed:', e);
-                    });
-                  }
-                } catch (e) {
-                  console.warn('[OneSignal] Auto-prompt error:', e);
-                }
-              }, 3000); // 3 second delay after login for better UX
-            }
 
             // **Enhanced push subscription tracking with Player ID capture**
             const ps = (window as any).OneSignal?.User?.PushSubscription;
@@ -781,15 +757,50 @@ export function useOneSignalEnhanced() {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     
-    if (user && initialized && permission === 'default' && browserInfo.isSupported) {
+    // Enhanced auto-trigger conditions with comprehensive logging
+    const shouldTrigger = user && 
+                         initialized && 
+                         permission === 'default' && 
+                         browserInfo?.isSupported && 
+                         !hasSubscription;
+    
+    console.log(`[OneSignal] Auto-trigger evaluation:`, {
+      user: !!user,
+      initialized,
+      permission,
+      browserSupported: browserInfo?.isSupported,
+      browserName: browserInfo?.name,
+      hasSubscription,
+      shouldTrigger
+    });
+    
+    if (shouldTrigger) {
+      console.log('[OneSignal] Scheduling native slidedown for trading signals and market alerts');
+      
       // Wait 3 seconds after login to show the native slidedown
       timeoutId = setTimeout(async () => {
         try {
-          if (debug) console.info('[OneSignal] Auto-triggering native slidedown for logged-in user...');
+          // Double-check conditions before triggering
+          const currentPermission = Notification.permission;
+          const oneSignalReady = !!(window as any).OneSignal?.Slidedown?.promptPush;
           
-          // Only show if still default permission and OneSignal is ready
-          if (Notification.permission === 'default' && window.OneSignal) {
-            await window.OneSignal.Slidedown.promptPush();
+          console.log(`[OneSignal] About to trigger slidedown:`, {
+            currentPermission,
+            oneSignalReady,
+            windowOneSignal: !!(window as any).OneSignal
+          });
+          
+          if (currentPermission === 'default' && oneSignalReady) {
+            console.log('[OneSignal] Triggering native slidedown prompt...');
+            await (window as any).OneSignal.Slidedown.promptPush({
+              force: true, // Show even if previously dismissed
+              forceSlidedownOverNative: false // Prefer native prompt when available
+            });
+          } else {
+            console.warn('[OneSignal] Slidedown conditions not met:', {
+              currentPermission,
+              oneSignalReady
+            });
           }
         } catch (error) {
           console.error('[OneSignal] Auto slidedown error:', error);
@@ -798,9 +809,12 @@ export function useOneSignalEnhanced() {
     }
 
     return () => {
-      if (timeoutId) clearTimeout(timeoutId);
+      if (timeoutId) {
+        console.log('[OneSignal] Clearing auto-trigger timeout');
+        clearTimeout(timeoutId);
+      }
     };
-  }, [user, initialized, permission, browserInfo.isSupported, debug]);
+  }, [user, initialized, permission, browserInfo, hasSubscription]);
 
   return {
     initialized,

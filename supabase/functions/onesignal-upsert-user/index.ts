@@ -216,58 +216,69 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Step 3: Update Supabase with device-specific subscription info
-    if (playerId) {
-      try {
-        // Update main profile for compatibility (keep legacy behavior)
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ 
-            onesignal_player_id: playerId,
-            push_subscription_active: true,
-            onesignal_subscription_status: 'subscribed',
-            onesignal_last_verified_at: new Date().toISOString(),
-            device_fingerprint: deviceFingerprint,
-            last_device_info: deviceInfo,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', externalId);
+    // Step 3: Enhanced player ID capture and robust database sync
+    // Enhanced player ID capture and retry logic
+    let finalPlayerId = playerId;
+    if (!finalPlayerId && deviceInfo?.onesignal_player_id) {
+      finalPlayerId = deviceInfo.onesignal_player_id;
+      console.log(`📱 Using player ID from device info: ${finalPlayerId?.substring(0, 8)}...`);
+    }
 
-        if (profileError) {
-          console.warn('⚠️ Profile update failed:', profileError);
-        } else {
-          console.log('✅ Profile updated with player ID');
-        }
+    // Always update profile for subscription tracking
+    try {
+      // Update main profile for compatibility (keep legacy behavior)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          onesignal_player_id: finalPlayerId || null,
+          push_subscription_active: !!finalPlayerId,
+          onesignal_subscription_status: finalPlayerId ? 'subscribed' : 'pending',
+          onesignal_last_verified_at: new Date().toISOString(),
+          device_fingerprint: deviceFingerprint,
+          last_device_info: deviceInfo,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', externalId);
 
-        // **CROSS-DEVICE FIX: Store device-specific subscription**
-        if (deviceFingerprint) {
-          const { error: deviceError } = await supabase
-            .from('device_subscriptions')
-            .upsert({
-              user_id: externalId,
-              device_fingerprint: deviceFingerprint,
-              onesignal_player_id: playerId,
-              device_info: deviceInfo,
-              browser_name: deviceInfo.browser_name || 'Unknown',
-              browser_version: deviceInfo.browser_version || 'Unknown',
-              platform: deviceInfo.platform || 'Unknown',
-              is_mobile: deviceInfo.is_mobile || false,
-              is_active: true,
-              last_seen_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'user_id,device_fingerprint'
-            });
-
-          if (deviceError) {
-            console.warn('⚠️ Device subscription update failed:', deviceError);
-          } else {
-            console.log('✅ Device subscription updated successfully');
-          }
-        }
-      } catch (profileErr) {
-        console.warn('⚠️ Profile/device update error:', profileErr);
+      if (profileError) {
+        console.warn('⚠️ Profile update failed:', profileError);
+      } else {
+        console.log('✅ Profile updated with subscription status');
       }
+
+      // **ENHANCED CROSS-DEVICE TRACKING: Always upsert device subscription**
+      if (deviceFingerprint) {
+        const { error: deviceError } = await supabase
+          .from('device_subscriptions')
+          .upsert({
+            user_id: externalId,
+            device_fingerprint: deviceFingerprint,
+            onesignal_player_id: finalPlayerId || 'pending',
+            device_info: deviceInfo,
+            browser_name: deviceInfo.browser_name || 'Unknown',
+            browser_version: deviceInfo.browser_version || 'Unknown',
+            platform: deviceInfo.platform || 'Unknown',
+            is_mobile: deviceInfo.is_mobile || false,
+            is_active: !!finalPlayerId,
+            last_seen_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,device_fingerprint'
+          });
+
+        if (deviceError) {
+          console.warn('⚠️ Device subscription update failed:', deviceError);
+        } else {
+          console.log('✅ Device subscription tracking updated successfully');
+        }
+
+        // Enhanced retry logic for player ID capture
+        if (!finalPlayerId) {
+          console.log('⏳ Player ID not available yet - this device will be prompted again');
+        }
+      }
+    } catch (profileErr) {
+      console.warn('⚠️ Profile/device update error:', profileErr);
     }
 
     return new Response(

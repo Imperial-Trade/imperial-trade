@@ -9,6 +9,7 @@ import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { AutoRecoveryProvider } from "@/contexts/AutoRecoveryContext";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import Forum from "@/pages/dashboard/forum/Forum";
@@ -91,13 +92,14 @@ function App() {
           <BrowserRouter>
             <PostHogPageViewTracker />
             <ScrollToTop />
-            <AuthProvider>
-              <WelcomeProvider>
-                <NavigationGuard>
-                  <SignalRealtimeProvider>
-                    <WebSocketPriceProvider>
-                      <NotificationSystem />
-                      <NotificationsPanel />
+              <AuthProvider>
+                <AutoRecoveryProvider>
+                  <WelcomeProvider>
+                    <NavigationGuard>
+                      <SignalRealtimeProvider>
+                        <WebSocketPriceProvider>
+                          <NotificationSystem />
+                          <NotificationsPanel />
                       <Routes>
                         {/* Landing Routes */}
                         <Route
@@ -290,11 +292,12 @@ function App() {
                           element={<AccessDenied />}
                         />
                         <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </WebSocketPriceProvider>
-                  </SignalRealtimeProvider>
-                </NavigationGuard>
-              </WelcomeProvider>
+                        </Routes>
+                      </WebSocketPriceProvider>
+                    </SignalRealtimeProvider>
+                  </NavigationGuard>
+                </WelcomeProvider>
+              </AutoRecoveryProvider>
             </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>

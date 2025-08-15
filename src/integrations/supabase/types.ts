@@ -1106,6 +1106,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_batch_queue: {
+        Row: {
+          created_at: string
+          delivery_status: Json | null
+          id: string
+          notification_types: string[]
+          processed_at: string | null
+          scheduled_at: string
+          signal_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_status?: Json | null
+          id?: string
+          notification_types?: string[]
+          processed_at?: string | null
+          scheduled_at?: string
+          signal_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivery_status?: Json | null
+          id?: string
+          notification_types?: string[]
+          processed_at?: string | null
+          scheduled_at?: string
+          signal_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_delivery_log: {
         Row: {
           created_at: string
@@ -2818,6 +2851,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_trading_metrics: {
+        Args: {
+          p_entry_price: number
+          p_stop_loss: number
+          p_tp1?: number
+          p_trade_type?: string
+        }
+        Returns: Json
+      }
       check_account_request_rate_limit: {
         Args: { p_email: string; p_ip_address?: string }
         Returns: Json
@@ -2838,6 +2880,14 @@ export type Database = {
         Args: { tier_level: number }
         Returns: Json
       }
+      get_market_session: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_trader_stats: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2854,6 +2904,15 @@ export type Database = {
           target_price: number
           triggered: boolean
         }[]
+      }
+      should_user_receive_notification: {
+        Args: {
+          p_notification_type: string
+          p_priority_level?: number
+          p_signal_author_id: string
+          p_user_id: string
+        }
+        Returns: boolean
       }
       update_expired_sessions: {
         Args: Record<PropertyKey, never>

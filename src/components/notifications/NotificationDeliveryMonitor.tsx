@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle, RefreshCw, TestTube } from "lucide-react";
 import { toast } from "sonner";
+import { PlayerIdEmergencyFix } from "./PlayerIdEmergencyFix";
 
 interface DeliveryStatus {
   lastTestTime?: string;
@@ -201,9 +202,9 @@ export default function NotificationDeliveryMonitor() {
     return () => clearInterval(interval);
   }, [initialized, hasSubscription, checkSubscriptionHealth, platformConfig.healthCheckInterval]);
 
-  // Don't render if not subscribed
+  // Show emergency fix component even if not fully subscribed
   if (!isGranted || !hasSubscription) {
-    return null;
+    return <PlayerIdEmergencyFix />;
   }
 
   const getHealthBadgeColor = () => {
@@ -225,13 +226,16 @@ export default function NotificationDeliveryMonitor() {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          {getHealthIcon()}
-          Notification Delivery Status
-        </CardTitle>
-      </CardHeader>
+    <div className="w-full space-y-4">
+      <PlayerIdEmergencyFix />
+      
+      <Card className="w-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            {getHealthIcon()}
+            Notification Delivery Status
+          </CardTitle>
+        </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Subscription Health:</span>
@@ -305,6 +309,7 @@ export default function NotificationDeliveryMonitor() {
           </details>
         )}
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }

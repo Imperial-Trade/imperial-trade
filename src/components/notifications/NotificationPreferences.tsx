@@ -5,19 +5,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Bell, Clock, Volume2 } from 'lucide-react';
+import { Bell, Clock, Volume2, Settings, Shield } from 'lucide-react';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { Badge } from '@/components/ui/badge';
 
 export const NotificationPreferences: React.FC = () => {
   const {
     preferences,
-    loading,
-    saving,
-    savePreferences,
-    updatePreference
+    isLoading,
+    updatePreferences,
+    isUpdating
   } = useNotificationPreferences();
 
-  if (loading) {
+  const handleToggle = (key: string, value: boolean) => {
+    updatePreferences({ [key]: value });
+  };
+
+  const handlePriorityChange = (priority: string) => {
+    updatePreferences({ minimum_priority_level: parseInt(priority) });
+  };
+
+  const handleQuietHoursChange = (type: 'start' | 'end', value: string) => {
+    const key = type === 'start' ? 'quiet_hours_start' : 'quiet_hours_end';
+    updatePreferences({ [key]: value || null });
+  };
+
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="pt-6">
@@ -29,193 +42,195 @@ export const NotificationPreferences: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Signal Types */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5" />
-            Notification Types
+            <Settings className="w-5 h-5" />
+            Signal Notifications
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label>Push Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive push notifications on your device
-                </p>
-              </div>
-              <Switch
-                checked={preferences.push_enabled}
-                onCheckedChange={(checked) => updatePreference('push_enabled', checked)}
-              />
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label>New Signals Created</Label>
+              <p className="text-sm text-muted-foreground">
+                When new trading signals are published
+              </p>
             </div>
+            <Switch
+              checked={preferences?.signal_created ?? true}
+              onCheckedChange={(value) => handleToggle('signal_created', value)}
+              disabled={isUpdating}
+            />
+          </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label>Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive notifications via email
-                </p>
-              </div>
-              <Switch
-                checked={preferences.email_enabled}
-                onCheckedChange={(checked) => updatePreference('email_enabled', checked)}
-              />
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label>Signal Updates</Label>
+              <p className="text-sm text-muted-foreground">
+                When signals are modified or notes are added
+              </p>
             </div>
+            <Switch
+              checked={preferences?.signal_updated ?? true}
+              onCheckedChange={(value) => handleToggle('signal_updated', value)}
+              disabled={isUpdating}
+            />
+          </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label>Trading Signals</Label>
-                <p className="text-sm text-muted-foreground">
-                  Get notified about new trading signals
-                </p>
-              </div>
-              <Switch
-                checked={preferences.trading_signals}
-                onCheckedChange={(checked) => updatePreference('trading_signals', checked)}
-              />
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label className="flex items-center gap-1">
+                Take Profit Hits
+                <Badge variant="secondary" className="text-xs">High Priority</Badge>
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                When TP levels are reached
+              </p>
             </div>
+            <Switch
+              checked={preferences?.tp_hits ?? true}
+              onCheckedChange={(value) => handleToggle('tp_hits', value)}
+              disabled={isUpdating}
+            />
+          </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label>Market Updates</Label>
-                <p className="text-sm text-muted-foreground">
-                  Economic events and market news
-                </p>
-              </div>
-              <Switch
-                checked={preferences.market_updates}
-                onCheckedChange={(checked) => updatePreference('market_updates', checked)}
-              />
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label className="flex items-center gap-1">
+                Stop Loss Hits
+                <Badge variant="destructive" className="text-xs">Critical</Badge>
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                When stop loss levels are reached
+              </p>
             </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label>Educational Content</Label>
-                <p className="text-sm text-muted-foreground">
-                  New courses and learning materials
-                </p>
-              </div>
-              <Switch
-                checked={preferences.educational_content}
-                onCheckedChange={(checked) => updatePreference('educational_content', checked)}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label>Community Activity</Label>
-                <p className="text-sm text-muted-foreground">
-                  Forum posts, replies, and likes
-                </p>
-              </div>
-              <Switch
-                checked={preferences.community_activity}
-                onCheckedChange={(checked) => updatePreference('community_activity', checked)}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label>System Announcements</Label>
-                <p className="text-sm text-muted-foreground">
-                  Important platform updates
-                </p>
-              </div>
-              <Switch
-                checked={preferences.system_announcements}
-                onCheckedChange={(checked) => updatePreference('system_announcements', checked)}
-              />
-            </div>
+            <Switch
+              checked={preferences?.stop_loss_hits ?? true}
+              onCheckedChange={(value) => handleToggle('stop_loss_hits', value)}
+              disabled={isUpdating}
+            />
           </div>
         </CardContent>
       </Card>
 
+      {/* Delivery Channels */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            Quiet Hours
+            <Volume2 className="w-5 h-5" />
+            Delivery Channels
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Start Time</Label>
-              <Input
-                type="time"
-                value={preferences.quiet_hours_start || ''}
-                onChange={(e) => updatePreference('quiet_hours_start', e.target.value || null)}
-              />
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label>Push Notifications</Label>
+              <p className="text-sm text-muted-foreground">
+                Browser and mobile push notifications
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label>End Time</Label>
-              <Input
-                type="time"
-                value={preferences.quiet_hours_end || ''}
-                onChange={(e) => updatePreference('quiet_hours_end', e.target.value || null)}
-              />
-            </div>
+            <Switch
+              checked={preferences?.push_notifications ?? true}
+              onCheckedChange={(value) => handleToggle('push_notifications', value)}
+              disabled={isUpdating}
+            />
           </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label>In-App Notifications</Label>
+              <p className="text-sm text-muted-foreground">
+                Notifications within the platform
+              </p>
+            </div>
+            <Switch
+              checked={preferences?.in_app_notifications ?? true}
+              onCheckedChange={(value) => handleToggle('in_app_notifications', value)}
+              disabled={isUpdating}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Advanced Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5" />
+            Advanced Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label>Include Own Signals</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive notifications for signals you create
+              </p>
+            </div>
+            <Switch
+              checked={preferences?.include_own_signals ?? false}
+              onCheckedChange={(value) => handleToggle('include_own_signals', value)}
+              disabled={isUpdating}
+            />
+          </div>
+
           <div className="space-y-2">
-            <Label>Timezone</Label>
+            <Label>Minimum Priority Level</Label>
             <Select
-              value={preferences.timezone}
-              onValueChange={(value) => updatePreference('timezone', value)}
+              value={preferences?.minimum_priority_level?.toString() ?? '1'}
+              onValueChange={handlePriorityChange}
+              disabled={isUpdating}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="UTC">UTC</SelectItem>
-                <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                <SelectItem value="America/Chicago">Central Time</SelectItem>
-                <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                <SelectItem value="Europe/London">London</SelectItem>
-                <SelectItem value="Europe/Paris">Paris</SelectItem>
-                <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
-                <SelectItem value="Asia/Shanghai">Shanghai</SelectItem>
+                <SelectItem value="1">All notifications (Level 1+)</SelectItem>
+                <SelectItem value="2">Important only (Level 2+)</SelectItem>
+                <SelectItem value="3">Critical only (Level 3)</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Volume2 className="w-5 h-5" />
-            Frequency Limits
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Maximum notifications per day</Label>
-            <Input
-              type="number"
-              min="1"
-              max="50"
-              value={preferences.frequency_limit}
-              onChange={(e) => updatePreference('frequency_limit', parseInt(e.target.value) || 10)}
-            />
             <p className="text-sm text-muted-foreground">
-              Limit the number of push notifications you receive daily
+              Filter notifications by importance level
             </p>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Quiet Hours Start
+              </Label>
+              <input
+                type="time"
+                value={preferences?.quiet_hours_start ?? ''}
+                onChange={(e) => handleQuietHoursChange('start', e.target.value)}
+                className="w-full px-3 py-2 border border-input rounded-md text-sm"
+                disabled={isUpdating}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Quiet Hours End
+              </Label>
+              <input
+                type="time"
+                value={preferences?.quiet_hours_end ?? ''}
+                onChange={(e) => handleQuietHoursChange('end', e.target.value)}
+                className="w-full px-3 py-2 border border-input rounded-md text-sm"
+                disabled={isUpdating}
+              />
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            During quiet hours, only critical notifications will be sent
+          </p>
         </CardContent>
       </Card>
-
-      <div className="flex justify-end">
-        <Button 
-          onClick={() => savePreferences()} 
-          disabled={saving}
-          className="min-w-24"
-        >
-          {saving ? 'Saving...' : 'Save Preferences'}
-        </Button>
-      </div>
     </div>
   );
 };

@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.subscription-manager]
 verify_jwt = false
+
+[functions.test-signal-notification]
+verify_jwt = false

@@ -210,8 +210,8 @@ export const EconomicRealtimeProvider: React.FC<EconomicRealtimeProviderProps> =
     return () => clearInterval(interval);
   }, [upcomingEvents, getTimeUntilEvent, eventAlerts, notificationsEnabled]);
 
-  // Note: Notification permission is handled by NotificationPermissionBanner
-  // Don't request permission here to avoid competing with custom banner
+  // Note: Notification permission is handled by OneSignal native slidedown
+  // Don't request permission here to avoid competing with OneSignal prompt
 
   // Auto-subscribe on mount if enabled
   useEffect(() => {

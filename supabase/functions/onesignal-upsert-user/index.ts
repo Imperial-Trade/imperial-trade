@@ -127,19 +127,15 @@ Deno.serve(async (req: Request) => {
     if (!existingUser) {
       console.log('📝 Creating new OneSignal user...');
       
-      // Reduce tags to essential only to avoid plan limits
-      const essentialTags = {
-        role: tags.role || 'user',
-        user_type: tags.user_type || 'member',
-        platform: tags.platform || 'web'
-      };
+      // ZERO tags to avoid OneSignal plan limits completely
+      const essentialTags = {};
 
       const createPayload = {
         identity: {
           external_id: externalId,
         },
         properties: {
-          tags: essentialTags,
+          tags: essentialTags,  // Zero tags - no more!
         },
         subscriptions: []
       };
@@ -173,16 +169,12 @@ Deno.serve(async (req: Request) => {
     } else {
       console.log('🔄 Updating existing OneSignal user...');
       
-      // Reduce tags to essential only to avoid plan limits
-      const essentialTags = {
-        role: tags.role || 'user',
-        user_type: tags.user_type || 'member',
-        platform: tags.platform || 'web'
-      };
+      // ZERO tags to avoid OneSignal plan limits completely
+      const essentialTags = {};
       
       const updatePayload = {
         properties: {
-          tags: essentialTags,  // Use only essential tags to avoid plan limits
+          tags: essentialTags,  // Zero tags - no more!
         },
         subscriptions: []
       };

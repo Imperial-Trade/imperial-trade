@@ -282,8 +282,8 @@ export function useOneSignalEnhanced() {
                       console.log('[OneSignal] Player ID captured:', id.substring(0, 8) + '...', 
                         safariPWAInfo.isSafariPWA ? '(iOS PWA)' : '(Standard Web)');
                       
-                      // Immediate Player ID capture and backend sync
-                      captureAndStorePlayerId(id);
+                      // Sequential Player ID capture with validation
+                      captureAndStorePlayerIdSequential(id);
                     }
                   } catch (e) {
                     console.warn('[OneSignal] Subscription state update error:', e);
@@ -327,12 +327,11 @@ export function useOneSignalEnhanced() {
                     }
                   }
                   
-                  const tags: Record<string, string> = {
-                    platform: safariPWAInfo.isIOS ? 'ios' : 'web',
-                    is_pwa: safariPWAInfo.isSafariPWA ? 'true' : 'false'
+                   // Minimal tags to avoid OneSignal plan limits
+                   const tags: Record<string, string> = {
+                    platform: safariPWAInfo.isIOS ? 'ios' : 'web'
                   };
                   if (profile?.role) tags["role"] = String(profile.role);
-                  if (profile?.user_type) tags["user_type"] = String(profile.user_type);
                   
                   if (Object.keys(tags).length > 0) {
                     if ((window as any).OneSignal.User?.addTags) {
@@ -367,44 +366,112 @@ export function useOneSignalEnhanced() {
     };
   }, [user?.id, profile?.role, profile?.user_type, browserInfo.name]);
   
-  // **CRITICAL: Player ID Capture Function - Ensures Player ID is never null**
-  const captureAndStorePlayerId = async (playerId: string): Promise<boolean> => {
+  // **CRITICAL: Sequential Player ID Capture - Prevents race conditions**
+  const captureAndStorePlayerIdSequential = async (playerId: string): Promise<boolean> => {
     try {
       if (!user?.id || !playerId) {
         console.warn('[OneSignal] Missing user ID or player ID for capture');
         return false;
       }
 
-      console.log('[OneSignal] Capturing Player ID:', playerId.substring(0, 8) + '...');
+      console.log('[OneSignal] Sequential Player ID capture:', playerId.substring(0, 8) + '...');
 
-      const { data, error } = await withTimeout(
-        supabase.functions.invoke('onesignal-upsert-user', {
-          body: {
-            user_id: user.id,
-            email: user.email,
-            player_id: playerId,
-            tags: {
-              role: profile?.role || 'user',
-              user_type: profile?.user_type || 'member',
-              platform: safariPWAInfo.isIOS ? 'ios' : 'web'
-            }
-          }
-        }),
-        10000
-      );
+      // Step 1: Verify OneSignal initialization
+      if (!(window as any).OneSignal?.User?.PushSubscription?.id) {
+        console.warn('[OneSignal] OneSignal not ready for Player ID capture, retrying...');
+        await new Promise(r => setTimeout(r, 1000));
+        
+        if (!(window as any).OneSignal?.User?.PushSubscription?.id) {
+          console.error('[OneSignal] OneSignal still not ready after retry');
+          return false;
+        }
+      }
 
-      if (error) {
-        console.error('[OneSignal] Player ID capture failed:', error);
+      // Step 2: Database transaction with validation
+      const { data: currentProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('onesignal_player_id, push_subscription_active')
+        .eq('id', user.id)
+        .single();
+
+      if (fetchError) {
+        console.error('[OneSignal] Failed to fetch current profile:', fetchError);
         return false;
       }
 
-      console.log('[OneSignal] Player ID captured and stored successfully');
-      return true;
+      // Step 3: Only update if Player ID is different or missing
+      if (currentProfile?.onesignal_player_id === playerId) {
+        console.log('[OneSignal] Player ID already stored correctly');
+        return true;
+      }
+
+      // Step 4: Backend sync with retry logic
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts) {
+        attempts++;
+        
+        try {
+          const { data, error } = await withTimeout(
+            supabase.functions.invoke('onesignal-upsert-user', {
+              body: {
+                user_id: user.id,
+                email: user.email,
+                player_id: playerId,
+                tags: {
+                  role: profile?.role || 'user',
+                  platform: 'web' // Simplified to avoid tag limits
+                }
+              }
+            }),
+            10000
+          );
+
+          if (error) {
+            console.warn(`[OneSignal] Attempt ${attempts}/${maxAttempts} failed:`, error);
+            if (attempts === maxAttempts) {
+              throw error;
+            }
+            await new Promise(r => setTimeout(r, 1000 * attempts));
+            continue;
+          }
+
+          // Step 5: Verify database update
+          const { data: verifyProfile } = await supabase
+            .from('profiles')
+            .select('onesignal_player_id')
+            .eq('id', user.id)
+            .single();
+
+          if (verifyProfile?.onesignal_player_id === playerId) {
+            console.log('[OneSignal] Player ID captured and verified successfully');
+            return true;
+          } else {
+            console.warn('[OneSignal] Player ID verification failed, database not updated');
+            if (attempts === maxAttempts) {
+              return false;
+            }
+            await new Promise(r => setTimeout(r, 1000 * attempts));
+          }
+        } catch (err) {
+          console.error(`[OneSignal] Capture attempt ${attempts} exception:`, err);
+          if (attempts === maxAttempts) {
+            throw err;
+          }
+          await new Promise(r => setTimeout(r, 1000 * attempts));
+        }
+      }
+
+      return false;
     } catch (err) {
-      console.error('[OneSignal] Player ID capture exception:', err);
+      console.error('[OneSignal] Sequential capture exception:', err);
       return false;
     }
   };
+
+  // **Legacy function for backward compatibility**
+  const captureAndStorePlayerId = captureAndStorePlayerIdSequential;
 
   // **PHASE 1: Enhanced OneSignal User Creation**
   const ensureOneSignalUser = async (): Promise<boolean> => {
@@ -419,8 +486,7 @@ export function useOneSignalEnhanced() {
         email: user.email,
         tags: {
           role: profile?.role || 'user',
-          user_type: profile?.user_type || 'member',
-          platform: safariPWAInfo.isIOS ? 'ios' : 'web'
+          platform: 'web' // Simplified to avoid tag limits
         }
       };
 
@@ -710,6 +776,31 @@ export function useOneSignalEnhanced() {
       };
     }
   };
+
+  // **AUTO-TRIGGER NATIVE SLIDEDOWN AFTER LOGIN**
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (user && initialized && permission === 'default' && browserInfo.isSupported) {
+      // Wait 3 seconds after login to show the native slidedown
+      timeoutId = setTimeout(async () => {
+        try {
+          if (debug) console.info('[OneSignal] Auto-triggering native slidedown for logged-in user...');
+          
+          // Only show if still default permission and OneSignal is ready
+          if (Notification.permission === 'default' && window.OneSignal) {
+            await window.OneSignal.Slidedown.promptPush();
+          }
+        } catch (error) {
+          console.error('[OneSignal] Auto slidedown error:', error);
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [user, initialized, permission, browserInfo.isSupported, debug]);
 
   return {
     initialized,

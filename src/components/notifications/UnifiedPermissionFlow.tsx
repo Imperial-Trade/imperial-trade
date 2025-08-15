@@ -70,32 +70,11 @@ const UnifiedPermissionFlow: React.FC<UnifiedPermissionFlowProps> = ({
         toast.success("🎉 Notifications enabled!", {
           description: "You'll now receive real-time trading signals"
         });
-        
-        // Verify subscription was created successfully
-        setTimeout(async () => {
-          try {
-            await verifySubscription();
-          } catch (error) {
-            console.error('Post-permission verification failed:', error);
-          }
-        }, 1000);
-        
         handleClose();
       } else {
-        // Handle different failure scenarios
-        if (result.error === 'permission_denied') {
-          toast.error("Permission denied", {
-            description: "Please enable notifications in your browser settings and try again"
-          });
-        } else if (result.error === 'unsupported_browser') {
-          toast.error("Browser not supported", {
-            description: "Your browser doesn't support push notifications"
-          });
-        } else {
-          toast.error("Failed to enable notifications", {
-            description: "Please try again or check your device settings"
-          });
-        }
+        toast.error(result.error || "Failed to enable notifications", {
+          description: "Please try again"
+        });
       }
     } catch (error) {
       console.error('Permission request error:', error);
@@ -150,35 +129,7 @@ const UnifiedPermissionFlow: React.FC<UnifiedPermissionFlowProps> = ({
   };
 
   const getSpecialInstructions = () => {
-    if (isIOS && isPWA) {
-      return (
-        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-          <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-            📱 iOS PWA Instructions:
-          </p>
-          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-            1. Tap "Subscribe to Notifications" below<br/>
-            2. When prompted, tap "Allow" in the permission dialog<br/>
-            3. Notifications will work directly in your installed app
-          </p>
-        </div>
-      );
-    }
-    
-    if (isIOS) {
-      return (
-        <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
-          <p className="text-sm text-orange-700 dark:text-orange-300 font-medium">
-            📱 iOS Safari Note:
-          </p>
-          <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-            Install this app to your home screen for the best notification experience
-          </p>
-        </div>
-      );
-    }
-    
-    return null;
+    return null; // OneSignal native prompt handles all platform-specific instructions
   };
 
   if (!isVisible || !profile) {

@@ -169,15 +169,15 @@ export function useOneSignalEnhanced() {
                     notifyButton: { enable: false },
                     promptOptions: { 
                       autoPrompt: false,
-                      slidedown: { enabled: false },
+                      slidedown: { enabled: true, autoPrompt: false },
                       fullscreen: { enabled: false }
                     },
-                    slidedown: { enabled: false },
+                    slidedown: { enabled: true, autoPrompt: false },
                     bell: { enabled: false },
                     showCredit: false,
                     suppressAutoPrompts: true,
-                    disableSlidedown: true,
-                    suppressNativePrompt: true,
+                    disableSlidedown: false,
+                    suppressNativePrompt: false,
                   };
                   
                   if (debug) console.info('[OneSignal] Initializing with config:', initConfig);
@@ -692,10 +692,10 @@ export function useOneSignalEnhanced() {
     }
   };
 
-  // UNIFIED PERMISSION REQUEST - No native browser prompts, custom UI only
+  // SIMPLIFIED NATIVE PROMPT REQUEST
   const requestPermission = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      console.log('[OneSignal] 🎯 UNIFIED: Starting custom permission request...');
+      console.log('[OneSignal] Starting OneSignal native slidedown request...');
 
       if (!initialized) {
         console.error('[OneSignal] SDK not initialized yet');
@@ -708,97 +708,23 @@ export function useOneSignalEnhanced() {
         return { success: true };
       }
 
-      // For iOS PWA, verify we're in standalone mode
-      if (safariPWAInfo.isIOS && !safariPWAInfo.isSafariPWA) {
-        console.warn('[OneSignal] iOS user not in PWA mode');
-        return { 
-          success: false, 
-          error: 'iOS users must install the app as PWA for push notifications' 
-        };
-      }
-
-      // STEP 1: Request native notification permission FIRST (no OneSignal prompts)
-      let nativePermission: NotificationPermission;
-      try {
-        console.log('[OneSignal] 📱 Requesting native notification permission...');
-        nativePermission = await Notification.requestPermission();
-        console.log('[OneSignal] Native permission result:', nativePermission);
-        setPermission(nativePermission);
-      } catch (error) {
-        console.error('[OneSignal] Native permission request failed:', error);
-        return { success: false, error: 'Failed to request notification permission' };
-      }
-
-      if (nativePermission !== 'granted') {
-        console.warn('[OneSignal] Native permission denied:', nativePermission);
-        return { success: false, error: 'Notification permission denied' };
-      }
-
-      // STEP 2: Now that we have permission, set up OneSignal subscription WITHOUT prompts
-      try {
-        console.log('[OneSignal] 🔧 Setting up OneSignal subscription...');
-        
-        // For iOS PWA, wait a bit for subscription to establish
-        if (safariPWAInfo.isSafariPWA) {
-          console.log('[OneSignal] iOS PWA: Waiting for subscription...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-
-        // Check if subscription was automatically created
-        const verification = await verifySubscription();
-        console.log('[OneSignal] Post-permission verification:', verification);
-
-        if (verification.hasValidSubscription && verification.playerId) {
-          console.log('[OneSignal] ✅ Subscription established with Player ID:', verification.playerId.substring(0, 8) + '...');
-          setHasSubscription(true);
-          
-          // Sync with backend
-          try {
-            await ensureOneSignalUserWithPlayerId(verification.playerId);
-            console.log('[OneSignal] ✅ Backend sync complete');
-          } catch (syncError) {
-            console.warn('[OneSignal] Backend sync failed:', syncError);
-          }
-          
-          return { success: true };
-        }
-
-        // If no automatic subscription, try to trigger OneSignal registration manually
-        console.log('[OneSignal] 🔄 Triggering OneSignal registration...');
-        
-        // Use OneSignal User API to opt in instead of slidedown
-        const osUser = (window as any).OneSignal?.User;
-        if (osUser?.PushSubscription) {
-          try {
-            await osUser.PushSubscription.optIn();
-            console.log('[OneSignal] Manual opt-in triggered');
-            
-            // Wait and verify
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            const finalVerification = await verifySubscription();
-            
-            if (finalVerification.hasValidSubscription) {
-              setHasSubscription(true);
-              if (finalVerification.playerId) {
-                await ensureOneSignalUserWithPlayerId(finalVerification.playerId);
-              }
-              return { success: true };
-            }
-          } catch (optInError) {
-            console.warn('[OneSignal] Manual opt-in failed:', optInError);
-          }
-        }
-
-        return { success: false, error: 'Failed to establish push subscription' };
-
-      } catch (subscriptionError) {
-        console.error('[OneSignal] Subscription setup failed:', subscriptionError);
-        return { success: false, error: 'Failed to set up push notifications' };
-      }
-
+      // Use OneSignal's native slidedown prompt for all cases
+      console.log('[OneSignal] Using OneSignal native slidedown prompt');
+      await (window as any).OneSignal.Slidedown.promptPush();
+      
+      // Verify the subscription was successful
+      setTimeout(async () => {
+        await verifySubscription();
+      }, 1000);
+      
+      return { success: true };
+      
     } catch (error) {
-      console.error('[OneSignal] Permission request error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      console.error('[OneSignal] Permission request failed:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
     }
   };
 

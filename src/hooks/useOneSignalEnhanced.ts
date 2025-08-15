@@ -37,6 +37,9 @@ export function useOneSignalEnhanced() {
   const isIframeBlocked = typeof window !== 'undefined' && window.self !== window.top;
   const debug = (() => { try { return localStorage.getItem('onesignal_debug') === '1'; } catch { return false; } })();
   
+  // Force debug mode for evaluation
+  console.log('🔔 OneSignal Hook - Initializing with debug mode');
+  
   // Enhanced browser and PWA detection
   const browserInfo = typeof window !== 'undefined' ? detectBrowser() : { 
     name: 'Unknown', 

@@ -12,6 +12,16 @@ export const GlobalNotificationBanner: React.FC = () => {
   const { permission, isGranted, hasSubscription, isIframeBlocked } = useNotifications();
   const [isDismissed, setIsDismissed] = useState(false);
 
+  // Add debugging
+  console.log('🔔 GlobalNotificationBanner render:', {
+    user: !!user,
+    permission,
+    isGranted,
+    hasSubscription,
+    isIframeBlocked,
+    isDismissed
+  });
+
   // Reset dismissal when user changes
   useEffect(() => {
     setIsDismissed(false);

@@ -17,21 +17,34 @@ interface NotificationPayload {
   user_ids?: string[]; // target specific external_user_ids (Supabase user.id)
   segments?: string[]; // OneSignal segments, defaults to ['Subscribed Users']
   include_creator?: boolean; // Whether to include signal creator in notifications
-  // Optional enrichment for "signal_created" notifications
+  // Enhanced trading context
   asset_name?: string;
   symbol?: string;
   trade_type?: string;
   entry_price?: number;
   stop_loss?: number;
-  // Author enrichment
+  tp1?: number;
+  tp2?: number;
+  tp3?: number;
+  tp4?: number;
+  tp5?: number;
+  // Enhanced author enrichment
   author_id?: string;
   author_name?: string;
   author_avatar_url?: string;
-  // Optional enrichment for "signal_updated" notifications
+  trader_level?: string;
+  win_rate?: number;
+  // Signal status and updates
   status?: 'pending' | 'active' | 'closed';
   tp_hits?: number[];
   close_reason?: string;
   notes?: string;
+  // Trading intelligence
+  risk_reward_ratio?: number;
+  market_session?: string;
+  volatility_level?: string;
+  time_sensitivity?: string;
+  position_size_hint?: string;
 }
 
 async function sendRealtimeNotification(payload: NotificationPayload): Promise<boolean> {
@@ -146,7 +159,7 @@ async function sendTelegramNotification(payload: NotificationPayload): Promise<b
   }
 }
 
-// **PHASE 3: Enhanced Push Notification with Modern OneSignal User Model**
+// **PHASE 1: Trading-Focused Enhanced Push Notifications**
 async function sendPushNotification(payload: NotificationPayload): Promise<boolean> {
   try {
     const apiKey = Deno.env.get('ONESIGNAL_API_KEY');
@@ -156,40 +169,117 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
       return false;
     }
 
-    console.log(`📱 Preparing push notification for signal ${payload.signal_id}`);
+    console.log(`📱 Preparing enhanced trading notification for signal ${payload.signal_id}`);
 
     const isSignalCreated = payload.notification_type === 'signal_created';
     const isSignalUpdated = payload.notification_type === 'signal_updated';
+    const isTpHit = payload.alert_type?.startsWith('take_profit');
+    const isStopLoss = payload.alert_type === 'stop_loss';
+    
     let title: string;
     let body: string;
 
     if (isSignalCreated) {
-      const asset = payload.asset_name || payload.symbol || 'New Signal';
+      // Enhanced Signal Creation: "🎯 NEW SIGNAL: ASSET DIRECTION 📈/📉"
+      const asset = payload.asset_name || payload.symbol || 'NEW SIGNAL';
       const type = (payload.trade_type || '').toUpperCase();
       const entry = payload.entry_price ?? payload.target_price ?? payload.triggered_price;
       const sl = payload.stop_loss;
+      const tp1 = payload.tp1;
       const author = (payload.author_name || '').trim();
-      title = author ? `New Signal by ${author}: ${asset}` : `New Signal: ${asset}`;
+      const traderLevel = payload.trader_level || 'Trader';
+      
+      // Trading-focused emojis
+      const directionEmoji = type?.includes('BUY') ? '📈' : type?.includes('SELL') ? '📉' : '🎯';
+      
+      title = `🎯 NEW SIGNAL: ${asset} ${type} ${directionEmoji}`;
+      
+      // Enhanced body with R:R ratio and trader context
       const parts: string[] = [];
-      if (type && entry !== undefined) parts.push(`${type} @ $${Number(entry).toFixed(2)}`);
-      if (sl !== undefined) parts.push(`SL $${Number(sl).toFixed(2)}`);
-      body = parts.join(' • ');
+      if (entry !== undefined) parts.push(`Entry: $${Number(entry).toFixed(2)}`);
+      if (sl !== undefined) parts.push(`SL: $${Number(sl).toFixed(2)}`);
+      if (tp1 !== undefined) parts.push(`TP1: $${Number(tp1).toFixed(2)}`);
+      
+      // Calculate Risk:Reward ratio
+      if (entry !== undefined && sl !== undefined && tp1 !== undefined) {
+        const risk = Math.abs(Number(entry) - Number(sl));
+        const reward = Math.abs(Number(tp1) - Number(entry));
+        const rrRatio = risk > 0 ? (reward / risk).toFixed(1) : '0';
+        parts.push(`R:R ${rrRatio}`);
+      }
+      
+      if (author) parts.push(`By ${traderLevel} ${author}`);
+      body = parts.join(' | ');
+      
+    } else if (isTpHit) {
+      // Enhanced TP Hit: "💰 TP[X] HIT: ASSET +PROFIT% 🚀"
+      const asset = payload.asset_name || payload.symbol || 'Signal';
+      const tpNumber = payload.alert_type?.match(/\d+/)?.[0] || '1';
+      const entryPrice = payload.entry_price;
+      const targetPrice = payload.target_price;
+      
+      // Calculate profit percentage
+      let profitPercent = '';
+      if (entryPrice && targetPrice) {
+        const profit = ((Number(targetPrice) - Number(entryPrice)) / Number(entryPrice)) * 100;
+        profitPercent = ` +${Math.abs(profit).toFixed(1)}%`;
+      }
+      
+      title = `💰 TP${tpNumber} HIT: ${asset}${profitPercent} 🚀`;
+      
+      const parts: string[] = [];
+      parts.push(`Booked ${profitPercent || 'profit'}`);
+      if (payload.tp_hits && payload.tp_hits.length > 0) {
+        const totalTps = Math.max(...payload.tp_hits) + (payload.tp2 ? 1 : 0) + (payload.tp3 ? 1 : 0) + (payload.tp4 ? 1 : 0) + (payload.tp5 ? 1 : 0);
+        parts.push(`${payload.tp_hits.length} of ${totalTps} targets hit`);
+      }
+      body = parts.join(' | ');
+      
+    } else if (isStopLoss) {
+      // Enhanced Stop Loss: "🚨 STOP LOSS: ASSET -LOSS% ⚠️"
+      const asset = payload.asset_name || payload.symbol || 'Signal';
+      const entryPrice = payload.entry_price;
+      const stopPrice = payload.triggered_price;
+      
+      // Calculate loss percentage
+      let lossPercent = '';
+      if (entryPrice && stopPrice) {
+        const loss = ((Number(stopPrice) - Number(entryPrice)) / Number(entryPrice)) * 100;
+        lossPercent = ` -${Math.abs(loss).toFixed(1)}%`;
+      }
+      
+      title = `🚨 STOP LOSS: ${asset}${lossPercent} ⚠️`;
+      
+      const parts: string[] = [];
+      parts.push('Protected capital');
+      if (entryPrice) parts.push(`Entry: $${Number(entryPrice).toFixed(2)}`);
+      if (stopPrice) parts.push(`Exit: $${Number(stopPrice).toFixed(2)}`);
+      parts.push('Risk managed ✅');
+      body = parts.join(' | ');
+      
     } else if (isSignalUpdated) {
+      // Enhanced Signal Updates
       const asset = payload.asset_name || payload.symbol || 'Signal';
       const author = (payload.author_name || '').trim();
       const status = payload.status ? payload.status.toUpperCase() : undefined;
-      const tpHitsText = payload.tp_hits && payload.tp_hits.length ? `TP hits ${payload.tp_hits.join(',')}` : undefined;
-      const closeReason = payload.close_reason ? `Close: ${payload.close_reason.replace('_',' ')}` : undefined;
-      const noteText = payload.notes ? (payload.notes.length > 80 ? payload.notes.slice(0,77) + '...' : payload.notes) : undefined;
-      title = author ? `Signal updated by ${author}: ${asset}` : `Signal updated: ${asset}`;
-      const parts: string[] = [];
-      if (status) parts.push(`Status ${status}`);
-      if (tpHitsText) parts.push(tpHitsText);
-      if (closeReason) parts.push(closeReason);
-      if (noteText) parts.push(noteText);
-      body = parts.join(' • ') || 'Signal details updated';
+      
+      if (status === 'ACTIVE') {
+        title = `⚡ SIGNAL ACTIVE: ${asset} 📊`;
+        body = `Entry conditions met | Ready to trade`;
+      } else if (status === 'CLOSED') {
+        const closeReason = payload.close_reason?.replace('_', ' ') || 'manual';
+        title = `✅ SIGNAL CLOSED: ${asset}`;
+        body = `Reason: ${closeReason} | Trade completed`;
+      } else {
+        title = author ? `📊 Signal updated by ${author}: ${asset}` : `📊 Signal updated: ${asset}`;
+        const parts: string[] = [];
+        if (status) parts.push(`Status ${status}`);
+        if (payload.tp_hits && payload.tp_hits.length) parts.push(`TP hits ${payload.tp_hits.join(',')}`);
+        body = parts.join(' | ') || 'Signal details updated';
+      }
     } else {
-      title = payload.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
+      // Fallback for other alert types
+      title = payload.alert_type === 'stop_loss' ? '🚨 Stop Loss Hit' : '💰 Take Profit Triggered';
       body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
     }
 
@@ -280,19 +370,115 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
 
 async function sendInAppNotification(payload: NotificationPayload, supabase: any): Promise<boolean> {
   try {
-    // Create in-app notification records for real-time delivery
-    const notificationData = {
-      title: `New ${payload.trade_type?.toUpperCase() || 'Signal'}`,
-      message: `${payload.asset_name || payload.symbol || 'Unknown'} - Entry: ${payload.entry_price || payload.target_price}`,
-      type: 'new_signal',
-      data: {
-        signal_id: payload.signal_id,
-        asset_name: payload.asset_name,
-        trade_type: payload.trade_type,
-        entry_price: payload.entry_price,
-        author_name: payload.author_name
+    // Enhanced trading-focused in-app notifications
+    const isSignalCreated = payload.notification_type === 'signal_created';
+    const isSignalUpdated = payload.notification_type === 'signal_updated';
+    const isTpHit = payload.alert_type?.startsWith('take_profit');
+    const isStopLoss = payload.alert_type === 'stop_loss';
+    
+    let notificationData;
+    
+    if (isSignalCreated) {
+      const asset = payload.asset_name || payload.symbol || 'New Signal';
+      const type = (payload.trade_type || '').toUpperCase();
+      const author = payload.author_name || 'Trader';
+      const traderLevel = payload.trader_level || 'Trader';
+      
+      notificationData = {
+        title: `🎯 NEW ${type} SIGNAL: ${asset}`,
+        message: `${traderLevel} ${author} shared a new trading opportunity`,
+        type: 'signal_created',
+        data: {
+          signal_id: payload.signal_id,
+          asset_name: payload.asset_name,
+          trade_type: payload.trade_type,
+          entry_price: payload.entry_price,
+          stop_loss: payload.stop_loss,
+          tp1: payload.tp1,
+          author_name: payload.author_name,
+          trader_level: payload.trader_level,
+          action_text: 'View Signal',
+          urgency: 'normal'
+        }
+      };
+    } else if (isTpHit) {
+      const asset = payload.asset_name || payload.symbol || 'Signal';
+      const tpNumber = payload.alert_type?.match(/\d+/)?.[0] || '1';
+      
+      notificationData = {
+        title: `💰 TP${tpNumber} Hit: ${asset}`,
+        message: `Take profit target reached - consider booking profits`,
+        type: 'tp_hit',
+        data: {
+          signal_id: payload.signal_id,
+          asset_name: payload.asset_name,
+          target_price: payload.target_price,
+          triggered_price: payload.triggered_price,
+          tp_number: tpNumber,
+          action_text: 'View Details',
+          urgency: 'high'
+        }
+      };
+    } else if (isStopLoss) {
+      const asset = payload.asset_name || payload.symbol || 'Signal';
+      
+      notificationData = {
+        title: `🚨 Stop Loss: ${asset}`,
+        message: `Risk managed - capital protected as planned`,
+        type: 'stop_loss',
+        data: {
+          signal_id: payload.signal_id,
+          asset_name: payload.asset_name,
+          target_price: payload.target_price,
+          triggered_price: payload.triggered_price,
+          action_text: 'View Signal',
+          urgency: 'high'
+        }
+      };
+    } else if (isSignalUpdated) {
+      const asset = payload.asset_name || payload.symbol || 'Signal';
+      const status = payload.status?.toUpperCase();
+      
+      if (status === 'ACTIVE') {
+        notificationData = {
+          title: `⚡ Signal Active: ${asset}`,
+          message: `Entry conditions met - signal is now live`,
+          type: 'signal_activated',
+          data: {
+            signal_id: payload.signal_id,
+            asset_name: payload.asset_name,
+            status: payload.status,
+            action_text: 'Trade Now',
+            urgency: 'high'
+          }
+        };
+      } else {
+        notificationData = {
+          title: `📊 Signal Updated: ${asset}`,
+          message: `Signal details have been modified`,
+          type: 'signal_updated',
+          data: {
+            signal_id: payload.signal_id,
+            asset_name: payload.asset_name,
+            status: payload.status,
+            action_text: 'View Changes',
+            urgency: 'normal'
+          }
+        };
       }
-    };
+    } else {
+      // Fallback
+      notificationData = {
+        title: `Trading Alert: ${payload.asset_name || 'Signal'}`,
+        message: `${payload.alert_type?.replace('_', ' ') || 'Update'} triggered`,
+        type: payload.alert_type || 'general',
+        data: {
+          signal_id: payload.signal_id,
+          action_text: 'View Alert',
+          urgency: 'normal'
+        }
+      };
+    }
 
     // If specific user_ids are provided, send to those users
     if (payload.user_ids && payload.user_ids.length > 0) {

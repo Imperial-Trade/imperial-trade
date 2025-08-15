@@ -1,17 +1,25 @@
 /* Mobile App Optimizations for Imperial Trading Platform */
 
-/* iOS Safe Area Support */
+/* iOS Safe Area Support and Native App Variables */
 :root {
-  --safe-area-top: env(safe-area-inset-top);
-  --safe-area-bottom: env(safe-area-inset-bottom);
-  --safe-area-left: env(safe-area-inset-left);
-  --safe-area-right: env(safe-area-inset-right);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
   
-  /* Mobile-specific variables */
-  --mobile-nav-height: 64px;
-  --mobile-bottom-nav-height: 80px;
+  /* Mobile-specific dimensions */
+  --mobile-nav-height: 5rem;
+  --mobile-bottom-nav-height: calc(5rem + var(--safe-area-bottom));
   --mobile-touch-target: 44px;
-  --mobile-header-height: calc(64px + var(--safe-area-top));
+  --mobile-header-height: calc(44px + var(--safe-area-top));
+  --status-bar-height: var(--safe-area-top);
+  
+  /* iOS-specific design tokens */
+  --ios-border-radius: 10px;
+  --ios-large-radius: 16px;
+  --ios-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --ios-blur: blur(20px);
+  --ios-animation: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 /* Native App Feel */
@@ -31,6 +39,25 @@ textarea,
   user-select: auto;
 }
 
+/* iOS App Container */
+.ios-app-container {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: var(--safe-area-top);
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+  background: hsl(var(--background));
+}
+
+/* iOS-style body class */
+.ios-mobile-app {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
 /* Smooth scrolling for mobile */
 html {
   scroll-behavior: smooth;
@@ -43,10 +70,14 @@ body {
   overscroll-behavior: none;
 }
 
-/* Touch-friendly interactions */
+/* Touch-friendly interactions - iOS Human Interface Guidelines */
 .touch-target {
   min-height: var(--mobile-touch-target);
   min-width: var(--mobile-touch-target);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 
 /* Active states for mobile */
@@ -55,13 +86,14 @@ body {
   transition: transform 0.1s ease;
 }
 
-/* Native-style buttons */
+/* iOS-style buttons */
 .mobile-button {
-  border-radius: 12px;
+  border-radius: var(--ios-border-radius);
   min-height: 48px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s var(--ios-animation);
+  box-shadow: var(--ios-shadow);
 }
 
 .mobile-button:active {
@@ -69,20 +101,35 @@ body {
   opacity: 0.8;
 }
 
-/* Mobile navigation */
+/* iOS-style mobile navigation */
 .mobile-nav {
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: var(--ios-blur) saturate(180%);
+  -webkit-backdrop-filter: var(--ios-blur) saturate(180%);
+  background: rgba(255, 255, 255, 0.8);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
   padding-bottom: var(--safe-area-bottom);
+  box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Mobile header with safe area */
+.dark .mobile-nav {
+  background: rgba(10, 10, 11, 0.9);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* iOS-style mobile header */
 .mobile-header {
-  padding-top: var(--safe-area-top);
+  backdrop-filter: var(--ios-blur) saturate(180%);
+  -webkit-backdrop-filter: var(--ios-blur) saturate(180%);
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   height: var(--mobile-header-height);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  padding-top: var(--safe-area-top);
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.05);
+}
+
+.dark .mobile-header {
+  background: rgba(10, 10, 11, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Pull-to-refresh styling */

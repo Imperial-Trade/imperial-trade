@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect } from 'react';
 import { MobileBottomNav } from './MobileBottomNav';
+import { MobileHeader } from './MobileHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { usePullToRefresh } from '@/hooks/useSwipeGestures';
@@ -7,6 +8,11 @@ import { usePullToRefresh } from '@/hooks/useSwipeGestures';
 interface MobileOptimizedLayoutProps {
   children: ReactNode;
   showBottomNav?: boolean;
+  showHeader?: boolean;
+  headerTitle?: string;
+  showBackButton?: boolean;
+  onBack?: () => void;
+  headerRightElement?: ReactNode;
   enablePullToRefresh?: boolean;
   onRefresh?: () => void | Promise<void>;
   className?: string;
@@ -15,6 +21,11 @@ interface MobileOptimizedLayoutProps {
 export function MobileOptimizedLayout({ 
   children, 
   showBottomNav = true,
+  showHeader = false,
+  headerTitle,
+  showBackButton = false,
+  onBack,
+  headerRightElement,
   enablePullToRefresh = false,
   onRefresh,
   className 
@@ -33,31 +44,37 @@ export function MobileOptimizedLayout({
     return cleanup;
   }, [isMobile, enablePullToRefresh, addPullToRefreshListeners]);
 
-  // Add mobile-specific viewport meta tag adjustments
+  // Add mobile-specific viewport meta tag adjustments and iOS optimizations
   useEffect(() => {
     if (isMobile) {
-      // Prevent zoom on input focus for iOS
-      const viewport = document.querySelector('meta[name="viewport"]');
-      if (viewport) {
-        viewport.setAttribute(
-          'content',
-          'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
-        );
-      }
-
-      // Add mobile app meta tags
+      // iOS-specific optimizations
       document.documentElement.style.setProperty('--viewport-height', `${window.innerHeight}px`);
+      document.documentElement.style.setProperty('--viewport-width', `${window.innerWidth}px`);
+      
+      // Add iOS app styling to body
+      document.body.classList.add('ios-mobile-app');
       
       const handleResize = () => {
         document.documentElement.style.setProperty('--viewport-height', `${window.innerHeight}px`);
+        document.documentElement.style.setProperty('--viewport-width', `${window.innerWidth}px`);
+      };
+      
+      const handleVisibilityChange = () => {
+        // Force repaint on iOS when returning from background
+        if (!document.hidden) {
+          handleResize();
+        }
       };
       
       window.addEventListener('resize', handleResize);
       window.addEventListener('orientationchange', handleResize);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
       
       return () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('orientationchange', handleResize);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        document.body.classList.remove('ios-mobile-app');
       };
     }
   }, [isMobile]);
@@ -68,29 +85,37 @@ export function MobileOptimizedLayout({
 
   return (
     <div className={cn(
-      'min-h-screen bg-background relative overflow-x-hidden',
-      showBottomNav && 'pb-20', // Account for bottom navigation
+      'ios-app-container relative overflow-x-hidden',
+      showBottomNav && 'pb-[calc(5rem+var(--safe-area-bottom))]',
+      showHeader && 'pt-[var(--mobile-header-height)]',
       className
     )}>
-      {/* Mobile status bar overlay */}
-      <div className="status-bar-overlay" />
+      {/* iOS-style header */}
+      {showHeader && (
+        <MobileHeader
+          title={headerTitle}
+          showBackButton={showBackButton}
+          onBack={onBack}
+          rightElement={headerRightElement}
+        />
+      )}
       
       {/* Pull to refresh indicator */}
       {enablePullToRefresh && isRefreshing && (
-        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium animate-bounce-in">
+        <div className="fixed top-[calc(var(--mobile-header-height)+1rem)] left-1/2 transform -translate-x-1/2 z-40 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium animate-bounce-in shadow-lg">
           Refreshing...
         </div>
       )}
       
       {/* Main content */}
       <main className={cn(
-        'min-h-screen',
+        'min-h-[calc(100vh-var(--safe-area-top))]',
         enablePullToRefresh && 'pull-to-refresh'
       )}>
         {children}
       </main>
       
-      {/* Bottom navigation */}
+      {/* iOS-style bottom navigation */}
       {showBottomNav && <MobileBottomNav />}
     </div>
   );

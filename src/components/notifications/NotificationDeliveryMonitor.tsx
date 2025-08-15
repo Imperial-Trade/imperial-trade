@@ -5,7 +5,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOneSignal } from "@/hooks/useOneSignal";
+import { useOneSignalEnhanced } from "@/hooks/useOneSignalEnhanced";
 import { supabase } from "@/integrations/supabase/client";
 import { detectPlatform, getPlatformConfig } from "@/utils/platformDetection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,7 @@ interface DeliveryStatus {
 
 export default function NotificationDeliveryMonitor() {
   const { user } = useAuth();
-  const { initialized, hasSubscription, isGranted } = useOneSignal();
+  const { initialized, hasSubscription, isGranted } = useOneSignalEnhanced();
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus>({
     subscriptionHealth: 'unknown',
     deliveryRate: 0,

@@ -38,20 +38,14 @@ const UnifiedPermissionFlow: React.FC<UnifiedPermissionFlowProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [permissionState, setPermissionState] = useState<'unknown' | 'granted' | 'denied' | 'default'>('unknown');
 
-  // EMERGENCY FIX: Clear localStorage barriers and force prompt display
+  // Show notification prompt when conditions are met
   useEffect(() => {
-    // Clear all notification-related localStorage on mount
-    localStorage.removeItem('notification_banner_dismissed');
-    localStorage.removeItem('onesignal_permission_dismissed');
-    localStorage.removeItem('push_prompt_dismissed');
-    console.log('🚨 EMERGENCY: Cleared notification localStorage barriers');
-    
-    // Force show if OneSignal is initialized and user exists (EMERGENCY MODE)
-    if (isInitialized && profile) {
-      console.log('🚨 EMERGENCY: Forcing notification prompt display');
+    // Show prompt if auto-show is enabled, user is logged in, and notifications aren't granted
+    if (autoShow && profile && permissionState !== 'granted') {
+      console.log('[UnifiedPermissionFlow] 🎯 UNIFIED: Showing custom notification prompt');
       setIsVisible(true);
     }
-  }, [isInitialized, profile]);
+  }, [autoShow, profile, permissionState]);
 
   // Update permission state when OneSignal state changes
   useEffect(() => {
@@ -115,9 +109,7 @@ const UnifiedPermissionFlow: React.FC<UnifiedPermissionFlowProps> = ({
 
   const handleClose = () => {
     setIsVisible(false);
-    // EMERGENCY FIX: Don't persist dismissal for now
-    // localStorage.setItem('notification_banner_dismissed', 'true');
-    console.log('🚨 EMERGENCY: Notification prompt closed (not persisted)');
+    console.log('[UnifiedPermissionFlow] Notification prompt closed');
     onClose?.();
   };
 

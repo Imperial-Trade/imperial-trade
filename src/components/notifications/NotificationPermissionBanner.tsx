@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWelcome } from "@/contexts/WelcomeContext";
-import { useOneSignal } from "@/hooks/useOneSignal";
+import { useOneSignalEnhanced } from "@/hooks/useOneSignalEnhanced";
 import { getBrowserInstructions } from "@/utils/browserDetection";
 import { usePWAInstallation } from "@/hooks/usePWAInstallation";
 import PWAInstallBanner from "@/components/pwa/PWAInstallBanner";
@@ -20,7 +20,7 @@ const NotificationPermissionBanner: React.FC = () => {
     browserInstructions,
     requestPermission,
     initialized 
-  } = useOneSignal();
+  } = useOneSignalEnhanced();
   
   const {
     isIOSDevice,

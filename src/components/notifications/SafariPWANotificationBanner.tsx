@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Bell, X, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useOneSignal } from "@/hooks/useOneSignal";
+import { useOneSignalEnhanced } from "@/hooks/useOneSignalEnhanced";
 import { toast } from "sonner";
 
 interface SafariPWANotificationBannerProps {
@@ -13,7 +13,7 @@ const SafariPWANotificationBanner: React.FC<SafariPWANotificationBannerProps> = 
   onClose, 
   className = '' 
 }) => {
-  const { requestPermission } = useOneSignal();
+  const { requestPermission } = useOneSignalEnhanced();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRequestPermission = async () => {

@@ -1,284 +1,193 @@
 
-// OneSignal subscription verification edge function
-// Verifies if user is properly subscribed to push notifications
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 
-interface VerifyRequestBody {
-  user_id?: string;
+interface UpsertRequestBody {
+  user_id: string;
   player_id?: string;
 }
 
-Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
+async function handler(req: Request): Promise<Response> {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ error: "Method not allowed" }),
-      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
   try {
-    const apiKey = Deno.env.get("ONESIGNAL_API_KEY");
-    const appId = Deno.env.get("ONESIGNAL_APP_ID");
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    // Get environment variables
+    const oneSignalAppId = Deno.env.get('ONESIGNAL_APP_ID');
+    const oneSignalApiKey = Deno.env.get('ONESIGNAL_API_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-    if (!apiKey || !appId || !supabaseUrl || !supabaseAnonKey) {
+    if (!oneSignalAppId || !oneSignalApiKey || !supabaseUrl || !supabaseAnonKey) {
       return new Response(
-        JSON.stringify({ error: "Configuration missing" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: 'Missing required environment variables' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       );
     }
 
-    // Get authenticated user
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    // Initialize Supabase client
+    const supabaseService = createClient(supabaseUrl, supabaseAnonKey);
+
+    // Parse request body
+    const { user_id, player_id } = await req.json() as UpsertRequestBody;
+
+    if (!user_id) {
       return new Response(
-        JSON.stringify({ error: "Authorization required" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: 'user_id is required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    console.log(`[OneSignal Verify] Checking subscription for user: ${user_id}, player_id: ${player_id || 'undefined'}`);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: "User not found" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // Helper function to safely get text from response
+    const safeText = async (response: Response): Promise<string> => {
+      try {
+        return await response.text();
+      } catch {
+        return '';
+      }
+    };
 
-    const body: VerifyRequestBody = await req.json().catch(() => ({}));
-    const targetUserId = body.user_id || user.id;
-    const playerId = body.player_id;
+    // Helper function to safely parse JSON
+    const safeJson = (text: string): any => {
+      try {
+        return text ? JSON.parse(text) : {};
+      } catch {
+        return {};
+      }
+    };
 
-    console.log(`[OneSignal Verify] Checking subscription for user: ${targetUserId}, player_id: ${playerId}`);
+    // Check if user exists in Supabase profiles
+    const { data: profile } = await supabaseService
+      .from('profiles')
+      .select('id')
+      .eq('id', user_id)
+      .single();
 
-    // Verify user exists in OneSignal
-    let playerResponse;
+    const profileExists = !!profile;
+
+    // Initialize response variables
     let playerExists = false;
-    let playerSubscribed = false;
-    let playerData = null;
-
-    // **PHASE 2: Enhanced User-Centric API with WebPush Focus**
-    let webPushSubscribed = false;
+    let webpushSubscribed = false;
     let emailSubscribed = false;
-    let hasActiveWebPush = false;
-    
+    let hasActiveWebpush = false;
+    let playerData: any = null;
+    let firstActivePlayerId: string | null = null;
+
+    // Always try to fetch user from OneSignal Users API by external_id
     try {
-      const userResponse = await fetch(`https://api.onesignal.com/apps/${appId}/users/by/external_id/${targetUserId}`, {
-        method: "GET",
+      const userResponse = await fetch(`https://api.onesignal.com/apps/${oneSignalAppId}/users/by/external_id/${user_id}`, {
+        method: 'GET',
         headers: {
-          Authorization: `Basic ${apiKey}`,
-          "Content-Type": "application/json",
-        },
+          'Authorization': `Basic ${oneSignalApiKey}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (userResponse.ok) {
-        const userData = await userResponse.json();
-        playerData = userData;
+        const responseText = await safeText(userResponse);
+        const user = safeJson(responseText);
+        
+        console.log(`[OneSignal Verify] User found via Users API`);
         playerExists = true;
         
-        // **Phase 2: Separate WebPush and Email subscription analysis**
-        const subscriptions = userData.subscriptions || [];
-        const webPushSubs = subscriptions.filter((sub: any) => sub.type === "WebPush");
-        const emailSubs = subscriptions.filter((sub: any) => sub.type === "Email");
+        const subscriptions = user.subscriptions || [];
+        const webpushSubs = subscriptions.filter((sub: any) => sub.type === 'WebPush');
+        const emailSubs = subscriptions.filter((sub: any) => sub.type === 'Email');
         
-        // **Critical: Only check WebPush for push notification verification**
-        webPushSubscribed = webPushSubs.some((sub: any) => sub.enabled && sub.token);
+        webpushSubscribed = webpushSubs.some((sub: any) => sub.enabled);
         emailSubscribed = emailSubs.some((sub: any) => sub.enabled);
-        hasActiveWebPush = webPushSubs.some((sub: any) => sub.enabled && sub.token && sub.id);
+        hasActiveWebpush = webpushSubscribed;
         
-        // **Phase 2: Enhanced logging for WebPush vs Email distinction**
-        console.log(`[OneSignal Verify] User found via Users API: ${subscriptions.length} total subscriptions`);
-        console.log(`[OneSignal Verify] - WebPush subscriptions: ${webPushSubs.length} (${webPushSubs.filter(sub => sub.enabled).length} enabled)`);
-        console.log(`[OneSignal Verify] - Email subscriptions: ${emailSubs.length} (${emailSubs.filter(sub => sub.enabled).length} enabled)`);
-        console.log(`[OneSignal Verify] WebPush status: ${webPushSubscribed ? 'subscribed' : 'not subscribed'}`);
+        // Get the first active WebPush subscription ID as player_id
+        const activeWebpushSub = webpushSubs.find((sub: any) => sub.enabled);
+        if (activeWebpushSub && activeWebpushSub.id) {
+          firstActivePlayerId = activeWebpushSub.id;
+        }
+        
+        console.log(`[OneSignal Verify] WebPush status: ${webpushSubscribed ? 'subscribed' : 'not subscribed'}`);
         console.log(`[OneSignal Verify] Email status: ${emailSubscribed ? 'subscribed' : 'not subscribed'}`);
         
-        // **Phase 2: Player ID validation for WebPush**
-        if (playerId && webPushSubs.length > 0) {
-          const matchingWebPush = webPushSubs.find((sub: any) => sub.id === playerId);
-          if (matchingWebPush) {
-            console.log(`[OneSignal Verify] Player ID ${playerId} matched to WebPush subscription`);
-          } else {
-            console.log(`[OneSignal Verify] Player ID ${playerId} not found in WebPush subscriptions`);
-          }
-        }
-        
-      } else if (userResponse.status === 404) {
+        playerData = {
+          valid_player: user.id,
+          notification_types: user.notification_types,
+          session_count: user.session_count,
+          last_active: user.last_active,
+          created_at: user.created_at,
+          subscriptions_count: subscriptions.length
+        };
+      } else {
         console.log(`[OneSignal Verify] User not found via Users API: ${userResponse.status} (normal for new users)`);
-        playerExists = false;
-        webPushSubscribed = false;
-        emailSubscribed = false;
-        playerData = null;
-      } else {
-        console.log(`[OneSignal Verify] Users API error: ${userResponse.status}`);
-        
-        // **Phase 2: Fallback to player-specific API if user lookup fails**
-        if (playerId) {
-          console.log(`[OneSignal Verify] Attempting fallback player lookup for: ${playerId}`);
-          try {
-            const playerResponse = await fetch(`https://api.onesignal.com/apps/${appId}/players/${playerId}`, {
-              method: "GET",
-              headers: {
-                Authorization: `Basic ${apiKey}`,
-                "Content-Type": "application/json",
-              },
-            });
-            
-            if (playerResponse.ok) {
-              const playerData = await playerResponse.json();
-              playerExists = true;
-              webPushSubscribed = playerData.invalid_identifier !== true;
-              console.log(`[OneSignal Verify] Fallback player lookup successful: ${webPushSubscribed ? 'valid' : 'invalid'}`);
-            }
-          } catch (fallbackError) {
-            console.warn(`[OneSignal Verify] Fallback player lookup failed:`, fallbackError);
-          }
+      }
+    } catch (error) {
+      console.log(`[OneSignal Verify] OneSignal API error: ${error}`);
+    }
+
+    // Determine subscription status
+    if (!hasActiveWebpush) {
+      console.log(`[OneSignal Verify] User not in subscribed segment - no active WebPush subscriptions`);
+    }
+
+    // Build response in expected format with backward compatibility
+    const response = {
+      success: true,
+      subscription_status: {
+        player_exists: playerExists,
+        is_subscribed: hasActiveWebpush,
+        webpush_subscribed: webpushSubscribed,
+        email_subscribed: emailSubscribed,
+        has_active_webpush: hasActiveWebpush,
+        in_subscribed_segment: hasActiveWebpush,
+        player_data: playerData,
+        player_id: firstActivePlayerId || player_id || null,
+        details: {
+          user_found_in_onesignal: !!playerExists,
+          profile_exists_in_supabase: profileExists,
+          subscription_check_timestamp: new Date().toISOString(),
+          player_id: firstActivePlayerId || player_id || null,
+          database_status: profileExists ? 'found' : 'not_found'
         }
-      }
-    } catch (error) {
-      console.error(`[OneSignal Verify] Error checking user subscription:`, error);
-      playerExists = false;
-      webPushSubscribed = false;
-      emailSubscribed = false;
-      playerData = null;
-    }
-    
-    // **Phase 2: Set primary subscription status based on WebPush only**
-    playerSubscribed = webPushSubscribed;
-
-    // **Phase 2: Enhanced segment checking with WebPush focus**
-    let inSubscribedSegment = false;
-
-    try {
-      // **Phase 2: Base segment status on WebPush subscription specifically**
-      if (playerExists && webPushSubscribed && hasActiveWebPush) {
-        inSubscribedSegment = true;
-        console.log(`[OneSignal Verify] User is in subscribed segment - has active WebPush subscription`);
-      } else if (playerExists && emailSubscribed && !webPushSubscribed) {
-        inSubscribedSegment = false; // Email-only users are not considered for push notifications
-        console.log(`[OneSignal Verify] User has email subscription but no WebPush - not in push segment`);
-      } else {
-        console.log(`[OneSignal Verify] User not in subscribed segment - no active WebPush subscriptions`);
-      }
-    } catch (error) {
-      console.error(`[OneSignal Verify] Error determining segment status:`, error);
-    }
-
-    // Check database subscription status
-    let dbSubscriptionStatus = null;
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('push_subscription_active, onesignal_subscription_status, onesignal_player_id')
-        .eq('id', targetUserId)
-        .single();
-      
-      dbSubscriptionStatus = profile;
-    } catch (dbError) {
-      console.error('Error fetching profile subscription status:', dbError);
-    }
-
-    // **PHASE 2: Production-Grade Subscription Status Determination**
-    const isSubscribed = playerExists && webPushSubscribed; // Focus on WebPush only
-    const verificationStatus = {
-      user_id: targetUserId,
-      player_id: playerId,
-      player_exists: playerExists,
-      player_subscribed: playerSubscribed, // This is now webPushSubscribed
-      webpush_subscribed: webPushSubscribed,
-      email_subscribed: emailSubscribed,
-      has_active_webpush: hasActiveWebPush,
-      in_subscribed_segment: inSubscribedSegment,
-      is_subscribed: isSubscribed,
-      database_status: {
-        push_subscription_active: dbSubscriptionStatus?.push_subscription_active || false,
-        onesignal_subscription_status: dbSubscriptionStatus?.onesignal_subscription_status || 'unknown',
-        stored_player_id: dbSubscriptionStatus?.onesignal_player_id || null
       },
-      player_data: playerData ? {
-        valid_player: playerData.valid_player,
-        notification_types: playerData.notification_types,
-        session_count: playerData.session_count,
-        last_active: playerData.last_active,
-        created_at: playerData.created_at,
-        subscriptions_count: playerData.subscriptions?.length || 0
-      } : null,
-      verification_method: playerId ? 'player_id_provided' : 'user_lookup_only',
-      verified_at: new Date().toISOString(),
+      // Add top-level fields for backward compatibility
+      is_subscribed: hasActiveWebpush,
+      player_id: firstActivePlayerId || player_id || null
     };
 
-    console.log(`[OneSignal Verify] Verification result:`, verificationStatus);
-
     return new Response(
-      JSON.stringify({
-        success: true,
-        subscription_status: verificationStatus,
-        // **Phase 2: Enhanced recommendations with WebPush-specific guidance**
-        recommendations: (() => {
-          const recs = [];
-          
-          if (!isSubscribed) {
-            if (!playerExists) {
-              recs.push(
-                "User not found in OneSignal - ensure user creation completed",
-                "Verify OneSignal SDK initialization completed successfully"
-              );
-            } else if (!webPushSubscribed) {
-              recs.push(
-                "WebPush subscription not active - user should grant push notification permissions",
-                "Check if notifications are blocked in browser/device settings",
-                "Verify browser supports push notifications (Chrome, Firefox, Safari, Edge)",
-                "Ensure site is accessed via HTTPS for push notifications"
-              );
-            }
-          }
-          
-          // **Enhanced player ID diagnostics**
-          if (dbSubscriptionStatus?.onesignal_player_id && playerId &&
-              dbSubscriptionStatus.onesignal_player_id !== playerId) {
-            recs.push("Player ID mismatch detected - database sync required");
-          }
-          
-          if (!playerId && webPushSubscribed) {
-            recs.push("WebPush subscription exists but player ID not provided for verification");
-          }
-          
-          // **Email vs WebPush distinction**
-          if (emailSubscribed && !webPushSubscribed) {
-            recs.push("User has email subscription but needs WebPush subscription for push notifications");
-          }
-          
-          return recs;
-        })()
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify(response),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
 
   } catch (error) {
-    console.error(`[OneSignal Verify] Error:`, error);
+    console.error(`[OneSignal Verify] Error: ${error}`);
     return new Response(
       JSON.stringify({ 
-        success: false, 
-        error: "Internal server error", 
-        message: error.message 
+        error: 'Internal server error', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   }
-});
+}
+
+// Serve the handler
+Deno.serve(handler);

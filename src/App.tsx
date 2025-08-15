@@ -89,18 +89,18 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
-            <PostHogPageViewTracker />
-            <ScrollToTop />
-              <AuthProvider>
-                <AutoRecoveryProvider>
-                  <WelcomeProvider>
-                    <NavigationGuard>
-                      <SignalRealtimeProvider>
-                        <WebSocketPriceProvider>
-                          <NotificationSystem />
-                          <NotificationsPanel />
-                      <Routes>
+            <BrowserRouter>
+              <PostHogPageViewTracker />
+              <ScrollToTop />
+                <AuthProvider>
+                    <AutoRecoveryProvider>
+                      <WelcomeProvider>
+                        <NavigationGuard>
+                          <SignalRealtimeProvider>
+                            <WebSocketPriceProvider>
+                              <NotificationSystem />
+                              <NotificationsPanel />
+                        <Routes>
                         {/* Landing Routes */}
                         <Route
                           path="/"
@@ -293,12 +293,12 @@ function App() {
                         />
                         <Route path="*" element={<NotFound />} />
                         </Routes>
-                      </WebSocketPriceProvider>
-                    </SignalRealtimeProvider>
-                  </NavigationGuard>
-                </WelcomeProvider>
-              </AutoRecoveryProvider>
-            </AuthProvider>
+                            </WebSocketPriceProvider>
+                          </SignalRealtimeProvider>
+                        </NavigationGuard>
+                      </WelcomeProvider>
+                    </AutoRecoveryProvider>
+                </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>

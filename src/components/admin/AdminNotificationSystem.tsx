@@ -8,8 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RecentAdminNotifications } from './notifications/RecentAdminNotifications';
 import { AdminNotificationStats } from './notifications/AdminNotificationStats';
-import { NotificationTestPanel } from './NotificationTestPanel';
-import { SubscriptionMonitor } from '../notifications/SubscriptionMonitor';
 import { NotificationAnalytics } from './NotificationAnalytics';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -157,11 +155,9 @@ export const AdminNotificationSystem: React.FC = () => {
       </div>
 
       <Tabs defaultValue="settings" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="testing">Testing</TabsTrigger>
-          <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
@@ -275,14 +271,6 @@ export const AdminNotificationSystem: React.FC = () => {
 
         <TabsContent value="analytics">
           <NotificationAnalytics />
-        </TabsContent>
-
-        <TabsContent value="testing">
-          <NotificationTestPanel />
-        </TabsContent>
-
-        <TabsContent value="monitoring">
-          <SubscriptionMonitor />
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-4">

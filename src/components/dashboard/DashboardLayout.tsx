@@ -5,6 +5,7 @@ import DashboardNav from './DashboardNav';
 import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
 import { MobileOptimizedLayout } from '@/components/mobile/MobileOptimizedLayout';
+import { MobilePlatformDetector } from '@/components/mobile/MobilePlatformDetector';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export const DashboardLayout: React.FC = () => {
@@ -12,26 +13,43 @@ export const DashboardLayout: React.FC = () => {
 
   if (isMobile) {
     return (
-      <MobileOptimizedLayout>
-        <div className="min-h-screen bg-background">
-          {/* Mobile-optimized background effects */}
-          <div className="fixed inset-0 bg-gradient-to-br from-background via-muted/20 to-background pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/3 via-transparent to-accent/3"></div>
-          </div>
+      <MobilePlatformDetector>
+        <MobileOptimizedLayout>
+          <div className="min-h-screen bg-background">
+            {/* Enhanced mobile-optimized background effects */}
+            <div className="fixed inset-0 bg-gradient-to-br from-background via-muted/10 to-background pointer-events-none">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/2 via-transparent to-accent/2"></div>
+            </div>
 
-          {/* Mobile Navigation Header */}
-          <div className="mobile-header fixed top-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border/50">
-            <DashboardNav />
+            {/* Enhanced Mobile Navigation Header with platform optimization */}
+            <div className="mobile-header fixed top-0 left-0 right-0 z-40 transition-all duration-300"
+                 style={{
+                   backgroundColor: 'rgba(var(--background), 0.95)',
+                   backdropFilter: 'var(--mobile-header-blur, blur(20px))',
+                   WebkitBackdropFilter: 'var(--mobile-header-blur, blur(20px))',
+                   borderBottom: '1px solid rgba(var(--border), 0.5)',
+                   paddingTop: 'var(--mobile-safe-area-top, 0)',
+                 }}>
+              <DashboardNav />
+            </div>
+            
+            {/* Enhanced Main Content with platform-aware spacing */}
+            <main className="relative transition-all duration-300 mobile-scroll-container"
+                  style={{
+                    paddingTop: 'var(--mobile-header-height, 64px)',
+                    paddingBottom: 'calc(var(--mobile-bottom-nav-height) + var(--mobile-safe-area-bottom, 0px))',
+                    paddingLeft: 'var(--mobile-content-padding, 16px)',
+                    paddingRight: 'var(--mobile-content-padding, 16px)',
+                    minHeight: '100vh',
+                    transform: 'translate3d(0, 0, 0)', // Hardware acceleration
+                  }}>
+              <Suspense fallback={<LoadingSpinner />}>
+                <Outlet />
+              </Suspense>
+            </main>
           </div>
-          
-          {/* Main Content with mobile spacing */}
-          <main className="relative pt-16 pb-safe-bottom">
-            <Suspense fallback={<LoadingSpinner />}>
-              <Outlet />
-            </Suspense>
-          </main>
-        </div>
-      </MobileOptimizedLayout>
+        </MobileOptimizedLayout>
+      </MobilePlatformDetector>
     );
   }
 

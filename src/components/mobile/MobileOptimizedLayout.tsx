@@ -3,6 +3,7 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { usePullToRefresh } from '@/hooks/useSwipeGestures';
+import { applyPlatformOptimizations, optimizeForMobilePerformance, setupPlatformGestures } from '@/utils/mobileDetection';
 
 interface MobileOptimizedLayoutProps {
   children: ReactNode;
@@ -33,31 +34,55 @@ export function MobileOptimizedLayout({
     return cleanup;
   }, [isMobile, enablePullToRefresh, addPullToRefreshListeners]);
 
-  // Add mobile-specific viewport meta tag adjustments
+  // Enhanced mobile platform optimizations
   useEffect(() => {
     if (isMobile) {
-      // Prevent zoom on input focus for iOS
-      const viewport = document.querySelector('meta[name="viewport"]');
-      if (viewport) {
-        viewport.setAttribute(
-          'content',
-          'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
-        );
-      }
+      // Apply comprehensive platform optimizations
+      const deviceInfo = applyPlatformOptimizations();
+      optimizeForMobilePerformance();
+      setupPlatformGestures();
 
-      // Add mobile app meta tags
+      // Enhanced viewport handling
       document.documentElement.style.setProperty('--viewport-height', `${window.innerHeight}px`);
+      document.documentElement.style.setProperty('--viewport-width', `${window.innerWidth}px`);
       
       const handleResize = () => {
-        document.documentElement.style.setProperty('--viewport-height', `${window.innerHeight}px`);
+        // Debounced resize handling for better performance
+        requestAnimationFrame(() => {
+          document.documentElement.style.setProperty('--viewport-height', `${window.innerHeight}px`);
+          document.documentElement.style.setProperty('--viewport-width', `${window.innerWidth}px`);
+        });
       };
       
-      window.addEventListener('resize', handleResize);
-      window.addEventListener('orientationchange', handleResize);
+      const handleOrientationChange = () => {
+        // Handle orientation change with delay to get correct dimensions
+        setTimeout(() => {
+          handleResize();
+          // Scroll to top to handle iOS Safari address bar
+          window.scrollTo(0, 1);
+          window.scrollTo(0, 0);
+        }, 100);
+      };
+      
+      window.addEventListener('resize', handleResize, { passive: true });
+      window.addEventListener('orientationchange', handleOrientationChange, { passive: true });
+      
+      // Prevent iOS double-tap zoom
+      let lastTouchEnd = 0;
+      const preventDoubleTapZoom = (e: TouchEvent) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      };
+      
+      document.addEventListener('touchend', preventDoubleTapZoom, { passive: false });
       
       return () => {
         window.removeEventListener('resize', handleResize);
-        window.removeEventListener('orientationchange', handleResize);
+        window.removeEventListener('orientationchange', handleOrientationChange);
+        document.removeEventListener('touchend', preventDoubleTapZoom);
       };
     }
   }, [isMobile]);
@@ -69,28 +94,50 @@ export function MobileOptimizedLayout({
   return (
     <div className={cn(
       'min-h-screen bg-background relative overflow-x-hidden',
+      'ios-momentum-scroll android-scroll-performance', // Platform-specific scroll optimization
       showBottomNav && 'pb-20', // Account for bottom navigation
       className
     )}>
-      {/* Mobile status bar overlay */}
-      <div className="status-bar-overlay" />
+      {/* Enhanced Mobile status bar overlay with safe area support */}
+      <div className="status-bar-overlay" 
+           style={{ 
+             height: 'var(--mobile-safe-area-top)',
+             backgroundColor: 'transparent',
+             position: 'fixed',
+             top: 0,
+             left: 0,
+             right: 0,
+             zIndex: 9999
+           }} />
       
-      {/* Pull to refresh indicator */}
+      {/* Enhanced pull to refresh indicator */}
       {enablePullToRefresh && isRefreshing && (
-        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium animate-bounce-in">
+        <div className="fixed left-1/2 transform -translate-x-1/2 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium animate-bounce-in shadow-lg"
+             style={{ 
+               top: `calc(var(--mobile-safe-area-top) + 16px)`,
+               backdropFilter: 'blur(10px)',
+               willChange: 'transform'
+             }}>
           Refreshing...
         </div>
       )}
       
-      {/* Main content */}
+      {/* Main content with enhanced mobile optimization */}
       <main className={cn(
-        'min-h-screen',
+        'min-h-screen relative',
+        'will-change-transform', // Optimize for animations
         enablePullToRefresh && 'pull-to-refresh'
-      )}>
+      )}
+      style={{
+        paddingTop: 'var(--mobile-safe-area-top)',
+        paddingLeft: 'var(--mobile-safe-area-left)',
+        paddingRight: 'var(--mobile-safe-area-right)',
+        transform: 'translate3d(0, 0, 0)', // Hardware acceleration
+      }}>
         {children}
       </main>
       
-      {/* Bottom navigation */}
+      {/* Enhanced bottom navigation with safe area */}
       {showBottomNav && <MobileBottomNav />}
     </div>
   );
@@ -113,11 +160,11 @@ export function MobileButton({
   onClick,
   ...props 
 }: MobileButtonProps) {
-  const { triggerHaptic } = require('@/hooks/useHapticFeedback').useHapticFeedback();
+  const { triggerButtonPress } = require('@/hooks/useEnhancedHaptics').useEnhancedHaptics();
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (haptic) {
-      triggerHaptic('light');
+      triggerButtonPress();
     }
     onClick?.(e);
   };

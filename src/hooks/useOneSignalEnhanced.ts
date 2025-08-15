@@ -381,43 +381,70 @@ export function useOneSignalEnhanced() {
     }
   };
 
-  // **PHASE 3: Enhanced OneSignal User Creation with Player ID**
-  const ensureOneSignalUserWithPlayerId = async (playerId: string): Promise<boolean> => {
+  // **PHASE 2: Enhanced OneSignal User Sync with Aggressive Player ID Handling**
+  const ensureOneSignalUserWithPlayerId = async (playerId: string, userTags: Record<string, any> = {}): Promise<boolean> => {
+    if (!user?.id) {
+      console.warn('[OneSignal] Cannot sync user - no authenticated user');
+      return false;
+    }
+
     try {
-      if (!user?.id || !user?.email) {
-        console.warn('[OneSignal] User data incomplete - skipping user creation with Player ID');
-        return false;
-      }
-
-      console.log(`[OneSignal] Updating user with Player ID: ${playerId.substring(0, 8)}...`);
-
-      const requestBody = {
+      console.log(`[OneSignal] 🔄 Syncing user with Player ID: ${playerId.substring(0, 8)}...`);
+      
+      const payload = {
         user_id: user.id,
         email: user.email,
         player_id: playerId,
         tags: {
+          ...userTags,
           role: profile?.role || 'user',
           user_type: profile?.user_type || 'member',
           platform: safariPWAInfo.isIOS ? 'ios' : 'web',
           is_pwa: safariPWAInfo.isSafariPWA ? 'true' : 'false',
-          player_id_captured_at: new Date().toISOString()
-        }
+          has_web_push_support: safariPWAInfo.hasWebPushSupport ? 'true' : 'false',
+          is_standalone: safariPWAInfo.isStandalone ? 'true' : 'false',
+          last_sync: new Date().toISOString(),
+          sync_method: 'enhanced_player_id_capture'
+        },
+        force_update: true, // **PHASE 2: Force backend update**
+        retry_on_failure: true
       };
 
+      console.log('[OneSignal] 📤 Payload:', { 
+        ...payload, 
+        player_id: playerId.substring(0, 8) + '...',
+        email: user.email?.substring(0, 3) + '...' 
+      });
+
       const { data, error } = await withTimeout(
-        supabase.functions.invoke('onesignal-upsert-user', { body: requestBody }),
-        10000
+        supabase.functions.invoke("onesignal-upsert-user", { body: payload }),
+        15000 // **PHASE 2: Longer timeout for reliability**
       );
 
       if (error) {
-        console.error('[OneSignal] User update with Player ID failed:', error);
-        return false;
+        console.error('[OneSignal] ❌ User sync with Player ID failed:', error);
+        
+        // **PHASE 2: Retry mechanism for critical failures**
+        console.log('[OneSignal] 🔄 Retrying user sync...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const { data: retryData, error: retryError } = await supabase.functions.invoke("onesignal-upsert-user", { 
+          body: payload 
+        });
+        
+        if (retryError) {
+          console.error('[OneSignal] ❌ Retry also failed:', retryError);
+          return false;
+        }
+        
+        console.log('[OneSignal] ✅ Retry successful:', retryData);
+        return true;
       }
 
-      console.log('[OneSignal] User updated with Player ID successfully');
+      console.log('[OneSignal] ✅ User synced successfully with Player ID:', data);
       return true;
-    } catch (err) {
-      console.error('[OneSignal] User update with Player ID exception:', err);
+    } catch (error) {
+      console.error('[OneSignal] ❌ User sync with Player ID exception:', error);
       return false;
     }
   };

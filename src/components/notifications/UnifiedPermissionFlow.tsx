@@ -6,6 +6,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOneSignalEnhanced } from "@/hooks/useOneSignalEnhanced";
+import { usePlayerIdVerification } from "@/hooks/usePlayerIdVerification";
 import { usePWAInstallation } from "@/hooks/usePWAInstallation";
 import { detectPlatform, getPlatformInstructions } from "@/utils/platformDetection";
 import { detectSafariPWA } from "@/utils/safariPWADetection";
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Bell, Download, Settings, X } from "lucide-react";
 import { toast } from "sonner";
+import PlayerIdStatusIndicator from "./PlayerIdStatusIndicator";
 
 interface UnifiedPermissionFlowProps {
   onClose?: () => void;
@@ -28,6 +30,7 @@ export default function UnifiedPermissionFlow({
 }: UnifiedPermissionFlowProps) {
   const { user } = useAuth();
   const { initialized, requestPermission, permission, isGranted, browserInfo } = useOneSignalEnhanced();
+  const { hasValidPlayerId, verificationStatus, isIOSPWA } = usePlayerIdVerification();
   const { installPWA, canInstall, isIOSDevice, showIOSInstructions, getIOSInstructions } = usePWAInstallation();
   
   const [isVisible, setIsVisible] = useState(false);
@@ -115,13 +118,30 @@ export default function UnifiedPermissionFlow({
     setIsLoading(true);
     
     try {
+      console.log('[UnifiedFlow] 🚀 Starting permission request with enhanced logging');
+      
       const result = await requestPermission();
       
       if (result.success) {
         toast.success("Push notifications enabled successfully!");
+        console.log('[UnifiedFlow] ✅ Permission granted successfully');
+        
+        // **PHASE 2: Enhanced success handling for iOS PWA**
+        if (isIOSPWA) {
+          console.log('[UnifiedFlow] 📱 iOS PWA user - starting Player ID verification');
+          toast.info("Setting up iOS PWA notifications...");
+          
+          // Give OneSignal time to initialize the subscription
+          setTimeout(() => {
+            console.log('[UnifiedFlow] 🔄 Triggering Player ID verification');
+          }, 2000);
+        }
+        
         setIsVisible(false);
         onClose?.();
       } else {
+        console.error('[UnifiedFlow] ❌ Permission request failed:', result);
+        
         // Handle specific error cases
         if (result.error === 'denied') {
           setCurrentStep('settings');
@@ -133,12 +153,12 @@ export default function UnifiedPermissionFlow({
         }
       }
     } catch (error) {
-      console.error('[UnifiedFlow] Permission request failed:', error);
+      console.error('[UnifiedFlow] ❌ Permission request failed:', error);
       toast.error("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
-  }, [initialized, isLoading, requestPermission, onClose]);
+  }, [initialized, isLoading, requestPermission, onClose, isIOSPWA]);
 
   const handlePWAInstall = useCallback(async () => {
     if (!canInstall) return;
@@ -327,6 +347,13 @@ export default function UnifiedPermissionFlow({
                   <X className="h-4 w-4" />
                 </Button>
               </div>
+              
+              {/* **PHASE 4: Real-time Player ID Status for iOS PWA** */}
+              {isIOSPWA && (
+                <div className="border-t pt-3">
+                  <PlayerIdStatusIndicator />
+                </div>
+              )}
               
               {platformInfo.hasNotificationQuirks && (
                 <div className="text-xs text-muted-foreground">

@@ -2851,6 +2851,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_trading_metrics: {
+        Args: {
+          p_entry_price: number
+          p_stop_loss: number
+          p_tp1?: number
+          p_trade_type?: string
+        }
+        Returns: Json
+      }
       check_account_request_rate_limit: {
         Args: { p_email: string; p_ip_address?: string }
         Returns: Json
@@ -2869,6 +2878,14 @@ export type Database = {
       }
       get_community_tier_info: {
         Args: { tier_level: number }
+        Returns: Json
+      }
+      get_market_session: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_trader_stats: {
+        Args: { p_user_id: string }
         Returns: Json
       }
       has_role: {

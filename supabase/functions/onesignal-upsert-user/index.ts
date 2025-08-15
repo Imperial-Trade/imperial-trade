@@ -125,21 +125,20 @@ Deno.serve(async (req: Request) => {
       console.warn(`⚠️ User check failed: ${checkResponse.status} ${await safeText(checkResponse)}`);
     }
 
-    // Step 2: Create or update user
+    // Step 2: Create or update user with enhanced subscription management
     let userResult = null;
     
     if (!existingUser) {
       console.log('📝 Creating new OneSignal user...');
       
-      // ZERO tags to avoid OneSignal plan limits completely
-      const essentialTags = {};
-
       const createPayload = {
         identity: {
           external_id: externalId,
         },
         properties: {
-          tags: essentialTags,  // Zero tags - no more!
+          tags: {}, // Zero tags to avoid plan limits
+          language: "en",
+          timezone_id: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
         },
         subscriptions: []
       };
@@ -151,6 +150,7 @@ Deno.serve(async (req: Request) => {
           token: email,
           enabled: true,
         });
+        console.log(`📧 Adding email subscription for: ${email.substring(0, 3)}...@${email.split('@')[1]}`);
       }
 
       const createResponse = await fetch(`https://api.onesignal.com/apps/${appId}/users`, {
@@ -173,23 +173,28 @@ Deno.serve(async (req: Request) => {
     } else {
       console.log('🔄 Updating existing OneSignal user...');
       
-      // ZERO tags to avoid OneSignal plan limits completely
-      const essentialTags = {};
-      
       const updatePayload = {
         properties: {
-          tags: essentialTags,  // Zero tags - no more!
+          tags: {}, // Zero tags to avoid plan limits
+          language: "en",
+          timezone_id: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
         },
         subscriptions: []
       };
 
-      // Update email subscription if provided
+      // Update email subscription if provided - only update if email changed
       if (email) {
-        updatePayload.subscriptions.push({
-          type: "Email",
-          token: email,
-          enabled: true,
-        });
+        const currentEmailSub = existingUser.subscriptions?.find((sub: any) => sub.type === "Email");
+        if (!currentEmailSub || currentEmailSub.token !== email) {
+          updatePayload.subscriptions.push({
+            type: "Email",
+            token: email,
+            enabled: true,
+          });
+          console.log(`📧 Updating email subscription to: ${email.substring(0, 3)}...@${email.split('@')[1]}`);
+        } else {
+          console.log('📧 Email subscription already up to date');
+        }
       }
 
       const updateResponse = await fetch(`https://api.onesignal.com/apps/${appId}/users/by/external_id/${encodeURIComponent(externalId)}`, {

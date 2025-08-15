@@ -87,7 +87,7 @@ async function handler(req: Request): Promise<Response> {
     let playerData: any = null;
     let firstActivePlayerId: string | null = null;
 
-    // Always try to fetch user from OneSignal Users API by external_id
+    // Enhanced user verification with detailed subscription analysis
     try {
       const userResponse = await fetch(`https://api.onesignal.com/apps/${oneSignalAppId}/users/by/external_id/${user_id}`, {
         method: 'GET',
@@ -101,33 +101,54 @@ async function handler(req: Request): Promise<Response> {
         const responseText = await safeText(userResponse);
         const user = safeJson(responseText);
         
-        console.log(`[OneSignal Verify] User found via Users API`);
+        console.log(`[OneSignal Verify] User found via Users API - ID: ${user.id}`);
         playerExists = true;
         
         const subscriptions = user.subscriptions || [];
+        console.log(`[OneSignal Verify] Found ${subscriptions.length} total subscriptions`);
+        
+        // Enhanced subscription analysis
         const webpushSubs = subscriptions.filter((sub: any) => sub.type === 'WebPush');
         const emailSubs = subscriptions.filter((sub: any) => sub.type === 'Email');
+        const androidSubs = subscriptions.filter((sub: any) => sub.type === 'AndroidPush');
+        const iosSubs = subscriptions.filter((sub: any) => sub.type === 'iOSPush');
         
+        console.log(`[OneSignal Verify] Subscription breakdown: WebPush(${webpushSubs.length}), Email(${emailSubs.length}), Android(${androidSubs.length}), iOS(${iosSubs.length})`);
+        
+        // Check subscription statuses with detailed logging
         webpushSubscribed = webpushSubs.some((sub: any) => sub.enabled);
         emailSubscribed = emailSubs.some((sub: any) => sub.enabled);
         hasActiveWebpush = webpushSubscribed;
         
-        // Get the first active WebPush subscription ID as player_id
-        const activeWebpushSub = webpushSubs.find((sub: any) => sub.enabled);
-        if (activeWebpushSub && activeWebpushSub.id) {
-          firstActivePlayerId = activeWebpushSub.id;
+        // Get the most recent active WebPush subscription
+        const activeWebpushSubs = webpushSubs.filter((sub: any) => sub.enabled);
+        if (activeWebpushSubs.length > 0) {
+          // Sort by last_session to get most recent
+          activeWebpushSubs.sort((a: any, b: any) => {
+            const aTime = new Date(a.last_session || 0).getTime();
+            const bTime = new Date(b.last_session || 0).getTime();
+            return bTime - aTime;
+          });
+          firstActivePlayerId = activeWebpushSubs[0].id;
+          console.log(`[OneSignal Verify] Selected most recent WebPush subscription: ${firstActivePlayerId}`);
         }
         
-        console.log(`[OneSignal Verify] WebPush status: ${webpushSubscribed ? 'subscribed' : 'not subscribed'}`);
-        console.log(`[OneSignal Verify] Email status: ${emailSubscribed ? 'subscribed' : 'not subscribed'}`);
+        console.log(`[OneSignal Verify] Final status - WebPush: ${webpushSubscribed ? 'ACTIVE' : 'INACTIVE'}, Email: ${emailSubscribed ? 'ACTIVE' : 'INACTIVE'}`);
         
+        // Enhanced player data with subscription details
         playerData = {
           valid_player: user.id,
+          external_id: user.identity?.external_id,
           notification_types: user.notification_types,
           session_count: user.session_count,
           last_active: user.last_active,
           created_at: user.created_at,
-          subscriptions_count: subscriptions.length
+          subscriptions_count: subscriptions.length,
+          webpush_count: webpushSubs.length,
+          email_count: emailSubs.length,
+          active_webpush_count: activeWebpushSubs.length,
+          timezone: user.properties?.timezone_id,
+          language: user.properties?.language
         };
       } else {
         console.log(`[OneSignal Verify] User not found via Users API: ${userResponse.status} (normal for new users)`);
@@ -141,27 +162,46 @@ async function handler(req: Request): Promise<Response> {
       console.log(`[OneSignal Verify] User not in subscribed segment - no active WebPush subscriptions`);
     }
 
-    // Build response in expected format with backward compatibility
+    // Enhanced response with comprehensive subscription status
     const response = {
       success: true,
       subscription_status: {
+        // Core subscription flags
         player_exists: playerExists,
         is_subscribed: hasActiveWebpush,
         webpush_subscribed: webpushSubscribed,
         email_subscribed: emailSubscribed,
         has_active_webpush: hasActiveWebpush,
         in_subscribed_segment: hasActiveWebpush,
+        
+        // Enhanced subscription data
+        subscription_summary: {
+          total_subscriptions: playerData?.subscriptions_count || 0,
+          webpush_subscriptions: playerData?.webpush_count || 0,
+          active_webpush_subscriptions: playerData?.active_webpush_count || 0,
+          email_subscriptions: playerData?.email_count || 0,
+          recommended_action: !hasActiveWebpush ? 
+            (webpushSubscribed ? 'resubscribe' : 'initial_subscription') : 
+            'none'
+        },
+        
+        // Player and user data
         player_data: playerData,
         player_id: firstActivePlayerId || player_id || null,
+        
+        // Detailed verification info
         details: {
           user_found_in_onesignal: !!playerExists,
           profile_exists_in_supabase: profileExists,
           subscription_check_timestamp: new Date().toISOString(),
           player_id: firstActivePlayerId || player_id || null,
-          database_status: profileExists ? 'found' : 'not_found'
+          database_status: profileExists ? 'found' : 'not_found',
+          verification_method: 'users_api_by_external_id',
+          api_response_status: playerExists ? 'success' : 'not_found'
         }
       },
-      // Add top-level fields for backward compatibility
+      
+      // Backward compatibility fields
       is_subscribed: hasActiveWebpush,
       player_id: firstActivePlayerId || player_id || null
     };

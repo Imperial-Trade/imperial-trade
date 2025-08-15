@@ -783,8 +783,39 @@ export function useOneSignalEnhanced() {
     }
   };
 
+  // Post-permission sync with backend
+  const syncSubscriptionStatus = async (playerId?: string) => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('onesignal-upsert-user', {
+        body: {
+          user_id: user.id,
+          email: user.email,
+          player_id: playerId,
+          device_fingerprint: deviceInfo?.fingerprint,
+          device_info: deviceInfo
+        }
+      });
+      
+      if (error) {
+        console.warn('[OneSignal] Sync failed:', error);
+      } else {
+        console.info('[OneSignal] Subscription status synced successfully');
+        
+        // Update device-specific subscription status
+        if (playerId && deviceInfo?.fingerprint) {
+          setDeviceSubscriptionStatus(user.id, deviceInfo.fingerprint, true);
+          setDeviceHasSubscription(true);
+        }
+      }
+    } catch (syncError) {
+      console.warn('[OneSignal] Sync error:', syncError);
+    }
+  };
+
   // **CRITICAL FIX: Enhanced permission request with comprehensive error handling and retry logic**
-  const requestPermission = async (): Promise<{ 
+  const requestPermission = async (): Promise<{
     success: boolean; 
     error?: string; 
     details?: any 
@@ -885,9 +916,13 @@ export function useOneSignalEnhanced() {
         if (ps?.id && user?.id) {
           console.log('[OneSignal] Capturing Player ID after permission grant:', ps.id.substring(0, 8) + '...');
           await captureAndStorePlayerIdSequential(ps.id);
+          
+          // Sync with backend after successful subscription
+          await syncSubscriptionStatus(ps.id);
         }
         
-        return { success: true, details: { method: 'slidedown', result } };
+        setHasSubscription(true);
+        return { success: true, details: { method: 'slidedown', result, synced: true } };
       } else {
         console.log('[OneSignal] Permission denied via slidedown');
         setPermission('denied');

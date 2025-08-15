@@ -13,7 +13,7 @@ import {
   Activity,
   Settings
 } from 'lucide-react';
-import { AdminTestNotificationButton } from '@/components/admin/AdminTestNotificationButton';
+
 
 interface AdminStatProps {
   title: string;
@@ -93,7 +93,7 @@ export const AdminDashboard: React.FC = () => {
                   Manage user accounts, roles, and permissions
                 </CardDescription>
               </div>
-              <AdminTestNotificationButton />
+              
             </div>
           </CardHeader>
           <CardContent>

@@ -479,24 +479,7 @@ export function useOneSignalEnhanced() {
         setupListeners();
 
         setInitialized(true);
-        console.info('[OneSignal CRITICAL DEBUG] Setup completed - triggering auto-prompt check');
-        
-      // **CRITICAL FIX: Enhanced auto-trigger ONLY for non-iOS PWA authenticated users**
-        if (user?.id) {
-          console.info('[OneSignal CRITICAL DEBUG] Setup completed for authenticated user - scheduling auto-prompt check');
-          
-          // Skip auto-trigger for iOS PWA (handled by interaction listener)
-          if (safariPWAInfo.isSafariPWA && browserInfo.isIOS) {
-            console.info('[OneSignal CRITICAL DEBUG] iOS PWA detected - skipping immediate auto-trigger, using interaction listener instead');
-          } else {
-            setTimeout(() => {
-              console.info('[OneSignal CRITICAL DEBUG] Auto-trigger delay expired for user:', user.id.substring(0, 8) + '...');
-              triggerNativePromptIfEligible();
-            }, 2000); // Ensure OneSignal is fully ready
-          }
-        } else {
-          console.info('[OneSignal CRITICAL DEBUG] Setup completed but user not authenticated - skipping auto-prompt');
-        }
+        console.info('[OneSignal] Setup completed - ready for manual native prompts only');
 
       } catch (error) {
         console.error('[OneSignal] Setup failed:', error);
@@ -863,53 +846,53 @@ export function useOneSignalEnhanced() {
         return { success: false, error, details: { initialized } };
       }
 
-      // **CRITICAL FIX: iOS Safari PWA - Use direct notification permission**
-      console.info('[OneSignal CRITICAL DEBUG] Requesting permission...');
+      // Use OneSignal native permission request for all platforms
+      console.info('[OneSignal] Requesting permission via native prompt...');
       
       let result;
       
-      // **V16 CRITICAL FIX: Use proper v16 methods for permission requests**
+      // Use native OneSignal permission request for all platforms
       if (safariPWAInfo.isSafariPWA || browserInfo.isIOS) {
-        console.info('[OneSignal CRITICAL DEBUG] iOS Safari PWA detected - using v16 permission flow');
+        console.info('[OneSignal] iOS Safari PWA detected - using native permission flow');
         
         try {
           // Try v16 Notifications.requestPermission first
           if ((window as any).OneSignal.Notifications?.requestPermission) {
             result = await (window as any).OneSignal.Notifications.requestPermission();
-            console.info('[OneSignal CRITICAL DEBUG] v16 Notifications.requestPermission result:', result);
+            console.info('[OneSignal] iOS permission result:', result);
           } else {
             // Fallback to PushSubscription optIn for iOS
             const ps = (window as any).OneSignal?.User?.PushSubscription;
             if (ps?.optIn) {
               result = await ps.optIn();
-              console.info('[OneSignal CRITICAL DEBUG] iOS PushSubscription.optIn() result:', result);
+              console.info('[OneSignal] iOS PushSubscription.optIn() result:', result);
             } else {
               throw new Error('iOS OneSignal v16 methods not available');
             }
           }
         } catch (iosError) {
-          console.warn('[OneSignal CRITICAL DEBUG] iOS permission failed:', iosError);
+          console.warn('[OneSignal] iOS permission failed:', iosError);
           throw iosError;
         }
       } else {
-        // **NATIVE PROMPT ONLY: Use OneSignal.Notifications.requestPermission for all non-iOS browsers**
-        console.info('[OneSignal CRITICAL DEBUG] Using native permission prompt for non-iOS browser...');
-        
-        try {
-          // Use direct native permission request only - no slidedown
-          if ((window as any).OneSignal.Notifications?.requestPermission) {
-            result = await (window as any).OneSignal.Notifications.requestPermission();
-            console.info('[OneSignal CRITICAL DEBUG] Native permission result:', result);
-          } else {
-            throw new Error('OneSignal v16 Notifications.requestPermission method not available');
-          }
-        } catch (permissionError) {
-          console.warn('[OneSignal CRITICAL DEBUG] Native permission failed:', permissionError);
-          throw permissionError;
+      // **NATIVE PROMPT ONLY: Use OneSignal.Notifications.requestPermission for all non-iOS browsers**
+      console.info('[OneSignal] Using native permission prompt for non-iOS browser...');
+      
+      try {
+        // Use direct native permission request only - no slidedown
+        if ((window as any).OneSignal.Notifications?.requestPermission) {
+          result = await (window as any).OneSignal.Notifications.requestPermission();
+          console.info('[OneSignal] Native permission result:', result);
+        } else {
+          throw new Error('OneSignal v16 Notifications.requestPermission method not available');
         }
+      } catch (permissionError) {
+        console.warn('[OneSignal] Native permission failed:', permissionError);
+        throw permissionError;
+      }
       }
       
-      console.info('[OneSignal CRITICAL DEBUG] Permission response received:', result);
+      console.info('[OneSignal] Permission response received:', result);
 
       if (result) {
         console.log('[OneSignal] Permission granted via native prompt');
@@ -937,15 +920,15 @@ export function useOneSignalEnhanced() {
         return { success: false, error: 'Permission denied', details: { method: 'native_prompt', result } };
       }
     } catch (err: any) {
-      console.error('[OneSignal CRITICAL DEBUG] Permission request failed:', err);
+      console.error('[OneSignal] Permission request failed:', err);
       
       // Fallback to browser native prompt for critical cases
       if (err.message?.includes('timeout') || err.message?.includes('permission')) {
         try {
-          console.info('[OneSignal CRITICAL DEBUG] Trying fallback browser native prompt...');
+          console.info('[OneSignal] Trying fallback browser native prompt...');
           
           const nativePermission = await Notification.requestPermission();
-          console.info('[OneSignal CRITICAL DEBUG] Native permission result:', nativePermission);
+          console.info('[OneSignal] Native permission result:', nativePermission);
           
           setPermission(nativePermission);
           
@@ -975,212 +958,12 @@ export function useOneSignalEnhanced() {
     }
   };
 
-  // **CROSS-DEVICE FIX: Enhanced auto-trigger with device-specific eligibility**
-  const triggerNativePromptIfEligible = async () => {
-    try {
-      console.info('[OneSignal CROSS-DEVICE DEBUG] === AUTO-TRIGGER ELIGIBILITY CHECK ===');
-      
-      // Check device-specific subscription status
-      let deviceNeedsPrompt = true;
-      if (user?.id && deviceInfo?.fingerprint) {
-        try {
-          const { data } = await supabase
-            .rpc('should_show_onesignal_prompt', {
-              p_user_id: user.id,
-              p_device_fingerprint: deviceInfo.fingerprint
-            });
-          deviceNeedsPrompt = data === true;
-          console.info(`[OneSignal CROSS-DEVICE DEBUG] Device needs prompt (DB check): ${deviceNeedsPrompt}`);
-        } catch (dbError) {
-          console.warn('[OneSignal CROSS-DEVICE DEBUG] Device DB check failed, defaulting to local check:', dbError);
-        }
-      }
-      
-      // Debug all conditions in detail
-      const conditions = {
-        initialized: initialized,
-        userExists: !!user?.id,
-        oneSignalReady: !!(window as any).OneSignal?.Notifications,
-        permission: permission,
-        hasSubscription: hasSubscription,
-        deviceHasSubscription: deviceHasSubscription,
-        deviceNeedsPrompt: deviceNeedsPrompt,
-        browserSupported: browserInfo.isSupported,
-        notIframeBlocked: !isIframeBlocked,
-        hasDeviceInfo: !!deviceInfo?.fingerprint
-      };
-      
-      console.info('[OneSignal CROSS-DEVICE DEBUG] Condition details:', conditions);
-      
-      // **CROSS-DEVICE LOGIC: Check device-specific status instead of global profile**
-      const shouldAutoPrompt = (
-        conditions.initialized && 
-        conditions.userExists && 
-        conditions.oneSignalReady &&
-        conditions.permission === 'default' && 
-        !conditions.hasSubscription && 
-        !conditions.deviceHasSubscription &&
-        conditions.deviceNeedsPrompt &&
-        conditions.browserSupported &&
-        conditions.notIframeBlocked &&
-        conditions.hasDeviceInfo
-      );
-      
-      console.info(`[OneSignal CRITICAL DEBUG] Should auto-prompt: ${shouldAutoPrompt}`);
-      
-      if (shouldAutoPrompt) {
-        console.info('[OneSignal CRITICAL DEBUG] ✅ All conditions met - triggering native prompt');
-        
-        const result = await requestPermission();
-        console.info('[OneSignal CROSS-DEVICE DEBUG] Auto-trigger result:', result);
-        
-        // **CROSS-DEVICE FIX: Store device subscription status on success**
-        if (result.success && user?.id && deviceInfo?.fingerprint) {
-          try {
-            setDeviceSubscriptionStatus(user.id, deviceInfo.fingerprint, true);
-            console.info('[OneSignal CROSS-DEVICE DEBUG] Device subscription status stored locally');
-            
-            // Store in database
-            const { data: playerId } = await supabase
-              .from('device_subscriptions')
-              .insert({
-                user_id: user.id,
-                device_fingerprint: deviceInfo.fingerprint,
-                onesignal_player_id: (window as any).OneSignal?.User?.PushSubscription?.id || 'pending',
-                device_info: {
-                  browser_name: deviceInfo.browserName,
-                  browser_version: deviceInfo.browserVersion,
-                  platform: deviceInfo.platform,
-                  is_mobile: deviceInfo.isMobile,
-                  screen_resolution: deviceInfo.screenResolution,
-                  timezone: deviceInfo.timezone,
-                  language: deviceInfo.language
-                },
-                browser_name: deviceInfo.browserName,
-                browser_version: deviceInfo.browserVersion,
-                platform: deviceInfo.platform,
-                is_mobile: deviceInfo.isMobile
-              })
-              .select('id')
-              .single();
-            
-            if (playerId) {
-              console.info('[OneSignal CROSS-DEVICE DEBUG] Device subscription stored in database');
-            }
-          } catch (storeError) {
-            console.warn('[OneSignal CROSS-DEVICE DEBUG] Failed to store device subscription:', storeError);
-          }
-        }
-        
-        if (!result.success) {
-          console.warn('[OneSignal CROSS-DEVICE DEBUG] Auto-trigger failed, scheduling retry in 10s');
-          setTimeout(() => {
-            console.info('[OneSignal CROSS-DEVICE DEBUG] Retry attempt...');
-            triggerNativePromptIfEligible();
-          }, 10000);
-        }
-      } else {
-        // Log specific reason for not triggering
-        const blockers = Object.entries(conditions)
-          .filter(([key, value]) => {
-            if (key === 'permission') return value !== 'default';
-            if (key === 'hasSubscription' || key === 'deviceHasSubscription') return value === true;
-            if (key === 'deviceNeedsPrompt') return value === false;
-            return value === false;
-          })
-          .map(([key]) => key);
-        
-        console.info(`[OneSignal CROSS-DEVICE DEBUG] ❌ Not triggering due to: ${blockers.join(', ')}`);
-      }
-    } catch (error) {
-      console.error('[OneSignal CROSS-DEVICE DEBUG] Auto-trigger check failed:', error);
-    }
-  };
 
-  // **UNIVERSAL FIRST-INTERACTION LISTENER: Extend to all platforms for native prompt**
-  useEffect(() => {
-    if (!initialized || !user?.id) {
-      return;
-    }
 
-    console.info('[OneSignal CRITICAL DEBUG] User logged in - setting up universal first interaction listener');
-    
-    let hasTriggeredOnce = false;
-    
-    const handleFirstInteraction = async () => {
-      if (hasTriggeredOnce) return;
-      hasTriggeredOnce = true;
-      
-      console.info('[OneSignal CRITICAL DEBUG] First user interaction detected - checking if native prompt needed');
-      
-      // Check if this device needs prompt
-      let deviceNeedsPrompt = true;
-      if (user?.id && deviceInfo?.fingerprint) {
-        try {
-          const { data } = await supabase
-            .rpc('should_show_onesignal_prompt', {
-              p_user_id: user.id,
-              p_device_fingerprint: deviceInfo.fingerprint
-            });
-          deviceNeedsPrompt = data === true;
-          console.info(`[OneSignal CRITICAL DEBUG] Device needs prompt (interaction check): ${deviceNeedsPrompt}`);
-        } catch (dbError) {
-          console.warn('[OneSignal CRITICAL DEBUG] Device DB check failed during interaction:', dbError);
-        }
-      }
-      
-      // Only prompt if conditions are met
-      if (permission === 'default' && !hasSubscription && deviceNeedsPrompt && browserInfo.isSupported) {
-        console.info('[OneSignal CRITICAL DEBUG] Triggering native prompt on first interaction');
-        
-        // Small delay to ensure the interaction is complete
-        setTimeout(() => {
-          requestPermission().then(result => {
-            console.info('[OneSignal CRITICAL DEBUG] Interaction-triggered permission result:', result);
-          });
-        }, 100);
-      } else {
-        console.info('[OneSignal CRITICAL DEBUG] Native prompt not needed on interaction');
-      }
-      
-      // Remove listeners after first use
-      document.removeEventListener('click', handleFirstInteraction, true);
-      document.removeEventListener('touchstart', handleFirstInteraction, true);
-      document.removeEventListener('keydown', handleFirstInteraction, true);
-    };
-    
-    // Add listeners for first user interaction (all platforms)
-    document.addEventListener('click', handleFirstInteraction, true);
-    document.addEventListener('touchstart', handleFirstInteraction, true);
-    document.addEventListener('keydown', handleFirstInteraction, true);
-    
-    return () => {
-      document.removeEventListener('click', handleFirstInteraction, true);
-      document.removeEventListener('touchstart', handleFirstInteraction, true);
-      document.removeEventListener('keydown', handleFirstInteraction, true);
-    };
-  }, [initialized, user?.id, permission, hasSubscription, deviceInfo?.fingerprint, browserInfo.isSupported, requestPermission]);
-
-  // **BACKUP AUTO-TRIGGER: 8-10 seconds after login if interaction hasn't fired**
-  useEffect(() => {
-    if (!initialized || !user?.id) {
-      console.info('[OneSignal CRITICAL DEBUG] User not authenticated or OneSignal not initialized - clearing any pending prompts');
-      return;
-    }
-
-    console.info('[OneSignal CRITICAL DEBUG] Auto-trigger effect triggered for authenticated user:', user.id.substring(0, 8) + '...');
-    
-    // Backup trigger for cases where user interacted within login flow
-    const backupTimer = setTimeout(() => {
-      console.info('[OneSignal CRITICAL DEBUG] Backup auto-trigger check for authenticated user');
-      triggerNativePromptIfEligible();
-    }, 8000);
-
-    return () => {
-      console.info('[OneSignal CRITICAL DEBUG] Cleaning up backup auto-trigger timer');
-      clearTimeout(backupTimer);
-    };
-  }, [initialized, user?.id]);
+  // Log final ready state
+  if (initialized && user?.id) {
+    console.info('[OneSignal] ✅ Production ready - native prompts only, no auto-triggers');
+  }
 
   return {
     initialized,

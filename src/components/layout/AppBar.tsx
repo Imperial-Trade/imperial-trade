@@ -26,7 +26,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { NotificationStatusButton } from "@/components/notifications/NotificationStatusButton";
+
 
 const AppBar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -238,7 +238,7 @@ const AppBar: React.FC = () => {
             isSigninPage ? "mr-4" : ""
           }`}
         >
-          <NotificationStatusButton className="mr-1" showLabel={false} />
+          
           <ThemeToggle />
           {renderAuthButton()}
         </div>
@@ -294,15 +294,6 @@ const AppBar: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Notifications Section */}
-                <div className="mt-8 pt-6 border-t border-border/50 space-y-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground px-2">
-                    Push Notifications
-                  </h3>
-                  <div className="px-2">
-                    <NotificationStatusButton showLabel={true} />
-                  </div>
-                </div>
 
                 {/* Authentication Section */}
                 <div className="mt-8 pt-6 border-t border-border/50 space-y-4">

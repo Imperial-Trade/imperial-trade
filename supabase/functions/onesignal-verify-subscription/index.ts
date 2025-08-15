@@ -135,22 +135,24 @@ async function handler(req: Request): Promise<Response> {
       console.log(`[OneSignal Verify] User not in subscribed segment - no active WebPush subscriptions`);
     }
 
-    // Build comprehensive response
+    // Build response in expected format
     const response = {
-      playerExists,
-      player_subscribed: webpushSubscribed,
-      webpush_subscribed: webpushSubscribed,
-      email_subscribed: emailSubscribed,
-      has_active_webpush: hasActiveWebpush,
-      in_subscribed_segment: hasActiveWebpush,
-      database_status: profileExists ? 'found' : 'not_found',
-      player_data: playerData,
-      player_id: player_id || null,
-      is_subscribed: hasActiveWebpush,
-      details: {
-        user_found_in_onesignal: !!playerExists,
-        profile_exists_in_supabase: profileExists,
-        subscription_check_timestamp: new Date().toISOString()
+      success: true,
+      subscription_status: {
+        player_exists: playerExists,
+        is_subscribed: hasActiveWebpush,
+        webpush_subscribed: webpushSubscribed,
+        email_subscribed: emailSubscribed,
+        has_active_webpush: hasActiveWebpush,
+        in_subscribed_segment: hasActiveWebpush,
+        player_data: playerData,
+        details: {
+          user_found_in_onesignal: !!playerExists,
+          profile_exists_in_supabase: profileExists,
+          subscription_check_timestamp: new Date().toISOString(),
+          player_id: player_id || null,
+          database_status: profileExists ? 'found' : 'not_found'
+        }
       }
     };
 

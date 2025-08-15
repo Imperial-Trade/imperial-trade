@@ -182,7 +182,7 @@ Deno.serve(async (req: Request) => {
       
       const updatePayload = {
         properties: {
-          tags: { ...existingUser.properties?.tags, ...essentialTags },
+          tags: essentialTags,  // Use only essential tags to avoid plan limits
         },
         subscriptions: []
       };

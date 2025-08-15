@@ -93,8 +93,8 @@ function App() {
             <BrowserRouter>
               <PostHogPageViewTracker />
               <ScrollToTop />
-                <OneSignalInitializer>
-                  <AuthProvider>
+                <AuthProvider>
+                  <OneSignalInitializer>
                     <AutoRecoveryProvider>
                       <WelcomeProvider>
                         <NavigationGuard>
@@ -300,8 +300,8 @@ function App() {
                         </NavigationGuard>
                       </WelcomeProvider>
                     </AutoRecoveryProvider>
+                  </OneSignalInitializer>
                 </AuthProvider>
-                </OneSignalInitializer>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>

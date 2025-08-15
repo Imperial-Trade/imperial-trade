@@ -122,12 +122,12 @@ async function handler(req: Request): Promise<Response> {
             created_at: user.created_at,
             subscriptions_count: subscriptions.length
           };
+        } else {
+          console.log(`[OneSignal Verify] User not found via Users API: ${userResponse.status} (normal for new users)`);
         }
-      } else {
-        console.log(`[OneSignal Verify] User not found via Users API: ${userResponse.status} (normal for new users)`);
+      } catch (error) {
+        console.log(`[OneSignal Verify] OneSignal API error: ${error}`);
       }
-    } catch (error) {
-      console.log(`[OneSignal Verify] OneSignal API error: ${error}`);
     }
 
     // Determine subscription status

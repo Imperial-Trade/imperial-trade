@@ -10,7 +10,11 @@ export const VideoBackground: React.FC = () => {
         muted
         playsInline
         className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none"
-        style={{ filter: "brightness(0.4) dark:brightness(0.4) brightness(0.7)" }}
+        style={{ 
+          filter: "brightness(0.4) dark:brightness(0.4) brightness(0.7)",
+          top: "calc(-1 * var(--safe-area-top))", /* Extend behind status bar */
+          height: "calc(100vh + var(--safe-area-top))" /* Full height including status bar */
+        }}
       >
         <source
           src="https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4"

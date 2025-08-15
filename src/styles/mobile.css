@@ -39,14 +39,17 @@ textarea,
   user-select: auto;
 }
 
-/* iOS App Container */
+/* iOS App Container - Full screen with transparent status bar */
 .ios-app-container {
   min-height: 100vh;
   min-height: 100dvh;
-  padding-top: var(--safe-area-top);
+  /* Remove padding-top to allow content behind status bar */
+  padding-top: 0;
   padding-left: var(--safe-area-left);
   padding-right: var(--safe-area-right);
-  background: hsl(var(--background));
+  background: transparent; /* Allow video background to show through */
+  position: relative;
+  overflow-x: hidden;
 }
 
 /* iOS-style body class */
@@ -56,6 +59,7 @@ textarea,
   -moz-osx-font-smoothing: grayscale;
   touch-action: manipulation;
   overscroll-behavior: none;
+  background: transparent; /* Allow video background to show through */
 }
 
 /* Smooth scrolling for mobile */

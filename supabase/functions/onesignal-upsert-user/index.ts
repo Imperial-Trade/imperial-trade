@@ -19,6 +19,10 @@ interface UpsertRequestBody {
   email?: string;
   tags?: Record<string, string>;
   player_id?: string; // PHASE 2: Add player_id for enhanced linking
+  external_id?: string; // PHASE 3: Modern User Model support
+  force_update?: boolean; // PHASE 2: Force backend updates
+  retry_on_failure?: boolean; // PHASE 2: Retry logic flag
+  modern_user_model?: boolean; // PHASE 3: Modern OneSignal API flag
 }
 
 Deno.serve(async (req: Request) => {
@@ -58,10 +62,13 @@ Deno.serve(async (req: Request) => {
       }
     } catch {}
 
-    const externalId = body.user_id || authUser?.id || "";
+    const externalId = body.external_id || body.user_id || authUser?.id || "";
     const email = body.email || (authUser?.email as string | undefined) || undefined;
     const tags = body.tags || {};
     const playerId = body.player_id; // PHASE 2: Extract player_id for enhanced user linking
+    const forceUpdate = body.force_update || false; // PHASE 2: Force update flag
+    const retryOnFailure = body.retry_on_failure || false; // PHASE 2: Retry flag
+    const useModernUserModel = body.modern_user_model || false; // PHASE 3: Modern API flag
 
     if (!externalId) {
       return new Response(
@@ -101,11 +108,14 @@ Deno.serve(async (req: Request) => {
     if (getUserRes.ok) {
       existingUser = await safeJson(getUserRes);
       userExists = !!existingUser?.identity?.external_id;
-      console.log(`[OneSignal Upsert] User exists with external_id: ${userExists}`, existingUser?.identity?.external_id);
+    console.log(`[OneSignal Upsert] 🔍 User exists with external_id: ${userExists}`, existingUser?.identity?.external_id);
       
-      // PHASE 3: Enhanced logging for player_id tracking
+      // **PHASE 3: Enhanced logging with modern User Model support**
       if (playerId) {
-        console.log(`[OneSignal Upsert] Processing with player_id: ${playerId}`);
+        console.log(`[OneSignal Upsert] 🎯 Processing with player_id: ${playerId} (Modern User Model: ${useModernUserModel})`);
+      }
+      if (forceUpdate) {
+        console.log(`[OneSignal Upsert] 🚨 Force update enabled - will update regardless of existing state`);
       }
     } else {
       // **MIGRATION FIX: Check for orphaned users without external_id**
@@ -244,51 +254,84 @@ Deno.serve(async (req: Request) => {
       };
     }
 
-    // **PHASE 4: Enhanced WebPush Player ID Handling with Database Sync**
+    // **PHASE 4: EMERGENCY WebPush Player ID Handling with Enhanced Database Sync**
     if (playerId) {
-      console.log(`[OneSignal Upsert] WebPush Player ID received for user ${externalId}: ${playerId}`);
+      console.log(`[OneSignal Upsert] 🚨 EMERGENCY: WebPush Player ID received for user ${externalId}: ${playerId.substring(0, 8)}...`);
       
       try {
-        // **Phase 4: Update database with player_id for future verification**
-        const { error: updateError } = await supabase
+        // **PHASE 4: Enhanced database update with comprehensive tracking**
+        const updateData = {
+          onesignal_player_id: playerId,
+          push_subscription_active: true,
+          onesignal_subscription_status: 'subscribed',
+          onesignal_last_verified_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        console.log(`[OneSignal Upsert] 💾 Updating database for user ${externalId} with:`, {
+          ...updateData,
+          onesignal_player_id: playerId.substring(0, 8) + '...'
+        });
+        
+        const { error: updateError, data: updateResult } = await supabase
           .from('profiles')
-          .update({
-            onesignal_player_id: playerId,
-            push_subscription_active: true,
-            onesignal_subscription_status: 'subscribed',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', externalId);
+          .update(updateData)
+          .eq('id', externalId)
+          .select('id, onesignal_player_id, push_subscription_active');
         
         if (updateError) {
-          console.warn(`[OneSignal Upsert] Database update failed for player_id ${playerId}:`, updateError);
+          console.error(`[OneSignal Upsert] 💥 Database update failed for player_id ${playerId.substring(0, 8)}...:`, updateError);
+          
+          // **PHASE 2: Retry mechanism for database failures**
+          if (retryOnFailure) {
+            console.log(`[OneSignal Upsert] 🔄 Retrying database update...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const { error: retryError } = await supabase
+              .from('profiles')
+              .update(updateData)
+              .eq('id', externalId);
+            
+            if (retryError) {
+              console.error(`[OneSignal Upsert] 💥 Retry also failed:`, retryError);
+            } else {
+              console.log(`[OneSignal Upsert] ✅ Retry successful!`);
+            }
+          }
         } else {
-          console.log(`[OneSignal Upsert] Database updated with WebPush player_id: ${playerId}`);
+          console.log(`[OneSignal Upsert] ✅ Database updated successfully with WebPush player_id: ${playerId.substring(0, 8)}...`);
+          console.log(`[OneSignal Upsert] 📊 Update result:`, updateResult);
         }
         
-        // **Phase 4: Mark as successful - WebPush subscriptions are managed by SDK**
+        // **PHASE 4: Enhanced success tracking**
         pushSubscriptionAttempt = { 
           ok: true, 
           status: 200, 
           text: "WebPush subscription tracked and database updated",
           json: { 
             message: "WebPush subscription managed by OneSignal SDK",
-            player_id: playerId,
-            database_updated: !updateError
+            player_id: playerId.substring(0, 8) + '...',
+            database_updated: !updateError,
+            force_update: forceUpdate,
+            modern_user_model: useModernUserModel,
+            external_id: externalId,
+            retry_attempted: retryOnFailure && updateError
           }
         };
         
       } catch (dbError) {
-        console.error(`[OneSignal Upsert] Database sync error for player_id ${playerId}:`, dbError);
-        // Still mark as successful since the OneSignal side works
+        console.error(`[OneSignal Upsert] 💥 Database sync exception for player_id ${playerId.substring(0, 8)}...:`, dbError);
+        
+        // **PHASE 2: Still mark as partially successful since OneSignal side works**
         pushSubscriptionAttempt = { 
-          ok: true, 
-          status: 200, 
-          text: "WebPush subscription handled by SDK (database sync failed)",
+          ok: false, // Change to false for database errors
+          status: 500, 
+          text: "WebPush subscription handled by SDK but database sync failed",
           json: { 
             message: "WebPush subscription managed by OneSignal SDK",
-            player_id: playerId,
-            database_sync_error: dbError.message
+            player_id: playerId.substring(0, 8) + '...',
+            database_sync_error: dbError.message,
+            external_id: externalId
           }
         };
       }

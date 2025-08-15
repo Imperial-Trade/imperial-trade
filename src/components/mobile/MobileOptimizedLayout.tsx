@@ -87,17 +87,16 @@ export function MobileOptimizedLayout({
     <div className={cn(
       'ios-app-container relative overflow-x-hidden',
       showBottomNav && 'pb-[calc(5rem+var(--safe-area-bottom))]',
-      /* Remove top padding for transparent status bar integration */
+      showHeader && 'pt-[var(--mobile-header-height)]',
       className
     )}>
-      {/* iOS-style header with transparent status bar integration */}
+      {/* iOS-style header */}
       {showHeader && (
         <MobileHeader
           title={headerTitle}
           showBackButton={showBackButton}
           onBack={onBack}
           rightElement={headerRightElement}
-          transparent={true}
         />
       )}
       
@@ -108,11 +107,10 @@ export function MobileOptimizedLayout({
         </div>
       )}
       
-      {/* Main content - starts from top for transparent status bar */}
+      {/* Main content */}
       <main className={cn(
-        'min-h-[100vh]', /* Full height for transparent status bar */
-        enablePullToRefresh && 'pull-to-refresh',
-        showHeader && 'pt-[var(--mobile-header-height)]' /* Add header padding only when header is shown */
+        'min-h-[calc(100vh-var(--safe-area-top))]',
+        enablePullToRefresh && 'pull-to-refresh'
       )}>
         {children}
       </main>

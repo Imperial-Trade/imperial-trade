@@ -1,7 +1,15 @@
 
 import React from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const VideoBackground: React.FC = () => {
+  const isMobile = useIsMobile();
+  
+  const mobileStyles = isMobile ? {
+    top: "calc(-1 * var(--safe-area-top))",
+    height: "calc(100vh + var(--safe-area-top))"
+  } : {};
+
   return (
     <>
       <video
@@ -12,8 +20,7 @@ export const VideoBackground: React.FC = () => {
         className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none"
         style={{ 
           filter: "brightness(0.4) dark:brightness(0.4) brightness(0.7)",
-          top: "calc(-1 * var(--safe-area-top))", /* Extend behind status bar */
-          height: "calc(100vh + var(--safe-area-top))" /* Full height including status bar */
+          ...mobileStyles
         }}
       >
         <source

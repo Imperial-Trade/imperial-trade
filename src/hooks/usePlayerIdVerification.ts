@@ -117,7 +117,7 @@ export function usePlayerIdVerification() {
     }
   };
 
-  // **PHASE 1: Enhanced Player ID Capture with Multiple Methods and Immediate Backend Sync**
+  // **Enhanced Player ID Capture with Race Condition Prevention**
   const capturePlayerIdFromOneSignal = async (): Promise<boolean> => {
     if (!initialized) {
       console.log('[PlayerIdVerification] OneSignal not initialized for Player ID capture');
@@ -128,6 +128,9 @@ export function usePlayerIdVerification() {
 
     try {
       console.info('[PlayerIdVerification] Starting enhanced Player ID capture...');
+      
+      // Wait for OneSignal to be fully ready
+      await waitForOneSignalReady();
       
       // Method 1: Direct OneSignal API access
       let osPlayerId = (window as any).OneSignal?.User?.PushSubscription?.id;
@@ -166,59 +169,22 @@ export function usePlayerIdVerification() {
       if (osPlayerId) {
         console.log('[PlayerIdVerification] ✅ Captured Player ID:', osPlayerId.substring(0, 8) + '...');
         
-        // **CRITICAL: Immediately sync with backend via onesignal-upsert-user**
-        if (user?.id && user?.email) {
-          try {
-            console.info(`[PlayerIdVerification] Syncing Player ID ${osPlayerId.substring(0, 8)}... with backend...`);
-            
-            const { data, error } = await supabase.functions.invoke('onesignal-upsert-user', {
-              body: {
-                user_id: user.id,
-                email: user.email,
-                player_id: osPlayerId,
-                tags: {
-                  platform: isIOSPWA ? 'ios_pwa' : 'web',
-                  capture_method: 'player_id_verification',
-                  capture_timestamp: new Date().toISOString(),
-                  retry_count: retryCount.toString()
-                }
-              }
-            });
-            
-            if (error) {
-              console.error('[PlayerIdVerification] Backend sync failed:', error);
-              throw error;
-            } else if (data?.success) {
-              console.info('[PlayerIdVerification] ✅ Backend sync successful:', data);
-              
-              // Update local database state and verify
-              const dbUpdateSuccess = await updatePlayerIdInDatabase(osPlayerId);
-              if (dbUpdateSuccess) {
-                // Reset retry count on success
-                setRetryCount(0);
-                return true;
-              }
-            } else {
-              console.warn('[PlayerIdVerification] Backend sync returned non-success:', data);
-              throw new Error(data?.error || 'Backend sync failed');
-            }
-            
-          } catch (syncError) {
-            console.error('[PlayerIdVerification] Backend sync error:', syncError);
-            setRetryCount(prev => prev + 1);
-            // Don't throw here - we still captured the Player ID
-          }
-        }
+        // **Sequential sync to prevent race conditions**
+        const syncSuccess = await sequentialPlayerIdSync(osPlayerId);
         
-        // Fallback: Update local database only
-        const dbUpdateSuccess = await updatePlayerIdInDatabase(osPlayerId);
-        return dbUpdateSuccess;
+        if (syncSuccess) {
+          setRetryCount(0);
+          return true;
+        } else {
+          setRetryCount(prev => prev + 1);
+          return false;
+        }
         
       } else {
         console.warn('[PlayerIdVerification] ❌ No Player ID available in OneSignal after all methods');
         setRetryCount(prev => prev + 1);
         
-        // **PHASE 1: Log OneSignal state for debugging**
+        // **Log OneSignal state for debugging**
         const osState = {
           oneSignalExists: !!(window as any).OneSignal,
           hasUser: !!(window as any).OneSignal?.User,
@@ -239,6 +205,88 @@ export function usePlayerIdVerification() {
       return false;
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  // Wait for OneSignal to be fully ready
+  const waitForOneSignalReady = async (): Promise<void> => {
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      attempts++;
+      
+      if ((window as any).OneSignal?.User?.PushSubscription) {
+        return;
+      }
+      
+      console.log(`[PlayerIdVerification] Waiting for OneSignal ready (${attempts}/${maxAttempts})...`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    console.warn('[PlayerIdVerification] OneSignal not ready after maximum attempts');
+  };
+
+  // Sequential Player ID sync to prevent race conditions
+  const sequentialPlayerIdSync = async (playerId: string): Promise<boolean> => {
+    if (!user?.id || !user?.email) {
+      console.warn('[PlayerIdVerification] Missing user data for sync');
+      return false;
+    }
+
+    try {
+      // Step 1: Check current database state
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('onesignal_player_id')
+        .eq('id', user.id)
+        .single();
+
+      if (currentProfile?.onesignal_player_id === playerId) {
+        console.log('[PlayerIdVerification] Player ID already synced correctly');
+        return true;
+      }
+
+      // Step 2: Backend sync with verification
+      console.info(`[PlayerIdVerification] Syncing Player ID ${playerId.substring(0, 8)}... with backend...`);
+      
+      const { data, error } = await supabase.functions.invoke('onesignal-upsert-user', {
+        body: {
+          user_id: user.id,
+          email: user.email,
+          player_id: playerId,
+          tags: {
+            platform: isIOSPWA ? 'ios_pwa' : 'web',
+            capture_method: 'verification_hook',
+            capture_timestamp: new Date().toISOString(),
+            retry_count: retryCount.toString()
+          }
+        }
+      });
+      
+      if (error) {
+        console.error('[PlayerIdVerification] Backend sync failed:', error);
+        return false;
+      }
+
+      // Step 3: Verify database update
+      const { data: verifyProfile } = await supabase
+        .from('profiles')
+        .select('onesignal_player_id')
+        .eq('id', user.id)
+        .single();
+
+      if (verifyProfile?.onesignal_player_id === playerId) {
+        console.info('[PlayerIdVerification] ✅ Sequential sync successful and verified');
+        return true;
+      } else {
+        console.warn('[PlayerIdVerification] Backend sync completed but verification failed');
+        return false;
+      }
+      
+    } catch (syncError) {
+      console.error('[PlayerIdVerification] Sequential sync error:', syncError);
+      return false;
     }
   };
 

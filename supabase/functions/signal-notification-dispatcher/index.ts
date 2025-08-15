@@ -34,8 +34,6 @@ interface NotificationPayload {
   notes?: string;
 }
 
-
-
 async function sendRealtimeNotification(payload: NotificationPayload): Promise<boolean> {
   try {
     // Server-side realtime broadcasts are handled by clients in our architecture.
@@ -148,7 +146,7 @@ async function sendTelegramNotification(payload: NotificationPayload): Promise<b
   }
 }
 
-// PHASE 2: Enhanced Push Notification with Better Error Handling and Logging
+// **PHASE 3: Enhanced Push Notification with Modern OneSignal User Model**
 async function sendPushNotification(payload: NotificationPayload): Promise<boolean> {
   try {
     const apiKey = Deno.env.get('ONESIGNAL_API_KEY');
@@ -160,40 +158,40 @@ async function sendPushNotification(payload: NotificationPayload): Promise<boole
 
     console.log(`📱 Preparing push notification for signal ${payload.signal_id}`);
 
-const isSignalCreated = payload.notification_type === 'signal_created';
-const isSignalUpdated = payload.notification_type === 'signal_updated';
-let title: string;
-let body: string;
+    const isSignalCreated = payload.notification_type === 'signal_created';
+    const isSignalUpdated = payload.notification_type === 'signal_updated';
+    let title: string;
+    let body: string;
 
-if (isSignalCreated) {
-  const asset = payload.asset_name || payload.symbol || 'New Signal';
-  const type = (payload.trade_type || '').toUpperCase();
-  const entry = payload.entry_price ?? payload.target_price ?? payload.triggered_price;
-  const sl = payload.stop_loss;
-  const author = (payload.author_name || '').trim();
-  title = author ? `New Signal by ${author}: ${asset}` : `New Signal: ${asset}`;
-  const parts: string[] = [];
-  if (type && entry !== undefined) parts.push(`${type} @ $${Number(entry).toFixed(2)}`);
-  if (sl !== undefined) parts.push(`SL $${Number(sl).toFixed(2)}`);
-  body = parts.join(' • ');
-} else if (isSignalUpdated) {
-  const asset = payload.asset_name || payload.symbol || 'Signal';
-  const author = (payload.author_name || '').trim();
-  const status = payload.status ? payload.status.toUpperCase() : undefined;
-  const tpHitsText = payload.tp_hits && payload.tp_hits.length ? `TP hits ${payload.tp_hits.join(',')}` : undefined;
-  const closeReason = payload.close_reason ? `Close: ${payload.close_reason.replace('_',' ')}` : undefined;
-  const noteText = payload.notes ? (payload.notes.length > 80 ? payload.notes.slice(0,77) + '...' : payload.notes) : undefined;
-  title = author ? `Signal updated by ${author}: ${asset}` : `Signal updated: ${asset}`;
-  const parts: string[] = [];
-  if (status) parts.push(`Status ${status}`);
-  if (tpHitsText) parts.push(tpHitsText);
-  if (closeReason) parts.push(closeReason);
-  if (noteText) parts.push(noteText);
-  body = parts.join(' • ') || 'Signal details updated';
-} else {
-  title = payload.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
-  body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
-}
+    if (isSignalCreated) {
+      const asset = payload.asset_name || payload.symbol || 'New Signal';
+      const type = (payload.trade_type || '').toUpperCase();
+      const entry = payload.entry_price ?? payload.target_price ?? payload.triggered_price;
+      const sl = payload.stop_loss;
+      const author = (payload.author_name || '').trim();
+      title = author ? `New Signal by ${author}: ${asset}` : `New Signal: ${asset}`;
+      const parts: string[] = [];
+      if (type && entry !== undefined) parts.push(`${type} @ $${Number(entry).toFixed(2)}`);
+      if (sl !== undefined) parts.push(`SL $${Number(sl).toFixed(2)}`);
+      body = parts.join(' • ');
+    } else if (isSignalUpdated) {
+      const asset = payload.asset_name || payload.symbol || 'Signal';
+      const author = (payload.author_name || '').trim();
+      const status = payload.status ? payload.status.toUpperCase() : undefined;
+      const tpHitsText = payload.tp_hits && payload.tp_hits.length ? `TP hits ${payload.tp_hits.join(',')}` : undefined;
+      const closeReason = payload.close_reason ? `Close: ${payload.close_reason.replace('_',' ')}` : undefined;
+      const noteText = payload.notes ? (payload.notes.length > 80 ? payload.notes.slice(0,77) + '...' : payload.notes) : undefined;
+      title = author ? `Signal updated by ${author}: ${asset}` : `Signal updated: ${asset}`;
+      const parts: string[] = [];
+      if (status) parts.push(`Status ${status}`);
+      if (tpHitsText) parts.push(tpHitsText);
+      if (closeReason) parts.push(closeReason);
+      if (noteText) parts.push(noteText);
+      body = parts.join(' • ') || 'Signal details updated';
+    } else {
+      title = payload.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
+      body = `${payload.alert_type.replace('_', ' ').toUpperCase()} | Target $${payload.target_price.toFixed(2)} | Now $${payload.triggered_price.toFixed(2)}`;
+    }
 
     const notificationPayload = (() => {
       const base: any = {
@@ -218,22 +216,29 @@ if (isSignalCreated) {
           tp_hits: payload.tp_hits,
           close_reason: payload.close_reason,
           notes: payload.notes,
+          url: `/dashboard/signal-stream?signal=${payload.signal_id}`
         },
       };
+      
+      // **CRITICAL: Use modern User Model with external_user_ids**
       if (payload.user_ids && payload.user_ids.length > 0) {
         base.include_external_user_ids = payload.user_ids;
+        console.log(`🎯 Using modern User Model targeting: ${payload.user_ids.length} external_user_ids`);
       } else if (payload.segments && payload.segments.length > 0) {
         base.included_segments = payload.segments;
+        console.log(`📡 Using legacy segments targeting: ${payload.segments.join(', ')}`);
       } else {
         base.included_segments = ['Subscribed Users'];
+        console.log(`⚠️ Using default segment: Subscribed Users`);
       }
+      
       return base;
     })();
 
     console.log(`📡 Sending OneSignal notification:`, JSON.stringify(notificationPayload, null, 2));
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout
 
     const response = await fetch('https://api.onesignal.com/notifications', {
       method: 'POST',
@@ -265,7 +270,7 @@ if (isSignalCreated) {
     return true;
   } catch (error) {
     if (error.name === 'AbortError') {
-      console.error('❌ OneSignal request timeout after 10 seconds');
+      console.error('❌ OneSignal request timeout after 15 seconds');
     } else {
       console.error('❌ Push notification exception:', error);
     }
@@ -446,11 +451,10 @@ serve(async (req) => {
       
       console.log(`🚨 Processing ${notification.alert_type} for signal ${notification.signal_id}`);
       
-      // **PHASE 4: EMERGENCY Enhanced notification targeting with Modern OneSignal User Model**
-      // Comprehensive Player ID validation and modern targeting approach
+      // **PHASE 4: CRITICAL Enhanced notification targeting with Modern OneSignal User Model**
       if (notification.delivery_channels.includes('push')) {
         try {
-          console.log(`🚨 EMERGENCY: Validating push notification targets for ${notification.alert_type}`);
+          console.log(`🚨 CRITICAL: Validating push notification targets for ${notification.alert_type}`);
           
           // **PHASE 5: Comprehensive user validation query**
           const { data: subscribedUsers, error: queryError } = await supabase
@@ -465,223 +469,115 @@ serve(async (req) => {
             throw queryError;
           }
           
-          console.log(`📊 EMERGENCY STATS: Found ${subscribedUsers?.length || 0} users with valid OneSignal Player IDs`);
+          console.log(`📊 CRITICAL STATS: Found ${subscribedUsers?.length || 0} users with valid OneSignal Player IDs`);
           
           // **PHASE 3: Modern User Model - Use external_user_ids instead of segments**
           if (subscribedUsers && subscribedUsers.length > 0) {
-            const validExternalIds = subscribedUsers.map(u => u.id);
+            // **CRITICAL FIX: Override segments with external_user_ids for modern OneSignal targeting**
+            notification.user_ids = subscribedUsers.map(u => u.id);
+            delete notification.segments; // Remove segments to use external_user_ids
             
-            // **PHASE 3: Override targeting to use modern User Model**
-            if (!notification.user_ids || notification.user_ids.length === 0) {
-              console.log(`🎯 Using modern User Model targeting: ${validExternalIds.length} external_user_ids`);
-              notification.user_ids = validExternalIds;
-              // Clear segments to force external_user_ids usage
-              notification.segments = [];
-            } else {
-              // Filter requested user_ids to only include those with valid Player IDs
-              const validTargetIds = notification.user_ids.filter(id => 
-                subscribedUsers.some(u => u.id === id)
-              );
+            console.log(`🚨 CRITICAL: Updated notification to target ${notification.user_ids.length} users via external_user_ids`);
+            console.log(`📋 Target users: ${notification.user_ids.slice(0, 5).join(', ')}${notification.user_ids.length > 5 ? '...' : ''}`);
+          } else {
+            console.log('⚠️ NO USERS WITH PLAYER IDs - Running emergency Player ID capture');
+            
+            // **EMERGENCY: Trigger Player ID capture for users without IDs**
+            try {
+              const { data: usersNeedingPlayerIds } = await supabase
+                .from('profiles')
+                .select('id, onesignal_player_id, push_subscription_active')
+                .eq('account_status', 'active')
+                .eq('push_subscription_active', true)
+                .is('onesignal_player_id', null);
               
-              const missingPlayerIds = notification.user_ids.filter(id => 
-                !subscribedUsers.some(u => u.id === id)
-              );
-              
-              if (missingPlayerIds.length > 0) {
-                console.warn(`⚠️ ${missingPlayerIds.length} targeted users missing Player IDs:`, missingPlayerIds);
+              if (usersNeedingPlayerIds && usersNeedingPlayerIds.length > 0) {
+                console.log(`🚨 EMERGENCY: ${usersNeedingPlayerIds.length} users need Player ID capture - triggering emergency fix`);
+                
+                // Call emergency Player ID fix in background (fire-and-forget)
+                supabase.functions.invoke('onesignal-player-id-emergency-fix', {
+                  body: { 
+                    target_users: usersNeedingPlayerIds.map(u => u.id),
+                    trigger_reason: 'missing_player_ids_during_notification'
+                  }
+                }).catch(err => console.error('Emergency Player ID fix failed:', err));
               }
-              
-              // Update notification to only target users with valid Player IDs
-              notification.user_ids = validTargetIds;
+            } catch (emergencyError) {
+              console.error('Emergency Player ID capture failed:', emergencyError);
             }
+            
+            // Continue with segments fallback but log the issue
+            console.log('⚠️ Falling back to segments - this will likely fail due to missing Player IDs');
           }
-        } catch (e) {
-          console.error('❌ Error filtering users by Player ID:', e);
+        } catch (userQueryError) {
+          console.error(`💥 User validation failed for push notification:`, userQueryError);
+          // Continue with original segments - this will likely fail but we log it
         }
       }
       
-      // Enrich notification with author/profile and signal fields if missing (for push/title rendering)
+      // **PHASE 7: Enhanced delivery tracking with comprehensive logging**
+      const deliveryResult = await processNotification(notification, supabase);
+      
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      // **CRITICAL: Store detailed delivery results for monitoring**
       try {
-        const { data: ownerRow } = await supabase
-          .from('trade_alerts')
-          .select('user_id, asset_name, trade_type, entry_price, stop_loss, tradermade_symbol')
-          .eq('id', notification.signal_id)
-          .single();
-        if (ownerRow?.user_id) {
-          const { data: profile } = await supabase
-            .from('public_profiles')
-            .select('display_name, avatar_url')
-            .eq('id', ownerRow.user_id)
-            .single();
-          notification.author_id = ownerRow.user_id;
-          notification.author_name = profile?.display_name || undefined;
-          notification.author_avatar_url = profile?.avatar_url || undefined;
-        }
-        // Fill missing signal fields
-        notification.asset_name = notification.asset_name ?? ownerRow?.asset_name ?? notification.asset_name;
-        notification.symbol = notification.symbol ?? ownerRow?.tradermade_symbol ?? notification.symbol;
-        notification.trade_type = notification.trade_type ?? ownerRow?.trade_type ?? notification.trade_type;
-        notification.entry_price = notification.entry_price ?? (ownerRow?.entry_price as number | undefined);
-        notification.stop_loss = notification.stop_loss ?? (ownerRow?.stop_loss as number | undefined);
-      } catch (enrichErr) {
-        console.log('ℹ️ Unable to enrich notification with author info:', enrichErr);
+        await supabase
+          .from('alert_notifications')
+          .insert({
+            alert_monitoring_id: notification.signal_id, // We don't have monitoring_id, use signal_id
+            signal_id: notification.signal_id,
+            notification_type: notification.alert_type,
+            target_price: notification.target_price,
+            triggered_price: notification.triggered_price,
+            delivery_channels: notification.delivery_channels,
+            delivery_status: deliveryResult
+          });
+      } catch (insertError) {
+        console.error(`💥 Failed to log delivery result:`, insertError);
       }
       
-      const deliveryResults = await processNotification(notification, supabase);
-      const processingTime = Date.now() - startTime;
-      
-      // Update notification status in database
-      const { error: updateError } = await supabase
-        .from('alert_notifications')
-        .update({
-          delivery_status: deliveryResults,
-          sent_at: new Date().toISOString()
-        })
-        .eq('signal_id', notification.signal_id)
-        .eq('notification_type', notification.notification_type);
-
-      if (updateError) {
-        console.error('❌ Error updating notification status:', updateError);
-      }
-
-      // Persist user-facing notifications so they appear in the in-app center
-      try {
-        // Determine recipients: prefer explicit user_ids; fallback to followers + owner
-        let recipientIds: string[] = [];
-        if (Array.isArray(notification.user_ids) && notification.user_ids.length > 0) {
-          recipientIds = notification.user_ids;
-        } else {
-          // Fetch owner first to resolve user followers
-          const { data: ownerRow, error: ownerErr } = await supabase
-            .from('trade_alerts')
-            .select('user_id, asset_name, trade_type, entry_price, stop_loss, tradermade_symbol')
-            .eq('id', notification.signal_id)
-            .single();
-          if (ownerErr) {
-            console.error('⚠️ Failed to fetch signal owner for notification persistence:', ownerErr);
-          }
-
-          let followers: { follower_id: string }[] = [];
-          if (ownerRow?.user_id) {
-            const { data: followRows, error: followersErr } = await supabase
-              .from('user_follows')
-              .select('follower_id')
-              .eq('following_id', ownerRow.user_id);
-            if (followersErr) {
-              console.error('⚠️ Failed to fetch followers for notification persistence:', followersErr);
-            } else {
-              followers = followRows || [];
-              console.log(`👥 Found ${followers.length} followers for owner ${ownerRow.user_id}`);
-            }
-          }
-
-          const set = new Set<string>();
-          followers?.forEach((f: { follower_id: string }) => set.add(f.follower_id));
-          if (ownerRow?.user_id) set.add(ownerRow.user_id);
-          recipientIds = Array.from(set);
-        }
-
-        if (recipientIds.length > 0) {
-const priority = notification.alert_type === 'stop_loss' ? 'high' : 'medium';
-const isCreated = notification.notification_type === 'signal_created';
-const isUpdated = notification.notification_type === 'signal_updated';
-const author = (notification.author_name || '').trim();
-let title: string;
-let message: string;
-
-if (isCreated) {
-  title = author ? `New Signal by ${author}: ${notification.asset_name || notification.symbol || ''}`.trim() : `New Signal: ${notification.asset_name || notification.symbol || ''}`.trim();
-  const priceForCreated = notification.entry_price ?? notification.target_price ?? notification.triggered_price;
-  message = `${(notification.trade_type || '').toUpperCase()} @ $${Number(priceForCreated).toFixed(2)}${notification.stop_loss ? ` • SL $${Number(notification.stop_loss).toFixed(2)}` : ''}`;
-} else if (isUpdated) {
-  const asset = notification.asset_name || notification.symbol || 'Signal';
-  title = author ? `Signal updated by ${author}: ${asset}` : `Signal updated: ${asset}`;
-  const status = notification.status ? notification.status.toUpperCase() : undefined;
-  const tpHitsText = notification.tp_hits && notification.tp_hits.length ? `TP hits ${notification.tp_hits.join(',')}` : undefined;
-  const closeReason = notification.close_reason ? `Close: ${notification.close_reason.replace('_',' ')}` : undefined;
-  const noteText = notification.notes ? (notification.notes.length > 80 ? notification.notes.slice(0,77) + '...' : notification.notes) : undefined;
-  const parts: string[] = [];
-  if (status) parts.push(`Status ${status}`);
-  if (tpHitsText) parts.push(tpHitsText);
-  if (closeReason) parts.push(closeReason);
-  if (noteText) parts.push(noteText);
-  message = parts.join(' • ') || 'Signal details updated';
-} else {
-  title = notification.alert_type === 'stop_loss' ? 'Stop Loss Hit' : 'Take Profit Triggered';
-  message = `${notification.alert_type.replace('_', ' ').toUpperCase()} | Target $${Number(notification.target_price).toFixed(2)} | Now $${Number(notification.triggered_price).toFixed(2)}`;
-}
-
-          const rows = recipientIds.map((uid) => ({
-            user_id: uid,
-            type: 'trading_alert',
-            title,
-            message,
-            priority,
-            link_url: null,
-            source: 'signal-notification-dispatcher',
-            metadata: {
-              signal_id: notification.signal_id,
-              alert_type: notification.alert_type,
-              notification_type: notification.notification_type,
-              target_price: notification.target_price,
-              triggered_price: notification.triggered_price,
-              symbol: notification.symbol,
-              asset_name: notification.asset_name,
-            },
-          }));
-
-          const { error: insertErr } = await supabase
-            .from('user_notifications')
-            .insert(rows as any);
-          if (insertErr) {
-            console.error('❌ Error inserting user_notifications:', insertErr);
-          }
-        }
-      } catch (persistErr) {
-        console.error('❌ Exception while persisting user notifications:', persistErr);
-      }
-
       results.push({
         signal_id: notification.signal_id,
         alert_type: notification.alert_type,
-        delivery_results: deliveryResults,
-        processing_time_ms: processingTime,
-        success: Object.values(deliveryResults).some(success => success)
+        delivery_channels: notification.delivery_channels,
+        delivery_results: deliveryResult,
+        processing_time_ms: duration,
+        timestamp: new Date().toISOString(),
+        target_users_count: notification.user_ids?.length || 0
       });
-
-      console.log(`⚡ Alert processed in ${processingTime}ms - Delivery: ${JSON.stringify(deliveryResults)}`);
+      
+      console.log(`⏱️ ${notification.alert_type} processed in ${duration}ms - Results:`, deliveryResult);
     }
-
-    const totalDeliveries = results.reduce((sum, r) => sum + Object.keys(r.delivery_results).length, 0);
-    const successfulDeliveries = results.reduce((sum, r) => 
-      sum + Object.values(r.delivery_results).filter(Boolean).length, 0
-    );
-
-    return new Response(
-      JSON.stringify({
-        processed: notifications.length,
-        results,
-        summary: {
-          total_deliveries: totalDeliveries,
-          successful_deliveries: successfulDeliveries,
-          success_rate: `${((successfulDeliveries / totalDeliveries) * 100).toFixed(1)}%`,
-          average_processing_time: `${(results.reduce((sum, r) => sum + r.processing_time_ms, 0) / results.length).toFixed(0)}ms`
-        }
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    
+    const totalStartTime = Date.now();
+    const totalDuration = Date.now() - totalStartTime;
+    console.log(`🎯 Completed processing ${notifications.length} notifications in ${totalDuration}ms`);
+    
+    return new Response(JSON.stringify({
+      success: true,
+      processed: notifications.length,
+      results: results,
+      summary: {
+        total_notifications: notifications.length,
+        total_duration_ms: totalDuration,
+        timestamp: new Date().toISOString()
+      }
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
-    console.error('❌ Notification dispatcher error:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: 'Failed to process notifications',
-        details: error.message 
-      }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
+    console.error('💥 Signal notification dispatcher error:', error);
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 });

@@ -610,6 +610,7 @@ export function useOneSignalEnhanced() {
     permission,
     hasSubscription,
     isGranted,
+    isIframeBlocked,
     requestPermission,
     browserInfo,
     browserInstructions: getBrowserInstructions(browserInfo),

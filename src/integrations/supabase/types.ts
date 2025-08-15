@@ -1106,6 +1106,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_batch_queue: {
+        Row: {
+          created_at: string
+          delivery_status: Json | null
+          id: string
+          notification_types: string[]
+          processed_at: string | null
+          scheduled_at: string
+          signal_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_status?: Json | null
+          id?: string
+          notification_types?: string[]
+          processed_at?: string | null
+          scheduled_at?: string
+          signal_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivery_status?: Json | null
+          id?: string
+          notification_types?: string[]
+          processed_at?: string | null
+          scheduled_at?: string
+          signal_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_delivery_log: {
         Row: {
           created_at: string

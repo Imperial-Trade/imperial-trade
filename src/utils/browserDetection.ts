@@ -44,14 +44,40 @@ export function detectBrowser(): BrowserInfo {
                        'PushManager' in window && 
                        'Notification' in window;
   
-  // Safari detection
-  if (/^((?!chrome|android).)*safari/i.test(userAgent)) {
-    const version = userAgent.match(/Version\/(\d+)/)?.[1] || '0';
+  // Enhanced Safari detection for iOS PWA compatibility
+  const isSafari = (() => {
+    // Standard Safari detection
+    if (/^((?!chrome|android).)*safari/i.test(userAgent)) return true;
+    
+    // iOS PWA Safari detection - these user agents don't always include "safari"
+    if (isIOS && (/Version\/[\d.]+.*Mobile.*Safari/i.test(userAgent) || 
+                  /iPhone.*Version\/[\d.]+/i.test(userAgent) ||
+                  /iPad.*Version\/[\d.]+/i.test(userAgent))) {
+      return true;
+    }
+    
+    // iOS PWA in standalone mode (may have different user agent)
+    if (isIOS && isStandalone && !(/Chrome|CriOS|FxiOS|EdgiOS/.test(userAgent))) {
+      return true;
+    }
+    
+    return false;
+  })();
+  
+  if (isSafari) {
+    const version = userAgent.match(/Version\/(\d+)/)?.[1] || '16'; // Default to 16 for iOS PWA
     const safariVersion = parseInt(version);
+    
+    // For iOS PWA, we're more permissive with support detection
+    const iosSupported = isIOS ? isIOSWebPushSupported : false;
+    const desktopSupported = !isIOS && safariVersion >= 16;
+    
+    console.log(`[BrowserDetection] Safari detected - iOS: ${isIOS}, Standalone: ${isStandalone}, Version: ${version}, WebPush: ${isIOSWebPushSupported}, Supported: ${iosSupported || desktopSupported}`);
+    
     return {
       name: 'Safari',
       version,
-      isSupported: isIOS ? isIOSWebPushSupported : safariVersion >= 16,
+      isSupported: iosSupported || desktopSupported,
       isMobile: isMobile,
       requiresSpecialHandling: true,
       isIOS,

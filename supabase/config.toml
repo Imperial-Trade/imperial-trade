@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.onesignal-test-notification]
 verify_jwt = false
+
+[functions.onesignal-verify-subscription]
+verify_jwt = true

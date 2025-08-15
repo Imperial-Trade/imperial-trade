@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Bell, Settings } from 'lucide-react';
+import { X, Bell, Settings, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/contexts/NotificationsContext';
@@ -14,6 +14,15 @@ export const PushPermissionReminder: React.FC = () => {
   useEffect(() => {
     if (!user || dismissed) return;
 
+    // Check if user has dismissed this reminder recently (7-day cooldown)
+    const dismissalKey = `push-reminder-dismissed-${user.id}`;
+    const lastDismissed = localStorage.getItem(dismissalKey);
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    
+    if (lastDismissed && parseInt(lastDismissed) > sevenDaysAgo) {
+      return;
+    }
+
     // Show reminder if permission was denied and user is logged in
     const shouldShow = permission === 'denied' && !isGranted;
     
@@ -27,9 +36,22 @@ export const PushPermissionReminder: React.FC = () => {
   const handleDismiss = () => {
     setShowReminder(false);
     setDismissed(true);
+    
+    // Store dismissal timestamp for this user (7-day cooldown)
+    if (user) {
+      const dismissalKey = `push-reminder-dismissed-${user.id}`;
+      localStorage.setItem(dismissalKey, Date.now().toString());
+    }
   };
 
   const handleTryAgain = async () => {
+    // If permission is denied, we can't request again - guide to browser settings
+    if (permission === 'denied') {
+      // Hide the reminder since we're directing them to browser settings
+      setShowReminder(false);
+      return;
+    }
+
     const result = await requestPermission();
     if (result.success) {
       setShowReminder(false);
@@ -70,7 +92,14 @@ export const PushPermissionReminder: React.FC = () => {
                   onClick={handleTryAgain}
                   className="text-xs"
                 >
-                  Try Again
+                  {permission === 'denied' ? (
+                    <>
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Browser Settings
+                    </>
+                  ) : (
+                    'Try Again'
+                  )}
                 </Button>
                 <Button 
                   size="sm" 

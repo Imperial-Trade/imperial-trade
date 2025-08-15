@@ -875,21 +875,24 @@ export function useOneSignalEnhanced() {
           throw iosError;
         }
       } else {
-      // **NATIVE PROMPT ONLY: Use OneSignal.Notifications.requestPermission for all non-iOS browsers**
-      console.info('[OneSignal] Using native permission prompt for non-iOS browser...');
-      
-      try {
-        // Use direct native permission request only - no slidedown
-        if ((window as any).OneSignal.Notifications?.requestPermission) {
-          result = await (window as any).OneSignal.Notifications.requestPermission();
-          console.info('[OneSignal] Native permission result:', result);
-        } else {
-          throw new Error('OneSignal v16 Notifications.requestPermission method not available');
+        // **NATIVE PROMPT ONLY: Use OneSignal slidedown for all non-iOS browsers**
+        console.info('[OneSignal] Using OneSignal slidedown prompt for non-iOS browser...');
+        
+        try {
+          // Use OneSignal slidedown for better UX
+          if ((window as any).OneSignal.Slidedown?.promptPush) {
+            result = await (window as any).OneSignal.Slidedown.promptPush();
+            console.info('[OneSignal] Slidedown result:', result);
+          } else if ((window as any).OneSignal.Notifications?.requestPermission) {
+            result = await (window as any).OneSignal.Notifications.requestPermission();
+            console.info('[OneSignal] Native permission result:', result);
+          } else {
+            throw new Error('OneSignal v16 permission methods not available');
+          }
+        } catch (permissionError) {
+          console.warn('[OneSignal] Permission request failed:', permissionError);
+          throw permissionError;
         }
-      } catch (permissionError) {
-        console.warn('[OneSignal] Native permission failed:', permissionError);
-        throw permissionError;
-      }
       }
       
       console.info('[OneSignal] Permission response received:', result);
@@ -922,39 +925,7 @@ export function useOneSignalEnhanced() {
     } catch (err: any) {
       console.error('[OneSignal] Permission request failed:', err);
       
-      // Fallback to browser native prompt for critical cases
-      if (err.message?.includes('timeout') || err.message?.includes('permission')) {
-        try {
-          console.info('[OneSignal] Trying fallback browser native prompt...');
-          
-          const nativePermission = await Notification.requestPermission();
-          console.info('[OneSignal] Native permission result:', nativePermission);
-          
-          setPermission(nativePermission);
-          
-          if (nativePermission === 'granted') {
-            // Try to establish OneSignal subscription
-            try {
-              const ps = (window as any).OneSignal?.User?.PushSubscription;
-              if (ps?.optIn) {
-                await ps.optIn();
-                console.log('[OneSignal] Subscription established via fallback');
-              }
-            } catch (subscribeErr) {
-              console.warn('[OneSignal] Fallback subscription failed:', subscribeErr);
-            }
-            
-            return { success: true, details: { method: 'native_fallback', permission: nativePermission } };
-          } else {
-            return { success: false, error: 'Permission denied via native prompt', details: { method: 'native_fallback', permission: nativePermission } };
-          }
-        } catch (nativeErr) {
-          console.error('[OneSignal] Native fallback also failed:', nativeErr);
-          return { success: false, error: err.message || 'Permission request failed', details: { originalError: err, fallbackError: nativeErr } };
-        }
-      } else {
-        return { success: false, error: err.message || 'Unknown error', details: { error: err } };
-      }
+      return { success: false, error: err.message || 'Unknown error', details: { error: err } };
     }
   };
 

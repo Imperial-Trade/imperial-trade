@@ -389,19 +389,38 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
               {/* Profile Section */}
               <motion.button
                 className="flex items-center gap-2 sm:gap-3 hover:bg-white/10 dark:hover:bg-black/20 rounded-lg p-1 sm:p-2 -m-1 sm:-m-2 transition-all duration-200"
-                onClick={() => navigate('/dashboard/analytics')}
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center">
-                  <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs font-medium">
+                    {user?.user_metadata?.first_name &&
+                    user?.user_metadata?.last_name
+                      ? `${user.user_metadata.first_name.charAt(
+                          0
+                        )}${user.user_metadata.last_name.charAt(0)}`
+                      : user?.email
+                      ? getInitials(user.email)
+                      : "U"}
+                  </span>
                 </div>
                 <div className="text-left min-w-0 flex-1">
                   <div className="text-foreground text-xs sm:text-sm font-medium truncate">
-                    Alerts Analytics
+                    {user?.user_metadata?.first_name &&
+                    user?.user_metadata?.last_name
+                      ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                      : user?.user_metadata?.full_name ||
+                        user?.user_metadata?.display_name ||
+                        user?.email?.split("@")[0] ||
+                        "User"}
                   </div>
                   <div className="text-foreground/60 text-xs">
-                    View comprehensive analytics
+                    {user?.user_metadata?.access_level === "admin"
+                      ? "Administrator"
+                      : user?.user_metadata?.user_type === "educator"
+                      ? "Educator"
+                      : "Member"}
                   </div>
                 </div>
               </motion.button>

@@ -136,7 +136,7 @@ export function useOneSignalEnhanced() {
             }
             
             configData = data;
-            if (debug) console.info('[OneSignal] Configuration loaded successfully:', { appId: data.appId });
+            if (debug) console.info('[OneSignal] Configuration loaded successfully - Safari Web ID not needed:', { appId: data.appId });
             
           } catch (configError) {
             console.warn(`[OneSignal] Config attempt ${configAttempts} failed:`, configError);

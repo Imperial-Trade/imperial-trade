@@ -137,8 +137,8 @@ Deno.serve(async (req: Request) => {
         },
         properties: {
           tags: {}, // Zero tags to avoid plan limits
-          language: "en",
-          timezone_id: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+          language: deviceInfo.language || "en",
+          timezone_id: deviceInfo.timezone || "UTC"
         },
         subscriptions: []
       };
@@ -176,8 +176,8 @@ Deno.serve(async (req: Request) => {
       const updatePayload = {
         properties: {
           tags: {}, // Zero tags to avoid plan limits
-          language: "en",
-          timezone_id: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+          language: deviceInfo.language || "en",
+          timezone_id: deviceInfo.timezone || "UTC"
         },
         subscriptions: []
       };

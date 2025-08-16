@@ -741,7 +741,9 @@ export function useOneSignalEnhanced() {
           body: {
             user_id: user.id,
             email: user.email,
-            tags
+            tags,
+            device_fingerprint: deviceInfo?.fingerprint,
+            device_info: deviceInfo
           }
         }),
         10000
@@ -793,7 +795,9 @@ export function useOneSignalEnhanced() {
             user_id: user.id,
             email: user.email,
             player_id: currentPlayerId,
-            tags
+            tags,
+            device_fingerprint: deviceInfo?.fingerprint,
+            device_info: deviceInfo
           }
         }),
         15000

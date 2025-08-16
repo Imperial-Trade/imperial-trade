@@ -3,12 +3,19 @@
  * Device detection utilities for notification setup
  */
 
+// Extend Navigator interface to include standalone property
+declare global {
+  interface Navigator {
+    standalone?: boolean;
+  }
+}
+
 export function detectSafariPWA(): boolean {
   if (typeof window === 'undefined') return false;
   
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  const isStandalone = window.navigator.standalone === true || 
+  const isStandalone = navigator.standalone === true || 
                       window.matchMedia('(display-mode: standalone)').matches;
   
   return (isIOS || isSafari) && isStandalone;
@@ -18,7 +25,7 @@ export function detectIOSPWA(): boolean {
   if (typeof window === 'undefined') return false;
   
   return /iPad|iPhone|iPod/.test(navigator.userAgent) && 
-         (window.navigator.standalone === true || 
+         (navigator.standalone === true || 
           window.matchMedia('(display-mode: standalone)').matches);
 }
 

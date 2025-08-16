@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,17 +18,22 @@ export function TradingNotificationModal({
   onClose, 
   onNotificationEnabled 
 }: TradingNotificationModalProps) {
-  const { requestPermission, isLoading } = useOneSignalEnhanced();
+  const { requestPermission } = useOneSignalEnhanced();
+  const [isLoading, setIsLoading] = useState(false);
   const isSafariPWA = detectSafariPWA();
 
   const handleEnableNotifications = async () => {
+    setIsLoading(true);
     try {
       const result = await requestPermission();
       if (result.success) {
         onNotificationEnabled?.();
+        onClose();
       }
     } catch (error) {
       console.error('Failed to enable notifications:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 

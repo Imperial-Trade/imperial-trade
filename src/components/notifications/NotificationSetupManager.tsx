@@ -1,5 +1,6 @@
+
 import React, { useEffect, useCallback } from 'react';
-import TradingNotificationModal from './TradingNotificationModal';
+import { TradingNotificationModal } from './TradingNotificationModal';
 import { usePostLoginNotificationSetup } from '@/hooks/usePostLoginNotificationSetup';
 import { useOneSignalRecovery } from '@/hooks/useOneSignalRecovery';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,10 +11,9 @@ const NotificationSetupManager: React.FC = () => {
   const { needsRecovery } = useOneSignalRecovery();
   const { requestPermission, isGranted, hasSubscription, initialized } = useNotifications();
   const {
-    shouldShow,
-    handleAccept,
-    handleDecline,
-    handleDismiss
+    showNotificationModal,
+    handleModalClose,
+    handleNotificationEnabled
   } = usePostLoginNotificationSetup();
 
   // Check if user needs OneSignal native prompt (relaxed gating)
@@ -145,10 +145,10 @@ const NotificationSetupManager: React.FC = () => {
   }, [needsNativePrompt, requestPermission, user, profile, initialized]);
 
   // Enhanced logic: Show modal if user needs recovery OR if it's their first time
-  const shouldShowModal = shouldShow || (needsRecovery && !!profile);
+  const shouldShowModal = showNotificationModal || (needsRecovery && !!profile);
 
   console.log('🎯 [Notification Setup] Manager state:', {
-    shouldShow,
+    showNotificationModal,
     needsRecovery,
     needsNativePrompt: needsNativePrompt(),
     hasProfile: !!profile,
@@ -166,9 +166,8 @@ const NotificationSetupManager: React.FC = () => {
   return (
     <TradingNotificationModal
       isOpen={shouldShowModal}
-      onClose={handleDismiss}
-      onAccept={handleAccept}
-      onDecline={handleDecline}
+      onClose={handleModalClose}
+      onNotificationEnabled={handleNotificationEnabled}
     />
   );
 };

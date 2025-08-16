@@ -1,3 +1,4 @@
+
 // Supabase Edge Function: onesignal-upsert-user
 // Creates or updates a OneSignal User by external_id (Supabase user id)
 // and ensures the Email subscription is enabled for that user.
@@ -217,7 +218,6 @@ Deno.serve(async (req: Request) => {
     }
 
     // Step 3: Enhanced player ID capture and robust database sync
-    // Enhanced player ID capture and retry logic
     let finalPlayerId = playerId;
     if (!finalPlayerId && deviceInfo?.onesignal_player_id) {
       finalPlayerId = deviceInfo.onesignal_player_id;
@@ -253,7 +253,7 @@ Deno.serve(async (req: Request) => {
           .upsert({
             user_id: externalId,
             device_fingerprint: deviceFingerprint,
-            onesignal_player_id: finalPlayerId || 'pending',
+            onesignal_player_id: finalPlayerId || null, // Use NULL instead of 'pending'
             device_info: deviceInfo,
             browser_name: deviceInfo.browser_name || 'Unknown',
             browser_version: deviceInfo.browser_version || 'Unknown',
@@ -299,6 +299,7 @@ Deno.serve(async (req: Request) => {
         console.log('🎉 Sending welcome notification for new device...');
         
         try {
+          // Use external_user_ids approach for more reliable delivery
           const welcomeResponse = await fetch(
             `${SUPABASE_URL}/functions/v1/onesignal-send-notification`,
             {
@@ -308,11 +309,11 @@ Deno.serve(async (req: Request) => {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                user_ids: [externalId],
+                external_user_ids: [externalId], // Use external_user_ids for better reliability
                 notification_type: 'welcome',
                 title: 'Welcome to Imperial Trading! 🎯',
                 message: 'You\'re all set to receive trading signals and updates. Get ready for profitable trades!',
-                data: {
+                metadata: {
                   type: 'welcome',
                   device_fingerprint: deviceFingerprint,
                   timestamp: new Date().toISOString()

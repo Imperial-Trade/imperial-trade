@@ -1,3 +1,4 @@
+
 // Supabase Edge Function: onesignal-send-notification
 // Direct user targeting for OneSignal notifications
 // Supports various notification types and delivery channels
@@ -11,6 +12,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 interface NotificationRequest {
   user_ids?: string[];
+  external_user_ids?: string[]; // Added support for external user IDs
   player_ids?: string[];
   notification_type: string;
   title: string;
@@ -78,6 +80,7 @@ Deno.serve(async (req) => {
     const body: NotificationRequest = await req.json();
     const { 
       user_ids, 
+      external_user_ids, // Support for external user IDs
       player_ids, 
       notification_type, 
       title, 
@@ -99,6 +102,7 @@ Deno.serve(async (req) => {
 
     console.log('📧 Notification request:', {
       user_ids: user_ids?.length || 0,
+      external_user_ids: external_user_ids?.length || 0,
       player_ids: player_ids?.length || 0,
       notification_type,
       title: title.substring(0, 50) + '...'
@@ -109,7 +113,76 @@ Deno.serve(async (req) => {
     let targetPlayerIds: string[] = [];
     let targetUserIds: string[] = [];
 
-    // Get player IDs from user IDs if needed
+    // Handle external_user_ids (preferred for welcome notifications)
+    if (external_user_ids && external_user_ids.length > 0) {
+      console.log(`🔗 Using external_user_ids for ${external_user_ids.length} users`);
+      
+      // Build notification payload with external user IDs
+      const notificationPayload = {
+        app_id: appId,
+        include_external_user_ids: external_user_ids,
+        headings: { en: title },
+        contents: { en: message },
+        url: url || undefined,
+        data: {
+          signal_id,
+          notification_type,
+          ...metadata
+        }
+      };
+
+      // Send OneSignal notification
+      const oneSignalResponse = await fetch('https://api.onesignal.com/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${apiKey}`
+        },
+        body: JSON.stringify(notificationPayload)
+      });
+
+      const oneSignalResult = await oneSignalResponse.json();
+
+      if (!oneSignalResponse.ok) {
+        console.error('❌ OneSignal API error:', oneSignalResult);
+        throw new Error(`OneSignal API error: ${oneSignalResult.errors?.join(', ') || 'Unknown error'}`);
+      }
+
+      console.log('✅ OneSignal notification sent via external_user_ids:', oneSignalResult.id);
+
+      // Log notification history for external users
+      const historyRecords = external_user_ids.map(userId => ({
+        user_id: userId,
+        notification_type,
+        title,
+        message,
+        delivery_channels,
+        delivery_status: { onesignal_id: oneSignalResult.id, status: 'sent' },
+        metadata: { ...metadata, signal_id },
+        signal_id,
+        sent_at: new Date().toISOString()
+      }));
+
+      const { error: historyError } = await supabase
+        .from('user_notification_history')
+        .insert(historyRecords);
+
+      if (historyError) {
+        console.warn('⚠️ Failed to log notification history:', historyError);
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          onesignal_id: oneSignalResult.id,
+          recipients: oneSignalResult.recipients || external_user_ids.length,
+          message: 'Notification sent successfully via external_user_ids'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get player IDs from user IDs if needed (legacy approach)
     if (user_ids && user_ids.length > 0) {
       let query = supabase
         .from('profiles')

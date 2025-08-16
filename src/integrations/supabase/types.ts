@@ -678,7 +678,7 @@ export type Database = {
           is_mobile: boolean | null
           last_seen_at: string | null
           notification_performance: Json | null
-          onesignal_player_id: string
+          onesignal_player_id: string | null
           platform: string | null
           updated_at: string | null
           user_id: string
@@ -696,7 +696,7 @@ export type Database = {
           is_mobile?: boolean | null
           last_seen_at?: string | null
           notification_performance?: Json | null
-          onesignal_player_id: string
+          onesignal_player_id?: string | null
           platform?: string | null
           updated_at?: string | null
           user_id: string
@@ -714,7 +714,7 @@ export type Database = {
           is_mobile?: boolean | null
           last_seen_at?: string | null
           notification_performance?: Json | null
-          onesignal_player_id?: string
+          onesignal_player_id?: string | null
           platform?: string | null
           updated_at?: string | null
           user_id?: string

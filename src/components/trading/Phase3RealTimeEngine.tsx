@@ -61,7 +61,7 @@ export default function Phase3RealTimeEngine() {
   const { 
     preferences, 
     stats,
-    sendNotification
+    testNotification
   } = useEnhancedNotifications();
   
   const [isConnected, setIsConnected] = useState(true);
@@ -181,11 +181,7 @@ export default function Phase3RealTimeEngine() {
     
     // Send real-time notification for high-confidence signals
     if (signal.confidence > 0.8) {
-      sendNotification({
-        title: `High Confidence Signal: ${signal.symbol}`,
-        body: `${signal.type.toUpperCase()} signal with ${Math.round(signal.confidence * 100)}% confidence`,
-        type: 'signal_created'
-      });
+      testNotification('signal_created');
     }
   };
 
@@ -193,11 +189,7 @@ export default function Phase3RealTimeEngine() {
     setAlertTriggers(prev => [{ ...alert, triggered: true, triggeredAt: Date.now() }, ...prev].slice(0, 15));
     
     // Send alert notification
-    sendNotification({
-      title: `Alert Triggered: ${alert.symbol}`,
-      body: `${alert.condition} - Current value: ${alert.value}`,
-      type: 'price_alert'
-    });
+    testNotification('price_alert');
   };
 
   // Mock signal generation for demo
@@ -234,17 +226,9 @@ export default function Phase3RealTimeEngine() {
       // Initialize with some mock data
       setTimeout(() => generateMockSignal(), 2000);
       
-      sendNotification({
-        title: 'Phase 3 Real-Time Engine Started',
-        body: 'Advanced trading monitoring is now active',
-        type: 'system'
-      });
+      testNotification('system');
     } else {
-      sendNotification({
-        title: 'Phase 3 Engine Stopped',
-        body: 'Real-time monitoring has been disabled',
-        type: 'system'
-      });
+      testNotification('system');
     }
   };
 
@@ -486,7 +470,7 @@ export default function Phase3RealTimeEngine() {
                   <div className="space-y-2 text-sm">
                     <div>Total Sent: {stats?.total_sent || 0}</div>
                     <div>Total Delivered: {stats?.total_delivered || 0}</div>
-                    <div>Open Rate: {stats?.open_rate || 0}%</div>
+                    <div>Engagement Score: {stats?.engagement_score || 0}</div>
                   </div>
                 </div>
               </div>

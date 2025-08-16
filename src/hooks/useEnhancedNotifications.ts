@@ -115,8 +115,8 @@ export function useEnhancedNotifications() {
         .single();
 
       if (profile) {
-        setPreferences(profile.notification_preferences as NotificationPreferences || getDefaultPreferences());
-        setStats(profile.notification_stats as NotificationStats || getDefaultStats());
+        setPreferences((profile.notification_preferences as unknown as NotificationPreferences) || getDefaultPreferences());
+        setStats((profile.notification_stats as unknown as NotificationStats) || getDefaultStats());
       }
 
       // Load recent notifications

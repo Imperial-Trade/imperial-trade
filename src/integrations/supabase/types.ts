@@ -1220,6 +1220,59 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_delivery_attempts: {
+        Row: {
+          attempt_at: string
+          attempt_number: number
+          created_at: string
+          delivered_at: string | null
+          delivery_channel: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          notification_id: string | null
+          response_data: Json | null
+          retry_after: string | null
+          status: string
+        }
+        Insert: {
+          attempt_at?: string
+          attempt_number?: number
+          created_at?: string
+          delivered_at?: string | null
+          delivery_channel: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          notification_id?: string | null
+          response_data?: Json | null
+          retry_after?: string | null
+          status?: string
+        }
+        Update: {
+          attempt_at?: string
+          attempt_number?: number
+          created_at?: string
+          delivered_at?: string | null
+          delivery_channel?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          notification_id?: string | null
+          response_data?: Json | null
+          retry_after?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_delivery_attempts_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification_delivery_log"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_delivery_log: {
         Row: {
           created_at: string

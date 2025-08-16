@@ -273,30 +273,46 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
       console.log('[OneSignal] Current permission:', currentPermission);
 
       if (currentPermission === 'granted') {
-        // Permission already granted, check subscription
+        // Permission already granted, check OneSignal subscription status
         const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
         console.log('[OneSignal] Already granted, subscription status:', isSubscribed);
         
         if (!isSubscribed) {
-          // Permission granted but not subscribed - force opt-in
+          // Permission granted but not subscribed - force opt-in and verify with OneSignal
           console.log('[OneSignal] Permission granted but not subscribed, attempting opt-in...');
           try {
-            await window.OneSignal.User?.PushSubscription?.optIn?.();
+            // Try multiple approaches to ensure subscription
+            if (window.OneSignal.User?.PushSubscription?.optIn) {
+              await window.OneSignal.User.PushSubscription.optIn();
+            } else if (window.OneSignal.setSubscription) {
+              await window.OneSignal.setSubscription(true);
+            } else if (window.OneSignal.registerForPushNotifications) {
+              await window.OneSignal.registerForPushNotifications();
+            }
+            
+            // Wait for subscription to be processed
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Verify subscription is active
+            const finalSubscriptionState = await window.OneSignal.isPushNotificationsEnabled();
+            console.log('[OneSignal] Final subscription state after opt-in:', finalSubscriptionState);
+            
             await syncWithSupabase();
             
             setState(prev => ({
               ...prev,
-              hasSubscription: true,
+              hasSubscription: finalSubscriptionState,
               isGranted: true,
               permission: 'granted'
             }));
             
-            return { success: true };
+            return { success: finalSubscriptionState };
           } catch (optInError) {
             console.error('[OneSignal] Opt-in failed:', optInError);
             return { success: false, error: 'Failed to opt-in to push notifications', details: optInError };
           }
         } else {
+          // Already subscribed, just sync
           await syncWithSupabase();
           return { success: true };
         }

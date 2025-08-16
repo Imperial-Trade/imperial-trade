@@ -76,27 +76,49 @@ Deno.serve(async (req: Request) => {
       console.log(`🔔 Processing notification for signal: ${payload.asset_name} (${payload.notification_type})`);
 
       try {
-        // Get target users for push notifications
+        // Get target users for push notifications from active device subscriptions
         let targetUserIds: string[] = [];
 
         if (payload.user_ids && payload.user_ids.length > 0) {
-          // Use specific user IDs if provided
-          targetUserIds = payload.user_ids;
-        } else {
-          // Get all users with push notifications enabled
-          const { data: pushUsers, error: usersError } = await supabase
-            .from('profiles')
-            .select('id, onesignal_player_id, onesignal_subscription_status')
-            .eq('push_subscription_active', true)
-            .not('onesignal_player_id', 'is', null)
-            .eq('onesignal_subscription_status', 'subscribed');
+          // Use specific user IDs if provided, but still validate they have active devices
+          const { data: activeDevices, error: devicesError } = await supabase
+            .from('device_subscriptions')
+            .select('user_id')
+            .in('user_id', payload.user_ids)
+            .eq('is_active', true)
+            .not('onesignal_player_id', 'is', null);
 
-          if (usersError) {
-            console.error('❌ Failed to fetch push users:', usersError);
-            throw new Error(`Failed to fetch push users: ${usersError.message}`);
+          if (devicesError) {
+            console.error('❌ Failed to fetch active devices for specific users:', devicesError);
+            throw new Error(`Failed to fetch active devices: ${devicesError.message}`);
           }
 
-          targetUserIds = (pushUsers || []).map(u => u.id);
+          targetUserIds = [...new Set((activeDevices || []).map(d => d.user_id))];
+        } else {
+          // Get all users with active device subscriptions and push preferences
+          const { data: activeDevices, error: devicesError } = await supabase
+            .from('device_subscriptions')
+            .select(`
+              user_id,
+              profiles!inner(
+                push_subscription_active,
+                onesignal_subscription_status,
+                account_status
+              )
+            `)
+            .eq('is_active', true)
+            .not('onesignal_player_id', 'is', null)
+            .eq('profiles.push_subscription_active', true)
+            .eq('profiles.onesignal_subscription_status', 'subscribed')
+            .eq('profiles.account_status', 'active');
+
+          if (devicesError) {
+            console.error('❌ Failed to fetch active device subscriptions:', devicesError);
+            throw new Error(`Failed to fetch active devices: ${devicesError.message}`);
+          }
+
+          // Get unique user IDs from active devices
+          targetUserIds = [...new Set((activeDevices || []).map(d => d.user_id))];
 
           // Exclude creator if specified
           if (!payload.include_creator && payload.user_id) {

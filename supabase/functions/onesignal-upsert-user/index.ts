@@ -1,3 +1,4 @@
+
 // Supabase Edge Function: onesignal-upsert-user
 // Creates or updates a OneSignal User by external_id (Supabase user id)
 // and ensures the Email subscription is enabled for that user.
@@ -137,8 +138,8 @@ Deno.serve(async (req: Request) => {
         },
         properties: {
           tags: {}, // Zero tags to avoid plan limits
-          language: "en",
-          timezone_id: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+          language: deviceInfo.language || "en",
+          timezone_id: deviceInfo.timezone || "UTC"
         },
         subscriptions: []
       };
@@ -176,8 +177,8 @@ Deno.serve(async (req: Request) => {
       const updatePayload = {
         properties: {
           tags: {}, // Zero tags to avoid plan limits
-          language: "en",
-          timezone_id: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
+          language: deviceInfo.language || "en",
+          timezone_id: deviceInfo.timezone || "UTC"
         },
         subscriptions: []
       };
@@ -217,7 +218,6 @@ Deno.serve(async (req: Request) => {
     }
 
     // Step 3: Enhanced player ID capture and robust database sync
-    // Enhanced player ID capture and retry logic
     let finalPlayerId = playerId;
     if (!finalPlayerId && deviceInfo?.onesignal_player_id) {
       finalPlayerId = deviceInfo.onesignal_player_id;
@@ -253,7 +253,7 @@ Deno.serve(async (req: Request) => {
           .upsert({
             user_id: externalId,
             device_fingerprint: deviceFingerprint,
-            onesignal_player_id: finalPlayerId || 'pending',
+            onesignal_player_id: finalPlayerId || null, // Use NULL instead of 'pending'
             device_info: deviceInfo,
             browser_name: deviceInfo.browser_name || 'Unknown',
             browser_version: deviceInfo.browser_version || 'Unknown',
@@ -279,6 +279,70 @@ Deno.serve(async (req: Request) => {
       }
     } catch (profileErr) {
       console.warn('⚠️ Profile/device update error:', profileErr);
+    }
+
+    // Send welcome notification if this is a new device/browser for the user
+    if (deviceFingerprint) {
+      // Check if this device fingerprint has received a welcome before
+      const { data: existingDevice } = await supabase
+        .from('device_subscriptions')
+        .select('welcome_sent')
+        .eq('user_id', externalId)
+        .eq('device_fingerprint', deviceFingerprint)
+        .single();
+
+      const userWasCreated = !existingUser;
+      const hasEmailSubscription = !!email;
+      const shouldSendWelcome = !existingDevice?.welcome_sent && (userWasCreated || (existingUser && hasEmailSubscription));
+
+      if (shouldSendWelcome) {
+        console.log('🎉 Sending welcome notification for new device...');
+        
+        try {
+          // Use external_user_ids approach for more reliable delivery
+          const welcomeResponse = await fetch(
+            `${SUPABASE_URL}/functions/v1/onesignal-send-notification`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                external_user_ids: [externalId], // Use external_user_ids for better reliability
+                notification_type: 'welcome',
+                title: 'Welcome to Imperial Trading! 🎯',
+                message: 'You\'re all set to receive trading signals and updates. Get ready for profitable trades!',
+                metadata: {
+                  type: 'welcome',
+                  device_fingerprint: deviceFingerprint,
+                  timestamp: new Date().toISOString()
+                }
+              })
+            }
+          );
+          
+          if (welcomeResponse.ok) {
+            console.log('✅ Welcome notification sent successfully');
+            
+            // Mark this device as having received welcome
+            await supabase
+              .from('device_subscriptions')
+              .upsert({
+                user_id: externalId,
+                device_fingerprint: deviceFingerprint,
+                welcome_sent: true
+              }, {
+                onConflict: 'user_id,device_fingerprint'
+              });
+          } else {
+            const errorText = await welcomeResponse.text();
+            console.error('⚠️ Welcome notification failed:', errorText);
+          }
+        } catch (welcomeError) {
+          console.error('⚠️ Welcome notification error:', welcomeError);
+        }
+      }
     }
 
     return new Response(

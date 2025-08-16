@@ -203,7 +203,14 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
           }));
         }).catch(error => {
           console.error('[OneSignal] Error getting initial state:', error);
-          setState(prev => ({ ...prev, initialized: true }));
+          // Set initialized to true even on error to allow fallback permission requests
+          const browserName = getBrowserName();
+          setState(prev => ({ 
+            ...prev, 
+            initialized: true,
+            browserInfo: { name: browserName, version: getBrowserVersion() },
+            browserInstructions: getBrowserInstructions(browserName)
+          }));
         });
       });
 
@@ -259,17 +266,32 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
     }
   }, [getDeviceInfo]);
 
-  // Enhanced permission request with fallback
+  // Enhanced permission request with robust fallbacks
   const requestPermission = useCallback(async (): Promise<{ success: boolean; error?: string; details?: any }> => {
     try {
-      if (!window.OneSignal) {
-        return { success: false, error: 'OneSignal not initialized' };
+      console.log('[OneSignal] Requesting notification permission...');
+      
+      // Check if we're on iOS/Safari and need user gesture
+      const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                         (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome'));
+      
+      if (isIOSSafari) {
+        console.log('[OneSignal] iOS/Safari detected - user gesture required');
       }
 
-      console.log('[OneSignal] Requesting notification permission...');
-
-      // Check current permission state
-      const currentPermission = await window.OneSignal.getNotificationPermission();
+      // Try to get current permission state, fallback to browser API if OneSignal fails
+      let currentPermission;
+      try {
+        if (window.OneSignal?.getNotificationPermission) {
+          currentPermission = await window.OneSignal.getNotificationPermission();
+        } else {
+          currentPermission = Notification.permission;
+        }
+      } catch (error) {
+        console.warn('[OneSignal] Failed to get permission from OneSignal, using browser API:', error);
+        currentPermission = Notification.permission;
+      }
+      
       console.log('[OneSignal] Current permission:', currentPermission);
 
       if (currentPermission === 'granted') {
@@ -281,12 +303,15 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
           // Permission granted but not subscribed - force opt-in and verify with OneSignal
           console.log('[OneSignal] Permission granted but not subscribed, attempting opt-in...');
           try {
-            // Try multiple approaches to ensure subscription
+            // Use v16 API first, then fallback to v15 methods
             if (window.OneSignal.User?.PushSubscription?.optIn) {
+              console.log('[OneSignal] Using v16 User.PushSubscription.optIn()');
               await window.OneSignal.User.PushSubscription.optIn();
             } else if (window.OneSignal.setSubscription) {
+              console.log('[OneSignal] Using v15 setSubscription(true)');
               await window.OneSignal.setSubscription(true);
             } else if (window.OneSignal.registerForPushNotifications) {
+              console.log('[OneSignal] Using v15 registerForPushNotifications()');
               await window.OneSignal.registerForPushNotifications();
             }
             
@@ -318,20 +343,32 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
         }
       }
 
-      // Request permission for new users
+      // Request permission - use modern v16 API with robust fallbacks
       let permissionResult;
+      console.log('[OneSignal] Attempting permission request with fallback chain...');
+      
       try {
-        if (window.OneSignal.showNativePrompt) {
+        // Try OneSignal v16 Notifications API first
+        if (window.OneSignal?.Notifications?.requestPermission) {
+          console.log('[OneSignal] Using v16 Notifications.requestPermission()');
+          permissionResult = await window.OneSignal.Notifications.requestPermission();
+        }
+        // Fallback to v15 methods if v16 not available
+        else if (window.OneSignal?.showNativePrompt) {
+          console.log('[OneSignal] Using v15 showNativePrompt()');
           permissionResult = await window.OneSignal.showNativePrompt();
-        } else if (window.OneSignal.registerForPushNotifications) {
+        }
+        else if (window.OneSignal?.registerForPushNotifications) {
+          console.log('[OneSignal] Using v15 registerForPushNotifications()');
           permissionResult = await window.OneSignal.registerForPushNotifications();
-        } else {
-          // Fallback to browser native API
+        }
+        // Final fallback to browser native API
+        else {
+          console.log('[OneSignal] Using browser native Notification.requestPermission()');
           permissionResult = await Notification.requestPermission();
         }
       } catch (promptError) {
-        console.error('[OneSignal] Native prompt failed:', promptError);
-        // Fallback to browser API
+        console.error('[OneSignal] All OneSignal methods failed, using browser API:', promptError);
         permissionResult = await Notification.requestPermission();
       }
 

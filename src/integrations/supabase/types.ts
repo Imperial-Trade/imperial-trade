@@ -670,12 +670,14 @@ export type Database = {
           browser_name: string | null
           browser_version: string | null
           created_at: string | null
+          device_capabilities: Json | null
           device_fingerprint: string
           device_info: Json | null
           id: string
           is_active: boolean | null
           is_mobile: boolean | null
           last_seen_at: string | null
+          notification_performance: Json | null
           onesignal_player_id: string
           platform: string | null
           updated_at: string | null
@@ -685,12 +687,14 @@ export type Database = {
           browser_name?: string | null
           browser_version?: string | null
           created_at?: string | null
+          device_capabilities?: Json | null
           device_fingerprint: string
           device_info?: Json | null
           id?: string
           is_active?: boolean | null
           is_mobile?: boolean | null
           last_seen_at?: string | null
+          notification_performance?: Json | null
           onesignal_player_id: string
           platform?: string | null
           updated_at?: string | null
@@ -700,12 +704,14 @@ export type Database = {
           browser_name?: string | null
           browser_version?: string | null
           created_at?: string | null
+          device_capabilities?: Json | null
           device_fingerprint?: string
           device_info?: Json | null
           id?: string
           is_active?: boolean | null
           is_mobile?: boolean | null
           last_seen_at?: string | null
+          notification_performance?: Json | null
           onesignal_player_id?: string
           platform?: string | null
           updated_at?: string | null
@@ -1156,31 +1162,58 @@ export type Database = {
       }
       notification_batch_queue: {
         Row: {
+          asset_symbol: string | null
+          batch_key: string | null
           created_at: string
           delivery_status: Json | null
+          device_preferences: Json | null
           id: string
+          market_session: string | null
+          max_retries: number | null
+          next_retry_at: string | null
+          notification_category: string | null
           notification_types: string[]
+          priority_level: number | null
           processed_at: string | null
+          retry_count: number | null
           scheduled_at: string
           signal_id: string
           user_id: string
         }
         Insert: {
+          asset_symbol?: string | null
+          batch_key?: string | null
           created_at?: string
           delivery_status?: Json | null
+          device_preferences?: Json | null
           id?: string
+          market_session?: string | null
+          max_retries?: number | null
+          next_retry_at?: string | null
+          notification_category?: string | null
           notification_types?: string[]
+          priority_level?: number | null
           processed_at?: string | null
+          retry_count?: number | null
           scheduled_at?: string
           signal_id: string
           user_id: string
         }
         Update: {
+          asset_symbol?: string | null
+          batch_key?: string | null
           created_at?: string
           delivery_status?: Json | null
+          device_preferences?: Json | null
           id?: string
+          market_session?: string | null
+          max_retries?: number | null
+          next_retry_at?: string | null
+          notification_category?: string | null
           notification_types?: string[]
+          priority_level?: number | null
           processed_at?: string | null
+          retry_count?: number | null
           scheduled_at?: string
           signal_id?: string
           user_id?: string
@@ -1432,7 +1465,9 @@ export type Database = {
           legal_accepted_at: string | null
           legal_version: string | null
           location: string | null
+          notification_preferences: Json | null
           notification_prompt_dismissed_at: string | null
+          notification_stats: Json | null
           onesignal_last_sync_at: string | null
           onesignal_last_verified_at: string | null
           onesignal_player_id: string | null
@@ -1477,7 +1512,9 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
+          notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
           onesignal_last_verified_at?: string | null
           onesignal_player_id?: string | null
@@ -1522,7 +1559,9 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
+          notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
           onesignal_last_verified_at?: string | null
           onesignal_player_id?: string | null
@@ -2925,6 +2964,16 @@ export type Database = {
       cleanup_old_rate_limits: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      create_smart_notification_batch: {
+        Args: {
+          p_asset_symbol?: string
+          p_market_session?: string
+          p_notification_type: string
+          p_priority_level?: number
+          p_signal_id: string
+        }
+        Returns: string
       }
       expire_limit_orders: {
         Args: Record<PropertyKey, never>

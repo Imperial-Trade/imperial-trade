@@ -6,12 +6,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Prefer dedicated WS/HTTP keys if available; fallback to TRADERMADE_API_KEY
-const WS_API_KEY = Deno.env.get('TRADERMADE_WS_API_KEY') || Deno.env.get('TRADERMADE_API_KEY') || '';
-const HTTP_API_KEY = Deno.env.get('TRADERMADE_HTTP_API_KEY') || Deno.env.get('TRADERMADE_API_KEY') || '';
+// Use TRADERMADE_REST_API_KEY for HTTP fallback, TRADERMADE_API_KEY for WS
+const WS_API_KEY = Deno.env.get('TRADERMADE_API_KEY') || '';
+const HTTP_API_KEY = Deno.env.get('TRADERMADE_REST_API_KEY') || Deno.env.get('TRADERMADE_API_KEY') || '';
 
-// Tradermade symbol configuration
+// Tradermade symbol configuration with normalization mapping
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
+
+// Symbol normalization mapping: frontend symbol -> Tradermade symbol
+const SYMBOL_MAPPING: Record<string, string> = {
+  'XAUUSD': 'XAUUSD',
+  'XAU/USD': 'XAUUSD', 
+  'GOLD': 'XAUUSD',
+  'BTCUSD': 'BTCUSD',
+  'BTC/USD': 'BTCUSD',
+  'BITCOIN': 'BTCUSD',
+  'USA30': 'USA30USD',
+  'USA30USD': 'USA30USD',
+  'US30': 'USA30USD',
+  'NAS100': 'NAS100USD', 
+  'NAS100USD': 'NAS100USD',
+  'NASDAQ': 'NAS100USD',
+  'EURUSD': 'EURUSD',
+  'EUR/USD': 'EURUSD'
+};
+
+// Reverse mapping for responses: Tradermade symbol -> canonical frontend symbol
+const REVERSE_SYMBOL_MAPPING: Record<string, string> = {
+  'XAUUSD': 'XAUUSD',
+  'BTCUSD': 'BTCUSD', 
+  'USA30USD': 'USA30',
+  'NAS100USD': 'NAS100',
+  'EURUSD': 'EURUSD'
+};
 
 interface TradermadePriceData {
   symbol: string;
@@ -21,6 +48,11 @@ interface TradermadePriceData {
   timestamp: string;
   change: number;
   changePercent: number;
+  marketStatus?: {
+    isOpen: boolean;
+    sessionName?: string;
+    lastKnownPrice?: number;
+  };
 }
 
 interface SubscriptionMessage {
@@ -36,16 +68,30 @@ interface ErrorMessage {
 
 // Cache configuration - optimized for ultra-fast 250ms ticks
 const priceCache = new Map<string, TradermadePriceData>();
+const lastKnownPrices = new Map<string, { price: number; timestamp: number; }>();
 const CACHE_TTL = 1000; // 1 second for ultra-fast updates
+const LAST_KNOWN_TTL = 86400000; // 24 hours for last known prices
 
 let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();
 const RATE_LIMIT_PER_MINUTE = 30;
 
-// Validate and normalize symbols
+// Validate and normalize symbols using mapping
 function validateSymbol(symbol: string): string | null {
   const upperSymbol = symbol.toUpperCase().trim();
-  return TRADERMADE_SYMBOLS.includes(upperSymbol) ? upperSymbol : null;
+  const tradermadeSymbol = SYMBOL_MAPPING[upperSymbol];
+  return tradermadeSymbol || null;
+}
+
+// Normalize frontend symbol to Tradermade symbol
+function normalizeToTradermade(symbol: string): string {
+  const upperSymbol = symbol.toUpperCase().trim();
+  return SYMBOL_MAPPING[upperSymbol] || symbol;
+}
+
+// Convert Tradermade symbol back to frontend canonical symbol
+function normalizeToFrontend(tradermadeSymbol: string): string {
+  return REVERSE_SYMBOL_MAPPING[tradermadeSymbol] || tradermadeSymbol;
 }
 
 // Cache management
@@ -64,6 +110,60 @@ function getCachedPrice(symbol: string): TradermadePriceData | null {
 
 function setCachedPrice(symbol: string, data: TradermadePriceData): void {
   priceCache.set(symbol, data);
+}
+
+// Market status helper function
+function getMarketStatus(symbol: string): { isOpen: boolean; sessionName?: string } {
+  const now = new Date();
+  const utcHour = now.getUTCHours() + (now.getUTCMinutes() / 60);
+  const currentDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  // Crypto markets - 24/7
+  if (symbol.includes('BTC') || symbol.includes('ETH')) {
+    return { isOpen: true, sessionName: '24/7 Trading' };
+  }
+  
+  // Forex markets - Sunday 22:00 UTC to Friday 22:00 UTC
+  if (symbol.includes('USD') && !symbol.includes('100')) {
+    if (currentDay === 0 && utcHour < 22) { // Sunday before 22:00
+      return { isOpen: false, sessionName: 'Weekend - Forex Closed' };
+    }
+    if (currentDay === 5 && utcHour >= 22) { // Friday after 22:00
+      return { isOpen: false, sessionName: 'Weekend - Forex Closed' };
+    }
+    if (currentDay === 6) { // Saturday
+      return { isOpen: false, sessionName: 'Weekend - Forex Closed' };
+    }
+    return { isOpen: true, sessionName: 'Forex Session' };
+  }
+  
+  // US Stock Indices (9:30 AM - 4:00 PM EST = 14:30 - 21:00 UTC)
+  if (symbol.includes('NAS100') || symbol.includes('USA30') || symbol.includes('US30')) {
+    const isTradingDay = [1, 2, 3, 4, 5].includes(currentDay); // Monday to Friday
+    const isTradingHours = utcHour >= 14.5 && utcHour < 21;
+    
+    if (!isTradingDay || !isTradingHours) {
+      return { isOpen: false, sessionName: 'After Hours - Market Closed' };
+    }
+    return { isOpen: true, sessionName: 'US Market Session' };
+  }
+  
+  // Commodities (Sunday 22:00 UTC to Friday 22:00 UTC)
+  if (symbol.includes('XAU') || symbol.includes('GOLD')) {
+    if (currentDay === 0 && utcHour < 22) {
+      return { isOpen: false, sessionName: 'Weekend - Commodities Closed' };
+    }
+    if (currentDay === 5 && utcHour >= 22) {
+      return { isOpen: false, sessionName: 'Weekend - Commodities Closed' };
+    }
+    if (currentDay === 6) {
+      return { isOpen: false, sessionName: 'Weekend - Commodities Closed' };
+    }
+    return { isOpen: true, sessionName: 'Commodities Session' };
+  }
+  
+  // Default to open
+  return { isOpen: true, sessionName: 'Trading Session' };
 }
 
 // Rate limiting
@@ -130,6 +230,12 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
       const price = mid || quote.ask || quote.bid || 0;
       
       if (price > 0) {
+        // Get market status and store last known price
+        const marketStatus = getMarketStatus(symbol);
+        if (marketStatus.isOpen && price > 0) {
+          lastKnownPrices.set(symbol, { price, timestamp: Date.now() });
+        }
+
         const priceData: TradermadePriceData = {
           symbol: symbol,
           price: price,
@@ -137,7 +243,12 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
           ask: quote.ask || price,
           timestamp: new Date().toISOString(),
           change: 0,
-          changePercent: 0
+          changePercent: 0,
+          marketStatus: {
+            isOpen: marketStatus.isOpen,
+            sessionName: marketStatus.sessionName,
+            lastKnownPrice: marketStatus.isOpen ? undefined : lastKnownPrices.get(symbol)?.price
+          }
         };
 
         setCachedPrice(symbol, priceData);
@@ -372,9 +483,9 @@ serve(async (req) => {
           }
 
           // Handle price updates - support multiple formats
-          let symbol = data.symbol || data.instrument;
-          if (symbol && (data.bid || data.ask || data.price || data.mid)) {
-            symbol = symbol.toUpperCase();
+          let tradermadeSymbol = data.symbol || data.instrument;
+          if (tradermadeSymbol && (data.bid || data.ask || data.price || data.mid)) {
+            tradermadeSymbol = tradermadeSymbol.toUpperCase();
             
             // Calculate mid price from available data
             let price = data.mid || data.price;
@@ -387,26 +498,43 @@ serve(async (req) => {
             price = parseFloat(price);
             
             if (!price || price <= 0 || isNaN(price)) {
-              console.log(`⚠️ Invalid price data for ${symbol}:`, data);
+              console.log(`⚠️ Invalid price data for ${tradermadeSymbol}:`, data);
               return;
             }
             
+            // Convert Tradermade symbol to frontend canonical symbol for consistency
+            const frontendSymbol = normalizeToFrontend(tradermadeSymbol);
+            
+            // Get market status and store last known price
+            const marketStatus = getMarketStatus(tradermadeSymbol);
+            if (marketStatus.isOpen && price > 0) {
+              lastKnownPrices.set(tradermadeSymbol, { price, timestamp: Date.now() });
+            }
+
             const priceUpdate: TradermadePriceData = {
-              symbol: symbol,
+              symbol: frontendSymbol, // Use frontend canonical symbol
               price: price,
               bid: data.bid ? parseFloat(data.bid) : price,
               ask: data.ask ? parseFloat(data.ask) : price,
               timestamp: new Date().toISOString(),
               change: 0,
-              changePercent: 0
+              changePercent: 0,
+              marketStatus: {
+                isOpen: marketStatus.isOpen,
+                sessionName: marketStatus.sessionName,
+                lastKnownPrice: marketStatus.isOpen ? undefined : lastKnownPrices.get(tradermadeSymbol)?.price
+              }
             };
 
-            // Cache the update
-            setCachedPrice(symbol, priceUpdate);
+            // Cache using Tradermade symbol for API consistency
+            setCachedPrice(tradermadeSymbol, priceUpdate);
+            
+            // Also cache using frontend symbol for client access
+            setCachedPrice(frontendSymbol, priceUpdate);
 
-            // Send to client if subscribed
-            if (clientSubscriptions.has(symbol) && socket.readyState === WebSocket.OPEN) {
-              console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${price}`);
+            // Send to client if subscribed (check both symbol formats)
+            if ((clientSubscriptions.has(tradermadeSymbol) || clientSubscriptions.has(frontendSymbol)) && socket.readyState === WebSocket.OPEN) {
+              console.log(`💰 LIVE PRICE UPDATE: ${frontendSymbol} (${tradermadeSymbol}) = $${price}`);
               const tickTs = (typeof data.ts === 'string' || typeof data.ts === 'number') ? Number(data.ts) : Date.now();
               socket.send(JSON.stringify({
                 type: 'price_update',
@@ -544,25 +672,46 @@ serve(async (req) => {
           return true;
         });
 
-        filtered.forEach(symbol => clientSubscriptions.add(symbol));
-        console.log('✅ Client subscribed to:', filtered);
+        // Add both Tradermade and frontend symbols to subscriptions for dual lookup
+        filtered.forEach(symbol => {
+          const tradermadeSymbol = normalizeToTradermade(symbol);
+          const frontendSymbol = normalizeToFrontend(tradermadeSymbol);
+          clientSubscriptions.add(symbol);
+          clientSubscriptions.add(tradermadeSymbol);
+          clientSubscriptions.add(frontendSymbol);
+        });
+        console.log('✅ Client subscribed to:', filtered, '(normalized for dual lookup)');
 
-        // Send cached data immediately if available
+        // Send cached data immediately if available, or fetch fresh data
         for (const symbol of filtered) {
-          const cached = getCachedPrice(symbol);
+          // Try both symbol formats for cache lookup
+          const tradermadeSymbol = normalizeToTradermade(symbol);
+          const frontendSymbol = normalizeToFrontend(symbol);
+          
+          let cached = getCachedPrice(symbol) || getCachedPrice(tradermadeSymbol) || getCachedPrice(frontendSymbol);
+          
           if (cached) {
+            console.log(`📋 Sending cached price for ${symbol}: $${cached.price}`);
             socket.send(JSON.stringify({
               type: 'price_update',
               ...cached
             }));
-          } else if (!connectionHealthy) {
-            // Fetch via HTTP if WebSocket is down
-            const data = await fetchTradermadePrice(symbol);
+          } else {
+            // Always fetch fresh data immediately for new subscriptions
+            console.log(`🔄 Fetching fresh price for new subscription: ${symbol} (${tradermadeSymbol})`);
+            const data = await fetchTradermadePrice(tradermadeSymbol);
             if (data) {
+              // Ensure frontend symbol format for consistency
+              const normalizedData = {
+                ...data,
+                symbol: normalizeToFrontend(data.symbol)
+              };
+              
               socket.send(JSON.stringify({
                 type: 'price_update',
-                ...data
+                ...normalizedData
               }));
+              console.log(`✅ Sent fresh price for ${symbol}: $${data.price}`);
             }
           }
         }

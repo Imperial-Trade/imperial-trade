@@ -16,11 +16,9 @@ Deno.serve(async (req: Request) => {
     console.log('[OneSignal Config] Request received');
     
     const appId = Deno.env.get("ONESIGNAL_APP_ID");
-    const safariWebId = Deno.env.get("ONESIGNAL_SAFARI_WEB_ID");
 
     console.log('[OneSignal Config] Environment check:', {
       appIdExists: !!appId,
-      safariWebIdExists: !!safariWebId,
       appIdLength: appId?.length || 0
     });
 
@@ -52,9 +50,9 @@ Deno.serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({ 
-        appId, 
-        safariWebId: safariWebId || null,
-        initialized: true 
+        appId,
+        success: true
+        // Safari Web ID not needed - OneSignal Web Push works on iOS/macOS without it
       }),
       {
         headers: {

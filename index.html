@@ -15,11 +15,27 @@
     <meta name="language" content="English" />
     <meta name="revisit-after" content="7 days" />
     
-    <!-- Theme and Mobile Optimization -->
+    <!-- Enhanced Theme and Mobile Optimization for iOS & Android -->
     <meta name="theme-color" content="#1a1a1a" />
     <meta name="msapplication-TileColor" content="#1a1a1a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Imperial Trading" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Imperial Trading" />
+    
+    <!-- Enhanced Mobile Performance -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="format-detection" content="date=no" />
+    <meta name="format-detection" content="address=no" />
+    <meta name="format-detection" content="email=no" />
+    
+    <!-- Android Chrome Theme -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1a1a" />
+    
+    <!-- iOS Safari Pinned Tab -->
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#1a1a1a" />
     
     <!-- Canonical URL -->
     <link rel="canonical" href="https://www.tradeimperial.com/" />
@@ -184,5 +200,20 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { MarketHoursService } from '@/services/MarketHoursService';
 
 interface PriceData {
   symbol: string;
@@ -346,6 +347,13 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
   const refreshPrice = useCallback((symbol: string) => {
     const norm = normalizeSymbol(symbol);
+
+    // Skip refreshes when market is closed for this symbol
+    const status = MarketHoursService.getMarketStatus(norm);
+    if (!status.isOpen) {
+      return;
+    }
+
     // Clear any existing error for this symbol
     setErrors(prev => {
       const newErrors = { ...prev };
@@ -403,6 +411,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       // iterate over subscribed symbols
       subscribedSymbolsRef.current.forEach((symbol) => {
         const pd = prices[symbol];
+        const status = MarketHoursService.getMarketStatus(symbol);
+        if (!status.isOpen) {
+          // Skip nudge/refresh when market is closed for this symbol
+          return;
+        }
         const lastTick = pd?.tick_timestamp ?? (pd?.timestamp ? Date.parse(pd.timestamp) : 0);
         const isStale = !lastTick || now - lastTick > 1200;
         const lastAttempt = lastRefreshAttemptRef.current.get(symbol) || 0;

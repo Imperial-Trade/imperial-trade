@@ -5,6 +5,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import mobile optimizations */
+@import './styles/mobile.css';
+
 /* Apple Monochrome Design System */
 
 @layer base {

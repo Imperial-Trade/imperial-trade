@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2, User, Crown, GraduationCap, Pencil } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
-import LivePriceWidget from './LivePriceWidget';
+import { OptimizedLivePriceWidget } from './OptimizedLivePriceWidget';
 import TradeStatusBadge from './TradeStatusBadge';
 import TradingCalculator from './TradingCalculator';
 import SignalSharingModal from './SignalSharingModal';
@@ -269,7 +269,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       {/* Live Price Widget - Show for active and pending trades */}
       {(alert.status === 'active' || alert.status === 'pending') && (
         <div className="px-4 pb-4">
-          <LivePriceWidget 
+          <OptimizedLivePriceWidget 
               alert={alert} 
               onTakeProfitHit={onTakeProfitHit}
               onStopLossHit={onStopLossHit}

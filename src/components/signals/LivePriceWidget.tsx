@@ -134,15 +134,17 @@ const LivePriceWidgetComponent = ({
       console.log(`[PROCESSING SKIP] Already processing ${hitType} for alert ${alert.id}, skipping...`);
       return;
     }
+    
     const now = Date.now();
     if (now - lastUpdateRef.current < 5000) {
       console.log(`[RATE LIMITED] ${hitType} check for alert ${alert.id} - Last processed ${now - lastUpdateRef.current}ms ago`);
       return;
     }
+    
     isProcessingRef.current = true;
     lastUpdateRef.current = now;
+    
     try {
-      // Enhanced logging with detailed context
       console.log(`[LEVEL HIT] Processing ${hitType} for alert ${alert.id}:`, {
         ...data,
         currentPrice: currentPrice,
@@ -153,14 +155,21 @@ const LivePriceWidgetComponent = ({
         timestamp: new Date().toISOString(),
         alertStatus: alert.status
       });
+      
+      // Non-blocking execution - don't await callbacks to prevent UI freezing
       if (hitType === 'tp_hit' && onTakeProfitHit) {
-        await onTakeProfitHit(alert, data.updatedHits, data.shouldAutoClose, data.autoCloseReason);
+        onTakeProfitHit(alert, data.updatedHits, data.shouldAutoClose, data.autoCloseReason)
+          .catch(error => console.error(`[ERROR] TP hit callback failed for ${alert.id}:`, error));
       } else if (hitType === 'stop_loss' && onStopLossHit) {
-        await onStopLossHit(alert, data.closeReason);
+        onStopLossHit(alert, data.closeReason)
+          .catch(error => console.error(`[ERROR] Stop loss callback failed for ${alert.id}:`, error));
       } else if (hitType === 'activation' && onOrderActivation) {
-        await onOrderActivation(alert);
+        onOrderActivation(alert)
+          .catch(error => console.error(`[ERROR] Activation callback failed for ${alert.id}:`, error));
       }
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Short cooldown to prevent spam
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (error) {
       console.error(`[ERROR] Processing ${hitType} for alert ${alert.id}:`, error);
     } finally {

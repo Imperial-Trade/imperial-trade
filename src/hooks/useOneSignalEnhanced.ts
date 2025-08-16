@@ -37,8 +37,15 @@ export function useOneSignalEnhanced() {
   const isIframeBlocked = typeof window !== 'undefined' && window.self !== window.top;
   const debug = (() => { try { return localStorage.getItem('onesignal_debug') === '1'; } catch { return false; } })();
   
-  // Enhanced debug logging
-  console.log('🔔 OneSignal Enhanced Hook - Starting initialization');
+  // TRADING ALERT FOCUS: Enhanced debug logging for professional trading platform
+  console.log('🎯 Imperial Trading - OneSignal Enhanced Hook Starting');
+  console.log('📊 User Role:', profile?.user_type, '| Access:', profile?.access_level);
+  console.log('🔔 Current Subscription Status:', { 
+    permission, 
+    hasSubscription, 
+    profileActive: profile?.push_subscription_active,
+    playerId: profile?.onesignal_player_id ? 'exists' : 'missing'
+  });
   
   // Enhanced browser and PWA detection
   const browserInfo = typeof window !== 'undefined' ? detectBrowser() : { 
@@ -129,7 +136,7 @@ export function useOneSignalEnhanced() {
             }
             
             configData = data;
-            if (debug) console.info('[OneSignal] Configuration loaded successfully:', { appId: data.appId });
+            if (debug) console.info('[OneSignal] Configuration loaded successfully - Safari Web ID not needed:', { appId: data.appId });
             
           } catch (configError) {
             console.warn(`[OneSignal] Config attempt ${configAttempts} failed:`, configError);

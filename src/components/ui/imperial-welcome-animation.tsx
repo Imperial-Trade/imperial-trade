@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useImperialThemeAudio } from '@/hooks/useImperialThemeAudio';
 
 interface ImperialWelcomeAnimationProps {
   onComplete?: () => void;
@@ -8,8 +9,25 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
   const startTimeRef = useRef<number>();
+  const audioStartedRef = useRef<boolean>(false);
   
   const [isVisible, setIsVisible] = useState(true);
+  
+  // Initialize Imperial theme audio
+  const { 
+    isLoaded: audioLoaded, 
+    isPlaying: audioPlaying, 
+    playTheme, 
+    scheduleFadeOut,
+    canPlayAudio,
+    shouldPlay
+  } = useImperialThemeAudio({
+    autoPlay: true,
+    respectQuietHours: true,
+    respectUserPreferences: true,
+    fadeInDuration: 1000,
+    fadeOutDuration: 2000
+  });
 
   const tagline = "the imperial experience awaits.";
 
@@ -157,6 +175,14 @@ export const ImperialWelcomeAnimation: React.FC<ImperialWelcomeAnimationProps> =
     }
     
     const elapsedTime = currentTime - startTimeRef.current;
+    
+    // Start audio on first frame if available and allowed
+    if (!audioStartedRef.current && shouldPlay() && canPlayAudio) {
+      playTheme();
+      // Schedule fade-out to sync with opening effect
+      scheduleFadeOut(6000); // Start fade-out at 6 seconds
+      audioStartedRef.current = true;
+    }
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     

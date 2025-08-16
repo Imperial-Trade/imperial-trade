@@ -1,15 +1,19 @@
 
 import React, { useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { TradingNotificationModal } from './TradingNotificationModal';
 import { usePostLoginNotificationSetup } from '@/hooks/usePostLoginNotificationSetup';
 import { useOneSignalRecovery } from '@/hooks/useOneSignalRecovery';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { useWelcome } from '@/contexts/WelcomeContext';
 
 const NotificationSetupManager: React.FC = () => {
   const { profile, user } = useAuth();
   const { needsRecovery } = useOneSignalRecovery();
   const { requestPermission, isGranted, hasSubscription, initialized } = useNotifications();
+  const { hasSeenWelcome } = useWelcome();
+  const location = useLocation();
   const {
     showNotificationModal,
     handleModalClose,
@@ -36,9 +40,19 @@ const NotificationSetupManager: React.FC = () => {
     return hasNoOneSignalUser || hasOneSignalButNotSubscribed || needsBrowserPermission;
   }, [user, profile, initialized, isGranted]);
 
-  // Auto-trigger OneSignal native prompt with retry logic
+  // Auto-trigger OneSignal native prompt with retry logic - AFTER welcome animation
   useEffect(() => {
     const attemptPrompt = () => {
+      // Gate prompt to only trigger after welcome animation on /dashboard/home
+      if (!hasSeenWelcome || location.pathname !== '/dashboard/home') {
+        console.log('🎯 [Native Prompt] Waiting for welcome animation completion and correct route', {
+          hasSeenWelcome,
+          currentPath: location.pathname,
+          requiredPath: '/dashboard/home'
+        });
+        return;
+      }
+      
       if (!needsNativePrompt()) {
         // If not initialized yet, retry in 2 seconds
         if (!initialized && user && profile) {
@@ -142,10 +156,10 @@ const NotificationSetupManager: React.FC = () => {
 
     // Start the prompt attempt
     attemptPrompt();
-  }, [needsNativePrompt, requestPermission, user, profile, initialized]);
+  }, [needsNativePrompt, requestPermission, user, profile, initialized, hasSeenWelcome, location.pathname]);
 
-  // Enhanced logic: Show modal if user needs recovery OR if it's their first time
-  const shouldShowModal = showNotificationModal || (needsRecovery && !!profile);
+  // Enhanced logic: Show modal if user needs recovery OR after welcome animation on /dashboard/home
+  const shouldShowModal = (showNotificationModal || (needsRecovery && !!profile)) && hasSeenWelcome;
 
   console.log('🎯 [Notification Setup] Manager state:', {
     showNotificationModal,

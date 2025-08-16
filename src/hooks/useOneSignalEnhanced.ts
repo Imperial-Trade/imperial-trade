@@ -498,6 +498,88 @@ export function useOneSignalEnhanced() {
       cancelled = true;
     };
   }, [user?.id, profile?.role, profile?.user_type, browserInfo.name]);
+
+  // Welcome notification function
+  const sendWelcomeNotification = async (userId: string, playerId: string) => {
+    try {
+      console.log('[OneSignal] Sending welcome notification to:', playerId.substring(0, 8) + '...');
+      
+      const { error } = await supabase.functions.invoke('onesignal-send-notification', {
+        body: {
+          player_ids: [playerId],
+          notification_type: 'welcome',
+          title: '🎉 Welcome to Imperial Trading!',
+          message: 'You\'re all set to receive premium trading signals. Get ready for profitable opportunities!',
+          url: window.location.origin + '/dashboard',
+          metadata: {
+            welcome_timestamp: new Date().toISOString(),
+            user_id: userId,
+            device_type: deviceInfo?.platform || 'unknown'
+          },
+          delivery_channels: ['push'],
+          respect_preferences: false // Welcome notifications bypass preferences
+        }
+      });
+
+      if (error) {
+        console.error('[OneSignal] Welcome notification error:', error);
+      } else {
+        console.log('[OneSignal] ✅ Welcome notification sent successfully');
+      }
+    } catch (error) {
+      console.error('[OneSignal] Welcome notification failed:', error);
+    }
+  };
+
+  // Auto-resubscription for users with granted permission but no subscription
+  const handleAutoResubscription = async () => {
+    if (!user?.id || !initialized || !permission || permission === 'unsupported') return;
+    
+    try {
+      // Check if permission is granted but subscription is inactive
+      if (permission === 'granted' && !hasSubscription) {
+        console.log('[OneSignal] Permission granted but no subscription - attempting resubscription...');
+        
+        // Wait for OneSignal to be ready
+        if (!(window as any).OneSignal?.User?.PushSubscription) {
+          console.log('[OneSignal] OneSignal not ready for resubscription, skipping...');
+          return;
+        }
+
+        // Check if we can silently resubscribe
+        const pushSubscription = (window as any).OneSignal.User.PushSubscription;
+        const currentId = pushSubscription.id;
+        
+        if (!currentId) {
+          // Try to silently resubscribe
+          try {
+            await pushSubscription.optIn();
+            console.log('[OneSignal] Silent resubscription successful');
+            
+            // Wait a bit for the subscription to process
+            setTimeout(async () => {
+              const newId = pushSubscription.id;
+              if (newId && newId !== currentId) {
+                await captureAndStorePlayerIdSequential(newId);
+              }
+            }, 1000);
+          } catch (resubError) {
+            console.warn('[OneSignal] Silent resubscription failed:', resubError);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[OneSignal] Auto-resubscription error:', error);
+    }
+  };
+
+  // Auto-resubscription effect
+  useEffect(() => {
+    if (initialized && user?.id && permission === 'granted' && !hasSubscription) {
+      const timeoutId = setTimeout(handleAutoResubscription, 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [initialized, user?.id, permission, hasSubscription]);
   
   // **CRITICAL: Sequential Player ID Capture with Upsert Logic - Prevents race conditions**
   const captureAndStorePlayerIdSequential = async (playerId: string): Promise<boolean> => {
@@ -545,6 +627,13 @@ export function useOneSignalEnhanced() {
             console.error('[OneSignal] Device subscription upsert failed:', deviceError);
           } else {
             console.log('[OneSignal] ✓ Device subscription upserted successfully');
+            
+            // Send welcome notification immediately after successful subscription
+            try {
+              await sendWelcomeNotification(user.id, playerId);
+            } catch (welcomeError) {
+              console.warn('[OneSignal] Welcome notification failed:', welcomeError);
+            }
           }
         } catch (deviceUpsertError) {
           console.error('[OneSignal] Device upsert error:', deviceUpsertError);

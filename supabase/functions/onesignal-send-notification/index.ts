@@ -28,6 +28,41 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // JWT Authentication check for sensitive operations
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Allow service role key for system operations
+    const token = authHeader.replace('Bearer ', '');
+    const isServiceRole = token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!isServiceRole) {
+      // For non-service requests, verify JWT with Supabase
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+      const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+        return new Response(
+          JSON.stringify({ error: 'Server configuration error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      
+      if (error || !user) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
     const appId = Deno.env.get('ONESIGNAL_APP_ID');
     const apiKey = Deno.env.get('ONESIGNAL_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -53,6 +88,14 @@ Deno.serve(async (req) => {
       delivery_channels = ['push'],
       respect_preferences = true 
     } = body;
+
+    // Validate welcome notification restrictions
+    if (notification_type === 'welcome' && (!isServiceRole && user_ids && user_ids.length > 1)) {
+      return new Response(
+        JSON.stringify({ error: 'Welcome notifications can only be sent to single users' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('📧 Notification request:', {
       user_ids: user_ids?.length || 0,

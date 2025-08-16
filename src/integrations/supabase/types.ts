@@ -682,6 +682,7 @@ export type Database = {
           platform: string | null
           updated_at: string | null
           user_id: string
+          welcome_sent: boolean | null
         }
         Insert: {
           browser_name?: string | null
@@ -699,6 +700,7 @@ export type Database = {
           platform?: string | null
           updated_at?: string | null
           user_id: string
+          welcome_sent?: boolean | null
         }
         Update: {
           browser_name?: string | null
@@ -716,6 +718,7 @@ export type Database = {
           platform?: string | null
           updated_at?: string | null
           user_id?: string
+          welcome_sent?: boolean | null
         }
         Relationships: []
       }

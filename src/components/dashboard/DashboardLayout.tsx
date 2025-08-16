@@ -6,6 +6,7 @@ import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
 import { MobileOptimizedLayout } from '@/components/mobile/MobileOptimizedLayout';
 import { MobilePlatformDetector } from '@/components/mobile/MobilePlatformDetector';
+import NotificationSetupManager from '@/components/notifications/NotificationSetupManager';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export const DashboardLayout: React.FC = () => {

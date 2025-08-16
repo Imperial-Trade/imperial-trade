@@ -216,72 +216,234 @@ async function syncPortfolioUpdates() {
   }
 }
 
-// Push notification handling
+// Enhanced push notification handling for trading alerts
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push notification received');
+  console.log('[SW] Trading notification received');
   
-  const options = {
-    body: 'New trading signal available',
-    icon: '/android-chrome-192x192.png',
-    badge: '/favicon-32x32.png',
-    data: {
-      url: '/dashboard/signals'
-    },
-    actions: [
-      {
-        action: 'view',
-        title: 'View Signal'
-      },
-      {
-        action: 'dismiss',
-        title: 'Dismiss'
-      }
-    ],
-    requireInteraction: true,
-    vibrate: [100, 50, 100]
-  };
+  let notificationData = null;
+  let title = 'Imperial Trading';
+  let body = 'New trading alert';
+  let icon = '/android-chrome-192x192.png';
+  let badge = '/favicon-32x32.png';
+  let url = '/dashboard';
+  let vibrate = [100, 50, 100];
+  let requireInteraction = true;
+  let tag = 'trading-alert';
+  let actions = [];
 
+  // Parse notification data
   if (event.data) {
     try {
-      const data = event.data.json();
-      options.body = data.message || options.body;
-      options.data = { ...options.data, ...data };
+      notificationData = event.data.json();
+      console.log('[SW] Parsed notification data:', notificationData);
     } catch (error) {
-      console.log('[SW] Failed to parse push data:', error);
+      console.error('[SW] Failed to parse notification data:', error);
     }
   }
 
+  if (notificationData) {
+    // Enhanced trading notification formatting
+    const alertType = notificationData.notification_type || notificationData.alert_type;
+    const assetName = notificationData.asset_name || 'Asset';
+    const price = notificationData.triggered_price || notificationData.target_price;
+    const signalId = notificationData.signal_id;
+
+    // Set title and body based on alert type
+    switch (alertType) {
+      case 'signal_created':
+        title = `🚀 New ${assetName} Signal`;
+        body = `${notificationData.trade_type?.toUpperCase()} at ${price}`;
+        url = signalId ? `/dashboard/signal-stream?signal=${signalId}` : '/dashboard/signal-stream';
+        vibrate = [200, 100, 200];
+        tag = 'new-signal';
+        actions = [
+          { action: 'view', title: '👀 View Signal' },
+          { action: 'dismiss', title: '✖️ Dismiss' }
+        ];
+        break;
+
+      case 'take_profit_1':
+      case 'take_profit_2':
+      case 'take_profit_3':
+      case 'take_profit_4':
+      case 'take_profit_5':
+      case 'tp_hits':
+        title = `🎯 ${assetName} Take Profit Hit!`;
+        body = `TP level reached at ${price} 📈`;
+        url = signalId ? `/dashboard/signal-stream?signal=${signalId}` : '/dashboard/signal-stream';
+        vibrate = [300, 100, 300, 100, 300];
+        tag = 'tp-hit';
+        requireInteraction = true;
+        actions = [
+          { action: 'view', title: '🎉 Celebrate' },
+          { action: 'journal', title: '📝 Add to Journal' }
+        ];
+        break;
+
+      case 'stop_loss':
+        title = `🚨 ${assetName} Stop Loss Hit`;
+        body = `SL triggered at ${price} - Review position`;
+        url = signalId ? `/dashboard/signal-stream?signal=${signalId}` : '/dashboard/signal-stream';
+        vibrate = [500, 200, 500, 200, 500];
+        tag = 'stop-loss';
+        requireInteraction = true;
+        actions = [
+          { action: 'view', title: '🔍 Review' },
+          { action: 'analyze', title: '📊 Analyze' }
+        ];
+        break;
+
+      case 'signal_updated':
+        title = `📝 ${assetName} Signal Updated`;
+        body = notificationData.message || 'Signal has been modified';
+        url = signalId ? `/dashboard/signal-stream?signal=${signalId}` : '/dashboard/signal-stream';
+        vibrate = [100];
+        tag = 'signal-update';
+        requireInteraction = false;
+        actions = [
+          { action: 'view', title: '👀 View Changes' },
+          { action: 'dismiss', title: '✖️ Dismiss' }
+        ];
+        break;
+
+      default:
+        title = notificationData.title || title;
+        body = notificationData.message || notificationData.body || body;
+        url = notificationData.url || url;
+    }
+
+    // Override with explicit values if provided
+    if (notificationData.title) title = notificationData.title;
+    if (notificationData.message) body = notificationData.message;
+    if (notificationData.url) url = notificationData.url;
+  }
+
+  const options = {
+    body,
+    icon,
+    badge,
+    data: {
+      url,
+      signalId: notificationData?.signal_id,
+      alertType: notificationData?.notification_type || notificationData?.alert_type,
+      timestamp: Date.now(),
+      ...notificationData
+    },
+    actions,
+    requireInteraction,
+    vibrate,
+    tag,
+    renotify: true,
+    timestamp: Date.now()
+  };
+
+  console.log('[SW] Showing trading notification:', { title, options });
+
   event.waitUntil(
-    self.registration.showNotification('Imperial Trading', options)
+    self.registration.showNotification(title, options)
   );
 });
 
-// Handle notification clicks
+// Enhanced notification click handling for trading alerts
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event.action);
+  console.log('[SW] Trading notification clicked:', {
+    action: event.action,
+    data: event.notification.data,
+    tag: event.notification.tag
+  });
   
   event.notification.close();
   
-  if (event.action === 'view') {
-    const urlToOpen = event.notification.data?.url || '/dashboard';
-    
-    event.waitUntil(
-      clients.matchAll({ type: 'window' })
-        .then((clientList) => {
-          // Check if app is already open
-          for (const client of clientList) {
-            if (client.url.includes(urlToOpen) && 'focus' in client) {
-              return client.focus();
-            }
-          }
-          
-          // Open new window if app not open
-          if (clients.openWindow) {
-            return clients.openWindow(urlToOpen);
-          }
-        })
-    );
+  const notificationData = event.notification.data || {};
+  const baseUrl = self.location.origin;
+  let urlToOpen = notificationData.url || '/dashboard';
+  
+  // Handle specific actions
+  switch (event.action) {
+    case 'view':
+      // Default view action
+      break;
+      
+    case 'journal':
+      // Navigate to trade journal with signal context
+      if (notificationData.signalId) {
+        urlToOpen = `/dashboard/trade-journal?signal=${notificationData.signalId}&action=add`;
+      } else {
+        urlToOpen = '/dashboard/trade-journal';
+      }
+      break;
+      
+    case 'analyze':
+      // Navigate to signal analysis
+      if (notificationData.signalId) {
+        urlToOpen = `/dashboard/signal-stream?signal=${notificationData.signalId}&analyze=true`;
+      } else {
+        urlToOpen = '/dashboard/signal-stream';
+      }
+      break;
+      
+    case 'dismiss':
+      // Just close, don't navigate
+      return;
+      
+    default:
+      // Default click (no action button)
+      break;
   }
+
+  // Ensure absolute URL
+  if (!urlToOpen.startsWith('http')) {
+    urlToOpen = baseUrl + (urlToOpen.startsWith('/') ? '' : '/') + urlToOpen;
+  }
+
+  console.log('[SW] Opening URL:', urlToOpen);
+
+  event.waitUntil(
+    clients.matchAll({ 
+      type: 'window',
+      includeUncontrolled: true 
+    }).then((clientList) => {
+      // Try to find existing client with matching base path
+      const targetPath = new URL(urlToOpen).pathname;
+      const basePath = targetPath.split('?')[0];
+      
+      for (const client of clientList) {
+        try {
+          const clientUrl = new URL(client.url);
+          const clientPath = clientUrl.pathname;
+          
+          // If we found the app window, focus it and navigate
+          if (clientUrl.origin === baseUrl && 
+              (clientPath.startsWith('/dashboard') || clientPath === '/')) {
+            
+            // Send message to client to navigate
+            client.postMessage({
+              type: 'NOTIFICATION_CLICK',
+              url: targetPath,
+              data: notificationData,
+              timestamp: Date.now()
+            });
+            
+            return client.focus();
+          }
+        } catch (error) {
+          console.warn('[SW] Error checking client URL:', error);
+        }
+      }
+      
+      // No suitable client found, open new window
+      console.log('[SW] Opening new window for:', urlToOpen);
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    }).catch((error) => {
+      console.error('[SW] Error handling notification click:', error);
+      // Fallback: try to open new window
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });
 
 // Share target handling for PWA

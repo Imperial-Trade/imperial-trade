@@ -5,6 +5,7 @@ import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
+import { useOptimizedInstantAlerts } from '@/hooks/useOptimizedInstantAlerts';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 import { useThrottledWebSocketPrice } from '@/hooks/useThrottledWebSocketPrice';
@@ -14,10 +15,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { usePublicProfiles } from '@/hooks/usePublicProfiles';
+import { useSignalPermissions } from '@/hooks/useSignalPermissions';
+import { useStabilizedSignalOperations } from '@/hooks/useStabilizedSignalOperations';
 
 export default function SignalStream() {
   // Performance monitoring
   useRenderOptimization('SignalStream');
+  
+  // Initialize optimized instant alerts (separate from trading operations)
+  const { isConnected: alertsConnected } = useOptimizedInstantAlerts({
+    enableAudioNotifications: true,
+    enableBrowserNotifications: true,
+    enableToastNotifications: true,
+    maxRetries: 3,
+    baseRetryDelay: 2000
+  });
   
   const {
     user,
@@ -44,29 +56,14 @@ export default function SignalStream() {
     nextRetryAt
   } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
 
-  // Helper functions for role checking
-  const isAdmin = useMemo(() => {
-    return profile?.access_level === 'admin' || profile?.role === 'admin';
-  }, [profile]);
-  const isEducator = useMemo(() => {
-    return profile?.user_type === 'educator' || profile?.access_level === 'moderator' || profile?.role === 'educator';
-  }, [profile]);
-  const canCreateSignals = useMemo(() => {
-    const canCreate = isAdmin || isEducator;
-    console.log('SignalStream - canCreateSignals check:', {
-      profile,
-      isAdmin,
-      isEducator,
-      canCreate,
-      access_level: profile?.access_level,
-      role: profile?.role,
-      user_type: profile?.user_type
-    });
-    return canCreate;
-  }, [isAdmin, isEducator, profile]);
-  const isCreator = useCallback((alertCreatorId: string) => {
-    return profile?.id === alertCreatorId;
-  }, [profile?.id]);
+  // Use centralized permission management
+  const { 
+    isAdmin, 
+    isEducator, 
+    canCreateSignals, 
+    canEditSignal, 
+    validateAction 
+  } = useSignalPermissions();
 
   // Fetch public profiles for all creators to prevent "Unknown User"
   const creatorIds = useMemo(() => {
@@ -210,7 +207,7 @@ export default function SignalStream() {
   // Use 'WebSocket' as price source for compatibility
   const priceSource = 'WebSocket';
 
-  const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
+  // Remove local updateInProgress state - now handled by stabilized operations
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);
 
   useEffect(() => {
@@ -250,209 +247,17 @@ export default function SignalStream() {
     }
   };
 
-  const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
-    if (updateInProgress.has(alert.id)) return;
-
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    console.log('SignalStream - handleStatusUpdate authorization check:', {
-      alertId: alert.id,
-      alertCreatorId: alert.creator?.id,
-      currentUserId: profile?.id,
-      isCreator: alertIsCreator,
-      isAdmin,
-      canUpdate: alertIsCreator || isAdmin
-    });
-    if (!alertIsCreator && !isAdmin) {
-      console.warn('SignalStream - User not authorized to update this signal:', {
-        userId: profile?.id,
-        creatorId: alert.creator?.id,
-        userRole: profile?.role,
-        userAccessLevel: profile?.access_level,
-        isCreator: alertIsCreator,
-        isAdmin
-      });
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'error',
-          title: 'Access Denied',
-          message: 'You can only close your own signals'
-        });
-      }
-      return;
-    }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
-    try {
-      console.log(`Updating alert ${alert.id} status to ${newStatus}`);
-      const updateDto: UpdateTradeAlertDto = {
-        status: newStatus as 'pending' | 'active' | 'closed',
-        closeReason: newStatus === 'closed' ? 'manual' : undefined
-      };
-      const result = await updateAlert(alert.id, updateDto);
-      console.log('SignalStream - Update result:', result);
-      if (result && newStatus === 'closed' && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'trade_closed',
-          title: `🔒 Signal Closed`,
-          message: `${alert.assetName} signal has been closed`
-        });
-      }
-    } catch (err) {
-      console.error("Failed to update status:", err);
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'error',
-          title: 'Update Failed',
-          message: 'Could not update signal status. Please try again.'
-        });
-      }
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
-  const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
-    if (updateInProgress.has(alert.id)) return;
-
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    if (!alertIsCreator && !isAdmin) {
-      return;
-    }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
-    try {
-      console.log(`Updating TP hits for alert ${alert.id}:`, newTPHits);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined = undefined;
-      if (shouldAutoClose && closeReason) {
-        switch (closeReason) {
-          case 'manual':
-          case 'stop_loss':
-          case 'tp1':
-          case 'tp2':
-          case 'tp3':
-          case 'tp4':
-          case 'tp5':
-          case 'reversal_after_tp':
-            typedCloseReason = closeReason;
-            break;
-          default:
-            typedCloseReason = 'manual';
-        }
-      }
-      const updateDto: UpdateTradeAlertDto = {
-        tpHits: newTPHits,
-        ...(shouldAutoClose && {
-          status: 'closed',
-          closeReason: typedCloseReason
-        })
-      };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
-        if (highestTP !== null) {
-          (window as any).addNotification({
-            type: 'tp_hit',
-            title: `🎯 TP${highestTP} Hit!`,
-            message: `${alert.assetName} reached Take Profit ${highestTP}`
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Failed to update TP hits:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
-  const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
-    if (updateInProgress.has(alert.id)) return;
-
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    if (!alertIsCreator && !isAdmin) {
-      return;
-    }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
-    try {
-      console.log(`Stop loss hit for alert ${alert.id}, reason: ${closeReason}`);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' = 'stop_loss';
-      switch (closeReason) {
-        case 'manual':
-        case 'stop_loss':
-        case 'tp1':
-        case 'tp2':
-        case 'tp3':
-        case 'tp4':
-        case 'tp5':
-        case 'reversal_after_tp':
-          typedCloseReason = closeReason;
-          break;
-        default:
-          typedCloseReason = 'stop_loss';
-      }
-      const updateDto: UpdateTradeAlertDto = {
-        status: 'closed',
-        closeReason: typedCloseReason
-      };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'stop_loss',
-          title: `🚨 Stop Loss Hit!`,
-          message: `${alert.assetName} trade closed at stop loss`
-        });
-      }
-    } catch (err) {
-      console.error("Failed to update stop loss:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
-  const handleOrderActivation = useCallback(async (alert: any) => {
-    if (updateInProgress.has(alert.id)) return;
-
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    if (!alertIsCreator && !isAdmin) {
-      return;
-    }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
-    try {
-      console.log(`Activating order for alert ${alert.id}`);
-      const updateDto: UpdateTradeAlertDto = {
-        status: 'active'
-      };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'trade_activated',
-          title: `🚀 Order Activated!`,
-          message: `${alert.assetName} ${alert.tradeType} is now active`
-        });
-      }
-    } catch (err) {
-      console.error("Failed to activate order:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+  // Use stabilized signal operations to prevent authorization loops and excessive re-renders
+  const {
+    handleStatusUpdate,
+    handleTakeProfitHit,
+    handleStopLossHit,
+    handleOrderActivation,
+    isUpdateInProgress
+  } = useStabilizedSignalOperations({
+    updateAlert,
+    addNotification: (window as any).addNotification
+  });
 
   return <div className="min-h-screen bg-background w-full">
       <NotificationSystem />
@@ -536,7 +341,7 @@ export default function SignalStream() {
                   close_reason: alert.closeReason,
                   created_date: alert.createdAt,
                   updated_date: alert.updatedAt
-                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} />)}
+                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={canEditSignal(alert.creator?.id)} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} />)}
                     </div> : <div className="text-center py-8">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <Shield className="w-8 h-8 text-muted-foreground/50" />
@@ -562,7 +367,7 @@ export default function SignalStream() {
                   close_reason: alert.closeReason,
                   created_date: alert.createdAt,
                   updated_date: alert.updatedAt
-                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />)}
+                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={canEditSignal(alert.creator?.id)} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />)}
                     </div> : <div className="text-center py-8">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <div className="w-8 h-8 text-muted-foreground/50">🔒</div>

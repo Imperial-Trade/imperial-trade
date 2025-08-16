@@ -499,9 +499,16 @@ export function useOneSignalEnhanced() {
     };
   }, [user?.id, profile?.role, profile?.user_type, browserInfo.name]);
 
-  // Welcome notification function
+  // Welcome notification function with localStorage guard
   const sendWelcomeNotification = async (userId: string, playerId: string) => {
     try {
+      // Prevent duplicate welcome notifications per device
+      const welcomeKey = `os_welcome_sent_${playerId.substring(0, 16)}`;
+      if (localStorage.getItem(welcomeKey)) {
+        console.log('[OneSignal] Welcome notification already sent for this device, skipping...');
+        return;
+      }
+
       console.log('[OneSignal] Sending welcome notification to:', playerId.substring(0, 8) + '...');
       
       const { error } = await supabase.functions.invoke('onesignal-send-notification', {
@@ -525,6 +532,8 @@ export function useOneSignalEnhanced() {
         console.error('[OneSignal] Welcome notification error:', error);
       } else {
         console.log('[OneSignal] ✅ Welcome notification sent successfully');
+        // Mark welcome as sent for this device
+        localStorage.setItem(welcomeKey, new Date().toISOString());
       }
     } catch (error) {
       console.error('[OneSignal] Welcome notification failed:', error);
@@ -971,17 +980,18 @@ export function useOneSignalEnhanced() {
           throw iosError;
         }
       } else {
-        // **NATIVE PROMPT ONLY: Use OneSignal slidedown for all non-iOS browsers**
-        console.info('[OneSignal] Using OneSignal slidedown prompt for non-iOS browser...');
+        // **PREFER NATIVE BROWSER PROMPT: Use native Notifications.requestPermission for manual requests**
+        console.info('[OneSignal] Using native browser prompt for manual permission request...');
         
         try {
-          // Use OneSignal slidedown for better UX
-          if ((window as any).OneSignal.Slidedown?.promptPush) {
-            result = await (window as any).OneSignal.Slidedown.promptPush();
-            console.info('[OneSignal] Slidedown result:', result);
-          } else if ((window as any).OneSignal.Notifications?.requestPermission) {
+          // Prefer native browser prompt for manual requests
+          if ((window as any).OneSignal.Notifications?.requestPermission) {
             result = await (window as any).OneSignal.Notifications.requestPermission();
             console.info('[OneSignal] Native permission result:', result);
+          } else if ((window as any).OneSignal.Slidedown?.promptPush) {
+            // Fallback to slidedown if native not available
+            result = await (window as any).OneSignal.Slidedown.promptPush();
+            console.info('[OneSignal] Slidedown fallback result:', result);
           } else {
             throw new Error('OneSignal v16 permission methods not available');
           }

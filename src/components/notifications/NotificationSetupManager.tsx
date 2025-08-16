@@ -42,7 +42,10 @@ const NotificationSetupManager: React.FC = () => {
     const fourHoursMs = 4 * 60 * 60 * 1000;
     
     if (lastPromptTime && Date.now() - parseInt(lastPromptTime) < fourHoursMs) {
-      console.log('🎯 [Native Prompt] Skipping - within cooldown period');
+      console.log('🎯 [Native Prompt] Skipping - within cooldown period', {
+        lastPromptTime: new Date(parseInt(lastPromptTime)).toISOString(),
+        timeRemaining: fourHoursMs - (Date.now() - parseInt(lastPromptTime))
+      });
       return;
     }
     
@@ -99,7 +102,11 @@ const NotificationSetupManager: React.FC = () => {
     userType: profile?.user_type,
     isGranted,
     hasSubscription,
-    initialized
+    initialized,
+    playerIdExists: !!profile?.onesignal_player_id,
+    pushSubscriptionActive: profile?.push_subscription_active,
+    isInIframe: window.self !== window.top,
+    notificationPermission: typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
   });
 
   return (

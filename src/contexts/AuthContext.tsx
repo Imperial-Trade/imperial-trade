@@ -216,22 +216,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-      // Wait for OneSignal to be available
-      let attempts = 0;
-      while (attempts < 20 && (!window.OneSignal || !window.OneSignal.login)) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        attempts++;
-      }
-
-      if (window.OneSignal?.login) {
-        try {
-          // Bind this browser to the OneSignal user
-          console.log('[Auth] Binding browser to OneSignal user:', userId);
-          await window.OneSignal.login(userId);
-          console.log('[Auth] Successfully bound to OneSignal user');
-        } catch (error) {
-          console.warn('[Auth] OneSignal login failed:', error);
-        }
+      // Prevent duplicate login attempts for this session
+      const loginKey = `onesignal_login_${userId}`;
+      if (sessionStorage.getItem(loginKey)) {
+        console.log('[Auth] OneSignal login already attempted for this session');
+      } else {
+        // Safe login using OneSignal queue to prevent race conditions
+        console.log('[Auth] Queuing OneSignal login for user:', userId);
+        window.OneSignal = window.OneSignal || [];
+        window.OneSignal.push(() => {
+          try {
+            console.log('[Auth] Executing OneSignal login for user:', userId);
+            window.OneSignal.login(userId);
+            console.log('[Auth] OneSignal login successful');
+          } catch (error) {
+            console.warn('[Auth] OneSignal login failed:', error);
+          }
+        });
+        
+        // Mark login as attempted for this session
+        sessionStorage.setItem(loginKey, 'true');
       }
 
       // Verify current OneSignal subscription status (this is the source of truth)

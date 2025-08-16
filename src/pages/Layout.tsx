@@ -8,6 +8,7 @@ import { useVoiceRecognition } from '@/components/layout/VoiceRecognition';
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from '@/components/AppSidebar';
 import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
+import NotificationSetupManager from '@/components/notifications/NotificationSetupManager';
 
 
 
@@ -103,7 +104,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
           </main>
         </div>
         
-        
+        <NotificationSetupManager />
       </div>
     </SidebarProvider>
   );

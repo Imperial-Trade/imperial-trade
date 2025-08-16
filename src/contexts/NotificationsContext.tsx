@@ -22,13 +22,13 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
   const value = useMemo<NotificationsContextValue>(() => ({
     permission,
     initialized,
-    isGranted: isGranted && !!user,
+    isGranted: isGranted, // Remove user dependency to allow prompt even before full auth
     hasSubscription,
     isIframeBlocked,
     requestPermission,
     browserInfo,
     browserInstructions,
-  }), [permission, initialized, isGranted, hasSubscription, user, isIframeBlocked, requestPermission, browserInfo, browserInstructions]);
+  }), [permission, initialized, isGranted, hasSubscription, isIframeBlocked, requestPermission, browserInfo, browserInstructions]);
 
   return (
     <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>

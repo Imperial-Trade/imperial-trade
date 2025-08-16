@@ -46,8 +46,15 @@ export const usePostLoginNotificationSetup = () => {
     }
   }, [setupState]);
 
-  // Check if we should show the notification setup based on OneSignal verification
-  const shouldShowSetup = useCallback(async () => {
+  // Check if we should show the notification setup (synchronous)
+  const shouldShowSetup = useCallback(() => {
+    // Check for force prompt from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('prompt') === '1') {
+      console.log('🎯 [Notification Setup] Force prompt detected from URL');
+      return true;
+    }
+
     // Don't show if user is not logged in or still loading
     if (!user || loading) return false;
 
@@ -100,12 +107,35 @@ export const usePostLoginNotificationSetup = () => {
     return true;
   }, [user, loading, setupState, saveState]);
 
-  // Trigger setup modal after login
+  // Check for immediate prompt conditions and setup timer
   useEffect(() => {
+    if (!user || loading) return;
+
+    // Check for force prompt from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('prompt') === '1') {
+      console.log('🎯 [Notification Setup] Force prompt triggered');
+      saveState({ 
+        shouldShow: true, 
+        hasBeenShown: true,
+        lastPromptTime: Date.now(),
+        userDecision: 'pending'
+      });
+      return;
+    }
+
+    // Don't continue if shouldn't show
     if (!shouldShowSetup()) return;
+
+    console.log('🎯 [Notification Setup] Setup conditions met, scheduling prompt', {
+      userDecision: setupState.userDecision,
+      hasBeenShown: setupState.hasBeenShown,
+      delay: SETUP_DELAY
+    });
 
     const timer = setTimeout(() => {
       if (shouldShowSetup() && !setupState.hasBeenShown) {
+        console.log('🎯 [Notification Setup] Showing notification setup modal');
         saveState({ 
           shouldShow: true, 
           hasBeenShown: true,
@@ -115,10 +145,12 @@ export const usePostLoginNotificationSetup = () => {
     }, SETUP_DELAY);
 
     return () => clearTimeout(timer);
-  }, [user, shouldShowSetup, setupState.hasBeenShown, saveState]);
+  }, [user, loading, shouldShowSetup, setupState.hasBeenShown, setupState.userDecision, saveState]);
 
   // Handle user accepting notifications
   const handleAccept = useCallback((preferences: any) => {
+    console.log('🎯 [Notification Setup] User accepted notifications', { preferences });
+    
     saveState({
       userDecision: 'accepted',
       shouldShow: false,
@@ -131,25 +163,50 @@ export const usePostLoginNotificationSetup = () => {
     } catch (error) {
       console.warn('Failed to save notification preferences:', error);
     }
+
+    // Clear force prompt URL parameter if present
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('prompt')) {
+      url.searchParams.delete('prompt');
+      window.history.replaceState({}, '', url.toString());
+    }
   }, [saveState]);
 
   // Handle user declining notifications
   const handleDecline = useCallback(() => {
+    console.log('🎯 [Notification Setup] User declined notifications');
+    
     saveState({
       userDecision: 'declined',
       shouldShow: false,
       lastPromptTime: Date.now()
     });
+
+    // Clear force prompt URL parameter if present
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('prompt')) {
+      url.searchParams.delete('prompt');
+      window.history.replaceState({}, '', url.toString());
+    }
   }, [saveState]);
 
   // Handle user dismissing modal (maybe later)
   const handleDismiss = useCallback(() => {
+    console.log('🎯 [Notification Setup] User dismissed modal');
+    
     saveState({
       userDecision: 'dismissed',
       shouldShow: false,
       lastPromptTime: Date.now()
     });
-  }, [saveState]);
+
+    // Clear force prompt URL parameter if present
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('prompt') && setupState.userDecision !== 'pending') {
+      url.searchParams.delete('prompt');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [saveState, setupState.userDecision]);
 
   // Force show setup (for settings page)
   const forceShow = useCallback(() => {

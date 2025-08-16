@@ -42,7 +42,7 @@ const TradingNotificationModal: React.FC<TradingNotificationModalProps> = ({
   onDecline
 }) => {
   const { triggerSuccess, triggerError, triggerButtonPress } = useEnhancedHaptics();
-  const { requestPermission } = useNotifications();
+  const { requestPermission, permission, isIframeBlocked, browserInstructions } = useNotifications();
   
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     critical: true,
@@ -316,6 +316,44 @@ const TradingNotificationModal: React.FC<TradingNotificationModalProps> = ({
                   )}
                 </Button>
               </div>
+
+              {/* Error/Warning Messages */}
+              {permission === 'denied' && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  <div className="flex items-center space-x-2 text-red-400 mb-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="font-semibold text-sm">Notifications Blocked</span>
+                  </div>
+                  <p className="text-xs text-red-300 mb-2">
+                    Your browser has blocked notifications. To enable alerts:
+                  </p>
+                  {browserInstructions && (
+                    <p className="text-xs text-red-200 font-mono bg-red-500/10 p-2 rounded">
+                      {browserInstructions}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {isIframeBlocked && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                  <div className="flex items-center space-x-2 text-yellow-400 mb-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="font-semibold text-sm">Embedded Mode Detected</span>
+                  </div>
+                  <p className="text-xs text-yellow-300">
+                    For optimal notification experience, please visit our direct site at{' '}
+                    <a 
+                      href="https://www.tradeimperial.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="underline hover:text-yellow-200"
+                    >
+                      tradeimperial.com
+                    </a>
+                  </p>
+                </div>
+              )}
 
               {/* Benefits */}
               <div className="text-center text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg">

@@ -1041,59 +1041,9 @@ export function useOneSignalEnhanced() {
 
 
 
-  // Auto-trigger slidedown prompt after initialization for new users
-  useEffect(() => {
-    const autoPromptForNotifications = async () => {
-      // Only auto-prompt if:
-      // 1. OneSignal is initialized
-      // 2. User is logged in
-      // 3. Permission is still default (not granted/denied)
-      // 4. Device doesn't already have subscription
-      if (initialized && user?.id && permission === 'default' && !deviceHasSubscription) {
-        console.info('[OneSignal] Auto-triggering slidedown prompt for new user...');
-        
-        // Small delay to ensure UI is ready
-        setTimeout(async () => {
-          try {
-            // Use OneSignal slidedown for auto-prompt
-            if ((window as any).OneSignal?.Slidedown?.promptPush) {
-              console.info('[OneSignal] Showing slidedown prompt automatically...');
-              const result = await (window as any).OneSignal.Slidedown.promptPush();
-              console.info('[OneSignal] Auto-slidedown result:', result);
-              
-              if (result) {
-                setPermission('granted');
-                
-                // Capture player ID and sync subscription
-                try {
-                  const playerId = await waitForPlayerId(15, 1000);
-                  if (playerId) {
-                    await captureAndStorePlayerIdSequential(playerId);
-                    await syncSubscriptionStatus(playerId);
-                    setHasSubscription(true);
-                  }
-                } catch (syncError) {
-                  console.warn('[OneSignal] Auto-sync failed:', syncError);
-                }
-              } else {
-                setPermission('denied');
-              }
-            } else {
-              console.warn('[OneSignal] Slidedown not available for auto-prompt');
-            }
-          } catch (autoPromptError) {
-            console.warn('[OneSignal] Auto-prompt failed:', autoPromptError);
-          }
-        }, 2000); // 2-second delay after login
-      }
-    };
-
-    autoPromptForNotifications();
-  }, [initialized, user?.id, permission, deviceHasSubscription, waitForPlayerId, captureAndStorePlayerIdSequential, syncSubscriptionStatus]);
-
   // Log final ready state
   if (initialized && user?.id) {
-    console.info('[OneSignal] ✅ Production ready - auto slidedown enabled for new users');
+    console.info('[OneSignal] ✅ Production ready - manual notification setup only');
   }
 
   return {

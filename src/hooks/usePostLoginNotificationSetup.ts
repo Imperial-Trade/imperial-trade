@@ -47,7 +47,7 @@ export const usePostLoginNotificationSetup = () => {
   }, [setupState]);
 
   // Check if we should show the notification setup
-  const shouldShowSetup = useCallback(() => {
+  const shouldShowSetup = useCallback(async () => {
     // Don't show if user is not logged in or still loading
     if (!user || loading) return false;
 
@@ -70,6 +70,9 @@ export const usePostLoginNotificationSetup = () => {
     // Check if browser supports notifications
     if (typeof window === 'undefined' || !('Notification' in window)) return false;
 
+    // Check if permission was denied (don't show setup)
+    if (Notification.permission === 'denied') return false;
+
     // Check if already granted (no need to show setup)
     if (Notification.permission === 'granted') {
       // Update state to accepted if permission is already granted
@@ -78,9 +81,6 @@ export const usePostLoginNotificationSetup = () => {
       }
       return false;
     }
-
-    // Check if permission was denied (don't show setup)
-    if (Notification.permission === 'denied') return false;
 
     return true;
   }, [user, loading, setupState, saveState]);

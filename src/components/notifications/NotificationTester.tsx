@@ -60,7 +60,7 @@ const TEST_NOTIFICATIONS: TestNotification[] = [
 const NotificationTester: React.FC = () => {
   const [selectedType, setSelectedType] = useState<string>('important');
   const [testResults, setTestResults] = useState<Record<string, boolean>>({});
-  const [isTesting, setIsTesting] = useState(false);
+  const [isTesting, setIsTesting] = useState<Record<string, boolean>>({});
   
   const { playTestSound } = useAudioNotifications();
   const { triggerSuccess, triggerError, isAvailable: hapticAvailable } = useEnhancedHaptics();
@@ -126,7 +126,7 @@ const NotificationTester: React.FC = () => {
   };
 
   const getTestStatus = (component: string) => {
-    if (isTesting?.[component]) return 'testing';
+    if (isTesting[component]) return 'testing';
     if (testResults[component] === true) return 'success';
     if (testResults[component] === false) return 'error';
     return 'idle';
@@ -221,7 +221,7 @@ const NotificationTester: React.FC = () => {
                   variant="outline" 
                   size="sm" 
                   onClick={testAudio}
-                  disabled={isTesting?.audio}
+                  disabled={isTesting.audio}
                 >
                   Test Audio
                 </Button>
@@ -242,7 +242,7 @@ const NotificationTester: React.FC = () => {
                   variant="outline" 
                   size="sm" 
                   onClick={testHaptic}
-                  disabled={isTesting?.haptic || !hapticAvailable}
+                  disabled={isTesting.haptic || !hapticAvailable}
                 >
                   Test Haptic
                 </Button>
@@ -263,7 +263,7 @@ const NotificationTester: React.FC = () => {
                   variant="outline" 
                   size="sm" 
                   onClick={testPushNotification}
-                  disabled={isTesting?.push || !isGranted}
+                  disabled={isTesting.push || !isGranted}
                 >
                   Test Push
                 </Button>

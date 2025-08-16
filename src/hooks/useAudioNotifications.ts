@@ -161,7 +161,7 @@ export const useAudioNotifications = () => {
       }
 
       // Trigger corresponding haptic feedback
-      triggerHaptic(options.type, {
+      triggerHaptic('success', {
         pattern: sound.pattern.map(p => Math.round(p * 1000)),
         duration: sound.duration,
         intensity: options.type === 'critical' ? 1 : 0.7

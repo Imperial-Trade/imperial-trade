@@ -266,41 +266,80 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
     }
   }, [getDeviceInfo]);
 
-  // Enhanced permission request with robust fallbacks
+  // Enhanced permission request with gesture-safe implementation for iOS/PWA
   const requestPermission = useCallback(async (): Promise<{ success: boolean; error?: string; details?: any; finalPermission?: string }> => {
     try {
-      console.log('[OneSignal] Requesting notification permission...');
+      console.log('[OneSignal] 🎯 GESTURE-SAFE permission request starting...');
       
       // Check if we're on iOS/Safari and need user gesture
       const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                          (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome'));
       
       if (isIOSSafari) {
-        console.log('[OneSignal] iOS/Safari detected - user gesture required');
+        console.log('[OneSignal] 🍎 iOS/Safari detected - ensuring gesture-safe operation');
       }
 
-      // Try to get current permission state, fallback to browser API if OneSignal fails
-      let currentPermission;
+      // STEP 1: IMMEDIATELY request permission (must be first awaited operation for gesture safety)
+      let permissionResult;
+      console.log('[OneSignal] 🚀 Attempting IMMEDIATE permission request...');
+      
       try {
-        if (window.OneSignal?.getNotificationPermission) {
-          currentPermission = await window.OneSignal.getNotificationPermission();
-        } else {
+        // Try OneSignal v16 Notifications API first (most gesture-safe)
+        if (window.OneSignal?.Notifications?.requestPermission) {
+          console.log('[OneSignal] Using v16 Notifications.requestPermission() [GESTURE-SAFE]');
+          permissionResult = await window.OneSignal.Notifications.requestPermission();
+        }
+        // Fallback to v15 methods if v16 not available
+        else if (window.OneSignal?.showNativePrompt) {
+          console.log('[OneSignal] Using v15 showNativePrompt() [GESTURE-SAFE]');
+          permissionResult = await window.OneSignal.showNativePrompt();
+        }
+        else if (window.OneSignal?.registerForPushNotifications) {
+          console.log('[OneSignal] Using v15 registerForPushNotifications() [GESTURE-SAFE]');
+          permissionResult = await window.OneSignal.registerForPushNotifications();
+        }
+        // Final fallback to browser native API
+        else {
+          console.log('[OneSignal] Using browser native Notification.requestPermission() [GESTURE-SAFE]');
+          permissionResult = await Notification.requestPermission();
+        }
+      } catch (promptError) {
+        console.error('[OneSignal] All OneSignal methods failed, using browser API:', promptError);
+        permissionResult = await Notification.requestPermission();
+      }
+
+      console.log('[OneSignal] ✅ Permission result:', permissionResult);
+
+      // STEP 2: Handle the result and sync (only after permission decision)
+      if (permissionResult === 'granted') {
+        console.log('[OneSignal] 🎉 Permission granted! Processing subscription...');
+        
+        // Check current permission state AFTER granting
+        let currentPermission;
+        try {
+          if (window.OneSignal?.getNotificationPermission) {
+            currentPermission = await window.OneSignal.getNotificationPermission();
+          } else {
+            currentPermission = Notification.permission;
+          }
+        } catch (error) {
+          console.warn('[OneSignal] Failed to get permission from OneSignal, using browser API:', error);
           currentPermission = Notification.permission;
         }
-      } catch (error) {
-        console.warn('[OneSignal] Failed to get permission from OneSignal, using browser API:', error);
-        currentPermission = Notification.permission;
-      }
-      
-      console.log('[OneSignal] Current permission:', currentPermission);
-
-      if (currentPermission === 'granted') {
-        // Permission already granted, check OneSignal subscription status
-        const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-        console.log('[OneSignal] Already granted, subscription status:', isSubscribed);
         
-        if (!isSubscribed) {
-          // Permission granted but not subscribed - force opt-in and verify with OneSignal
+        console.log('[OneSignal] Current permission after grant:', currentPermission);
+
+        // Check if already subscribed
+        let isAlreadySubscribed = false;
+        try {
+          isAlreadySubscribed = await window.OneSignal.isPushNotificationsEnabled();
+          console.log('[OneSignal] Subscription status after permission grant:', isAlreadySubscribed);
+        } catch (error) {
+          console.warn('[OneSignal] Failed to check subscription status:', error);
+        }
+        
+        if (!isAlreadySubscribed) {
+          // Permission granted but not subscribed - force opt-in
           console.log('[OneSignal] Permission granted but not subscribed, attempting opt-in...');
           try {
             // Use v16 API first, then fallback to v15 methods
@@ -317,64 +356,12 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
             
             // Wait for subscription to be processed
             await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            // Verify subscription is active
-            const finalSubscriptionState = await window.OneSignal.isPushNotificationsEnabled();
-            console.log('[OneSignal] Final subscription state after opt-in:', finalSubscriptionState);
-            
-            await syncWithSupabase();
-            
-            setState(prev => ({
-              ...prev,
-              hasSubscription: finalSubscriptionState,
-              isGranted: true,
-              permission: 'granted'
-            }));
-            
-            return { success: finalSubscriptionState, finalPermission: 'granted' };
           } catch (optInError) {
-            console.error('[OneSignal] Opt-in failed:', optInError);
-            return { success: false, error: 'Failed to opt-in to push notifications', details: optInError };
+            console.warn('[OneSignal] Opt-in after permission grant failed:', optInError);
           }
-        } else {
-          // Already subscribed, just sync
-          await syncWithSupabase();
-        return { success: true, finalPermission: 'granted' };
         }
-      }
 
-      // Request permission - use modern v16 API with robust fallbacks
-      let permissionResult;
-      console.log('[OneSignal] Attempting permission request with fallback chain...');
-      
-      try {
-        // Try OneSignal v16 Notifications API first
-        if (window.OneSignal?.Notifications?.requestPermission) {
-          console.log('[OneSignal] Using v16 Notifications.requestPermission()');
-          permissionResult = await window.OneSignal.Notifications.requestPermission();
-        }
-        // Fallback to v15 methods if v16 not available
-        else if (window.OneSignal?.showNativePrompt) {
-          console.log('[OneSignal] Using v15 showNativePrompt()');
-          permissionResult = await window.OneSignal.showNativePrompt();
-        }
-        else if (window.OneSignal?.registerForPushNotifications) {
-          console.log('[OneSignal] Using v15 registerForPushNotifications()');
-          permissionResult = await window.OneSignal.registerForPushNotifications();
-        }
-        // Final fallback to browser native API
-        else {
-          console.log('[OneSignal] Using browser native Notification.requestPermission()');
-          permissionResult = await Notification.requestPermission();
-        }
-      } catch (promptError) {
-        console.error('[OneSignal] All OneSignal methods failed, using browser API:', promptError);
-        permissionResult = await Notification.requestPermission();
-      }
-
-      console.log('[OneSignal] Permission result:', permissionResult);
-
-      if (permissionResult === 'granted') {
+        // Get final states and sync
         // Wait a bit for OneSignal to process the subscription
         await new Promise(resolve => setTimeout(resolve, 1000));
         

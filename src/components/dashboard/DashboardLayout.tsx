@@ -48,6 +48,7 @@ export const DashboardLayout: React.FC = () => {
                 <Outlet />
               </Suspense>
             </main>
+            <NotificationSetupManager />
           </div>
         </MobileOptimizedLayout>
       </MobilePlatformDetector>
@@ -75,6 +76,7 @@ export const DashboardLayout: React.FC = () => {
           <Outlet />
         </Suspense>
       </main>
+      <NotificationSetupManager />
     </div>
   );
 };

@@ -147,10 +147,10 @@ export function useRoleBasedNotifications() {
           ...defaults,
           member: {
             ...defaults.member,
-            tradingSignals: data.signals_enabled ?? true,
-            priceAlerts: data.price_alerts_enabled ?? true,
+            tradingSignals: data.market_updates ?? true,
+            priceAlerts: data.market_updates ?? true,
             educationUpdates: data.educational_content ?? true,
-            systemUpdates: data.system_notifications ?? true,
+            systemUpdates: data.market_updates ?? true,
             forumActivity: data.community_activity ?? false,
           },
           delivery: {
@@ -234,7 +234,7 @@ export function useRoleBasedNotifications() {
     if (!settings.delivery.pushNotifications) return false;
 
     // Check quiet hours
-    if (settings.schedule.quietHours.enabled && priority !== 'critical') {
+    if (settings.schedule.quietHours.enabled) {
       const now = new Date();
       const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
       
@@ -246,9 +246,11 @@ export function useRoleBasedNotifications() {
       );
 
       if (isInQuietHours) {
-        if (priority === 'critical' && !settings.schedule.priority.allowCriticalDuringQuiet) {
-          return false;
+        // Allow critical notifications if enabled
+        if (priority === 'critical' && settings.schedule.priority.allowCriticalDuringQuiet) {
+          return true;
         }
+        // Block all other notifications during quiet hours
         if (priority !== 'critical') {
           return false;
         }

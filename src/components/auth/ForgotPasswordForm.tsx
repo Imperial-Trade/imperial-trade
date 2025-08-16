@@ -43,8 +43,18 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBack }
     setIsSubmitting(true);
     
     try {
+      const redirectUrl = window.location.origin.includes('tradeimperial.com') 
+        ? 'https://www.tradeimperial.com/reset-password'
+        : `${window.location.origin}/reset-password`;
+        
+      console.log('[ForgotPassword] Sending reset email', { 
+        email: data.email, 
+        redirectUrl,
+        origin: window.location.origin 
+      });
+
       const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: 'https://www.tradeimperial.com/reset-password',
+        redirectTo: redirectUrl,
       });
 
       if (error) {

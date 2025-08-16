@@ -47,25 +47,7 @@ const NotificationSetupManager: React.FC = () => {
         }
         return;
       }
-    
-      // Check cooldown in localStorage (reduced for testing)
-      const lastPromptKey = 'imperial_onesignal_native_prompt_last';
-      const lastPromptTime = localStorage.getItem(lastPromptKey);
-      const cooldownMs = 10 * 60 * 1000; // 10 minutes for better testing
-      
-      // Allow bypass with URL parameter for testing
-      const urlParams = new URLSearchParams(window.location.search);
-      const forcePrompt = urlParams.get('prompt') === '1';
-      
-      if (!forcePrompt && lastPromptTime && Date.now() - parseInt(lastPromptTime) < cooldownMs) {
-        console.log('🎯 [Native Prompt] Skipping - within cooldown period', {
-          lastPromptTime: new Date(parseInt(lastPromptTime)).toISOString(),
-          timeRemaining: cooldownMs - (Date.now() - parseInt(lastPromptTime)),
-          bypassHint: 'Add ?prompt=1 to URL to bypass cooldown'
-        });
-        return;
-      }
-    
+
       // Check for iframe context (browsers block prompts in iframes)
       if (window.self !== window.top) {
         console.log('🎯 [Native Prompt] 🚫 SKIPPING - iframe context detected (Lovable builder)', {
@@ -83,13 +65,46 @@ const NotificationSetupManager: React.FC = () => {
         });
         return;
       }
+
+      // Skip auto-prompts on iOS/Safari (they ignore them anyway)
+      const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                         (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome'));
+      if (isIOSSafari) {
+        console.log('🎯 [Native Prompt] 🚫 SKIPPING - iOS/Safari auto-prompts are ignored, requiring user gesture', {
+          platform: 'iOS/Safari',
+          userAction: 'User must manually trigger notification request via UI interaction'
+        });
+        return;
+      }
     
-    console.log('🎯 [Native Prompt] Auto-triggering for user:', {
-      hasNoOneSignalUser: !profile?.onesignal_player_id,
-      hasOneSignalButNotSubscribed: profile?.onesignal_player_id && !profile?.push_subscription_active,
-      needsBrowserPermission: !isGranted,
-      userEmail: user?.email
-    });
+      // Check cooldown in localStorage
+      const lastPromptKey = 'imperial_onesignal_native_prompt_last';
+      const lastDecisionKey = 'imperial_onesignal_permission_decision';
+      const lastPromptTime = localStorage.getItem(lastPromptKey);
+      const lastDecision = localStorage.getItem(lastDecisionKey);
+      const cooldownMs = 10 * 60 * 1000; // 10 minutes
+      
+      // Allow bypass with URL parameter for testing
+      const urlParams = new URLSearchParams(window.location.search);
+      const forcePrompt = urlParams.get('prompt') === '1';
+      
+      // Skip if within cooldown and we actually showed a prompt before
+      if (!forcePrompt && lastPromptTime && lastDecision && Date.now() - parseInt(lastPromptTime) < cooldownMs) {
+        console.log('🎯 [Native Prompt] Skipping - within cooldown period after actual prompt', {
+          lastPromptTime: new Date(parseInt(lastPromptTime)).toISOString(),
+          lastDecision,
+          timeRemaining: cooldownMs - (Date.now() - parseInt(lastPromptTime)),
+          bypassHint: 'Add ?prompt=1 to URL to bypass cooldown'
+        });
+        return;
+      }
+
+      console.log('🎯 [Native Prompt] Auto-triggering for user:', {
+        hasNoOneSignalUser: !profile?.onesignal_player_id,
+        hasOneSignalButNotSubscribed: profile?.onesignal_player_id && !profile?.push_subscription_active,
+        needsBrowserPermission: !isGranted,
+        userEmail: user?.email
+      });
     
       // Delay to ensure UI is ready
       setTimeout(async () => {
@@ -102,10 +117,11 @@ const NotificationSetupManager: React.FC = () => {
           
           const result = await requestPermission();
           
-          // Only set cooldown on actual permission attempts (not early returns)
-          if (result.success !== undefined) {
+          // Only set cooldown if we actually attempted a permission request
+          if (result.finalPermission) {
             localStorage.setItem(lastPromptKey, Date.now().toString());
-            console.log('🎯 [Native Prompt] Cooldown set for next attempt');
+            localStorage.setItem(lastDecisionKey, result.finalPermission);
+            console.log('🎯 [Native Prompt] Cooldown set after permission decision:', result.finalPermission);
           }
           
           console.log('🎯 [Native Prompt] Result:', result);
@@ -117,7 +133,9 @@ const NotificationSetupManager: React.FC = () => {
           }
         } catch (error) {
           console.error('🎯 [Native Prompt] ❌ Error:', error);
+          // Only set cooldown on actual errors, not early returns
           localStorage.setItem(lastPromptKey, Date.now().toString());
+          localStorage.setItem(lastDecisionKey, 'error');
         }
       }, 1000);
     };

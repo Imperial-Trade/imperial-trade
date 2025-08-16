@@ -8,7 +8,7 @@ interface NotificationsContextValue {
   hasSubscription: boolean;
   initialized: boolean;
   isIframeBlocked: boolean;
-  requestPermission: () => Promise<{ success: boolean; error?: string; details?: any }>;
+  requestPermission: () => Promise<{ success: boolean; error?: string; details?: any; finalPermission?: string }>;
   browserInfo?: any;
   browserInstructions?: string;
 }

@@ -14,7 +14,7 @@ interface NotificationPermissionState {
 }
 
 interface UseOneSignalEnhancedReturn extends NotificationPermissionState {
-  requestPermission: () => Promise<{ success: boolean; error?: string; details?: any }>;
+  requestPermission: () => Promise<{ success: boolean; error?: string; details?: any; finalPermission?: string }>;
 }
 
 declare global {
@@ -267,7 +267,7 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
   }, [getDeviceInfo]);
 
   // Enhanced permission request with robust fallbacks
-  const requestPermission = useCallback(async (): Promise<{ success: boolean; error?: string; details?: any }> => {
+  const requestPermission = useCallback(async (): Promise<{ success: boolean; error?: string; details?: any; finalPermission?: string }> => {
     try {
       console.log('[OneSignal] Requesting notification permission...');
       
@@ -331,7 +331,7 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
               permission: 'granted'
             }));
             
-            return { success: finalSubscriptionState };
+            return { success: finalSubscriptionState, finalPermission: 'granted' };
           } catch (optInError) {
             console.error('[OneSignal] Opt-in failed:', optInError);
             return { success: false, error: 'Failed to opt-in to push notifications', details: optInError };
@@ -339,7 +339,7 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
         } else {
           // Already subscribed, just sync
           await syncWithSupabase();
-          return { success: true };
+        return { success: true, finalPermission: 'granted' };
         }
       }
 
@@ -400,7 +400,7 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
           duration: 3000,
         });
 
-        return { success: true };
+        return { success: true, finalPermission: permissionResult };
       } else {
         setState(prev => ({
           ...prev,
@@ -420,7 +420,7 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
           duration: 5000,
         });
 
-        return { success: false, error: errorMessage };
+        return { success: false, error: errorMessage, finalPermission: permissionResult };
       }
     } catch (error) {
       console.error('[OneSignal] Permission request failed:', error);

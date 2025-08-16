@@ -46,6 +46,7 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
     { to: "/dashboard/forum", icon: MessageSquare, label: "Forum" },
     { to: "/dashboard/advanced-tools", icon: Wrench, label: "Advanced Tools" },
     { to: "/dashboard/my-progress", icon: TrendingUp, label: "My Progress" },
+    { to: "/dashboard/analytics", icon: Briefcase, label: "Analytics" },
     { to: "/dashboard/athena", icon: Bot, label: "Athena AI" },
   ];
 

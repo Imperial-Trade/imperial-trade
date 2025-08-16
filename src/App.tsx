@@ -53,6 +53,8 @@ import Settings from "@/pages/dashboard/settings/Settings";
 import AdminPanel from "@/pages/dashboard/admin-panel/AdminPanel";
 import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
 import DevTests from "@/pages/dashboard/dev-tests/DevTests";
+import AnalyticsDashboard from "@/pages/AnalyticsDashboard";
+import PhaseManager from "@/pages/PhaseManager";
 
 // Educator Pages
 import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
@@ -204,6 +206,22 @@ function App() {
                           <Route path="settings" element={<Settings />} />
                           <Route path="athena" element={<AthenaTest />} />
                           <Route path="dev-tests" element={<DevTests />} />
+                          <Route 
+                            path="analytics" 
+                            element={
+                              <ProtectedRoute requiredAccessLevel="admin">
+                                <AnalyticsDashboard />
+                              </ProtectedRoute>
+                            } 
+                          />
+                          <Route 
+                            path="phase-manager" 
+                            element={
+                              <ProtectedRoute requiredAccessLevel="admin">
+                                <PhaseManager />
+                              </ProtectedRoute>
+                            } 
+                          />
 
                           <Route
                             path="administration"

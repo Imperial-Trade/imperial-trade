@@ -144,8 +144,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Fetch profile data in background - don't block UI
           setTimeout(() => {
             fetchProfile(session.user.id).then(setProfile);
-            // Check OneSignal subscription status after login
-            checkOneSignalSubscriptionStatus(session.user.id);
+            // Bind user to OneSignal and check subscription status after login
+            bindToOneSignalAndCheck(session.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -154,7 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Handle specific auth events
         if (event === 'SIGNED_IN') {
           console.log('User signed in successfully');
-          // OneSignal upsert is handled via a dedicated effect with deduplication
+          // OneSignal binding and upsert handled in bindToOneSignalAndCheck
         } else if (event === 'SIGNED_OUT') {
           // Skip cleanup if we're manually signing out to prevent race condition
           if (!isSigningOut) {
@@ -177,8 +177,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Load profile in background
           setTimeout(() => {
             fetchProfile(session.user.id).then(setProfile);
-            // Check OneSignal subscription status on initial load
-            checkOneSignalSubscriptionStatus(session.user.id);
+            // Bind to OneSignal and check subscription status on initial load
+            bindToOneSignalAndCheck(session.user.id);
           }, 0);
         }
     });
@@ -208,7 +208,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch {}
   }, [user?.id, user?.email, profile?.role, profile?.user_type]);
 
-  const checkOneSignalSubscriptionStatus = async (userId: string) => {
+  const bindToOneSignalAndCheck = async (userId: string) => {
     try {
       // Check if we've already verified this session
       const sessionKey = `onesignal_verified_${userId}_${Date.now().toString().slice(0, -5)}`;
@@ -216,23 +216,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('push_subscription_active, onesignal_last_verified_at')
-        .eq('id', userId)
-        .single();
+      // Wait for OneSignal to be available
+      let attempts = 0;
+      while (attempts < 20 && (!window.OneSignal || !window.OneSignal.login)) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attempts++;
+      }
 
-      // Skip if recently verified and active
-      if (profile?.push_subscription_active && profile?.onesignal_last_verified_at) {
-        const lastVerified = new Date(profile.onesignal_last_verified_at);
-        const daysSinceVerification = (Date.now() - lastVerified.getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSinceVerification < 7) {
-          sessionStorage.setItem(sessionKey, 'true');
-          return;
+      if (window.OneSignal?.login) {
+        try {
+          // Bind this browser to the OneSignal user
+          console.log('[Auth] Binding browser to OneSignal user:', userId);
+          await window.OneSignal.login(userId);
+          console.log('[Auth] Successfully bound to OneSignal user');
+        } catch (error) {
+          console.warn('[Auth] OneSignal login failed:', error);
         }
       }
 
-      // Verify current OneSignal subscription status
+      // Verify current OneSignal subscription status (this is the source of truth)
       const { data: verificationResult } = await supabase.functions.invoke('onesignal-verify-subscription', {
         body: { user_id: userId }
       });
@@ -240,7 +242,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (verificationResult?.success) {
         const { subscription_status } = verificationResult;
         
-        // Update database with current status
+        // Update database with OneSignal's current status
         await supabase
           .from('profiles')
           .update({
@@ -254,9 +256,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Mark this session as verified
         sessionStorage.setItem(sessionKey, 'true');
         console.log('[Auth] OneSignal subscription verified:', subscription_status.is_subscribed);
+        
+        // Store verification result for use by notification setup
+        sessionStorage.setItem(`onesignal_status_${userId}`, JSON.stringify(subscription_status));
       }
     } catch (error) {
-      console.error('[Auth] Error checking OneSignal subscription:', error);
+      console.error('[Auth] Error binding to OneSignal and checking subscription:', error);
     }
   };
 

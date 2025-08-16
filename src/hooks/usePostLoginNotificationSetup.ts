@@ -46,7 +46,7 @@ export const usePostLoginNotificationSetup = () => {
     }
   }, [setupState]);
 
-  // Check if we should show the notification setup
+  // Check if we should show the notification setup based on OneSignal verification
   const shouldShowSetup = useCallback(async () => {
     // Don't show if user is not logged in or still loading
     if (!user || loading) return false;
@@ -73,15 +73,30 @@ export const usePostLoginNotificationSetup = () => {
     // Check if permission was denied (don't show setup)
     if (Notification.permission === 'denied') return false;
 
-    // Check if already granted (no need to show setup)
-    if (Notification.permission === 'granted') {
-      // Update state to accepted if permission is already granted
-      if (setupState.userDecision === 'pending') {
-        saveState({ userDecision: 'accepted' });
+    // Check OneSignal subscription status (primary source of truth)
+    try {
+      const storedStatus = sessionStorage.getItem(`onesignal_status_${user.id}`);
+      if (storedStatus) {
+        const status = JSON.parse(storedStatus);
+        if (status.is_subscribed) {
+          // Already subscribed according to OneSignal
+          if (setupState.userDecision === 'pending') {
+            saveState({ userDecision: 'accepted' });
+          }
+          return false;
+        }
       }
-      return false;
+    } catch (error) {
+      console.warn('Error checking stored OneSignal status:', error);
     }
 
+    // Check browser permission state
+    if (Notification.permission === 'granted') {
+      // Permission granted but not subscribed to OneSignal - show setup to recover
+      return true;
+    }
+
+    // Permission is 'default' - show setup to request permission
     return true;
   }, [user, loading, setupState, saveState]);
 

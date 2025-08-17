@@ -502,7 +502,7 @@ serve(async (req) => {
             
             if (!price || price <= 0 || isNaN(price)) {
               console.log(`⚠️ Invalid price data for ${tradermadeSymbol}:`, data);
-              continue;
+              return;
             }
             
             // Convert Tradermade symbol to frontend canonical symbol for consistency

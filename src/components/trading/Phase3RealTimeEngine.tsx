@@ -89,7 +89,7 @@ export default function Phase3RealTimeEngine() {
     const connectWebSocket = () => {
       try {
         // Connect to Tradermade WebSocket via our edge function
-        wsRef.current = new WebSocket(`wss://kmuoqkcxguafxulqlbmi.functions.supabase.co/functions/v1/tradermade-streaming`);
+        wsRef.current = new WebSocket(`wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-fix-streaming`);
         
         wsRef.current.onopen = () => {
           console.log('[Phase3] WebSocket connected');

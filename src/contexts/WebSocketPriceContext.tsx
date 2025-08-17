@@ -105,9 +105,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const getReconnectDelay = useCallback(() => {
-    const baseDelay = 5000;
-    const maxDelay = 30000;
-    const delay = Math.min(baseDelay * Math.pow(2, reconnectAttemptsRef.current), maxDelay);
+    const baseDelay = 100; // Start with 100ms for ultra-fast reconnection
+    const maxDelay = 5000; // Max 5 seconds (reduced from 30s)
+    const delay = Math.min(baseDelay * Math.pow(1.5, reconnectAttemptsRef.current), maxDelay);
     return delay;
   }, []);
 
@@ -373,20 +373,20 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   useEffect(() => {
     connect();
     
-    // Health monitoring - check connection every 30 seconds and reconnect if needed
+    // Aggressive health monitoring - check every 5 seconds for ultra-fast recovery
     const healthCheckInterval = setInterval(() => {
       const now = Date.now();
       const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
       
-      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 60000) {
-        console.log('⚠️ No messages received for 60 seconds, reconnecting...');
+      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 15000) {
+        console.log('⚠️ No messages received for 15 seconds, reconnecting...');
         socketRef.current.close();
         connect();
       } else if (socketRef.current?.readyState !== WebSocket.OPEN && socketRef.current?.readyState !== WebSocket.CONNECTING) {
         console.log('🔄 Connection lost, attempting reconnection...');
         connect();
       }
-    }, 30000); // Check every 30 seconds
+    }, 5000); // Check every 5 seconds for faster recovery
 
     return () => {
       clearInterval(healthCheckInterval);
@@ -403,7 +403,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     };
   }, [connect]);
 
-  // One-second stale tick refresher: ensure <=1.2s between updates by nudging the stream
+  // Ultra-fast stale tick prevention: ensure <=500ms between updates
   useEffect(() => {
     if (connectionStatus !== 'connected') return;
     const interval = setInterval(() => {
@@ -417,9 +417,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           return;
         }
         const lastTick = pd?.tick_timestamp ?? (pd?.timestamp ? Date.parse(pd.timestamp) : 0);
-        const isStale = !lastTick || now - lastTick > 1200;
+        const isStale = !lastTick || now - lastTick > 500; // Reduced from 1200ms to 500ms
         const lastAttempt = lastRefreshAttemptRef.current.get(symbol) || 0;
-        if (isStale && now - lastAttempt > 1200) {
+        if (isStale && now - lastAttempt > 500) { // Reduced from 1200ms to 500ms
           lastRefreshAttemptRef.current.set(symbol, now);
           try {
             // Light-touch: re-subscribe the symbol to prompt a fresh tick
@@ -429,7 +429,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           }
         }
       });
-    }, 1000);
+    }, 250); // Check every 250ms for ultra-fast refresh
     return () => clearInterval(interval);
   }, [connectionStatus, prices, refreshPrice]);
 

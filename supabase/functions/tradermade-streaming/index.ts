@@ -412,7 +412,7 @@ serve(async (req) => {
             }
           }
           
-          // Send ultra-fast institutional-grade tick prices every 250ms for all subscribed symbols
+          // Send ultra-fast institutional-grade tick prices every 100ms for all subscribed symbols
           if (socket.readyState === WebSocket.OPEN && clientSubscriptions.size > 0) {
             console.log('⚡ Sending ULTRA-FAST tick prices for', clientSubscriptions.size, 'symbols');
             for (const symbol of clientSubscriptions) {
@@ -425,7 +425,7 @@ serve(async (req) => {
                   tick_timestamp: Date.now(),
                   is_institutional_tick: true,
                   is_ultra_fast_tick: true,
-                  update_frequency: '250ms'
+                  update_frequency: '100ms'
                 };
                 socket.send(JSON.stringify(tickData));
                 console.log(`⚡ ULTRA-FAST TICK: ${symbol} = $${cached.price} @ ${new Date().toISOString()}`);
@@ -439,7 +439,7 @@ serve(async (req) => {
                       tick_timestamp: Date.now(),
                       is_institutional_tick: true,
                       is_ultra_fast_tick: true,
-                      update_frequency: '250ms'
+                      update_frequency: '100ms'
                     };
                     socket.send(JSON.stringify(tickData));
                     console.log(`⚡ FRESH ULTRA-FAST TICK: ${symbol} = $${data.price} @ ${new Date().toISOString()}`);
@@ -448,7 +448,7 @@ serve(async (req) => {
               }
             }
           }
-        }, 250); // Ultra-fast 250ms tick intervals
+        }, 100); // Ultra-fast 100ms tick intervals
 
         // Notify client of connection
         if (socket.readyState === WebSocket.OPEN) {

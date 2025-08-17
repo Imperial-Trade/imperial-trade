@@ -1,7 +1,10 @@
 /**
  * Professional FIX Protocol Service for TraderMade API
  * Implements institutional-grade price streaming with microsecond precision
+ * Now integrated with Phase 3: Smart Caching & Real-Time Distribution
  */
+import { institutionalPriceCache } from './InstitutionalPriceCache';
+import { priceDistributionEngine } from './PriceDistributionEngine';
 
 interface FIXMessage {
   messageType: string;
@@ -209,7 +212,7 @@ export class FIXPriceService {
   }
 
   /**
-   * Process price update with institutional-grade validation
+   * Process price update with institutional-grade validation and caching
    */
   private processPriceUpdate(message: FIXMessage): void {
     const { symbol, bid, ask, timestamp, sequence } = message;
@@ -225,13 +228,40 @@ export class FIXPriceService {
     // Calculate mid price
     const midPrice = (bid + ask) / 2;
     
-    // Update cache with microsecond precision
+    // Store in institutional price cache
+    institutionalPriceCache.setPriceData(symbol, {
+      price: midPrice,
+      bid,
+      ask,
+      timestamp,
+      sequence,
+      source: 'fix'
+    });
+
+    // Update local cache with microsecond precision
     this.priceCache.set(symbol, {
       price: midPrice,
       bid,
       ask,
       timestamp
     });
+
+    // Get enhanced data from institutional cache for distribution
+    const cachedData = institutionalPriceCache.getPrice(symbol);
+    if (cachedData) {
+      // Distribute through high-performance distribution engine
+      priceDistributionEngine.distributePrice(symbol, {
+        price: midPrice,
+        bid,
+        ask,
+        timestamp,
+        source: 'fix',
+        volatility: cachedData.volatility,
+        trend: cachedData.trend,
+        sessionActive: cachedData.sessionActive,
+        confidence: cachedData.confidence
+      });
+    }
 
     // Notify all subscribers with zero latency
     this.subscribers.forEach(callback => {
@@ -393,9 +423,21 @@ export class FIXPriceService {
   }
 
   /**
-   * Get cached price data
+   * Get cached price data with institutional enhancements
    */
   getPrice(symbol: string): { price: number; bid: number; ask: number; timestamp: number } | null {
+    // Try institutional cache first for enhanced data
+    const cachedData = institutionalPriceCache.getPrice(symbol);
+    if (cachedData) {
+      return {
+        price: cachedData.price,
+        bid: cachedData.bid,
+        ask: cachedData.ask,
+        timestamp: cachedData.timestamp
+      };
+    }
+    
+    // Fallback to local cache
     return this.priceCache.get(symbol) || null;
   }
 
@@ -418,7 +460,7 @@ export class FIXPriceService {
   }
 
   /**
-   * Shutdown all connections
+   * Shutdown all connections and cleanup caches
    */
   shutdown(): void {
     console.log('🛑 Shutting down FIX Price Service...');
@@ -430,6 +472,10 @@ export class FIXPriceService {
     this.subscribers.clear();
     this.priceCache.clear();
     this.sequenceNumbers.clear();
+    
+    // Shutdown integrated services
+    institutionalPriceCache.shutdown();
+    priceDistributionEngine.shutdown();
     
     console.log('✅ FIX Price Service shutdown complete');
   }

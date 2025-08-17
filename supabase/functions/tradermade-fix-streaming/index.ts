@@ -130,10 +130,31 @@ async function createTraderMadeConnection(apiKeyIndex: number): Promise<void> {
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
+        // Handle both JSON and plain text messages from TraderMade
+        let data;
+        
+        if (typeof event.data === 'string') {
+          // Check if it's a plain text status message
+          if (event.data === 'Connected' || event.data.startsWith('Subscription')) {
+            console.log(`📡 TraderMade status: ${event.data} (API key ${apiKeyIndex})`);
+            markApiKeySuccess(apiKeyIndex);
+            return;
+          }
+          
+          // Try to parse as JSON
+          try {
+            data = JSON.parse(event.data);
+          } catch (parseError) {
+            console.log(`📡 TraderMade text message (API key ${apiKeyIndex}): ${event.data}`);
+            return;
+          }
+        } else {
+          data = event.data;
+        }
+        
         handleTraderMadeMessage(data, apiKeyIndex);
       } catch (error) {
-        console.error(`❌ Failed to parse TraderMade message (API key ${apiKeyIndex}):`, error);
+        console.error(`❌ Failed to process TraderMade message (API key ${apiKeyIndex}):`, error);
       }
     };
 

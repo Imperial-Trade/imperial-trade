@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, R
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { useThrottledPrice } from '@/hooks/useThrottledPrice';
 import { useConnectionStabilizer } from '@/hooks/useConnectionStabilizer';
+import { ZeroLatencyLivePriceWidget } from './ZeroLatencyLivePriceWidget';
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
   if (!symbol) return {
@@ -50,6 +51,22 @@ const LivePriceWidgetComponent = ({
   onStopLossHit,
   onOrderActivation
 }) => {
+  // Feature flag: Use zero-latency engine for institutional-grade performance
+  const useZeroLatencyEngine = true;
+
+  // If zero-latency is enabled, use the new widget
+  if (useZeroLatencyEngine) {
+    return (
+      <ZeroLatencyLivePriceWidget
+        alert={alert}
+        onTakeProfitHit={onTakeProfitHit}
+        onStopLossHit={onStopLossHit}
+        onOrderActivation={onOrderActivation}
+      />
+    );
+  }
+
+  // Fallback to standard implementation for compatibility
   // ZERO throttling/debouncing for institutional-grade sub-50ms latency
   const {
     price: currentPrice,

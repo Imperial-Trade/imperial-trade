@@ -17,20 +17,20 @@ import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { usePublicProfiles } from '@/hooks/usePublicProfiles';
 import { useSignalPermissions } from '@/hooks/useSignalPermissions';
 import { useStabilizedSignalOperations } from '@/hooks/useStabilizedSignalOperations';
-
 export default function SignalStream() {
   // Performance monitoring
   useRenderOptimization('SignalStream');
-  
+
   // Initialize optimized instant alerts (separate from trading operations)
-  const { isConnected: alertsConnected } = useOptimizedInstantAlerts({
+  const {
+    isConnected: alertsConnected
+  } = useOptimizedInstantAlerts({
     enableAudioNotifications: true,
     enableBrowserNotifications: true,
     enableToastNotifications: true,
     maxRetries: 3,
     baseRetryDelay: 2000
   });
-  
   const {
     user,
     profile
@@ -57,12 +57,12 @@ export default function SignalStream() {
   } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
 
   // Use centralized permission management
-  const { 
-    isAdmin, 
-    isEducator, 
-    canCreateSignals, 
-    canEditSignal, 
-    validateAction 
+  const {
+    isAdmin,
+    isEducator,
+    canCreateSignals,
+    canEditSignal,
+    validateAction
   } = useSignalPermissions();
 
   // Fetch public profiles for all creators to prevent "Unknown User"
@@ -75,20 +75,20 @@ export default function SignalStream() {
     });
     return Array.from(ids);
   }, [allAlerts]);
-
-  const { profilesMap } = usePublicProfiles(creatorIds);
+  const {
+    profilesMap
+  } = usePublicProfiles(creatorIds);
 
   // Apply user filters directly to all alerts - optimized processing
   const alerts = useMemo(() => {
     console.log('SignalStream - Processing alerts:', allAlerts.length);
-    
+
     // Early return if no alerts
     if (allAlerts.length === 0) return [];
 
     // Single pass enrichment and filtering
     const result = [];
     const searchLower = filters.search?.toLowerCase();
-    
     for (const alert of allAlerts) {
       // Enrich creator data
       const cid = alert.creator?.id;
@@ -110,15 +110,9 @@ export default function SignalStream() {
       if (filters.educator && filters.educator !== enrichedAlert.creator?.id) continue;
       if (filters.status && enrichedAlert.status !== filters.status) continue;
       if (filters.tradeType && !enrichedAlert.tradeType.includes(filters.tradeType)) continue;
-      if (searchLower && !(
-        enrichedAlert.assetName.toLowerCase().includes(searchLower) ||
-        enrichedAlert.tradermadeSymbol.toLowerCase().includes(searchLower) ||
-        enrichedAlert.creator?.display_name?.toLowerCase().includes(searchLower)
-      )) continue;
-
+      if (searchLower && !(enrichedAlert.assetName.toLowerCase().includes(searchLower) || enrichedAlert.tradermadeSymbol.toLowerCase().includes(searchLower) || enrichedAlert.creator?.display_name?.toLowerCase().includes(searchLower))) continue;
       result.push(enrichedAlert);
     }
-    
     return result;
   }, [allAlerts, filters.search, filters.status, filters.tradeType, filters.educator, profilesMap]);
 
@@ -155,13 +149,14 @@ export default function SignalStream() {
       if (!cid) continue;
       if (alert.creator && (alert.creator.user_type === 'educator' || alert.creator.access_level === 'admin' || alert.creator.role === 'admin')) {
         const prof = profilesMap[cid];
-        const name = (prof?.display_name ?? alert.creator.display_name ?? 'Unknown Educator');
-        educatorsMap.set(cid, { id: cid, name });
+        const name = prof?.display_name ?? alert.creator.display_name ?? 'Unknown Educator';
+        educatorsMap.set(cid, {
+          id: cid,
+          name
+        });
       }
     }
-
     const educatorsList = Array.from(educatorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-
     return {
       activeAlerts: active,
       closedAlerts: closed,
@@ -175,7 +170,6 @@ export default function SignalStream() {
       }
     };
   }, [alerts, allAlerts, profilesMap]);
-
   const sortedClosedAlerts = useMemo(() => {
     return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
   }, [closedAlerts]);
@@ -189,27 +183,28 @@ export default function SignalStream() {
       }
     }
     const symbolList = Array.from(symbolSet);
-    
+
     // Only log in development to reduce console noise
     if (process.env.NODE_ENV === 'development') {
       console.log('SignalStream - Final symbols for price feed:', symbolList);
     }
-    
     return symbolList;
   }, [activeAlerts]);
 
   // Use throttled WebSocket price subscription to reduce render frequency
-  const { connectionStatus: priceConnectionStatus } = useThrottledWebSocketPrice(symbols, {
-    throttleMs: 250, // Batch subscriptions for 250ms
+  const {
+    connectionStatus: priceConnectionStatus
+  } = useThrottledWebSocketPrice(symbols, {
+    throttleMs: 250,
+    // Batch subscriptions for 250ms
     enableBatching: true
   });
-  
+
   // Use 'WebSocket' as price source for compatibility
   const priceSource = 'WebSocket';
 
   // Remove local updateInProgress state - now handled by stabilized operations
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);
-
   useEffect(() => {
     if (connectionStatus === 'connecting' && nextRetryAt) {
       const update = () => {
@@ -223,7 +218,6 @@ export default function SignalStream() {
       setReconnectIn(null);
     }
   }, [connectionStatus, nextRetryAt]);
-
   const getConnectionStatusBadge = () => {
     switch (connectionStatus) {
       case 'connected':
@@ -258,7 +252,6 @@ export default function SignalStream() {
     updateAlert,
     addNotification: (window as any).addNotification
   });
-
   return <div className="min-h-screen bg-background w-full">
       <NotificationSystem />
       
@@ -276,16 +269,9 @@ export default function SignalStream() {
                   <span className="truncate">Educational Contributors</span>
                 </Badge>
               </div>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Educational market analysis patterns with reference pricing from verified educational contributors
-              </p>
+              
             </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-              {getConnectionStatusBadge()}
-              {lastUpdated && <span className="text-xs text-muted-foreground">
-                  Last update: {lastUpdated.toLocaleTimeString()}
-                </span>}
-            </div>
+            
           </div>
         </div>
       </div>
@@ -295,36 +281,22 @@ export default function SignalStream() {
         <div className="max-w-none w-full">
           <div className="w-full">
             {/* Reconnect banner when we have data */}
-            {connectionStatus === 'connecting' && allAlerts.length > 0 && (
-              <div className="mb-3 flex items-center gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-yellow-300">
+            {connectionStatus === 'connecting' && allAlerts.length > 0 && <div className="mb-3 flex items-center gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-yellow-300">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Reconnecting…</span>
-                {typeof reconnectIn === 'number' && reconnectIn > 0 && (
-                  <span className="text-xs text-yellow-200/80">Retrying in {reconnectIn}s</span>
-                )}
-              </div>
-            )}
+                {typeof reconnectIn === 'number' && reconnectIn > 0 && <span className="text-xs text-yellow-200/80">Retrying in {reconnectIn}s</span>}
+              </div>}
             {/* Enhanced Filters */}
-            <SignalStreamFilters 
-              filters={filters} 
-              onFiltersChange={setFilters} 
-              educatorOptions={educatorOptions} 
-              signalCounts={signalCounts}
-              canCreateSignals={canCreateSignals}
-              onCreateSignal={() => navigate('/dashboard/new-signal')}
-            />
-            {(isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0)) ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
+            <SignalStreamFilters filters={filters} onFiltersChange={setFilters} educatorOptions={educatorOptions} signalCounts={signalCounts} canCreateSignals={canCreateSignals} onCreateSignal={() => navigate('/dashboard/new-signal')} />
+            {isLoading || connectionStatus !== 'connected' && allAlerts.length === 0 ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                {Array.from({
+              length: 6
+            }).map((_, i) => <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
                     <div className="h-4 w-1/3 bg-muted rounded mb-3" />
                     <div className="h-6 w-2/3 bg-muted rounded mb-4" />
                     <div className="h-24 w-full bg-muted rounded" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-6">
+                  </div>)}
+              </div> : <div className="space-y-6">
                 <div>
                   <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
                     Educational Market Patterns ({activeAlerts.length})
@@ -376,7 +348,7 @@ export default function SignalStream() {
                       <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
                     </div>}
                 </div>
-              </div>)}
+              </div>}
           </div>
 
           {/* Economic Sidebar - Optimized positioning and visibility */}

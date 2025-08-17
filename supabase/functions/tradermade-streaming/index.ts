@@ -826,6 +826,41 @@ serve(async (req) => {
 
       if (error) {
         console.error(`❌ Error storing price for ${symbol}:`, error);
+      } else {
+        // **PHASE 1: IMMEDIATE REAL-TIME TRIGGER** 
+        // Immediately trigger xeon-stream-processor for fresh price data
+        console.log(`🚀 REAL-TIME TRIGGER: Fresh price for ${symbol} = $${mid} - triggering immediate processing`);
+        
+        // Use background task to avoid blocking the WebSocket
+        try {
+          const processorResponse = await fetch(
+            'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/xeon-stream-processor',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                'User-Agent': 'Real-Time-Price-Trigger/1.0'
+              },
+              body: JSON.stringify({
+                trigger_source: 'websocket_fresh_price',
+                symbol: symbol,
+                price: mid,
+                timestamp: timestamp.toISOString()
+              })
+            }
+          );
+          
+          if (processorResponse.ok) {
+            const result = await processorResponse.json();
+            console.log(`✅ Real-time processing triggered: ${result.processed || 0} trades processed`);
+          } else {
+            console.warn(`⚠️ Real-time trigger failed: ${processorResponse.status}`);
+          }
+        } catch (triggerError) {
+          console.error('❌ Real-time trigger error:', triggerError.message);
+          // Don't fail the main process if trigger fails
+        }
       }
     } catch (error) {
       console.error(`❌ Exception storing price for ${symbol}:`, error);

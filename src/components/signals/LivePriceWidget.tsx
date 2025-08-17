@@ -3,7 +3,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
-import { useThrottledPrice } from '@/hooks/useThrottledPrice';
 import { useConnectionStabilizer } from '@/hooks/useConnectionStabilizer';
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
@@ -64,20 +63,17 @@ const LivePriceWidgetComponent = ({
     refreshPrice
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
-    debounceMs: 50, // Slightly increased for better performance
+    debounceMs: 0, // Zero debounce for real-time updates
     pauseOnInput: false
   });
 
-  // Throttle price updates to reduce render frequency
-  const { price: currentPrice } = useThrottledPrice(rawPrice, {
-    throttleMs: 100,
-    maxUpdatesPerSecond: 8
-  });
+  // Use raw price directly for ultra-fast updates
+  const currentPrice = rawPrice;
 
   // Stabilize connection status to prevent rapid UI changes
   const { status: connectionStatus } = useConnectionStabilizer(rawConnectionStatus, {
-    debounceMs: 500,
-    stabilityThreshold: 1500
+    debounceMs: 100,
+    stabilityThreshold: 300
   });
 
   const [priceChange, setPriceChange] = useState(null);

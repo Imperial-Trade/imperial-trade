@@ -17,11 +17,12 @@ interface TradeAlert {
   tp3?: number;
   tp4?: number;
   tp5?: number;
-  tp_hit_mask: number;
+  tp_hit_mask?: number;
+  tp_hits?: number[];
   asset_name: string;
-  provider_name: string;
+  provider_name?: string;
   status: string;
-  is_xeon_stream: boolean;
+  is_xeon_stream?: boolean;
 }
 
 interface PriceData {
@@ -52,11 +53,10 @@ serve(async (req) => {
 
     console.log('🚀 Starting Xeon Stream signal processing...');
 
-    // Get all active Xeon Stream trades
+    // Get all active trades (not just Xeon Stream) for broader compatibility
     const { data: activeTrades, error: tradesError } = await supabase
       .from('trade_alerts')
       .select('*')
-      .eq('is_xeon_stream', true)
       .eq('status', 'active');
 
     if (tradesError) {
@@ -65,7 +65,7 @@ serve(async (req) => {
     }
 
     if (!activeTrades || activeTrades.length === 0) {
-      console.log('📊 No active Xeon Stream trades found');
+      console.log('📊 No active trades found');
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -134,17 +134,17 @@ serve(async (req) => {
       const tpPrice = isBuyTrade ? currentPrice.ask : currentPrice.bid; // Price we can sell at (buy) or buy at (sell)
       const slPrice = isBuyTrade ? currentPrice.bid : currentPrice.ask; // Price we're forced to exit at
 
-      console.log(`🔍 Processing ${trade.asset_name} (${trade.tradermade_symbol}): TP=${tpPrice}, SL=${slPrice}`);
+      console.log(`🔍 Processing ${trade.asset_name} (${trade.tradermade_symbol}): Entry=${trade.entry_price}, Current TP=${tpPrice}, SL=${slPrice}, Trade Type=${trade.trade_type}`);
 
-      // Check stop loss first (use SL price)
+      // Check stop loss first (use SL price) - this will close the trade immediately
       const slHit = checkStopLoss(trade, slPrice, isBuyTrade);
       if (slHit) {
-        console.log(`🔴 Stop Loss hit for ${trade.asset_name} at ${slPrice}`);
+        console.log(`🔴 Stop Loss hit for ${trade.asset_name} at ${slPrice} (Entry: ${trade.entry_price})`);
         
         // Check if any TPs were hit before SL
-        const hadProfitableTps = trade.tp_hit_mask > 0;
+        const hadProfitableTps = (trade.tp_hit_mask && trade.tp_hit_mask > 0) || (trade.tp_hits && trade.tp_hits.length > 0);
         
-        await closeTrade(supabase, trade.id, hadProfitableTps ? 'sl_after_tp' : 'stop_loss');
+        await closeTrade(supabase, trade.id, hadProfitableTps ? 'reversal_after_tp' : 'stop_loss');
         
         const notification = createStopLossNotification(
           trade, 
@@ -156,17 +156,19 @@ serve(async (req) => {
         continue;
       }
 
-      // Check take profit levels using bitmask processing (use TP price)
+      // Check take profit levels - this will mark TPs as hit and potentially close trade if all TPs hit
       const tpResult = await processTakeProfits(supabase, trade, tpPrice, isBuyTrade);
       
       if (tpResult.notifications.length > 0) {
+        console.log(`✅ ${tpResult.notifications.length} TP notifications generated for ${trade.asset_name}`);
         notifications.push(...tpResult.notifications);
         processedCount++;
         
-        // If all TPs hit, close the trade
+        // If all TPs hit, close the trade with success
         if (tpResult.allTpsHit) {
-          console.log(`🎯 All TPs hit for ${trade.asset_name}, closing trade`);
-          await closeTrade(supabase, trade.id, 'all_tp_hit');
+          console.log(`🎯 All TPs hit for ${trade.asset_name}, closing trade with success`);
+          const highestTP = getHighestTpLevel(trade);
+          await closeTrade(supabase, trade.id, `tp${highestTP}`);
         }
       }
     }
@@ -299,12 +301,25 @@ function checkStopLoss(trade: TradeAlert, currentPrice: number, isBuyTrade: bool
     currentPrice >= trade.stop_loss;
 }
 
+function getHighestTpLevel(trade: TradeAlert): number {
+  // Check which TP levels are defined and find the highest one
+  const tpLevels = [];
+  if (trade.tp1) tpLevels.push(1);
+  if (trade.tp2) tpLevels.push(2);
+  if (trade.tp3) tpLevels.push(3);
+  if (trade.tp4) tpLevels.push(4);
+  if (trade.tp5) tpLevels.push(5);
+  
+  return tpLevels.length > 0 ? Math.max(...tpLevels) : 1;
+}
+
 async function processTakeProfits(
   supabase: any, 
   trade: TradeAlert, 
   currentPrice: number, 
   isBuyTrade: boolean
 ): Promise<{ notifications: any[], allTpsHit: boolean }> {
+  // Try using the optimized RPC function first
   const { data: result, error } = await supabase.rpc('process_tp_hits', {
     p_trade_id: trade.id,
     p_current_price: currentPrice,
@@ -312,14 +327,16 @@ async function processTakeProfits(
   });
 
   if (error) {
-    console.error('❌ Error processing TP hits:', error);
-    return { notifications: [], allTpsHit: false };
+    console.error('❌ Error with RPC process_tp_hits, falling back to manual processing:', error);
+    return await manualTpProcessing(supabase, trade, currentPrice, isBuyTrade);
   }
 
   const notifications: any[] = [];
 
   // Create notifications for newly hit TPs
   if (result.tp_hits_this_cycle && result.tp_hits_this_cycle.length > 0) {
+    console.log(`🎯 RPC detected TP hits for ${trade.asset_name}: [${result.tp_hits_this_cycle.join(', ')}]`);
+    
     for (const tpLevel of result.tp_hits_this_cycle) {
       const notification = createTakeProfitNotification(trade, tpLevel, currentPrice);
       notifications.push(notification);
@@ -336,6 +353,71 @@ async function processTakeProfits(
     notifications, 
     allTpsHit: result.all_tps_hit || false 
   };
+}
+
+async function manualTpProcessing(
+  supabase: any,
+  trade: TradeAlert,
+  currentPrice: number,
+  isBuyTrade: boolean
+): Promise<{ notifications: any[], allTpsHit: boolean }> {
+  const notifications: any[] = [];
+  const currentTpHits = trade.tp_hits || [];
+  const newTpHits = [...currentTpHits];
+  
+  // Check each TP level
+  const tpLevels = [
+    { level: 1, price: trade.tp1 },
+    { level: 2, price: trade.tp2 },
+    { level: 3, price: trade.tp3 },
+    { level: 4, price: trade.tp4 },
+    { level: 5, price: trade.tp5 }
+  ];
+  
+  let newHitsThisCycle = [];
+  
+  for (const tp of tpLevels) {
+    if (!tp.price || currentTpHits.includes(tp.level)) continue;
+    
+    const tpHit = isBuyTrade ? 
+      currentPrice >= tp.price : 
+      currentPrice <= tp.price;
+      
+    if (tpHit) {
+      console.log(`🎯 Manual TP${tp.level} hit for ${trade.asset_name} at ${currentPrice} (target: ${tp.price})`);
+      newTpHits.push(tp.level);
+      newHitsThisCycle.push(tp.level);
+      
+      const notification = createTakeProfitNotification(trade, tp.level, currentPrice);
+      notifications.push(notification);
+    }
+  }
+  
+  // Update the database if we have new hits
+  if (newHitsThisCycle.length > 0) {
+    const { error: updateError } = await supabase
+      .from('trade_alerts')
+      .update({
+        tp_hits: newTpHits,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', trade.id);
+      
+    if (updateError) {
+      console.error('❌ Error updating TP hits:', updateError);
+    }
+  }
+  
+  // Check if all defined TPs are hit
+  const definedTpCount = tpLevels.filter(tp => tp.price).length;
+  const allTpsHit = definedTpCount > 0 && newTpHits.length >= definedTpCount;
+  
+  if (allTpsHit && newHitsThisCycle.length > 0) {
+    const finalNotification = createAllTpHitNotification(trade, currentPrice);
+    notifications.push(finalNotification);
+  }
+  
+  return { notifications, allTpsHit };
 }
 
 async function closeTrade(supabase: any, tradeId: string, closeReason: string): Promise<void> {

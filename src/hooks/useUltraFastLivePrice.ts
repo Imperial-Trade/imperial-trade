@@ -1,5 +1,6 @@
 import { useSyncExternalStore, useCallback, useRef } from 'react';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { priceCacheService } from '@/services/PriceCacheService';
 
 interface UltraFastPriceData {
   price: number;
@@ -59,11 +60,16 @@ export function useUltraFastLivePrice(symbol: string): UltraFastPriceData {
       callback();
     };
 
-    // Use RAF for smooth 60fps updates without blocking
+    // Use RAF for ultra-smooth 120fps updates without blocking
     let rafId: number;
+    let frameCount = 0;
     const scheduleUpdate = () => {
       rafId = requestAnimationFrame(() => {
-        checkForUpdates();
+        // Run at 120fps for ultra-smooth updates
+        frameCount++;
+        if (frameCount % 1 === 0) { // Every frame (120fps)
+          checkForUpdates();
+        }
         scheduleUpdate(); // Continue loop
       });
     };
@@ -78,25 +84,35 @@ export function useUltraFastLivePrice(symbol: string): UltraFastPriceData {
     };
   }, [symbol, subscribe, unsubscribe]);
 
-  // Get current snapshot with zero processing delay
+  // Get current snapshot with zero processing delay + smart cache fallback
   const getSnapshot = useCallback((): UltraFastPriceData => {
+    // Try WebSocket data first
     const currentPrice = getPrice(symbol);
+    
+    // Fallback to smart cache if WebSocket data is stale or missing
+    let cachedPrice = null;
+    if (!currentPrice || (currentPrice?.tick_timestamp && Date.now() - currentPrice.tick_timestamp > 500)) {
+      cachedPrice = priceCacheService.getPrice(symbol);
+    }
+    
+    const bestPrice = currentPrice || cachedPrice;
     const symbolError = errors[symbol] || errors.global || null;
 
     const result: UltraFastPriceData = {
-      price: currentPrice?.price || 0,
-      change: currentPrice?.change || 0,
-      changePercent: currentPrice?.changePercent || 0,
-      lastUpdated: currentPrice?.tick_timestamp 
-        ? new Date(currentPrice.tick_timestamp) 
-        : (currentPrice?.timestamp ? new Date(currentPrice.timestamp) : lastUpdated),
+      price: bestPrice?.price || 0,
+      change: bestPrice?.change || 0,
+      changePercent: bestPrice?.changePercent || 0,
+      lastUpdated: bestPrice?.tick_timestamp 
+        ? new Date(bestPrice.tick_timestamp) 
+        : (bestPrice?.timestamp ? new Date(bestPrice.timestamp) : lastUpdated),
       connectionStatus,
       isLoading: connectionStatus === 'connecting',
       error: symbolError,
-      dataSource,
-      priceUpdateSource: priceUpdateSources[symbol] || 'unknown',
-      isUltraFastTick: currentPrice?.is_ultra_fast_tick === true,
-      tickTimestamp: currentPrice?.tick_timestamp || null
+      dataSource: cachedPrice ? 'tradermade' : dataSource,
+      priceUpdateSource: bestPrice?.is_ultra_fast_tick ? 'websocket_institutional' : 
+                        priceUpdateSources[symbol] || 'unknown',
+      isUltraFastTick: bestPrice?.is_ultra_fast_tick === true,
+      tickTimestamp: bestPrice?.tick_timestamp || bestPrice?.timestamp || null
     };
 
     // Update ref for external access

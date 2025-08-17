@@ -425,7 +425,7 @@ serve(async (req) => {
                   tick_timestamp: Date.now(),
                   is_institutional_tick: true,
                   is_ultra_fast_tick: true,
-                  update_frequency: '100ms'
+                  update_frequency: '50ms'
                 };
                 socket.send(JSON.stringify(tickData));
                 console.log(`⚡ ULTRA-FAST TICK: ${symbol} = $${cached.price} @ ${new Date().toISOString()}`);
@@ -439,7 +439,7 @@ serve(async (req) => {
                       tick_timestamp: Date.now(),
                       is_institutional_tick: true,
                       is_ultra_fast_tick: true,
-                      update_frequency: '100ms'
+                      update_frequency: '50ms'
                     };
                     socket.send(JSON.stringify(tickData));
                     console.log(`⚡ FRESH ULTRA-FAST TICK: ${symbol} = $${data.price} @ ${new Date().toISOString()}`);
@@ -448,7 +448,7 @@ serve(async (req) => {
               }
             }
           }
-        }, 100); // Ultra-fast 100ms tick intervals
+        }, 50); // Ultra-fast 50ms tick intervals for real-time trading
 
         // Notify client of connection
         if (socket.readyState === WebSocket.OPEN) {

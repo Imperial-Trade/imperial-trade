@@ -1,0 +1,12 @@
+# OneSignal Service Worker Performance Headers
+<Files "OneSignalSDKWorker.js">
+    Header set Content-Type "application/javascript; charset=utf-8"
+    Header set Cache-Control "public, max-age=86400"
+    Header set Service-Worker-Allowed "/push/onesignal/"
+</Files>
+
+<Files "OneSignalSDKUpdaterWorker.js">
+    Header set Content-Type "application/javascript; charset=utf-8"
+    Header set Cache-Control "public, max-age=86400"
+    Header set Service-Worker-Allowed "/push/onesignal/"
+</Files>

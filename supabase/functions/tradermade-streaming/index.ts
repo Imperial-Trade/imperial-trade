@@ -536,7 +536,25 @@ serve(async (req) => {
             setCachedPrice(frontendSymbol, priceUpdate);
 
             // Store price in database for signal processing
-            await storePriceInDatabase(tradermadeSymbol, bid, ask, price, new Date(data.ts || data.timestamp || Date.now()));
+            const safeTimestamp = (() => {
+              const rawTs = data.ts || data.timestamp;
+              if (!rawTs) return new Date();
+              
+              // Convert string timestamps that are actually numbers
+              if (typeof rawTs === 'string' && /^\d+$/.test(rawTs)) {
+                const numTs = Number(rawTs);
+                // Check if it's a reasonable timestamp (after year 2000, before year 3000)
+                if (numTs > 946684800000 && numTs < 32503680000000) {
+                  return new Date(numTs);
+                }
+              }
+              
+              // Try parsing as-is for ISO strings
+              const parsed = new Date(rawTs);
+              return isNaN(parsed.getTime()) ? new Date() : parsed;
+            })();
+            
+            await storePriceInDatabase(tradermadeSymbol, bid, ask, price, safeTimestamp);
 
             // Send to client if subscribed (check both symbol formats)
             if ((clientSubscriptions.has(tradermadeSymbol) || clientSubscriptions.has(frontendSymbol)) && socket.readyState === WebSocket.OPEN) {
@@ -779,6 +797,12 @@ serve(async (req) => {
   // Function to store prices in database for signal processing
   async function storePriceInDatabase(symbol: string, bid: number, ask: number, mid: number, timestamp: Date): Promise<void> {
     try {
+      // Guard against invalid Date objects
+      if (isNaN(timestamp.getTime())) {
+        console.warn(`⚠️ Invalid timestamp for ${symbol}, using current time`);
+        timestamp = new Date();
+      }
+
       const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.55.0');
       const supabase = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',

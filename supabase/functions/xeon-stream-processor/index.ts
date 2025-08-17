@@ -214,7 +214,7 @@ async function fetchStoredPrices(supabase: any, symbols: string[]): Promise<Reco
       .from('market_prices')
       .select('*')
       .in('symbol', symbols)
-      .gte('timestamp', new Date(Date.now() - 30000).toISOString()); // Only use prices from last 30 seconds
+      .gte('timestamp', new Date(Date.now() - 60000).toISOString()); // Only use prices from last 60 seconds
 
     if (error) {
       console.error('❌ Error fetching stored prices:', error);

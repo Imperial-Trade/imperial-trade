@@ -489,8 +489,11 @@ serve(async (req) => {
             
             // Calculate mid price from available data
             let price = data.mid || data.price;
-            if (!price && data.bid && data.ask) {
-              price = (parseFloat(data.bid) + parseFloat(data.ask)) / 2;
+            const bid = parseFloat(data.bid) || price;
+            const ask = parseFloat(data.ask) || price;
+            
+            if (!price && bid && ask) {
+              price = (bid + ask) / 2;
             } else if (!price) {
               price = data.bid || data.ask;
             }
@@ -531,6 +534,9 @@ serve(async (req) => {
             
             // Also cache using frontend symbol for client access
             setCachedPrice(frontendSymbol, priceUpdate);
+
+            // Store price in database for signal processing
+            await storePriceInDatabase(tradermadeSymbol, bid, ask, price, new Date(data.ts || data.timestamp || Date.now()));
 
             // Send to client if subscribed (check both symbol formats)
             if ((clientSubscriptions.has(tradermadeSymbol) || clientSubscriptions.has(frontendSymbol)) && socket.readyState === WebSocket.OPEN) {
@@ -769,6 +775,31 @@ serve(async (req) => {
       url: socket.url
     });
   };
+
+  // Function to store prices in database for signal processing
+  async function storePriceInDatabase(symbol: string, bid: number, ask: number, mid: number, timestamp: Date): Promise<void> {
+    try {
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.55.0');
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      const { error } = await supabase.rpc('upsert_market_price', {
+        p_symbol: symbol,
+        p_bid: bid,
+        p_ask: ask,
+        p_mid: mid,
+        p_timestamp: timestamp.toISOString()
+      });
+
+      if (error) {
+        console.error(`❌ Error storing price for ${symbol}:`, error);
+      }
+    } catch (error) {
+      console.error(`❌ Exception storing price for ${symbol}:`, error);
+    }
+  }
 
   return response;
 });

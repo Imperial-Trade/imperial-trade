@@ -1076,6 +1076,42 @@ export type Database = {
         }
         Relationships: []
       }
+      market_prices: {
+        Row: {
+          ask: number
+          bid: number
+          created_at: string
+          id: string
+          mid: number
+          source: string
+          symbol: string
+          timestamp: string
+          updated_at: string
+        }
+        Insert: {
+          ask: number
+          bid: number
+          created_at?: string
+          id?: string
+          mid: number
+          source?: string
+          symbol: string
+          timestamp: string
+          updated_at?: string
+        }
+        Update: {
+          ask?: number
+          bid?: number
+          created_at?: string
+          id?: string
+          mid?: number
+          source?: string
+          symbol?: string
+          timestamp?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       module_videos: {
         Row: {
           created_at: string
@@ -3161,6 +3197,16 @@ export type Database = {
       }
       update_trading_profile_from_analysis: {
         Args: { p_analysis_data: Json; p_user_id: string }
+        Returns: undefined
+      }
+      upsert_market_price: {
+        Args: {
+          p_ask: number
+          p_bid: number
+          p_mid: number
+          p_symbol: string
+          p_timestamp?: string
+        }
         Returns: undefined
       }
     }

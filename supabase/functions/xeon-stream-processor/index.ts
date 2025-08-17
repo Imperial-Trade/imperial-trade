@@ -81,24 +81,42 @@ serve(async (req) => {
     // Get unique symbols for price fetching
     const symbols = [...new Set(activeTrades.map(trade => trade.tradermade_symbol))];
     
-    // Fetch live prices from TraderMade
-    const priceData = await fetchTradermadePrices(symbols);
+    // Fetch prices from database (WebSocket-stored prices)
+    const priceData = await fetchStoredPrices(supabase, symbols);
     
     if (!priceData || Object.keys(priceData).length === 0) {
-      console.error('❌ No price data received from TraderMade');
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Failed to fetch price data' 
-        }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      console.error('❌ No price data available in database');
+      console.log('🔄 Attempting fallback to HTTP API...');
+      
+      // Fallback to TraderMade HTTP API
+      const httpPriceData = await fetchTradermadePrices(symbols);
+      if (!httpPriceData || Object.keys(httpPriceData).length === 0) {
+        console.error('❌ Both database and HTTP price sources failed');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'No price data available from any source' 
+          }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      console.log(`💱 Using HTTP fallback prices for ${Object.keys(httpPriceData).length} symbols`);
+      // Use HTTP data and store in database for future use
+      for (const [symbol, data] of Object.entries(httpPriceData)) {
+        await supabase.rpc('upsert_market_price', {
+          p_symbol: symbol,
+          p_bid: data.bid,
+          p_ask: data.ask,
+          p_mid: data.mid
+        });
+      }
+      Object.assign(priceData, httpPriceData);
+    } else {
+      console.log(`💱 Using stored prices for ${Object.keys(priceData).length} symbols`);
     }
-
-    console.log(`💱 Received price data for ${Object.keys(priceData).length} symbols`);
 
     let processedCount = 0;
     const notifications: any[] = [];
@@ -111,16 +129,17 @@ serve(async (req) => {
         continue;
       }
 
-      // Use correct price based on trade direction (BUY uses bid, SELL uses ask)
+      // Use correct price based on trade direction (BUY uses ASK for TP, BID for SL; SELL uses BID for TP, ASK for SL)
       const isBuyTrade = trade.trade_type === 'buy' || trade.trade_type === 'buy_limit';
-      const comparisonPrice = isBuyTrade ? currentPrice.bid : currentPrice.ask;
+      const tpPrice = isBuyTrade ? currentPrice.ask : currentPrice.bid; // Price we can sell at (buy) or buy at (sell)
+      const slPrice = isBuyTrade ? currentPrice.bid : currentPrice.ask; // Price we're forced to exit at
 
-      console.log(`🔍 Processing ${trade.asset_name} (${trade.tradermade_symbol}): ${comparisonPrice}`);
+      console.log(`🔍 Processing ${trade.asset_name} (${trade.tradermade_symbol}): TP=${tpPrice}, SL=${slPrice}`);
 
-      // Check stop loss first
-      const slHit = checkStopLoss(trade, comparisonPrice, isBuyTrade);
+      // Check stop loss first (use SL price)
+      const slHit = checkStopLoss(trade, slPrice, isBuyTrade);
       if (slHit) {
-        console.log(`🔴 Stop Loss hit for ${trade.asset_name} at ${comparisonPrice}`);
+        console.log(`🔴 Stop Loss hit for ${trade.asset_name} at ${slPrice}`);
         
         // Check if any TPs were hit before SL
         const hadProfitableTps = trade.tp_hit_mask > 0;
@@ -129,7 +148,7 @@ serve(async (req) => {
         
         const notification = createStopLossNotification(
           trade, 
-          comparisonPrice, 
+          slPrice, 
           hadProfitableTps
         );
         notifications.push(notification);
@@ -137,8 +156,8 @@ serve(async (req) => {
         continue;
       }
 
-      // Check take profit levels using bitmask processing
-      const tpResult = await processTakeProfits(supabase, trade, comparisonPrice, isBuyTrade);
+      // Check take profit levels using bitmask processing (use TP price)
+      const tpResult = await processTakeProfits(supabase, trade, tpPrice, isBuyTrade);
       
       if (tpResult.notifications.length > 0) {
         notifications.push(...tpResult.notifications);
@@ -184,6 +203,45 @@ serve(async (req) => {
     );
   }
 });
+
+async function fetchStoredPrices(supabase: any, symbols: string[]): Promise<Record<string, PriceData> | null> {
+  try {
+    console.log(`📊 Fetching stored prices for: ${symbols.join(', ')}`);
+    
+    const { data: prices, error } = await supabase
+      .from('market_prices')
+      .select('*')
+      .in('symbol', symbols)
+      .gte('timestamp', new Date(Date.now() - 30000).toISOString()); // Only use prices from last 30 seconds
+
+    if (error) {
+      console.error('❌ Error fetching stored prices:', error);
+      return null;
+    }
+
+    if (!prices || prices.length === 0) {
+      console.log('⚠️ No recent stored prices found');
+      return null;
+    }
+
+    const priceData: Record<string, PriceData> = {};
+    
+    for (const price of prices) {
+      priceData[price.symbol] = {
+        symbol: price.symbol,
+        bid: parseFloat(price.bid),
+        ask: parseFloat(price.ask),
+        mid: parseFloat(price.mid)
+      };
+    }
+
+    console.log(`✅ Retrieved stored prices for ${Object.keys(priceData).length} symbols`);
+    return priceData;
+  } catch (error) {
+    console.error('❌ Exception fetching stored prices:', error);
+    return null;
+  }
+}
 
 async function fetchTradermadePrices(symbols: string[]): Promise<Record<string, PriceData> | null> {
   const apiKey = Deno.env.get('TRADERMADE_API_KEY');

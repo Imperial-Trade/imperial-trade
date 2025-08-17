@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.onesignal-verify-subscription]
 verify_jwt = true
+
+[functions.xeon-stream-processor]
+verify_jwt = false

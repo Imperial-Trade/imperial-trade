@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { XeonStreamProvider } from "@/contexts/XeonStreamContext";
+import { XeonStreamOptInModal } from "@/components/xeon-stream/XeonStreamOptInModal";
 import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";

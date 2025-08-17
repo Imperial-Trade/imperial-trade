@@ -121,16 +121,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     setConnectionStatus('connecting');
     
     try {
-      // Connect to Tradermade streaming WebSocket
-      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming`;
-      console.log('🔌 Connecting to Tradermade WebSocket:', wsUrl);
+      // Connect to enhanced FIX streaming service with API key rotation
+      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-fix-streaming`;
+      console.log('🔌 Connecting to TraderMade FIX WebSocket with API key rotation:', wsUrl);
       console.log('🔍 WebSocket readyState before connection:', socketRef.current?.readyState);
       
       socketRef.current = new WebSocket(wsUrl);
       console.log('🆕 Created new WebSocket instance');
 
       socketRef.current.onopen = () => {
-        console.log('✅ WebSocket connected to Tradermade streaming');
+        console.log('✅ FIX WebSocket connected with institutional-grade API key rotation');
         setConnectionStatus('connected');
         setDataSource('tradermade');
         reconnectAttemptsRef.current = 0;
@@ -160,8 +160,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           const data = JSON.parse(event.data);
           console.log('📊 Parsed message:', data);
           
-          if (data.type === 'connection_status') {
-            console.log('🔗 Connection status update:', data.status);
+          if (data.messageType === 'CONNECTION_STATUS') {
+            console.log('🔗 FIX Connection status update:', data.status);
             const status = data.status === 'connected' ? 'connected' : 
                           data.status === 'connecting' ? 'connecting' : 'disconnected';
             setConnectionStatus(status);
@@ -169,22 +169,22 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             return;
           }
           
-          if (data.type === 'price_update' && data.symbol && typeof data.price === 'number') {
+          if (data.messageType === 'PRICE_UPDATE' && data.symbol && typeof data.price === 'number') {
             const symbol = normalizeSymbol(data.symbol);
             
-            // Check if this is an ultra-fast institutional tick
+            // Enhanced FIX protocol message processing
             const isInstitutionalTick = data.is_institutional_tick === true;
             const isUltraFastTick = data.is_ultra_fast_tick === true;
             const tickTimestamp = data.tick_timestamp || Date.now();
+            const apiKeyIndex = data.apiKeyIndex || 0;
             
-            // Log price updates only in development or for ultra-fast ticks
             if (process.env.NODE_ENV === 'development') {
               if (isUltraFastTick) {
-                console.log(`⚡ ULTRA-FAST TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
+                console.log(`⚡ FIX ULTRA-FAST: ${symbol} = $${data.price} [Seq:${data.sequence}] [API:${apiKeyIndex}] @ ${new Date(tickTimestamp).toISOString()}`);
               } else if (isInstitutionalTick) {
-                console.log(`💎 INSTITUTIONAL TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
+                console.log(`💎 FIX INSTITUTIONAL: ${symbol} = $${data.price} [Seq:${data.sequence}] [API:${apiKeyIndex}] @ ${new Date(tickTimestamp).toISOString()}`);
               } else {
-                console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${data.price}`);
+                console.log(`💰 FIX PRICE: ${symbol} = $${data.price} [API:${apiKeyIndex}]`);
               }
             }
             
@@ -201,8 +201,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
                 change: data.change || change,
                 changePercent: data.changePercent || changePercent,
                 timestamp: data.timestamp || new Date().toISOString(),
-                bid: data.bid,
-                ask: data.ask,
+                bid: data.bid || data.price,
+                ask: data.ask || data.price,
                 // Enhanced ultra-fast tick data
                 tick_timestamp: tickTimestamp,
                 is_institutional_tick: isInstitutionalTick,

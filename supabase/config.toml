@@ -62,3 +62,6 @@ verify_jwt = true
 
 [functions.xeon-stream-processor]
 verify_jwt = false
+
+[functions.tradermade-fix-streaming]
+verify_jwt = false

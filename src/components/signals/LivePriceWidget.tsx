@@ -50,34 +50,22 @@ const LivePriceWidgetComponent = ({
   onStopLossHit,
   onOrderActivation
 }) => {
-  // Use the optimized live price hook with throttling for performance
+  // ZERO throttling/debouncing for institutional-grade sub-50ms latency
   const {
-    price: rawPrice,
+    price: currentPrice,
     change,
     changePercent,
     isLoading,
     error,
     lastUpdated,
-    connectionStatus: rawConnectionStatus,
+    connectionStatus,
     dataSource,
     priceUpdateSource,
     refreshPrice
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
-    debounceMs: 50, // Slightly increased for better performance
+    debounceMs: 0, // ZERO debouncing for maximum speed
     pauseOnInput: false
-  });
-
-  // Throttle price updates to reduce render frequency
-  const { price: currentPrice } = useThrottledPrice(rawPrice, {
-    throttleMs: 100,
-    maxUpdatesPerSecond: 8
-  });
-
-  // Stabilize connection status to prevent rapid UI changes
-  const { status: connectionStatus } = useConnectionStabilizer(rawConnectionStatus, {
-    debounceMs: 500,
-    stabilityThreshold: 1500
   });
 
   const [priceChange, setPriceChange] = useState(null);

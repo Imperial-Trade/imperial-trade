@@ -105,9 +105,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const getReconnectDelay = useCallback(() => {
-    const baseDelay = 5000;
-    const maxDelay = 30000;
-    const delay = Math.min(baseDelay * Math.pow(2, reconnectAttemptsRef.current), maxDelay);
+    // Ultra-fast reconnection for institutional-grade uptime
+    const baseDelay = 100; // Start at 100ms
+    const maxDelay = 500;  // Cap at 500ms maximum
+    const delay = Math.min(baseDelay + (reconnectAttemptsRef.current * 50), maxDelay);
     return delay;
   }, []);
 
@@ -373,20 +374,20 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   useEffect(() => {
     connect();
     
-    // Health monitoring - check connection every 30 seconds and reconnect if needed
+    // Health monitoring - check connection every 2 seconds for institutional-grade responsiveness
     const healthCheckInterval = setInterval(() => {
       const now = Date.now();
       const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
       
-      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 60000) {
-        console.log('⚠️ No messages received for 60 seconds, reconnecting...');
+      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 10000) {
+        console.log('⚠️ No messages received for 10 seconds, reconnecting...');
         socketRef.current.close();
         connect();
       } else if (socketRef.current?.readyState !== WebSocket.OPEN && socketRef.current?.readyState !== WebSocket.CONNECTING) {
         console.log('🔄 Connection lost, attempting reconnection...');
         connect();
       }
-    }, 30000); // Check every 30 seconds
+    }, 2000); // Check every 2 seconds for institutional-grade responsiveness
 
     return () => {
       clearInterval(healthCheckInterval);

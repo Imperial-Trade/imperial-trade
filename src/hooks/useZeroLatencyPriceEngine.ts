@@ -87,7 +87,7 @@ export function useZeroLatencyPriceEngine(
   // Web Worker for background calculations
   const workerRef = useRef<Worker | null>(null);
   const sharedBufferRef = useRef<SharedArrayBuffer | null>(null);
-  const sharedArrayRef = useRef<Float64Array | null>(null);
+  const sharedArrayRef = useRef<Int32Array | null>(null);
 
   // DOM elements registry
   const elementsRef = useRef<Map<HTMLElement, string>>(new Map());

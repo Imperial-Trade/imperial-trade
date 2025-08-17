@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,6 +72,12 @@ const priceCache = new Map<string, TradermadePriceData>();
 const lastKnownPrices = new Map<string, { price: number; timestamp: number; }>();
 const CACHE_TTL = 1000; // 1 second for ultra-fast updates
 const LAST_KNOWN_TTL = 86400000; // 24 hours for last known prices
+
+// **PHASE 1: INITIALIZE SUPABASE CLIENT**
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
 
 let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();

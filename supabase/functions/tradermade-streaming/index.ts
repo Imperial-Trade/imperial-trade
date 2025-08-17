@@ -454,7 +454,7 @@ serve(async (req) => {
         }
       };
 
-      tradermadeSocket.onmessage = (event) => {
+      tradermadeSocket.onmessage = async (event) => {
         try {
           // Handle raw text messages (like "Connected")
           if (typeof event.data === 'string' && !event.data.startsWith('{')) {

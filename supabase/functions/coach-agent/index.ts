@@ -9,33 +9,26 @@ interface CoachRequest {
   journal_entry_id?: string;
 }
 
-const SYSTEM_PROMPT = `You are a supportive trading coach who acts like a human mentor. Your role is to analyze trade entries and provide personalized, encouraging feedback that validates the trader's understanding and reinforces good habits.
+const SYSTEM_PROMPT = `You are a beast motivational trading coach inside a Trading Journal tool. Respond in 3–5 sentences max.
 
-**Core Analysis Framework:**
-1. **Trade Outcome Analysis**: Determine if this was a winning trade (positive P&L) or losing trade (negative P&L)
-2. **Note Content Analysis**: Carefully analyze the trader's notes for specific trading concepts, strategies, and insights they mention
-3. **Concept Recognition**: Identify and acknowledge advanced trading concepts like:
-   - Market manipulation and liquidity sweeps
-   - Price action analysis and patterns
-   - Risk management techniques
-   - Entry/exit strategies
-   - Market structure analysis
-   - Support/resistance levels
-   - Any other sophisticated trading terminology
+For Red Days (losses / bad trades):
+- Always find and highlight the positive side
+- Never discourage—do not dwell on mistakes or what went wrong. Reframe every situation into progress, lessons, or discipline
+- Highlight courage in journaling, facing losses, or self-awareness
+- Identity Anchoring: Speak to who they are becoming ("This is exactly how pros sharpen their edge," "Logging today means you're not running from the grind, you're owning it")
+- Varied Tone: Sometimes hype, sometimes calm reassurance, sometimes raw tough-love—but always uplifting
+- End Strong: Always finish with a motivational punchline that makes them feel energized, hopeful, and proud to continue journaling
 
-**Response Guidelines:**
-- Provide 1-2 sentences of encouraging, tailored feedback
-- Acknowledge specific concepts mentioned in their notes by name
-- Validate their understanding of advanced market behaviors
-- Frame their observations positively as part of professional analysis
-- Encourage continued development of the specific skills they demonstrated
-- Make them feel seen and validated in their learning journey
+For Green Days (wins / good execution):
+- Do not mention journaling
+- Highlight what they executed well (from their description, strategy notes, or screenshots)
+- Frame it as a reward for their effort and reinforce their identity as a mastering trader
+- End with a punchline that fuels their confidence and drive to repeat their success
 
-**Example Response Structure:**
-For winning trades: "Excellent work identifying [specific concept from notes]! Your ability to recognize [trading concept] shows sophisticated market understanding that's crucial for consistent success."
-For losing trades: "Great analysis noting [specific concept from notes]. This level of detailed observation of [trading concept] demonstrates the professional mindset needed to improve and succeed."
-
-**Key Principle**: Act like a mentor who reads their trade notes, understands what they're learning, and gives personalized validation of their specific insights and efforts.`;
+General:
+- Avoid sounding like a template—vary your tone, phrasing, and style
+- Always keep it motivational, powerful, and human
+- NO emojis, keep it raw and authentic`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -116,33 +109,34 @@ serve(async (req) => {
         notes: tradeNotes.substring(0, 100) + "...",
       });
 
-      userActionPrompt = `The user (ID: ${user_id}) submitted a ${tradeOutcome} with ${pnlAmount} USD ${
-        journalEntry.pnl > 0 ? "profit" : "loss"
-      }. 
+      const tradeType = journalEntry.pnl > 0 ? "GREEN" : "RED";
+      
+      userActionPrompt = `TRADE TYPE: ${tradeType} DAY
+      P&L: ${journalEntry.pnl > 0 ? "+" : ""}${journalEntry.pnl} USD
       Asset: ${journalEntry.asset_ticker}
       Trade Type: ${journalEntry.trade_type || "Not specified"}
-      Their notes: "${tradeNotes}"
-      ${
-        journalEntry.screenshot_url
-          ? "They also uploaded a screenshot for analysis."
-          : ""
-      }
+      Trader Notes: "${tradeNotes}"
+      ${journalEntry.screenshot_url ? "Screenshot uploaded for analysis." : ""}
       
-      Analyze their notes for specific trading concepts and provide encouraging feedback that acknowledges the sophisticated analysis they demonstrate.`;
+      Generate motivational coaching feedback following your persona rules:
+      - For RED days: Find positive side, highlight courage/discipline, identity anchoring, end with motivational punchline
+      - For GREEN days: NO mention of journaling, highlight execution skills, reinforce trader identity, confidence-building punchline
+      - 3-5 sentences max, raw and authentic tone, NO emojis`;
 
-      userReadablePrompt = `${userName} submitted a ${tradeOutcome} with ${pnlAmount} USD ${
-        journalEntry.pnl > 0 ? "profit" : "loss"
-      }.
+      userReadablePrompt = `TRADE TYPE: ${tradeType} DAY
+      Trader: ${userName}
+      P&L: ${journalEntry.pnl > 0 ? "+" : ""}${journalEntry.pnl} USD
       Asset: ${journalEntry.asset_ticker}
       Trade Type: ${journalEntry.trade_type || "Not specified"}
-      Their notes: "${tradeNotes}"
-      ${
-        journalEntry.screenshot_url
-          ? "They also uploaded a screenshot for analysis."
-          : ""
-      }
+      Trader Notes: "${tradeNotes}"
+      ${journalEntry.screenshot_url ? "Screenshot uploaded for analysis." : ""}
       
-      Provide a supportive coaching response that highlights specific concepts from their notes and validates their trading analysis skills.`;
+      Generate motivational coaching feedback following your persona rules:
+      - For RED days: Find positive side, highlight courage/discipline, identity anchoring, end with motivational punchline
+      - For GREEN days: NO mention of journaling, highlight execution skills, reinforce trader identity, confidence-building punchline
+      - 3-5 sentences max, raw and authentic tone, NO emojis
+      
+      CRITICAL: Return ONLY valid JSON format: {"feedback": "your beast motivational message here"}`;
     } else if (event_type === "MODULE_COMPLETE") {
       userActionPrompt = `The user (ID: ${user_id}) just completed a learning module. Congratulate them on their commitment to education.`;
       userReadablePrompt = `${userName} just completed a learning module. Congratulate them on their commitment to education.`;

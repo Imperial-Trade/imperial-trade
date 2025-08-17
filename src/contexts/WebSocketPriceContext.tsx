@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { MarketHoursService } from '@/services/MarketHoursService';
-import { priceCacheService } from '@/services/PriceCacheService';
 
 interface PriceData {
   symbol: string;
@@ -106,9 +105,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const getReconnectDelay = useCallback(() => {
-    const baseDelay = 50; // Ultra-fast 50ms for immediate reconnection
-    const maxDelay = 2000; // Max 2 seconds for rapid recovery
-    const delay = Math.min(baseDelay * Math.pow(1.2, reconnectAttemptsRef.current), maxDelay);
+    const baseDelay = 5000;
+    const maxDelay = 30000;
+    const delay = Math.min(baseDelay * Math.pow(2, reconnectAttemptsRef.current), maxDelay);
     return delay;
   }, []);
 
@@ -193,38 +192,23 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             const change = data.price - prevPrice;
             const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
             
-            const priceUpdate = {
-              symbol: data.symbol,
-              price: data.price,
-              change: data.change || change,
-              changePercent: data.changePercent || changePercent,
-              timestamp: data.timestamp || new Date().toISOString(),
-              bid: data.bid,
-              ask: data.ask,
-              // Enhanced ultra-fast tick data
-              tick_timestamp: tickTimestamp,
-              is_institutional_tick: isInstitutionalTick,
-              is_ultra_fast_tick: isUltraFastTick,
-              update_frequency: data.update_frequency || '250ms'
-            };
-
             setPrices(prev => ({
               ...prev,
-              [symbol]: priceUpdate
+              [symbol]: {
+                symbol: data.symbol,
+                price: data.price,
+                change: data.change || change,
+                changePercent: data.changePercent || changePercent,
+                timestamp: data.timestamp || new Date().toISOString(),
+                bid: data.bid,
+                ask: data.ask,
+                // Enhanced ultra-fast tick data
+                tick_timestamp: tickTimestamp,
+                is_institutional_tick: isInstitutionalTick,
+                is_ultra_fast_tick: isUltraFastTick,
+                update_frequency: data.update_frequency || '250ms'
+              }
             }));
-
-            // Update smart cache service for ultra-fast access
-            priceCacheService.setPrice(symbol, {
-              symbol: data.symbol,
-              price: data.price,
-              bid: data.bid,
-              ask: data.ask,
-              change: data.change || change,
-              changePercent: data.changePercent || changePercent,
-              tick_timestamp: tickTimestamp,
-              is_ultra_fast_tick: isUltraFastTick,
-              source: isUltraFastTick ? 'websocket' : 'websocket'
-            });
             
             setPriceUpdateSources(prev => ({ 
               ...prev, 
@@ -389,20 +373,20 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   useEffect(() => {
     connect();
     
-    // Ultra-aggressive health monitoring - check every 2 seconds
+    // Health monitoring - check connection every 30 seconds and reconnect if needed
     const healthCheckInterval = setInterval(() => {
       const now = Date.now();
       const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
       
-      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 8000) {
-        console.log('⚠️ No messages received for 8 seconds, reconnecting...');
+      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 60000) {
+        console.log('⚠️ No messages received for 60 seconds, reconnecting...');
         socketRef.current.close();
         connect();
       } else if (socketRef.current?.readyState !== WebSocket.OPEN && socketRef.current?.readyState !== WebSocket.CONNECTING) {
         console.log('🔄 Connection lost, attempting reconnection...');
         connect();
       }
-    }, 2000); // Check every 2 seconds for ultra-fast recovery
+    }, 30000); // Check every 30 seconds
 
     return () => {
       clearInterval(healthCheckInterval);
@@ -419,7 +403,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     };
   }, [connect]);
 
-  // Ultra-fast stale tick prevention: ensure <=500ms between updates
+  // One-second stale tick refresher: ensure <=1.2s between updates by nudging the stream
   useEffect(() => {
     if (connectionStatus !== 'connected') return;
     const interval = setInterval(() => {
@@ -433,9 +417,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           return;
         }
         const lastTick = pd?.tick_timestamp ?? (pd?.timestamp ? Date.parse(pd.timestamp) : 0);
-        const isStale = !lastTick || now - lastTick > 250; // Ultra-aggressive 250ms staleness
+        const isStale = !lastTick || now - lastTick > 1200;
         const lastAttempt = lastRefreshAttemptRef.current.get(symbol) || 0;
-        if (isStale && now - lastAttempt > 250) { // Ultra-fast 250ms refresh rate
+        if (isStale && now - lastAttempt > 1200) {
           lastRefreshAttemptRef.current.set(symbol, now);
           try {
             // Light-touch: re-subscribe the symbol to prompt a fresh tick
@@ -445,7 +429,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           }
         }
       });
-    }, 100); // Check every 100ms for ultra-fast refresh
+    }, 1000);
     return () => clearInterval(interval);
   }, [connectionStatus, prices, refreshPrice]);
 

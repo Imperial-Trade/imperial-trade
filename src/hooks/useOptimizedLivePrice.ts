@@ -32,7 +32,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 0 // Zero debounce for ultra-fast updates
+    debounceMs = 10 // Default ultra-low debounce for near-instant updates
   } = options;
 
   const {
@@ -107,9 +107,9 @@ export function useOptimizedLivePrice(
     
     if (!currentPrice) return;
 
-    // Ultra-fast updates: zero debounce for maximum speed
+    // Near-instant updates: no significance gating, minimal debounce
     const isUltraFastTick = currentPrice.is_ultra_fast_tick === true;
-    const dynamicDelay = 0; // Always zero for maximum speed
+    const dynamicDelay = isUltraFastTick ? 0 : Math.max(0, Math.min(debounceMs, 10));
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);

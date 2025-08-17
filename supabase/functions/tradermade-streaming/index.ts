@@ -1,6 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.55.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -72,12 +71,6 @@ const priceCache = new Map<string, TradermadePriceData>();
 const lastKnownPrices = new Map<string, { price: number; timestamp: number; }>();
 const CACHE_TTL = 1000; // 1 second for ultra-fast updates
 const LAST_KNOWN_TTL = 86400000; // 24 hours for last known prices
-
-// **PHASE 1: INITIALIZE SUPABASE CLIENT**
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-);
 
 let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();
@@ -412,7 +405,7 @@ serve(async (req) => {
             }
           }
           
-          // Send ultra-fast institutional-grade tick prices every 100ms for all subscribed symbols
+          // Send ultra-fast institutional-grade tick prices every 250ms for all subscribed symbols
           if (socket.readyState === WebSocket.OPEN && clientSubscriptions.size > 0) {
             console.log('⚡ Sending ULTRA-FAST tick prices for', clientSubscriptions.size, 'symbols');
             for (const symbol of clientSubscriptions) {
@@ -425,7 +418,7 @@ serve(async (req) => {
                   tick_timestamp: Date.now(),
                   is_institutional_tick: true,
                   is_ultra_fast_tick: true,
-                  update_frequency: '50ms'
+                  update_frequency: '250ms'
                 };
                 socket.send(JSON.stringify(tickData));
                 console.log(`⚡ ULTRA-FAST TICK: ${symbol} = $${cached.price} @ ${new Date().toISOString()}`);
@@ -439,7 +432,7 @@ serve(async (req) => {
                       tick_timestamp: Date.now(),
                       is_institutional_tick: true,
                       is_ultra_fast_tick: true,
-                      update_frequency: '50ms'
+                      update_frequency: '250ms'
                     };
                     socket.send(JSON.stringify(tickData));
                     console.log(`⚡ FRESH ULTRA-FAST TICK: ${symbol} = $${data.price} @ ${new Date().toISOString()}`);
@@ -448,7 +441,7 @@ serve(async (req) => {
               }
             }
           }
-        }, 50); // Ultra-fast 50ms tick intervals for real-time trading
+        }, 250); // Ultra-fast 250ms tick intervals
 
         // Notify client of connection
         if (socket.readyState === WebSocket.OPEN) {
@@ -826,41 +819,6 @@ serve(async (req) => {
 
       if (error) {
         console.error(`❌ Error storing price for ${symbol}:`, error);
-      } else {
-        // **PHASE 1: IMMEDIATE REAL-TIME TRIGGER** 
-        // Immediately trigger xeon-stream-processor for fresh price data
-        console.log(`🚀 REAL-TIME TRIGGER: Fresh price for ${symbol} = $${mid} - triggering immediate processing`);
-        
-        // Use background task to avoid blocking the WebSocket
-        try {
-          const processorResponse = await fetch(
-            'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/xeon-stream-processor',
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                'User-Agent': 'Real-Time-Price-Trigger/1.0'
-              },
-              body: JSON.stringify({
-                trigger_source: 'websocket_fresh_price',
-                symbol: symbol,
-                price: mid,
-                timestamp: timestamp.toISOString()
-              })
-            }
-          );
-          
-          if (processorResponse.ok) {
-            const result = await processorResponse.json();
-            console.log(`✅ Real-time processing triggered: ${result.processed || 0} trades processed`);
-          } else {
-            console.warn(`⚠️ Real-time trigger failed: ${processorResponse.status}`);
-          }
-        } catch (triggerError) {
-          console.error('❌ Real-time trigger error:', triggerError.message);
-          // Don't fail the main process if trigger fails
-        }
       }
     } catch (error) {
       console.error(`❌ Exception storing price for ${symbol}:`, error);

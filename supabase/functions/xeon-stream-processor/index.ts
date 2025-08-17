@@ -129,41 +129,17 @@ serve(async (req) => {
         continue;
       }
 
-      // **PHASE 2: STANDARDIZE TO MID PRICES** for consistency with frontend
+      // Use correct price based on trade direction (BUY uses ASK for TP, BID for SL; SELL uses BID for TP, ASK for SL)
       const isBuyTrade = trade.trade_type === 'buy' || trade.trade_type === 'buy_limit';
-      const executionPrice = currentPrice.mid; // Use MID price for all calculations
-      
-      // **PHASE 4: EXECUTION SAFEGUARDS**
-      // Check if signal is too new (minimum 30 seconds before TP/SL processing)
-      const signalAge = Date.now() - new Date(trade.created_at || trade.updated_at).getTime();
-      const minSignalAge = 30000; // 30 seconds
-      
-      if (signalAge < minSignalAge) {
-        console.log(`⏱️ Signal too new for ${trade.asset_name}: ${Math.round(signalAge/1000)}s old (min: ${minSignalAge/1000}s)`);
-        continue;
-      }
+      const tpPrice = isBuyTrade ? currentPrice.ask : currentPrice.bid; // Price we can sell at (buy) or buy at (sell)
+      const slPrice = isBuyTrade ? currentPrice.bid : currentPrice.ask; // Price we're forced to exit at
 
-      console.log(`🔍 Processing ${trade.asset_name} (${trade.tradermade_symbol}): Entry=${trade.entry_price}, Current=${executionPrice}, Trade Type=${trade.trade_type}, Age=${Math.round(signalAge/1000)}s`);
+      console.log(`🔍 Processing ${trade.asset_name} (${trade.tradermade_symbol}): Entry=${trade.entry_price}, Current TP=${tpPrice}, SL=${slPrice}, Trade Type=${trade.trade_type}`);
 
-      // **PHASE 5: COMPREHENSIVE AUDIT TRAIL**
-      const executionLog = {
-        signal_id: trade.id,
-        asset_name: trade.asset_name,
-        execution_price: executionPrice,
-        entry_price: trade.entry_price,
-        stop_loss: trade.stop_loss,
-        price_source: currentPrice.timestamp ? 'database_websocket' : 'http_fallback',
-        price_age_ms: currentPrice.age_ms || 0,
-        signal_age_ms: signalAge,
-        timestamp: new Date().toISOString()
-      };
-      
-      console.log(`📊 EXECUTION LOG:`, JSON.stringify(executionLog, null, 2));
-
-      // Check stop loss first (use execution price) - this will close the trade immediately
-      const slHit = checkStopLoss(trade, executionPrice, isBuyTrade);
+      // Check stop loss first (use SL price) - this will close the trade immediately
+      const slHit = checkStopLoss(trade, slPrice, isBuyTrade);
       if (slHit) {
-        console.log(`🔴 Stop Loss hit for ${trade.asset_name} at ${executionPrice} (Entry: ${trade.entry_price})`);
+        console.log(`🔴 Stop Loss hit for ${trade.asset_name} at ${slPrice} (Entry: ${trade.entry_price})`);
         
         // Check if any TPs were hit before SL
         const hadProfitableTps = (trade.tp_hit_mask && trade.tp_hit_mask > 0) || (trade.tp_hits && trade.tp_hits.length > 0);
@@ -172,7 +148,7 @@ serve(async (req) => {
         
         const notification = createStopLossNotification(
           trade, 
-          executionPrice, 
+          slPrice, 
           hadProfitableTps
         );
         notifications.push(notification);
@@ -181,7 +157,7 @@ serve(async (req) => {
       }
 
       // Check take profit levels - this will mark TPs as hit and potentially close trade if all TPs hit
-      const tpResult = await processTakeProfits(supabase, trade, executionPrice, isBuyTrade);
+      const tpResult = await processTakeProfits(supabase, trade, tpPrice, isBuyTrade);
       
       if (tpResult.notifications.length > 0) {
         console.log(`✅ ${tpResult.notifications.length} TP notifications generated for ${trade.asset_name}`);
@@ -238,8 +214,7 @@ async function fetchStoredPrices(supabase: any, symbols: string[]): Promise<Reco
       .from('market_prices')
       .select('*')
       .in('symbol', symbols)
-      .gte('timestamp', new Date(Date.now() - 300000).toISOString()) // **PHASE 3: Increased to 5 minutes**
-      .order('timestamp', { ascending: false }); // Get most recent prices first
+      .gte('timestamp', new Date(Date.now() - 60000).toISOString()); // Only use prices from last 60 seconds
 
     if (error) {
       console.error('❌ Error fetching stored prices:', error);
@@ -253,35 +228,13 @@ async function fetchStoredPrices(supabase: any, symbols: string[]): Promise<Reco
 
     const priceData: Record<string, PriceData> = {};
     
-    // Group by symbol and take the most recent price for each
-    const latestPrices = new Map<string, any>();
     for (const price of prices) {
-      const existing = latestPrices.get(price.symbol);
-      if (!existing || new Date(price.timestamp) > new Date(existing.timestamp)) {
-        latestPrices.set(price.symbol, price);
-      }
-    }
-    
-    for (const [symbol, price] of latestPrices) {
-      // **PHASE 4: PRICE AGE VALIDATION**
-      const priceAge = Date.now() - new Date(price.timestamp).getTime();
-      const maxAgeMs = 30000; // 30 seconds max age
-      
-      if (priceAge > maxAgeMs) {
-        console.warn(`⚠️ Price too old for ${symbol}: ${Math.round(priceAge/1000)}s old (max: ${maxAgeMs/1000}s)`);
-        continue; // Skip stale prices
-      }
-      
-      priceData[symbol] = {
+      priceData[price.symbol] = {
         symbol: price.symbol,
         bid: parseFloat(price.bid),
         ask: parseFloat(price.ask),
-        mid: parseFloat(price.mid),
-        age_ms: priceAge, // Add age for logging
-        timestamp: price.timestamp
+        mid: parseFloat(price.mid)
       };
-      
-      console.log(`✅ Fresh price for ${symbol}: $${priceData[symbol].mid} (age: ${Math.round(priceAge/1000)}s)`);
     }
 
     console.log(`✅ Retrieved stored prices for ${Object.keys(priceData).length} symbols`);

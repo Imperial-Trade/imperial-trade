@@ -17,18 +17,34 @@ const TRADERMADE_REST_URL = 'https://marketdata.tradermade.com/api/v1/live';
 
 interface ConnectionManager {
   clients: Map<string, WebSocket>;
-  traderMadeConnections: Map<number, WebSocket>;
+  traderMadeConnection: {
+    ws: WebSocket | null;
+    keyIndex: number;
+    isReady: boolean;
+    lastHeartbeat: number;
+    retryCount: number;
+    clientCount: number;
+  };
   apiKeyHealth: Map<number, { lastSuccess: number; failures: number; isActive: boolean }>;
   priceCache: Map<string, { price: number; bid: number; ask: number; timestamp: number }>;
   sequenceCounter: number;
+  currentKeyIndex: number;
 }
 
 const connectionManager: ConnectionManager = {
   clients: new Map(),
-  traderMadeConnections: new Map(),
+  traderMadeConnection: {
+    ws: null,
+    keyIndex: 0,
+    isReady: false,
+    lastHeartbeat: Date.now(),
+    retryCount: 0,
+    clientCount: 0
+  },
   apiKeyHealth: new Map(),
   priceCache: new Map(),
-  sequenceCounter: 0
+  sequenceCounter: 0,
+  currentKeyIndex: 0
 };
 
 // Initialize API key health tracking
@@ -99,23 +115,49 @@ function markApiKeyFailure(index: number): void {
 }
 
 /**
- * Create TraderMade WebSocket connection with FIX-style messaging
+ * Create single TraderMade WebSocket connection with FIX-style messaging and connection pooling
  */
-async function createTraderMadeConnection(apiKeyIndex: number): Promise<void> {
-  const apiKey = API_KEYS[apiKeyIndex];
-  if (!apiKey) {
-    console.error(`❌ No API key found at index ${apiKeyIndex}`);
+async function createTraderMadeConnection(): Promise<void> {
+  // If already connected or connecting, don't create another connection
+  if (connectionManager.traderMadeConnection.ws && 
+      (connectionManager.traderMadeConnection.ws.readyState === WebSocket.OPEN || 
+       connectionManager.traderMadeConnection.ws.readyState === WebSocket.CONNECTING)) {
+    console.log('🔄 TraderMade connection already exists, reusing...');
     return;
   }
 
+  const healthyKey = getHealthyApiKey();
+  if (!healthyKey) {
+    console.error('❌ No healthy API keys available for connection');
+    return;
+  }
+
+  const { key: apiKey, index: apiKeyIndex } = healthyKey;
+
   try {
-    console.log(`🔌 Creating TraderMade connection with API key index ${apiKeyIndex}`);
+    console.log(`🔌 Creating single TraderMade connection with API key index ${apiKeyIndex}`);
+    
+    // Close existing connection if any
+    if (connectionManager.traderMadeConnection.ws) {
+      connectionManager.traderMadeConnection.ws.close();
+    }
     
     const ws = new WebSocket(TRADERMADE_WS_URL);
     
+    // Update connection manager
+    connectionManager.traderMadeConnection = {
+      ws,
+      keyIndex: apiKeyIndex,
+      isReady: false,
+      lastHeartbeat: Date.now(),
+      retryCount: 0,
+      clientCount: connectionManager.clients.size
+    };
+    connectionManager.currentKeyIndex = apiKeyIndex;
+    
     ws.onopen = () => {
       console.log(`✅ TraderMade WebSocket connected (API key ${apiKeyIndex})`);
-      connectionManager.traderMadeConnections.set(apiKeyIndex, ws);
+      connectionManager.traderMadeConnection.isReady = true;
       markApiKeySuccess(apiKeyIndex);
       
       // Send authentication message
@@ -130,6 +172,8 @@ async function createTraderMadeConnection(apiKeyIndex: number): Promise<void> {
 
     ws.onmessage = (event) => {
       try {
+        connectionManager.traderMadeConnection.lastHeartbeat = Date.now();
+        
         // Handle both JSON and plain text messages from TraderMade
         let data;
         
@@ -159,20 +203,26 @@ async function createTraderMadeConnection(apiKeyIndex: number): Promise<void> {
     };
 
     ws.onclose = (event) => {
-      console.log(`🔌 TraderMade WebSocket closed (API key ${apiKeyIndex}):`, event.code);
-      connectionManager.traderMadeConnections.delete(apiKeyIndex);
+      console.log(`🔌 TraderMade WebSocket closed (API key ${apiKeyIndex}): ${event.code}`);
+      connectionManager.traderMadeConnection.ws = null;
+      connectionManager.traderMadeConnection.isReady = false;
       
-      // Automatic reconnection with next API key
+      // Mark API key as potentially failed if not normal closure
+      if (event.code !== 1000) {
+        markApiKeyFailure(apiKeyIndex);
+      }
+      
+      // Automatic reconnection with next available API key
       setTimeout(() => {
-        const nextKey = getHealthyApiKey();
-        if (nextKey) {
-          createTraderMadeConnection(nextKey.index);
-        }
-      }, 1000);
+        console.log('🔄 Attempting to reconnect TraderMade connection...');
+        createTraderMadeConnection();
+      }, 2000);
     };
 
     ws.onerror = (error) => {
       console.error(`❌ TraderMade WebSocket error (API key ${apiKeyIndex}):`, error);
+      connectionManager.traderMadeConnection.ws = null;
+      connectionManager.traderMadeConnection.isReady = false;
       markApiKeyFailure(apiKeyIndex);
     };
 
@@ -348,14 +398,20 @@ serve(async (req) => {
     
     socket.onopen = () => {
       connectionManager.clients.set(clientId, socket);
+      connectionManager.traderMadeConnection.clientCount = connectionManager.clients.size;
+      
+      // Ensure TraderMade connection exists
+      if (!connectionManager.traderMadeConnection.ws || connectionManager.traderMadeConnection.ws.readyState !== WebSocket.OPEN) {
+        createTraderMadeConnection();
+      }
       
       // Send connection status
       socket.send(JSON.stringify({
         messageType: 'CONNECTION_STATUS',
         status: 'connected',
         clientId,
-        connectionId,
-        keyIndex,
+        connectionId: 'pooled',
+        keyIndex: connectionManager.currentKeyIndex,
         timestamp: Date.now()
       }));
       
@@ -397,6 +453,7 @@ serve(async (req) => {
     socket.onclose = () => {
       console.log(`🔌 FIX client disconnected: ${clientId}`);
       connectionManager.clients.delete(clientId);
+      connectionManager.traderMadeConnection.clientCount = connectionManager.clients.size;
     };
 
     socket.onerror = (error) => {
@@ -437,37 +494,35 @@ serve(async (req) => {
 console.log('🚀 Starting TraderMade FIX Streaming Service...');
 console.log(`📊 Configured with ${API_KEYS.length} API keys`);
 
-// Create initial connections with different API keys
+// Create initial single connection
 if (API_KEYS.length > 0) {
-  const primaryKey = getHealthyApiKey();
-  if (primaryKey) {
-    createTraderMadeConnection(primaryKey.index);
-    
-    // Start secondary connection after 2 seconds
-    setTimeout(() => {
-      const secondaryKey = getHealthyApiKey();
-      if (secondaryKey && secondaryKey.index !== primaryKey.index) {
-        createTraderMadeConnection(secondaryKey.index);
-      }
-    }, 2000);
-  }
+  console.log('🔧 Initializing single TraderMade connection pool...');
+  createTraderMadeConnection();
 } else {
   console.error('❌ No API keys configured - service will not function');
 }
 
-// Periodic health monitoring and API key rotation
+// Periodic health monitoring and connection management
 setInterval(() => {
-  const activeConnections = connectionManager.traderMadeConnections.size;
+  const hasActiveConnection = connectionManager.traderMadeConnection.ws && 
+                              connectionManager.traderMadeConnection.ws.readyState === WebSocket.OPEN;
   const activeClients = connectionManager.clients.size;
   
-  console.log(`📊 Health: ${activeConnections} TM connections, ${activeClients} clients, ${connectionManager.priceCache.size} cached symbols`);
+  console.log(`📊 Health: ${hasActiveConnection ? '1' : '0'} TM connection, ${activeClients} clients, ${connectionManager.priceCache.size} cached symbols`);
   
-  // Ensure we always have at least one active connection
-  if (activeConnections === 0) {
-    console.warn('⚠️ No active TraderMade connections, attempting to reconnect...');
-    const healthyKey = getHealthyApiKey();
-    if (healthyKey) {
-      createTraderMadeConnection(healthyKey.index);
+  // Ensure we always have at least one active connection if we have clients
+  if (!hasActiveConnection && activeClients > 0) {
+    console.warn('⚠️ No active TraderMade connection but clients are connected, attempting to reconnect...');
+    createTraderMadeConnection();
+  }
+  
+  // Check connection health - if no heartbeat in 2 minutes, reconnect
+  const timeSinceLastHeartbeat = Date.now() - connectionManager.traderMadeConnection.lastHeartbeat;
+  if (hasActiveConnection && timeSinceLastHeartbeat > 120000) {
+    console.warn('⚠️ TraderMade connection stale, forcing reconnection...');
+    if (connectionManager.traderMadeConnection.ws) {
+      connectionManager.traderMadeConnection.ws.close();
     }
+    createTraderMadeConnection();
   }
 }, 30000); // Every 30 seconds

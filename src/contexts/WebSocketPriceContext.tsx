@@ -113,6 +113,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const connect = useCallback(() => {
+    // Prevent multiple connections by checking if one already exists
     if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
       console.log('🔄 WebSocket already connected or connecting, skipping duplicate connection');
       return;
@@ -121,6 +122,12 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     setConnectionStatus('connecting');
     
     try {
+      // Close any existing connection first
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+      
       // Connect to enhanced FIX streaming service with API key rotation
       const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-fix-streaming`;
       console.log('🔌 Connecting to TraderMade FIX WebSocket with API key rotation:', wsUrl);
@@ -252,7 +259,12 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         
         reconnectTimeoutRef.current = setTimeout(() => {
           console.log('🔄 Attempting reconnection...');
-          connect();
+          // Only reconnect if not already connected or connecting
+          if (socketRef.current?.readyState !== WebSocket.OPEN && socketRef.current?.readyState !== WebSocket.CONNECTING) {
+            connect();
+          } else {
+            console.log('🔄 WebSocket already connected or connecting, skipping reconnection');
+          }
         }, delay);
       };
 

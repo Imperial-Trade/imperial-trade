@@ -62,7 +62,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
 
   // Simple refs for display
   const priceRef = useRef<HTMLSpanElement>(null);
-  const changeRef = useRef<HTMLSpanElement>(null);
+  const changeRef = useRef<HTMLDivElement>(null);
   const bidRef = useRef<HTMLSpanElement>(null);
   const askRef = useRef<HTMLSpanElement>(null);
 
@@ -127,46 +127,83 @@ const ZeroLatencyLivePriceWidgetComponent = ({
 
   return (
     <div className="space-y-3">
-      {/* Zero-Latency Price Display with Direct DOM Manipulation */}
+      {/* Live Price Widget with Glowing Background */}
       <div className="relative">
-        <div className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-background to-muted/20 border">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground">
-              {alert.tradermade_symbol}
-            </span>
-            <Badge variant={isDirectRendered ? "default" : "secondary"} className="hidden text-xs">
-              {isDirectRendered ? 'Direct DOM' : 'React'}
-            </Badge>
-            {workerCalculated && (
-              <Badge variant="outline" className="hidden text-xs">
-                <Activity className="h-3 w-3 mr-1" />
-                Worker
-              </Badge>
-            )}
-          </div>
+        <div className="p-6 rounded-xl bg-card border border-green-500/30 shadow-[0_0_20px_-12px] shadow-green-500/50 relative overflow-hidden">
+          {/* Glowing border effect */}
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 opacity-50"></div>
           
-          {/* Main Price - Direct DOM Updated */}
-          <div className="flex items-center gap-3">
-            <span 
-              ref={priceRef}
-              className="text-2xl font-bold tabular-nums transition-all duration-150"
-              style={{ minWidth: '120px' }}
-            >
-              {currentPrice.toFixed(5)}
-            </span>
-            
-            <div className="flex items-center gap-1">
-              {change > 0 ? (
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              ) : change < 0 ? (
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              ) : null}
-              <span 
-                ref={changeRef}
-                className={`text-sm font-medium ${changeColor} tabular-nums`}
+          <div className="relative z-10">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-semibold text-foreground">
+                  Live Price for {alert.tradermade_symbol}
+                </h3>
+                <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Live
+                </Badge>
+              </div>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={refreshPrice}
+                className="h-8 w-8 p-0 hover:bg-white/10"
               >
-                {change > 0 ? '+' : ''}{changePercent.toFixed(2)}%
-              </span>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Price Display */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span 
+                  ref={priceRef}
+                  className="text-4xl font-bold tabular-nums text-green-400 transition-all duration-150"
+                >
+                  ${currentPrice.toFixed(2)}
+                </span>
+                
+                <div className="flex items-center gap-2">
+                  {change > 0 ? (
+                    <TrendingUp className="h-5 w-5 text-green-400" />
+                  ) : change < 0 ? (
+                    <TrendingDown className="h-5 w-5 text-red-400" />
+                  ) : null}
+                  <div className="text-right">
+                    <div 
+                      ref={changeRef}
+                      className={`text-sm font-medium ${changeColor} tabular-nums`}
+                    >
+                      {change > 0 ? '+' : ''}{change.toFixed(4)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      ({change > 0 ? '+' : ''}{changePercent.toFixed(2)}%)
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button 
+                variant="outline" 
+                className="bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
+              >
+                Use Current Price
+              </Button>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Wifi className={connectionStatus === 'connected' ? 'h-4 w-4 text-green-400' : 'h-4 w-4 text-red-400'} />
+                <span>Updated: {new Date(timestamp).toLocaleTimeString()}</span>
+              </div>
+              {connectionStatus === 'connected' && (
+                <Badge variant="outline" className="bg-green-500/10 border-green-500/30 text-green-400">
+                  Live
+                </Badge>
+              )}
             </div>
           </div>
         </div>

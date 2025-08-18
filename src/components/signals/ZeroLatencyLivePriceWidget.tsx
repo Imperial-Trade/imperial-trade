@@ -44,10 +44,11 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     lastUpdated,
     connectionStatus,
     dataSource,
-    refreshPrice
+    refreshPrice,
+    marketStatus
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
-    debounceMs: 5,
+    debounceMs: 50,
     pauseOnInput: false
   });
 
@@ -113,23 +114,41 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     }
   }, [currentPrice, alert, onTakeProfitHit, onStopLossHit, onOrderActivation]);
 
-  // Track price animation state for flickering effect
+  // Track price animation state for flickering effect - matching EnhancedLivePriceDisplay
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
-  const prevPriceRef = useRef<number>(0);
+  const [prevPrice, setPrevPrice] = useState<number>(0);
 
-  // Handle price animation effect
+  // Price change animation effect - exact match to EnhancedLivePriceDisplay
   useEffect(() => {
-    if (currentPrice && prevPriceRef.current !== 0) {
-      if (currentPrice > prevPriceRef.current) {
-        setPriceAnimation('up');
-        setTimeout(() => setPriceAnimation(null), 600);
-      } else if (currentPrice < prevPriceRef.current) {
-        setPriceAnimation('down');
-        setTimeout(() => setPriceAnimation(null), 600);
-      }
+    if (currentPrice > 0 && prevPrice > 0 && currentPrice !== prevPrice) {
+      setPriceAnimation(currentPrice > prevPrice ? 'up' : 'down');
+      const timer = setTimeout(() => setPriceAnimation(null), 1000);
+      return () => clearTimeout(timer);
     }
-    prevPriceRef.current = currentPrice;
-  }, [currentPrice]);
+    if (currentPrice > 0) {
+      setPrevPrice(currentPrice);
+    }
+  }, [currentPrice, prevPrice]);
+
+  // Format price with dynamic decimal places - matching EnhancedLivePriceDisplay
+  const formatPrice = (price: number) => {
+    if (price >= 1000) {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(price);
+    } else if (price >= 1) {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+      }).format(price);
+    } else {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 6,
+      }).format(price);
+    }
+  };
 
   const changeColor = change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-muted-foreground';
   const spread = ask - bid;
@@ -210,15 +229,15 @@ const ZeroLatencyLivePriceWidgetComponent = ({
               } ${
                 priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
                 priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
-                connectionStatus === 'connected' ? 'text-accent-green' : 'text-gray-400'
+                marketStatus?.isOpen ? 'text-accent-green' : 'text-gray-400'
               }`}>
-                <span 
-                  ref={priceRef}
-                  className="transition-colors duration-150"
-                >
-                  ${currentPrice.toFixed(2)}
-                </span>
+                ${formatPrice(marketStatus?.isOpen ? currentPrice : (marketStatus?.lastKnownPrice || currentPrice))}
               </div>
+              {!marketStatus?.isOpen && marketStatus?.lastKnownPrice && (
+                <div className="text-xs text-gray-500 font-normal">
+                  Last price when market was open
+                </div>
+              )}
             </div>
           </div>
           

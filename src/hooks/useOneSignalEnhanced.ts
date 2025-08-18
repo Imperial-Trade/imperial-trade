@@ -346,10 +346,14 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
 
           console.log('[OneSignal] Syncing with Supabase:', { userId, playerId: playerId?.substring(0, 8), permission });
 
+      // Get current auth user for email
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       const deviceInfo = getDeviceInfo();
       
       const { data, error } = await supabase.functions.invoke('onesignal-upsert-user', {
         body: {
+          user_id: currentUser?.id,
+          email: currentUser?.email,
           player_id: playerId,
           device_fingerprint: deviceInfo.fingerprint,
           device_info: deviceInfo

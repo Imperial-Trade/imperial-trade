@@ -135,15 +135,16 @@ const ZeroLatencyLivePriceWidgetComponent = ({
           
           <div className="relative z-10">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <h3 className="text-lg font-semibold text-foreground">
+                <h3 className="text-lg font-medium text-foreground">
                   Live Price for {alert.tradermade_symbol}
                 </h3>
-                <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  Live
+                <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
+                  <Zap className="h-3 w-3 mr-1" />
+                  {renderLatency}ms
                 </Badge>
+                <span className="text-sm text-muted-foreground">Live</span>
               </div>
               <Button 
                 size="sm" 
@@ -156,28 +157,28 @@ const ZeroLatencyLivePriceWidgetComponent = ({
             </div>
 
             {/* Price Display */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between mb-6">
               <span 
                 ref={priceRef}
-                className="text-3xl font-bold tabular-nums text-green-400 transition-all duration-150"
+                className="text-4xl font-bold tabular-nums text-green-400 transition-all duration-150"
               >
                 ${currentPrice.toFixed(2)}
               </span>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-right">
                 {change > 0 ? (
                   <TrendingUp className="h-5 w-5 text-green-400" />
                 ) : change < 0 ? (
                   <TrendingDown className="h-5 w-5 text-red-400" />
                 ) : null}
-                <div className="text-right">
+                <div>
                   <div 
                     ref={changeRef}
-                    className={`text-sm font-medium ${changeColor} tabular-nums`}
+                    className={`text-lg font-medium ${changeColor} tabular-nums`}
                   >
                     {change > 0 ? '+' : ''}{change.toFixed(4)}
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className={`text-sm ${changeColor}`}>
                     ({change > 0 ? '+' : ''}{changePercent.toFixed(2)}%)
                   </div>
                 </div>
@@ -185,16 +186,15 @@ const ZeroLatencyLivePriceWidgetComponent = ({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Wifi className={connectionStatus === 'connected' ? 'h-4 w-4 text-green-400' : 'h-4 w-4 text-red-400'} />
                 <span>Updated: {new Date(timestamp).toLocaleTimeString()}</span>
               </div>
-              {connectionStatus === 'connected' && (
-                <Badge variant="outline" className="bg-green-500/10 border-green-500/30 text-green-400">
-                  Live
-                </Badge>
-              )}
+              <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                Live
+              </Badge>
             </div>
           </div>
         </div>

@@ -71,6 +71,7 @@ import { setupNotificationClickHandler } from "@/utils/notificationHandlers";
 import NotificationSystem from "@/components/notifications/NotificationSystem";
 import NotificationsPanel from "@/components/notifications/NotificationsPanel";
 import NotificationSetupManager from "@/components/notifications/NotificationSetupManager";
+import InAppNotificationSystem from "@/components/notifications/InAppNotificationSystem";
 import OneSignalInitializer from "@/components/integrations/OneSignalInitializer";
 
 const queryClient = new QueryClient({
@@ -104,9 +105,10 @@ function App() {
                         <NavigationGuard>
                           <SignalRealtimeProvider>
                             <WebSocketPriceProvider>
-                              <NotificationSystem />
-                              <NotificationsPanel />
-                              <NotificationSetupManager />
+                               <NotificationSystem />
+                               <NotificationsPanel />
+                               <NotificationSetupManager />
+                               <InAppNotificationSystem />
                         <Routes>
                         {/* Landing Routes */}
                         <Route

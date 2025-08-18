@@ -54,19 +54,48 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     if (!validateAction(alertData.creator?.id || alertData.userId, 'update TP hits')) {
       return;
     }
+    
+    // Trigger in-app notification for TP hit
+    if (typeof window !== 'undefined' && (window as any).addInAppNotification) {
+      const maxHit = Math.max(...hits);
+      (window as any).addInAppNotification({
+        type: 'tp_hit',
+        title: 'Take Profit Hit!',
+        message: `${alertData.asset_name} TP${maxHit} reached at $${currentPrice}`,
+        signal_id: alertData.id,
+        asset_name: alertData.asset_name,
+        price: currentPrice,
+        priority: shouldClose ? 'high' : 'normal'
+      });
+    }
+    
     if (onTakeProfitHit) {
       await onTakeProfitHit(alertData, hits, shouldClose, reason);
     }
-  }, [onTakeProfitHit, validateAction]);
+  }, [onTakeProfitHit, validateAction, currentPrice]);
 
   const protectedStopLossHit = useCallback(async (alertData: any, reason: string) => {
     if (!validateAction(alertData.creator?.id || alertData.userId, 'trigger stop loss')) {
       return;
     }
+    
+    // Trigger in-app notification for SL hit
+    if (typeof window !== 'undefined' && (window as any).addInAppNotification) {
+      (window as any).addInAppNotification({
+        type: 'sl_hit',
+        title: 'Stop Loss Hit',
+        message: `${alertData.asset_name} stop loss triggered at $${currentPrice}`,
+        signal_id: alertData.id,
+        asset_name: alertData.asset_name,
+        price: currentPrice,
+        priority: 'critical'
+      });
+    }
+    
     if (onStopLossHit) {
       await onStopLossHit(alertData, reason);
     }
-  }, [onStopLossHit, validateAction]);
+  }, [onStopLossHit, validateAction, currentPrice]);
 
   const protectedOrderActivation = useCallback(async (alertData: any) => {
     if (!validateAction(alertData.creator?.id || alertData.userId, 'activate order')) {

@@ -1,5 +1,5 @@
 import React from "react";
-import { NotificationsProvider } from "@/contexts/NotificationsContext";
+import { FallbackNotificationsProvider } from "@/contexts/FallbackNotificationsContext";
 
 interface OneSignalInitializerProps {
   children: React.ReactNode;
@@ -7,9 +7,9 @@ interface OneSignalInitializerProps {
 
 const OneSignalInitializer: React.FC<OneSignalInitializerProps> = ({ children }) => {
   return (
-    <NotificationsProvider>
+    <FallbackNotificationsProvider>
       {children}
-    </NotificationsProvider>
+    </FallbackNotificationsProvider>
   );
 };
 

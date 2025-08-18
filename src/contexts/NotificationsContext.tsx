@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { useOneSignalEnhanced } from '@/hooks/useOneSignalEnhanced';
+import { useFallbackOneSignalEnhanced } from '@/hooks/useFallbackHooks';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface NotificationsContextValue {
@@ -16,7 +16,7 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined);
 
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { initialized, permission, isGranted, hasSubscription, requestPermission, isIframeBlocked, browserInfo, browserInstructions } = useOneSignalEnhanced();
+  const { initialized, permission, isGranted, hasSubscription, requestPermission, isIframeBlocked, browserInfo, browserInstructions } = useFallbackOneSignalEnhanced();
   const { user } = useAuth();
 
   const value = useMemo<NotificationsContextValue>(() => ({

@@ -166,12 +166,12 @@ const NotificationSetupManager: React.FC = () => {
     attemptPrompt();
   }, [needsNativePrompt, requestPermission, user, profile, initialized, hasSeenWelcome, location.pathname]);
 
-  // Enhanced logic: Show modal only when user has seen welcome, notification permission is NOT granted, 
-  // there is NO active subscription, and either our post-login hook wants to show modal or recovery is needed
+  // Enhanced logic: Show modal for two specific cases only:
+  // 1. First-time setup: Permission NOT granted AND post-login hook wants to show modal
+  // 2. Recovery: Permission IS granted but NO active subscription AND recovery needed AND post-login hook wants to show modal
   const shouldShowModal = hasSeenWelcome && 
-                          !isGranted && 
-                          !hasSubscription && 
-                          (showNotificationModal || (needsRecovery && !!profile));
+                          (((!isGranted && showNotificationModal)) || 
+                           ((isGranted && !hasSubscription && needsRecovery && showNotificationModal)));
 
   console.log('🎯 [Notification Setup] Manager state:', {
     showNotificationModal,

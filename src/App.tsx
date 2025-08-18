@@ -70,6 +70,7 @@ import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
 import { setupNotificationClickHandler } from "@/utils/notificationHandlers";
 import NotificationSystem from "@/components/notifications/NotificationSystem";
 import NotificationsPanel from "@/components/notifications/NotificationsPanel";
+import NotificationSetupManager from "@/components/notifications/NotificationSetupManager";
 import OneSignalInitializer from "@/components/integrations/OneSignalInitializer";
 
 const queryClient = new QueryClient({
@@ -105,6 +106,7 @@ function App() {
                             <WebSocketPriceProvider>
                               <NotificationSystem />
                               <NotificationsPanel />
+                              <NotificationSetupManager />
                         <Routes>
                         {/* Landing Routes */}
                         <Route

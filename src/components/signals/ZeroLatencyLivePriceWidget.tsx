@@ -90,7 +90,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     if (onTakeProfitHit) {
       await onTakeProfitHit(alertData, hits, shouldClose, reason);
     }
-  }, [onTakeProfitHit, validateAction, currentPrice]);
+  }, [onTakeProfitHit, validateAction]); // Remove currentPrice from dependencies
 
   const protectedStopLossHit = useCallback(async (alertData: any, reason: string) => {
     if (!validateAction(alertData.creator?.id || alertData.userId, 'trigger stop loss')) {
@@ -113,7 +113,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     if (onStopLossHit) {
       await onStopLossHit(alertData, reason);
     }
-  }, [onStopLossHit, validateAction, currentPrice]);
+  }, [onStopLossHit, validateAction]); // Remove currentPrice from dependencies
 
   const protectedOrderActivation = useCallback(async (alertData: any) => {
     if (!validateAction(alertData.creator?.id || alertData.userId, 'activate order')) {

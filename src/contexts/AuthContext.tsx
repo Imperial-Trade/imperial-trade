@@ -19,13 +19,9 @@ interface Profile {
   approved_by: string | null;
   created_at: string | null;
   updated_at: string | null;
-  push_subscription_active: boolean | null;
-  onesignal_player_id: string | null;
-  onesignal_subscription_status: string | null;
-  onesignal_last_verified_at: string | null;
   xeon_stream_subscription: boolean | null;
   xeon_stream_activated_at: string | null;
-  notification_preferences: any | null;
+  in_app_notifications_enabled: boolean | null;
 }
 
 interface AuthContextType {
@@ -83,13 +79,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           approved_by,
           created_at,
           updated_at,
-          push_subscription_active,
-          onesignal_player_id,
-          onesignal_subscription_status,
-          onesignal_last_verified_at,
           xeon_stream_subscription,
           xeon_stream_activated_at,
-          notification_preferences
+          in_app_notifications_enabled
         `)
         .eq('id', userId)
         .single();
@@ -267,16 +259,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (verificationResult?.success) {
         const { subscription_status } = verificationResult;
         
-        // Update database with OneSignal's current status
-        await supabase
-          .from('profiles')
-          .update({
-            onesignal_subscription_status: subscription_status.is_subscribed ? 'subscribed' : 'unsubscribed',
-            push_subscription_active: subscription_status.is_subscribed,
-            onesignal_last_verified_at: new Date().toISOString(),
-            onesignal_player_id: subscription_status.player_id || null
-          })
-          .eq('id', userId);
+        // OneSignal verification removed - using in-app notifications only
+        console.log('[Auth] OneSignal verification disabled - using in-app notifications');
 
         // Mark this session as verified
         sessionStorage.setItem(sessionKey, 'true');

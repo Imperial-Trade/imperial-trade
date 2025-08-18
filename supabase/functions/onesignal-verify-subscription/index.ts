@@ -25,8 +25,20 @@ async function handler(req: Request): Promise<Response> {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
     if (!oneSignalAppId || !oneSignalApiKey || !supabaseUrl || !supabaseAnonKey) {
+      const missingVars = [];
+      if (!oneSignalAppId) missingVars.push('ONESIGNAL_APP_ID');
+      if (!oneSignalApiKey) missingVars.push('ONESIGNAL_API_KEY');
+      if (!supabaseUrl) missingVars.push('SUPABASE_URL');
+      if (!supabaseAnonKey) missingVars.push('SUPABASE_ANON_KEY');
+      
+      console.error('[OneSignal Verify] Missing environment variables:', missingVars);
+      
       return new Response(
-        JSON.stringify({ error: 'Missing required environment variables' }),
+        JSON.stringify({ 
+          error: 'Missing required environment variables',
+          missing_vars: missingVars,
+          details: 'Check Supabase Edge Functions secrets configuration'
+        }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

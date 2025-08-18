@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -104,6 +103,118 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
     };
     return instructions[browserName as keyof typeof instructions] || 'Allow notifications when prompted by your browser';
   }, []);
+
+  // OneSignal login/logout functions
+  const loginUserInOneSignal = useCallback(async (userId: string) => {
+    try {
+      if (!window.OneSignal) return;
+      
+      console.log(`[OneSignal] 🔑 Logging in user: ${userId.substring(0, 8)}...`);
+      
+      // Try v16 login first, then v15 fallback
+      if (window.OneSignal?.login) {
+        await window.OneSignal.login(userId);
+        console.log('[OneSignal] ✅ User logged in via v16 API');
+      } else if (window.OneSignal?.setExternalUserId) {
+        await window.OneSignal.setExternalUserId(userId);
+        console.log('[OneSignal] ✅ External user ID set via v15 API');
+      } else {
+        console.warn('[OneSignal] ⚠️ No login API available');
+      }
+    } catch (error) {
+      console.error('[OneSignal] ❌ Login failed:', error);
+    }
+  }, []);
+
+  const logoutUserFromOneSignal = useCallback(async () => {
+    try {
+      if (!window.OneSignal) return;
+      
+      console.log('[OneSignal] 🚪 Logging out user...');
+      
+      // Try v16 logout first, then v15 fallback
+      if (window.OneSignal?.logout) {
+        await window.OneSignal.logout();
+        console.log('[OneSignal] ✅ User logged out via v16 API');
+      } else if (window.OneSignal?.removeExternalUserId) {
+        await window.OneSignal.removeExternalUserId();
+        console.log('[OneSignal] ✅ External user ID removed via v15 API');
+      } else {
+        console.warn('[OneSignal] ⚠️ No logout API available');
+      }
+    } catch (error) {
+      console.error('[OneSignal] ❌ Logout failed:', error);
+    }
+  }, []);
+
+  // Enhanced Supabase sync
+  const syncWithSupabase = useCallback(async () => {
+    try {
+      if (!window.OneSignal) return;
+
+          // Get data with v16/v15 compatibility
+          let userId: string | null = null;
+          let playerId: string | null = null;
+          let permission: NotificationPermission;
+
+          try {
+            // Try v16 APIs first
+            if (window.OneSignal?.User?.getExternalUserId) {
+              userId = await window.OneSignal.User.getExternalUserId();
+            } else if (window.OneSignal?.getExternalUserId) {
+              userId = await window.OneSignal.getExternalUserId();
+            }
+
+            if (window.OneSignal?.User?.PushSubscription?.id) {
+              playerId = window.OneSignal.User.PushSubscription.id;
+            } else if (window.OneSignal?.getPlayerId) {
+              playerId = await window.OneSignal.getPlayerId();
+            }
+
+            if (window.OneSignal?.Notifications?.permission) {
+              permission = window.OneSignal.Notifications.permission;
+            } else if (window.OneSignal?.getNotificationPermission) {
+              permission = await window.OneSignal.getNotificationPermission();
+            } else {
+              permission = Notification.permission;
+            }
+          } catch (error) {
+            console.warn('[OneSignal] Error getting sync data:', error);
+            permission = Notification.permission;
+          }
+
+          console.log('[OneSignal] Syncing with Supabase:', { userId, playerId: playerId?.substring(0, 8), permission });
+
+      // Get current auth user for email
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      // If user is logged in but OneSignal doesn't have external_id, login first
+      if (currentUser && !userId) {
+        console.log('[OneSignal] 🔄 User logged in but not linked to OneSignal, logging in...');
+        await loginUserInOneSignal(currentUser.id);
+      }
+
+      const deviceInfo = getDeviceInfo();
+      
+      const { data, error } = await supabase.functions.invoke('onesignal-upsert-user', {
+        body: {
+          user_id: currentUser?.id,
+          email: currentUser?.email,
+          player_id: playerId,
+          device_fingerprint: deviceInfo.fingerprint,
+          device_info: deviceInfo
+        }
+      });
+
+      if (error) {
+        console.error('[OneSignal] Supabase sync failed:', error);
+      } else {
+        console.log('[OneSignal] Supabase sync successful:', data);
+      }
+    } catch (error) {
+      console.error('[OneSignal] Sync error:', error);
+    }
+  }, [getDeviceInfo, loginUserInOneSignal]);
 
   // Enhanced initialization with better error handling
   const initializeOneSignal = useCallback(async () => {
@@ -306,69 +417,7 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
         permission: 'unsupported'
       }));
     }
-  }, [checkIframeBlocked, getBrowserInstructions]);
-
-  // Enhanced Supabase sync
-  const syncWithSupabase = useCallback(async () => {
-    try {
-      if (!window.OneSignal) return;
-
-          // Get data with v16/v15 compatibility
-          let userId: string | null = null;
-          let playerId: string | null = null;
-          let permission: NotificationPermission;
-
-          try {
-            // Try v16 APIs first
-            if (window.OneSignal?.User?.getExternalUserId) {
-              userId = await window.OneSignal.User.getExternalUserId();
-            } else if (window.OneSignal?.getExternalUserId) {
-              userId = await window.OneSignal.getExternalUserId();
-            }
-
-            if (window.OneSignal?.User?.PushSubscription?.id) {
-              playerId = window.OneSignal.User.PushSubscription.id;
-            } else if (window.OneSignal?.getPlayerId) {
-              playerId = await window.OneSignal.getPlayerId();
-            }
-
-            if (window.OneSignal?.Notifications?.permission) {
-              permission = window.OneSignal.Notifications.permission;
-            } else if (window.OneSignal?.getNotificationPermission) {
-              permission = await window.OneSignal.getNotificationPermission();
-            } else {
-              permission = Notification.permission;
-            }
-          } catch (error) {
-            console.warn('[OneSignal] Error getting sync data:', error);
-            permission = Notification.permission;
-          }
-
-          console.log('[OneSignal] Syncing with Supabase:', { userId, playerId: playerId?.substring(0, 8), permission });
-
-      // Get current auth user for email
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      const deviceInfo = getDeviceInfo();
-      
-      const { data, error } = await supabase.functions.invoke('onesignal-upsert-user', {
-        body: {
-          user_id: currentUser?.id,
-          email: currentUser?.email,
-          player_id: playerId,
-          device_fingerprint: deviceInfo.fingerprint,
-          device_info: deviceInfo
-        }
-      });
-
-      if (error) {
-        console.error('[OneSignal] Supabase sync failed:', error);
-      } else {
-        console.log('[OneSignal] Supabase sync successful:', data);
-      }
-    } catch (error) {
-      console.error('[OneSignal] Sync error:', error);
-    }
-  }, [getDeviceInfo]);
+  }, [checkIframeBlocked, getBrowserInstructions, syncWithSupabase]);
 
   // V16-proof permission request with reliable subscription handling
   const requestPermission = useCallback(async (): Promise<{ success: boolean; error?: string; details?: any; finalPermission?: string }> => {
@@ -443,205 +492,104 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
         
         toast({
           title: "Setup Taking Longer Than Expected",
-          description: "Continuing setup in the background. You may need to try again if notifications don't work.",
-          duration: 5000,
+          description: "Please wait while we finish setting up notifications...",
+          duration: 3000,
         });
       }
 
-      // STEP 2: Read authoritative permission state (v16-proof)
+      // STEP 2: Wait for permission state to stabilize
+      console.log('[OneSignal] ⏳ Waiting for permission state...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // STEP 3: Get final permission state from multiple sources
       let finalPermission: NotificationPermission;
       try {
         if (window.OneSignal?.Notifications?.permission) {
           finalPermission = window.OneSignal.Notifications.permission;
-          console.log('[OneSignal] ✅ Permission from v16 API:', finalPermission);
+          console.log('[OneSignal] Final permission from v16:', finalPermission);
         } else if (window.OneSignal?.getNotificationPermission) {
           finalPermission = await window.OneSignal.getNotificationPermission();
-          console.log('[OneSignal] ✅ Permission from v15 API:', finalPermission);
+          console.log('[OneSignal] Final permission from v15:', finalPermission);
         } else {
           finalPermission = Notification.permission;
-          console.log('[OneSignal] ✅ Permission from browser API:', finalPermission);
+          console.log('[OneSignal] Final permission from browser:', finalPermission);
         }
-      } catch (error) {
-        console.warn('[OneSignal] Failed to get permission from OneSignal, using browser API:', error);
+      } catch (permError) {
+        console.warn('[OneSignal] Error getting final permission, using browser:', permError);
         finalPermission = Notification.permission;
       }
 
-      const permissionGranted = finalPermission === 'granted';
-
-      if (permissionGranted) {
-        console.log('[OneSignal] 🎉 Permission granted! Ensuring subscription...');
+      if (finalPermission === 'granted') {
+        // STEP 4: Final verification and sync with backend
+        console.log('[OneSignal] 🔄 Final verification and backend sync...');
         
-        // STEP 3: Setup subscription with timeout protection for Safari PWA
-        console.log('[OneSignal] 📡 Setting up subscription with timeout protection...');
+        // Wait for subscription to be fully active
+        let syncAttempts = 0;
+        const maxSyncAttempts = 5;
         
-        // Create subscription promise
-        const subscriptionPromise = (async () => {
+        while (syncAttempts < maxSyncAttempts) {
           try {
-            // For Safari/iOS, skip OneSignal prompts since we already got native permission
-            if (!isIOSSafari) {
-              // Force opt-in to create subscription for non-Safari browsers
-              if (window.OneSignal?.User?.PushSubscription?.optIn) {
-                console.log('[OneSignal] Using v16 User.PushSubscription.optIn()');
-                await window.OneSignal.User.PushSubscription.optIn();
-              } else if (window.OneSignal?.setSubscription) {
-                console.log('[OneSignal] Using v15 setSubscription(true)');
-                await window.OneSignal.setSubscription(true);
-              } else if (window.OneSignal?.registerForPushNotifications) {
-                console.log('[OneSignal] Using v15 registerForPushNotifications()');
-                await window.OneSignal.registerForPushNotifications();
-              }
-            } else {
-              console.log('[OneSignal] 🍎 Safari/iOS: Proceeding with direct subscription...');
-              
-              // Try to trigger subscription directly for Safari/iOS
-              if (window.OneSignal?.User?.PushSubscription?.optIn) {
-                await window.OneSignal.User.PushSubscription.optIn();
-              } else if (window.OneSignal?.setSubscription) {
-                await window.OneSignal.setSubscription(true);
-              }
-            }
-
-            // Quick Player ID check (non-blocking)
-            let playerId = null;
-            try {
-              if (window.OneSignal?.User?.PushSubscription?.id) {
-                playerId = window.OneSignal.User.PushSubscription.id;
-              } else if (window.OneSignal?.getPlayerId) {
-                playerId = await window.OneSignal.getPlayerId();
-              }
-            } catch (error) {
-              console.warn('[OneSignal] Error getting Player ID:', error);
+            let currentPlayerId: string | null = null;
+            let currentSubscriptionState = false;
+            
+            // Check subscription state with v16/v15 compatibility
+            if (window.OneSignal?.User?.PushSubscription?.id) {
+              currentPlayerId = window.OneSignal.User.PushSubscription.id;
+              currentSubscriptionState = window.OneSignal.User.PushSubscription.optedIn;
+            } else if (window.OneSignal?.getPlayerId && window.OneSignal?.isPushNotificationsEnabled) {
+              currentPlayerId = await window.OneSignal.getPlayerId();
+              currentSubscriptionState = await window.OneSignal.isPushNotificationsEnabled();
             }
             
-            if (playerId) {
-              console.log(`[OneSignal] ✅ Player ID immediately available: ${playerId.substring(0, 8)}...`);
-              return { success: true, playerId, immediate: true };
-            }
-
-            console.log('[OneSignal] Player ID not immediately available');
-            return { success: true, playerId: null, immediate: false };
+            console.log(`[OneSignal] Sync attempt ${syncAttempts + 1}: Player ID ${currentPlayerId?.substring(0, 8)}, Subscribed: ${currentSubscriptionState}`);
             
-          } catch (subscriptionError) {
-            console.error('[OneSignal] Subscription setup failed:', subscriptionError);
-            throw subscriptionError;
-          }
-        })();
-
-        // Create timeout promise to prevent UI blocking
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-            reject(new Error('Subscription setup timeout - continuing in background'));
-          }, isIOSSafari ? 1200 : 800); // Shorter timeout for better UX
-        });
-
-        // Race between subscription and timeout
-        let subscriptionResult;
-        try {
-          subscriptionResult = await Promise.race([subscriptionPromise, timeoutPromise]);
-        } catch (timeoutError) {
-          console.log('[OneSignal] ⏰ Quick setup timed out, continuing in background...');
-          
-          // Start background processing without blocking UI
-          setTimeout(async () => {
-            try {
-              console.log('[OneSignal] 🔄 Background: Extended polling for Player ID...');
-              
-              // Extended polling in background
-              let playerId = null;
-              let attempts = 0;
-              const maxAttempts = 15;
-              
-              while (!playerId && attempts < maxAttempts) {
-                attempts++;
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                try {
-                  if (window.OneSignal?.User?.PushSubscription?.id) {
-                    playerId = window.OneSignal.User.PushSubscription.id;
-                  } else if (window.OneSignal?.getPlayerId) {
-                    playerId = await window.OneSignal.getPlayerId();
-                  }
-                  
-                  if (playerId) {
-                    console.log(`[OneSignal] ✅ Background: Player ID found on attempt ${attempts}: ${playerId.substring(0, 8)}...`);
-                    await syncWithSupabase();
-                    
-                    // Update state if component is still mounted
-                    setState(prev => ({
-                      ...prev,
-                      hasSubscription: true,
-                      isGranted: true
-                    }));
-                    
-                    console.log('[OneSignal] 🎉 Background subscription setup completed!');
-                    return;
-                  }
-                } catch (pollError) {
-                  console.warn(`[OneSignal] Background poll attempt ${attempts} failed:`, pollError);
-                }
+            if (currentPlayerId && currentSubscriptionState) {
+              // Get current user to ensure login before sync
+              const { data: { user: currentUser } } = await supabase.auth.getUser();
+              if (currentUser) {
+                console.log('[OneSignal] 🔑 Ensuring user is logged in to OneSignal before sync...');
+                await loginUserInOneSignal(currentUser.id);
               }
               
-              console.warn('[OneSignal] ⏰ Background polling completed without Player ID');
+              // Subscription is active, sync with backend
               await syncWithSupabase();
-              
-            } catch (backgroundError) {
-              console.error('[OneSignal] Background setup failed:', backgroundError);
+              console.log('[OneSignal] ✅ Backend sync completed');
+              break;
+            } else if (syncAttempts === maxSyncAttempts - 1) {
+              // Last attempt - sync anyway with best effort
+              console.log('[OneSignal] ⚠️ Final sync attempt with partial data');
+              const { data: { user: currentUser } } = await supabase.auth.getUser();
+              if (currentUser) {
+                await loginUserInOneSignal(currentUser.id);
+              }
+              await syncWithSupabase();
             }
-          }, 0);
-          
-          // Return success to unblock UI immediately
-          subscriptionResult = { success: true, playerId: null, immediate: false };
-        }
-
-        // STEP 4: Handle immediate success or proceed with quick verification
-        let isSubscribed = false;
-        let playerId = subscriptionResult.playerId;
-
-        if (subscriptionResult.immediate && playerId) {
-          // We have immediate Player ID, verify subscription
-          try {
-            if (window.OneSignal?.User?.PushSubscription?.optedIn !== undefined) {
-              isSubscribed = window.OneSignal.User.PushSubscription.optedIn;
-            } else if (window.OneSignal?.isPushNotificationsEnabled) {
-              isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-            } else {
-              isSubscribed = true; // Assume subscribed if we have Player ID
+            
+            syncAttempts++;
+            if (syncAttempts < maxSyncAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 800)); // Wait 800ms between attempts
             }
-          } catch (error) {
-            console.warn('[OneSignal] Failed to verify subscription status:', error);
-            isSubscribed = true; // Assume subscribed if we have Player ID
+          } catch (syncError) {
+            console.warn(`[OneSignal] Sync attempt ${syncAttempts + 1} failed:`, syncError);
+            syncAttempts++;
+            if (syncAttempts < maxSyncAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
-
-          // Sync to Supabase with immediate data
-          await syncWithSupabase();
-        } else {
-          // Background processing or no immediate Player ID
-          isSubscribed = true; // Optimistic assumption for UI
-          
-          // Quick sync without Player ID
-          setTimeout(() => syncWithSupabase(), 100);
         }
 
-        console.log('[OneSignal] 📊 Quick setup state:', { 
-          permission: finalPermission, 
-          playerId: playerId?.substring(0, 8), 
-          isSubscribed,
-          immediate: subscriptionResult.immediate
-        });
-
-        // STEP 5: Update local state optimistically
+        // Update local state
         setState(prev => ({
           ...prev,
           permission: finalPermission,
           isGranted: true,
-          hasSubscription: isSubscribed
+          hasSubscription: true
         }));
 
-        // Success toast
         toast({
-          title: "🎉 Notifications Enabled!",
+          title: "Notifications Enabled! 🎉",
           description: "You'll now receive trading signals and updates.",
-          duration: 3000,
+          duration: 4000,
         });
 
         return { success: true, finalPermission };
@@ -660,7 +608,7 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
           : 'Permission request was dismissed.';
           
         // Provide specific help for Safari/iOS users
-        if (isIOSSafari && finalPermission !== 'granted') {
+        if (isIOSSafari) {
           errorMessage = 'To enable notifications on iOS: Go to Settings > [App Name] > Notifications and turn on "Allow Notifications"';
         }
 
@@ -686,18 +634,40 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
 
       return { success: false, error: errorMessage, details: error };
     }
-  }, [syncWithSupabase, toast]);
+  }, [syncWithSupabase, toast, loginUserInOneSignal]);
 
-  // Initialize on mount
+  // Initialize on mount and setup auth listener
   useEffect(() => {
     initializeOneSignal();
     
+    // Set up auth state listener for login/logout
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('[OneSignal] 🔄 Auth state changed:', event, !!session?.user);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          // User signed in - login to OneSignal
+          console.log('[OneSignal] 👤 User signed in, linking to OneSignal...');
+          setTimeout(async () => {
+            await loginUserInOneSignal(session.user.id);
+            // Sync after login to ensure proper association
+            await syncWithSupabase();
+          }, 1000); // Small delay to ensure OneSignal is ready
+        } else if (event === 'SIGNED_OUT') {
+          // User signed out - logout from OneSignal
+          console.log('[OneSignal] 👋 User signed out, unlinking from OneSignal...');
+          await logoutUserFromOneSignal();
+        }
+      }
+    );
+    
     return () => {
+      subscription.unsubscribe();
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
     };
-  }, [initializeOneSignal]);
+  }, [initializeOneSignal, loginUserInOneSignal, logoutUserFromOneSignal, syncWithSupabase]);
 
   return {
     ...state,

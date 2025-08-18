@@ -11,6 +11,9 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     // Add history API fallback for SPA routing
     historyApiFallback: true,
+    headers: {
+      'Service-Worker-Allowed': '/'
+    }
   },
   plugins: [
     react(),

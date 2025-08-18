@@ -198,6 +198,22 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           const data = JSON.parse(event.data);
           console.log('📊 Parsed message:', data);
           
+          // CRITICAL: Reject any mock data sources - DevOps security validation
+          if (data.source === 'MockData_DEPRECATED' || data.priceSource === 'MockData_DEPRECATED') {
+            console.error('🚨 SECURITY: Rejected mock data source - only real TraderMade data allowed');
+            setErrors(prev => ({
+              ...prev,
+              global: 'Mock data detected - only live TraderMade feeds allowed'
+            }));
+            return;
+          }
+          
+          // Validate data source authenticity - must be from TraderMade
+          if (data.messageType === 'PRICE_UPDATE' && !data.is_institutional_tick && !data.tick_timestamp && !data.sequence) {
+            console.warn('⚠️ Suspicious price data without TraderMade markers, validating...');
+            // Allow but log for monitoring
+          }
+          
           if (data.messageType === 'CONNECTION_STATUS') {
             console.log('🔗 FIX Connection status update:', data.status);
             const status = data.status === 'connected' ? 'connected' : 

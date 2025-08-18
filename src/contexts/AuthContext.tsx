@@ -216,7 +216,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const key = `os_upsert_v1:${uid}:${email}:${role}:${utype}`;
       const done = (() => { try { return localStorage.getItem(key) === '1'; } catch { return false; } })();
       if (done) return;
-      const body: { tags?: Record<string, string> } = {};
+      const body: { user_id?: string; email?: string; tags?: Record<string, string> } = {};
+      body.user_id = uid;
+      body.email = email;
       const tags: Record<string, string> = {};
       if (role) tags.role = String(role);
       if (utype) tags.user_type = String(utype);

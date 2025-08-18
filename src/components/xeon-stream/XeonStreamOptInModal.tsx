@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Bell, TrendingUp, DollarSign, Clock, Shield } from 'lucide-react';
 import { useXeonStream } from '@/contexts/XeonStreamContext';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { detectSafariPWA } from '@/utils/deviceDetection';
 
 export const XeonStreamOptInModal: React.FC = () => {
@@ -13,8 +14,15 @@ export const XeonStreamOptInModal: React.FC = () => {
     subscribeToXeonStream, 
     isLoading 
   } = useXeonStream();
-
+  const { permission, hasSubscription } = useNotifications();
   const isSafariPWA = detectSafariPWA();
+
+  // Auto-close modal when notifications are granted
+  useEffect(() => {
+    if (showOptInModal && (permission === 'granted' || hasSubscription)) {
+      setShowOptInModal(false);
+    }
+  }, [showOptInModal, permission, hasSubscription, setShowOptInModal]);
 
   const handleActivate = async () => {
     const result = await subscribeToXeonStream();

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,9 +18,18 @@ export function TradingNotificationModal({
   onClose, 
   onNotificationEnabled 
 }: TradingNotificationModalProps) {
-  const { requestPermission } = useOneSignalEnhanced();
+  const { requestPermission, permission, hasSubscription } = useOneSignalEnhanced();
   const [isLoading, setIsLoading] = useState(false);
   const isSafariPWA = detectSafariPWA();
+
+  // Auto-close modal when notifications are granted
+  useEffect(() => {
+    if (isOpen && (permission === 'granted' || hasSubscription)) {
+      setIsLoading(false);
+      onNotificationEnabled?.();
+      onClose();
+    }
+  }, [isOpen, permission, hasSubscription, onClose, onNotificationEnabled]);
 
   const handleEnableNotifications = async () => {
     setIsLoading(true);

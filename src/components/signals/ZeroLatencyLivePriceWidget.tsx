@@ -201,7 +201,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
       </div>
 
       {/* Zero-Latency Performance Metrics */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+      <div className="hidden flex items-center gap-4 text-xs text-muted-foreground">
         <div className="flex items-center gap-1">
           <Zap className="h-3 w-3" />
           <span>Latency:</span>

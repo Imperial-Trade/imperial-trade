@@ -134,11 +134,11 @@ const ZeroLatencyLivePriceWidgetComponent = ({
             <span className="text-sm font-medium text-muted-foreground">
               {alert.tradermade_symbol}
             </span>
-            <Badge variant={isDirectRendered ? "default" : "secondary"} className="text-xs">
+            <Badge variant={isDirectRendered ? "default" : "secondary"} className="hidden text-xs">
               {isDirectRendered ? 'Direct DOM' : 'React'}
             </Badge>
             {workerCalculated && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="hidden text-xs">
                 <Activity className="h-3 w-3 mr-1" />
                 Worker
               </Badge>

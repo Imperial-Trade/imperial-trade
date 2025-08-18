@@ -467,116 +467,181 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
       if (permissionGranted) {
         console.log('[OneSignal] 🎉 Permission granted! Ensuring subscription...');
         
-        // STEP 3: Force subscription with Player ID polling (v16-proof)
-        try {
-          // Force opt-in to create subscription
-          if (window.OneSignal?.User?.PushSubscription?.optIn) {
-            console.log('[OneSignal] Using v16 User.PushSubscription.optIn()');
-            await window.OneSignal.User.PushSubscription.optIn();
-          } else if (window.OneSignal?.setSubscription) {
-            console.log('[OneSignal] Using v15 setSubscription(true)');
-            await window.OneSignal.setSubscription(true);
-          } else if (window.OneSignal?.registerForPushNotifications) {
-            console.log('[OneSignal] Using v15 registerForPushNotifications()');
-            await window.OneSignal.registerForPushNotifications();
-          }
+        // STEP 3: Setup subscription with timeout protection for Safari PWA
+        console.log('[OneSignal] 📡 Setting up subscription with timeout protection...');
+        
+        // Create subscription promise
+        const subscriptionPromise = (async () => {
+          try {
+            // For Safari/iOS, skip OneSignal prompts since we already got native permission
+            if (!isIOSSafari) {
+              // Force opt-in to create subscription for non-Safari browsers
+              if (window.OneSignal?.User?.PushSubscription?.optIn) {
+                console.log('[OneSignal] Using v16 User.PushSubscription.optIn()');
+                await window.OneSignal.User.PushSubscription.optIn();
+              } else if (window.OneSignal?.setSubscription) {
+                console.log('[OneSignal] Using v15 setSubscription(true)');
+                await window.OneSignal.setSubscription(true);
+              } else if (window.OneSignal?.registerForPushNotifications) {
+                console.log('[OneSignal] Using v15 registerForPushNotifications()');
+                await window.OneSignal.registerForPushNotifications();
+              }
+            } else {
+              console.log('[OneSignal] 🍎 Safari/iOS: Proceeding with direct subscription...');
+              
+              // Try to trigger subscription directly for Safari/iOS
+              if (window.OneSignal?.User?.PushSubscription?.optIn) {
+                await window.OneSignal.User.PushSubscription.optIn();
+              } else if (window.OneSignal?.setSubscription) {
+                await window.OneSignal.setSubscription(true);
+              }
+            }
 
-          // Poll for Player ID with timeout
-          console.log('[OneSignal] 🔄 Polling for Player ID...');
-          let playerId = null;
-          let attempts = 0;
-          const maxAttempts = 10;
-          
-          while (!playerId && attempts < maxAttempts) {
+            // Quick Player ID check (non-blocking)
+            let playerId = null;
             try {
               if (window.OneSignal?.User?.PushSubscription?.id) {
                 playerId = window.OneSignal.User.PushSubscription.id;
-                console.log('[OneSignal] ✅ Got Player ID from v16 API:', playerId?.substring(0, 8));
               } else if (window.OneSignal?.getPlayerId) {
                 playerId = await window.OneSignal.getPlayerId();
-                console.log('[OneSignal] ✅ Got Player ID from v15 API:', playerId?.substring(0, 8));
-              }
-              
-              if (!playerId) {
-                attempts++;
-                console.log(`[OneSignal] 🔄 Attempt ${attempts}/${maxAttempts} - waiting for Player ID...`);
-                await new Promise(resolve => setTimeout(resolve, 500));
               }
             } catch (error) {
-              console.warn(`[OneSignal] Error getting Player ID (attempt ${attempts + 1}):`, error);
-              attempts++;
-              await new Promise(resolve => setTimeout(resolve, 500));
+              console.warn('[OneSignal] Error getting Player ID:', error);
             }
-          }
+            
+            if (playerId) {
+              console.log(`[OneSignal] ✅ Player ID immediately available: ${playerId.substring(0, 8)}...`);
+              return { success: true, playerId, immediate: true };
+            }
 
-          if (!playerId) {
-            console.warn('[OneSignal] ⚠️ No Player ID after polling - subscription may be incomplete');
+            console.log('[OneSignal] Player ID not immediately available');
+            return { success: true, playerId: null, immediate: false };
+            
+          } catch (subscriptionError) {
+            console.error('[OneSignal] Subscription setup failed:', subscriptionError);
+            throw subscriptionError;
           }
+        })();
 
-          // STEP 4: Verify subscription status
-          let isSubscribed = false;
+        // Create timeout promise to prevent UI blocking
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Subscription setup timeout - continuing in background'));
+          }, isIOSSafari ? 1200 : 800); // Shorter timeout for better UX
+        });
+
+        // Race between subscription and timeout
+        let subscriptionResult;
+        try {
+          subscriptionResult = await Promise.race([subscriptionPromise, timeoutPromise]);
+        } catch (timeoutError) {
+          console.log('[OneSignal] ⏰ Quick setup timed out, continuing in background...');
+          
+          // Start background processing without blocking UI
+          setTimeout(async () => {
+            try {
+              console.log('[OneSignal] 🔄 Background: Extended polling for Player ID...');
+              
+              // Extended polling in background
+              let playerId = null;
+              let attempts = 0;
+              const maxAttempts = 15;
+              
+              while (!playerId && attempts < maxAttempts) {
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                try {
+                  if (window.OneSignal?.User?.PushSubscription?.id) {
+                    playerId = window.OneSignal.User.PushSubscription.id;
+                  } else if (window.OneSignal?.getPlayerId) {
+                    playerId = await window.OneSignal.getPlayerId();
+                  }
+                  
+                  if (playerId) {
+                    console.log(`[OneSignal] ✅ Background: Player ID found on attempt ${attempts}: ${playerId.substring(0, 8)}...`);
+                    await syncWithSupabase();
+                    
+                    // Update state if component is still mounted
+                    setState(prev => ({
+                      ...prev,
+                      hasSubscription: true,
+                      isGranted: true
+                    }));
+                    
+                    console.log('[OneSignal] 🎉 Background subscription setup completed!');
+                    return;
+                  }
+                } catch (pollError) {
+                  console.warn(`[OneSignal] Background poll attempt ${attempts} failed:`, pollError);
+                }
+              }
+              
+              console.warn('[OneSignal] ⏰ Background polling completed without Player ID');
+              await syncWithSupabase();
+              
+            } catch (backgroundError) {
+              console.error('[OneSignal] Background setup failed:', backgroundError);
+            }
+          }, 0);
+          
+          // Return success to unblock UI immediately
+          subscriptionResult = { success: true, playerId: null, immediate: false };
+        }
+
+        // STEP 4: Handle immediate success or proceed with quick verification
+        let isSubscribed = false;
+        let playerId = subscriptionResult.playerId;
+
+        if (subscriptionResult.immediate && playerId) {
+          // We have immediate Player ID, verify subscription
           try {
             if (window.OneSignal?.User?.PushSubscription?.optedIn !== undefined) {
               isSubscribed = window.OneSignal.User.PushSubscription.optedIn;
-              console.log('[OneSignal] ✅ Subscription status from v16 API:', isSubscribed);
             } else if (window.OneSignal?.isPushNotificationsEnabled) {
               isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-              console.log('[OneSignal] ✅ Subscription status from v15 API:', isSubscribed);
+            } else {
+              isSubscribed = true; // Assume subscribed if we have Player ID
             }
           } catch (error) {
             console.warn('[OneSignal] Failed to verify subscription status:', error);
-            // If we have a Player ID, assume subscribed
-            isSubscribed = !!playerId;
+            isSubscribed = true; // Assume subscribed if we have Player ID
           }
 
-          console.log('[OneSignal] 📊 Final state:', { 
-            permission: finalPermission, 
-            playerId: playerId?.substring(0, 8), 
-            isSubscribed 
-          });
-
-          // STEP 5: Sync to Supabase only after successful subscription
-          if (playerId || isSubscribed) {
-            console.log('[OneSignal] 🔄 Syncing to Supabase...');
-            await syncWithSupabase();
-          }
-
-          // STEP 6: Update local state
-          setState(prev => ({
-            ...prev,
-            permission: finalPermission,
-            isGranted: true,
-            hasSubscription: isSubscribed || !!playerId
-          }));
-
-          // Success toast based on final permission state
-          toast({
-            title: "🎉 Notifications Enabled!",
-            description: "You'll now receive trading signals and updates.",
-            duration: 3000,
-          });
-
-          return { success: true, finalPermission };
+          // Sync to Supabase with immediate data
+          await syncWithSupabase();
+        } else {
+          // Background processing or no immediate Player ID
+          isSubscribed = true; // Optimistic assumption for UI
           
-        } catch (subscriptionError) {
-          console.error('[OneSignal] Subscription setup failed after permission grant:', subscriptionError);
-          
-          // Still update state to reflect permission granted
-          setState(prev => ({
-            ...prev,
-            permission: finalPermission,
-            isGranted: true,
-            hasSubscription: false
-          }));
-
-          toast({
-            title: "Permission Granted",
-            description: "Notifications enabled, but setup may be incomplete. Please try again if you don't receive alerts.",
-            duration: 5000,
-          });
-
-          return { success: true, finalPermission, error: 'Subscription setup incomplete' };
+          // Quick sync without Player ID
+          setTimeout(() => syncWithSupabase(), 100);
         }
+
+        console.log('[OneSignal] 📊 Quick setup state:', { 
+          permission: finalPermission, 
+          playerId: playerId?.substring(0, 8), 
+          isSubscribed,
+          immediate: subscriptionResult.immediate
+        });
+
+        // STEP 5: Update local state optimistically
+        setState(prev => ({
+          ...prev,
+          permission: finalPermission,
+          isGranted: true,
+          hasSubscription: isSubscribed
+        }));
+
+        // Success toast
+        toast({
+          title: "🎉 Notifications Enabled!",
+          description: "You'll now receive trading signals and updates.",
+          duration: 3000,
+        });
+
+        return { success: true, finalPermission };
+          
       } else {
         // Permission denied or dismissed
         setState(prev => ({

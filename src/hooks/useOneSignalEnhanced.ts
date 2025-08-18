@@ -127,31 +127,16 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
 
       const { appId } = config;
 
-      // Detect iOS PWA for service worker path adjustment
-      const safariPWAInfo = detectSafariPWA();
-      console.log('[OneSignal] Safari PWA Detection:', safariPWAInfo);
-
-      // Use root service workers for iOS PWA to avoid scope issues
-      const useRootWorkers = safariPWAInfo.isSafariPWA;
-      console.log('[OneSignal] Using root service workers:', useRootWorkers);
-
-      // Pre-register root service worker for iOS PWA
-      if (useRootWorkers && 'serviceWorker' in navigator) {
-        try {
-          console.log('[OneSignal] Pre-registering root service worker for iOS PWA');
-          await navigator.serviceWorker.register('/OneSignalSDKWorker.js', { scope: '/' });
-        } catch (swError) {
-          console.warn('[OneSignal] Root service worker pre-registration failed:', swError);
-        }
-      }
+      // Always use centralized workers from /push/onesignal/ directory
+      console.log('[OneSignal] Using centralized service workers from /push/onesignal/');
       
       // Initialize OneSignal with enhanced configuration
       window.OneSignal = window.OneSignal || [];
       window.OneSignal.push(() => {
         window.OneSignal.init({
           appId,
-          serviceWorkerParam: useRootWorkers ? { scope: '/' } : { scope: '/push/onesignal/' },
-          serviceWorkerPath: useRootWorkers ? '/OneSignalSDKWorker.js' : '/push/onesignal/OneSignalSDKWorker.js',
+          serviceWorkerParam: { scope: '/' },
+          serviceWorkerPath: '/push/onesignal/OneSignalSDKWorker.js',
           allowLocalhostAsSecureOrigin: true,
           autoRegister: false, // We'll handle registration manually
           autoResubscribe: true,
@@ -402,28 +387,16 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
         console.log('[OneSignal] 🚀 Requesting permission...');
         
         try {
-          // For iOS PWA, try native permission first
-          if (safariPWAInfo.isSafariPWA) {
-            console.log('[OneSignal] iOS PWA: Using native Notification.requestPermission() first');
-            await Notification.requestPermission();
-            
-            // Then try OneSignal opt-in
-            if (window.OneSignal?.User?.PushSubscription?.optIn) {
-              console.log('[OneSignal] iOS PWA: Following up with OneSignal opt-in');
-              await window.OneSignal.User.PushSubscription.optIn();
-            }
+          // Try OneSignal v16 API first, then fallback to v15/browser
+          if (window.OneSignal?.Notifications?.requestPermission) {
+            console.log('[OneSignal] Using v16 Notifications.requestPermission()');
+            await window.OneSignal.Notifications.requestPermission();
+          } else if (window.OneSignal?.showNativePrompt) {
+            console.log('[OneSignal] Using v15 showNativePrompt()');
+            await window.OneSignal.showNativePrompt();
           } else {
-            // Try OneSignal v16 API first, then fallback to v15/browser
-            if (window.OneSignal?.Notifications?.requestPermission) {
-              console.log('[OneSignal] Using v16 Notifications.requestPermission()');
-              await window.OneSignal.Notifications.requestPermission();
-            } else if (window.OneSignal?.showNativePrompt) {
-              console.log('[OneSignal] Using v15 showNativePrompt()');
-              await window.OneSignal.showNativePrompt();
-            } else {
-              console.log('[OneSignal] Using browser native Notification.requestPermission()');
-              await Notification.requestPermission();
-            }
+            console.log('[OneSignal] Using browser native Notification.requestPermission()');
+            await Notification.requestPermission();
           }
         } catch (promptError) {
           console.warn('[OneSignal] Primary permission request failed, using browser fallback:', promptError);

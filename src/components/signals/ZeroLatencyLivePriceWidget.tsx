@@ -231,7 +231,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
       </div>
 
       {/* Status Indicators */}
-      <div className="flex items-center gap-2 text-xs">
+      <div className="hidden flex items-center gap-2 text-xs">
         <Badge variant={renderLatency < 50 ? "default" : "destructive"}>
           {renderLatency < 50 ? 'Ultra Fast' : 'Slow'}
         </Badge>

@@ -26,6 +26,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import EnableAlertsCTA from "@/components/notifications/EnableAlertsCTA";
 
 
 const AppBar: React.FC = () => {
@@ -238,7 +239,7 @@ const AppBar: React.FC = () => {
             isSigninPage ? "mr-4" : ""
           }`}
         >
-          
+          <EnableAlertsCTA />
           <ThemeToggle />
           {renderAuthButton()}
         </div>

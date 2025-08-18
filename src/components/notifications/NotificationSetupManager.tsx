@@ -43,12 +43,20 @@ const NotificationSetupManager: React.FC = () => {
   // Auto-trigger OneSignal native prompt with retry logic - AFTER welcome animation
   useEffect(() => {
     const attemptPrompt = () => {
-      // Gate prompt to only trigger after welcome animation on /dashboard/home
-      if (!hasSeenWelcome || location.pathname !== '/dashboard/home') {
+      // Allow auto native prompt on dashboard routes or "/" for authenticated users after welcome
+      const shouldAttemptNativePrompt = 
+        hasSeenWelcome && 
+        !!user && 
+        !!profile && 
+        (location.pathname.startsWith('/dashboard') || location.pathname === '/');
+      
+      if (!shouldAttemptNativePrompt) {
         console.log('🎯 [Native Prompt] Waiting for welcome animation completion and correct route', {
           hasSeenWelcome,
           currentPath: location.pathname,
-          requiredPath: '/dashboard/home'
+          allowedRoutes: 'dashboard routes or /',
+          hasUser: !!user,
+          hasProfile: !!profile
         });
         return;
       }

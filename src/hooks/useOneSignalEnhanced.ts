@@ -159,59 +159,131 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
           }
         });
 
-        // Enhanced event listeners
-        window.OneSignal.on('subscriptionChange', (isSubscribed: boolean) => {
-          console.log('[OneSignal] Subscription changed:', isSubscribed);
-          setState(prev => ({
-            ...prev,
-            hasSubscription: isSubscribed,
-            isGranted: isSubscribed && Notification.permission === 'granted'
-          }));
-          
-          if (isSubscribed) {
-            syncWithSupabase();
+        // V16-compatible event listeners with v15 fallbacks
+        try {
+          // V16 event listeners
+          if (window.OneSignal.User?.PushSubscription?.addEventListener) {
+            console.log('[OneSignal] Setting up v16 event listeners');
+            
+            window.OneSignal.User.PushSubscription.addEventListener('change', (event: any) => {
+              console.log('[OneSignal] v16 subscription change:', event);
+              const isSubscribed = event.current.optedIn;
+              setState(prev => ({
+                ...prev,
+                hasSubscription: isSubscribed,
+                isGranted: isSubscribed && Notification.permission === 'granted'
+              }));
+              
+              if (isSubscribed) {
+                syncWithSupabase();
+              }
+            });
           }
-        });
-
-        window.OneSignal.on('permissionChange', (permission: string) => {
-          console.log('[OneSignal] Permission changed:', permission);
-          setState(prev => ({
-            ...prev,
-            permission: permission as NotificationPermission,
-            isGranted: permission === 'granted'
-          }));
-        });
-
-        // Get initial state
-        Promise.all([
-          window.OneSignal.getNotificationPermission(),
-          window.OneSignal.isPushNotificationsEnabled()
-        ]).then(([permission, isEnabled]) => {
-          console.log('[OneSignal] Initial state - Permission:', permission, 'Enabled:', isEnabled);
           
-          const browserName = getBrowserName();
-          const browserInstructions = getBrowserInstructions(browserName);
-          
-          setState(prev => ({
-            ...prev,
-            permission: permission as NotificationPermission,
-            isGranted: permission === 'granted',
-            hasSubscription: isEnabled,
-            initialized: true,
-            browserInfo: { name: browserName, version: getBrowserVersion() },
-            browserInstructions
-          }));
-        }).catch(error => {
-          console.error('[OneSignal] Error getting initial state:', error);
-          // Set initialized to true even on error to allow fallback permission requests
-          const browserName = getBrowserName();
-          setState(prev => ({ 
-            ...prev, 
-            initialized: true,
-            browserInfo: { name: browserName, version: getBrowserVersion() },
-            browserInstructions: getBrowserInstructions(browserName)
-          }));
-        });
+          if (window.OneSignal.Notifications?.addEventListener) {
+            window.OneSignal.Notifications.addEventListener('permissionChange', (event: any) => {
+              console.log('[OneSignal] v16 permission change:', event);
+              const permission = event.permission;
+              setState(prev => ({
+                ...prev,
+                permission: permission as NotificationPermission,
+                isGranted: permission === 'granted'
+              }));
+            });
+          }
+        } catch (v16Error) {
+          console.log('[OneSignal] v16 events not available, using v15 fallbacks');
+        }
+
+        // V15 fallback event listeners
+        try {
+          window.OneSignal.on('subscriptionChange', (isSubscribed: boolean) => {
+            console.log('[OneSignal] v15 subscription change:', isSubscribed);
+            setState(prev => ({
+              ...prev,
+              hasSubscription: isSubscribed,
+              isGranted: isSubscribed && Notification.permission === 'granted'
+            }));
+            
+            if (isSubscribed) {
+              syncWithSupabase();
+            }
+          });
+
+          window.OneSignal.on('permissionChange', (permission: string) => {
+            console.log('[OneSignal] v15 permission change:', permission);
+            setState(prev => ({
+              ...prev,
+              permission: permission as NotificationPermission,
+              isGranted: permission === 'granted'
+            }));
+          });
+        } catch (v15Error) {
+          console.warn('[OneSignal] v15 event listeners failed:', v15Error);
+        }
+
+        // Get initial state with v16/v15 compatibility
+        const getInitialState = async () => {
+          try {
+            let permission: NotificationPermission;
+            let isEnabled: boolean;
+            let playerId: string | null = null;
+
+            // Try v16 APIs first
+            if (window.OneSignal?.Notifications?.permission !== undefined) {
+              permission = window.OneSignal.Notifications.permission;
+              console.log('[OneSignal] Got permission from v16:', permission);
+            } else if (window.OneSignal?.getNotificationPermission) {
+              permission = await window.OneSignal.getNotificationPermission();
+              console.log('[OneSignal] Got permission from v15:', permission);
+            } else {
+              permission = Notification.permission;
+              console.log('[OneSignal] Got permission from browser:', permission);
+            }
+
+            if (window.OneSignal?.User?.PushSubscription?.optedIn !== undefined) {
+              isEnabled = window.OneSignal.User.PushSubscription.optedIn;
+              playerId = window.OneSignal.User.PushSubscription.id || null;
+              console.log('[OneSignal] Got subscription from v16:', { isEnabled, playerId: playerId?.substring(0, 8) });
+            } else if (window.OneSignal?.isPushNotificationsEnabled) {
+              isEnabled = await window.OneSignal.isPushNotificationsEnabled();
+              if (window.OneSignal?.getPlayerId) {
+                playerId = await window.OneSignal.getPlayerId();
+              }
+              console.log('[OneSignal] Got subscription from v15:', { isEnabled, playerId: playerId?.substring(0, 8) });
+            } else {
+              isEnabled = false;
+              console.log('[OneSignal] No subscription APIs available');
+            }
+            
+            const browserName = getBrowserName();
+            const browserInstructions = getBrowserInstructions(browserName);
+            
+            setState(prev => ({
+              ...prev,
+              permission,
+              isGranted: permission === 'granted',
+              hasSubscription: isEnabled || !!playerId,
+              initialized: true,
+              browserInfo: { name: browserName, version: getBrowserVersion() },
+              browserInstructions
+            }));
+
+            console.log('[OneSignal] ✅ Initial state ready:', { permission, isEnabled, hasPlayerId: !!playerId });
+          } catch (error) {
+            console.error('[OneSignal] Error getting initial state:', error);
+            // Set initialized to true even on error to allow fallback permission requests
+            const browserName = getBrowserName();
+            setState(prev => ({ 
+              ...prev, 
+              initialized: true,
+              browserInfo: { name: browserName, version: getBrowserVersion() },
+              browserInstructions: getBrowserInstructions(browserName)
+            }));
+          }
+        };
+
+        getInitialState();
       });
 
       // Load OneSignal SDK
@@ -238,13 +310,38 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
     try {
       if (!window.OneSignal) return;
 
-      const [userId, playerId, permission] = await Promise.all([
-        window.OneSignal.User?.getExternalUserId?.() || window.OneSignal.getExternalUserId?.(),
-        window.OneSignal.User?.PushSubscription?.getId?.() || window.OneSignal.getPlayerId?.(),
-        window.OneSignal.getNotificationPermission?.()
-      ]);
+          // Get data with v16/v15 compatibility
+          let userId: string | null = null;
+          let playerId: string | null = null;
+          let permission: NotificationPermission;
 
-      console.log('[OneSignal] Syncing with Supabase:', { userId, playerId: playerId?.substring(0, 8), permission });
+          try {
+            // Try v16 APIs first
+            if (window.OneSignal?.User?.getExternalUserId) {
+              userId = await window.OneSignal.User.getExternalUserId();
+            } else if (window.OneSignal?.getExternalUserId) {
+              userId = await window.OneSignal.getExternalUserId();
+            }
+
+            if (window.OneSignal?.User?.PushSubscription?.id) {
+              playerId = window.OneSignal.User.PushSubscription.id;
+            } else if (window.OneSignal?.getPlayerId) {
+              playerId = await window.OneSignal.getPlayerId();
+            }
+
+            if (window.OneSignal?.Notifications?.permission) {
+              permission = window.OneSignal.Notifications.permission;
+            } else if (window.OneSignal?.getNotificationPermission) {
+              permission = await window.OneSignal.getNotificationPermission();
+            } else {
+              permission = Notification.permission;
+            }
+          } catch (error) {
+            console.warn('[OneSignal] Error getting sync data:', error);
+            permission = Notification.permission;
+          }
+
+          console.log('[OneSignal] Syncing with Supabase:', { userId, playerId: playerId?.substring(0, 8), permission });
 
       const deviceInfo = getDeviceInfo();
       
@@ -266,10 +363,10 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
     }
   }, [getDeviceInfo]);
 
-  // Enhanced permission request with gesture-safe implementation for iOS/PWA
+  // V16-proof permission request with reliable subscription handling
   const requestPermission = useCallback(async (): Promise<{ success: boolean; error?: string; details?: any; finalPermission?: string }> => {
     try {
-      console.log('[OneSignal] 🎯 GESTURE-SAFE permission request starting...');
+      console.log('[OneSignal] 🎯 Starting v16-proof permission request...');
       
       // Check if we're on iOS/Safari and need user gesture
       const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
@@ -279,124 +376,170 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
         console.log('[OneSignal] 🍎 iOS/Safari detected - ensuring gesture-safe operation');
       }
 
-      // STEP 1: IMMEDIATELY request permission (must be first awaited operation for gesture safety)
-      let permissionResult;
-      console.log('[OneSignal] 🚀 Attempting IMMEDIATE permission request...');
+      // STEP 1: Request permission - must be first async operation for gesture safety
+      let permissionGranted = false;
+      console.log('[OneSignal] 🚀 Requesting permission...');
       
       try {
-        // Try OneSignal v16 Notifications API first (most gesture-safe)
+        // Try OneSignal v16 API first, then fallback to v15/browser
         if (window.OneSignal?.Notifications?.requestPermission) {
-          console.log('[OneSignal] Using v16 Notifications.requestPermission() [GESTURE-SAFE]');
-          permissionResult = await window.OneSignal.Notifications.requestPermission();
-        }
-        // Fallback to v15 methods if v16 not available
-        else if (window.OneSignal?.showNativePrompt) {
-          console.log('[OneSignal] Using v15 showNativePrompt() [GESTURE-SAFE]');
-          permissionResult = await window.OneSignal.showNativePrompt();
-        }
-        else if (window.OneSignal?.registerForPushNotifications) {
-          console.log('[OneSignal] Using v15 registerForPushNotifications() [GESTURE-SAFE]');
-          permissionResult = await window.OneSignal.registerForPushNotifications();
-        }
-        // Final fallback to browser native API
-        else {
-          console.log('[OneSignal] Using browser native Notification.requestPermission() [GESTURE-SAFE]');
-          permissionResult = await Notification.requestPermission();
+          console.log('[OneSignal] Using v16 Notifications.requestPermission()');
+          await window.OneSignal.Notifications.requestPermission();
+        } else if (window.OneSignal?.showNativePrompt) {
+          console.log('[OneSignal] Using v15 showNativePrompt()');
+          await window.OneSignal.showNativePrompt();
+        } else {
+          console.log('[OneSignal] Using browser native Notification.requestPermission()');
+          await Notification.requestPermission();
         }
       } catch (promptError) {
-        console.error('[OneSignal] All OneSignal methods failed, using browser API:', promptError);
-        permissionResult = await Notification.requestPermission();
+        console.warn('[OneSignal] Primary permission request failed, using browser fallback:', promptError);
+        await Notification.requestPermission();
       }
 
-      console.log('[OneSignal] ✅ Permission result:', permissionResult);
+      // STEP 2: Read authoritative permission state (v16-proof)
+      let finalPermission: NotificationPermission;
+      try {
+        if (window.OneSignal?.Notifications?.permission) {
+          finalPermission = window.OneSignal.Notifications.permission;
+          console.log('[OneSignal] ✅ Permission from v16 API:', finalPermission);
+        } else if (window.OneSignal?.getNotificationPermission) {
+          finalPermission = await window.OneSignal.getNotificationPermission();
+          console.log('[OneSignal] ✅ Permission from v15 API:', finalPermission);
+        } else {
+          finalPermission = Notification.permission;
+          console.log('[OneSignal] ✅ Permission from browser API:', finalPermission);
+        }
+      } catch (error) {
+        console.warn('[OneSignal] Failed to get permission from OneSignal, using browser API:', error);
+        finalPermission = Notification.permission;
+      }
 
-      // STEP 2: Handle the result and sync (only after permission decision)
-      if (permissionResult === 'granted') {
-        console.log('[OneSignal] 🎉 Permission granted! Processing subscription...');
+      permissionGranted = finalPermission === 'granted';
+
+      if (permissionGranted) {
+        console.log('[OneSignal] 🎉 Permission granted! Ensuring subscription...');
         
-        // Check current permission state AFTER granting
-        let currentPermission;
+        // STEP 3: Force subscription with Player ID polling (v16-proof)
         try {
-          if (window.OneSignal?.getNotificationPermission) {
-            currentPermission = await window.OneSignal.getNotificationPermission();
-          } else {
-            currentPermission = Notification.permission;
+          // Force opt-in to create subscription
+          if (window.OneSignal?.User?.PushSubscription?.optIn) {
+            console.log('[OneSignal] Using v16 User.PushSubscription.optIn()');
+            await window.OneSignal.User.PushSubscription.optIn();
+          } else if (window.OneSignal?.setSubscription) {
+            console.log('[OneSignal] Using v15 setSubscription(true)');
+            await window.OneSignal.setSubscription(true);
+          } else if (window.OneSignal?.registerForPushNotifications) {
+            console.log('[OneSignal] Using v15 registerForPushNotifications()');
+            await window.OneSignal.registerForPushNotifications();
           }
-        } catch (error) {
-          console.warn('[OneSignal] Failed to get permission from OneSignal, using browser API:', error);
-          currentPermission = Notification.permission;
-        }
-        
-        console.log('[OneSignal] Current permission after grant:', currentPermission);
 
-        // Check if already subscribed
-        let isAlreadySubscribed = false;
-        try {
-          isAlreadySubscribed = await window.OneSignal.isPushNotificationsEnabled();
-          console.log('[OneSignal] Subscription status after permission grant:', isAlreadySubscribed);
-        } catch (error) {
-          console.warn('[OneSignal] Failed to check subscription status:', error);
-        }
-        
-        if (!isAlreadySubscribed) {
-          // Permission granted but not subscribed - force opt-in
-          console.log('[OneSignal] Permission granted but not subscribed, attempting opt-in...');
-          try {
-            // Use v16 API first, then fallback to v15 methods
-            if (window.OneSignal.User?.PushSubscription?.optIn) {
-              console.log('[OneSignal] Using v16 User.PushSubscription.optIn()');
-              await window.OneSignal.User.PushSubscription.optIn();
-            } else if (window.OneSignal.setSubscription) {
-              console.log('[OneSignal] Using v15 setSubscription(true)');
-              await window.OneSignal.setSubscription(true);
-            } else if (window.OneSignal.registerForPushNotifications) {
-              console.log('[OneSignal] Using v15 registerForPushNotifications()');
-              await window.OneSignal.registerForPushNotifications();
+          // Poll for Player ID with timeout
+          console.log('[OneSignal] 🔄 Polling for Player ID...');
+          let playerId = null;
+          let attempts = 0;
+          const maxAttempts = 10;
+          
+          while (!playerId && attempts < maxAttempts) {
+            try {
+              if (window.OneSignal?.User?.PushSubscription?.id) {
+                playerId = window.OneSignal.User.PushSubscription.id;
+                console.log('[OneSignal] ✅ Got Player ID from v16 API:', playerId?.substring(0, 8));
+              } else if (window.OneSignal?.getPlayerId) {
+                playerId = await window.OneSignal.getPlayerId();
+                console.log('[OneSignal] ✅ Got Player ID from v15 API:', playerId?.substring(0, 8));
+              }
+              
+              if (!playerId) {
+                attempts++;
+                console.log(`[OneSignal] 🔄 Attempt ${attempts}/${maxAttempts} - waiting for Player ID...`);
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
+            } catch (error) {
+              console.warn(`[OneSignal] Error getting Player ID (attempt ${attempts + 1}):`, error);
+              attempts++;
+              await new Promise(resolve => setTimeout(resolve, 500));
             }
-            
-            // Wait for subscription to be processed
-            await new Promise(resolve => setTimeout(resolve, 1500));
-          } catch (optInError) {
-            console.warn('[OneSignal] Opt-in after permission grant failed:', optInError);
           }
+
+          if (!playerId) {
+            console.warn('[OneSignal] ⚠️ No Player ID after polling - subscription may be incomplete');
+          }
+
+          // STEP 4: Verify subscription status
+          let isSubscribed = false;
+          try {
+            if (window.OneSignal?.User?.PushSubscription?.optedIn !== undefined) {
+              isSubscribed = window.OneSignal.User.PushSubscription.optedIn;
+              console.log('[OneSignal] ✅ Subscription status from v16 API:', isSubscribed);
+            } else if (window.OneSignal?.isPushNotificationsEnabled) {
+              isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
+              console.log('[OneSignal] ✅ Subscription status from v15 API:', isSubscribed);
+            }
+          } catch (error) {
+            console.warn('[OneSignal] Failed to verify subscription status:', error);
+            // If we have a Player ID, assume subscribed
+            isSubscribed = !!playerId;
+          }
+
+          console.log('[OneSignal] 📊 Final state:', { 
+            permission: finalPermission, 
+            playerId: playerId?.substring(0, 8), 
+            isSubscribed 
+          });
+
+          // STEP 5: Sync to Supabase only after successful subscription
+          if (playerId || isSubscribed) {
+            console.log('[OneSignal] 🔄 Syncing to Supabase...');
+            await syncWithSupabase();
+          }
+
+          // STEP 6: Update local state
+          setState(prev => ({
+            ...prev,
+            permission: finalPermission,
+            isGranted: true,
+            hasSubscription: isSubscribed || !!playerId
+          }));
+
+          // Success toast based on final permission state
+          toast({
+            title: "🎉 Notifications Enabled!",
+            description: "You'll now receive trading signals and updates.",
+            duration: 3000,
+          });
+
+          return { success: true, finalPermission };
+          
+        } catch (subscriptionError) {
+          console.error('[OneSignal] Subscription setup failed after permission grant:', subscriptionError);
+          
+          // Still update state to reflect permission granted
+          setState(prev => ({
+            ...prev,
+            permission: finalPermission,
+            isGranted: true,
+            hasSubscription: false
+          }));
+
+          toast({
+            title: "Permission Granted",
+            description: "Notifications enabled, but setup may be incomplete. Please try again if you don't receive alerts.",
+            duration: 5000,
+          });
+
+          return { success: true, finalPermission, error: 'Subscription setup incomplete' };
         }
-
-        // Get final states and sync
-        // Wait a bit for OneSignal to process the subscription
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const [playerId, isSubscribed] = await Promise.all([
-          window.OneSignal.User?.PushSubscription?.getId?.() || window.OneSignal.getPlayerId?.(),
-          window.OneSignal.isPushNotificationsEnabled?.()
-        ]);
-        
-        console.log('[OneSignal] Post-permission state:', { playerId: playerId?.substring(0, 8), isSubscribed });
-        
-        await syncWithSupabase();
-        
-        setState(prev => ({
-          ...prev,
-          permission: 'granted',
-          isGranted: true,
-          hasSubscription: isSubscribed || !!playerId
-        }));
-
-        toast({
-          title: "🎉 Notifications Enabled!",
-          description: "You'll now receive trading signals and updates.",
-          duration: 3000,
-        });
-
-        return { success: true, finalPermission: permissionResult };
       } else {
+        // Permission denied or dismissed
         setState(prev => ({
           ...prev,
-          permission: permissionResult as NotificationPermission,
+          permission: finalPermission,
           isGranted: false,
           hasSubscription: false
         }));
 
-        const errorMessage = permissionResult === 'denied' 
+        const errorMessage = finalPermission === 'denied' 
           ? 'Notifications blocked. Please enable them in your browser settings.'
           : 'Permission request was dismissed.';
 
@@ -407,7 +550,7 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
           duration: 5000,
         });
 
-        return { success: false, error: errorMessage, finalPermission: permissionResult };
+        return { success: false, error: errorMessage, finalPermission };
       }
     } catch (error) {
       console.error('[OneSignal] Permission request failed:', error);

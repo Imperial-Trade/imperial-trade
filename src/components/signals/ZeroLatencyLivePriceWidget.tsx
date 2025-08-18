@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, RefreshCw, W
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { useSignalPermissions } from '@/hooks/useSignalPermissions';
 import { PriceSourceIndicator } from '@/components/price/PriceSourceIndicator';
+import { ConnectionHealthIndicator } from '@/components/price/ConnectionHealthIndicator';
 
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;

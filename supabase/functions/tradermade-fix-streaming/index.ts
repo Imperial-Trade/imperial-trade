@@ -317,6 +317,42 @@ function broadcastToClients(message: any): void {
 }
 
 /**
+ * Handle force refresh requests (especially for crypto)
+ */
+function handleForceRefresh(symbols: string[], priority: string = 'normal'): void {
+  console.log(`🔄 Force refresh requested for: ${symbols.join(', ')} - Priority: ${priority}`);
+  
+  symbols.forEach(symbol => {
+    // For crypto symbols with high priority, bump to active list
+    const isCrypto = symbol.includes('BTC') || symbol.includes('ETH');
+    if (isCrypto && priority === 'crypto_high') {
+      // Force crypto into active symbols list
+      if (!connectionManager.activeSymbols.has(symbol)) {
+        if (connectionManager.activeSymbols.size >= 5) {
+          // Remove least important non-crypto symbol to make room
+          const toRemove = Array.from(connectionManager.activeSymbols).find(s => !s.includes('BTC') && !s.includes('ETH'));
+          if (toRemove) {
+            connectionManager.activeSymbols.delete(toRemove);
+            connectionManager.pendingSymbols.add(toRemove);
+            console.log(`🔄 Bumped ${toRemove} to pending to prioritize ${symbol}`);
+          }
+        }
+        connectionManager.activeSymbols.add(symbol);
+        console.log(`⚡ CRYPTO PRIORITY: Added ${symbol} to active symbols`);
+      }
+    }
+    
+    // Immediately fetch via REST as fallback
+    fetchPriceFallback([symbol]);
+  });
+  
+  // Re-authenticate with updated symbol list if crypto was prioritized
+  if (priority === 'crypto_high' && connectionManager.traderMadeConnection.ws?.readyState === WebSocket.OPEN) {
+    reauthenticateTraderMade();
+  }
+}
+
+/**
  * Subscription manager functions
  */
 function subscribeToSymbols(symbols: string[]): void {
@@ -324,21 +360,47 @@ function subscribeToSymbols(symbols: string[]): void {
   
   let shouldReauth = false;
   
-  symbols.forEach(symbol => {
+  // Sort symbols to prioritize crypto (BTC, ETH)
+  const sortedSymbols = symbols.sort((a, b) => {
+    const aCrypto = a.includes('BTC') || a.includes('ETH');
+    const bCrypto = b.includes('BTC') || b.includes('ETH');
+    if (aCrypto && !bCrypto) return -1;
+    if (!aCrypto && bCrypto) return 1;
+    return 0;
+  });
+  
+  sortedSymbols.forEach(symbol => {
     const currentCount = connectionManager.subscriptions.get(symbol) || 0;
     connectionManager.subscriptions.set(symbol, currentCount + 1);
     
     if (currentCount === 0) {
-      // New symbol
+      // New symbol - prioritize crypto
+      const isCrypto = symbol.includes('BTC') || symbol.includes('ETH');
+      
       if (connectionManager.activeSymbols.size < 5) {
         connectionManager.activeSymbols.add(symbol);
         shouldReauth = true;
-        console.log(`✅ Added ${symbol} to active symbols (${connectionManager.activeSymbols.size}/5)`);
+        console.log(`✅ Added ${symbol} to active symbols (${connectionManager.activeSymbols.size}/5) ${isCrypto ? '🪙 CRYPTO' : ''}`);
+      } else if (isCrypto) {
+        // For crypto, bump existing non-crypto symbol to pending
+        const nonCrypto = Array.from(connectionManager.activeSymbols).find(s => !s.includes('BTC') && !s.includes('ETH'));
+        if (nonCrypto) {
+          connectionManager.activeSymbols.delete(nonCrypto);
+          connectionManager.pendingSymbols.add(nonCrypto);
+          connectionManager.activeSymbols.add(symbol);
+          shouldReauth = true;
+          console.log(`⚡ CRYPTO BUMP: Replaced ${nonCrypto} with ${symbol} in active symbols`);
+        } else {
+          connectionManager.pendingSymbols.add(symbol);
+          console.log(`⏳ Added crypto ${symbol} to pending queue (all active slots are crypto)`);
+        }
       } else {
         connectionManager.pendingSymbols.add(symbol);
         console.log(`⏳ Added ${symbol} to pending queue (active symbols full)`);
-        
-        // Serve from cache or REST fallback immediately
+      }
+      
+      // Serve from cache or REST fallback immediately for pending symbols
+      if (!connectionManager.activeSymbols.has(symbol)) {
         const cached = connectionManager.priceCache.get(symbol);
         if (cached) {
           const message = {
@@ -553,6 +615,16 @@ serve(async (req) => {
           subscribeToSymbols(message.symbols);
         } else if (message.action === 'unsubscribe' && Array.isArray(message.symbols)) {
           unsubscribeFromSymbols(message.symbols);
+        } else if (message.action === 'force_refresh' && Array.isArray(message.symbols)) {
+          // Handle crypto priority refresh requests
+          console.log(`🚨 FORCE REFRESH: ${message.symbols.join(', ')} - Priority: ${message.priority || 'normal'}`);
+          handleForceRefresh(message.symbols, message.priority);
+        } else if (message.action === 'ping') {
+          // Handle ping/pong for connection health
+          socket.send(JSON.stringify({
+            messageType: 'PONG',
+            timestamp: Date.now()
+          }));
         }
       } catch (error) {
         console.error(`❌ Failed to parse client message from ${clientId}:`, error);

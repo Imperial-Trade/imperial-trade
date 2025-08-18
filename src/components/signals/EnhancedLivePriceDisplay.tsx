@@ -6,6 +6,7 @@ import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOf
 import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
 import { MarketStatusBadge } from '@/components/ui/MarketStatusBadge';
 import { PriceSourceIndicator } from '@/components/price/PriceSourceIndicator';
+import { ConnectionHealthIndicator } from '@/components/price/ConnectionHealthIndicator';
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -372,7 +373,11 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               {lastUpdated ? `Updated: ${formatTime(lastUpdated)}` : 'No recent updates'}
             </span>
           </div>
-          <ConnectionHealthBadge className="ml-2" />
+          <ConnectionHealthIndicator
+            symbol={apiSymbol}
+            onRefresh={handleRefresh}
+            compact={true}
+          />
         </div>
         
         {onUseCurrentPrice && (

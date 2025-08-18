@@ -137,6 +137,7 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
           appId,
           serviceWorkerParam: { scope: '/push/onesignal/' },
           serviceWorkerPath: '/push/onesignal/OneSignalSDKWorker.js',
+          serviceWorkerUpdaterPath: '/push/onesignal/OneSignalSDKUpdaterWorker.js',
           allowLocalhostAsSecureOrigin: true,
           autoRegister: false, // We'll handle registration manually
           autoResubscribe: true,

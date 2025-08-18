@@ -29,6 +29,10 @@ interface ConnectionManager {
   priceCache: Map<string, { price: number; bid: number; ask: number; timestamp: number }>;
   sequenceCounter: number;
   currentKeyIndex: number;
+  // Subscription manager
+  subscriptions: Map<string, number>; // symbol -> ref count
+  activeSymbols: Set<string>; // Currently subscribed symbols (max 5)
+  pendingSymbols: Set<string>; // Symbols waiting for subscription
 }
 
 const connectionManager: ConnectionManager = {
@@ -44,7 +48,10 @@ const connectionManager: ConnectionManager = {
   apiKeyHealth: new Map(),
   priceCache: new Map(),
   sequenceCounter: 0,
-  currentKeyIndex: 0
+  currentKeyIndex: 0,
+  subscriptions: new Map(),
+  activeSymbols: new Set(),
+  pendingSymbols: new Set()
 };
 
 // Initialize API key health tracking
@@ -160,10 +167,11 @@ async function createTraderMadeConnection(): Promise<void> {
       connectionManager.traderMadeConnection.isReady = true;
       markApiKeySuccess(apiKeyIndex);
       
-      // Send authentication message
+      // Send authentication message with dynamic symbol list
+      const symbolList = Array.from(connectionManager.activeSymbols).slice(0, 5).join(',') || 'EURUSD';
       const authMessage = {
         userKey: apiKey,
-        symbol: 'EURUSD,GBPUSD,USDJPY,AUDUSD,USDCAD,USDCHF,NZDUSD,EURJPY,GBPJPY,EURGBP,AUDJPY,EURAUD,USDCNH,XAUUSD,XAGUSD,SPX500,NAS100,UK100,GER30,FRA40,JPN225,AUS200,BTCUSD,ETHUSD'
+        symbol: symbolList
       };
       
       ws.send(JSON.stringify(authMessage));
@@ -309,6 +317,103 @@ function broadcastToClients(message: any): void {
 }
 
 /**
+ * Subscription manager functions
+ */
+function subscribeToSymbols(symbols: string[]): void {
+  console.log(`📡 Processing subscription request for: ${symbols.join(', ')}`);
+  
+  let shouldReauth = false;
+  
+  symbols.forEach(symbol => {
+    const currentCount = connectionManager.subscriptions.get(symbol) || 0;
+    connectionManager.subscriptions.set(symbol, currentCount + 1);
+    
+    if (currentCount === 0) {
+      // New symbol
+      if (connectionManager.activeSymbols.size < 5) {
+        connectionManager.activeSymbols.add(symbol);
+        shouldReauth = true;
+        console.log(`✅ Added ${symbol} to active symbols (${connectionManager.activeSymbols.size}/5)`);
+      } else {
+        connectionManager.pendingSymbols.add(symbol);
+        console.log(`⏳ Added ${symbol} to pending queue (active symbols full)`);
+        
+        // Serve from cache or REST fallback immediately
+        const cached = connectionManager.priceCache.get(symbol);
+        if (cached) {
+          const message = {
+            messageType: 'PRICE_UPDATE',
+            symbol,
+            ...cached,
+            sequence: ++connectionManager.sequenceCounter,
+            source: 'cache'
+          };
+          broadcastToClients(message);
+        } else {
+          // Fetch via REST for overflow symbols
+          fetchPriceFallback([symbol]);
+        }
+      }
+    }
+  });
+  
+  if (shouldReauth && connectionManager.traderMadeConnection.ws?.readyState === WebSocket.OPEN) {
+    // Re-authenticate with new symbol list
+    reauthenticateTraderMade();
+  }
+}
+
+function unsubscribeFromSymbols(symbols: string[]): void {
+  console.log(`📡 Processing unsubscription request for: ${symbols.join(', ')}`);
+  
+  let shouldReauth = false;
+  
+  symbols.forEach(symbol => {
+    const currentCount = connectionManager.subscriptions.get(symbol) || 0;
+    const newCount = Math.max(currentCount - 1, 0);
+    
+    if (newCount === 0) {
+      connectionManager.subscriptions.delete(symbol);
+      connectionManager.activeSymbols.delete(symbol);
+      connectionManager.pendingSymbols.delete(symbol);
+      shouldReauth = true;
+      console.log(`🗑️ Removed ${symbol} from subscriptions`);
+      
+      // Promote a pending symbol if available
+      if (connectionManager.pendingSymbols.size > 0) {
+        const nextSymbol = Array.from(connectionManager.pendingSymbols)[0];
+        connectionManager.pendingSymbols.delete(nextSymbol);
+        connectionManager.activeSymbols.add(nextSymbol);
+        console.log(`⬆️ Promoted ${nextSymbol} from pending to active`);
+      }
+    } else {
+      connectionManager.subscriptions.set(symbol, newCount);
+    }
+  });
+  
+  if (shouldReauth && connectionManager.traderMadeConnection.ws?.readyState === WebSocket.OPEN) {
+    reauthenticateTraderMade();
+  }
+}
+
+function reauthenticateTraderMade(): void {
+  const ws = connectionManager.traderMadeConnection.ws;
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  
+  const healthyKey = getHealthyApiKey();
+  if (!healthyKey) return;
+  
+  const symbolList = Array.from(connectionManager.activeSymbols).slice(0, 5).join(',') || 'EURUSD';
+  const authMessage = {
+    userKey: healthyKey.key,
+    symbol: symbolList
+  };
+  
+  ws.send(JSON.stringify(authMessage));
+  console.log(`🔄 Re-authenticated with symbols: ${symbolList}`);
+}
+
+/**
  * Fallback price fetching via REST API with API key rotation
  */
 async function fetchPriceFallback(symbols: string[]): Promise<void> {
@@ -444,6 +549,10 @@ serve(async (req) => {
             messageType: 'HEARTBEAT_ACK',
             timestamp: Date.now()
           }));
+        } else if (message.action === 'subscribe' && Array.isArray(message.symbols)) {
+          subscribeToSymbols(message.symbols);
+        } else if (message.action === 'unsubscribe' && Array.isArray(message.symbols)) {
+          unsubscribeFromSymbols(message.symbols);
         }
       } catch (error) {
         console.error(`❌ Failed to parse client message from ${clientId}:`, error);
@@ -471,9 +580,14 @@ serve(async (req) => {
       timestamp: Date.now(),
       connections: {
         clients: connectionManager.clients.size,
-        tradermade: connectionManager.traderMadeConnections.size
+        tradermade: connectionManager.traderMadeConnection.ws ? 1 : 0
       },
       apiKeys: Object.fromEntries(connectionManager.apiKeyHealth),
+      subscriptions: {
+        active: Array.from(connectionManager.activeSymbols),
+        pending: Array.from(connectionManager.pendingSymbols),
+        refCounts: Object.fromEntries(connectionManager.subscriptions)
+      },
       cache: {
         symbols: connectionManager.priceCache.size,
         sequenceNumber: connectionManager.sequenceCounter
@@ -498,31 +612,30 @@ console.log(`📊 Configured with ${API_KEYS.length} API keys`);
 if (API_KEYS.length > 0) {
   console.log('🔧 Initializing single TraderMade connection pool...');
   createTraderMadeConnection();
+  
+  // Health monitoring and keep-alive
+  setInterval(() => {
+    const stats = {
+      clients: connectionManager.clients.size,
+      activeSymbols: connectionManager.activeSymbols.size,
+      pendingSymbols: connectionManager.pendingSymbols.size,
+      cachedSymbols: connectionManager.priceCache.size
+    };
+    console.log(`📊 Health: ${connectionManager.traderMadeConnection.ws ? 1 : 0} TM connection, ${stats.clients} clients, ${stats.cachedSymbols} cached symbols`);
+    
+    // Send heartbeat to TraderMade if connected
+    if (connectionManager.traderMadeConnection.ws?.readyState === WebSocket.OPEN) {
+      connectionManager.traderMadeConnection.ws.send(JSON.stringify({ type: 'ping' }));
+    }
+    
+    // Auto-reconnect if no clients but should be connected
+    if (connectionManager.clients.size === 0 && connectionManager.traderMadeConnection.ws) {
+      // Keep connection alive for faster client reconnection
+    } else if (connectionManager.clients.size > 0 && !connectionManager.traderMadeConnection.ws) {
+      console.log('⚠️ No active TraderMade connection but clients are connected, attempting to reconnect...');
+      createTraderMadeConnection();
+    }
+  }, 10000); // Every 10 seconds
 } else {
   console.error('❌ No API keys configured - service will not function');
 }
-
-// Periodic health monitoring and connection management
-setInterval(() => {
-  const hasActiveConnection = connectionManager.traderMadeConnection.ws && 
-                              connectionManager.traderMadeConnection.ws.readyState === WebSocket.OPEN;
-  const activeClients = connectionManager.clients.size;
-  
-  console.log(`📊 Health: ${hasActiveConnection ? '1' : '0'} TM connection, ${activeClients} clients, ${connectionManager.priceCache.size} cached symbols`);
-  
-  // Ensure we always have at least one active connection if we have clients
-  if (!hasActiveConnection && activeClients > 0) {
-    console.warn('⚠️ No active TraderMade connection but clients are connected, attempting to reconnect...');
-    createTraderMadeConnection();
-  }
-  
-  // Check connection health - if no heartbeat in 2 minutes, reconnect
-  const timeSinceLastHeartbeat = Date.now() - connectionManager.traderMadeConnection.lastHeartbeat;
-  if (hasActiveConnection && timeSinceLastHeartbeat > 120000) {
-    console.warn('⚠️ TraderMade connection stale, forcing reconnection...');
-    if (connectionManager.traderMadeConnection.ws) {
-      connectionManager.traderMadeConnection.ws.close();
-    }
-    createTraderMadeConnection();
-  }
-}, 30000); // Every 30 seconds

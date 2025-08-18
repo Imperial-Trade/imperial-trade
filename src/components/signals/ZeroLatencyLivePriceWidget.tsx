@@ -156,41 +156,32 @@ const ZeroLatencyLivePriceWidgetComponent = ({
             </div>
 
             {/* Price Display */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span 
-                  ref={priceRef}
-                  className="text-4xl font-bold tabular-nums text-green-400 transition-all duration-150"
-                >
-                  ${currentPrice.toFixed(2)}
-                </span>
-                
-                <div className="flex items-center gap-2">
-                  {change > 0 ? (
-                    <TrendingUp className="h-5 w-5 text-green-400" />
-                  ) : change < 0 ? (
-                    <TrendingDown className="h-5 w-5 text-red-400" />
-                  ) : null}
-                  <div className="text-right">
-                    <div 
-                      ref={changeRef}
-                      className={`text-sm font-medium ${changeColor} tabular-nums`}
-                    >
-                      {change > 0 ? '+' : ''}{change.toFixed(4)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      ({change > 0 ? '+' : ''}{changePercent.toFixed(2)}%)
-                    </div>
+            <div className="flex items-center gap-4">
+              <span 
+                ref={priceRef}
+                className="text-3xl font-bold tabular-nums text-green-400 transition-all duration-150"
+              >
+                ${currentPrice.toFixed(2)}
+              </span>
+              
+              <div className="flex items-center gap-2">
+                {change > 0 ? (
+                  <TrendingUp className="h-5 w-5 text-green-400" />
+                ) : change < 0 ? (
+                  <TrendingDown className="h-5 w-5 text-red-400" />
+                ) : null}
+                <div className="text-right">
+                  <div 
+                    ref={changeRef}
+                    className={`text-sm font-medium ${changeColor} tabular-nums`}
+                  >
+                    {change > 0 ? '+' : ''}{change.toFixed(4)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    ({change > 0 ? '+' : ''}{changePercent.toFixed(2)}%)
                   </div>
                 </div>
               </div>
-
-              <Button 
-                variant="outline" 
-                className="bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
-              >
-                Use Current Price
-              </Button>
             </div>
 
             {/* Footer */}

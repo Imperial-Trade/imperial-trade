@@ -33,13 +33,8 @@ export const PasswordResetEmail = ({
   support_email = 'tradeimperial2025@gmail.com',
   logo_url = 'https://www.tradeimperial.com/logo.png',
 }: PasswordResetEmailProps) => {
-  let appOrigin: string
-  try {
-    appOrigin = new URL(redirect_to).origin
-  } catch {
-    appOrigin = 'https://tradeimperial.com'
-  }
-  const resetUrl = `${appOrigin}/reset-password?type=recovery&token_hash=${token_hash}`
+  // Use Supabase's auth verification endpoint for proper token handling
+  const resetUrl = `${supabase_url}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=${redirect_to}`
 
 
   return (

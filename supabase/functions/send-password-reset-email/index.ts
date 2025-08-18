@@ -144,11 +144,11 @@ try {
     }
 
     const ALLOWED_REDIRECTS = [
-      'https://tradeimperial.com/reset-password',
       'https://www.tradeimperial.com/reset-password',
+      'https://tradeimperial.com/reset-password',
     ]
 
-    // Enforce production redirect URL (default to apex domain)
+    // Enforce production redirect URL (default to www domain)
     let enforcedRedirect = ALLOWED_REDIRECTS[0]
     try {
       if (redirect_to) {

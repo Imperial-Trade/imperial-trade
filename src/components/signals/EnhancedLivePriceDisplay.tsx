@@ -99,7 +99,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   useEffect(() => {
     if (price > 0 && prevPrice > 0 && price !== prevPrice) {
       setPriceAnimation(price > prevPrice ? 'up' : 'down');
-      const timer = setTimeout(() => setPriceAnimation(null), 1000);
+      const timer = setTimeout(() => setPriceAnimation(null), 500);
       return () => clearTimeout(timer);
     }
     if (price > 0) {

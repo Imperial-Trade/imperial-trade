@@ -122,7 +122,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
   useEffect(() => {
     if (currentPrice > 0 && prevPrice > 0 && currentPrice !== prevPrice) {
       setPriceAnimation(currentPrice > prevPrice ? 'up' : 'down');
-      const timer = setTimeout(() => setPriceAnimation(null), 1000);
+      const timer = setTimeout(() => setPriceAnimation(null), 500);
       return () => clearTimeout(timer);
     }
     if (currentPrice > 0) {

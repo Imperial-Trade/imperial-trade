@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, memo } from 'react';
+import React, { useRef, useEffect, memo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, RefreshCw, WifiOff, Activity } from 'lucide-react';
@@ -113,7 +113,25 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     }
   }, [currentPrice, alert, onTakeProfitHit, onStopLossHit, onOrderActivation]);
 
-  const changeColor = change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-muted-foreground';
+  // Track price animation state for flickering effect
+  const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
+  const prevPriceRef = useRef<number>(0);
+
+  // Handle price animation effect
+  useEffect(() => {
+    if (currentPrice && prevPriceRef.current !== 0) {
+      if (currentPrice > prevPriceRef.current) {
+        setPriceAnimation('up');
+        setTimeout(() => setPriceAnimation(null), 600);
+      } else if (currentPrice < prevPriceRef.current) {
+        setPriceAnimation('down');
+        setTimeout(() => setPriceAnimation(null), 600);
+      }
+    }
+    prevPriceRef.current = currentPrice;
+  }, [currentPrice]);
+
+  const changeColor = change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-muted-foreground';
   const spread = ask - bid;
 
   return (
@@ -187,7 +205,11 @@ const ZeroLatencyLivePriceWidgetComponent = ({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
-              <div className={`font-mono text-xl font-bold tabular-nums ${
+              <div className={`font-mono text-xl font-bold transition-all duration-300 ${
+                isLoading ? 'animate-pulse' : ''
+              } ${
+                priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
+                priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
                 connectionStatus === 'connected' ? 'text-accent-green' : 'text-gray-400'
               }`}>
                 <span 

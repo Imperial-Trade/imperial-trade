@@ -293,7 +293,17 @@ Deno.serve(async (req: Request) => {
 
       const userWasCreated = !existingUser;
       const hasEmailSubscription = !!email;
-      const shouldSendWelcome = !existingDevice?.welcome_sent && (userWasCreated || (existingUser && hasEmailSubscription));
+      
+      // Only send welcome if we have a valid subscription method
+      const hasValidSubscription = finalPlayerId || (
+        userResult?.subscriptions?.some((sub: any) => 
+          sub.type === 'WebPush' && sub.enabled === true
+        )
+      );
+      
+      const shouldSendWelcome = !existingDevice?.welcome_sent && 
+                               (userWasCreated || (existingUser && hasEmailSubscription)) &&
+                               hasValidSubscription;
 
       if (shouldSendWelcome) {
         console.log('🎉 Sending welcome notification for new device...');
@@ -342,6 +352,8 @@ Deno.serve(async (req: Request) => {
         } catch (welcomeError) {
           console.error('⚠️ Welcome notification error:', welcomeError);
         }
+      } else if (!hasValidSubscription) {
+        console.log('⏳ No valid subscription method available - welcome will be sent after subscription confirmation');
       }
     }
 

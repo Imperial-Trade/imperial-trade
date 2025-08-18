@@ -172,7 +172,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
         </div>
 
         {/* Bid/Ask Display - Direct DOM Updated */}
-        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+        <div className="hidden flex items-center gap-4 mt-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <span>Bid:</span>
             <span 

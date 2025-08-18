@@ -18,7 +18,7 @@ import {
   Bell
 } from 'lucide-react';
 import Phase4TestSuite from './Phase4TestSuite';
-import Phase3RealTimeEngine from '../trading/Phase3RealTimeEngine';
+// Phase3RealTimeEngine removed - using direct WebSocketPriceContext
 import Phase4AnalyticsDashboard from '../analytics/Phase4AnalyticsDashboard';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -65,7 +65,7 @@ export default function IntegratedPhaseManager() {
       completion: 0,
       features: ['WebSocket Streaming', 'Market Data Processing', 'Signal Generation', 'Alert Triggers'],
       dependencies: ['phase1', 'phase2'],
-      component: Phase3RealTimeEngine
+      component: () => <div className="p-8 text-center text-muted-foreground">Phase 3 using direct WebSocket integration</div>
     },
     phase4: {
       id: 'phase4',

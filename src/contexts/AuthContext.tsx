@@ -23,6 +23,9 @@ interface Profile {
   onesignal_player_id: string | null;
   onesignal_subscription_status: string | null;
   onesignal_last_verified_at: string | null;
+  xeon_stream_subscription: boolean | null;
+  xeon_stream_activated_at: string | null;
+  notification_preferences: any | null;
 }
 
 interface AuthContextType {
@@ -34,6 +37,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  isXeonStreamSubscribed: boolean;
+  updateXeonStreamSubscription: (subscribed: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,7 +86,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           push_subscription_active,
           onesignal_player_id,
           onesignal_subscription_status,
-          onesignal_last_verified_at
+          onesignal_last_verified_at,
+          xeon_stream_subscription,
+          xeon_stream_activated_at,
+          notification_preferences
         `)
         .eq('id', userId)
         .single();
@@ -154,6 +162,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Handle specific auth events
         if (event === 'SIGNED_IN') {
           console.log('User signed in successfully');
+          // Defer redirect to prevent onAuthStateChange conflicts
+          setTimeout(() => {
+            const currentPath = window.location.pathname;
+            if (currentPath === '/signin') {
+              // Get redirect destination from sessionStorage or use default
+              const savedRedirect = sessionStorage.getItem('auth_redirect_after_login');
+              const from = savedRedirect || '/dashboard/home';
+              sessionStorage.removeItem('auth_redirect_after_login'); // Clean up
+              navigate(from, { replace: true });
+            }
+          }, 0);
           // OneSignal binding and upsert handled in bindToOneSignalAndCheck
         } else if (event === 'SIGNED_OUT') {
           // Skip cleanup if we're manually signing out to prevent race condition
@@ -301,6 +320,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const updateXeonStreamSubscription = async (subscribed: boolean) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          xeon_stream_subscription: subscribed,
+          xeon_stream_activated_at: subscribed ? new Date().toISOString() : null
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      // Refresh profile to get updated data
+      await refreshProfile();
+    } catch (error) {
+      console.error('Error updating Xeon Stream subscription:', error);
+      throw error;
+    }
+  };
+
+  const isXeonStreamSubscribed = profile?.xeon_stream_subscription || false;
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -310,7 +353,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       profileLoading,
       signOut, 
       refreshSession, 
-      refreshProfile 
+      refreshProfile,
+      isXeonStreamSubscribed,
+      updateXeonStreamSubscription
     }}>
       {children}
     </AuthContext.Provider>

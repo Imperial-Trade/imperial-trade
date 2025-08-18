@@ -1076,6 +1076,42 @@ export type Database = {
         }
         Relationships: []
       }
+      market_prices: {
+        Row: {
+          ask: number
+          bid: number
+          created_at: string
+          id: string
+          mid: number
+          source: string
+          symbol: string
+          timestamp: string
+          updated_at: string
+        }
+        Insert: {
+          ask: number
+          bid: number
+          created_at?: string
+          id?: string
+          mid: number
+          source?: string
+          symbol: string
+          timestamp: string
+          updated_at?: string
+        }
+        Update: {
+          ask?: number
+          bid?: number
+          created_at?: string
+          id?: string
+          mid?: number
+          source?: string
+          symbol?: string
+          timestamp?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       module_videos: {
         Row: {
           created_at: string
@@ -1541,6 +1577,8 @@ export type Database = {
           updated_at: string | null
           user_type: Database["public"]["Enums"]["user_type_enum"] | null
           work_info: string | null
+          xeon_stream_activated_at: string | null
+          xeon_stream_subscription: boolean | null
         }
         Insert: {
           access_level?: Database["public"]["Enums"]["access_level_enum"] | null
@@ -1588,6 +1626,8 @@ export type Database = {
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type_enum"] | null
           work_info?: string | null
+          xeon_stream_activated_at?: string | null
+          xeon_stream_subscription?: boolean | null
         }
         Update: {
           access_level?: Database["public"]["Enums"]["access_level_enum"] | null
@@ -1635,6 +1675,8 @@ export type Database = {
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type_enum"] | null
           work_info?: string | null
+          xeon_stream_activated_at?: string | null
+          xeon_stream_subscription?: boolean | null
         }
         Relationships: []
       }
@@ -2096,9 +2138,12 @@ export type Database = {
           expires_at: string | null
           expiry_type: string | null
           id: string
+          is_xeon_stream: boolean | null
           notes: string | null
+          provider_name: string | null
           status: Database["public"]["Enums"]["trade_alert_status"]
           stop_loss: number
+          tp_hit_mask: number | null
           tp_hits: number[] | null
           tp1: number | null
           tp2: number | null
@@ -2120,9 +2165,12 @@ export type Database = {
           expires_at?: string | null
           expiry_type?: string | null
           id?: string
+          is_xeon_stream?: boolean | null
           notes?: string | null
+          provider_name?: string | null
           status?: Database["public"]["Enums"]["trade_alert_status"]
           stop_loss: number
+          tp_hit_mask?: number | null
           tp_hits?: number[] | null
           tp1?: number | null
           tp2?: number | null
@@ -2144,9 +2192,12 @@ export type Database = {
           expires_at?: string | null
           expiry_type?: string | null
           id?: string
+          is_xeon_stream?: boolean | null
           notes?: string | null
+          provider_name?: string | null
           status?: Database["public"]["Enums"]["trade_alert_status"]
           stop_loss?: number
+          tp_hit_mask?: number | null
           tp_hits?: number[] | null
           tp1?: number | null
           tp2?: number | null
@@ -2995,6 +3046,47 @@ export type Database = {
         }
         Relationships: []
       }
+      xeon_notification_log: {
+        Row: {
+          created_at: string
+          delivery_status: Json | null
+          id: string
+          notification_type: string
+          onesignal_notification_id: string | null
+          sent_at: string
+          target_users: string[]
+          trade_alert_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivery_status?: Json | null
+          id?: string
+          notification_type: string
+          onesignal_notification_id?: string | null
+          sent_at?: string
+          target_users: string[]
+          trade_alert_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivery_status?: Json | null
+          id?: string
+          notification_type?: string
+          onesignal_notification_id?: string | null
+          sent_at?: string
+          target_users?: string[]
+          trade_alert_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xeon_notification_log_trade_alert_id_fkey"
+            columns: ["trade_alert_id"]
+            isOneToOne: false
+            referencedRelation: "trade_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -3056,6 +3148,15 @@ export type Database = {
           onesignal_player_id: string
         }[]
       }
+      get_xeon_stream_subscribers: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          display_name: string
+          notification_preferences: Json
+          onesignal_player_id: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3072,6 +3173,10 @@ export type Database = {
           target_price: number
           triggered: boolean
         }[]
+      }
+      process_tp_hits: {
+        Args: { p_current_price: number; p_is_buy: boolean; p_trade_id: string }
+        Returns: Json
       }
       should_show_onesignal_prompt: {
         Args: { p_device_fingerprint: string; p_user_id: string }
@@ -3092,6 +3197,16 @@ export type Database = {
       }
       update_trading_profile_from_analysis: {
         Args: { p_analysis_data: Json; p_user_id: string }
+        Returns: undefined
+      }
+      upsert_market_price: {
+        Args: {
+          p_ask: number
+          p_bid: number
+          p_mid: number
+          p_symbol: string
+          p_timestamp?: string
+        }
         Returns: undefined
       }
     }

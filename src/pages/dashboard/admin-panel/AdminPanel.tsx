@@ -2,7 +2,9 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Users, Shield, Settings, RefreshCw, Signal, Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, Shield, Settings, RefreshCw, Signal, Bell, Activity } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { EnhancedUserManagementTable } from "@/components/admin/EnhancedUserManagementTable";
 import { DirectAccountRequestManagement } from "@/components/admin/DirectAccountRequestManagement";
 import { AdminNotificationSystem } from "@/components/admin/AdminNotificationSystem";
@@ -12,6 +14,7 @@ import { AdminSignalManagement } from "@/components/admin/AdminSignalManagement"
 
 const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState("requests");
+  const navigate = useNavigate();
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -20,10 +23,21 @@ const AdminPanel: React.FC = () => {
           <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
           <p className="text-muted-foreground mt-1">Manage users, requests, and system settings</p>
         </div>
-        <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
-          <Shield className="w-3 h-3 mr-1" />
-          Admin Access
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => navigate("/dashboard/admin/price-streaming")}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Activity className="w-4 h-4" />
+            Price Streaming
+          </Button>
+          <Badge variant="outline" className="bg-green-50 border-green-200 text-green-800">
+            <Shield className="w-3 h-3 mr-1" />
+            Admin Access
+          </Badge>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

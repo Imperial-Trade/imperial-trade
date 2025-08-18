@@ -13,6 +13,7 @@ import { useRenderOptimization } from '@/hooks/useRenderOptimization';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { usePublicProfiles } from '@/hooks/usePublicProfiles';
 import { useSignalPermissions } from '@/hooks/useSignalPermissions';
@@ -205,6 +206,7 @@ export default function SignalStream() {
 
   // Remove local updateInProgress state - now handled by stabilized operations
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);
+  const [isEnabled, setIsEnabled] = useState(true);
   useEffect(() => {
     if (connectionStatus === 'connecting' && nextRetryAt) {
       const update = () => {
@@ -270,6 +272,19 @@ export default function SignalStream() {
                 </Badge>
               </div>
               
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {isEnabled ? 'Enabled' : 'Disabled'}
+                </span>
+                <Switch
+                  checked={isEnabled}
+                  onCheckedChange={setIsEnabled}
+                  className="data-[state=checked]:bg-accent-green"
+                />
+              </div>
             </div>
             
           </div>

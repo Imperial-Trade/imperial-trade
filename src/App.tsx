@@ -55,6 +55,7 @@ import Settings from "@/pages/dashboard/settings/Settings";
 import AdminPanel from "@/pages/dashboard/admin-panel/AdminPanel";
 import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
 import DevTests from "@/pages/dashboard/dev-tests/DevTests";
+import { PriceStreamingDashboard } from "@/components/admin/PriceStreamingDashboard";
 
 // Educator Pages
 import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
@@ -221,6 +222,15 @@ function App() {
                             element={
                               <ProtectedRoute requiredAccessLevel="admin">
                                 <AdminPanel />
+                              </ProtectedRoute>
+                            }
+                          />
+
+                          <Route
+                            path="admin/price-streaming"
+                            element={
+                              <ProtectedRoute requiredAccessLevel="admin">
+                                <PriceStreamingDashboard />
                               </ProtectedRoute>
                             }
                           />

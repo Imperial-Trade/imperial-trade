@@ -32,7 +32,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 0 // ZERO debouncing for institutional-grade speed
+    debounceMs = 0 // ZERO debouncing for real-time TraderMade prices
   } = options;
 
   const {

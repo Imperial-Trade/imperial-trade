@@ -79,6 +79,17 @@ export function usePostLoginNotificationSetup() {
 
   const handleNotificationEnabled = () => {
     setShowNotificationModal(false);
+    
+    // Set dismissal flags when notifications are enabled
+    if (user?.id) {
+      const sessionKey = `imperial_notify_modal_dismissed_session_${user.id}`;
+      const ttlKey = `imperial_notify_modal_dismissed_at_${user.id}`;
+      
+      sessionStorage.setItem(sessionKey, 'true');
+      localStorage.setItem(ttlKey, Date.now().toString());
+      
+      console.log('🎯 [Post-Login] Modal dismissed after notification enabled - flags set');
+    }
   };
 
   return {

@@ -40,6 +40,7 @@ export function TradingNotificationModal({
   useEffect(() => {
     if (isOpen && (permission === 'granted' || hasSubscription)) {
       setIsLoading(false);
+      setDismissalFlags(); // Set dismissal flags on auto-close
       onNotificationEnabled?.();
       onClose();
     }
@@ -50,6 +51,7 @@ export function TradingNotificationModal({
     try {
       const result = await requestPermission();
       if (result.success) {
+        setDismissalFlags(); // Set dismissal flags on successful enable
         onNotificationEnabled?.();
         onClose();
       }

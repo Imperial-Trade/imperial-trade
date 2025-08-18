@@ -53,7 +53,7 @@ export function PriceSourceIndicator({
   };
 
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`space-y-2 ${className} hidden`}>
       {/* Source Information Header */}
       <div className="flex items-center gap-2 flex-wrap">
         <TooltipProvider>

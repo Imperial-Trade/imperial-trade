@@ -12,6 +12,11 @@ export function usePostLoginNotificationSetup() {
   useEffect(() => {
     if (!user || !profile || !hasSeenWelcome) return;
 
+    // Don't show modal if browser notification permission is already granted
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      return;
+    }
+
     // After the reset, all users need to re-enable notifications
     // Show modal if user doesn't have active push subscriptions - ONLY after welcome animation
     const shouldShowModal = !profile.push_subscription_active || 

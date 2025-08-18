@@ -62,12 +62,13 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     pauseOnInput: false
   });
 
-  // Protected callbacks with permission validation (using currentPrice from above)
+  // Protected callbacks with permission validation (receiving currentPrice as parameter)
   const protectedTakeProfitHit = useCallback(async (
     alertData: any, 
     hits: number[], 
     shouldClose: boolean, 
-    reason: string
+    reason: string,
+    price: number
   ) => {
     if (!validateAction(alertData.creator?.id || alertData.userId, 'update TP hits')) {
       return;
@@ -79,10 +80,10 @@ const ZeroLatencyLivePriceWidgetComponent = ({
       (window as any).addInAppNotification({
         type: 'tp_hit',
         title: 'Take Profit Hit!',
-        message: `${alertData.asset_name} TP${maxHit} reached at $${currentPrice}`,
+        message: `${alertData.asset_name} TP${maxHit} reached at $${price}`,
         signal_id: alertData.id,
         asset_name: alertData.asset_name,
-        price: currentPrice,
+        price: price,
         priority: shouldClose ? 'high' : 'normal'
       });
     }
@@ -90,9 +91,9 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     if (onTakeProfitHit) {
       await onTakeProfitHit(alertData, hits, shouldClose, reason);
     }
-  }, [onTakeProfitHit, validateAction]); // Remove currentPrice from dependencies
+  }, [onTakeProfitHit, validateAction]);
 
-  const protectedStopLossHit = useCallback(async (alertData: any, reason: string) => {
+  const protectedStopLossHit = useCallback(async (alertData: any, reason: string, price: number) => {
     if (!validateAction(alertData.creator?.id || alertData.userId, 'trigger stop loss')) {
       return;
     }
@@ -102,10 +103,10 @@ const ZeroLatencyLivePriceWidgetComponent = ({
       (window as any).addInAppNotification({
         type: 'sl_hit',
         title: 'Stop Loss Hit',
-        message: `${alertData.asset_name} stop loss triggered at $${currentPrice}`,
+        message: `${alertData.asset_name} stop loss triggered at $${price}`,
         signal_id: alertData.id,
         asset_name: alertData.asset_name,
-        price: currentPrice,
+        price: price,
         priority: 'critical'
       });
     }
@@ -113,7 +114,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     if (onStopLossHit) {
       await onStopLossHit(alertData, reason);
     }
-  }, [onStopLossHit, validateAction]); // Remove currentPrice from dependencies
+  }, [onStopLossHit, validateAction]);
 
   const protectedOrderActivation = useCallback(async (alertData: any) => {
     if (!validateAction(alertData.creator?.id || alertData.userId, 'activate order')) {
@@ -188,7 +189,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
       const reason = shouldClose ? `tp${maxTP}` : 'partial_tp';
       
       console.log(`🎯 [ZERO-LATENCY] TP hit for ${alert.asset_name}: ${newHits.join(', ')}`);
-      protectedTakeProfitHit(alert, updatedHits, shouldClose, reason);
+      protectedTakeProfitHit(alert, updatedHits, shouldClose, reason, currentPrice);
     }
 
     // Check stop loss
@@ -196,7 +197,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
       const stopLossHit = isBuy ? currentPrice <= alert.stop_loss : currentPrice >= alert.stop_loss;
       if (stopLossHit) {
         console.log(`💥 [ZERO-LATENCY] Stop loss hit for ${alert.asset_name}`);
-        protectedStopLossHit(alert, 'stop_loss');
+        protectedStopLossHit(alert, 'stop_loss', currentPrice);
       }
     }
   }, [currentPrice, alert, userCanEdit, protectedTakeProfitHit, protectedStopLossHit, protectedOrderActivation]);

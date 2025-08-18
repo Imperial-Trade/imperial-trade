@@ -113,22 +113,13 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     }
   }, [currentPrice, alert, onTakeProfitHit, onStopLossHit, onOrderActivation]);
 
-  if (isLoading || !currentPrice) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Connecting to price feed...</span>
-      </div>
-    );
-  }
-
   const changeColor = change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-muted-foreground';
   const spread = ask - bid;
 
   return (
     <div className="space-y-3">
       {/* Live Price Widget with Enhanced Design - Matching New Signal Form */}
-      <div className={`bg-card/50 border border-border rounded-lg p-4 backdrop-blur-sm transition-all duration-300 ${
+      <div className={`bg-card/50 border border-border rounded-lg p-4 backdrop-blur-sm transition-colors duration-300 ${
         connectionStatus === 'connected' ? 'border-green-500/30 shadow-green-500/10 shadow-lg' : 
         error ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
         'border-border'
@@ -164,16 +155,45 @@ const ZeroLatencyLivePriceWidgetComponent = ({
           </Button>
         </div>
 
-        {/* Price Display */}
+        {/* Loading State for Initial Load */}
+        {isLoading && !currentPrice && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-7 w-32 bg-gray-600 rounded animate-pulse"></div>
+                <div className="h-4 w-4 bg-gray-600 rounded animate-pulse"></div>
+              </div>
+              <div className="h-6 w-20 bg-gray-600 rounded animate-pulse"></div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="h-4 w-24 bg-gray-600 rounded animate-pulse"></div>
+              <div className="h-6 w-24 bg-gray-600 rounded animate-pulse"></div>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="flex items-center gap-2 mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <div className="text-red-400 text-sm">
+              {error}
+            </div>
+          </div>
+        )}
+
+        {/* Price Display - Only show when we have price data */}
+        {currentPrice > 0 && (
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
-              <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-                isLoading ? 'animate-pulse' : ''
-              } ${
+              <div className={`font-mono text-xl font-bold tabular-nums ${
                 connectionStatus === 'connected' ? 'text-accent-green' : 'text-gray-400'
               }`}>
-                <span ref={priceRef}>
+                <span 
+                  ref={priceRef}
+                  className="transition-colors duration-150"
+                >
                   ${currentPrice.toFixed(2)}
                 </span>
               </div>
@@ -199,6 +219,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
             </div>
           </div>
         </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between">

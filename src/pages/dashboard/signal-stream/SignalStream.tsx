@@ -262,29 +262,29 @@ export default function SignalStream() {
         <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                  Xeon <span className="text-accent-green">Stream</span>
-                </h1>
-                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs w-fit">
-                  <Shield className="w-3 h-3 mr-1 flex-shrink-0" />
-                  <span className="truncate">Educational Contributors</span>
-                </Badge>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 mb-1">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                    Xeon <span className="text-accent-green">Stream</span>
+                  </h1>
+                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs w-fit">
+                    <Shield className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <span className="truncate">Educational Contributors</span>
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {isEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  <Switch
+                    checked={isEnabled}
+                    onCheckedChange={setIsEnabled}
+                    className="data-[state=checked]:bg-accent-green"
+                  />
+                </div>
               </div>
               
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {isEnabled ? 'Enabled' : 'Disabled'}
-                </span>
-                <Switch
-                  checked={isEnabled}
-                  onCheckedChange={setIsEnabled}
-                  className="data-[state=checked]:bg-accent-green"
-                />
-              </div>
             </div>
             
           </div>

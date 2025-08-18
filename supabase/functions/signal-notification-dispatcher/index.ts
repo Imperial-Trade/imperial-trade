@@ -161,7 +161,7 @@ Deno.serve(async (req: Request) => {
 
         console.log(`🚀 Sending push notification to OneSignal...`);
         
-        const response = await fetch("https://api.onesignal.com/notifications", {
+        const response = await fetch("https://onesignal.com/api/v1/notifications", {
           method: "POST",
           headers: {
             "Authorization": `Basic ${apiKey}`,

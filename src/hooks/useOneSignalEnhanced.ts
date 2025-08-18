@@ -688,6 +688,69 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
     }
   }, [syncWithSupabase, toast]);
 
+  // OneSignal login functionality
+  const loginToOneSignal = useCallback(async (userId: string) => {
+    try {
+      if (!window.OneSignal) {
+        console.log('[OneSignal] Not initialized for login');
+        return;
+      }
+
+      console.log('[OneSignal] Logging in user:', userId);
+      
+      // Try v16 login first, then fallback to legacy
+      if (window.OneSignal.login) {
+        await window.OneSignal.login(userId);
+      } else if (window.OneSignal.setExternalUserId) {
+        await window.OneSignal.setExternalUserId(userId);
+      }
+
+      console.log('[OneSignal] User logged in successfully');
+      
+      // Sync with Supabase after login
+      setTimeout(() => syncWithSupabase(), 1000);
+    } catch (error) {
+      console.error('[OneSignal] Login failed:', error);
+    }
+  }, [syncWithSupabase]);
+
+  const logoutFromOneSignal = useCallback(async () => {
+    try {
+      if (!window.OneSignal) return;
+
+      console.log('[OneSignal] Logging out user');
+      
+      // Try v16 logout first, then fallback to legacy
+      if (window.OneSignal.logout) {
+        await window.OneSignal.logout();
+      } else if (window.OneSignal.removeExternalUserId) {
+        await window.OneSignal.removeExternalUserId();
+      }
+
+      console.log('[OneSignal] User logged out successfully');
+    } catch (error) {
+      console.error('[OneSignal] Logout failed:', error);
+    }
+  }, []);
+
+  // Auth state listener for automatic OneSignal login/logout
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] OneSignal auth state change:', event, session?.user?.id);
+      
+      if (event === 'SIGNED_IN' && session?.user?.id) {
+        // Small delay to ensure OneSignal is ready
+        setTimeout(() => {
+          loginToOneSignal(session.user.id);
+        }, 2000);
+      } else if (event === 'SIGNED_OUT') {
+        await logoutFromOneSignal();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [loginToOneSignal, logoutFromOneSignal]);
+
   // Initialize on mount
   useEffect(() => {
     initializeOneSignal();

@@ -144,8 +144,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Fetch profile data in background - don't block UI
           setTimeout(() => {
             fetchProfile(session.user.id).then(setProfile);
-            // Bind user to OneSignal and check subscription status after login
-            bindToOneSignalAndCheck(session.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -165,7 +163,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               navigate(from, { replace: true });
             }
           }, 0);
-          // OneSignal binding and upsert handled in bindToOneSignalAndCheck
         } else if (event === 'SIGNED_OUT') {
           // Skip cleanup if we're manually signing out to prevent race condition
           if (!isSigningOut) {
@@ -188,8 +185,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Load profile in background
           setTimeout(() => {
             fetchProfile(session.user.id).then(setProfile);
-            // Bind to OneSignal and check subscription status on initial load
-            bindToOneSignalAndCheck(session.user.id);
           }, 0);
         }
     });
@@ -197,82 +192,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => subscription.unsubscribe();
 }, []);
 
-  // Ensure OneSignal user/email subscription on auth/profile changes (deduplicated)
-  useEffect(() => {
-    try {
-      const uid = user?.id;
-      if (!uid) return;
-      const email = user?.email || '';
-      const role = profile?.role || '';
-      const utype = profile?.user_type || '';
-      const key = `os_upsert_v1:${uid}:${email}:${role}:${utype}`;
-      const done = (() => { try { return localStorage.getItem(key) === '1'; } catch { return false; } })();
-      if (done) return;
-      const body: { user_id?: string; email?: string; tags?: Record<string, string> } = {};
-      body.user_id = uid;
-      body.email = email;
-      const tags: Record<string, string> = {};
-      if (role) tags.role = String(role);
-      if (utype) tags.user_type = String(utype);
-      if (Object.keys(tags).length) body.tags = tags;
-      supabase.functions.invoke('onesignal-upsert-user', { body }).then(() => {
-        try { localStorage.setItem(key, '1'); } catch {}
-      }).catch(() => {});
-    } catch {}
-  }, [user?.id, user?.email, profile?.role, profile?.user_type]);
-
-  const bindToOneSignalAndCheck = async (userId: string) => {
-    try {
-      // Check if we've already verified this session
-      const sessionKey = `onesignal_verified_${userId}_${Date.now().toString().slice(0, -5)}`;
-      if (sessionStorage.getItem(sessionKey)) {
-        return;
-      }
-
-      // Prevent duplicate login attempts for this session
-      const loginKey = `onesignal_login_${userId}`;
-      if (sessionStorage.getItem(loginKey)) {
-        console.log('[Auth] OneSignal login already attempted for this session');
-      } else {
-        // Safe login using OneSignal queue to prevent race conditions
-        console.log('[Auth] Queuing OneSignal login for user:', userId);
-        window.OneSignal = window.OneSignal || [];
-        window.OneSignal.push(() => {
-          try {
-            console.log('[Auth] Executing OneSignal login for user:', userId);
-            window.OneSignal.login(userId);
-            console.log('[Auth] OneSignal login successful');
-          } catch (error) {
-            console.warn('[Auth] OneSignal login failed:', error);
-          }
-        });
-        
-        // Mark login as attempted for this session
-        sessionStorage.setItem(loginKey, 'true');
-      }
-
-      // Verify current OneSignal subscription status (this is the source of truth)
-      const { data: verificationResult } = await supabase.functions.invoke('onesignal-verify-subscription', {
-        body: { user_id: userId }
-      });
-
-      if (verificationResult?.success) {
-        const { subscription_status } = verificationResult;
-        
-        // OneSignal verification removed - using in-app notifications only
-        console.log('[Auth] OneSignal verification disabled - using in-app notifications');
-
-        // Mark this session as verified
-        sessionStorage.setItem(sessionKey, 'true');
-        console.log('[Auth] OneSignal subscription verified:', subscription_status.is_subscribed);
-        
-        // Store verification result for use by notification setup
-        sessionStorage.setItem(`onesignal_status_${userId}`, JSON.stringify(subscription_status));
-      }
-    } catch (error) {
-      console.error('[Auth] Error binding to OneSignal and checking subscription:', error);
-    }
-  };
 
 
   const signOut = async () => {

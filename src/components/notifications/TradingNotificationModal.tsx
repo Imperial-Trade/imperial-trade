@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Bell, Smartphone, TrendingUp, AlertTriangle } from 'lucide-react';
-import { useOneSignalEnhanced } from '@/hooks/useOneSignalEnhanced';
+import { useNotifications } from '@/contexts/NotificationsContext';
 import { detectSafariPWA } from '@/utils/deviceDetection';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -19,7 +19,7 @@ export function TradingNotificationModal({
   onClose, 
   onNotificationEnabled 
 }: TradingNotificationModalProps) {
-  const { requestPermission, permission, hasSubscription } = useOneSignalEnhanced();
+  const { requestPermission, permission, isGranted } = useNotifications();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const isSafariPWA = detectSafariPWA();
@@ -38,13 +38,13 @@ export function TradingNotificationModal({
 
   // Auto-close modal when notifications are granted
   useEffect(() => {
-    if (isOpen && (permission === 'granted' || hasSubscription)) {
+    if (isOpen && (permission === 'granted' || isGranted)) {
       setIsLoading(false);
       setDismissalFlags(); // Set dismissal flags on auto-close
       onNotificationEnabled?.();
       onClose();
     }
-  }, [isOpen, permission, hasSubscription, onClose, onNotificationEnabled]);
+  }, [isOpen, permission, isGranted, onClose, onNotificationEnabled]);
 
   const handleEnableNotifications = async () => {
     setIsLoading(true);

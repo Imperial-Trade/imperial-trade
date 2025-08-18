@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { useAuth } from './AuthContext';
-import { useOneSignalEnhanced } from '@/hooks/useOneSignalEnhanced';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 interface XeonStreamContextValue {
   isSubscribed: boolean;
@@ -16,7 +16,7 @@ const XeonStreamContext = createContext<XeonStreamContextValue | undefined>(unde
 
 export const XeonStreamProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, isXeonStreamSubscribed, updateXeonStreamSubscription } = useAuth();
-  const { isGranted: hasNotificationPermission, requestPermission } = useOneSignalEnhanced();
+  const { isGranted: hasNotificationPermission, requestPermission } = useNotifications();
   const [isLoading, setIsLoading] = useState(false);
   const [showOptInModal, setShowOptInModal] = useState(false);
 
@@ -43,7 +43,7 @@ export const XeonStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     setIsLoading(true);
     try {
-      // First, ensure OneSignal permissions are granted
+      // First, ensure notification permissions are granted
       if (!hasNotificationPermission) {
         const permissionResult = await requestPermission();
         if (!permissionResult.success) {
@@ -51,11 +51,7 @@ export const XeonStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       }
 
-      // Tag user in OneSignal for Xeon Stream
-      if (window.OneSignal) {
-        window.OneSignal.User.addTag('xeon_stream', 'active');
-        window.OneSignal.User.addTag('subscription_tier', 'premium');
-      }
+      // In-app notification tagging (OneSignal removed)
 
       // Update database subscription status
       await updateXeonStreamSubscription(true);
@@ -73,11 +69,7 @@ export const XeonStreamProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const unsubscribeFromXeonStream = async (): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
-      // Remove OneSignal tags
-      if (window.OneSignal) {
-        window.OneSignal.User.removeTag('xeon_stream');
-        window.OneSignal.User.removeTag('subscription_tier');
-      }
+      // In-app notification tag removal (OneSignal removed)
 
       // Update database subscription status
       await updateXeonStreamSubscription(false);

@@ -6,13 +6,13 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Bell, Zap, CheckCircle, AlertTriangle } from 'lucide-react';
-import { NotificationRecoveryButton } from '@/components/notifications/NotificationRecoveryButton';
+import EnableAlertsCTA from '@/components/notifications/EnableAlertsCTA';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOneSignalRecovery } from '@/hooks/useOneSignalRecovery';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
 export const TradingAlertsWidget: React.FC = () => {
   const { profile } = useAuth();
-  const { needsRecovery, subscriptionActive } = useOneSignalRecovery();
+  const { isGranted: subscriptionActive } = useNotifications();
 
   const getStatusInfo = () => {
     if (subscriptionActive) {
@@ -22,16 +22,6 @@ export const TradingAlertsWidget: React.FC = () => {
         color: 'text-emerald-600',
         bgColor: 'bg-emerald-50',
         borderColor: 'border-emerald-200'
-      };
-    }
-
-    if (needsRecovery) {
-      return {
-        icon: AlertTriangle,
-        text: 'Setup Required',
-        color: 'text-red-600',
-        bgColor: 'bg-red-50',
-        borderColor: 'border-red-200'
       };
     }
 
@@ -76,11 +66,7 @@ export const TradingAlertsWidget: React.FC = () => {
           )}
         </div>
 
-        <NotificationRecoveryButton 
-          variant="default" 
-          size="sm" 
-          showStatus={false}
-        />
+        <EnableAlertsCTA />
       </CardContent>
     </Card>
   );

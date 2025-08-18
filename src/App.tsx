@@ -72,7 +72,7 @@ import NotificationSystem from "@/components/notifications/NotificationSystem";
 import NotificationsPanel from "@/components/notifications/NotificationsPanel";
 import NotificationSetupManager from "@/components/notifications/NotificationSetupManager";
 import InAppNotificationSystem from "@/components/notifications/InAppNotificationSystem";
-import OneSignalInitializer from "@/components/integrations/OneSignalInitializer";
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -99,7 +99,6 @@ function App() {
               <PostHogPageViewTracker />
               <ScrollToTop />
                 <AuthProvider>
-                  <OneSignalInitializer>
                     <NotificationsProvider>
                       <AutoRecoveryProvider>
                          <WelcomeProvider>
@@ -317,9 +316,8 @@ function App() {
                            </NavigationGuard>
                         </WelcomeProvider>
                       </AutoRecoveryProvider>
-                    </NotificationsProvider>
-                  </OneSignalInitializer>
-                </AuthProvider>
+                     </NotificationsProvider>
+                 </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>

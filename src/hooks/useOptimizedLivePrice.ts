@@ -107,9 +107,9 @@ export function useOptimizedLivePrice(
     
     if (!currentPrice) return;
 
-    // Near-instant updates: no significance gating, minimal debounce
+    // Zero-latency updates: instant rendering for all price updates
     const isUltraFastTick = currentPrice.is_ultra_fast_tick === true;
-    const dynamicDelay = isUltraFastTick ? 0 : Math.max(0, Math.min(debounceMs, 10));
+    const dynamicDelay = 0; // ZERO delay for maximum speed
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);

@@ -88,7 +88,7 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     marketStatus
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
-    debounceMs: 50,
+    debounceMs: 0, // ZERO debounce for ultra-fast signal monitoring
     pauseOnInput: false
   });
 

@@ -57,7 +57,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     marketStatus
   } = useOptimizedLivePrice(apiSymbol, {
     enableSmartPausing: false, // Keep connection active for trading signals
-    debounceMs: 50, // Ultra-fast updates for trading (50ms)
+    debounceMs: 0, // ZERO debounce for real-time TraderMade prices
     pauseOnInput: false
   });
 
@@ -168,42 +168,34 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     }
     
     if (connectionStatus === 'connected') {
-      // Distinguish between real-time WebSocket and HTTP fallback
+      // Flag non-WebSocket sources as problematic for zero-latency trading
       switch (priceUpdateSource) {
         case 'websocket':
+        case 'websocket_institutional':
           return { 
             color: 'text-green-400', 
             icon: Wifi, 
-            text: '⚡ Real-time',
-            description: 'Live WebSocket updates active',
+            text: '⚡ TraderMade FIX',
+            description: 'Zero-latency TraderMade streaming active',
             animate: false
           };
         case 'http':
           return { 
-            color: 'text-blue-400', 
-            icon: RefreshCw, 
-            text: '🔄 HTTP Fallback',
-            description: 'Using HTTP API fallback mode',
-            animate: false
+            color: 'text-red-400', 
+            icon: AlertTriangle, 
+            text: '⚠️ FALLBACK MODE',
+            description: 'NOT real-time! Using HTTP fallback',
+            animate: true
           };
+        case 'unknown':
         default:
-          if (dataFreshness < 30) {
-            return { 
-              color: 'text-green-400', 
-              icon: Wifi, 
-              text: 'Live',
-              description: 'Real-time price updates active',
-              animate: false
-            };
-          } else if (dataFreshness < 60) {
-            return { 
-              color: 'text-yellow-400', 
-              icon: Wifi, 
-              text: 'Delayed',
-              description: 'Price data is slightly delayed',
-              animate: false
-            };
-          }
+          return { 
+            color: 'text-red-400', 
+            icon: AlertTriangle, 
+            text: '❌ NOT REAL-TIME',
+            description: 'Price source unknown - not TraderMade FIX!',
+            animate: true
+          };
       }
     }
     

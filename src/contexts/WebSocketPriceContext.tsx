@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { MarketHoursService } from '@/services/MarketHoursService';
+import { PriceLatencyLogger } from '@/utils/priceLatencyLogger';
 
 interface PriceData {
   symbol: string;
@@ -112,7 +113,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return delay;
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     // Prevent multiple connections by checking if one already exists
     if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
       console.log('🔄 WebSocket already connected or connecting, skipping duplicate connection');
@@ -128,20 +129,44 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         socketRef.current = null;
       }
       
-      // Connect to enhanced FIX streaming service with API key rotation
-      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-fix-streaming`;
-      console.log('🔌 Connecting to TraderMade FIX WebSocket with API key rotation:', wsUrl);
+      // Authenticate and harden WebSocket connection with zero-latency configuration
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Include auth token for authenticated streaming with API key rotation
+      const authParam = session?.access_token ? `?token=${encodeURIComponent(session.access_token)}` : '';
+      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-fix-streaming${authParam}`;
+      
+      console.log('🔌 Connecting to authenticated TraderMade FIX WebSocket:', wsUrl.replace(/token=[^&]+/, 'token=***'));
       console.log('🔍 WebSocket readyState before connection:', socketRef.current?.readyState);
       
       socketRef.current = new WebSocket(wsUrl);
       console.log('🆕 Created new WebSocket instance');
 
+      // Connection timeout for hardened reliability
+      const connectionTimeout = setTimeout(() => {
+        if (socketRef.current?.readyState === WebSocket.CONNECTING) {
+          console.log('⏰ Connection timeout, closing...');
+          socketRef.current.close();
+        }
+      }, 10000); // 10s timeout
+
       socketRef.current.onopen = () => {
-        console.log('✅ FIX WebSocket connected with institutional-grade API key rotation');
+        clearTimeout(connectionTimeout);
+        console.log('✅ Authenticated FIX WebSocket connected with institutional-grade API key rotation');
         setConnectionStatus('connected');
         setDataSource('tradermade');
         reconnectAttemptsRef.current = 0;
         websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
+        
+        // Implement ping interval for connection health
+        const pingInterval = setInterval(() => {
+          if (socketRef.current?.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({ action: 'ping' }));
+          } else {
+            clearInterval(pingInterval);
+          }
+        }, 30000); // Ping every 30s
         
         // Clear any connection errors
         setErrors(prev => {
@@ -185,6 +210,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             const tickTimestamp = data.tick_timestamp || Date.now();
             const apiKeyIndex = data.apiKeyIndex || 0;
             
+            // Log price latency for performance monitoring
+            PriceLatencyLogger.getInstance().logPriceUpdate(symbol, tickTimestamp);
+            
             if (process.env.NODE_ENV === 'development') {
               if (isUltraFastTick) {
                 console.log(`⚡ FIX ULTRA-FAST: ${symbol} = $${data.price} [Seq:${data.sequence}] [API:${apiKeyIndex}] @ ${new Date(tickTimestamp).toISOString()}`);
@@ -195,22 +223,23 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
               }
             }
             
-            // Calculate percentage change if we have previous price
+            // Calculate accurate change and percentage using server-provided data when available
             const prevPrice = prices[symbol]?.price || data.price;
-            const change = data.price - prevPrice;
-            const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
+            const serverChange = typeof data.change === 'number' ? data.change : data.price - prevPrice;
+            const serverChangePercent = typeof data.changePercent === 'number' ? data.changePercent : 
+              (prevPrice > 0 ? (serverChange / prevPrice) * 100 : 0);
             
             setPrices(prev => ({
               ...prev,
               [symbol]: {
                 symbol: data.symbol,
                 price: data.price,
-                change: data.change || change,
-                changePercent: data.changePercent || changePercent,
-                timestamp: data.timestamp || new Date().toISOString(),
+                change: serverChange,
+                changePercent: serverChangePercent,
+                timestamp: new Date(tickTimestamp).toISOString(),
                 bid: data.bid || data.price,
                 ask: data.ask || data.price,
-                // Enhanced ultra-fast tick data
+                // Enhanced ultra-fast tick data with accurate timestamps
                 tick_timestamp: tickTimestamp,
                 is_institutional_tick: isInstitutionalTick,
                 is_ultra_fast_tick: isUltraFastTick,
@@ -317,7 +346,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     if (!subscribeFlushTimerRef.current) {
       subscribeFlushTimerRef.current = setTimeout(() => {
         flushPendingSubscriptions();
-      }, 50);
+      }, 5); // Ultra-fast 5ms batching for zero-latency subscription
     }
   }, [connect, flushPendingSubscriptions]);
 
@@ -430,9 +459,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           return;
         }
         const lastTick = pd?.tick_timestamp ?? (pd?.timestamp ? Date.parse(pd.timestamp) : 0);
-        const isStale = !lastTick || now - lastTick > 1200;
+        // Crypto-focused stale detection: 800ms threshold for ultra-fast crypto like BTCUSD
+        const staleThreshold = symbol.includes('BTC') || symbol.includes('ETH') ? 800 : 1200;
+        const isStale = !lastTick || now - lastTick > staleThreshold;
         const lastAttempt = lastRefreshAttemptRef.current.get(symbol) || 0;
-        if (isStale && now - lastAttempt > 1200) {
+        if (isStale && now - lastAttempt > staleThreshold) {
           lastRefreshAttemptRef.current.set(symbol, now);
           try {
             // Light-touch: re-subscribe the symbol to prompt a fresh tick

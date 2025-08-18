@@ -387,6 +387,22 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
         // STEP 1: Request permission - must be first async operation for gesture safety
         console.log('[OneSignal] 🚀 Requesting permission...');
         
+        // For Safari/iOS, immediately trigger native permission request to preserve user gesture
+        if (isIOSSafari) {
+          console.log('[OneSignal] 🍎 Safari/iOS detected, triggering immediate native permission request...');
+          try {
+            const nativePermission = await Notification.requestPermission();
+            console.log('[OneSignal] Native permission result:', nativePermission);
+            
+            if (nativePermission !== 'granted') {
+              throw new Error(`Native permission denied: ${nativePermission}`);
+            }
+          } catch (nativeError) {
+            console.warn('[OneSignal] Native permission request failed:', nativeError);
+            throw nativeError;
+          }
+        }
+        
         try {
           // Try OneSignal v16 API first, then fallback to v15/browser
           if (window.OneSignal?.Notifications?.requestPermission) {
@@ -401,7 +417,11 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
           }
         } catch (promptError) {
           console.warn('[OneSignal] Primary permission request failed, using browser fallback:', promptError);
-          await Notification.requestPermission();
+          if (!isIOSSafari) { // Only fallback if we haven't already tried native request
+            await Notification.requestPermission();
+          } else {
+            throw promptError; // Re-throw for Safari/iOS since native request already failed
+          }
         }
       })();
 
@@ -566,9 +586,14 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
           hasSubscription: false
         }));
 
-        const errorMessage = finalPermission === 'denied' 
+        let errorMessage = finalPermission === 'denied' 
           ? 'Notifications blocked. Please enable them in your browser settings.'
           : 'Permission request was dismissed.';
+          
+        // Provide specific help for Safari/iOS users
+        if (isIOSSafari && finalPermission !== 'granted') {
+          errorMessage = 'To enable notifications on iOS: Go to Settings > [App Name] > Notifications and turn on "Allow Notifications"';
+        }
 
         toast({
           title: "Notifications Not Enabled",

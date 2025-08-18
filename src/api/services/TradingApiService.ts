@@ -125,25 +125,43 @@ export class TradingApiService {
           .eq('id', responseDto.userId)
           .single();
 
+        console.log('📤 Preparing to dispatch push notification for new signal:', responseDto.id);
+        
         const notificationPayload = {
           signal_id: responseDto.id,
+          user_id: responseDto.userId,
           alert_type: 'signal_created',
           target_price: responseDto.entryPrice,
           triggered_price: responseDto.entryPrice,
           notification_type: 'signal_created',
-          delivery_channels: ['push'],
-          segments: ['Subscribed Users'],
+          delivery_channels: ['push', 'in_app'],
           asset_name: responseDto.assetName,
           symbol: responseDto.tradermadeSymbol,
+          tradermade_symbol: responseDto.tradermadeSymbol,
           trade_type: responseDto.tradeType,
           entry_price: responseDto.entryPrice,
           stop_loss: responseDto.stopLoss,
-          author_id: responseDto.userId,
-          author_name: author?.display_name,
+          tp1: responseDto.tp1,
+          tp2: responseDto.tp2,
+          tp3: responseDto.tp3,
+          tp4: responseDto.tp4,
+          tp5: responseDto.tp5,
+          status: responseDto.status,
+          author_name: author?.display_name || 'Anonymous Trader',
           author_avatar_url: author?.avatar_url,
+          include_creator: false // Don't notify the creator
         };
-        // Notification will be handled by database trigger via signal-pgnotify-listener
-        console.log('Signal created - notification will be dispatched via database trigger');
+
+        // Dispatch push notification via Edge Function
+        const notificationResult = await supabase.functions.invoke('signal-notification-dispatcher', {
+          body: { notifications: [notificationPayload] }
+        });
+
+        if (notificationResult.error) {
+          console.error('❌ Failed to dispatch push notification:', notificationResult.error);
+        } else {
+          console.log('✅ Push notification dispatched successfully:', notificationResult.data);
+        }
       } catch (notifyError) {
         console.error('Failed to dispatch push notification for new signal:', notifyError);
       }

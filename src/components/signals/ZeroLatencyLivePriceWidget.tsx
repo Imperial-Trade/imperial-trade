@@ -44,7 +44,25 @@ const ZeroLatencyLivePriceWidgetComponent = ({
     return canEditSignal(alert.creator?.id || alert.userId);
   }, [canEditSignal, alert.creator?.id, alert.userId]);
 
-  // Protected callbacks with permission validation
+  // Use working price stream first to get currentPrice
+  const {
+    price: currentPrice,
+    change,
+    changePercent,
+    isLoading,
+    error,
+    lastUpdated,
+    connectionStatus,
+    dataSource,
+    refreshPrice,
+    marketStatus
+  } = useOptimizedLivePrice(alert.tradermade_symbol, {
+    enableSmartPausing: false,
+    debounceMs: 0, // ZERO debounce for ultra-fast signal monitoring
+    pauseOnInput: false
+  });
+
+  // Protected callbacks with permission validation (using currentPrice from above)
   const protectedTakeProfitHit = useCallback(async (
     alertData: any, 
     hits: number[], 
@@ -105,23 +123,6 @@ const ZeroLatencyLivePriceWidgetComponent = ({
       await onOrderActivation(alertData);
     }
   }, [onOrderActivation, validateAction]);
-  // Use working price stream
-  const {
-    price: currentPrice,
-    change,
-    changePercent,
-    isLoading,
-    error,
-    lastUpdated,
-    connectionStatus,
-    dataSource,
-    refreshPrice,
-    marketStatus
-  } = useOptimizedLivePrice(alert.tradermade_symbol, {
-    enableSmartPausing: false,
-    debounceMs: 0, // ZERO debounce for ultra-fast signal monitoring
-    pauseOnInput: false
-  });
 
   // Mock additional zero-latency metrics for display
   const renderLatency = 15; // Sub-50ms target

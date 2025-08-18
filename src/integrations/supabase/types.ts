@@ -1551,22 +1551,18 @@ export type Database = {
           display_name: string | null
           engagement_score: number | null
           id: string
+          in_app_notifications_enabled: boolean | null
           last_device_info: Json | null
           last_login: string | null
           legal_accepted: boolean
           legal_accepted_at: string | null
           legal_version: string | null
           location: string | null
-          notification_preferences: Json | null
           notification_prompt_dismissed_at: string | null
           notification_stats: Json | null
           onesignal_last_sync_at: string | null
-          onesignal_last_verified_at: string | null
-          onesignal_player_id: string | null
-          onesignal_subscription_status: string | null
           phone_number: string | null
           profile_type: string | null
-          push_subscription_active: boolean | null
           real_name: string | null
           registration_source:
             | Database["public"]["Enums"]["registration_source_enum"]
@@ -1600,22 +1596,18 @@ export type Database = {
           display_name?: string | null
           engagement_score?: number | null
           id: string
+          in_app_notifications_enabled?: boolean | null
           last_device_info?: Json | null
           last_login?: string | null
           legal_accepted?: boolean
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
-          notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
-          onesignal_last_verified_at?: string | null
-          onesignal_player_id?: string | null
-          onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
-          push_subscription_active?: boolean | null
           real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
@@ -1649,22 +1641,18 @@ export type Database = {
           display_name?: string | null
           engagement_score?: number | null
           id?: string
+          in_app_notifications_enabled?: boolean | null
           last_device_info?: Json | null
           last_login?: string | null
           legal_accepted?: boolean
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
-          notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
-          onesignal_last_verified_at?: string | null
-          onesignal_player_id?: string | null
-          onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
-          push_subscription_active?: boolean | null
           real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]

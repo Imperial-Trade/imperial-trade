@@ -303,19 +303,22 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Loading State for Initial Load */}
+      {/* Enhanced Loading State with Skeleton */}
       {isLoading && price === 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3 bg-card/30 rounded-lg p-4 border border-border/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-7 w-32 bg-gray-600 rounded animate-pulse"></div>
-              <div className="h-4 w-4 bg-gray-600 rounded animate-pulse"></div>
+              <div className="h-7 w-32 bg-muted rounded animate-pulse"></div>
+              <div className="h-4 w-4 bg-muted rounded animate-pulse"></div>
             </div>
-            <div className="h-6 w-20 bg-gray-600 rounded animate-pulse"></div>
+            <div className="h-6 w-20 bg-muted rounded animate-pulse"></div>
           </div>
           <div className="flex items-center justify-between">
-            <div className="h-4 w-24 bg-gray-600 rounded animate-pulse"></div>
-            <div className="h-6 w-24 bg-gray-600 rounded animate-pulse"></div>
+            <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
+            <div className="h-6 w-24 bg-muted rounded animate-pulse"></div>
+          </div>
+          <div className="flex justify-center">
+            <div className="text-xs text-muted-foreground">Connecting to live market data...</div>
           </div>
         </div>
       )}
@@ -328,12 +331,10 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               <div className="text-gray-500 font-mono text-xl">---.--</div>
             ) : (
               <div className="flex flex-col">
-                <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-                  isLoading || isRefreshing ? 'animate-pulse' : ''
-                } ${
-                  priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
-                  priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
-                  marketStatus?.isOpen ? 'text-accent-green' : 'text-gray-400'
+                <div className={`font-mono text-xl font-bold transition-all duration-200 ${
+                  priceAnimation === 'up' ? 'text-green-400 bg-green-400/10 px-2 py-1 rounded animate-pulse' :
+                  priceAnimation === 'down' ? 'text-red-400 bg-red-400/10 px-2 py-1 rounded animate-pulse' :
+                  marketStatus?.isOpen ? 'text-accent-green' : 'text-muted-foreground'
                 }`}>
                   ${formatPrice(marketStatus?.isOpen ? price : (marketStatus?.lastKnownPrice || price))}
                 </div>

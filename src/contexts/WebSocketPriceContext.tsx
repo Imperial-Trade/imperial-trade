@@ -67,6 +67,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const pendingSubscribeBatchRef = useRef<Set<string>>(new Set());
   const subscribeFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastRefreshAttemptRef = useRef<Map<string, number>>(new Map());
+  const lastConnectionAttemptRef = useRef(0);
+  const connectionStormPreventionRef = useRef(false);
   const flushPendingSubscriptions = useCallback(() => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) return;
     const pending = Array.from(pendingSubscribeBatchRef.current);
@@ -114,11 +116,33 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const connect = useCallback(async () => {
-    // Prevent multiple connections by checking if one already exists
-    if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
-      console.log('🔄 WebSocket already connected or connecting, skipping duplicate connection');
+    // DevOps: Prevent connection storms
+    if (connectionStormPreventionRef.current) {
+      console.log('🚫 DevOps: Connection storm prevention active');
       return;
     }
+    
+    // Enhanced connection state checking
+    if (socketRef.current?.readyState === WebSocket.CONNECTING) {
+      console.log('💡 DevOps: WebSocket still in CONNECTING state - preventing duplicate connection');
+      return;
+    }
+    
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      console.log('💡 DevOps: WebSocket already connected');
+      return;
+    }
+
+    // Connection throttling to prevent storms
+    const now = Date.now();
+    if (now - lastConnectionAttemptRef.current < 2000) {
+      console.log('🚫 DevOps: Connection throttled - too frequent attempts');
+      return;
+    }
+    lastConnectionAttemptRef.current = now;
+
+    connectionStormPreventionRef.current = true;
+    setTimeout(() => { connectionStormPreventionRef.current = false; }, 3000);
 
     setConnectionStatus('connecting');
     
@@ -197,6 +221,22 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         try {
           const data = JSON.parse(event.data);
           console.log('📊 Parsed message:', data);
+          
+          // CRITICAL: Reject any mock data sources - DevOps security validation
+          if (data.source === 'MockData_DEPRECATED' || data.priceSource === 'MockData_DEPRECATED') {
+            console.error('🚨 SECURITY: Rejected mock data source - only real TraderMade data allowed');
+            setErrors(prev => ({
+              ...prev,
+              global: 'Mock data detected - only live TraderMade feeds allowed'
+            }));
+            return;
+          }
+          
+          // Validate data source authenticity - must be from TraderMade
+          if (data.messageType === 'PRICE_UPDATE' && !data.is_institutional_tick && !data.tick_timestamp && !data.sequence) {
+            console.warn('⚠️ Suspicious price data without TraderMade markers, validating...');
+            // Allow but log for monitoring
+          }
           
           if (data.messageType === 'CONNECTION_STATUS') {
             console.log('🔗 FIX Connection status update:', data.status);

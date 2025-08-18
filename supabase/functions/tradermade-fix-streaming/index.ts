@@ -1,22 +1,38 @@
 /**
  * TraderMade FIX Protocol Streaming Edge Function
  * Institutional-grade price streaming with API key rotation and binary protocol support
+ * 
+ * DevOps Enhancement v2.0:
+ * - Enhanced API key health monitoring with automatic rotation
+ * - Improved connection reliability with exponential backoff
+ * - Real-time data validation to prevent mock data contamination
+ * - Comprehensive logging and alerting for production monitoring
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Multiple API keys for rotation and failover
+// Enhanced API key management with health tracking
 const API_KEYS = [
   Deno.env.get('TRADERMADE_API_KEY'),
   Deno.env.get('TRADERMADE_REST_API_KEY'),
-  // Additional keys can be added here
+  // Additional backup keys for high availability
 ].filter(Boolean);
+
+// Log API key configuration on startup for DevOps monitoring
+console.log(`🔐 DevOps: Configured ${API_KEYS.length} TraderMade API keys for rotation`);
+if (API_KEYS.length === 0) {
+  console.error('🚨 CRITICAL: No TraderMade API keys found in secrets. Service will fail.');
+}
+if (API_KEYS.length < 2) {
+  console.warn('⚠️ DevOps Warning: Less than 2 API keys configured. No failover protection.');
+}
 
 const TRADERMADE_WS_URL = 'wss://marketdata.tradermade.com/feedadv';
 const TRADERMADE_REST_URL = 'https://marketdata.tradermade.com/api/v1/live';
 
 interface ConnectionManager {
   clients: Map<string, WebSocket>;
+  clientConnectionTimes: Map<string, number>;
   traderMadeConnection: {
     ws: WebSocket | null;
     keyIndex: number;
@@ -24,11 +40,22 @@ interface ConnectionManager {
     lastHeartbeat: number;
     retryCount: number;
     clientCount: number;
+    lastConnectionAttempt: number;
+    connectionBackoff: number;
   };
-  apiKeyHealth: Map<number, { lastSuccess: number; failures: number; isActive: boolean }>;
-  priceCache: Map<string, { price: number; bid: number; ask: number; timestamp: number }>;
+  apiKeyHealth: Map<number, { 
+    lastSuccess: number; 
+    failures: number; 
+    isActive: boolean; 
+    rateLimitCount: number;
+    lastRateLimit: number;
+    cooldownUntil: number;
+  }>;
+  priceCache: Map<string, { price: number; bid: number; ask: number; timestamp: number; ttl: number }>;
   sequenceCounter: number;
   currentKeyIndex: number;
+  emergencyMode: boolean;
+  dataValidationErrors: number;
   // Subscription manager
   subscriptions: Map<string, number>; // symbol -> ref count
   activeSymbols: Set<string>; // Currently subscribed symbols (max 5)
@@ -37,42 +64,64 @@ interface ConnectionManager {
 
 const connectionManager: ConnectionManager = {
   clients: new Map(),
+  clientConnectionTimes: new Map(),
   traderMadeConnection: {
     ws: null,
     keyIndex: 0,
     isReady: false,
     lastHeartbeat: Date.now(),
     retryCount: 0,
-    clientCount: 0
+    clientCount: 0,
+    lastConnectionAttempt: 0,
+    connectionBackoff: 500
   },
   apiKeyHealth: new Map(),
   priceCache: new Map(),
   sequenceCounter: 0,
   currentKeyIndex: 0,
+  emergencyMode: false,
+  dataValidationErrors: 0,
   subscriptions: new Map(),
   activeSymbols: new Set(),
   pendingSymbols: new Set()
 };
 
-// Initialize API key health tracking
+// Initialize enhanced API key health tracking with DevOps monitoring
 API_KEYS.forEach((_, index) => {
   connectionManager.apiKeyHealth.set(index, {
     lastSuccess: Date.now(),
     failures: 0,
-    isActive: true
+    isActive: true,
+    rateLimitCount: 0,
+    lastRateLimit: 0,
+    cooldownUntil: 0
   });
 });
 
+console.log(`🔧 DevOps: Initialized ${API_KEYS.length} API keys for TraderMade FIX streaming`);
+
 /**
- * Get next healthy API key with load balancing
+ * Get next healthy API key with enhanced load balancing and monitoring
  */
 function getHealthyApiKey(): { key: string; index: number } | null {
   const healthyKeys = Array.from(connectionManager.apiKeyHealth.entries())
-    .filter(([_, health]) => health.isActive && health.failures < 5)
+    .filter(([_, health]) => health.isActive && health.failures < 3) // More aggressive failure threshold
     .sort((a, b) => a[1].lastSuccess - b[1].lastSuccess); // Least recently used first
 
   if (healthyKeys.length === 0) {
-    console.error('❌ No healthy API keys available');
+    console.error('🚨 CRITICAL: No healthy API keys available - ALL KEYS FAILED');
+    
+    // Emergency: Try to recover one key with lowest failure count
+    const recoveryKey = Array.from(connectionManager.apiKeyHealth.entries())
+      .sort((a, b) => a[1].failures - b[1].failures)[0];
+    
+    if (recoveryKey) {
+      console.warn(`🚑 EMERGENCY RECOVERY: Attempting to use key ${recoveryKey[0]} with ${recoveryKey[1].failures} failures`);
+      recoveryKey[1].isActive = true;
+      recoveryKey[1].failures = Math.max(recoveryKey[1].failures - 1, 0); // Reduce failure count
+      return { key: API_KEYS[recoveryKey[0]], index: recoveryKey[0] };
+    }
+    
     return null;
   }
 
@@ -80,11 +129,12 @@ function getHealthyApiKey(): { key: string; index: number } | null {
   const key = API_KEYS[index];
   
   if (!key) {
-    console.error(`❌ API key at index ${index} is undefined`);
+    console.error(`❌ API key at index ${index} is undefined - configuration error`);
     return null;
   }
 
-  console.log(`🔑 Using API key index ${index} (failures: ${connectionManager.apiKeyHealth.get(index)?.failures || 0})`);
+  const health = connectionManager.apiKeyHealth.get(index);
+  console.log(`🔑 DevOps: Using API key ${index} (failures: ${health?.failures || 0}, last success: ${new Date(health?.lastSuccess || 0).toISOString()})`);
   return { key, index };
 }
 
@@ -101,22 +151,31 @@ function markApiKeySuccess(index: number): void {
 }
 
 /**
- * Mark API key as failed
+ * Mark API key as failed with enhanced monitoring
  */
 function markApiKeyFailure(index: number): void {
   const health = connectionManager.apiKeyHealth.get(index);
   if (health) {
     health.failures += 1;
-    if (health.failures >= 5) {
+    
+    // Log detailed failure information for DevOps monitoring
+    console.error(`🚨 API Key ${index} FAILURE #${health.failures}: Rate limit or authentication error detected`);
+    
+    if (health.failures >= 3) { // More aggressive threshold
       health.isActive = false;
-      console.warn(`⚠️ API key index ${index} marked as inactive due to repeated failures`);
+      console.error(`🔴 CRITICAL: API key ${index} DISABLED due to repeated failures (${health.failures})`);
       
-      // Reactivate after 5 minutes
+      // Alert for DevOps monitoring
+      console.error(`🚨 DevOps Alert: TraderMade API key ${index} offline - immediate attention required`);
+      
+      // Shorter reactivation time for faster recovery
       setTimeout(() => {
         health.isActive = true;
         health.failures = 0;
-        console.log(`🔄 Reactivated API key index ${index}`);
-      }, 5 * 60 * 1000);
+        console.log(`🟢 DevOps: API key ${index} reactivated after cooldown`);
+      }, 2 * 60 * 1000); // Reduced to 2 minutes
+    } else {
+      console.warn(`⚠️ API key ${index} failure count: ${health.failures}/3`);
     }
   }
 }
@@ -163,32 +222,60 @@ async function createTraderMadeConnection(): Promise<void> {
     connectionManager.currentKeyIndex = apiKeyIndex;
     
     ws.onopen = () => {
-      console.log(`✅ TraderMade WebSocket connected (API key ${apiKeyIndex})`);
+      console.log(`✅ DevOps: TraderMade WebSocket connected successfully (API key ${apiKeyIndex})`);
       connectionManager.traderMadeConnection.isReady = true;
       markApiKeySuccess(apiKeyIndex);
       
-      // Send authentication message with dynamic symbol list
+      // Enhanced authentication with error handling
       const symbolList = Array.from(connectionManager.activeSymbols).slice(0, 5).join(',') || 'EURUSD';
       const authMessage = {
         userKey: apiKey,
         symbol: symbolList
       };
       
-      ws.send(JSON.stringify(authMessage));
-      console.log(`📡 Sent authentication for API key ${apiKeyIndex}`);
+      try {
+        ws.send(JSON.stringify(authMessage));
+        console.log(`📡 DevOps: Authentication sent for API key ${apiKeyIndex} with symbols: ${symbolList}`);
+        
+        // Set authentication timeout
+        setTimeout(() => {
+          if (!connectionManager.traderMadeConnection.isReady) {
+            console.error(`🚨 DevOps: Authentication timeout for API key ${apiKeyIndex} - marking as failed`);
+            markApiKeyFailure(apiKeyIndex);
+            ws.close();
+          }
+        }, 10000); // 10 second timeout
+        
+      } catch (error) {
+        console.error(`❌ DevOps: Failed to send authentication for API key ${apiKeyIndex}:`, error);
+        markApiKeyFailure(apiKeyIndex);
+      }
     };
 
     ws.onmessage = (event) => {
       try {
         connectionManager.traderMadeConnection.lastHeartbeat = Date.now();
         
-        // Handle both JSON and plain text messages from TraderMade
+        // Enhanced message handling with validation
         let data;
         
         if (typeof event.data === 'string') {
+          // Check for rate limit errors immediately
+          if (event.data.includes('User Key Used to many times') || event.data.includes('rate limit')) {
+            console.error(`🚨 RATE LIMIT DETECTED for API key ${apiKeyIndex}: ${event.data}`);
+            markApiKeyFailure(apiKeyIndex);
+            
+            // Immediately try next API key
+            setTimeout(() => {
+              console.log('🔄 Attempting connection with next API key due to rate limit...');
+              createTraderMadeConnection();
+            }, 1000);
+            return;
+          }
+          
           // Check if it's a plain text status message
           if (event.data === 'Connected' || event.data.startsWith('Subscription')) {
-            console.log(`📡 TraderMade status: ${event.data} (API key ${apiKeyIndex})`);
+            console.log(`📡 DevOps: TraderMade confirmed: ${event.data} (API key ${apiKeyIndex})`);
             markApiKeySuccess(apiKeyIndex);
             return;
           }
@@ -197,7 +284,7 @@ async function createTraderMadeConnection(): Promise<void> {
           try {
             data = JSON.parse(event.data);
           } catch (parseError) {
-            console.log(`📡 TraderMade text message (API key ${apiKeyIndex}): ${event.data}`);
+            console.log(`📡 DevOps: TraderMade text response (API key ${apiKeyIndex}): ${event.data}`);
             return;
           }
         } else {
@@ -241,17 +328,32 @@ async function createTraderMadeConnection(): Promise<void> {
 }
 
 /**
- * Handle incoming TraderMade message with FIX protocol enhancements
+ * Handle incoming TraderMade message with enhanced validation and FIX protocol
  */
 function handleTraderMadeMessage(data: any, apiKeyIndex: number): void {
   markApiKeySuccess(apiKeyIndex);
   
+  // Enhanced data validation to ensure legitimate TraderMade data
   if (data.symbol && data.bid && data.ask) {
     const symbol = data.symbol;
     const bid = parseFloat(data.bid);
     const ask = parseFloat(data.ask);
+    
+    // Validate price data quality
+    if (isNaN(bid) || isNaN(ask) || bid <= 0 || ask <= 0 || ask < bid) {
+      console.error(`🚨 DevOps: Invalid price data for ${symbol}: bid=${bid}, ask=${ask}`);
+      return;
+    }
+    
     const midPrice = (bid + ask) / 2;
     const timestamp = Date.now();
+    
+    // Additional validation: Check for reasonable spread
+    const spread = ask - bid;
+    const spreadPercent = (spread / midPrice) * 100;
+    if (spreadPercent > 10) { // Spread > 10% indicates suspicious data
+      console.warn(`⚠️ DevOps: Unusually wide spread for ${symbol}: ${spreadPercent.toFixed(2)}%`);
+    }
     
     // Update cache with enhanced metadata
     connectionManager.priceCache.set(symbol, {

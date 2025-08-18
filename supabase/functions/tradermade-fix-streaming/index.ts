@@ -32,6 +32,7 @@ const TRADERMADE_REST_URL = 'https://marketdata.tradermade.com/api/v1/live';
 
 interface ConnectionManager {
   clients: Map<string, WebSocket>;
+  clientConnectionTimes: Map<string, number>;
   traderMadeConnection: {
     ws: WebSocket | null;
     keyIndex: number;
@@ -39,11 +40,22 @@ interface ConnectionManager {
     lastHeartbeat: number;
     retryCount: number;
     clientCount: number;
+    lastConnectionAttempt: number;
+    connectionBackoff: number;
   };
-  apiKeyHealth: Map<number, { lastSuccess: number; failures: number; isActive: boolean }>;
-  priceCache: Map<string, { price: number; bid: number; ask: number; timestamp: number }>;
+  apiKeyHealth: Map<number, { 
+    lastSuccess: number; 
+    failures: number; 
+    isActive: boolean; 
+    rateLimitCount: number;
+    lastRateLimit: number;
+    cooldownUntil: number;
+  }>;
+  priceCache: Map<string, { price: number; bid: number; ask: number; timestamp: number; ttl: number }>;
   sequenceCounter: number;
   currentKeyIndex: number;
+  emergencyMode: boolean;
+  dataValidationErrors: number;
   // Subscription manager
   subscriptions: Map<string, number>; // symbol -> ref count
   activeSymbols: Set<string>; // Currently subscribed symbols (max 5)
@@ -52,31 +64,41 @@ interface ConnectionManager {
 
 const connectionManager: ConnectionManager = {
   clients: new Map(),
+  clientConnectionTimes: new Map(),
   traderMadeConnection: {
     ws: null,
     keyIndex: 0,
     isReady: false,
     lastHeartbeat: Date.now(),
     retryCount: 0,
-    clientCount: 0
+    clientCount: 0,
+    lastConnectionAttempt: 0,
+    connectionBackoff: 500
   },
   apiKeyHealth: new Map(),
   priceCache: new Map(),
   sequenceCounter: 0,
   currentKeyIndex: 0,
+  emergencyMode: false,
+  dataValidationErrors: 0,
   subscriptions: new Map(),
   activeSymbols: new Set(),
   pendingSymbols: new Set()
 };
 
-// Initialize API key health tracking
+// Initialize enhanced API key health tracking with DevOps monitoring
 API_KEYS.forEach((_, index) => {
   connectionManager.apiKeyHealth.set(index, {
     lastSuccess: Date.now(),
     failures: 0,
-    isActive: true
+    isActive: true,
+    rateLimitCount: 0,
+    lastRateLimit: 0,
+    cooldownUntil: 0
   });
 });
+
+console.log(`🔧 DevOps: Initialized ${API_KEYS.length} API keys for TraderMade FIX streaming`);
 
 /**
  * Get next healthy API key with enhanced load balancing and monitoring

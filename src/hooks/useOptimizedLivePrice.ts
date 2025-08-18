@@ -32,7 +32,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 0 // ZERO debouncing for real-time TraderMade prices
+    debounceMs = 100 // 100ms debouncing to prevent flicker while maintaining responsiveness
   } = options;
 
   const {
@@ -107,9 +107,9 @@ export function useOptimizedLivePrice(
     
     if (!currentPrice) return;
 
-    // Zero-latency updates: instant rendering for all price updates
+    // Optimized updates: balance speed with stability
     const isUltraFastTick = currentPrice.is_ultra_fast_tick === true;
-    const dynamicDelay = 0; // ZERO delay for maximum speed
+    const dynamicDelay = isUltraFastTick ? 50 : debounceMs; // Faster for critical updates
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);

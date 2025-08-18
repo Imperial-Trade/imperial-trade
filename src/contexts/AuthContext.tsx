@@ -162,6 +162,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Handle specific auth events
         if (event === 'SIGNED_IN') {
           console.log('User signed in successfully');
+          // Auto-redirect authenticated users away from signin page
+          const currentPath = window.location.pathname;
+          if (currentPath === '/signin') {
+            // Check if there's a redirect destination from the location state
+            const state = window.history.state;
+            const from = state?.from || '/dashboard/home';
+            navigate(from, { replace: true });
+          }
           // OneSignal binding and upsert handled in bindToOneSignalAndCheck
         } else if (event === 'SIGNED_OUT') {
           // Skip cleanup if we're manually signing out to prevent race condition

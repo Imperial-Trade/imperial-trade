@@ -31,8 +31,13 @@ export default function SigninPage() {
       // Login logic will be handled in the hook
       await onSubmit(data);
 
-      // Redirect to dashboard after successful login
-      navigate("/dashboard/home");
+      // Set success status and let AuthContext handle the redirect
+      setStatus({
+        type: "success",
+        message: "Login successful! Redirecting to dashboard..."
+      });
+      
+      // The AuthContext will handle the actual redirect
     } catch (error) {
       console.error("Login failed:", error);
       setStatus({

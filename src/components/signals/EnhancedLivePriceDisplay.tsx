@@ -5,6 +5,7 @@ import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
 import { MarketStatusBadge } from '@/components/ui/MarketStatusBadge';
+import { PriceSourceIndicator } from '@/components/price/PriceSourceIndicator';
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -388,6 +389,21 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             Use Current Price
           </Button>
         )}
+      </div>
+
+      {/* Price Source Verification */}
+      <div className="mt-3 pt-3 border-t border-border">
+        <PriceSourceIndicator
+          symbol={apiSymbol}
+          priceData={price && change !== undefined ? {
+            price,
+            bid: price - 0.0001, // Approximate bid (will be replaced with actual bid/ask)
+            ask: price + 0.0001, // Approximate ask
+            timestamp: lastUpdated?.getTime() || Date.now(),
+            source: dataSource
+          } : null}
+          showDetails={false}
+        />
       </div>
 
     </div>

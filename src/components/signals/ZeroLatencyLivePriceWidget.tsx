@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, RefreshCw, WifiOff, Activity } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { useSignalPermissions } from '@/hooks/useSignalPermissions';
+import { PriceSourceIndicator } from '@/components/price/PriceSourceIndicator';
 
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
@@ -406,6 +407,22 @@ const ZeroLatencyLivePriceWidgetComponent = ({
         <span className="text-muted-foreground">
           Updated: {new Date(timestamp).toLocaleTimeString()}.{new Date(timestamp).getMilliseconds().toString().padStart(3, '0')}
         </span>
+      </div>
+
+      {/* Price Source Verification */}
+      <div className="mt-2 pt-2 border-t border-border/50">
+        <PriceSourceIndicator
+          symbol={alert.symbol}
+          priceData={currentPrice ? {
+            price: currentPrice,
+            bid: currentPrice - 0.0001, // Approximate bid
+            ask: currentPrice + 0.0001, // Approximate ask
+            timestamp: Date.now(),
+            source: dataSource
+          } : null}
+          showDetails={true}
+          className="text-xs"
+        />
       </div>
     </div>
   );

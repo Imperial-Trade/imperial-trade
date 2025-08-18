@@ -127,104 +127,117 @@ const ZeroLatencyLivePriceWidgetComponent = ({
 
   return (
     <div className="space-y-3">
-      {/* Live Price Widget with Glowing Background */}
-      <div className="relative">
-        <div className="p-6 rounded-xl bg-card border border-green-500/30 shadow-[0_0_20px_-12px] shadow-green-500/50 relative overflow-hidden">
-          {/* Glowing border effect */}
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 opacity-50"></div>
+      {/* Live Price Widget with Enhanced Design - Matching New Signal Form */}
+      <div className={`bg-card/50 border border-border rounded-lg p-4 backdrop-blur-sm transition-all duration-300 ${
+        connectionStatus === 'connected' ? 'border-green-500/30 shadow-green-500/10 shadow-lg' : 
+        error ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
+        'border-border'
+      }`}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="text-white font-medium">
+              Live Price for {alert.tradermade_symbol}
+            </div>
+            <div className="px-2 py-0.5 bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 rounded-full text-xs text-emerald-400 font-medium">
+              ⚡ {renderLatency}ms
+            </div>
+            <div className={`flex items-center gap-1 text-xs ${
+              connectionStatus === 'connected' ? 'text-green-400' : 
+              connectionStatus === 'error' ? 'text-red-400' : 
+              'text-yellow-400'
+            }`}>
+              <span>Live</span>
+            </div>
+          </div>
           
-          <div className="relative z-10">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <h3 className="text-lg font-medium text-foreground">
-                  Live Price for {alert.tradermade_symbol}
-                </h3>
-                <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
-                  <Zap className="h-3 w-3 mr-1" />
-                  {renderLatency}ms
-                </Badge>
-                <span className="text-sm text-muted-foreground">Live</span>
-              </div>
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onClick={refreshPrice}
-                className="h-8 w-8 p-0 hover:bg-white/10"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={refreshPrice}
+            className="text-gray-400 hover:text-white h-8 w-8 p-0"
+            title="Refresh price"
+            disabled={isLoading}
+          >
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+        </div>
 
-            {/* Price Display */}
-            <div className="flex items-center justify-between mb-6">
-              <span 
-                ref={priceRef}
-                className="text-4xl font-bold tabular-nums text-green-400 transition-all duration-150"
-              >
-                ${currentPrice.toFixed(2)}
-              </span>
-              
-              <div className="flex items-center gap-2 text-right">
-                {change > 0 ? (
-                  <TrendingUp className="h-5 w-5 text-green-400" />
-                ) : change < 0 ? (
-                  <TrendingDown className="h-5 w-5 text-red-400" />
-                ) : null}
-                <div>
-                  <div 
-                    ref={changeRef}
-                    className={`text-lg font-medium ${changeColor} tabular-nums`}
-                  >
-                    {change > 0 ? '+' : ''}{change.toFixed(4)}
-                  </div>
-                  <div className={`text-sm ${changeColor}`}>
-                    ({change > 0 ? '+' : ''}{changePercent.toFixed(2)}%)
-                  </div>
-                </div>
+        {/* Price Display */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col">
+              <div className={`font-mono text-xl font-bold transition-all duration-300 ${
+                isLoading ? 'animate-pulse' : ''
+              } ${
+                connectionStatus === 'connected' ? 'text-accent-green' : 'text-gray-400'
+              }`}>
+                <span ref={priceRef}>
+                  ${currentPrice.toFixed(2)}
+                </span>
               </div>
             </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Wifi className={connectionStatus === 'connected' ? 'h-4 w-4 text-green-400' : 'h-4 w-4 text-red-400'} />
-                <span>Updated: {new Date(timestamp).toLocaleTimeString()}</span>
+          </div>
+          
+          <div className={`flex items-center gap-1 ${changeColor}`}>
+            {change > 0 ? (
+              <TrendingUp className="w-4 h-4" />
+            ) : change < 0 ? (
+              <TrendingDown className="w-4 h-4" />
+            ) : null}
+            <div className="text-right">
+              <div 
+                ref={changeRef}
+                className="text-sm font-medium"
+              >
+                {change > 0 ? '+' : ''}{change.toFixed(4)}
               </div>
-              <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-                <AlertCircle className="h-3 w-3 mr-1" />
-                Live
-              </Badge>
+              <div className="text-xs">
+                ({change > 0 ? '+' : ''}{changePercent.toFixed(2)}%)
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Bid/Ask Display - Direct DOM Updated */}
-        <div className="hidden flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+        {/* Footer */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span>Bid:</span>
-            <span 
-              ref={bidRef}
-              className="font-mono tabular-nums"
-            >
-              {bid.toFixed(5)}
-            </span>
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              <Wifi className={connectionStatus === 'connected' ? 'w-3 h-3 text-green-400' : 'w-3 h-3 text-red-400'} />
+              <span>
+                Updated: {new Date(timestamp).toLocaleTimeString()}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span>Ask:</span>
-            <span 
-              ref={askRef}
-              className="font-mono tabular-nums"
-            >
-              {ask.toFixed(5)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span>Spread:</span>
-            <span className="font-mono tabular-nums">
-              {spread.toFixed(5)}
-            </span>
-          </div>
+        </div>
+      </div>
+
+      {/* Bid/Ask Display - Direct DOM Updated */}
+      <div className="hidden flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <span>Bid:</span>
+          <span 
+            ref={bidRef}
+            className="font-mono tabular-nums"
+          >
+            {bid.toFixed(5)}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span>Ask:</span>
+          <span 
+            ref={askRef}
+            className="font-mono tabular-nums"
+          >
+            {ask.toFixed(5)}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span>Spread:</span>
+          <span className="font-mono tabular-nums">
+            {spread.toFixed(5)}
+          </span>
         </div>
       </div>
 

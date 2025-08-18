@@ -132,10 +132,13 @@ const ZeroLatencyLivePriceWidgetComponent = ({
 
     const isBuy = alert.trade_type.includes('buy');
     
-    // Check take profit levels
+    // Check take profit levels - using correct property names tp1..tp5
     const takeProfits = [
-      { level: 1, price: alert.take_profit_1 },
-      { level: 2, price: alert.take_profit_2 }
+      { level: 1, price: alert.tp1 },
+      { level: 2, price: alert.tp2 },
+      { level: 3, price: alert.tp3 },
+      { level: 4, price: alert.tp4 },
+      { level: 5, price: alert.tp5 }
     ].filter(tp => tp.price && tp.price > 0);
 
     const currentHits = alert.tp_hits || [];

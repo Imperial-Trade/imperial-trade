@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, memo, useState } from 'react';
+import React, { useRef, useEffect, memo, useState, useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, RefreshCw, WifiOff, Activity } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { useSignalPermissions } from '@/hooks/useSignalPermissions';
 
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
@@ -23,9 +24,9 @@ const calculatePips = (entry, current, symbol) => {
 
 interface ZeroLatencyLivePriceWidgetProps {
   alert: any;
-  onTakeProfitHit?: (level: number) => void;
-  onStopLossHit?: () => void;
-  onOrderActivation?: () => void;
+  onTakeProfitHit?: (alert: any, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
+  onStopLossHit?: (alert: any, closeReason: string) => Promise<void>;
+  onOrderActivation?: (alert: any) => Promise<void>;
 }
 
 const ZeroLatencyLivePriceWidgetComponent = ({
@@ -34,6 +35,45 @@ const ZeroLatencyLivePriceWidgetComponent = ({
   onStopLossHit,
   onOrderActivation
 }: ZeroLatencyLivePriceWidgetProps) => {
+  const { canEditSignal, validateAction } = useSignalPermissions();
+  
+  // Check if user can edit this specific signal
+  const userCanEdit = useMemo(() => {
+    return canEditSignal(alert.creator?.id || alert.userId);
+  }, [canEditSignal, alert.creator?.id, alert.userId]);
+
+  // Protected callbacks with permission validation
+  const protectedTakeProfitHit = useCallback(async (
+    alertData: any, 
+    hits: number[], 
+    shouldClose: boolean, 
+    reason: string
+  ) => {
+    if (!validateAction(alertData.creator?.id || alertData.userId, 'update TP hits')) {
+      return;
+    }
+    if (onTakeProfitHit) {
+      await onTakeProfitHit(alertData, hits, shouldClose, reason);
+    }
+  }, [onTakeProfitHit, validateAction]);
+
+  const protectedStopLossHit = useCallback(async (alertData: any, reason: string) => {
+    if (!validateAction(alertData.creator?.id || alertData.userId, 'trigger stop loss')) {
+      return;
+    }
+    if (onStopLossHit) {
+      await onStopLossHit(alertData, reason);
+    }
+  }, [onStopLossHit, validateAction]);
+
+  const protectedOrderActivation = useCallback(async (alertData: any) => {
+    if (!validateAction(alertData.creator?.id || alertData.userId, 'activate order')) {
+      return;
+    }
+    if (onOrderActivation) {
+      await onOrderActivation(alertData);
+    }
+  }, [onOrderActivation, validateAction]);
   // Use working price stream
   const {
     price: currentPrice,
@@ -67,52 +107,64 @@ const ZeroLatencyLivePriceWidgetComponent = ({
   const bidRef = useRef<HTMLSpanElement>(null);
   const askRef = useRef<HTMLSpanElement>(null);
 
-  // Order logic checks (unchanged from original but optimized)
+  // Immediate checks for take profit/stop loss for active trades (only if user can edit)
   useEffect(() => {
-    if (!currentPrice) return;
+    if (!currentPrice || currentPrice <= 0) return;
 
-    // Check for order triggers with zero delay
-    if (alert.status === 'pending' && alert.entry_price && currentPrice) {
-      const shouldActivate = 
-        (alert.direction === 'buy' && currentPrice >= alert.entry_price) ||
-        (alert.direction === 'sell' && currentPrice <= alert.entry_price);
+    // Order activation for pending orders
+    if (alert.status === 'pending') {
+      const isBuyLimit = alert.trade_type === 'buy_limit';
+      const isSellLimit = alert.trade_type === 'sell_limit';
+      const shouldActivate = (isBuyLimit && currentPrice <= alert.entry_price) || 
+                           (isSellLimit && currentPrice >= alert.entry_price);
       
-      if (shouldActivate) {
-        onOrderActivation?.();
+      if (shouldActivate && userCanEdit) {
+        console.log(`🚀 [ZERO-LATENCY] Order activation triggered for ${alert.asset_name}`);
+        protectedOrderActivation(alert);
       }
+      return;
     }
 
-    // Immediate TP/SL checks for active trades
-    if (alert.status === 'active' && alert.entry_price && currentPrice) {
-      // Stop Loss check
-      if (alert.stop_loss) {
-        const shouldStopLoss = 
-          (alert.direction === 'buy' && currentPrice <= alert.stop_loss) ||
-          (alert.direction === 'sell' && currentPrice >= alert.stop_loss);
-        
-        if (shouldStopLoss) {
-          onStopLossHit?.();
-        }
-      }
+    // Active trade checks
+    if (alert.status !== 'active' || !userCanEdit) return;
 
-      // Take Profit checks (immediate execution)
-      if (alert.take_profit_1 && currentPrice) {
-        const shouldTP1 = 
-          (alert.direction === 'buy' && currentPrice >= alert.take_profit_1) ||
-          (alert.direction === 'sell' && currentPrice <= alert.take_profit_1);
-        
-        if (shouldTP1) onTakeProfitHit?.(1);
-      }
+    const isBuy = alert.trade_type.includes('buy');
+    
+    // Check take profit levels
+    const takeProfits = [
+      { level: 1, price: alert.take_profit_1 },
+      { level: 2, price: alert.take_profit_2 }
+    ].filter(tp => tp.price && tp.price > 0);
 
-      if (alert.take_profit_2 && currentPrice) {
-        const shouldTP2 = 
-          (alert.direction === 'buy' && currentPrice >= alert.take_profit_2) ||
-          (alert.direction === 'sell' && currentPrice <= alert.take_profit_2);
-        
-        if (shouldTP2) onTakeProfitHit?.(2);
+    const currentHits = alert.tp_hits || [];
+    const newHits = [];
+
+    takeProfits.forEach(tp => {
+      const hasHit = isBuy ? currentPrice >= tp.price : currentPrice <= tp.price;
+      if (hasHit && !currentHits.includes(tp.level)) {
+        newHits.push(tp.level);
+      }
+    });
+
+    if (newHits.length > 0) {
+      const updatedHits = [...currentHits, ...newHits].sort((a, b) => a - b);
+      const maxTP = Math.max(...takeProfits.map(tp => tp.level));
+      const shouldClose = updatedHits.includes(maxTP);
+      const reason = shouldClose ? `tp${maxTP}` : 'partial_tp';
+      
+      console.log(`🎯 [ZERO-LATENCY] TP hit for ${alert.asset_name}: ${newHits.join(', ')}`);
+      protectedTakeProfitHit(alert, updatedHits, shouldClose, reason);
+    }
+
+    // Check stop loss
+    if (alert.stop_loss && alert.stop_loss > 0) {
+      const stopLossHit = isBuy ? currentPrice <= alert.stop_loss : currentPrice >= alert.stop_loss;
+      if (stopLossHit) {
+        console.log(`💥 [ZERO-LATENCY] Stop loss hit for ${alert.asset_name}`);
+        protectedStopLossHit(alert, 'stop_loss');
       }
     }
-  }, [currentPrice, alert, onTakeProfitHit, onStopLossHit, onOrderActivation]);
+  }, [currentPrice, alert, userCanEdit, protectedTakeProfitHit, protectedStopLossHit, protectedOrderActivation]);
 
   // Track price animation state for flickering effect - matching EnhancedLivePriceDisplay
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);

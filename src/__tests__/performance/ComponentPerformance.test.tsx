@@ -5,7 +5,7 @@ import { performance } from 'perf_hooks';
 import { TestWrapper } from '@/test/utils/test-helpers';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import { EnhancedSystemMonitoring } from '@/components/admin/EnhancedSystemMonitoring';
-import LivePriceWidget from '@/components/signals/LivePriceWidget';
+import { ZeroLatencyLivePriceWidget } from '@/components/signals/ZeroLatencyLivePriceWidget';
 import { TestDataFactory } from '@/__tests__/utils/testDataFactory';
 
 describe('Component Performance Tests', () => {
@@ -144,7 +144,7 @@ describe('Component Performance Tests', () => {
       for (let i = 0; i < 10; i++) {
         const { unmount } = render(
           <TestWrapper>
-            <LivePriceWidget {...mockProps} />
+            <ZeroLatencyLivePriceWidget {...mockProps} />
           </TestWrapper>
         );
         unmount();

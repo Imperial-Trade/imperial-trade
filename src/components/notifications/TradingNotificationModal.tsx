@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Bell, Smartphone, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useOneSignalEnhanced } from '@/hooks/useOneSignalEnhanced';
 import { detectSafariPWA } from '@/utils/deviceDetection';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TradingNotificationModalProps {
   isOpen: boolean;
@@ -19,8 +20,21 @@ export function TradingNotificationModal({
   onNotificationEnabled 
 }: TradingNotificationModalProps) {
   const { requestPermission, permission, hasSubscription } = useOneSignalEnhanced();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const isSafariPWA = detectSafariPWA();
+
+  const setDismissalFlags = () => {
+    if (user?.id) {
+      const sessionKey = `imperial_notify_modal_dismissed_session_${user.id}`;
+      const ttlKey = `imperial_notify_modal_dismissed_at_${user.id}`;
+      
+      sessionStorage.setItem(sessionKey, 'true');
+      localStorage.setItem(ttlKey, Date.now().toString());
+      
+      console.log('🎯 [Notification Modal] Dismissal flags set');
+    }
+  };
 
   // Auto-close modal when notifications are granted
   useEffect(() => {
@@ -47,11 +61,12 @@ export function TradingNotificationModal({
   };
 
   const handleLater = () => {
+    setDismissalFlags();
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && (setDismissalFlags(), onClose())}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">

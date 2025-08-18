@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { detectSafariPWA } from '@/utils/safariPWADetection';
 
 interface NotificationPermissionState {
   permission: NotificationPermission | 'unsupported';
@@ -125,16 +126,32 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
       }
 
       const { appId } = config;
+
+      // Detect iOS PWA for service worker path adjustment
+      const safariPWAInfo = detectSafariPWA();
+      console.log('[OneSignal] Safari PWA Detection:', safariPWAInfo);
+
+      // Use root service workers for iOS PWA to avoid scope issues
+      const useRootWorkers = safariPWAInfo.isSafariPWA;
+      console.log('[OneSignal] Using root service workers:', useRootWorkers);
+
+      // Pre-register root service worker for iOS PWA
+      if (useRootWorkers && 'serviceWorker' in navigator) {
+        try {
+          console.log('[OneSignal] Pre-registering root service worker for iOS PWA');
+          await navigator.serviceWorker.register('/OneSignalSDKWorker.js', { scope: '/' });
+        } catch (swError) {
+          console.warn('[OneSignal] Root service worker pre-registration failed:', swError);
+        }
+      }
       
       // Initialize OneSignal with enhanced configuration
       window.OneSignal = window.OneSignal || [];
       window.OneSignal.push(() => {
         window.OneSignal.init({
           appId,
-          serviceWorkerParam: {
-            scope: '/push/onesignal/'
-          },
-          serviceWorkerPath: 'push/onesignal/OneSignalSDKWorker.js',
+          serviceWorkerParam: useRootWorkers ? { scope: '/' } : { scope: '/push/onesignal/' },
+          serviceWorkerPath: useRootWorkers ? '/OneSignalSDKWorker.js' : '/push/onesignal/OneSignalSDKWorker.js',
           allowLocalhostAsSecureOrigin: true,
           autoRegister: false, // We'll handle registration manually
           autoResubscribe: true,
@@ -368,33 +385,69 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
     try {
       console.log('[OneSignal] 🎯 Starting v16-proof permission request...');
       
-      // Check if we're on iOS/Safari and need user gesture
-      const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                         (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome'));
+      // Detect iOS PWA for enhanced handling
+      const safariPWAInfo = detectSafariPWA();
+      const isIOSSafari = safariPWAInfo.isIOS || safariPWAInfo.isSafari;
       
       if (isIOSSafari) {
         console.log('[OneSignal] 🍎 iOS/Safari detected - ensuring gesture-safe operation');
       }
 
-      // STEP 1: Request permission - must be first async operation for gesture safety
-      let permissionGranted = false;
-      console.log('[OneSignal] 🚀 Requesting permission...');
-      
-      try {
-        // Try OneSignal v16 API first, then fallback to v15/browser
-        if (window.OneSignal?.Notifications?.requestPermission) {
-          console.log('[OneSignal] Using v16 Notifications.requestPermission()');
-          await window.OneSignal.Notifications.requestPermission();
-        } else if (window.OneSignal?.showNativePrompt) {
-          console.log('[OneSignal] Using v15 showNativePrompt()');
-          await window.OneSignal.showNativePrompt();
-        } else {
-          console.log('[OneSignal] Using browser native Notification.requestPermission()');
+      // Add timeout to prevent indefinite hangs
+      const timeoutMs = 10000; // 10 seconds
+      console.log(`[OneSignal] Setting ${timeoutMs/1000}s timeout for permission request`);
+
+      const permissionPromise = (async () => {
+        // STEP 1: Request permission - must be first async operation for gesture safety
+        console.log('[OneSignal] 🚀 Requesting permission...');
+        
+        try {
+          // For iOS PWA, try native permission first
+          if (safariPWAInfo.isSafariPWA) {
+            console.log('[OneSignal] iOS PWA: Using native Notification.requestPermission() first');
+            await Notification.requestPermission();
+            
+            // Then try OneSignal opt-in
+            if (window.OneSignal?.User?.PushSubscription?.optIn) {
+              console.log('[OneSignal] iOS PWA: Following up with OneSignal opt-in');
+              await window.OneSignal.User.PushSubscription.optIn();
+            }
+          } else {
+            // Try OneSignal v16 API first, then fallback to v15/browser
+            if (window.OneSignal?.Notifications?.requestPermission) {
+              console.log('[OneSignal] Using v16 Notifications.requestPermission()');
+              await window.OneSignal.Notifications.requestPermission();
+            } else if (window.OneSignal?.showNativePrompt) {
+              console.log('[OneSignal] Using v15 showNativePrompt()');
+              await window.OneSignal.showNativePrompt();
+            } else {
+              console.log('[OneSignal] Using browser native Notification.requestPermission()');
+              await Notification.requestPermission();
+            }
+          }
+        } catch (promptError) {
+          console.warn('[OneSignal] Primary permission request failed, using browser fallback:', promptError);
           await Notification.requestPermission();
         }
-      } catch (promptError) {
-        console.warn('[OneSignal] Primary permission request failed, using browser fallback:', promptError);
-        await Notification.requestPermission();
+      })();
+
+      // Race permission request against timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Permission request timed out')), timeoutMs);
+      });
+
+      let permissionResult;
+      try {
+        await Promise.race([permissionPromise, timeoutPromise]);
+        console.log('[OneSignal] ✅ Permission request completed within timeout');
+      } catch (timeoutError) {
+        console.warn('[OneSignal] ⚠️ Permission request timed out, continuing with best-effort flow:', timeoutError);
+        
+        toast({
+          title: "Setup Taking Longer Than Expected",
+          description: "Continuing setup in the background. You may need to try again if notifications don't work.",
+          duration: 5000,
+        });
       }
 
       // STEP 2: Read authoritative permission state (v16-proof)
@@ -415,7 +468,7 @@ export const useOneSignalEnhanced = (): UseOneSignalEnhancedReturn => {
         finalPermission = Notification.permission;
       }
 
-      permissionGranted = finalPermission === 'granted';
+      const permissionGranted = finalPermission === 'granted';
 
       if (permissionGranted) {
         console.log('[OneSignal] 🎉 Permission granted! Ensuring subscription...');

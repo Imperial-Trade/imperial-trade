@@ -79,7 +79,7 @@ export const EconomicEventCountdown: React.FC<EconomicEventCountdownProps> = ({
     };
 
     updateCountdown();
-    const interval = setInterval(updateCountdown, 10000);
+    const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
   }, [event.date, event.time]);

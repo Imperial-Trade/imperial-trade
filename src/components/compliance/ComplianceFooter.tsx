@@ -4,7 +4,7 @@ import { AlertTriangle, Shield, FileText } from "lucide-react";
 
 export const ComplianceFooter: React.FC = () => {
   return (
-    <div className="relative z-20 border-t border-default bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="border-t border-default bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 py-6">
         {/* Risk Warning Banner */}
         <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-4">
@@ -24,32 +24,35 @@ export const ComplianceFooter: React.FC = () => {
 
         {/* Compliance Links */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <Link 
-            to="/legal/disclaimers" 
-            className="group flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Risk Disclaimers"
-          >
-            <Shield className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
-            <span>Risk Disclaimers</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-muted-foreground" />
+            <Link 
+              to="/legal/disclaimers" 
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Risk Disclaimers
+            </Link>
+          </div>
           
-          <Link 
-            to="/legal/terms" 
-            className="group flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Terms of Service"
-          >
-            <FileText className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
-            <span>Terms of Service</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-muted-foreground" />
+            <Link 
+              to="/legal/terms" 
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Terms of Service
+            </Link>
+          </div>
           
-          <Link 
-            to="/legal/privacy" 
-            className="group flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Privacy Policy"
-          >
-            <FileText className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
-            <span>Privacy Policy</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-muted-foreground" />
+            <Link 
+              to="/legal/privacy" 
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Privacy Policy
+            </Link>
+          </div>
         </div>
 
         {/* Copyright and Legal Notice */}

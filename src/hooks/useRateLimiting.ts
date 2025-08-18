@@ -81,8 +81,8 @@ export const useRateLimiting = (key: string, maxAttempts: number, windowMs: numb
   useEffect(() => {
     checkRateLimit();
     
-    // Check every 5 seconds to update UI countdown
-    const interval = setInterval(checkRateLimit, 5000);
+    // Check every second to update UI countdown precisely
+    const interval = setInterval(checkRateLimit, 1000);
     return () => clearInterval(interval);
   }, [checkRateLimit]);
 

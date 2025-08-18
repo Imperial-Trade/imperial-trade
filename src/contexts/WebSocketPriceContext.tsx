@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
-import { MarketHoursService } from '@/services/MarketHoursService';
-import { PriceLatencyLogger } from '@/utils/priceLatencyLogger';
 
 interface PriceData {
   symbol: string;
@@ -66,16 +64,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const refCountsRef = useRef<Map<string, number>>(new Map());
   const pendingSubscribeBatchRef = useRef<Set<string>>(new Set());
   const subscribeFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastRefreshAttemptRef = useRef<Map<string, number>>(new Map());
-  const lastConnectionAttemptRef = useRef(0);
-  const connectionStormPreventionRef = useRef(false);
   const flushPendingSubscriptions = useCallback(() => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) return;
     const pending = Array.from(pendingSubscribeBatchRef.current);
     if (pending.length === 0) return;
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📤 Sending batched subscription for:', pending);
-    }
+    console.log('📤 Sending batched subscription for:', pending);
     socketRef.current.send(JSON.stringify({ action: 'subscribe', symbols: pending }));
     pendingSubscribeBatchRef.current.clear();
     subscribeFlushTimerRef.current = null;
@@ -108,95 +101,35 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const getReconnectDelay = useCallback(() => {
-    // Ultra-fast reconnection for institutional-grade uptime
-    const baseDelay = 100; // Start at 100ms
-    const maxDelay = 500;  // Cap at 500ms maximum
-    const delay = Math.min(baseDelay + (reconnectAttemptsRef.current * 50), maxDelay);
+    const baseDelay = 5000;
+    const maxDelay = 30000;
+    const delay = Math.min(baseDelay * Math.pow(2, reconnectAttemptsRef.current), maxDelay);
     return delay;
   }, []);
 
-  const connect = useCallback(async () => {
-    // DevOps: Prevent connection storms
-    if (connectionStormPreventionRef.current) {
-      console.log('🚫 DevOps: Connection storm prevention active');
+  const connect = useCallback(() => {
+    if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
+      console.log('🔄 WebSocket already connected or connecting, skipping duplicate connection');
       return;
     }
-    
-    // Enhanced connection state checking
-    if (socketRef.current?.readyState === WebSocket.CONNECTING) {
-      console.log('💡 DevOps: WebSocket still in CONNECTING state - preventing duplicate connection');
-      return;
-    }
-    
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      console.log('💡 DevOps: WebSocket already connected');
-      return;
-    }
-
-    // Connection throttling to prevent storms
-    const now = Date.now();
-    if (now - lastConnectionAttemptRef.current < 2000) {
-      console.log('🚫 DevOps: Connection throttled - too frequent attempts');
-      return;
-    }
-    lastConnectionAttemptRef.current = now;
-
-    connectionStormPreventionRef.current = true;
-    setTimeout(() => { connectionStormPreventionRef.current = false; }, 3000);
 
     setConnectionStatus('connecting');
     
     try {
-      // Close any existing connection first
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
-      }
-      
-      // Fresh authentication with token refresh for hardened connection
-      const { supabase } = await import('@/integrations/supabase/client');
-      
-      // Get current session without forcing refresh - prevents token storm
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.warn('⚠️ Session retrieval failed:', sessionError);
-      }
-      const currentSession = session;
-      
-      // Enhanced auth with crypto priority and connection hardening
-      const authParam = currentSession?.access_token ? `?token=${encodeURIComponent(currentSession.access_token)}` : '';
-      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-fix-streaming${authParam}`;
-      
-      console.log('🔌 Connecting to authenticated TraderMade FIX WebSocket:', wsUrl.replace(/token=[^&]+/, 'token=***'));
+      // Connect to Tradermade streaming WebSocket
+      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming`;
+      console.log('🔌 Connecting to Tradermade WebSocket:', wsUrl);
       console.log('🔍 WebSocket readyState before connection:', socketRef.current?.readyState);
       
       socketRef.current = new WebSocket(wsUrl);
-      console.log('🆕 Created new WebSocket instance with fresh auth token');
-
-      // Aggressive connection timeout for crypto reliability
-      const connectionTimeout = setTimeout(() => {
-        if (socketRef.current?.readyState === WebSocket.CONNECTING) {
-          console.log('⏰ Connection timeout (5s), forcing close...');
-          socketRef.current.close();
-        }
-      }, 5000); // Reduced to 5s for faster crypto failover
+      console.log('🆕 Created new WebSocket instance');
 
       socketRef.current.onopen = () => {
-        clearTimeout(connectionTimeout);
-        console.log('✅ Authenticated FIX WebSocket connected with institutional-grade API key rotation');
+        console.log('✅ WebSocket connected to Tradermade streaming');
         setConnectionStatus('connected');
         setDataSource('tradermade');
         reconnectAttemptsRef.current = 0;
         websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
-        
-        // Implement ping interval for connection health
-        const pingInterval = setInterval(() => {
-          if (socketRef.current?.readyState === WebSocket.OPEN) {
-            socketRef.current.send(JSON.stringify({ action: 'ping' }));
-          } else {
-            clearInterval(pingInterval);
-          }
-        }, 30000); // Ping every 30s
         
         // Clear any connection errors
         setErrors(prev => {
@@ -222,24 +155,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           const data = JSON.parse(event.data);
           console.log('📊 Parsed message:', data);
           
-          // CRITICAL: Reject any mock data sources - DevOps security validation
-          if (data.source === 'MockData_DEPRECATED' || data.priceSource === 'MockData_DEPRECATED') {
-            console.error('🚨 SECURITY: Rejected mock data source - only real TraderMade data allowed');
-            setErrors(prev => ({
-              ...prev,
-              global: 'Mock data detected - only live TraderMade feeds allowed'
-            }));
-            return;
-          }
-          
-          // Validate data source authenticity - must be from TraderMade
-          if (data.messageType === 'PRICE_UPDATE' && !data.is_institutional_tick && !data.tick_timestamp && !data.sequence) {
-            console.warn('⚠️ Suspicious price data without TraderMade markers, validating...');
-            // Allow but log for monitoring
-          }
-          
-          if (data.messageType === 'CONNECTION_STATUS') {
-            console.log('🔗 FIX Connection status update:', data.status);
+          if (data.type === 'connection_status') {
+            console.log('🔗 Connection status update:', data.status);
             const status = data.status === 'connected' ? 'connected' : 
                           data.status === 'connecting' ? 'connecting' : 'disconnected';
             setConnectionStatus(status);
@@ -247,45 +164,38 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             return;
           }
           
-          if (data.messageType === 'PRICE_UPDATE' && data.symbol && typeof data.price === 'number') {
+          if (data.type === 'price_update' && data.symbol && typeof data.price === 'number') {
             const symbol = normalizeSymbol(data.symbol);
             
-            // Enhanced FIX protocol message processing
+            // Check if this is an ultra-fast institutional tick
             const isInstitutionalTick = data.is_institutional_tick === true;
             const isUltraFastTick = data.is_ultra_fast_tick === true;
             const tickTimestamp = data.tick_timestamp || Date.now();
-            const apiKeyIndex = data.apiKeyIndex || 0;
             
-            // Log price latency for performance monitoring
-            PriceLatencyLogger.getInstance().logPriceUpdate(symbol, tickTimestamp);
-            
-            if (process.env.NODE_ENV === 'development') {
-              if (isUltraFastTick) {
-                console.log(`⚡ FIX ULTRA-FAST: ${symbol} = $${data.price} [Seq:${data.sequence}] [API:${apiKeyIndex}] @ ${new Date(tickTimestamp).toISOString()}`);
-              } else if (isInstitutionalTick) {
-                console.log(`💎 FIX INSTITUTIONAL: ${symbol} = $${data.price} [Seq:${data.sequence}] [API:${apiKeyIndex}] @ ${new Date(tickTimestamp).toISOString()}`);
-              } else {
-                console.log(`💰 FIX PRICE: ${symbol} = $${data.price} [API:${apiKeyIndex}]`);
-              }
+            if (isUltraFastTick) {
+              console.log(`⚡ ULTRA-FAST TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
+            } else if (isInstitutionalTick) {
+              console.log(`💎 INSTITUTIONAL TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
+            } else {
+              console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${data.price}`);
             }
             
-            // Calculate accurate change and percentage using server-provided data when available
+            // Calculate percentage change if we have previous price
             const prevPrice = prices[symbol]?.price || data.price;
-            const serverChange = typeof data.change === 'number' ? data.change : data.price - prevPrice;
-            const serverChangePercent = typeof data.changePercent === 'number' ? data.changePercent : 
-              (prevPrice > 0 ? (serverChange / prevPrice) * 100 : 0);
+            const change = data.price - prevPrice;
+            const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
             
             setPrices(prev => ({
               ...prev,
               [symbol]: {
                 symbol: data.symbol,
                 price: data.price,
-                change: serverChange,
-                changePercent: serverChangePercent,
-                timestamp: new Date(tickTimestamp).toISOString(),
-                bid: data.bid || data.price,
-                ask: data.ask || data.price,
-                // Enhanced ultra-fast tick data with accurate timestamps
+                change: data.change || change,
+                changePercent: data.changePercent || changePercent,
+                timestamp: data.timestamp || new Date().toISOString(),
+                bid: data.bid,
+                ask: data.ask,
+                // Enhanced ultra-fast tick data
                 tick_timestamp: tickTimestamp,
                 is_institutional_tick: isInstitutionalTick,
                 is_ultra_fast_tick: isUltraFastTick,
@@ -334,12 +244,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         
         reconnectTimeoutRef.current = setTimeout(() => {
           console.log('🔄 Attempting reconnection...');
-          // Only reconnect if not already connected or connecting
-          if (socketRef.current?.readyState !== WebSocket.OPEN && socketRef.current?.readyState !== WebSocket.CONNECTING) {
-            connect();
-          } else {
-            console.log('🔄 WebSocket already connected or connecting, skipping reconnection');
-          }
+          connect();
         }, delay);
       };
 
@@ -392,7 +297,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     if (!subscribeFlushTimerRef.current) {
       subscribeFlushTimerRef.current = setTimeout(() => {
         flushPendingSubscriptions();
-      }, 5); // Ultra-fast 5ms batching for zero-latency subscription
+      }, 50);
     }
   }, [connect, flushPendingSubscriptions]);
 
@@ -433,87 +338,17 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }
   }, []);
 
-  const refreshPrice = useCallback(async (symbol: string) => {
+  const refreshPrice = useCallback((symbol: string) => {
     const norm = normalizeSymbol(symbol);
-
-    // Skip refreshes when market is closed for this symbol (except for crypto which trades 24/7)
-    const isCrypto = norm.includes('BTC') || norm.includes('ETH') || norm.includes('CRYPTO');
-    if (!isCrypto) {
-      const status = MarketHoursService.getMarketStatus(norm);
-      if (!status.isOpen) {
-        return;
-      }
-    }
-
     // Clear any existing error for this symbol
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[norm];
       return newErrors;
     });
-
-    // For crypto symbols, implement aggressive refresh with WebSocket nudge
-    if (isCrypto) {
-      console.log(`🔄 CRYPTO REFRESH: Force updating ${norm}`);
-      
-      // Send direct refresh command to edge function
-      if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({
-          action: 'force_refresh',
-          symbols: [norm],
-          priority: 'crypto_high'
-        }));
-      }
-      
-      // Also force re-subscription with higher priority
-      subscribe([norm]);
-      
-      // Fallback to REST API after 3 seconds if no update
-      setTimeout(async () => {
-        const lastUpdate = prices[norm]?.timestamp;
-        const isStale = !lastUpdate || (Date.now() - new Date(lastUpdate).getTime() > 3000);
-        
-        if (isStale) {
-          console.log(`📡 CRYPTO FALLBACK: Fetching ${norm} via REST API`);
-          await fetchRestPriceFallback([norm]);
-        }
-      }, 3000);
-    } else {
-      // Standard refresh for non-crypto
-      subscribe([norm]);
-    }
-  }, [subscribe, normalizeSymbol, prices]);
-
-  // New REST API fallback function for crypto when WebSocket fails
-  const fetchRestPriceFallback = useCallback(async (symbols: string[]) => {
-    try {
-      // For demo purposes, we'll simulate a REST response
-      // In production, this would hit TraderMade REST API
-      console.log(`🌐 REST FALLBACK: Simulating price fetch for ${symbols.join(', ')}`);
-      
-      // Update price sources to indicate REST fallback
-      setPriceUpdateSources(prev => {
-        const newSources = { ...prev };
-        symbols.forEach(symbol => {
-          newSources[symbol] = 'http';
-        });
-        return newSources;
-      });
-      
-      // Show user that we're using fallback pricing
-      setErrors(prev => ({
-        ...prev,
-        fallback: `Using REST API fallback for ${symbols.join(', ')} - WebSocket streaming temporarily unavailable`
-      }));
-      
-    } catch (error) {
-      console.error('❌ REST fallback failed:', error);
-      setErrors(prev => ({
-        ...prev,
-        fallback: `All price sources unavailable for ${symbols.join(', ')}`
-      }));
-    }
-  }, []);
+    // Force re-subscription for this symbol
+    subscribe([norm]);
+  }, [subscribe, normalizeSymbol]);
 
   const getPrice = useCallback((symbol: string): PriceData | null => {
     const norm = normalizeSymbol(symbol);
@@ -524,33 +359,20 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   useEffect(() => {
     connect();
     
-    // Aggressive health monitoring for crypto-grade responsiveness
+    // Health monitoring - check connection every 30 seconds and reconnect if needed
     const healthCheckInterval = setInterval(() => {
       const now = Date.now();
       const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
       
-      // Check for stale crypto prices specifically (2-second tolerance for BTC/ETH)
-      Object.entries(prices).forEach(([symbol, priceData]) => {
-        const isCrypto = symbol.includes('BTC') || symbol.includes('ETH');
-        if (isCrypto && priceData.timestamp) {
-          const priceAge = now - new Date(priceData.timestamp).getTime();
-          if (priceAge > 2000) { // 2 seconds for crypto
-            console.log(`🚨 CRYPTO STALE: ${symbol} price is ${priceAge}ms old, forcing refresh`);
-            refreshPrice(symbol);
-          }
-        }
-      });
-      
-      // Standard connection health check
-      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 8000) {
-        console.log('⚠️ No messages received for 8 seconds, reconnecting...');
+      if (socketRef.current?.readyState === WebSocket.OPEN && timeSinceLastMessage > 60000) {
+        console.log('⚠️ No messages received for 60 seconds, reconnecting...');
         socketRef.current.close();
         connect();
       } else if (socketRef.current?.readyState !== WebSocket.OPEN && socketRef.current?.readyState !== WebSocket.CONNECTING) {
         console.log('🔄 Connection lost, attempting reconnection...');
         connect();
       }
-    }, 1000); // Check every 1 second for crypto-grade responsiveness
+    }, 30000); // Check every 30 seconds
 
     return () => {
       clearInterval(healthCheckInterval);
@@ -566,38 +388,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }
     };
   }, [connect]);
-
-  // One-second stale tick refresher: ensure <=1.2s between updates by nudging the stream
-  useEffect(() => {
-    if (connectionStatus !== 'connected') return;
-    const interval = setInterval(() => {
-      const now = Date.now();
-      // iterate over subscribed symbols
-      subscribedSymbolsRef.current.forEach((symbol) => {
-        const pd = prices[symbol];
-        const status = MarketHoursService.getMarketStatus(symbol);
-        if (!status.isOpen) {
-          // Skip nudge/refresh when market is closed for this symbol
-          return;
-        }
-        const lastTick = pd?.tick_timestamp ?? (pd?.timestamp ? Date.parse(pd.timestamp) : 0);
-        // Crypto-focused stale detection: 800ms threshold for ultra-fast crypto like BTCUSD
-        const staleThreshold = symbol.includes('BTC') || symbol.includes('ETH') ? 800 : 1200;
-        const isStale = !lastTick || now - lastTick > staleThreshold;
-        const lastAttempt = lastRefreshAttemptRef.current.get(symbol) || 0;
-        if (isStale && now - lastAttempt > staleThreshold) {
-          lastRefreshAttemptRef.current.set(symbol, now);
-          try {
-            // Light-touch: re-subscribe the symbol to prompt a fresh tick
-            refreshPrice(symbol);
-          } catch (e) {
-            // noop
-          }
-        }
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [connectionStatus, prices, refreshPrice]);
 
   const value: WebSocketContextType = {
     prices,

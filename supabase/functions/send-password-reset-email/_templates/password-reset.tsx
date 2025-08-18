@@ -20,7 +20,6 @@ interface PasswordResetEmailProps {
   email_action_type: string
   brand_name?: string
   support_email?: string
-  logo_url?: string
 }
 
 export const PasswordResetEmail = ({
@@ -29,13 +28,12 @@ export const PasswordResetEmail = ({
   token_hash,
   token,
   email_action_type,
-  brand_name = 'Trade Imperial',
-  support_email = 'tradeimperial2025@gmail.com',
-  logo_url = 'https://www.tradeimperial.com/logo.png',
+  brand_name = 'Imperial Trading',
+  support_email = 'support@tradeimperial.com',
 }: PasswordResetEmailProps) => {
-  // Use Supabase's auth verification endpoint for proper token handling
-  const resetUrl = `${supabase_url}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=${redirect_to}`
-
+  const resetUrl = `${supabase_url}/auth/v1/verify?token=${token_hash}&type=recovery&redirect_to=${encodeURIComponent(
+    redirect_to
+  )}`
 
   return (
     <Html>
@@ -44,9 +42,6 @@ export const PasswordResetEmail = ({
       <Body style={main}>
         <Container style={container}>
           <Section style={header}>
-            {logo_url ? (
-              <img src={logo_url} alt={`${brand_name} logo`} width={56} height={56} style={logo as any} />
-            ) : null}
             <Heading style={title}>{brand_name}</Heading>
             <Text style={subtitle}>Secure Password Reset</Text>
           </Section>
@@ -56,17 +51,12 @@ export const PasswordResetEmail = ({
               Reset your password
             </Heading>
             <Text style={text}>
-              We received a request to reset your password. Follow the steps below to secure your account.
+              We received a request to reset your password. Click the button
+              below to choose a new password.
             </Text>
 
-            <ol style={list as any}>
-              <li>Click the button below to open the secure reset page.</li>
-              <li>Create a strong new password (at least 12 characters, mix upper/lowercase letters, numbers, and symbols).</li>
-              <li>Confirm your new password and submit.</li>
-            </ol>
-
             <Link href={resetUrl} target="_blank" style={button}>
-              Reset Password Securely
+              Reset Password
             </Link>
 
             <Text style={{ ...text, marginTop: 16 }}>
@@ -80,13 +70,13 @@ export const PasswordResetEmail = ({
             <Hr style={hr} />
 
             <Text style={footnote}>
-              For your security, this link expires in 60 minutes. Do not share it with anyone.
-              If you didn’t request a password reset, you can safely ignore this email.
+              This link will expire shortly for security. If you didn’t request
+              a password reset, you can safely ignore this email.
             </Text>
           </Section>
 
           <Text style={footer}>
-            Need help? Contact our support team at {support_email}
+            Need help? Contact us at {support_email}
           </Text>
         </Container>
       </Body>
@@ -131,13 +121,6 @@ const subtitle = {
   marginTop: '6px',
 }
 
-const logo = {
-  display: 'block',
-  margin: '0 auto 8px auto',
-  width: '56px',
-  height: '56px',
-}
-
 const card = {
   padding: '24px 28px 28px 28px',
 }
@@ -160,15 +143,6 @@ const link = {
   textDecoration: 'underline',
   wordBreak: 'break-all' as const,
 }
-
-const list = {
-  color: '#d1d5db',
-  fontSize: '14px',
-  lineHeight: '22px',
-  paddingLeft: '18px',
-  margin: '6px 0 6px 0',
-}
-
 
 const button = {
   display: 'inline-block',

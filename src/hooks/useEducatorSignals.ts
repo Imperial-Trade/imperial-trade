@@ -82,60 +82,13 @@ export function useEducatorSignals() {
   // Send signal notification using edge function
   const notifyFollowers = async (signalId: string, message: string) => {
     try {
-      console.log('📤 Sending notification to followers for signal:', signalId);
-      
-      // Get signal details to create proper notification payload
-      const { data: signal, error: signalError } = await supabase
-        .from('trade_alerts')
-        .select('*')
-        .eq('id', signalId)
-        .single();
-
-      if (signalError) {
-        console.error('Error fetching signal for notification:', signalError);
-        return;
-      }
-
-      // Get author profile
-      const { data: author } = await (supabase as any)
-        .from('public_profiles')
-        .select('display_name, avatar_url')
-        .eq('id', signal.user_id)
-        .single();
-
-      const notificationPayload = {
-        signal_id: signalId,
-        user_id: signal.user_id,
-        alert_type: 'signal_updated',
-        notification_type: 'signal_updated',
-        delivery_channels: ['push', 'in_app'],
-        asset_name: signal.asset_name,
-        symbol: signal.tradermade_symbol,
-        tradermade_symbol: signal.tradermade_symbol,
-        trade_type: signal.trade_type,
-        entry_price: Number(signal.entry_price),
-        stop_loss: Number(signal.stop_loss),
-        tp1: signal.tp1 ? Number(signal.tp1) : undefined,
-        tp2: signal.tp2 ? Number(signal.tp2) : undefined,
-        tp3: signal.tp3 ? Number(signal.tp3) : undefined,
-        tp4: signal.tp4 ? Number(signal.tp4) : undefined,
-        tp5: signal.tp5 ? Number(signal.tp5) : undefined,
-        status: signal.status,
-        author_name: author?.display_name || 'Anonymous Trader',
-        author_avatar_url: author?.avatar_url,
-        notes: message,
-        include_creator: false
-      };
-
-      const result = await supabase.functions.invoke('signal-notification-dispatcher', {
-        body: { notifications: [notificationPayload] }
+      await supabase.functions.invoke('signal-notification-dispatcher', {
+        body: {
+          signal_id: signalId,
+          message,
+          notification_type: 'signal_update'
+        }
       });
-
-      if (result.error) {
-        console.error('❌ Failed to send notification:', result.error);
-      } else {
-        console.log('✅ Notification sent successfully:', result.data);
-      }
     } catch (error) {
       console.error('Error sending notifications:', error);
     }

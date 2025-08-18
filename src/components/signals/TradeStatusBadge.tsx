@@ -39,8 +39,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
 
     if (isActive && hitTPs.length > 0) {
         const highestTP = Math.max(...hitTPs);
-        const tradeAction = tradeType?.includes('buy') ? 'Buy' : 'Sell';
-        const activeText = `Active ${tradeAction}`;
+        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
         return (
             <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-emerald-400 border-emerald-400 animate-pulse whitespace-nowrap uppercase">
@@ -54,8 +53,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     }
 
     if (isActive) {
-        const tradeAction = tradeType?.includes('buy') ? 'Buy' : 'Sell';
-        const activeText = `Active ${tradeAction}`;
+        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
         return (
             <Badge variant="outline" className="text-emerald-400 border-emerald-400">
                 {activeText}

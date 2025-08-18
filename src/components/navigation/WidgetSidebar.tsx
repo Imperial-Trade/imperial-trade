@@ -21,7 +21,6 @@ import {
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { TradingSessionIndicator } from "@/components/ui/TradingSessionIndicator";
 import { useAuth } from "@/contexts/AuthContext";
-import { openNotificationCenter } from "@/utils/notificationCenterBus";
 
 // Define the 6 trading arsenal tools with their correct existing routes
 const tradingTools = [
@@ -431,8 +430,6 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                   className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 flex items-center justify-center"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => openNotificationCenter()}
-                  aria-label="Open notifications"
                 >
                   <Bell className="w-3 h-3 sm:w-4 sm:h-4 text-foreground/60" />
                 </motion.button>

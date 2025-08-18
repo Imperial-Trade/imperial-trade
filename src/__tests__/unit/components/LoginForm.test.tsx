@@ -10,9 +10,11 @@ import { TestWrapper } from '@/test/utils/test-helpers';
 const mockOnSubmit = vi.fn();
 
 const TestLoginForm = ({ 
-  isSubmitting = false 
+  isSubmitting = false, 
+  canSubmit = true 
 }: { 
   isSubmitting?: boolean; 
+  canSubmit?: boolean; 
 }) => {
   const form = useForm<LoginFormData>({
     defaultValues: {
@@ -28,6 +30,7 @@ const TestLoginForm = ({
         form={form}
         onSubmit={mockOnSubmit}
         isSubmitting={isSubmitting}
+        canSubmit={canSubmit}
       />
     </TestWrapper>
   );
@@ -96,6 +99,13 @@ describe('LoginForm', () => {
     expect(screen.getByText(/signing in/i)).toBeInTheDocument();
   });
 
+  it('disables form when canSubmit is false', () => {
+    render(<TestLoginForm canSubmit={false} />);
+    
+    const submitButton = screen.getByRole('button', { name: /sign in/i });
+    expect(submitButton).toBeDisabled();
+    expect(screen.getByText(/too many login attempts/i)).toBeInTheDocument();
+  });
 
   it('disables inputs when submitting', () => {
     render(<TestLoginForm isSubmitting={true} />);

@@ -11,14 +11,9 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { User as UserIcon, Bell, Shield, Palette, Download } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNotifications } from '@/contexts/NotificationsContext';
-import { toast } from '@/hooks/use-toast';
-
 
 export default function Settings() {
   const { user, signOut } = useAuth();
-  const { permission, isIframeBlocked, requestPermission } = useNotifications();
-  const [enablingPush, setEnablingPush] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState({
     displayName: '',
@@ -143,71 +138,6 @@ export default function Settings() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label>Push Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  {permission === 'granted'
-                    ? 'Enabled'
-                    : permission === 'denied'
-                    ? 'Blocked in browser settings'
-                    : isIframeBlocked
-                    ? 'Blocked in preview. Open in a new tab to enable.'
-                    : 'Enable to receive alerts when away.'}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {isIframeBlocked ? (
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      window.open(window.location.href, '_blank', 'noopener,noreferrer')
-                    }
-                    title="Open the app in a new tab to enable notifications"
-                  >
-                    Open in new tab
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    disabled={permission === 'granted' || enablingPush}
-                    onClick={async () => {
-                      try {
-                        setEnablingPush(true);
-                        await requestPermission();
-                        const current =
-                          typeof Notification !== 'undefined' ? Notification.permission : permission;
-                        if (current === 'granted') {
-                          toast({
-                            title: 'Push notifications enabled',
-                            description: 'You will receive alerts even when the app is closed.',
-                          });
-                        } else if (current === 'denied') {
-                          toast({
-                            title: 'Notifications blocked',
-                            description:
-                              'Use the browser site settings (lock icon) to Allow notifications.',
-                            variant: 'destructive' as any,
-                          });
-                        } else {
-                          toast({
-                            title: 'No prompt shown?',
-                            description:
-                              "If you didn't see a prompt, open site settings (lock icon) → Notifications.",
-                          });
-                        }
-                      } finally {
-                        setEnablingPush(false);
-                      }
-                    }}
-                    title={enablingPush ? 'Request in progress…' : undefined}
-                  >
-                    {enablingPush ? 'Enabling…' : permission === 'granted' ? 'Enabled' : 'Enable'}
-                  </Button>
-                )}
-              </div>
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
                 <Label>Trading Signals</Label>
                 <p className="text-sm text-muted-foreground">Get notified about new trading signals</p>
               </div>
@@ -253,7 +183,6 @@ export default function Settings() {
                 }
               />
             </div>
-            
           </CardContent>
         </Card>
 

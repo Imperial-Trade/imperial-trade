@@ -26,7 +26,7 @@ export const RealTimeNotificationBadge: React.FC<RealTimeNotificationBadgeProps>
 
   return (
     <div className="relative inline-block">
-      <Bell className="w-5 h-5 text-gray-600" onClick={onNewRequest} />
+      <Bell className="w-5 h-5 text-gray-600" />
       <AnimatePresence>
         {newRequestCount > 0 && (
           <motion.div

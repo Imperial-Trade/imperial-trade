@@ -31,7 +31,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWelcome } from "@/contexts/WelcomeContext";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 
-
 interface StatCardProps {
   title: string;
   value: string;
@@ -524,7 +523,6 @@ export const DashboardHome: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-
     </div>
   );
 };

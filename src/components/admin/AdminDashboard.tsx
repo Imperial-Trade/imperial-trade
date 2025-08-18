@@ -13,7 +13,7 @@ import {
   Activity,
   Settings
 } from 'lucide-react';
-
+import { Link } from 'react-router-dom';
 
 interface AdminStatProps {
   title: string;
@@ -83,18 +83,13 @@ export const AdminDashboard: React.FC = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  User Management
-                </CardTitle>
-                <CardDescription>
-                  Manage user accounts, roles, and permissions
-                </CardDescription>
-              </div>
-              
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              User Management
+            </CardTitle>
+            <CardDescription>
+              Manage user accounts, roles, and permissions
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">

@@ -116,88 +116,6 @@ export class TradingApiService {
       // Dispatch custom event to notify about new signal
       window.dispatchEvent(new CustomEvent('signal-posted'));
 
-      // Send push notification to subscribed users via Edge Function (best-effort)
-      try {
-        // Fetch author profile to enrich notifications
-        const { data: author } = await (supabase as any)
-          .from('public_profiles')
-          .select('display_name, avatar_url')
-          .eq('id', responseDto.userId)
-          .single();
-
-        console.log('📤 Preparing to dispatch push notification for new signal:', responseDto.id);
-        
-        const notificationPayload = {
-          signal_id: responseDto.id,
-          user_id: responseDto.userId,
-          alert_type: 'signal_created',
-          target_price: responseDto.entryPrice,
-          triggered_price: responseDto.entryPrice,
-          notification_type: 'signal_created',
-          delivery_channels: ['push', 'in_app'],
-          asset_name: responseDto.assetName,
-          symbol: responseDto.tradermadeSymbol,
-          tradermade_symbol: responseDto.tradermadeSymbol,
-          trade_type: responseDto.tradeType,
-          entry_price: responseDto.entryPrice,
-          stop_loss: responseDto.stopLoss,
-          tp1: responseDto.tp1,
-          tp2: responseDto.tp2,
-          tp3: responseDto.tp3,
-          tp4: responseDto.tp4,
-          tp5: responseDto.tp5,
-          status: responseDto.status,
-          author_name: author?.display_name || 'Anonymous Trader',
-          author_avatar_url: author?.avatar_url,
-          include_creator: false // Don't notify the creator
-        };
-
-        // Dispatch push notification via Edge Function
-        const notificationResult = await supabase.functions.invoke('signal-notification-dispatcher', {
-          body: { notifications: [notificationPayload] }
-        });
-
-        if (notificationResult.error) {
-          console.error('❌ Failed to dispatch push notification:', notificationResult.error);
-        } else {
-          console.log('✅ Push notification dispatched successfully:', notificationResult.data);
-        }
-      } catch (notifyError) {
-        console.error('Failed to dispatch push notification for new signal:', notifyError);
-      }
-
-      // Broadcast realtime in-app notification
-      try {
-        // Enrich realtime payload with author info
-        const { data: author } = await (supabase as any)
-          .from('public_profiles')
-          .select('display_name, avatar_url')
-          .eq('id', responseDto.userId)
-          .single();
-
-        await supabase
-          .channel('instant-alerts')
-          .send({
-            type: 'broadcast',
-            event: 'signal_created',
-            payload: {
-              signal_id: responseDto.id,
-              asset_name: responseDto.assetName,
-              symbol: responseDto.tradermadeSymbol,
-              trade_type: responseDto.tradeType,
-              entry_price: responseDto.entryPrice,
-              stop_loss: responseDto.stopLoss,
-              author_id: responseDto.userId,
-              author_name: author?.display_name,
-              author_avatar_url: author?.avatar_url,
-              timestamp: new Date().toISOString(),
-              urgency: 'normal'
-            }
-          });
-      } catch (broadcastError) {
-        console.error('Failed to broadcast realtime new signal event:', broadcastError);
-      }
-
       return {
         success: true,
         data: responseDto,
@@ -304,71 +222,11 @@ export class TradingApiService {
         updatedAt: result.data.updated_at
       };
 
-// After successful update, dispatch push and realtime notifications (best-effort)
-try {
-  // Fetch author profile to enrich notifications
-  const { data: author } = await (supabase as any)
-    .from('public_profiles')
-    .select('display_name, avatar_url')
-    .eq('id', responseDto.userId)
-    .single();
-
-  // Push notification via Edge Function
-  const notificationPayload = {
-    signal_id: responseDto.id,
-    alert_type: 'signal_updated',
-    target_price: responseDto.entryPrice,
-    triggered_price: responseDto.entryPrice,
-    notification_type: 'signal_updated',
-    delivery_channels: ['push'],
-    segments: ['Subscribed Users'],
-    asset_name: responseDto.assetName,
-    symbol: responseDto.tradermadeSymbol,
-    trade_type: responseDto.tradeType,
-    entry_price: responseDto.entryPrice,
-    stop_loss: responseDto.stopLoss,
-    author_id: responseDto.userId,
-    author_name: author?.display_name,
-    author_avatar_url: author?.avatar_url,
-    status: responseDto.status,
-    tp_hits: responseDto.tpHits,
-    close_reason: responseDto.closeReason,
-    notes: responseDto.notes,
-  };
-  await supabase.functions.invoke('signal-notification-dispatcher', {
-    body: { notifications: [notificationPayload] }
-  });
-
-  // Realtime broadcast for instant in-app toast
-  await supabase
-    .channel('instant-alerts')
-    .send({
-      type: 'broadcast',
-      event: 'signal_updated',
-      payload: {
-        signal_id: responseDto.id,
-        asset_name: responseDto.assetName,
-        symbol: responseDto.tradermadeSymbol,
-        status: responseDto.status,
-        tp_hits: responseDto.tpHits,
-        close_reason: responseDto.closeReason,
-        notes: responseDto.notes,
-        author_id: responseDto.userId,
-        author_name: author?.display_name,
-        author_avatar_url: author?.avatar_url,
-        timestamp: new Date().toISOString(),
-        urgency: 'normal'
-      }
-    });
-} catch (notifyErr) {
-  console.error('Failed to dispatch signal_updated notifications:', notifyErr);
-}
-
-return {
-  success: true,
-  data: responseDto,
-  error: undefined
-};
+      return {
+        success: true,
+        data: responseDto,
+        error: undefined
+      };
     } catch (error) {
       console.error('TradingApiService - Update error:', error);
       return {
@@ -460,8 +318,8 @@ return {
       const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
 
       // Fetch profiles for these users
-      const { data: profilesData, error: profilesError } = await (supabase as any)
-        .from('public_profiles')
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
         .select('*')
         .in('id', userIds);
 

@@ -310,8 +310,6 @@ Deno.serve(async (req: Request) => {
         
         try {
           // Use external_user_ids approach for more reliable delivery
-          console.log('📤 Attempting to send welcome notification via external_user_ids:', [externalId]);
-          
           const welcomeResponse = await fetch(
             `${SUPABASE_URL}/functions/v1/onesignal-send-notification`,
             {
@@ -335,8 +333,7 @@ Deno.serve(async (req: Request) => {
           );
           
           if (welcomeResponse.ok) {
-            const welcomeResult = await welcomeResponse.json();
-            console.log('✅ Welcome notification sent successfully:', welcomeResult);
+            console.log('✅ Welcome notification sent successfully');
             
             // Mark this device as having received welcome
             await supabase
@@ -350,7 +347,7 @@ Deno.serve(async (req: Request) => {
               });
           } else {
             const errorText = await welcomeResponse.text();
-            console.error('⚠️ Welcome notification failed:', welcomeResponse.status, errorText);
+            console.error('⚠️ Welcome notification failed:', errorText);
           }
         } catch (welcomeError) {
           console.error('⚠️ Welcome notification error:', welcomeError);

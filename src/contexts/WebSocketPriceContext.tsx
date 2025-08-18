@@ -132,15 +132,12 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       // Fresh authentication with token refresh for hardened connection
       const { supabase } = await import('@/integrations/supabase/client');
       
-      // Force token refresh for crypto connections - critical for API key rotation
-      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
+      // Get current session without forcing refresh - prevents token storm
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) {
-        console.warn('⚠️ Session refresh failed, using existing session:', sessionError);
-        const { data: { session: fallbackSession } } = await supabase.auth.getSession();
-        var currentSession = fallbackSession;
-      } else {
-        var currentSession = session;
+        console.warn('⚠️ Session retrieval failed:', sessionError);
       }
+      const currentSession = session;
       
       // Enhanced auth with crypto priority and connection hardening
       const authParam = currentSession?.access_token ? `?token=${encodeURIComponent(currentSession.access_token)}` : '';

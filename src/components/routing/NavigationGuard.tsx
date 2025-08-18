@@ -24,12 +24,10 @@ export const NavigationGuard: React.FC<NavigationGuardProps> = ({ children }) =>
     
     // If we're not loading and there's no user, but we're on a protected route
     if (!user && location.pathname.startsWith('/dashboard')) {
-      // Save the intended destination
+      // Save the intended destination in sessionStorage for reliable retrieval
       const from = location.pathname + location.search;
-      navigate('/signin', { 
-        state: { from }, 
-        replace: true 
-      });
+      sessionStorage.setItem('auth_redirect_after_login', from);
+      navigate('/signin', { replace: true });
     }
   }, [user, loading, location, navigate]);
 

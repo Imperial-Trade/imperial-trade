@@ -162,14 +162,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Handle specific auth events
         if (event === 'SIGNED_IN') {
           console.log('User signed in successfully');
-          // Auto-redirect authenticated users away from signin page
-          const currentPath = window.location.pathname;
-          if (currentPath === '/signin') {
-            // Check if there's a redirect destination from the location state
-            const state = window.history.state;
-            const from = state?.from || '/dashboard/home';
-            navigate(from, { replace: true });
-          }
+          // Defer redirect to prevent onAuthStateChange conflicts
+          setTimeout(() => {
+            const currentPath = window.location.pathname;
+            if (currentPath === '/signin') {
+              // Get redirect destination from sessionStorage or use default
+              const savedRedirect = sessionStorage.getItem('auth_redirect_after_login');
+              const from = savedRedirect || '/dashboard/home';
+              sessionStorage.removeItem('auth_redirect_after_login'); // Clean up
+              navigate(from, { replace: true });
+            }
+          }, 0);
           // OneSignal binding and upsert handled in bindToOneSignalAndCheck
         } else if (event === 'SIGNED_OUT') {
           // Skip cleanup if we're manually signing out to prevent race condition

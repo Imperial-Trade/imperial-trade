@@ -17,14 +17,7 @@ export default function SigninPage() {
     message: ""
   });
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const {
-    form,
-    onSubmit,
-    canSubmit,
-    isSubmitting,
-    attemptsLeft,
-    remainingMs,
-  } = useLoginForm();
+  const { form, onSubmit, isSubmitting } = useLoginForm();
   const navigate = useNavigate();
   const handleFormSubmit = async (data: any) => {
     try {
@@ -66,27 +59,6 @@ export default function SigninPage() {
             </p>
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
-            {/* Rate limit indicators */}
-            {typeof remainingMs === 'number' && remainingMs > 0 && (
-              <div className="mb-3 text-center text-slate-50 text-sm">
-                Too many login attempts. Please wait {Math.floor(Math.ceil(remainingMs / 1000) / 60)}:{String(Math.ceil(remainingMs / 1000) % 60).padStart(2, '0')} before trying again.
-              </div>
-            )}
-            <div className="mb-2 text-center text-slate-50/80 text-xs">
-              Attempts left: {attemptsLeft} of 5
-            </div>
-            {typeof window !== 'undefined' && (window as any).clearRateLimits && (
-              <div className="mb-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => (window as any).clearRateLimits?.()}
-                  className="underline text-slate-50/70 hover:text-slate-50 text-xs"
-                  aria-label="Reset rate limiter (development only)"
-                >
-                  Reset limiter (dev)
-                </button>
-              </div>
-            )}
             <ErrorBoundary componentName="Status Message">
               <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
             </ErrorBoundary>
@@ -95,13 +67,12 @@ export default function SigninPage() {
                 {showForgotPassword ? (
                   <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
                 ) : (
-                  <LoginForm 
-                    form={form} 
-                    onSubmit={handleFormSubmit} 
-                    isSubmitting={isSubmitting} 
-                    canSubmit={canSubmit}
-                    onForgotPassword={() => setShowForgotPassword(true)}
-                  />
+            <LoginForm
+              form={form}
+              onSubmit={handleFormSubmit}
+              isSubmitting={isSubmitting}
+              onForgotPassword={() => setShowForgotPassword(true)}
+            />
                 )}
               </ErrorBoundary>
             )}

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
+import { FallbackNotificationsProvider } from "@/contexts/FallbackNotificationsContext";
 import { XeonStreamOptInModal } from "@/components/xeon-stream/XeonStreamOptInModal";
 import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
@@ -99,7 +100,8 @@ function App() {
               <PostHogPageViewTracker />
               <ScrollToTop />
                 <AuthProvider>
-                    <NotificationsProvider>
+                    <FallbackNotificationsProvider>
+                      <NotificationsProvider>
                       <AutoRecoveryProvider>
                          <WelcomeProvider>
                            <NavigationGuard>
@@ -316,7 +318,8 @@ function App() {
                            </NavigationGuard>
                         </WelcomeProvider>
                       </AutoRecoveryProvider>
-                     </NotificationsProvider>
+                       </NotificationsProvider>
+                     </FallbackNotificationsProvider>
                  </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>

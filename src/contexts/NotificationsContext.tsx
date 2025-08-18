@@ -17,7 +17,6 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
 
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { initialized, permission, isGranted, hasSubscription, requestPermission, isIframeBlocked, browserInfo, browserInstructions } = useFallbackOneSignalEnhanced();
-  const { user } = useAuth();
 
   const value = useMemo<NotificationsContextValue>(() => ({
     permission,

@@ -217,6 +217,43 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
               const { [symbol]: removed, ...rest } = prev;
               return rest;
             });
+          } else if (data.type === 'price_batch' && Array.isArray(data.items)) {
+            const nowTs = data.tick_timestamp || Date.now();
+            const items = data.items as any[];
+            setPrices(prev => {
+              const next = { ...prev } as Record<string, PriceData>;
+              items.forEach((it) => {
+                const sym = normalizeSymbol(it.symbol);
+                const prevPrice = next[sym]?.price || it.price;
+                const change = it.price - prevPrice;
+                const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
+                next[sym] = {
+                  symbol: it.symbol,
+                  price: it.price,
+                  change: it.change ?? change,
+                  changePercent: it.changePercent ?? changePercent,
+                  timestamp: it.timestamp || new Date().toISOString(),
+                  bid: it.bid,
+                  ask: it.ask,
+                  tick_timestamp: nowTs,
+                  is_institutional_tick: false,
+                  is_ultra_fast_tick: false,
+                  update_frequency: data.update_frequency || `${Math.max(1, Math.floor((nowTs - (websocketHealthRef.current.lastSuccessfulMessage || nowTs)) / 1000))}s`
+                };
+              });
+              return next;
+            });
+            setPriceUpdateSources(prev => {
+              const next = { ...prev } as Record<string, 'websocket' | 'websocket_institutional' | 'http'>;
+              items.forEach((it) => {
+                const sym = normalizeSymbol(it.symbol);
+                next[sym] = 'websocket';
+              });
+              return next;
+            });
+            setLastUpdated(new Date());
+            websocketHealthRef.current.lastSuccessfulMessage = Date.now();
+            websocketHealthRef.current.isHealthy = true;
           } else if (data.type === 'error') {
             console.error('❌ WebSocket error message:', data.message);
             setErrors(prev => ({

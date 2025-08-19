@@ -105,15 +105,17 @@ export function useVisualStateManager(config: AnimationConfig = {
     id: string, 
     oldPrice: number, 
     newPrice: number,
-    symbol?: string
+    symbol?: string,
+    volatilityMultiplier: number = 1.0
   ) => {
     if (oldPrice <= 0 || newPrice <= 0) return;
     
     const changePercent = Math.abs((newPrice - oldPrice) / oldPrice) * 100;
     
-    // Use symbol-specific significance threshold
-    const threshold = symbol ? getSignificanceThreshold(symbol) : config.minChangePercent;
-    if (changePercent < threshold) return;
+    // Use symbol-specific significance threshold with volatility adjustment
+    const baseThreshold = symbol ? getSignificanceThreshold(symbol) : config.minChangePercent;
+    const adjustedThreshold = baseThreshold * volatilityMultiplier;
+    if (changePercent < adjustedThreshold) return;
     
     const currentState = visualStates[id];
     const now = Date.now();

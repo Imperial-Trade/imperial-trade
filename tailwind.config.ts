@@ -197,8 +197,10 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'flash-green': 'flash-green 0.5s ease-out',
-				'flash-red': 'flash-red 0.5s ease-out'
+				'flash-green': 'flash-green 0.7s ease-in-out',
+				'flash-red': 'flash-red 0.7s ease-in-out',
+				'flash-green-intense': 'flash-green 0.4s ease-in-out',
+				'flash-red-intense': 'flash-red 0.4s ease-in-out'
 			}
 		}
 	},

@@ -36,11 +36,12 @@ class TraderMadeStreamer {
   private ws: WebSocket | null = null;
   private supabase: any;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000; // Start with 1 second
+  private maxReconnectAttempts = 10;
+  private reconnectDelay = 2000; // Start with 2 seconds
   private connectionActive = false;
   private symbols = new Set<string>();
   private lastPriceUpdate: { [symbol: string]: number } = {};
+  private processingBatch = false;
   
   constructor(supabase: any) {
     this.supabase = supabase;
@@ -48,30 +49,34 @@ class TraderMadeStreamer {
 
   async connect(): Promise<void> {
     try {
-      console.log('🔌 Establishing persistent WebSocket connection to TraderMade...');
-      
       const tradermadeKey = Deno.env.get('TRADERMADE_API_KEY');
       if (!tradermadeKey) {
-        throw new Error('TRADERMADE_API_KEY not found');
+        console.error('❌ TRADERMADE_API_KEY not found');
+        return;
       }
 
       const wsUrl = `wss://marketdata.tradermade.com/feedadv?api_key=${tradermadeKey}`;
       this.ws = new WebSocket(wsUrl);
       
       this.ws.onopen = async () => {
-        console.log('✅ Connected to TraderMade WebSocket');
         this.connectionActive = true;
         this.reconnectAttempts = 0;
-        this.reconnectDelay = 1000;
+        this.reconnectDelay = 2000;
         
-        // Subscribe to symbols with active alerts
         await this.refreshActiveSymbols();
       };
 
       this.ws.onmessage = async (event) => {
         try {
+          // Handle text messages like "Connected" without trying to parse as JSON
+          if (typeof event.data === 'string' && !event.data.startsWith('{')) {
+            if (event.data.toLowerCase().includes('connected')) {
+              console.log('✅ TraderMade connection confirmed');
+            }
+            return;
+          }
+          
           const data = JSON.parse(event.data);
-          console.log('📊 Raw TraderMade message:', JSON.stringify(data));
           
           if (data.symbol && data.mid) {
             const priceData: PriceData = {
@@ -82,41 +87,40 @@ class TraderMadeStreamer {
               timestamp: new Date().toISOString()
             };
             
-            console.log(`💰 Processing price: ${priceData.symbol} = $${priceData.price}`);
+            // Process with reduced logging and batching
             await this.processPriceTick(priceData);
           }
         } catch (error) {
-          console.error('❌ Error processing price message:', error);
+          // Only log parsing errors for actual JSON messages
+          if (event.data.startsWith('{')) {
+            console.error('❌ JSON parsing error:', error);
+          }
         }
       };
 
       this.ws.onclose = () => {
-        console.log('🔌 WebSocket connection closed');
         this.connectionActive = false;
         this.attemptReconnect();
       };
 
       this.ws.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
         this.connectionActive = false;
       };
 
     } catch (error) {
-      console.error('❌ Failed to connect to TraderMade:', error);
+      console.error('❌ Connection failed:', error);
       this.attemptReconnect();
     }
   }
 
   private async attemptReconnect(): Promise<void> {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('🚨 Max reconnection attempts reached. Giving up.');
+      console.error('🚨 Max reconnection attempts reached');
       return;
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), 30000);
-    
-    console.log(`🔄 Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
+    const delay = Math.min(this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1), 30000);
     
     setTimeout(() => {
       this.connect();
@@ -125,15 +129,13 @@ class TraderMadeStreamer {
 
   private async refreshActiveSymbols(): Promise<void> {
     try {
-      console.log('🔍 Refreshing active symbols...');
-      
       const { data: activeSymbols, error } = await this.supabase
         .from('alert_monitoring')
         .select('symbol')
         .eq('is_active', true);
 
       if (error) {
-        console.error('❌ Error fetching active symbols:', error);
+        console.error('❌ Error fetching symbols:', error);
         return;
       }
 
@@ -146,12 +148,10 @@ class TraderMadeStreamer {
             userKey: Deno.env.get('TRADERMADE_API_KEY'),
             symbol: symbol
           }));
-          console.log(`📡 Subscribed to ${symbol}`);
         }
       }
       
       this.symbols = newSymbols;
-      console.log(`📊 Monitoring ${this.symbols.size} symbols:`, Array.from(this.symbols));
       
     } catch (error) {
       console.error('❌ Error refreshing symbols:', error);
@@ -160,15 +160,15 @@ class TraderMadeStreamer {
 
   private async processPriceTick(priceData: PriceData): Promise<void> {
     try {
-      // Prevent duplicate processing of the same price
-      if (this.lastPriceUpdate[priceData.symbol] === priceData.price) {
+      // Prevent duplicate processing and reduce overhead
+      if (this.lastPriceUpdate[priceData.symbol] === priceData.price || this.processingBatch) {
         return;
       }
+      
+      this.processingBatch = true;
       this.lastPriceUpdate[priceData.symbol] = priceData.price;
 
-      console.log(`🎯 Processing alerts for ${priceData.symbol} at $${priceData.price}`);
-      
-      // Update market prices table
+      // Update market prices efficiently
       const { error: upsertError } = await this.supabase
         .rpc('upsert_market_price', {
           p_symbol: priceData.symbol,
@@ -179,10 +179,10 @@ class TraderMadeStreamer {
         });
 
       if (upsertError) {
-        console.error('❌ Error updating market price:', upsertError);
+        console.error('❌ Market price update error:', upsertError.message);
       }
 
-      // Process alerts using the enhanced function with BUY/SELL logic
+      // Process alerts efficiently
       const { data: triggeredAlerts, error: alertError } = await this.supabase
         .rpc('process_price_alerts', {
           p_symbol: priceData.symbol,
@@ -190,20 +190,17 @@ class TraderMadeStreamer {
         });
 
       if (alertError) {
-        console.error('❌ Error processing alerts:', alertError);
+        console.error('❌ Alert processing error:', alertError.message);
+        this.processingBatch = false;
         return;
       }
 
-      // Process triggered alerts
+      // Handle triggered alerts
       if (triggeredAlerts && triggeredAlerts.length > 0) {
         const processedAlerts: ProcessedAlert[] = [];
         
         for (const alert of triggeredAlerts) {
           if (alert.triggered) {
-            console.log(`🚨 ALERT TRIGGERED: ${alert.alert_type} for ${priceData.symbol} at $${priceData.price}`);
-            console.log(`   Signal: ${alert.signal_id} | Direction: ${alert.trade_direction} | Target: $${alert.target_price}`);
-            
-            // Handle the triggered alert
             const { data: result, error: handleError } = await this.supabase
               .rpc('handle_triggered_alert', {
                 p_alert_id: alert.alert_id,
@@ -212,9 +209,7 @@ class TraderMadeStreamer {
                 p_triggered_price: priceData.price
               });
 
-            if (handleError) {
-              console.error('❌ Error handling triggered alert:', handleError);
-            } else if (result) {
+            if (!handleError && result) {
               processedAlerts.push({
                 alert_id: alert.alert_id,
                 signal_id: alert.signal_id,
@@ -224,57 +219,27 @@ class TraderMadeStreamer {
                 tp_level: result.tp_level,
                 reason: result.reason
               });
-              console.log(`✅ Alert processed: ${result.action}`, result);
             }
           }
         }
 
-        // Broadcast notifications for triggered alerts
+        // Batch notifications
         if (processedAlerts.length > 0) {
           await this.broadcastAlertNotifications(processedAlerts, priceData);
         }
       }
 
+      this.processingBatch = false;
+
     } catch (error) {
-      console.error('❌ Error in processPriceTick:', error);
+      console.error('❌ Processing error:', error);
+      this.processingBatch = false;
     }
   }
 
   private async broadcastAlertNotifications(alerts: ProcessedAlert[], priceData: PriceData): Promise<void> {
     try {
-      console.log(`📢 Broadcasting ${alerts.length} alert notifications...`);
-      
-      // Notify via Supabase Realtime
-      for (const alert of alerts) {
-        const notification = {
-          type: 'alert_triggered',
-          signal_id: alert.signal_id,
-          alert_type: alert.alert_type,
-          action: alert.action,
-          price: priceData.price,
-          symbol: priceData.symbol,
-          timestamp: priceData.timestamp,
-          tp_level: alert.tp_level,
-          reason: alert.reason
-        };
-
-        // Broadcast via Supabase Realtime channels
-        const { error: realtimeError } = await this.supabase
-          .channel('signal_alerts')
-          .send({
-            type: 'broadcast',
-            event: 'alert_triggered',
-            payload: notification
-          });
-
-        if (realtimeError) {
-          console.error('❌ Error broadcasting realtime notification:', realtimeError);
-        } else {
-          console.log(`📡 Realtime notification sent for ${alert.alert_type}`);
-        }
-      }
-
-      // Call notification dispatcher for push notifications
+      // Optimized notification broadcasting
       const notificationPayload = {
         notifications: alerts.map(alert => ({
           signal_id: alert.signal_id,
@@ -284,7 +249,7 @@ class TraderMadeStreamer {
           alert_type: alert.alert_type,
           action: alert.action,
           tp_level: alert.tp_level,
-          delivery_channels: ['push', 'in_app', 'discord', 'telegram'],
+          delivery_channels: ['push', 'in_app'],
           include_creator: false
         }))
       };
@@ -292,24 +257,20 @@ class TraderMadeStreamer {
       const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       const functionUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/signal-notification-dispatcher';
       
-      const response = await fetch(functionUrl, {
+      // Fire and forget to avoid blocking
+      fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${serviceRoleKey}`,
-          'User-Agent': 'PersistentAlertMonitor/1.0'
         },
         body: JSON.stringify(notificationPayload)
+      }).catch(err => {
+        console.error('❌ Notification dispatch failed:', err.message);
       });
 
-      if (response.ok) {
-        console.log('📱 Push notifications dispatched successfully');
-      } else {
-        console.error('❌ Failed to dispatch push notifications:', await response.text());
-      }
-
     } catch (error) {
-      console.error('❌ Error broadcasting notifications:', error);
+      console.error('❌ Notification error:', error);
     }
   }
 
@@ -351,7 +312,6 @@ serve(async (req) => {
 
     // Initialize streamer if not already running
     if (!streamer) {
-      console.log('🚀 Initializing persistent alert monitor...');
       streamer = new TraderMadeStreamer(supabase);
       await streamer.connect();
     }
@@ -372,7 +332,6 @@ serve(async (req) => {
         });
 
       case 'restart':
-        console.log('🔄 Restarting alert monitor...');
         if (streamer) {
           streamer.disconnect();
         }
@@ -388,7 +347,6 @@ serve(async (req) => {
         });
 
       case 'stop':
-        console.log('🛑 Stopping alert monitor...');
         if (streamer) {
           streamer.disconnect();
           streamer = null;
@@ -424,4 +382,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+})

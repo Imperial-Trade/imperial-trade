@@ -1561,8 +1561,10 @@ export type Database = {
           notification_prompt_dismissed_at: string | null
           notification_stats: Json | null
           onesignal_last_sync_at: string | null
+          onesignal_subscription_status: string | null
           phone_number: string | null
           profile_type: string | null
+          push_subscription_active: boolean | null
           real_name: string | null
           registration_source:
             | Database["public"]["Enums"]["registration_source_enum"]
@@ -1606,8 +1608,10 @@ export type Database = {
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
+          onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
+          push_subscription_active?: boolean | null
           real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
@@ -1651,8 +1655,10 @@ export type Database = {
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
+          onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
+          push_subscription_active?: boolean | null
           real_name?: string | null
           registration_source?:
             | Database["public"]["Enums"]["registration_source_enum"]
@@ -3145,6 +3151,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      handle_triggered_alert: {
+        Args: {
+          p_alert_id: string
+          p_alert_type: string
+          p_signal_id: string
+          p_triggered_price: number
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3176,9 +3191,9 @@ export type Database = {
       }
       should_user_receive_notification: {
         Args: {
+          p_creator_id: string
           p_notification_type: string
           p_priority_level?: number
-          p_signal_author_id: string
           p_user_id: string
         }
         Returns: boolean

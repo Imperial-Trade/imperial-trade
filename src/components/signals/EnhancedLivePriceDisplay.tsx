@@ -2,6 +2,7 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
 
@@ -64,6 +65,9 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   const [prevPrice, setPrevPrice] = useState<number>(0);
   const [priceAnimation, setPriceAnimation] = useState<'up' | 'down' | null>(null);
 
+  // Performance monitoring in development
+  usePerformanceMonitor(`EnhancedLivePriceDisplay-${assetName}`, process.env.NODE_ENV === 'development');
+
   // Update data age every second
   useEffect(() => {
     const updateAge = () => {
@@ -93,14 +97,18 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return () => clearInterval(interval);
   }, [lastUpdated]);
 
-  // Price change animation effect
+  // Optimized price change animation effect
   useEffect(() => {
     if (price > 0 && prevPrice > 0 && price !== prevPrice) {
-      setPriceAnimation(price > prevPrice ? 'up' : 'down');
-      const timer = setTimeout(() => setPriceAnimation(null), 1000);
-      return () => clearTimeout(timer);
+      // Only animate for significant changes to reduce visual noise
+      const changePercent = Math.abs((price - prevPrice) / prevPrice) * 100;
+      if (changePercent >= 0.01) { // Only animate for changes >= 0.01%
+        setPriceAnimation(price > prevPrice ? 'up' : 'down');
+        const timer = setTimeout(() => setPriceAnimation(null), 300); // Reduced from 1000ms to 300ms
+        return () => clearTimeout(timer);
+      }
     }
-    if (price > 0) {
+    if (price > 0 && price !== prevPrice) {
       setPrevPrice(price);
     }
   }, [price, prevPrice]);

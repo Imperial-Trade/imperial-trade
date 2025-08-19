@@ -121,9 +121,8 @@ const LivePriceWidgetComponent = ({
       return;
     }
     const now = Date.now();
-    if (now - lastUpdateRef.current < 5000) {
-      console.log(`[RATE LIMITED] ${hitType} check for alert ${alert.id} - Last processed ${now - lastUpdateRef.current}ms ago`);
-      return;
+    if (now - lastUpdateRef.current < 2000) { // Reduced from 5000ms to 2000ms for better responsiveness
+      return; // Removed rate limit logging to reduce console spam
     }
     isProcessingRef.current = true;
     lastUpdateRef.current = now;
@@ -154,8 +153,14 @@ const LivePriceWidgetComponent = ({
     }
   }, [alert, currentPrice, onTakeProfitHit, onStopLossHit, onOrderActivation]);
   const checkLevels = useCallback(price => {
-    // Renamed parameter to 'price' to avoid confusion with outer 'currentPrice'
+    // Optimized level checking with smart thresholds
     if (!price || price === lastProcessedPrice || isProcessingRef.current) {
+      return;
+    }
+    
+    // Only check levels if price changed significantly to reduce CPU usage
+    const priceChangePercent = Math.abs((price - lastProcessedPrice) / lastProcessedPrice) * 100;
+    if (lastProcessedPrice > 0 && priceChangePercent < 0.05) { // 0.05% threshold
       return;
     }
     if (price <= 0 || !isFinite(price)) {

@@ -26,7 +26,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 25 // Ultra-fast 25ms for 250ms tick compatibility
+    debounceMs = 200 // Optimized 200ms for smooth updates without blinking
   } = options;
 
   const {
@@ -48,8 +48,10 @@ export function useOptimizedLivePrice(
     changePercent: 0
   });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [lastSignificantUpdate, setLastSignificantUpdate] = useState<Date | null>(null);
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastProcessedPriceRef = useRef<number>(0);
 
   // Subscribe to symbol on mount
   useEffect(() => {
@@ -62,36 +64,50 @@ export function useOptimizedLivePrice(
     };
   }, [symbol, subscribe, unsubscribe]);
 
-  // Optimized price updates with smart debouncing
+  // Optimized price updates with smart debouncing and change detection
   useEffect(() => {
     const currentPrice = getPrice(symbol);
     
-    if (!currentPrice) return;
+    if (!currentPrice || currentPrice.price === 0) return;
 
-    // Ultra-fast updates: minimal delay for 250ms real-time feel
+    // Smart update logic: only process if price changed significantly
+    const priceChanged = currentPrice.price !== lastProcessedPriceRef.current;
     const isSignificantChange = Math.abs(currentPrice.price - debouncedPrice.price) > (currentPrice.price * 0.001); // 0.1% change
-    const isUltraFastTick = currentPrice.is_ultra_fast_tick === true;
-    const dynamicDelay = isUltraFastTick ? 10 : isSignificantChange ? 25 : Math.min(debounceMs, 50); // 10ms for ultra-fast, 25ms for changes, max 50ms
+    
+    if (!priceChanged && !isSignificantChange) return;
 
+    // Clear existing timeout to prevent stacking updates
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
 
+    // Use consistent debounce for smoother experience
     debounceTimeoutRef.current = setTimeout(() => {
+      // Double-check price hasn't become stale
+      const latestPrice = getPrice(symbol);
+      if (!latestPrice || latestPrice.price === 0) return;
+
       setDebouncedPrice({
-        price: currentPrice.price,
-        change: currentPrice.change,
-        changePercent: currentPrice.changePercent
+        price: latestPrice.price,
+        change: latestPrice.change,
+        changePercent: latestPrice.changePercent
       });
-      setLastUpdated(new Date(currentPrice.timestamp));
-    }, dynamicDelay);
+      setLastUpdated(new Date(latestPrice.timestamp));
+      
+      // Track significant updates for performance monitoring
+      if (isSignificantChange) {
+        setLastSignificantUpdate(new Date());
+      }
+      
+      lastProcessedPriceRef.current = latestPrice.price;
+    }, debounceMs);
 
     return () => {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [prices, symbol, debounceMs, getPrice, debouncedPrice.price]);
+  }, [prices, symbol, debounceMs, getPrice]);
 
   const refreshPrice = useCallback(() => {
     contextRefreshPrice(symbol);
@@ -100,14 +116,26 @@ export function useOptimizedLivePrice(
   // Get error for this specific symbol or global error
   const symbolError = errors[symbol] || errors.global || null;
 
+  // Enhanced connection status logic
+  const enhancedConnectionStatus = (() => {
+    // If we have recent price data, we're effectively connected
+    const hasRecentData = lastUpdated && (Date.now() - lastUpdated.getTime()) < 10000; // 10 seconds
+    const hasValidPrice = debouncedPrice.price > 0;
+    
+    if (hasRecentData && hasValidPrice && connectionStatus !== 'error') {
+      return 'connected';
+    }
+    return connectionStatus;
+  })();
+
   return {
     price: debouncedPrice.price,
     change: debouncedPrice.change,
     changePercent: debouncedPrice.changePercent,
-    isLoading: connectionStatus === 'connecting',
+    isLoading: enhancedConnectionStatus === 'connecting',
     error: symbolError,
     lastUpdated: lastUpdated || contextLastUpdated,
-    connectionStatus,
+    connectionStatus: enhancedConnectionStatus,
     dataSource,
     priceUpdateSource: priceUpdateSources[symbol] || 'unknown',
     refreshPrice

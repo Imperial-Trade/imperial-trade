@@ -329,7 +329,8 @@ serve(async (req) => {
                 type: 'price_batch',
                 items,
                 tick_timestamp: now,
-                update_frequency: `${BATCH_SEND_INTERVAL_MS}ms`
+                update_frequency: `${BATCH_SEND_INTERVAL_MS}ms`,
+                is_ultra_fast_batch: true // Business Plan: Ultra-fast hint for client optimization
               }));
             }
           }

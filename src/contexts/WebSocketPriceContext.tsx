@@ -336,7 +336,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     if (!subscribeFlushTimerRef.current) {
       subscribeFlushTimerRef.current = setTimeout(() => {
         flushPendingSubscriptions();
-      }, 50);
+      }, 10); // Business Plan: Ultra-fast 10ms batching
     }
   }, [connect, flushPendingSubscriptions]);
 

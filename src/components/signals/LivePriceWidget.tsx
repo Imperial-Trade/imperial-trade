@@ -63,7 +63,7 @@ const LivePriceWidgetComponent = ({
     refreshPrice
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
-    debounceMs: 500, // Increased from 200ms to 500ms for stability and reduced blinking
+    debounceMs: 120, // Business Plan: Ultra-fast 120ms for live price tickers
     pauseOnInput: false
   });
 
@@ -79,8 +79,9 @@ const LivePriceWidgetComponent = ({
   const [prevPrice, setPrevPrice] = useState(0);
   const isProcessingRef = useRef(false);
   const lastUpdateRef = useRef(0);
+  const staleGuardRef = useRef(null);
 
-  // Update data age every second
+  // Update data age every second with stale-guard
   useEffect(() => {
     const updateAge = () => {
       if (!lastUpdated) {
@@ -102,12 +103,24 @@ const LivePriceWidgetComponent = ({
       } else {
         setDataAge('Stale');
       }
+
+      // Stale-guard: Force refresh if no updates for 2+ seconds
+      if (diffSeconds >= 2) {
+        if (staleGuardRef.current) clearTimeout(staleGuardRef.current);
+        staleGuardRef.current = setTimeout(() => {
+          console.log(`🔄 Stale-guard triggered for ${alert.tradermade_symbol}`);
+          refreshPrice();
+        }, 500);
+      }
     };
 
     updateAge();
     const interval = setInterval(updateAge, 1000);
-    return () => clearInterval(interval);
-  }, [lastUpdated]);
+    return () => {
+      clearInterval(interval);
+      if (staleGuardRef.current) clearTimeout(staleGuardRef.current);
+    };
+  }, [lastUpdated, refreshPrice, alert.tradermade_symbol]);
 
   // Smart price animation effect with reduced noise
   useEffect(() => {

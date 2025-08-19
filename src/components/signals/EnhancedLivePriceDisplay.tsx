@@ -56,7 +56,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     refreshPrice
   } = useOptimizedLivePrice(apiSymbol, {
     enableSmartPausing: false, // Keep connection active for trading signals
-    debounceMs: 200, // Optimized for stability (200ms)
+    debounceMs: 100, // Business Plan: Ultra-fast 100ms for signal creation
     pauseOnInput: false
   });
 

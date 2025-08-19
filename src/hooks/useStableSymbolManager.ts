@@ -15,8 +15,8 @@ export function useStableSymbolManager(symbols: string[]): UseStableSymbolManage
 
   // Deep comparison and stable reference management
   const hasChanged = useMemo(() => {
-    const current = symbols.sort();
-    const previous = previousSymbolsRef.current.sort();
+    const current = [...symbols].sort();
+    const previous = [...previousSymbolsRef.current].sort();
     
     if (current.length !== previous.length) return true;
     

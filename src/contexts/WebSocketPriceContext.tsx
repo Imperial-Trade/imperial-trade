@@ -181,27 +181,28 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             }
             
             // Calculate percentage change if we have previous price
-            const prevPrice = prices[symbol]?.price || data.price;
-            const change = data.price - prevPrice;
-            const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
-            
-            setPrices(prev => ({
-              ...prev,
-              [symbol]: {
-                symbol: data.symbol,
-                price: data.price,
-                change: data.change || change,
-                changePercent: data.changePercent || changePercent,
-                timestamp: data.timestamp || new Date().toISOString(),
-                bid: data.bid,
-                ask: data.ask,
-                // Enhanced ultra-fast tick data
-                tick_timestamp: tickTimestamp,
-                is_institutional_tick: isInstitutionalTick,
-                is_ultra_fast_tick: isUltraFastTick,
-                update_frequency: data.update_frequency || '250ms'
-              }
-            }));
+            setPrices(prev => {
+              const prevPrice = prev[symbol]?.price || data.price;
+              const change = data.price - prevPrice;
+              const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
+              return {
+                ...prev,
+                [symbol]: {
+                  symbol: data.symbol,
+                  price: data.price,
+                  change: data.change ?? change,
+                  changePercent: data.changePercent ?? changePercent,
+                  timestamp: data.timestamp || new Date().toISOString(),
+                  bid: data.bid,
+                  ask: data.ask,
+                  // Enhanced ultra-fast tick data
+                  tick_timestamp: tickTimestamp,
+                  is_institutional_tick: isInstitutionalTick,
+                  is_ultra_fast_tick: isUltraFastTick,
+                  update_frequency: data.update_frequency || '250ms'
+                }
+              };
+            });
             
             setPriceUpdateSources(prev => ({ 
               ...prev, 
@@ -259,7 +260,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       setConnectionStatus('error');
       setDataSource('unavailable');
     }
-  }, [getReconnectDelay, prices]);
+  }, [getReconnectDelay]);
 
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribing request received for symbols:', symbols);

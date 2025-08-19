@@ -165,34 +165,31 @@ export default function SignalStream() {
   const subscriptionActiveRef = useRef(false);
 
   useEffect(() => {
-    // Deep comparison to prevent unnecessary subscription changes
-    const hasChanged = symbols.length !== symbolsRef.current.length ||
-      symbols.some((symbol, index) => symbol !== symbolsRef.current[index]);
+    // Compute diffs to avoid full unsubscribe/subscribe churn
+    const prev = symbolsRef.current;
+    const added = symbols.filter(s => !prev.includes(s));
+    const removed = prev.filter(s => !symbols.includes(s));
 
-    if (!hasChanged) return;
-
-    // Unsubscribe from old symbols
-    if (subscriptionActiveRef.current && symbolsRef.current.length > 0) {
-      console.log('🔄 SignalStream - Unsubscribing from previous symbols:', symbolsRef.current);
-      unsubscribe(symbolsRef.current);
-    }
-
-    // Subscribe to new symbols
-    if (symbols.length > 0) {
-      console.log('🔄 SignalStream - Subscribing to new symbols:', symbols);
-      subscribe(symbols);
+    if (added.length > 0) {
+      console.log('🔄 SignalStream - Subscribing (diff):', added);
+      subscribe(added);
       subscriptionActiveRef.current = true;
-    } else {
-      subscriptionActiveRef.current = false;
     }
 
-    // Update reference
+    if (removed.length > 0) {
+      console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
+      unsubscribe(removed);
+    }
+
+    // Update reference after applying diffs
     symbolsRef.current = [...symbols];
 
     return () => {
-      if (subscriptionActiveRef.current && symbolsRef.current.length > 0) {
-        console.log('🔄 SignalStream - Cleanup unsubscribe:', symbolsRef.current);
+      // On unmount, clean up any remaining subscriptions
+      if (symbolsRef.current.length > 0) {
+        console.log('🔄 SignalStream - Cleanup unsubscribe all:', symbolsRef.current);
         unsubscribe(symbolsRef.current);
+        symbolsRef.current = [];
         subscriptionActiveRef.current = false;
       }
     };

@@ -434,168 +434,170 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  return <StreamErrorBoundary>
-    <div className="min-h-screen bg-background w-full">
-      <NotificationSystem />
-      
-      {/* Header - Mobile Optimized spacing */}
-      <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                  Xeon <span className="text-accent-green">Stream</span>
-                </h1>
-                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs w-fit">
-                  <Shield className="w-3 h-3 mr-1 flex-shrink-0" />
-                  <span className="truncate">Educational Contributors</span>
-                </Badge>
+  return (
+    <StreamErrorBoundary>
+      <div className="min-h-screen bg-background w-full">
+        <NotificationSystem />
+        
+        {/* Header - Mobile Optimized spacing */}
+        <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                    Xeon <span className="text-accent-green">Stream</span>
+                  </h1>
+                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs w-fit">
+                    <Shield className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <span className="truncate">Educational Contributors</span>
+                  </Badge>
+                </div>
+                <p className="text-sm sm:text-base text-muted-foreground">
+                  Educational market analysis patterns with reference pricing from verified educational contributors
+                </p>
               </div>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Educational market analysis patterns with reference pricing from verified educational contributors
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-              {getConnectionStatusBadge()}
-              {lastUpdated && <span className="text-xs text-muted-foreground">
-                  Last update: {lastUpdated.toLocaleTimeString()}
-                </span>}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                {getConnectionStatusBadge()}
+                {lastUpdated && <span className="text-xs text-muted-foreground">
+                    Last update: {lastUpdated.toLocaleTimeString()}
+                  </span>}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content - Mobile Optimized grid layout */}
-      <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
-        <div className="max-w-none w-full">
-          <div className="w-full">
-            {/* System Status */}
-            <SignalStreamStatus />
+        {/* Main Content - Mobile Optimized grid layout */}
+        <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
+          <div className="max-w-none w-full">
+            <div className="w-full">
+              {/* System Status */}
+              <SignalStreamStatus />
 
-            <div className="mb-6" />
-            
-            {/* Enhanced Filters */}
-            <SignalStreamFilters 
-              filters={filters} 
-              onFiltersChange={setFilters} 
-              educatorOptions={educatorOptions} 
-              signalCounts={signalCounts}
-              canCreateSignals={canCreateSignals}
-              onCreateSignal={() => navigate('/dashboard/new-signal')}
-            />
-            
-            {(isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0)) ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
-                    <div className="h-4 w-1/3 bg-muted rounded mb-3" />
-                    <div className="h-6 w-2/3 bg-muted rounded mb-4" />
-                    <div className="h-24 w-full bg-muted rounded" />
+              <div className="mb-6" />
+              
+              {/* Enhanced Filters */}
+              <SignalStreamFilters 
+                filters={filters} 
+                onFiltersChange={setFilters} 
+                educatorOptions={educatorOptions} 
+                signalCounts={signalCounts}
+                canCreateSignals={canCreateSignals}
+                onCreateSignal={() => navigate('/dashboard/new-signal')}
+              />
+              
+              {(isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0)) ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
+                      <div className="h-4 w-1/3 bg-muted rounded mb-3" />
+                      <div className="h-6 w-2/3 bg-muted rounded mb-4" />
+                      <div className="h-24 w-full bg-muted rounded" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
+                      Educational Market Patterns ({activeAlerts.length})
+                    </h2>
+                    {activeAlerts.length > 0 ? (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                        {activeAlerts.map(alert => (
+                          <TradeAlertCard 
+                            key={alert.id} 
+                            alert={{
+                              ...alert,
+                              asset_name: alert.assetName,
+                              tradermade_symbol: alert.tradermadeSymbol,
+                              trade_type: alert.tradeType,
+                              entry_price: alert.entryPrice,
+                              stop_loss: alert.stopLoss,
+                              tp_hits: alert.tpHits,
+                              close_reason: alert.closeReason,
+                              created_date: alert.createdAt,
+                              updated_date: alert.updatedAt
+                            }} 
+                            onStatusUpdate={handleStatusUpdate} 
+                            onTakeProfitHit={handleTakeProfitHit} 
+                            onStopLossHit={handleStopLossHit} 
+                            onOrderActivation={handleOrderActivation} 
+                            isAdmin={isAdmin} 
+                            isCreator={isCreator(alert.creator?.id)} 
+                            livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
+                            connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
+                            priceSource={priceSource} 
+                            isRecentClosure={false} 
+                            creator={alert.creator} 
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Shield className="w-8 h-8 text-muted-foreground/50" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
+                        <p className="text-muted-foreground">New educational analysis patterns will appear here when posted by educational contributors.</p>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
-                    Educational Market Patterns ({activeAlerts.length})
-                  </h2>
-                  {activeAlerts.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                      {activeAlerts.map(alert => (
-                        <TradeAlertCard 
-                          key={alert.id} 
-                          alert={{
-                            ...alert,
-                            asset_name: alert.assetName,
-                            tradermade_symbol: alert.tradermadeSymbol,
-                            trade_type: alert.tradeType,
-                            entry_price: alert.entryPrice,
-                            stop_loss: alert.stopLoss,
-                            tp_hits: alert.tpHits,
-                            close_reason: alert.closeReason,
-                            created_date: alert.createdAt,
-                            updated_date: alert.updatedAt
-                          }} 
-                          onStatusUpdate={handleStatusUpdate} 
-                          onTakeProfitHit={handleTakeProfitHit} 
-                          onStopLossHit={handleStopLossHit} 
-                          onOrderActivation={handleOrderActivation} 
-                          isAdmin={isAdmin} 
-                          isCreator={isCreator(alert.creator?.id)} 
-                          livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
-                          connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                          priceSource={priceSource} 
-                          isRecentClosure={false} 
-                          creator={alert.creator} 
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Shield className="w-8 h-8 text-muted-foreground/50" />
+                  
+                  <div>
+                    <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
+                      Recent Educational Analysis ({closedAlerts.length})
+                    </h2>
+                    {sortedClosedAlerts.length > 0 ? (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                        {sortedClosedAlerts.map(alert => (
+                          <TradeAlertCard 
+                            key={alert.id} 
+                            alert={{
+                              ...alert,
+                              asset_name: alert.assetName,
+                              tradermade_symbol: alert.tradermadeSymbol,
+                              trade_type: alert.tradeType,
+                              entry_price: alert.entryPrice,
+                              stop_loss: alert.stopLoss,
+                              tp_hits: alert.tpHits,
+                              close_reason: alert.closeReason,
+                              created_date: alert.createdAt,
+                              updated_date: alert.updatedAt
+                            }} 
+                            onStatusUpdate={handleStatusUpdate} 
+                            onTakeProfitHit={handleTakeProfitHit} 
+                            onStopLossHit={handleStopLossHit} 
+                            onOrderActivation={handleOrderActivation} 
+                            isAdmin={isAdmin} 
+                            isCreator={isCreator(alert.creator?.id)} 
+                            livePrice={undefined} 
+                            connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
+                            priceSource={priceSource} 
+                            isRecentClosure={true} 
+                            creator={alert.creator} 
+                          />
+                        ))}
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
-                      <p className="text-muted-foreground">New educational analysis patterns will appear here when posted by educational contributors.</p>
-                    </div>
-                  )}
-                </div>
-                
-                <div>
-                  <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
-                    Recent Educational Analysis ({closedAlerts.length})
-                  </h2>
-                  {sortedClosedAlerts.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                      {sortedClosedAlerts.map(alert => (
-                        <TradeAlertCard 
-                          key={alert.id} 
-                          alert={{
-                            ...alert,
-                            asset_name: alert.assetName,
-                            tradermade_symbol: alert.tradermadeSymbol,
-                            trade_type: alert.tradeType,
-                            entry_price: alert.entryPrice,
-                            stop_loss: alert.stopLoss,
-                            tp_hits: alert.tpHits,
-                            close_reason: alert.closeReason,
-                            created_date: alert.createdAt,
-                            updated_date: alert.updatedAt
-                          }} 
-                          onStatusUpdate={handleStatusUpdate} 
-                          onTakeProfitHit={handleTakeProfitHit} 
-                          onStopLossHit={handleStopLossHit} 
-                          onOrderActivation={handleOrderActivation} 
-                          isAdmin={isAdmin} 
-                          isCreator={isCreator(alert.creator?.id)} 
-                          livePrice={undefined} 
-                          connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                          priceSource={priceSource} 
-                          isRecentClosure={true} 
-                          creator={alert.creator} 
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                        <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                          <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
+                        </div>
+                        <h3 className="text-xl font-semibold text-foreground mb-2">No Completed Analysis</h3>
+                        <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-2">No Completed Analysis</h3>
-                      <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Economic Sidebar - Optimized positioning and visibility */}
-          <EconomicSidebar />
+            {/* Economic Sidebar - Optimized positioning and visibility */}
+            <EconomicSidebar />
+          </div>
         </div>
       </div>
-    </div>
-  </StreamErrorBoundary>;
+    </StreamErrorBoundary>
+  );
 }

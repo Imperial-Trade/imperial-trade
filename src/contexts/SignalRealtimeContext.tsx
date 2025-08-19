@@ -371,7 +371,18 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 export const useSignalRealtime = () => {
   const context = useContext(SignalRealtimeContext);
   if (!context) {
-    throw new Error('useSignalRealtime must be used within a SignalRealtimeProvider');
+    // Instead of throwing, return a safe fallback object
+    console.warn('useSignalRealtime used outside of SignalRealtimeProvider, returning fallback');
+    return {
+      signals: [],
+      connectionStatus: 'disconnected' as const,
+      lastUpdated: null,
+      error: 'SignalRealtimeProvider not initialized',
+      nextRetryAt: null,
+      subscribe: () => console.warn('SignalRealtimeProvider not available'),
+      unsubscribe: () => console.warn('SignalRealtimeProvider not available'),
+      refreshSignals: async () => console.warn('SignalRealtimeProvider not available')
+    };
   }
   return context;
 };

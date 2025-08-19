@@ -1,6 +1,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { supabase } from '@/integrations/supabase/client';
+import { getStandardSymbol } from '@/types/assets';
 
 interface OptimizedLivePriceData {
   price: number;
@@ -29,6 +31,9 @@ export function useOptimizedLivePrice(
     debounceMs = 100 // Business Plan: Ultra-fast 100ms debouncing for real-time performance
   } = options;
 
+  // Normalize symbol to ensure consistency
+  const normalizedSymbol = getStandardSymbol(symbol) || symbol.toUpperCase();
+
   const {
     prices,
     connectionStatus,
@@ -50,58 +55,186 @@ export function useOptimizedLivePrice(
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [lastSignificantUpdate, setLastSignificantUpdate] = useState<Date | null>(null);
   const [lastNonZeroPrice, setLastNonZeroPrice] = useState<number>(0);
+  const [localPriceSource, setLocalPriceSource] = useState<'websocket' | 'websocket_institutional' | 'http' | 'unknown'>('unknown');
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastProcessedPriceRef = useRef<number>(0);
   const updateCounterRef = useRef<number>(0);
+  const staleGuardTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const httpFallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mountTimeRef = useRef<Date>(new Date());
 
-  // Subscribe to symbol on mount
+  // localStorage utilities for price persistence
+  const getStoredPrice = useCallback((sym: string) => {
+    try {
+      const stored = localStorage.getItem(`lastPrice:${sym}`);
+      if (stored) {
+        const { price, timestamp } = JSON.parse(stored);
+        return { price: Number(price), timestamp: new Date(timestamp) };
+      }
+    } catch (e) {
+      console.warn('Failed to read stored price:', e);
+    }
+    return null;
+  }, []);
+
+  const storePrice = useCallback((sym: string, price: number, timestamp: Date) => {
+    try {
+      localStorage.setItem(`lastPrice:${sym}`, JSON.stringify({
+        price,
+        timestamp: timestamp.toISOString()
+      }));
+    } catch (e) {
+      console.warn('Failed to store price:', e);
+    }
+  }, []);
+
+  // HTTP fallback for reliable price fetching
+  const fetchLastPriceHTTP = useCallback(async (sym: string): Promise<{ price: number; timestamp: Date } | null> => {
+    try {
+      console.log(`🔄 [${sym}] HTTP fallback - fetching last price...`);
+      const { data, error } = await supabase.functions.invoke('tradermade-streaming', {
+        body: { symbols: [sym] }
+      });
+      
+      if (error) {
+        console.error(`❌ [${sym}] HTTP fallback error:`, error);
+        return null;
+      }
+
+      const priceData = data?.[sym];
+      if (priceData && priceData.price > 0) {
+        console.log(`✅ [${sym}] HTTP fallback success:`, priceData.price);
+        setLocalPriceSource('http');
+        return {
+          price: priceData.price,
+          timestamp: new Date(priceData.timestamp || Date.now())
+        };
+      }
+    } catch (error) {
+      console.error(`❌ [${sym}] HTTP fallback failed:`, error);
+    }
+    return null;
+  }, []);
+
+  // Initialize with stored price on mount
   useEffect(() => {
-    if (!symbol) return;
+    const stored = getStoredPrice(normalizedSymbol);
+    if (stored && stored.price > 0) {
+      console.log(`💾 [${normalizedSymbol}] Restored from storage:`, stored.price);
+      setLastNonZeroPrice(stored.price);
+      setDebouncedPrice({
+        price: stored.price,
+        change: 0,
+        changePercent: 0
+      });
+      setLastUpdated(stored.timestamp);
+      lastProcessedPriceRef.current = stored.price;
+    }
+  }, [normalizedSymbol, getStoredPrice]);
 
-    subscribe([symbol]);
+  // Subscribe to symbol on mount with HTTP fallback
+  useEffect(() => {
+    if (!normalizedSymbol) return;
+
+    subscribe([normalizedSymbol]);
+
+    // HTTP fallback if no price after 1.5s
+    httpFallbackTimeoutRef.current = setTimeout(async () => {
+      if (lastProcessedPriceRef.current === 0) {
+        console.log(`⏱️ [${normalizedSymbol}] No price after 1.5s, trying HTTP fallback...`);
+        const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
+        if (fallbackPrice && lastProcessedPriceRef.current === 0) {
+          setDebouncedPrice({
+            price: fallbackPrice.price,
+            change: 0,
+            changePercent: 0
+          });
+          setLastUpdated(fallbackPrice.timestamp);
+          setLastNonZeroPrice(fallbackPrice.price);
+          lastProcessedPriceRef.current = fallbackPrice.price;
+          storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
+        }
+      }
+    }, 1500);
 
     return () => {
-      unsubscribe([symbol]);
+      unsubscribe([normalizedSymbol]);
+      if (httpFallbackTimeoutRef.current) {
+        clearTimeout(httpFallbackTimeoutRef.current);
+      }
+      if (staleGuardTimeoutRef.current) {
+        clearTimeout(staleGuardTimeoutRef.current);
+      }
     };
-  }, [symbol, subscribe, unsubscribe]);
+  }, [normalizedSymbol, subscribe, unsubscribe, fetchLastPriceHTTP, storePrice]);
 
-  // Symbol-specific price updates - NO dependency on entire prices object
+  // Symbol-specific price updates with stale-guard and persistence
   useEffect(() => {
-    const currentPrice = getPrice(symbol);
+    const currentPrice = getPrice(normalizedSymbol);
     updateCounterRef.current++;
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(`🔄 [${symbol}] Price effect #${updateCounterRef.current}:`, {
+      console.log(`🔄 [${normalizedSymbol}] Price effect #${updateCounterRef.current}:`, {
         currentPrice: currentPrice?.price || 0,
         lastProcessed: lastProcessedPriceRef.current,
         hasPrice: !!currentPrice
       });
     }
     
-    if (!currentPrice || currentPrice.price === 0) return;
+    if (!currentPrice || currentPrice.price === 0) {
+      // Start stale-guard if no updates for 2+ seconds
+      if (staleGuardTimeoutRef.current) {
+        clearTimeout(staleGuardTimeoutRef.current);
+      }
+      staleGuardTimeoutRef.current = setTimeout(async () => {
+        console.log(`🚨 [${normalizedSymbol}] Stale data detected, triggering HTTP fallback...`);
+        const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
+        if (fallbackPrice) {
+          setDebouncedPrice({
+            price: fallbackPrice.price,
+            change: 0,
+            changePercent: 0
+          });
+          setLastUpdated(fallbackPrice.timestamp);
+          setLastNonZeroPrice(fallbackPrice.price);
+          lastProcessedPriceRef.current = fallbackPrice.price;
+          storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
+        }
+      }, 2000);
+      return;
+    }
+
+    // Clear stale guard on fresh data
+    if (staleGuardTimeoutRef.current) {
+      clearTimeout(staleGuardTimeoutRef.current);
+      staleGuardTimeoutRef.current = null;
+    }
+
+    // Set WebSocket source when receiving real data
+    if (currentPrice.is_institutional_tick) {
+      setLocalPriceSource('websocket_institutional');
+    } else {
+      setLocalPriceSource('websocket');
+    }
 
     // CRITICAL: Always commit the first non-zero price immediately
     const isFirstValidPrice = lastProcessedPriceRef.current === 0 && currentPrice.price > 0;
     
     if (isFirstValidPrice) {
-      console.log(`✅ [${symbol}] First valid price committed immediately:`, currentPrice.price);
+      console.log(`✅ [${normalizedSymbol}] First valid price committed immediately:`, currentPrice.price);
+      const timestamp = new Date(currentPrice.timestamp);
       setDebouncedPrice({
         price: currentPrice.price,
         change: currentPrice.change,
         changePercent: currentPrice.changePercent
       });
-      setLastUpdated(new Date(currentPrice.timestamp));
+      setLastUpdated(timestamp);
       setLastNonZeroPrice(currentPrice.price);
       lastProcessedPriceRef.current = currentPrice.price;
+      storePrice(normalizedSymbol, currentPrice.price, timestamp);
       return;
     }
-
-    // For subsequent updates, commit every change (no significance filter) for true real-time
-    const changePercent = lastProcessedPriceRef.current > 0 
-      ? Math.abs((currentPrice.price - lastProcessedPriceRef.current) / lastProcessedPriceRef.current) * 100
-      : 100;
-    // Note: significance threshold removed to ensure every tick is reflected in UI
 
     // Clear existing timeout to prevent stacking updates
     if (debounceTimeoutRef.current) {
@@ -114,37 +247,57 @@ export function useOptimizedLivePrice(
     const effectiveDebounce = isUltraFastTick ? 30 : isInstitutionalTick ? 50 : Math.min(debounceMs, 100);
     
     debounceTimeoutRef.current = setTimeout(() => {
-      const latestPrice = getPrice(symbol);
+      const latestPrice = getPrice(normalizedSymbol);
       if (!latestPrice || latestPrice.price === 0) return;
 
+      const timestamp = new Date(latestPrice.timestamp);
       setDebouncedPrice({
         price: latestPrice.price,
         change: latestPrice.change,
         changePercent: latestPrice.changePercent
       });
-      setLastUpdated(new Date(latestPrice.timestamp));
+      setLastUpdated(timestamp);
       setLastNonZeroPrice(latestPrice.price);
       lastProcessedPriceRef.current = latestPrice.price;
+      storePrice(normalizedSymbol, latestPrice.price, timestamp);
       
       if (process.env.NODE_ENV === 'development') {
         const tickType = isUltraFastTick ? '⚡ ULTRA-FAST' : isInstitutionalTick ? '💎 INSTITUTIONAL' : '🚀 BUSINESS';
-        console.log(`${tickType} [${symbol}] Price updated:`, latestPrice.price, `[${effectiveDebounce}ms debounce]`);
+        console.log(`${tickType} [${normalizedSymbol}] Price updated:`, latestPrice.price, `[${effectiveDebounce}ms debounce]`);
       }
-    }, effectiveDebounce); // Business plan: 50-150ms based on tick type
+    }, effectiveDebounce);
 
     return () => {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [symbol, prices[symbol]?.price, debounceMs, getPrice]); // FIXED: Symbol-specific dependency
+  }, [normalizedSymbol, prices[normalizedSymbol]?.price, debounceMs, getPrice, fetchLastPriceHTTP, storePrice]);
 
-  const refreshPrice = useCallback(() => {
-    contextRefreshPrice(symbol);
-  }, [contextRefreshPrice, symbol]);
+  const refreshPrice = useCallback(async () => {
+    // Try context refresh first
+    contextRefreshPrice(normalizedSymbol);
+    
+    // Also trigger HTTP fallback as backup
+    setTimeout(async () => {
+      const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
+      if (fallbackPrice) {
+        const timestamp = fallbackPrice.timestamp;
+        setDebouncedPrice({
+          price: fallbackPrice.price,
+          change: 0,
+          changePercent: 0
+        });
+        setLastUpdated(timestamp);
+        setLastNonZeroPrice(fallbackPrice.price);
+        lastProcessedPriceRef.current = fallbackPrice.price;
+        storePrice(normalizedSymbol, fallbackPrice.price, timestamp);
+      }
+    }, 500);
+  }, [contextRefreshPrice, normalizedSymbol, fetchLastPriceHTTP, storePrice]);
 
   // Get error for this specific symbol or global error
-  const symbolError = errors[symbol] || errors.global || null;
+  const symbolError = errors[normalizedSymbol] || errors.global || null;
 
   // Business Plan: Enhanced connection status with ultra-fast tolerance
   const enhancedConnectionStatus = (() => {
@@ -174,7 +327,7 @@ export function useOptimizedLivePrice(
     lastUpdated: lastUpdated || contextLastUpdated,
     connectionStatus: enhancedConnectionStatus,
     dataSource,
-    priceUpdateSource: priceUpdateSources[symbol] || 'unknown',
+    priceUpdateSource: localPriceSource !== 'unknown' ? localPriceSource : (priceUpdateSources[normalizedSymbol] || 'unknown'),
     refreshPrice
   };
 }

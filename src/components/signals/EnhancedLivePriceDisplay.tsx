@@ -5,6 +5,7 @@ import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
+import { getStandardSymbol } from '@/types/assets';
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -21,27 +22,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
   onPriceUpdate,
   className = ''
 }) => {
-  // Map frontend symbols to standardized Tradermade API symbols (no slashes)
-  const mapSymbolForAPI = (frontendSymbol: string): string => {
-    const s = (frontendSymbol || '').toUpperCase().trim();
-    const symbolMap: Record<string, string> = {
-      'GOLD': 'XAUUSD',
-      'XAU/USD': 'XAUUSD',
-      'XAUUSD': 'XAUUSD',
-      'BTC/USD': 'BTCUSD',
-      'BTCUSD': 'BTCUSD',
-      'NAS100': 'NAS100USD',
-      'NASDAQ': 'NAS100USD',
-      'NAS100USD': 'NAS100USD',
-      'USA30': 'USA30USD',
-      'US30': 'USA30USD',
-      'USA30USD': 'USA30USD',
-      'EUR/USD': 'EURUSD',
-      'EURUSD': 'EURUSD'
-    };
-    return symbolMap[s] || s;
-  };
-  const apiSymbol = mapSymbolForAPI(symbol);
+  // Use standardized symbol mapping
+  const apiSymbol = getStandardSymbol(symbol) || symbol;
   
   const {
     price,
@@ -250,6 +232,41 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return change >= 0 ? TrendingUp : TrendingDown;
   }, [change]);
 
+  // Market status detection for all supported assets
+  const marketStatus = useMemo(() => {
+    const sym = apiSymbol.toUpperCase();
+    const now = new Date();
+    const utcDay = now.getUTCDay(); // 0=Sun, 6=Sat
+    const utcHour = now.getUTCHours();
+    const utcMinute = now.getUTCMinutes();
+
+    // Crypto trades 24/7
+    if (sym.includes('BTC') || sym.includes('ETH')) {
+      return { isClosed: false, label: null as string | null };
+    }
+
+    // Weekend closure for FX/indices
+    if (utcDay === 6 || utcDay === 0) {
+      return { isClosed: true, label: 'Weekend' };
+    }
+
+    // Friday post-close and Sunday pre-open (approx 21:00 UTC)
+    if ((utcDay === 5 && utcHour >= 21) || (utcDay === 0 && utcHour < 21)) {
+      return { isClosed: true, label: 'Outside trading hours' };
+    }
+
+    // Indices cash session window (approx 13:30–20:00 UTC)
+    if (sym.includes('USA30') || sym.includes('NAS100') || sym.includes('SPX')) {
+      const afterOpen = (utcHour > 13) || (utcHour === 13 && utcMinute >= 30);
+      const beforeClose = utcHour < 20;
+      if (!(afterOpen && beforeClose)) {
+        return { isClosed: true, label: 'Outside session' };
+      }
+    }
+
+    return { isClosed: false, label: null as string | null };
+  }, [apiSymbol]);
+
   if (!symbol) return null;
 
   return (
@@ -327,13 +344,22 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Price Display */}
+      {/* Market Status */}
+      {marketStatus.isClosed && (
+        <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          <div className="text-amber-400 text-sm font-medium">Market Closed</div>
+          <div className="text-xs text-gray-400">
+            Showing last price as of {lastUpdated ? formatTime(lastUpdated) : '—'}
+            {marketStatus.label ? <span className="ml-1">• {marketStatus.label}</span> : null}
+          </div>
+        </div>
+      )}
+
+      {/* Price Display - Always show last known price */}
       {(price > 0 || !isLoading) && (
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            {error ? (
-              <div className="text-gray-500 font-mono text-xl">---.--</div>
-            ) : (
+            {price > 0 ? (
               <div className={`font-mono text-xl font-bold transition-all duration-300 ${
                 isLoading || isRefreshing ? 'animate-pulse' : ''
               } ${
@@ -343,6 +369,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
               }`}>
                 ${formatPrice(price)}
               </div>
+            ) : (
+              <div className="text-gray-500 font-mono text-xl">---.--</div>
             )}
             
             {/* Updating indicator hidden for smooth UI */}

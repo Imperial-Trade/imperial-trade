@@ -97,21 +97,11 @@ export function useOptimizedLivePrice(
       return;
     }
 
-    // For subsequent updates, use smarter significance threshold
-    const changePercent = Math.abs((currentPrice.price - lastProcessedPriceRef.current) / lastProcessedPriceRef.current) * 100;
-    
-    // Business Plan: Ultra-sensitive significance thresholds for live tickers
-    const getSignificanceThreshold = (sym: string): number => {
-      const upper = sym.toUpperCase();
-      if (upper.includes('XAU') || upper.includes('GOLD')) return 0.003; // 0.003% for gold - enhanced sensitivity
-      if (upper.includes('BTC') || upper.includes('ETH')) return 0.008;   // 0.008% for crypto - enhanced sensitivity  
-      if (upper.includes('USA30') || upper.includes('NAS100')) return 0.002; // 0.002% for indices - enhanced sensitivity
-      return 0.003; // 0.003% for forex - enhanced sensitivity for live tickers
-    };
-    
-    if (changePercent < getSignificanceThreshold(symbol)) {
-      return;
-    }
+    // For subsequent updates, commit every change (no significance filter) for true real-time
+    const changePercent = lastProcessedPriceRef.current > 0 
+      ? Math.abs((currentPrice.price - lastProcessedPriceRef.current) / lastProcessedPriceRef.current) * 100
+      : 100;
+    // Note: significance threshold removed to ensure every tick is reflected in UI
 
     // Clear existing timeout to prevent stacking updates
     if (debounceTimeoutRef.current) {

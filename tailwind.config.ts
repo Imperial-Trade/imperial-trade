@@ -164,11 +164,41 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'flash-green': {
+					'0%': {
+						backgroundColor: 'hsl(var(--accent-green) / 0)',
+						color: 'hsl(var(--accent-green))'
+					},
+					'50%': {
+						backgroundColor: 'hsl(var(--accent-green) / 0.1)',
+						color: 'hsl(var(--accent-green))'
+					},
+					'100%': {
+						backgroundColor: 'hsl(var(--accent-green) / 0)',
+						color: 'hsl(var(--accent-green))'
+					}
+				},
+				'flash-red': {
+					'0%': {
+						backgroundColor: 'hsl(var(--destructive) / 0)',
+						color: 'hsl(var(--destructive))'
+					},
+					'50%': {
+						backgroundColor: 'hsl(var(--destructive) / 0.1)', 
+						color: 'hsl(var(--destructive))'
+					},
+					'100%': {
+						backgroundColor: 'hsl(var(--destructive) / 0)',
+						color: 'hsl(var(--destructive))'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'flash-green': 'flash-green 0.5s ease-out',
+				'flash-red': 'flash-red 0.5s ease-out'
 			}
 		}
 	},

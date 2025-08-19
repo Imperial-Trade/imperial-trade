@@ -26,7 +26,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 250 // Increased to 250ms to reduce noise
+    debounceMs = 500 // Increased to 500ms for stability and reduced blinking
   } = options;
 
   const {
@@ -97,9 +97,19 @@ export function useOptimizedLivePrice(
       return;
     }
 
-    // For subsequent updates, use reduced significance threshold
+    // For subsequent updates, use smarter significance threshold
     const changePercent = Math.abs((currentPrice.price - lastProcessedPriceRef.current) / lastProcessedPriceRef.current) * 100;
-    if (changePercent < 0.001) { // Much more sensitive: 0.001% instead of 0.02%
+    
+    // Symbol-specific significance thresholds to reduce noise
+    const getSignificanceThreshold = (sym: string): number => {
+      const upper = sym.toUpperCase();
+      if (upper.includes('XAU') || upper.includes('GOLD')) return 0.015; // 0.015% for gold
+      if (upper.includes('BTC') || upper.includes('ETH')) return 0.05;   // 0.05% for crypto
+      if (upper.includes('USA30') || upper.includes('NAS100')) return 0.01; // 0.01% for indices
+      return 0.02; // 0.02% for forex
+    };
+    
+    if (changePercent < getSignificanceThreshold(symbol)) {
       return;
     }
 
@@ -125,7 +135,7 @@ export function useOptimizedLivePrice(
       if (process.env.NODE_ENV === 'development') {
         console.log(`💰 [${symbol}] Price updated:`, latestPrice.price);
       }
-    }, Math.min(debounceMs, 100)); // Cap at 100ms for responsiveness
+    }, Math.min(debounceMs, 300)); // Cap at 300ms for stability
 
     return () => {
       if (debounceTimeoutRef.current) {

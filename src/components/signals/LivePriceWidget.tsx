@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, AlertCircle, Wifi, Loader2, Zap, Hourglass, RefreshCw, Clock, WifiOff, AlertTriangle } from 'lucide-react';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
+import { usePriceAnimations } from '@/hooks/usePriceAnimations';
 const calculatePips = (entry, current, symbol) => {
   const difference = current - entry;
   if (!symbol) return {
@@ -62,16 +63,20 @@ const LivePriceWidgetComponent = ({
     refreshPrice
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
-    debounceMs: 200, // Increased from 50ms to 200ms for stability
+    debounceMs: 500, // Increased from 200ms to 500ms for stability and reduced blinking
     pauseOnInput: false
   });
+
+  const { 
+    triggerPriceAnimation, 
+    getPriceAnimationClass 
+  } = usePriceAnimations();
 
   const [priceChange, setPriceChange] = useState(null);
   const [lastProcessedPrice, setLastProcessedPrice] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataAge, setDataAge] = useState('');
   const [prevPrice, setPrevPrice] = useState(0);
-  const [priceAnimation, setPriceAnimation] = useState(null);
   const isProcessingRef = useRef(false);
   const lastUpdateRef = useRef(0);
 
@@ -104,17 +109,21 @@ const LivePriceWidgetComponent = ({
     return () => clearInterval(interval);
   }, [lastUpdated]);
 
-  // Price change animation effect
+  // Smart price animation effect with reduced noise
   useEffect(() => {
     if (currentPrice > 0 && prevPrice > 0 && currentPrice !== prevPrice) {
-      setPriceAnimation(currentPrice > prevPrice ? 'up' : 'down');
-      const timer = setTimeout(() => setPriceAnimation(null), 1000);
-      return () => clearTimeout(timer);
+      // Use smart animation that respects thresholds and cooldowns
+      triggerPriceAnimation({
+        symbol: alert.tradermade_symbol,
+        currentPrice,
+        previousPrice: prevPrice,
+        enableAnimations: true
+      });
     }
     if (currentPrice > 0) {
       setPrevPrice(currentPrice);
     }
-  }, [currentPrice, prevPrice]);
+  }, [currentPrice, prevPrice, alert.tradermade_symbol, triggerPriceAnimation]);
   const processLevelHit = useCallback(async (hitType, data) => {
     // Authorization check removed - let the backend handle it
     // Frontend should trigger level hits for proper price tracking
@@ -500,10 +509,8 @@ const LivePriceWidgetComponent = ({
 
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-              priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
-              priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
-              'text-accent-green'
+            <div className={`font-mono text-xl font-bold transition-all duration-200 px-2 py-1 rounded ${
+              getPriceAnimationClass(alert.tradermade_symbol)
             }`}>
               ${currentPrice > 0 ? formatPrice(currentPrice) : '---.--'}
             </div>
@@ -617,10 +624,8 @@ const LivePriceWidgetComponent = ({
             {error ? (
               <div className="text-gray-500 font-mono text-xl">---.--</div>
             ) : (
-              <div className={`font-mono text-xl font-bold transition-all duration-300 ${
-                priceAnimation === 'up' ? 'text-green-400 animate-pulse bg-green-400/10 px-2 py-1 rounded' :
-                priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
-                'text-accent-green'
+              <div className={`font-mono text-xl font-bold transition-all duration-200 px-2 py-1 rounded ${
+                getPriceAnimationClass(alert.tradermade_symbol)
               }`}>
                 ${formatPrice(currentPrice)}
               </div>

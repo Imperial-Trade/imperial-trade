@@ -11,6 +11,12 @@ interface AnimationConfig {
   animationDuration: number; // Duration in ms
   cooldownPeriod: number; // Minimum time between animations
   maxAnimationsPerSecond: number; // Rate limiting
+  significanceThresholds: {
+    forex: number; // 0.05% for forex pairs
+    crypto: number; // 0.1% for crypto
+    gold: number; // $0.50 for gold
+    indices: number; // 0.02% for indices
+  };
 }
 
 /**
@@ -19,9 +25,15 @@ interface AnimationConfig {
  */
 export function useVisualStateManager(config: AnimationConfig = {
   minChangePercent: 0.02,
-  animationDuration: 300,
-  cooldownPeriod: 1000,
-  maxAnimationsPerSecond: 2
+  animationDuration: 500, // Reduced from 300ms to 500ms for subtle flash
+  cooldownPeriod: 2000, // Increased to 2 seconds to reduce noise
+  maxAnimationsPerSecond: 1, // Reduced to 1 per second max
+  significanceThresholds: {
+    forex: 0.05,
+    crypto: 0.1, 
+    gold: 0.015, // 0.015% for $0.50 at $3300
+    indices: 0.02
+  }
 }) {
   const [visualStates, setVisualStates] = useState<Record<string, VisualState>>({});
   const animationTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
@@ -75,17 +87,33 @@ export function useVisualStateManager(config: AnimationConfig = {
     });
   }, [config.animationDuration, config.maxAnimationsPerSecond]);
 
+  const getSignificanceThreshold = useCallback((symbol: string): number => {
+    const upperSymbol = symbol.toUpperCase();
+    if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) {
+      return config.significanceThresholds.gold;
+    }
+    if (upperSymbol.includes('BTC') || upperSymbol.includes('ETH')) {
+      return config.significanceThresholds.crypto;
+    }
+    if (upperSymbol.includes('USA30') || upperSymbol.includes('NAS100') || upperSymbol.includes('SPX500')) {
+      return config.significanceThresholds.indices;
+    }
+    return config.significanceThresholds.forex;
+  }, [config.significanceThresholds]);
+
   const triggerPriceAnimation = useCallback((
     id: string, 
     oldPrice: number, 
-    newPrice: number
+    newPrice: number,
+    symbol?: string
   ) => {
     if (oldPrice <= 0 || newPrice <= 0) return;
     
     const changePercent = Math.abs((newPrice - oldPrice) / oldPrice) * 100;
     
-    // Check if change is significant enough
-    if (changePercent < config.minChangePercent) return;
+    // Use symbol-specific significance threshold
+    const threshold = symbol ? getSignificanceThreshold(symbol) : config.minChangePercent;
+    if (changePercent < threshold) return;
     
     const currentState = visualStates[id];
     const now = Date.now();
@@ -101,7 +129,7 @@ export function useVisualStateManager(config: AnimationConfig = {
     // Add to queue for processing
     frameQueue.current.push({ id, animation });
     processAnimationQueue();
-  }, [visualStates, config.minChangePercent, config.cooldownPeriod, processAnimationQueue]);
+  }, [visualStates, config.minChangePercent, config.cooldownPeriod, processAnimationQueue, getSignificanceThreshold]);
 
   const getVisualState = useCallback((id: string): VisualState => {
     return visualStates[id] || {

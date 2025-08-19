@@ -1,9 +1,6 @@
-import React from 'npm:react@18.3.1'
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
-
-import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0'
-import PasswordResetEmail from './_templates/password-reset.tsx'
+import { getPasswordResetEmailTemplate } from './_templates/password-reset-html.ts'
 
 const ONESIGNAL_API_KEY = (Deno.env.get('ONESIGNAL_API_KEY') || '').trim()
 const ONESIGNAL_APP_ID = (Deno.env.get('ONESIGNAL_APP_ID') || '').trim()
@@ -104,19 +101,17 @@ serve(async (req) => {
     console.log(`[${requestId}] Webhook verified successfully for user: ${user.email}`)
     console.log(`[${requestId}] Email action type: ${email_action_type}`)
 
-    const html = await renderAsync(
-      React.createElement(PasswordResetEmail, {
-        supabase_url: SUPABASE_URL,
-        token,
-        token_hash,
-        redirect_to: redirect_to || 'https://www.tradeimperial.com/reset-password',
-        email_action_type,
-        brand_name: 'Imperial Trading',
-        support_email: 'support@tradeimperial.com',
-      })
-    )
+    // Generate the reset URL for the email template
+    const resetUrl = `${SUPABASE_URL}/auth/v1/verify?token=${token_hash}&type=recovery&redirect_to=${encodeURIComponent(
+      redirect_to || 'https://www.tradeimperial.com/reset-password'
+    )}`
 
-    console.log(`[${requestId}] Email template rendered successfully`)
+    console.log(`[${requestId}] Generated reset URL: ${resetUrl}`)
+
+    // Get the HTML template with the dynamic reset URL
+    const html = getPasswordResetEmailTemplate(resetUrl)
+
+    console.log(`[${requestId}] Professional HTML email template generated successfully`)
 
     // CRITICAL FIX: Use "Basic" instead of "Key" for OneSignal authorization
     const authHeader = `Basic ${ONESIGNAL_API_KEY}`
@@ -147,9 +142,12 @@ serve(async (req) => {
     console.log(`[${requestId}] OneSignal payload:`, { 
       app_id: ONESIGNAL_APP_ID, 
       target_channel: 'email',
-      email_to: payload.email_to,
+      include_email_tokens: payload.include_email_tokens,
       email_subject: payload.email_subject,
-      email_from_name: payload.email_from_name
+      email_from_name: payload.email_from_name,
+      email_from_address: payload.email_from_address,
+      is_transactional: payload.is_transactional,
+      include_unsubscribed: payload.include_unsubscribed
     })
 
     const osResp = await fetch('https://api.onesignal.com/notifications?c=email', {

@@ -6,6 +6,7 @@ import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronU
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
+import StopLossProximityIndicator from './StopLossProximityIndicator';
 import TradeStatusBadge from './TradeStatusBadge';
 import TradingCalculator from './TradingCalculator';
 import SignalSharingModal from './SignalSharingModal';
@@ -14,7 +15,7 @@ import { TradeSignal } from '@/services/SignalSharingService';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+
 
 interface PriceRowProps {
   label: string;
@@ -73,7 +74,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const isPending = alert.status === 'pending';
   const canCloseSignal = isCreator;
   const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
-  const { getPrice } = useWebSocketPrices();
+  
 
   // Convert alert to TradeSignal format for sharing
   const tradeSignal: TradeSignal = {
@@ -357,32 +358,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         )}
       </div>
       {/* Stop Loss Proximity Warning */}
-      {alert.status === 'active' && (() => {
-        const wsPrice = getPrice?.(alert.tradermade_symbol)?.price;
-        const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
-        const entryPrice = alert.entry_price;
-        const stopLoss = alert.stop_loss;
-        if (!entryPrice || !stopLoss || !currentPrice) return null;
-        const totalDistance = Math.abs(entryPrice - stopLoss);
-        if (totalDistance === 0) return null;
-        const currentDistance = Math.abs(currentPrice - stopLoss);
-        const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
-        if (proximityPercentage >= 50) {
-          return (
-            <div className="px-4 pb-4">
-              <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-3 flex items-start gap-2">
-                <span className="text-accent-gold mt-0.5 leading-none">🟡</span>
-                <div className="text-xs text-accent-gold">
-                  <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>
-                  <br />
-                  <span className="text-accent-gold/80">This trade is more than halfway to its invalidation point.</span>
-                </div>
-              </div>
-            </div>
-          );
-        }
-        return null;
-      })()}
+      {alert.status === 'active' && (
+        <StopLossProximityIndicator alert={alert} />
+      )}
       
       {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && (
         <div className="bg-muted/50 px-4 py-2 flex justify-end">

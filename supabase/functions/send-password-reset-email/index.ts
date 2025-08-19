@@ -75,20 +75,42 @@ serve(async (req) => {
     const headers = Object.fromEntries(req.headers)
     
     console.log(`[${requestId}] Processing webhook payload, size: ${payloadText.length} bytes`)
+    console.log(`[${requestId}] Headers:`, JSON.stringify(headers, null, 2))
 
-    const wh = new Webhook(hookSecret)
+    // Enhanced webhook verification with better error handling
+    let webhookData;
+    try {
+      const wh = new Webhook(hookSecret)
+      webhookData = wh.verify(payloadText, headers) as {
+        user: { email: string; user_metadata?: Record<string, any> }
+        email_data: {
+          token: string
+          token_hash: string
+          redirect_to: string
+          email_action_type: string
+        }
+      }
+      console.log(`[${requestId}] Webhook verified successfully`)
+    } catch (webhookError: any) {
+      console.error(`[${requestId}] Webhook verification failed:`, {
+        error: webhookError.message,
+        hookSecretPresent: !!hookSecret,
+        hookSecretLength: hookSecret?.length,
+        payloadSize: payloadText.length
+      })
+      return new Response(JSON.stringify({ 
+        error: 'Webhook verification failed',
+        details: webhookError.message
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
+    }
+
     const {
       user,
       email_data: { token, token_hash, redirect_to, email_action_type },
-    } = wh.verify(payloadText, headers) as {
-      user: { email: string; user_metadata?: Record<string, any> }
-      email_data: {
-        token: string
-        token_hash: string
-        redirect_to: string
-        email_action_type: string
-      }
-    }
+    } = webhookData
 
     // Only handle password recovery emails here
     if (email_action_type !== 'recovery') {
@@ -167,9 +189,21 @@ serve(async (req) => {
         status: osResp.status,
         statusText: osResp.statusText,
         response: errText,
-        headers: Object.fromEntries(osResp.headers.entries())
+        headers: Object.fromEntries(osResp.headers.entries()),
+        requestPayload: payload
       })
-      throw new Error(`OneSignal email send failed: ${osResp.status} ${osResp.statusText} - ${errText}`)
+      
+      // Return appropriate status code for OneSignal errors
+      const oneSignalStatusCode = osResp.status >= 400 && osResp.status < 500 ? 422 : 500
+      return new Response(JSON.stringify({ 
+        error: 'OneSignal API error',
+        details: `${osResp.status} ${osResp.statusText}`,
+        oneSignalResponse: errText,
+        requestId
+      }), {
+        status: oneSignalStatusCode,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     const responseData = await osResp.json()

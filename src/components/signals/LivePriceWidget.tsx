@@ -509,11 +509,13 @@ const LivePriceWidgetComponent = ({
 
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className={`font-mono text-xl font-bold transition-all duration-200 px-2 py-1 rounded ${
-              getPriceAnimationClass(alert.tradermade_symbol)
-            }`}>
-              ${currentPrice > 0 ? formatPrice(currentPrice) : '---.--'}
-            </div>
+              <div className="font-mono text-xl font-bold px-2 py-1 rounded">
+                <span className={`transition-colors duration-200 ${
+                  getPriceAnimationClass(alert.tradermade_symbol)
+                }`}>
+                  ${currentPrice > 0 ? formatPrice(currentPrice) : '---.--'}
+                </span>
+              </div>
             
           </div>
           
@@ -624,10 +626,12 @@ const LivePriceWidgetComponent = ({
             {error ? (
               <div className="text-gray-500 font-mono text-xl">---.--</div>
             ) : (
-              <div className={`font-mono text-xl font-bold transition-all duration-200 px-2 py-1 rounded ${
-                getPriceAnimationClass(alert.tradermade_symbol)
-              }`}>
-                ${formatPrice(currentPrice)}
+              <div className="font-mono text-xl font-bold px-2 py-1 rounded">
+                <span className={`transition-colors duration-200 ${
+                  getPriceAnimationClass(alert.tradermade_symbol)
+                }`}>
+                  ${formatPrice(currentPrice)}
+                </span>
               </div>
             )}
           </div>

@@ -198,6 +198,33 @@ export default function SignalStream() {
   }, [symbols, subscribe, unsubscribe]);
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);
+  const [justAddedIds, setJustAddedIds] = useState(new Set<string>());
+  const prevAlertIdsRef = useRef(new Set<string>());
+
+  // Track newly added alerts to highlight them briefly
+  useEffect(() => {
+    const currentIds = new Set(alerts.map(alert => alert.id));
+    const previousIds = prevAlertIdsRef.current;
+    
+    // Find newly added alerts
+    const newlyAdded = new Set<string>();
+    for (const id of currentIds) {
+      if (!previousIds.has(id)) {
+        newlyAdded.add(id);
+      }
+    }
+    
+    if (newlyAdded.size > 0) {
+      setJustAddedIds(newlyAdded);
+      // Clear the highlight after 3 seconds
+      const timeout = setTimeout(() => {
+        setJustAddedIds(new Set());
+      }, 3000);
+      return () => clearTimeout(timeout);
+    }
+    
+    prevAlertIdsRef.current = currentIds;
+  }, [alerts]);
 
   useEffect(() => {
     if (connectionStatus === 'connecting' && nextRetryAt) {
@@ -530,6 +557,7 @@ export default function SignalStream() {
                             priceSource={priceSource} 
                             isRecentClosure={false} 
                             creator={alert.creator} 
+                            justAdded={justAddedIds.has(alert.id)}
                           />
                         ))}
                       </div>

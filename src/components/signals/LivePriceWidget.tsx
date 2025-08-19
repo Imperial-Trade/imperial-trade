@@ -458,6 +458,41 @@ const LivePriceWidgetComponent = ({
     return change >= 0 ? TrendingUp : TrendingDown;
   }, [change]);
 
+  // Detect market closed status to show last known price with notice
+  const marketStatus = useMemo(() => {
+    const sym = (alert.tradermade_symbol || '').toUpperCase();
+    const now = new Date();
+    const utcDay = now.getUTCDay(); // 0=Sun, 6=Sat
+    const utcHour = now.getUTCHours();
+    const utcMinute = now.getUTCMinutes();
+
+    // Crypto trades 24/7
+    if (sym.includes('BTC') || sym.includes('ETH')) {
+      return { isClosed: false, label: null as string | null };
+    }
+
+    // Weekend closure for FX/indices
+    if (utcDay === 6 || utcDay === 0) {
+      return { isClosed: true, label: 'Weekend' };
+    }
+
+    // Friday post-close and Sunday pre-open (approx 21:00 UTC)
+    if ((utcDay === 5 && utcHour >= 21) || (utcDay === 0 && utcHour < 21)) {
+      return { isClosed: true, label: 'Outside trading hours' };
+    }
+
+    // Indices cash session window (approx 13:30–20:00 UTC)
+    if (sym.includes('USA30') || sym.includes('NAS100') || sym.includes('SPX')) {
+      const afterOpen = (utcHour > 13) || (utcHour === 13 && utcMinute >= 30);
+      const beforeClose = utcHour < 20;
+      if (!(afterOpen && beforeClose)) {
+        return { isClosed: true, label: 'Outside session' };
+      }
+    }
+
+    return { isClosed: false, label: null as string | null };
+  }, [alert.tradermade_symbol]);
+
   const profitLossDisplay = useMemo(() => {
     if (!priceChange) return null;
     const isBuy = alert.trade_type.includes('buy');
@@ -636,9 +671,7 @@ const LivePriceWidgetComponent = ({
       {(currentPrice > 0 || !isLoading) && (
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            {error ? (
-              <div className="text-gray-500 font-mono text-xl">---.--</div>
-            ) : (
+            {currentPrice > 0 ? (
               <div className="font-mono text-xl font-bold px-2 py-1 rounded">
                 <span className={`transition-colors duration-200 ${
                   getPriceAnimationClass(alert.tradermade_symbol)
@@ -646,6 +679,8 @@ const LivePriceWidgetComponent = ({
                   ${formatPrice(currentPrice)}
                 </span>
               </div>
+            ) : (
+              <div className="text-gray-500 font-mono text-xl">---.--</div>
             )}
           </div>
           
@@ -662,6 +697,17 @@ const LivePriceWidgetComponent = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Market Status */}
+      {marketStatus.isClosed && (
+        <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          <div className="text-amber-400 text-sm font-medium">Market Closed</div>
+          <div className="text-xs text-gray-400">
+            Showing last price as of {lastUpdated ? formatTime(lastUpdated) : '—'}
+            {marketStatus.label ? <span className="ml-1">• {marketStatus.label}</span> : null}
+          </div>
         </div>
       )}
 

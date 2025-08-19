@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -67,6 +67,9 @@ export type Database = {
           full_name: string
           id: string
           last_resubmitted_at: string | null
+          legal_accepted: boolean
+          legal_accepted_at: string | null
+          legal_version: string | null
           original_rejection_reason: string | null
           phone_number: string | null
           reason: string | null
@@ -89,6 +92,9 @@ export type Database = {
           full_name: string
           id?: string
           last_resubmitted_at?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           original_rejection_reason?: string | null
           phone_number?: string | null
           reason?: string | null
@@ -113,6 +119,9 @@ export type Database = {
           full_name?: string
           id?: string
           last_resubmitted_at?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           original_rejection_reason?: string | null
           phone_number?: string | null
           reason?: string | null
@@ -128,6 +137,51 @@ export type Database = {
           username?: string | null
           vt_market_account_number?: string | null
           website?: string | null
+        }
+        Relationships: []
+      }
+      admin_notification_events: {
+        Row: {
+          channels: string[]
+          created_at: string
+          delivery_status: string
+          error: string | null
+          event_type: string
+          id: string
+          message: string
+          metadata: Json
+          recipients: Json
+          sent_at: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          channels?: string[]
+          created_at?: string
+          delivery_status?: string
+          error?: string | null
+          event_type: string
+          id?: string
+          message: string
+          metadata?: Json
+          recipients: Json
+          sent_at?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channels?: string[]
+          created_at?: string
+          delivery_status?: string
+          error?: string | null
+          event_type?: string
+          id?: string
+          message?: string
+          metadata?: Json
+          recipients?: Json
+          sent_at?: string
+          subject?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -611,6 +665,63 @@ export type Database = {
         }
         Relationships: []
       }
+      device_subscriptions: {
+        Row: {
+          browser_name: string | null
+          browser_version: string | null
+          created_at: string | null
+          device_capabilities: Json | null
+          device_fingerprint: string
+          device_info: Json | null
+          id: string
+          is_active: boolean | null
+          is_mobile: boolean | null
+          last_seen_at: string | null
+          notification_performance: Json | null
+          onesignal_player_id: string | null
+          platform: string | null
+          updated_at: string | null
+          user_id: string
+          welcome_sent: boolean | null
+        }
+        Insert: {
+          browser_name?: string | null
+          browser_version?: string | null
+          created_at?: string | null
+          device_capabilities?: Json | null
+          device_fingerprint: string
+          device_info?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_mobile?: boolean | null
+          last_seen_at?: string | null
+          notification_performance?: Json | null
+          onesignal_player_id?: string | null
+          platform?: string | null
+          updated_at?: string | null
+          user_id: string
+          welcome_sent?: boolean | null
+        }
+        Update: {
+          browser_name?: string | null
+          browser_version?: string | null
+          created_at?: string | null
+          device_capabilities?: Json | null
+          device_fingerprint?: string
+          device_info?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_mobile?: boolean | null
+          last_seen_at?: string | null
+          notification_performance?: Json | null
+          onesignal_player_id?: string | null
+          platform?: string | null
+          updated_at?: string | null
+          user_id?: string
+          welcome_sent?: boolean | null
+        }
+        Relationships: []
+      }
       economic_events: {
         Row: {
           actual_value: string | null
@@ -965,6 +1076,42 @@ export type Database = {
         }
         Relationships: []
       }
+      market_prices: {
+        Row: {
+          ask: number
+          bid: number
+          created_at: string
+          id: string
+          mid: number
+          source: string
+          symbol: string
+          timestamp: string
+          updated_at: string
+        }
+        Insert: {
+          ask: number
+          bid: number
+          created_at?: string
+          id?: string
+          mid: number
+          source?: string
+          symbol: string
+          timestamp: string
+          updated_at?: string
+        }
+        Update: {
+          ask?: number
+          bid?: number
+          created_at?: string
+          id?: string
+          mid?: number
+          source?: string
+          symbol?: string
+          timestamp?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       module_videos: {
         Row: {
           created_at: string
@@ -1009,6 +1156,206 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_analytics: {
+        Row: {
+          avg_delivery_time_seconds: number | null
+          created_at: string
+          date: string
+          error_breakdown: Json | null
+          id: string
+          platform_breakdown: Json | null
+          total_delivered: number
+          total_failed: number
+          total_opened: number
+          total_sent: number
+          updated_at: string
+        }
+        Insert: {
+          avg_delivery_time_seconds?: number | null
+          created_at?: string
+          date: string
+          error_breakdown?: Json | null
+          id?: string
+          platform_breakdown?: Json | null
+          total_delivered?: number
+          total_failed?: number
+          total_opened?: number
+          total_sent?: number
+          updated_at?: string
+        }
+        Update: {
+          avg_delivery_time_seconds?: number | null
+          created_at?: string
+          date?: string
+          error_breakdown?: Json | null
+          id?: string
+          platform_breakdown?: Json | null
+          total_delivered?: number
+          total_failed?: number
+          total_opened?: number
+          total_sent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_batch_queue: {
+        Row: {
+          asset_symbol: string | null
+          batch_key: string | null
+          created_at: string
+          delivery_status: Json | null
+          device_preferences: Json | null
+          id: string
+          market_session: string | null
+          max_retries: number | null
+          next_retry_at: string | null
+          notification_category: string | null
+          notification_types: string[]
+          priority_level: number | null
+          processed_at: string | null
+          retry_count: number | null
+          scheduled_at: string
+          signal_id: string
+          user_id: string
+        }
+        Insert: {
+          asset_symbol?: string | null
+          batch_key?: string | null
+          created_at?: string
+          delivery_status?: Json | null
+          device_preferences?: Json | null
+          id?: string
+          market_session?: string | null
+          max_retries?: number | null
+          next_retry_at?: string | null
+          notification_category?: string | null
+          notification_types?: string[]
+          priority_level?: number | null
+          processed_at?: string | null
+          retry_count?: number | null
+          scheduled_at?: string
+          signal_id: string
+          user_id: string
+        }
+        Update: {
+          asset_symbol?: string | null
+          batch_key?: string | null
+          created_at?: string
+          delivery_status?: Json | null
+          device_preferences?: Json | null
+          id?: string
+          market_session?: string | null
+          max_retries?: number | null
+          next_retry_at?: string | null
+          notification_category?: string | null
+          notification_types?: string[]
+          priority_level?: number | null
+          processed_at?: string | null
+          retry_count?: number | null
+          scheduled_at?: string
+          signal_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_delivery_attempts: {
+        Row: {
+          attempt_at: string
+          attempt_number: number
+          created_at: string
+          delivered_at: string | null
+          delivery_channel: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          notification_id: string | null
+          response_data: Json | null
+          retry_after: string | null
+          status: string
+        }
+        Insert: {
+          attempt_at?: string
+          attempt_number?: number
+          created_at?: string
+          delivered_at?: string | null
+          delivery_channel: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          notification_id?: string | null
+          response_data?: Json | null
+          retry_after?: string | null
+          status?: string
+        }
+        Update: {
+          attempt_at?: string
+          attempt_number?: number
+          created_at?: string
+          delivered_at?: string | null
+          delivery_channel?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          notification_id?: string | null
+          response_data?: Json | null
+          retry_after?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_delivery_attempts_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification_delivery_log"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_delivery_log: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          delivery_channel: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          notification_type: string
+          opened_at: string | null
+          sent_at: string
+          signal_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          delivery_channel: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type: string
+          opened_at?: string | null
+          sent_at?: string
+          signal_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          delivery_channel?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type?: string
+          opened_at?: string | null
+          sent_at?: string
+          signal_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       notification_settings: {
         Row: {
@@ -1200,11 +1547,20 @@ export type Database = {
           cover_position_x: string | null
           cover_position_y: string | null
           created_at: string | null
+          device_fingerprint: string | null
           display_name: string | null
           engagement_score: number | null
           id: string
+          in_app_notifications_enabled: boolean | null
+          last_device_info: Json | null
           last_login: string | null
+          legal_accepted: boolean
+          legal_accepted_at: string | null
+          legal_version: string | null
           location: string | null
+          notification_prompt_dismissed_at: string | null
+          notification_stats: Json | null
+          onesignal_last_sync_at: string | null
           phone_number: string | null
           profile_type: string | null
           real_name: string | null
@@ -1217,6 +1573,8 @@ export type Database = {
           updated_at: string | null
           user_type: Database["public"]["Enums"]["user_type_enum"] | null
           work_info: string | null
+          xeon_stream_activated_at: string | null
+          xeon_stream_subscription: boolean | null
         }
         Insert: {
           access_level?: Database["public"]["Enums"]["access_level_enum"] | null
@@ -1234,11 +1592,20 @@ export type Database = {
           cover_position_x?: string | null
           cover_position_y?: string | null
           created_at?: string | null
+          device_fingerprint?: string | null
           display_name?: string | null
           engagement_score?: number | null
           id: string
+          in_app_notifications_enabled?: boolean | null
+          last_device_info?: Json | null
           last_login?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           location?: string | null
+          notification_prompt_dismissed_at?: string | null
+          notification_stats?: Json | null
+          onesignal_last_sync_at?: string | null
           phone_number?: string | null
           profile_type?: string | null
           real_name?: string | null
@@ -1251,6 +1618,8 @@ export type Database = {
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type_enum"] | null
           work_info?: string | null
+          xeon_stream_activated_at?: string | null
+          xeon_stream_subscription?: boolean | null
         }
         Update: {
           access_level?: Database["public"]["Enums"]["access_level_enum"] | null
@@ -1268,11 +1637,20 @@ export type Database = {
           cover_position_x?: string | null
           cover_position_y?: string | null
           created_at?: string | null
+          device_fingerprint?: string | null
           display_name?: string | null
           engagement_score?: number | null
           id?: string
+          in_app_notifications_enabled?: boolean | null
+          last_device_info?: Json | null
           last_login?: string | null
+          legal_accepted?: boolean
+          legal_accepted_at?: string | null
+          legal_version?: string | null
           location?: string | null
+          notification_prompt_dismissed_at?: string | null
+          notification_stats?: Json | null
+          onesignal_last_sync_at?: string | null
           phone_number?: string | null
           profile_type?: string | null
           real_name?: string | null
@@ -1285,6 +1663,8 @@ export type Database = {
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type_enum"] | null
           work_info?: string | null
+          xeon_stream_activated_at?: string | null
+          xeon_stream_subscription?: boolean | null
         }
         Relationships: []
       }
@@ -1316,6 +1696,132 @@ export type Database = {
           log_date?: string
           mood?: Database["public"]["Enums"]["mood_type"]
           notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      public_profiles: {
+        Row: {
+          access_level: Database["public"]["Enums"]["access_level_enum"] | null
+          avatar_url: string | null
+          community_tier: number | null
+          display_name: string | null
+          id: string
+          role: string | null
+          trader_level: string | null
+          user_type: Database["public"]["Enums"]["user_type_enum"] | null
+        }
+        Insert: {
+          access_level?: Database["public"]["Enums"]["access_level_enum"] | null
+          avatar_url?: string | null
+          community_tier?: number | null
+          display_name?: string | null
+          id: string
+          role?: string | null
+          trader_level?: string | null
+          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+        }
+        Update: {
+          access_level?: Database["public"]["Enums"]["access_level_enum"] | null
+          avatar_url?: string | null
+          community_tier?: number | null
+          display_name?: string | null
+          id?: string
+          role?: string | null
+          trader_level?: string | null
+          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
+        }
+        Relationships: []
+      }
+      push_notification_deliveries: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          device_type: string | null
+          error_message: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          notification_id: string
+          onesignal_id: string | null
+          platform: string | null
+          sent_at: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          device_type?: string | null
+          error_message?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          notification_id: string
+          onesignal_id?: string | null
+          platform?: string | null
+          sent_at?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          device_type?: string | null
+          error_message?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          notification_id?: string
+          onesignal_id?: string | null
+          platform?: string | null
+          sent_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          created_at: string
+          device_type: string | null
+          id: string
+          last_verified_at: string | null
+          platform: string | null
+          player_id: string
+          subscription_active: boolean
+          subscription_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_type?: string | null
+          id?: string
+          last_verified_at?: string | null
+          platform?: string | null
+          player_id: string
+          subscription_active?: boolean
+          subscription_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_type?: string | null
+          id?: string
+          last_verified_at?: string | null
+          platform?: string | null
+          player_id?: string
+          subscription_active?: boolean
+          subscription_date?: string
           updated_at?: string
           user_id?: string
         }
@@ -1620,9 +2126,12 @@ export type Database = {
           expires_at: string | null
           expiry_type: string | null
           id: string
+          is_xeon_stream: boolean | null
           notes: string | null
+          provider_name: string | null
           status: Database["public"]["Enums"]["trade_alert_status"]
           stop_loss: number
+          tp_hit_mask: number | null
           tp_hits: number[] | null
           tp1: number | null
           tp2: number | null
@@ -1644,9 +2153,12 @@ export type Database = {
           expires_at?: string | null
           expiry_type?: string | null
           id?: string
+          is_xeon_stream?: boolean | null
           notes?: string | null
+          provider_name?: string | null
           status?: Database["public"]["Enums"]["trade_alert_status"]
           stop_loss: number
+          tp_hit_mask?: number | null
           tp_hits?: number[] | null
           tp1?: number | null
           tp2?: number | null
@@ -1668,9 +2180,12 @@ export type Database = {
           expires_at?: string | null
           expiry_type?: string | null
           id?: string
+          is_xeon_stream?: boolean | null
           notes?: string | null
+          provider_name?: string | null
           status?: Database["public"]["Enums"]["trade_alert_status"]
           stop_loss?: number
+          tp_hit_mask?: number | null
           tp_hits?: number[] | null
           tp1?: number | null
           tp2?: number | null
@@ -2009,6 +2524,108 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_notification_preferences: {
+        Row: {
+          community_activity: boolean
+          created_at: string
+          educational_content: boolean
+          email_enabled: boolean
+          frequency_limit: number | null
+          id: string
+          market_updates: boolean
+          push_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          sms_enabled: boolean
+          system_announcements: boolean
+          timezone: string | null
+          trading_signals: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          community_activity?: boolean
+          created_at?: string
+          educational_content?: boolean
+          email_enabled?: boolean
+          frequency_limit?: number | null
+          id?: string
+          market_updates?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean
+          system_announcements?: boolean
+          timezone?: string | null
+          trading_signals?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          community_activity?: boolean
+          created_at?: string
+          educational_content?: boolean
+          email_enabled?: boolean
+          frequency_limit?: number | null
+          id?: string
+          market_updates?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          sms_enabled?: boolean
+          system_announcements?: boolean
+          timezone?: string | null
+          trading_signals?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          link_url: string | null
+          message: string
+          metadata: Json
+          priority: string
+          source: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link_url?: string | null
+          message: string
+          metadata?: Json
+          priority?: string
+          source?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          link_url?: string | null
+          message?: string
+          metadata?: Json
+          priority?: string
+          source?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_pathway_progress: {
         Row: {
@@ -2417,11 +3034,61 @@ export type Database = {
         }
         Relationships: []
       }
+      xeon_notification_log: {
+        Row: {
+          created_at: string
+          delivery_status: Json | null
+          id: string
+          notification_type: string
+          onesignal_notification_id: string | null
+          sent_at: string
+          target_users: string[]
+          trade_alert_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivery_status?: Json | null
+          id?: string
+          notification_type: string
+          onesignal_notification_id?: string | null
+          sent_at?: string
+          target_users: string[]
+          trade_alert_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivery_status?: Json | null
+          id?: string
+          notification_type?: string
+          onesignal_notification_id?: string | null
+          sent_at?: string
+          target_users?: string[]
+          trade_alert_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xeon_notification_log_trade_alert_id_fkey"
+            columns: ["trade_alert_id"]
+            isOneToOne: false
+            referencedRelation: "trade_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      calculate_trading_metrics: {
+        Args: {
+          p_entry_price: number
+          p_stop_loss: number
+          p_tp1?: number
+          p_trade_type?: string
+        }
+        Returns: Json
+      }
       check_account_request_rate_limit: {
         Args: { p_email: string; p_ip_address?: string }
         Returns: Json
@@ -2434,6 +3101,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      create_smart_notification_batch: {
+        Args: {
+          p_asset_symbol?: string
+          p_market_session?: string
+          p_notification_type: string
+          p_priority_level?: number
+          p_signal_id: string
+        }
+        Returns: string
+      }
       expire_limit_orders: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -2442,29 +3119,82 @@ export type Database = {
         Args: { tier_level: number }
         Returns: Json
       }
+      get_market_session: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_trader_stats: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      get_user_active_devices: {
+        Args: { p_user_id: string }
+        Returns: {
+          device_fingerprint: string
+          device_info: Json
+          last_seen_at: string
+          onesignal_player_id: string
+        }[]
+      }
+      get_xeon_stream_subscribers: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          display_name: string
+          notification_preferences: Json
+          onesignal_player_id: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
       process_price_alerts: {
-        Args: { p_symbol: string; p_current_price: number }
+        Args: { p_current_price: number; p_symbol: string }
         Returns: {
           alert_id: string
-          signal_id: string
           alert_type: string
+          signal_id: string
           target_price: number
           triggered: boolean
         }[]
+      }
+      process_tp_hits: {
+        Args: { p_current_price: number; p_is_buy: boolean; p_trade_id: string }
+        Returns: Json
+      }
+      should_show_onesignal_prompt: {
+        Args: { p_device_fingerprint: string; p_user_id: string }
+        Returns: boolean
+      }
+      should_user_receive_notification: {
+        Args: {
+          p_notification_type: string
+          p_priority_level?: number
+          p_signal_author_id: string
+          p_user_id: string
+        }
+        Returns: boolean
       }
       update_expired_sessions: {
         Args: Record<PropertyKey, never>
         Returns: number
       }
       update_trading_profile_from_analysis: {
-        Args: { p_user_id: string; p_analysis_data: Json }
+        Args: { p_analysis_data: Json; p_user_id: string }
+        Returns: undefined
+      }
+      upsert_market_price: {
+        Args: {
+          p_ask: number
+          p_bid: number
+          p_mid: number
+          p_symbol: string
+          p_timestamp?: string
+        }
         Returns: undefined
       }
     }
@@ -2493,6 +3223,7 @@ export type Database = {
       difficulty_level: "beginner" | "intermediate" | "advanced"
       impact_level: "High" | "Medium" | "Low"
       mood_type: "Confident" | "Anxious" | "Greedy" | "Fearful" | "Neutral"
+      notification_priority: "low" | "medium" | "high"
       post_category:
         | "discussion"
         | "question"
@@ -2675,6 +3406,7 @@ export const Constants = {
       difficulty_level: ["beginner", "intermediate", "advanced"],
       impact_level: ["High", "Medium", "Low"],
       mood_type: ["Confident", "Anxious", "Greedy", "Fearful", "Neutral"],
+      notification_priority: ["low", "medium", "high"],
       post_category: ["discussion", "question", "analysis", "news", "strategy"],
       progress_status: ["completed", "in_progress", "started"],
       registration_source_enum: [

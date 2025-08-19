@@ -22,15 +22,15 @@ interface AlertTrigger {
   triggered: boolean;
 }
 
-// TraderMade Business Plan - Enhanced cache with faster updates
+// Priority cache with 1-second TTL for active alerts, 30-second for regular symbols
 const priorityCache = new Map<string, { data: PriceUpdate, expires: number, isPriority: boolean }>();
-const PRIORITY_CACHE_TTL = 500; // 0.5 seconds for active alerts - ultra-fast
-const REGULAR_CACHE_TTL = 5000; // 5 seconds for regular symbols - much faster
+const PRIORITY_CACHE_TTL = 1000; // 1 second for active alerts
+const REGULAR_CACHE_TTL = 30000; // 30 seconds for regular symbols
 
-// Business Plan - Enhanced monitoring intervals
+// Track active alert symbols for priority monitoring
 let activeAlertSymbols = new Set<string>();
 let lastSymbolRefresh = 0;
-const SYMBOL_REFRESH_INTERVAL = 5000; // Refresh every 5 seconds for better responsiveness
+const SYMBOL_REFRESH_INTERVAL = 10000; // Refresh active symbols every 10 seconds
 
 function getPriorityLevel(symbol: string): 'priority' | 'regular' {
   return activeAlertSymbols.has(symbol) ? 'priority' : 'regular';
@@ -303,7 +303,7 @@ serve(async (req) => {
         setCachedPrice(symbol, priceData, isPriority);
         results.push(priceData);
         
-        console.log(`💾 Cached ${symbol} for ${isPriority ? '0.5 seconds' : '5 seconds'} (${priorityLevel})`);
+        console.log(`💾 Cached ${symbol} for ${isPriority ? '1 second' : '30 seconds'} (${priorityLevel})`);
         
         // Process alerts for priority symbols
         if (isPriority) {
@@ -322,8 +322,8 @@ serve(async (req) => {
         prioritySymbols: prioritySymbols.length,
         regularSymbols: regularSymbols.length,
         activeAlertSymbols: Array.from(activeAlertSymbols),
-        cacheStrategy: 'business-plan-optimized',
-        message: `Business Plan: ${prioritySymbols.length} priority (0.5s cache) + ${regularSymbols.length} regular (5s cache) symbols`
+        cacheStrategy: 'dual-speed',
+        message: `Monitoring ${prioritySymbols.length} priority (1s cache) + ${regularSymbols.length} regular (30s cache) symbols`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

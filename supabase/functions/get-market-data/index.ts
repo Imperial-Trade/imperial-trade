@@ -37,47 +37,31 @@ interface MarketDataPoint {
   };
 }
 
-// TraderMade Business Plan - Expanded trading universe (50+ symbols)
+// Enhanced universe of 25+ diverse instruments with standardized Gold symbol
 const TRADING_UNIVERSE = {
-  forex: [
-    // Major Pairs
-    'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'NZD/USD', 'USD/CHF', 'EUR/GBP',
-    // Minor Pairs  
-    'EUR/JPY', 'GBP/JPY', 'AUD/JPY', 'CAD/JPY', 'CHF/JPY', 'EUR/CHF', 'EUR/AUD', 'GBP/AUD',
-    'GBP/CAD', 'AUD/CAD', 'AUD/NZD', 'EUR/NZD', 'GBP/NZD', 'NZD/CAD', 'NZD/JPY'
-  ],
-  commodities: ['XAU/USD', 'XAG/USD', 'WTI/USD', 'BRENT/USD', 'NATGAS/USD'],
-  crypto: ['BTC/USD', 'ETH/USD', 'LTC/USD', 'ADA/USD'],
-  indices: ['USA30/USD', 'NAS100/USD', 'SPX500/USD', 'UK100/USD', 'GER40/USD', 'FRA40/USD', 'JPN225/USD'],
-  stocks: ['TSLA', 'NVDA', 'SPY', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'JPM', 'BAC'],
+  stocks: ['TSLA', 'NVDA', 'SPY', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'JPM', 'BAC', 'JNJ', 'PFE', 'XOM', 'CVX'],
+  crypto: ['BTC/USD', 'ETH/USD', 'ADA/USD', 'SOL/USD', 'MATIC/USD', 'DOT/USD'],
+  forex: ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD', 'NZD/USD'],
+  commodities: ['XAU/USD', 'SILVER', 'OIL', 'NATURAL_GAS', 'COPPER', 'WHEAT'],
   etfs: ['QQQ', 'IWM', 'DIA', 'VTI', 'GLD', 'USO']
 };
 
-// Business Plan symbol mapping with TraderMade format
+// Symbol mapping for Gold standardization
 const SYMBOL_MAPPING: Record<string, string> = {
   'GOLD': 'XAU/USD',
   'XAU/USD': 'XAU/USD',
   'XAUUSD': 'XAU/USD',
-  'SILVER': 'XAG/USD',
-  'XAG/USD': 'XAG/USD', 
-  'XAGUSD': 'XAG/USD',
   'BTC/USD': 'BTC/USD',
-  'BTCUSD': 'BTC/USD',
-  'ETH/USD': 'ETH/USD',
-  'ETHUSD': 'ETH/USD',
-  'WTI': 'WTI/USD',
-  'WTIUSD': 'WTI/USD',
-  'BRENT': 'BRENT/USD',
-  'BRENTUSD': 'BRENT/USD'
+  'BTCUSD': 'BTC/USD'
 };
 
 const ALL_SYMBOLS = Object.values(TRADING_UNIVERSE).flat();
 
-// TraderMade Business Plan - Enhanced caching strategy
+// Multi-tier cache: Fast for Gold, priority for alerts, regular for others
 const cache = new Map<string, { data: MarketDataPoint, expires: number, isPriority: boolean }>();
-const GOLD_CACHE_TTL = 500; // 0.5 seconds for Gold - ultra-fast updates
-const PRIORITY_CACHE_TTL = 500; // 0.5 seconds for active alert symbols  
-const REGULAR_CACHE_TTL = 10000; // 10 seconds for regular symbols - much faster than before
+const GOLD_CACHE_TTL = 2000; // 2 seconds for Gold (XAU/USD) - faster updates
+const PRIORITY_CACHE_TTL = 1000; // 1 second for active alert symbols
+const REGULAR_CACHE_TTL = 30000; // 30 seconds for regular symbols
 
 // High-priority symbols that need faster updates
 const HIGH_PRIORITY_SYMBOLS = new Set(['XAU/USD', 'BTC/USD']);
@@ -86,10 +70,10 @@ const HIGH_PRIORITY_SYMBOLS = new Set(['XAU/USD', 'BTC/USD']);
 let prioritySymbols = new Set<string>();
 let lastPriorityRefresh = 0;
 
-// Business Plan - Enhanced rate limits
+// Rate limiting with higher quotas for expanded universe
 const rateLimitMap = new Map<string, { count: number, resetTime: number }>();
 const RATE_LIMIT_WINDOW = 60000;
-const RATE_LIMIT_MAX = 1000; // Business plan allows 1000+ requests/minute
+const RATE_LIMIT_MAX = 100; // Increased for more symbols
 
 function getRateLimitKey(req: Request): string {
   return req.headers.get('x-forwarded-for') || 'unknown';
@@ -390,10 +374,10 @@ serve(async (req) => {
   try {
     const { symbols, includeVolume = true, includeTechnicals = true } = await req.json();
     
-    // Business Plan - Expanded symbol universe (now 50+ symbols for more trading opportunities)
-    const requestedSymbols = symbols && symbols.length > 0 ? symbols : ALL_SYMBOLS.slice(0, 20);
+    // Default to all symbols if none provided, limited to first 12 for performance
+    const requestedSymbols = symbols && symbols.length > 0 ? symbols : ALL_SYMBOLS.slice(0, 12);
     
-    console.log('🚀 Business Plan: Enhanced market data request for symbols:', requestedSymbols);
+    console.log('Enhanced market data request for symbols:', requestedSymbols);
 
     // Check cache first
     const cachedResults: MarketDataPoint[] = [];
@@ -472,7 +456,7 @@ serve(async (req) => {
         if (result.status === 'fulfilled' && result.value) {
           setCachedData(result.value.symbol, result.value, isPriority);
           marketData.push(result.value);
-          console.log(`💾 Cached ${symbol} for ${isPriority ? '0.5 seconds' : '10 seconds'} (${isPriority ? 'priority' : 'regular'})`);
+          console.log(`💾 Cached ${symbol} for ${isPriority ? '1 second' : '30 seconds'} (${isPriority ? 'priority' : 'regular'})`);
         } else {
           // Fallback to mock data for failed symbols
           const mockData = generateEnhancedMockData([symbol])[0];

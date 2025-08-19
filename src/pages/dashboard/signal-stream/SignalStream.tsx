@@ -11,6 +11,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
+import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
+import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 export default function SignalStream() {
   const {
     user,
@@ -432,7 +434,8 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  return <div className="min-h-screen bg-background w-full">
+  return <StreamErrorBoundary>
+    <div className="min-h-screen bg-background w-full">
       <NotificationSystem />
       
       {/* Header - Mobile Optimized spacing */}
@@ -467,16 +470,11 @@ export default function SignalStream() {
       <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
         <div className="max-w-none w-full">
           <div className="w-full">
-            {/* Reconnect banner when we have data */}
-            {connectionStatus === 'connecting' && allAlerts.length > 0 && (
-              <div className="mb-3 flex items-center gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-yellow-300">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Reconnecting…</span>
-                {typeof reconnectIn === 'number' && reconnectIn > 0 && (
-                  <span className="text-xs text-yellow-200/80">Retrying in {reconnectIn}s</span>
-                )}
-              </div>
-            )}
+            {/* System Status */}
+            <SignalStreamStatus />
+
+            <div className="mb-6" />
+            
             {/* Enhanced Filters */}
             <SignalStreamFilters 
               filters={filters} 
@@ -486,6 +484,7 @@ export default function SignalStream() {
               canCreateSignals={canCreateSignals}
               onCreateSignal={() => navigate('/dashboard/new-signal')}
             />
+            
             {(isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0)) ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -502,59 +501,101 @@ export default function SignalStream() {
                   <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
                     Educational Market Patterns ({activeAlerts.length})
                   </h2>
-                  {activeAlerts.length > 0 ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                      {activeAlerts.map(alert => <TradeAlertCard key={alert.id} alert={{
-                  ...alert,
-                  asset_name: alert.assetName,
-                  tradermade_symbol: alert.tradermadeSymbol,
-                  trade_type: alert.tradeType,
-                  entry_price: alert.entryPrice,
-                  stop_loss: alert.stopLoss,
-                  tp_hits: alert.tpHits,
-                  close_reason: alert.closeReason,
-                  created_date: alert.createdAt,
-                  updated_date: alert.updatedAt
-                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={false} creator={alert.creator} />)}
-                    </div> : <div className="text-center py-8">
+                  {activeAlerts.length > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                      {activeAlerts.map(alert => (
+                        <TradeAlertCard 
+                          key={alert.id} 
+                          alert={{
+                            ...alert,
+                            asset_name: alert.assetName,
+                            tradermade_symbol: alert.tradermadeSymbol,
+                            trade_type: alert.tradeType,
+                            entry_price: alert.entryPrice,
+                            stop_loss: alert.stopLoss,
+                            tp_hits: alert.tpHits,
+                            close_reason: alert.closeReason,
+                            created_date: alert.createdAt,
+                            updated_date: alert.updatedAt
+                          }} 
+                          onStatusUpdate={handleStatusUpdate} 
+                          onTakeProfitHit={handleTakeProfitHit} 
+                          onStopLossHit={handleStopLossHit} 
+                          onOrderActivation={handleOrderActivation} 
+                          isAdmin={isAdmin} 
+                          isCreator={isCreator(alert.creator?.id)} 
+                          livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
+                          connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
+                          priceSource={priceSource} 
+                          isRecentClosure={false} 
+                          creator={alert.creator} 
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <Shield className="w-8 h-8 text-muted-foreground/50" />
                       </div>
                       <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
                       <p className="text-muted-foreground">New educational analysis patterns will appear here when posted by educational contributors.</p>
-                    </div>}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
                   <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
                     Recent Educational Analysis ({closedAlerts.length})
                   </h2>
-                  {sortedClosedAlerts.length > 0 ? <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                      {sortedClosedAlerts.map(alert => <TradeAlertCard key={alert.id} alert={{
-                  ...alert,
-                  asset_name: alert.assetName,
-                  tradermade_symbol: alert.tradermadeSymbol,
-                  trade_type: alert.tradeType,
-                  entry_price: alert.entryPrice,
-                  stop_loss: alert.stopLoss,
-                  tp_hits: alert.tpHits,
-                  close_reason: alert.closeReason,
-                  created_date: alert.createdAt,
-                  updated_date: alert.updatedAt
-                }} onStatusUpdate={handleStatusUpdate} onTakeProfitHit={handleTakeProfitHit} onStopLossHit={handleStopLossHit} onOrderActivation={handleOrderActivation} isAdmin={isAdmin} isCreator={isCreator(alert.creator?.id)} livePrice={undefined} connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} priceSource={priceSource} isRecentClosure={true} creator={alert.creator} />)}
-                    </div> : <div className="text-center py-8">
+                  {sortedClosedAlerts.length > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                      {sortedClosedAlerts.map(alert => (
+                        <TradeAlertCard 
+                          key={alert.id} 
+                          alert={{
+                            ...alert,
+                            asset_name: alert.assetName,
+                            tradermade_symbol: alert.tradermadeSymbol,
+                            trade_type: alert.tradeType,
+                            entry_price: alert.entryPrice,
+                            stop_loss: alert.stopLoss,
+                            tp_hits: alert.tpHits,
+                            close_reason: alert.closeReason,
+                            created_date: alert.createdAt,
+                            updated_date: alert.updatedAt
+                          }} 
+                          onStatusUpdate={handleStatusUpdate} 
+                          onTakeProfitHit={handleTakeProfitHit} 
+                          onStopLossHit={handleStopLossHit} 
+                          onOrderActivation={handleOrderActivation} 
+                          isAdmin={isAdmin} 
+                          isCreator={isCreator(alert.creator?.id)} 
+                          livePrice={undefined} 
+                          connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
+                          priceSource={priceSource} 
+                          isRecentClosure={true} 
+                          creator={alert.creator} 
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                         <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
                       </div>
                       <h3 className="text-xl font-semibold text-foreground mb-2">No Completed Analysis</h3>
                       <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
-                    </div>}
+                    </div>
+                  )}
                 </div>
-              </div>)}
+              </div>
+            )}
           </div>
 
           {/* Economic Sidebar - Optimized positioning and visibility */}
-          
-                </div>
-              </div>
-    </div>;
+          <EconomicSidebar />
+        </div>
+      </div>
+    </div>
+  </StreamErrorBoundary>;
 }

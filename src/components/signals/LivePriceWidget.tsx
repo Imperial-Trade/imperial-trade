@@ -116,6 +116,9 @@ const LivePriceWidgetComponent = ({
     }
   }, [currentPrice, prevPrice]);
   const processLevelHit = useCallback(async (hitType, data) => {
+    // Authorization check removed - let the backend handle it
+    // Frontend should trigger level hits for proper price tracking
+    
     if (isProcessingRef.current) {
       console.log(`[PROCESSING SKIP] Already processing ${hitType} for alert ${alert.id}, skipping...`);
       return;
@@ -502,7 +505,7 @@ const LivePriceWidgetComponent = ({
               priceAnimation === 'down' ? 'text-red-400 animate-pulse bg-red-400/10 px-2 py-1 rounded' :
               'text-accent-green'
             }`}>
-              ${currentPrice ? formatPrice(currentPrice) : '---.--'}
+              ${currentPrice > 0 ? formatPrice(currentPrice) : '---.--'}
             </div>
             
           </div>

@@ -49,9 +49,11 @@ export function useOptimizedLivePrice(
   });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [lastSignificantUpdate, setLastSignificantUpdate] = useState<Date | null>(null);
+  const [lastNonZeroPrice, setLastNonZeroPrice] = useState<number>(0);
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastProcessedPriceRef = useRef<number>(0);
+  const updateCounterRef = useRef<number>(0);
 
   // Subscribe to symbol on mount
   useEffect(() => {
@@ -64,19 +66,41 @@ export function useOptimizedLivePrice(
     };
   }, [symbol, subscribe, unsubscribe]);
 
-  // Optimized price updates with smart debouncing and change detection
+  // Symbol-specific price updates - NO dependency on entire prices object
   useEffect(() => {
     const currentPrice = getPrice(symbol);
+    updateCounterRef.current++;
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🔄 [${symbol}] Price effect #${updateCounterRef.current}:`, {
+        currentPrice: currentPrice?.price || 0,
+        lastProcessed: lastProcessedPriceRef.current,
+        hasPrice: !!currentPrice
+      });
+    }
     
     if (!currentPrice || currentPrice.price === 0) return;
 
-    // Only trigger updates for significant price changes (> 0.02%)
-    const priceChanged = currentPrice.price !== lastProcessedPriceRef.current;
-    if (lastProcessedPriceRef.current > 0 && currentPrice.price > 0) {
-      const changePercent = Math.abs((currentPrice.price - lastProcessedPriceRef.current) / lastProcessedPriceRef.current) * 100;
-      if (changePercent < 0.02) { // Increased threshold to reduce noise
-        return;
-      }
+    // CRITICAL: Always commit the first non-zero price immediately
+    const isFirstValidPrice = lastProcessedPriceRef.current === 0 && currentPrice.price > 0;
+    
+    if (isFirstValidPrice) {
+      console.log(`✅ [${symbol}] First valid price committed immediately:`, currentPrice.price);
+      setDebouncedPrice({
+        price: currentPrice.price,
+        change: currentPrice.change,
+        changePercent: currentPrice.changePercent
+      });
+      setLastUpdated(new Date(currentPrice.timestamp));
+      setLastNonZeroPrice(currentPrice.price);
+      lastProcessedPriceRef.current = currentPrice.price;
+      return;
+    }
+
+    // For subsequent updates, use reduced significance threshold
+    const changePercent = Math.abs((currentPrice.price - lastProcessedPriceRef.current) / lastProcessedPriceRef.current) * 100;
+    if (changePercent < 0.001) { // Much more sensitive: 0.001% instead of 0.02%
+      return;
     }
 
     // Clear existing timeout to prevent stacking updates
@@ -84,9 +108,8 @@ export function useOptimizedLivePrice(
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Use consistent debounce for smoother experience
+    // Reduced debounce for faster updates
     debounceTimeoutRef.current = setTimeout(() => {
-      // Double-check price hasn't become stale
       const latestPrice = getPrice(symbol);
       if (!latestPrice || latestPrice.price === 0) return;
 
@@ -96,22 +119,20 @@ export function useOptimizedLivePrice(
         changePercent: latestPrice.changePercent
       });
       setLastUpdated(new Date(latestPrice.timestamp));
-      
-      // Track significant updates for performance monitoring
-      const changePercent = Math.abs((latestPrice.price - lastProcessedPriceRef.current) / lastProcessedPriceRef.current) * 100;
-      if (changePercent >= 0.02) {
-        setLastSignificantUpdate(new Date());
-      }
-      
+      setLastNonZeroPrice(latestPrice.price);
       lastProcessedPriceRef.current = latestPrice.price;
-    }, debounceMs);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`💰 [${symbol}] Price updated:`, latestPrice.price);
+      }
+    }, Math.min(debounceMs, 100)); // Cap at 100ms for responsiveness
 
     return () => {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [prices, symbol, debounceMs, getPrice]);
+  }, [symbol, prices[symbol]?.price, debounceMs, getPrice]); // FIXED: Symbol-specific dependency
 
   const refreshPrice = useCallback(() => {
     contextRefreshPrice(symbol);
@@ -133,7 +154,7 @@ export function useOptimizedLivePrice(
   })();
 
   return {
-    price: debouncedPrice.price,
+    price: debouncedPrice.price || lastNonZeroPrice, // Fallback to last good price
     change: debouncedPrice.change,
     changePercent: debouncedPrice.changePercent,
     isLoading: enhancedConnectionStatus === 'connecting',

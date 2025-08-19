@@ -122,13 +122,25 @@ serve(async (req) => {
     const authHeader = `Basic ${ONESIGNAL_API_KEY}`
     
     const payload = {
+      // --- Identification ---
       app_id: ONESIGNAL_APP_ID,
+      
+      // --- Audience and Channel ---
       target_channel: 'email',
-      email_to: [user.email],
+      include_email_tokens: [user.email], // Correct OneSignal API format
+      
+      // --- Message Content ---
       email_subject: 'Reset your Imperial Trading password',
       email_body: html,
-      email_from_name: 'Imperial Trading',
-      email_reply_to_address: 'support@tradeimperial.com'
+      
+      // --- Sender Details (Must match verified domain) ---
+      email_from_name: 'Imperial Trading Support',
+      email_from_address: 'support@tradeimperial.com',
+      email_reply_to_address: 'support@tradeimperial.com',
+      
+      // --- Transactional Settings (CRITICAL) ---
+      include_unsubscribed: true, // Send even if user unsubscribed from marketing
+      is_transactional: true // Categorize as transactional email
     }
 
     console.log(`[${requestId}] Sending OneSignal email to: ${user.email}`)

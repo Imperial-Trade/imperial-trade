@@ -176,7 +176,7 @@ serve(async (req) => {
     console.log(`[${requestId}] OneSignal API success:`, responseData)
 
     const duration = Date.now() - startTime
-    console.log(`[${requestId}] Password reset email sent successfully in ${duration}ms`)
+    console.log(`[${requestId}] ✅ OneSignal password reset email sent successfully in ${duration}ms`)
 
     return new Response(JSON.stringify({ 
       success: true,

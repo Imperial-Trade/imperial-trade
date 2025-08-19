@@ -3,9 +3,10 @@ import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
-import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw, Clock, AlertTriangle, Wifi, WifiOff, Timer } from 'lucide-react';
 import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
 import { getStandardSymbol } from '@/types/assets';
+import { getMarketStatus, formatCountdown } from '@/utils/marketStatus';
 
 interface EnhancedLivePriceDisplayProps {
   symbol: string;
@@ -232,39 +233,19 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return change >= 0 ? TrendingUp : TrendingDown;
   }, [change]);
 
-  // Market status detection for all supported assets
-  const marketStatus = useMemo(() => {
-    const sym = apiSymbol.toUpperCase();
-    const now = new Date();
-    const utcDay = now.getUTCDay(); // 0=Sun, 6=Sat
-    const utcHour = now.getUTCHours();
-    const utcMinute = now.getUTCMinutes();
+  // Enhanced market status with countdown timer
+  const [marketStatus, setMarketStatus] = useState(() => getMarketStatus(apiSymbol));
+  
+  useEffect(() => {
+    const updateMarketStatus = () => {
+      setMarketStatus(getMarketStatus(apiSymbol));
+    };
 
-    // Crypto trades 24/7
-    if (sym.includes('BTC') || sym.includes('ETH')) {
-      return { isClosed: false, label: null as string | null };
-    }
-
-    // Weekend closure for FX/indices
-    if (utcDay === 6 || utcDay === 0) {
-      return { isClosed: true, label: 'Weekend' };
-    }
-
-    // Friday post-close and Sunday pre-open (approx 21:00 UTC)
-    if ((utcDay === 5 && utcHour >= 21) || (utcDay === 0 && utcHour < 21)) {
-      return { isClosed: true, label: 'Outside trading hours' };
-    }
-
-    // Indices cash session window (approx 13:30–20:00 UTC)
-    if (sym.includes('USA30') || sym.includes('NAS100') || sym.includes('SPX')) {
-      const afterOpen = (utcHour > 13) || (utcHour === 13 && utcMinute >= 30);
-      const beforeClose = utcHour < 20;
-      if (!(afterOpen && beforeClose)) {
-        return { isClosed: true, label: 'Outside session' };
-      }
-    }
-
-    return { isClosed: false, label: null as string | null };
+    // Update market status immediately and then every second
+    updateMarketStatus();
+    const interval = setInterval(updateMarketStatus, 1000);
+    
+    return () => clearInterval(interval);
   }, [apiSymbol]);
 
   if (!symbol) return null;
@@ -344,13 +325,32 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Market Status */}
-      {marketStatus.isClosed && (
+      {/* Market Status Banner */}
+      {marketStatus.isClosed ? (
         <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-          <div className="text-amber-400 text-sm font-medium">Market Closed</div>
-          <div className="text-xs text-gray-400">
-            Showing last price as of {lastUpdated ? formatTime(lastUpdated) : '—'}
-            {marketStatus.label ? <span className="ml-1">• {marketStatus.label}</span> : null}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Timer className="w-4 h-4 text-amber-400" />
+              <div className="text-amber-400 text-sm font-medium">Market Closed</div>
+            </div>
+            {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
+              <div className="text-amber-400 text-sm font-mono font-bold">
+                {formatCountdown(marketStatus.countdown)}
+              </div>
+            )}
+          </div>
+          <div className="text-xs text-gray-400 mt-1">
+            {marketStatus.label} • Last price: {lastUpdated ? formatTime(lastUpdated) : '—'}
+            {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
+              <span className="ml-1">• Opens in {formatCountdown(marketStatus.countdown)}</span>
+            )}
+          </div>
+        </div>
+      ) : marketStatus.currentSession && (
+        <div className="mb-3 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <div className="text-green-400 text-xs font-medium">{marketStatus.currentSession}</div>
           </div>
         </div>
       )}

@@ -26,7 +26,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 200 // Optimized 200ms for smooth updates without blinking
+    debounceMs = 250 // Increased to 250ms to reduce noise
   } = options;
 
   const {
@@ -70,11 +70,14 @@ export function useOptimizedLivePrice(
     
     if (!currentPrice || currentPrice.price === 0) return;
 
-    // Smart update logic: only process if price changed significantly
+    // Only trigger updates for significant price changes (> 0.02%)
     const priceChanged = currentPrice.price !== lastProcessedPriceRef.current;
-    const isSignificantChange = Math.abs(currentPrice.price - debouncedPrice.price) > (currentPrice.price * 0.001); // 0.1% change
-    
-    if (!priceChanged && !isSignificantChange) return;
+    if (lastProcessedPriceRef.current > 0 && currentPrice.price > 0) {
+      const changePercent = Math.abs((currentPrice.price - lastProcessedPriceRef.current) / lastProcessedPriceRef.current) * 100;
+      if (changePercent < 0.02) { // Increased threshold to reduce noise
+        return;
+      }
+    }
 
     // Clear existing timeout to prevent stacking updates
     if (debounceTimeoutRef.current) {
@@ -95,7 +98,8 @@ export function useOptimizedLivePrice(
       setLastUpdated(new Date(latestPrice.timestamp));
       
       // Track significant updates for performance monitoring
-      if (isSignificantChange) {
+      const changePercent = Math.abs((latestPrice.price - lastProcessedPriceRef.current) / lastProcessedPriceRef.current) * 100;
+      if (changePercent >= 0.02) {
         setLastSignificantUpdate(new Date());
       }
       
@@ -118,11 +122,11 @@ export function useOptimizedLivePrice(
 
   // Enhanced connection status logic
   const enhancedConnectionStatus = (() => {
-    // If we have recent price data, we're effectively connected
-    const hasRecentData = lastUpdated && (Date.now() - lastUpdated.getTime()) < 10000; // 10 seconds
+    // Consider connection "effectively connected" if we have recent data
+    const dataFreshness = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
     const hasValidPrice = debouncedPrice.price > 0;
     
-    if (hasRecentData && hasValidPrice && connectionStatus !== 'error') {
+    if (dataFreshness < 45 && hasValidPrice) { // Increased tolerance
       return 'connected';
     }
     return connectionStatus;

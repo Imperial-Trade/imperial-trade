@@ -56,7 +56,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     refreshPrice
   } = useOptimizedLivePrice(apiSymbol, {
     enableSmartPausing: false, // Keep connection active for trading signals
-    debounceMs: 50, // Ultra-fast updates for trading (50ms)
+    debounceMs: 200, // Optimized for stability (200ms)
     pauseOnInput: false
   });
 
@@ -102,9 +102,9 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     if (price > 0 && prevPrice > 0 && price !== prevPrice) {
       // Only animate for significant changes to reduce visual noise
       const changePercent = Math.abs((price - prevPrice) / prevPrice) * 100;
-      if (changePercent >= 0.01) { // Only animate for changes >= 0.01%
+      if (changePercent >= 0.02) { // Increased threshold to 0.02% for less noise
         setPriceAnimation(price > prevPrice ? 'up' : 'down');
-        const timer = setTimeout(() => setPriceAnimation(null), 300); // Reduced from 1000ms to 300ms
+        const timer = setTimeout(() => setPriceAnimation(null), 250); // Reduced to 250ms
         return () => clearTimeout(timer);
       }
     }
@@ -310,8 +310,8 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Loading State for Initial Load */}
-      {isLoading && price === 0 && (
+      {/* Loading State for Initial Load - Only show skeleton for actual loading, not connection issues */}
+      {price === 0 && connectionStatus === 'connecting' && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

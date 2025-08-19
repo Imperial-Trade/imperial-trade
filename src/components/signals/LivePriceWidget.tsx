@@ -62,7 +62,7 @@ const LivePriceWidgetComponent = ({
     refreshPrice
   } = useOptimizedLivePrice(alert.tradermade_symbol, {
     enableSmartPausing: false,
-    debounceMs: 50,
+    debounceMs: 200, // Increased from 50ms to 200ms for stability
     pauseOnInput: false
   });
 
@@ -160,7 +160,7 @@ const LivePriceWidgetComponent = ({
     
     // Only check levels if price changed significantly to reduce CPU usage
     const priceChangePercent = Math.abs((price - lastProcessedPrice) / lastProcessedPrice) * 100;
-    if (lastProcessedPrice > 0 && priceChangePercent < 0.05) { // 0.05% threshold
+    if (lastProcessedPrice > 0 && priceChangePercent < 0.02) { // Reduced to 0.02% threshold for better responsiveness
       return;
     }
     if (price <= 0 || !isFinite(price)) {

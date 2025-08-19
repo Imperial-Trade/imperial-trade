@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -131,16 +131,14 @@ export default function SignalStream() {
     return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
   }, [closedAlerts]);
   const symbols = useMemo(() => {
-    const symbolSet = new Set();
+    const symbolSet = new Set<string>();
     activeAlerts.forEach(alert => {
-      if (alert && alert.tradermadeSymbol) {
-        // Use the actual tradermade symbol that matches WebSocket data
-        symbolSet.add(alert.tradermadeSymbol);
+      if (alert?.tradermadeSymbol?.trim()) {
+        symbolSet.add(alert.tradermadeSymbol.trim());
       }
     });
-    const symbolList = Array.from(symbolSet);
-    console.log('SignalStream - Final symbols for price feed:', symbolList);
-    return symbolList as string[];
+    const symbolList = Array.from(symbolSet).sort(); // Sort for consistent comparison
+    return symbolList;
   }, [activeAlerts]);
   const {
     prices: livePricesData,
@@ -162,17 +160,40 @@ export default function SignalStream() {
     return result;
   }, [livePricesData]);
 
-  // Subscribe to symbols for live price updates
+  // Stable symbol subscription to prevent thrashing
+  const symbolsRef = useRef<string[]>([]);
+  const subscriptionActiveRef = useRef(false);
+
   useEffect(() => {
-    if (symbols.length > 0) {
-      console.log('SignalStream - Subscribing to symbols:', symbols);
-      subscribe(symbols);
+    // Deep comparison to prevent unnecessary subscription changes
+    const hasChanged = symbols.length !== symbolsRef.current.length ||
+      symbols.some((symbol, index) => symbol !== symbolsRef.current[index]);
+
+    if (!hasChanged) return;
+
+    // Unsubscribe from old symbols
+    if (subscriptionActiveRef.current && symbolsRef.current.length > 0) {
+      console.log('🔄 SignalStream - Unsubscribing from previous symbols:', symbolsRef.current);
+      unsubscribe(symbolsRef.current);
     }
-    
+
+    // Subscribe to new symbols
+    if (symbols.length > 0) {
+      console.log('🔄 SignalStream - Subscribing to new symbols:', symbols);
+      subscribe(symbols);
+      subscriptionActiveRef.current = true;
+    } else {
+      subscriptionActiveRef.current = false;
+    }
+
+    // Update reference
+    symbolsRef.current = [...symbols];
+
     return () => {
-      if (symbols.length > 0) {
-        console.log('SignalStream - Unsubscribing from symbols:', symbols);
-        unsubscribe(symbols);
+      if (subscriptionActiveRef.current && symbolsRef.current.length > 0) {
+        console.log('🔄 SignalStream - Cleanup unsubscribe:', symbolsRef.current);
+        unsubscribe(symbolsRef.current);
+        subscriptionActiveRef.current = false;
       }
     };
   }, [symbols, subscribe, unsubscribe]);

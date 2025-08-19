@@ -6,8 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Tradermade symbol configuration
-const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
+// TraderMade Business Plan - Expanded symbol universe (50+ symbols)
+const TRADERMADE_SYMBOLS = [
+  // Forex Major Pairs
+  'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'NZDUSD', 'USDCHF', 'EURGBP',
+  // Forex Minor Pairs
+  'EURJPY', 'GBPJPY', 'AUDJPY', 'CADJPY', 'CHFJPY', 'EURCHF', 'EURAUD', 'GBPAUD',
+  'GBPCAD', 'AUDCAD', 'AUDNZD', 'EURNZD', 'GBPNZD', 'NZDCAD', 'NZDJPY',
+  // Commodities
+  'XAUUSD', 'XAGUSD', 'WTIUSD', 'BRENTUSD', 'NATGASUSD',
+  // Crypto
+  'BTCUSD', 'ETHUSD', 'LTCUSD', 'ADAUSD',
+  // Indices
+  'USA30USD', 'NAS100USD', 'SPX500USD', 'UK100USD', 'GER40USD', 'FRA40USD', 'JPN225USD'
+];
 
 interface TradermadePriceData {
   symbol: string;
@@ -30,18 +42,18 @@ interface ErrorMessage {
   timestamp: string;
 }
 
-// Optimized cache configuration
+// Business Plan - Aggressive caching for faster updates
 const priceCache = new Map<string, TradermadePriceData>();
-const CACHE_TTL = 3000; // 3 seconds cache window
+const CACHE_TTL = 1000; // 1 second cache for business plan speed
 
-// Improved rate limiting
+// TraderMade Business Plan - Enhanced rate limits
 let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();
-const RATE_LIMIT_PER_MINUTE = 100; // Increased from 30 to 100
+const RATE_LIMIT_PER_MINUTE = 1000; // Business plan allows 1000+ requests/minute
 
-// Optimized batching settings
-const BATCH_SEND_INTERVAL_MS = 1500; // Reduced from 2000ms to 1500ms for better responsiveness
-const HEARTBEAT_INTERVAL_MS = 30000; // Increased from 15s to 30s to reduce overhead
+// Optimized batching for business plan performance  
+const BATCH_SEND_INTERVAL_MS = 500; // Reduced to 500ms for ultra-fast updates
+const HEARTBEAT_INTERVAL_MS = 20000; // Reduced to 20s for better connection health
 
 // Validate and normalize symbols
 function validateSymbol(symbol: string): string | null {

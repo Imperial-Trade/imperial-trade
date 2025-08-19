@@ -26,7 +26,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 500 // Increased to 500ms for stability and reduced blinking
+    debounceMs = 100 // Business Plan: Reduced to 100ms for ultra-fast updates
   } = options;
 
   const {
@@ -135,7 +135,7 @@ export function useOptimizedLivePrice(
       if (process.env.NODE_ENV === 'development') {
         console.log(`💰 [${symbol}] Price updated:`, latestPrice.price);
       }
-    }, Math.min(debounceMs, 300)); // Cap at 300ms for stability
+    }, Math.min(debounceMs, 100)); // Business Plan: Cap at 100ms for ultra-fast updates
 
     return () => {
       if (debounceTimeoutRef.current) {

@@ -15,14 +15,14 @@ interface LivePriceData {
 }
 
 export function useWebSocketLivePrice(symbol: string): LivePriceData {
-  // Log usage for performance monitoring
+  // Business Plan optimization logging
   useEffect(() => {
-    console.log('✅ Using WebSocket-based live pricing for', symbol);
+    console.log('🚀 Business Plan: Ultra-fast WebSocket pricing for', symbol);
   }, [symbol]);
 
   const optimizedData = useOptimizedLivePrice(symbol, {
-    enableSmartPausing: false, // Disabled for fastest updates
-    debounceMs: 200, // Optimized 200ms for smooth experience
+    enableSmartPausing: false, // Disabled for fastest updates with business plan
+    debounceMs: 100, // Reduced to 100ms for business plan speed
     pauseOnInput: false
   });
 

@@ -2,19 +2,17 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus, RefreshCw, TrendingUp } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
-import { useWebSocketPrices } from '@/hooks/useWebSocketPrices';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
-import { ContextErrorBoundary } from '@/components/error-boundary/ContextErrorBoundary';
-import { SignalStreamLoader } from '@/components/signals/SignalStreamLoader';
 export default function SignalStream() {
   const {
     user,
@@ -147,18 +145,18 @@ export default function SignalStream() {
   const {
     prices: livePricesData,
     connectionStatus: priceConnectionStatus,
+    dataSource: priceSource,
     subscribe,
     unsubscribe,
-    error: priceError,
-    lastUpdated: priceLastUpdated
+    getPrice
   } = useWebSocketPrices();
 
   // Convert price data to simple number format for compatibility
   const livePrices = useMemo(() => {
     const result: Record<string, number> = {};
     Object.entries(livePricesData).forEach(([symbol, priceData]) => {
-      if (priceData && typeof priceData.mid === 'number') {
-        result[symbol] = priceData.mid;
+      if (priceData && typeof priceData.price === 'number') {
+        result[symbol] = priceData.price;
       }
     });
     return result;
@@ -529,7 +527,7 @@ export default function SignalStream() {
                             isCreator={isCreator(alert.creator?.id)} 
                             livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
                             connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                            priceSource="websocket"
+                            priceSource={priceSource} 
                             isRecentClosure={false} 
                             creator={alert.creator} 
                           />
@@ -575,7 +573,7 @@ export default function SignalStream() {
                             isCreator={isCreator(alert.creator?.id)} 
                             livePrice={undefined} 
                             connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                            priceSource="websocket"
+                            priceSource={priceSource} 
                             isRecentClosure={true} 
                             creator={alert.creator} 
                           />

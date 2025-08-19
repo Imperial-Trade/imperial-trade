@@ -3152,10 +3152,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_system_operation: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       process_price_alerts: {
         Args: { p_current_price: number; p_symbol: string }
         Returns: {
@@ -3180,15 +3176,6 @@ export type Database = {
           p_priority_level?: number
           p_signal_author_id: string
           p_user_id: string
-        }
-        Returns: boolean
-      }
-      system_update_trade_alert: {
-        Args: {
-          p_close_reason?: string
-          p_signal_id: string
-          p_status?: string
-          p_tp_hits?: number[]
         }
         Returns: boolean
       }

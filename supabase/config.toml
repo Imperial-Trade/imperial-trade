@@ -18,9 +18,6 @@ verify_jwt = false
 [functions.tradermade-streaming]
 verify_jwt = false
 
-[functions.persistent-alert-monitor]
-verify_jwt = false
-
 [functions.check-user-existence]
 verify_jwt = false
 

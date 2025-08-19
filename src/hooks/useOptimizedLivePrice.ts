@@ -26,7 +26,7 @@ export function useOptimizedLivePrice(
   options: UseOptimizedLivePriceOptions = {}
 ): OptimizedLivePriceData {
   const {
-    debounceMs = 500 // Increased to 500ms for stability and reduced blinking
+    debounceMs = 100 // Business Plan: Ultra-fast 100ms debouncing for real-time performance
   } = options;
 
   const {
@@ -100,13 +100,13 @@ export function useOptimizedLivePrice(
     // For subsequent updates, use smarter significance threshold
     const changePercent = Math.abs((currentPrice.price - lastProcessedPriceRef.current) / lastProcessedPriceRef.current) * 100;
     
-    // Symbol-specific significance thresholds to reduce noise
+    // Business Plan: Ultra-sensitive significance thresholds for faster updates
     const getSignificanceThreshold = (sym: string): number => {
       const upper = sym.toUpperCase();
-      if (upper.includes('XAU') || upper.includes('GOLD')) return 0.015; // 0.015% for gold
-      if (upper.includes('BTC') || upper.includes('ETH')) return 0.05;   // 0.05% for crypto
-      if (upper.includes('USA30') || upper.includes('NAS100')) return 0.01; // 0.01% for indices
-      return 0.02; // 0.02% for forex
+      if (upper.includes('XAU') || upper.includes('GOLD')) return 0.005; // 0.005% for gold - ultra sensitive
+      if (upper.includes('BTC') || upper.includes('ETH')) return 0.01;   // 0.01% for crypto - ultra sensitive  
+      if (upper.includes('USA30') || upper.includes('NAS100')) return 0.003; // 0.003% for indices - ultra sensitive
+      return 0.005; // 0.005% for forex - ultra sensitive for business plan
     };
     
     if (changePercent < getSignificanceThreshold(symbol)) {
@@ -118,7 +118,11 @@ export function useOptimizedLivePrice(
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Reduced debounce for faster updates
+    // Business Plan: Ultra-fast debouncing with institutional tick priority
+    const isUltraFastTick = currentPrice.is_ultra_fast_tick;
+    const isInstitutionalTick = currentPrice.is_institutional_tick;
+    const effectiveDebounce = isUltraFastTick ? 50 : isInstitutionalTick ? 75 : Math.min(debounceMs, 150);
+    
     debounceTimeoutRef.current = setTimeout(() => {
       const latestPrice = getPrice(symbol);
       if (!latestPrice || latestPrice.price === 0) return;
@@ -133,9 +137,10 @@ export function useOptimizedLivePrice(
       lastProcessedPriceRef.current = latestPrice.price;
       
       if (process.env.NODE_ENV === 'development') {
-        console.log(`💰 [${symbol}] Price updated:`, latestPrice.price);
+        const tickType = isUltraFastTick ? '⚡ ULTRA-FAST' : isInstitutionalTick ? '💎 INSTITUTIONAL' : '🚀 BUSINESS';
+        console.log(`${tickType} [${symbol}] Price updated:`, latestPrice.price, `[${effectiveDebounce}ms debounce]`);
       }
-    }, Math.min(debounceMs, 300)); // Cap at 300ms for stability
+    }, effectiveDebounce); // Business plan: 50-150ms based on tick type
 
     return () => {
       if (debounceTimeoutRef.current) {
@@ -151,15 +156,22 @@ export function useOptimizedLivePrice(
   // Get error for this specific symbol or global error
   const symbolError = errors[symbol] || errors.global || null;
 
-  // Enhanced connection status logic
+  // Business Plan: Enhanced connection status with ultra-fast tolerance
   const enhancedConnectionStatus = (() => {
-    // Consider connection "effectively connected" if we have recent data
+    // Business plan: Consider connection "effectively connected" with tighter freshness requirements
     const dataFreshness = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
     const hasValidPrice = debouncedPrice.price > 0;
     
-    if (dataFreshness < 45 && hasValidPrice) { // Increased tolerance
+    // Business plan: 15s tolerance for ultra-fast infrastructure
+    if (dataFreshness < 15 && hasValidPrice) {
       return 'connected';
     }
+    
+    // Fallback to 30s for regular connections
+    if (dataFreshness < 30 && hasValidPrice) {
+      return 'connected';
+    }
+    
     return connectionStatus;
   })();
 

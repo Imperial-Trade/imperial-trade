@@ -167,17 +167,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           if (data.type === 'price_update' && data.symbol && typeof data.price === 'number') {
             const symbol = normalizeSymbol(data.symbol);
             
-            // Check if this is an ultra-fast institutional tick
+            // Business Plan: Enhanced ultra-fast institutional tick detection
             const isInstitutionalTick = data.is_institutional_tick === true;
             const isUltraFastTick = data.is_ultra_fast_tick === true;
             const tickTimestamp = data.tick_timestamp || Date.now();
+            const updateFrequency = data.update_frequency || '100ms';
             
             if (isUltraFastTick) {
-              console.log(`⚡ ULTRA-FAST TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
+              console.log(`⚡ BUSINESS PLAN ULTRA-FAST TICK: ${symbol} = $${data.price} [${updateFrequency}] @ ${new Date(tickTimestamp).toISOString()}`);
             } else if (isInstitutionalTick) {
-              console.log(`💎 INSTITUTIONAL TICK RECEIVED: ${symbol} = $${data.price} @ ${new Date(tickTimestamp).toISOString()}`);
+              console.log(`💎 BUSINESS PLAN INSTITUTIONAL TICK: ${symbol} = $${data.price} [${updateFrequency}] @ ${new Date(tickTimestamp).toISOString()}`);
             } else {
-              console.log(`💰 LIVE PRICE UPDATE: ${symbol} = $${data.price}`);
+              console.log(`🚀 BUSINESS PLAN PRICE UPDATE: ${symbol} = $${data.price} [${updateFrequency}]`);
             }
             
             // Calculate percentage change if we have previous price

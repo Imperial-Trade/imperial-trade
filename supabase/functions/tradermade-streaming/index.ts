@@ -30,18 +30,23 @@ interface ErrorMessage {
   timestamp: string;
 }
 
-// Optimized cache configuration
+// ========== TRADERMADE BUSINESS PLAN INFRASTRUCTURE ==========
+// Ultra-fast cache configuration with tiered TTL based on asset volatility
 const priceCache = new Map<string, TradermadePriceData>();
-const CACHE_TTL = 3000; // 3 seconds cache window
+const CACHE_TTL_CRYPTO = 100; // 100ms for crypto (highest volatility)
+const CACHE_TTL_GOLD = 200; // 200ms for gold (high volatility)
+const CACHE_TTL_FOREX = 300; // 300ms for forex (medium volatility)
+const CACHE_TTL_INDICES = 500; // 500ms for indices (lower volatility)
 
-// Improved rate limiting
+// Business Plan Rate Limiting - 1000+ requests/minute
 let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();
-const RATE_LIMIT_PER_MINUTE = 100; // Increased from 30 to 100
+const RATE_LIMIT_PER_MINUTE = 1200; // Business plan: 1200 requests/minute (20 req/s)
 
-// Optimized batching settings
-const BATCH_SEND_INTERVAL_MS = 1500; // Reduced from 2000ms to 1500ms for better responsiveness
-const HEARTBEAT_INTERVAL_MS = 30000; // Increased from 15s to 30s to reduce overhead
+// Ultra-fast batching for business plan
+const BATCH_SEND_INTERVAL_MS = 100; // Ultra-fast 100ms batching for real-time performance
+const HEARTBEAT_INTERVAL_MS = 15000; // Optimized 15s heartbeat for better health monitoring
+const WEBSOCKET_TIMEOUT_MS = 5000; // Reduced to 5s for faster failover
 
 // Validate and normalize symbols
 function validateSymbol(symbol: string): string | null {
@@ -49,18 +54,48 @@ function validateSymbol(symbol: string): string | null {
   return TRADERMADE_SYMBOLS.includes(upperSymbol) ? upperSymbol : null;
 }
 
-// Optimized cache management
+// Business Plan Tiered Cache Management - Different TTLs based on asset volatility
 function getCachedPrice(symbol: string): TradermadePriceData | null {
   const cached = priceCache.get(symbol);
   if (!cached) return null;
   
   const age = Date.now() - new Date(cached.timestamp).getTime();
-  if (age > CACHE_TTL) {
+  const cacheTTL = getCacheTTLForSymbol(symbol);
+  
+  if (age > cacheTTL) {
     priceCache.delete(symbol);
     return null;
   }
   
   return cached;
+}
+
+// Dynamic cache TTL based on asset volatility and market conditions
+function getCacheTTLForSymbol(symbol: string): number {
+  const upperSymbol = symbol.toUpperCase();
+  
+  // Crypto assets - highest volatility, fastest updates
+  if (upperSymbol.includes('BTC') || upperSymbol.includes('ETH')) {
+    return CACHE_TTL_CRYPTO; // 100ms
+  }
+  
+  // Gold and precious metals - high volatility 
+  if (upperSymbol.includes('XAU') || upperSymbol.includes('GOLD')) {
+    return CACHE_TTL_GOLD; // 200ms
+  }
+  
+  // Major forex pairs - medium volatility
+  if (upperSymbol.includes('EUR') || upperSymbol.includes('GBP') || upperSymbol.includes('JPY')) {
+    return CACHE_TTL_FOREX; // 300ms
+  }
+  
+  // Indices - lower volatility during off-hours
+  if (upperSymbol.includes('USA30') || upperSymbol.includes('NAS100') || upperSymbol.includes('SPX')) {
+    return CACHE_TTL_INDICES; // 500ms
+  }
+  
+  // Default to medium volatility
+  return CACHE_TTL_FOREX;
 }
 
 function setCachedPrice(symbol: string, data: TradermadePriceData): void {
@@ -104,7 +139,7 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
     const url = `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${apiKey}`;
     
     const controller = new AbortController();
-    const abortTimer = setTimeout(() => controller.abort(), 8000); // Reduced timeout from 10s to 8s
+    const abortTimer = setTimeout(() => controller.abort(), WEBSOCKET_TIMEOUT_MS); // Business plan: 5s timeout
 
     const response = await fetch(url, {
       method: 'GET',

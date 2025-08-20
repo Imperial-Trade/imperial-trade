@@ -247,6 +247,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
     return () => clearInterval(interval);
   }, [apiSymbol]);
 
+  // Check if current symbol is a Forex pair or related asset
+  const isForexAsset = useMemo(() => {
+    return apiSymbol.includes('/') || apiSymbol.includes('EUR') || apiSymbol.includes('GBP') || 
+           apiSymbol.includes('USD') || apiSymbol.includes('JPY') || apiSymbol.includes('AUD') || 
+           apiSymbol.includes('CAD') || apiSymbol.includes('NZD') || apiSymbol.includes('XAU') || 
+           apiSymbol.includes('GOLD');
+  }, [apiSymbol]);
+
   if (!symbol) return null;
 
   return (
@@ -323,7 +331,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Enhanced Market Status Banner */}
+      {/* Market Status Banner - Show for closed markets or non-Forex assets */}
       {marketStatus.isClosed ? (
         <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
           <div className="flex items-center justify-between">
@@ -338,11 +346,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             )}
           </div>
           <div className="text-xs text-gray-400 mt-1">
-            {/* Show weekend closure message for Forex pairs */}
-            {(apiSymbol.includes('/') || apiSymbol.includes('EUR') || apiSymbol.includes('GBP') || 
-              apiSymbol.includes('USD') || apiSymbol.includes('JPY') || apiSymbol.includes('AUD') || 
-              apiSymbol.includes('CAD') || apiSymbol.includes('NZD') || apiSymbol.includes('XAU') || 
-              apiSymbol.includes('GOLD')) ? (
+            {isForexAsset ? (
               <>Weekend Closure: Forex market closes Fridays at 5:00 PM EST, reopens Sundays at 5:00 PM EST</>
             ) : (
               marketStatus.label
@@ -354,7 +358,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             </div>
           )}
         </div>
-      ) : marketStatus.currentSession && (
+      ) : (!isForexAsset && marketStatus.currentSession && (
         <div className="mb-3 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -373,7 +377,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             </div>
           )}
         </div>
-      )}
+      ))}
 
       {/* Price Display - Always show last known price */}
       {(price > 0 || !isLoading) && (

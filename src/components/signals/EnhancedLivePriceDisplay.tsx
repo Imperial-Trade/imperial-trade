@@ -1,4 +1,3 @@
-
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useOptimizedLivePrice } from '@/hooks/useOptimizedLivePrice';
@@ -339,9 +338,14 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             )}
           </div>
           <div className="text-xs text-gray-400 mt-1">
-            {marketStatus.sessionDetails?.name || marketStatus.label}
-            {marketStatus.sessionDetails?.nextSession && (
-              <span className="ml-1">• Next: {marketStatus.sessionDetails.nextSession}</span>
+            {/* Show weekend closure message for Forex pairs */}
+            {(apiSymbol.includes('/') || apiSymbol.includes('EUR') || apiSymbol.includes('GBP') || 
+              apiSymbol.includes('USD') || apiSymbol.includes('JPY') || apiSymbol.includes('AUD') || 
+              apiSymbol.includes('CAD') || apiSymbol.includes('NZD') || apiSymbol.includes('XAU') || 
+              apiSymbol.includes('GOLD')) ? (
+              <>Weekend Closure: Forex market closes Fridays at 5:00 PM EST, reopens Sundays at 5:00 PM EST</>
+            ) : (
+              marketStatus.label
             )}
           </div>
           {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (

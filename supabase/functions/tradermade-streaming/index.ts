@@ -9,6 +9,59 @@ const corsHeaders = {
 // Tradermade symbol configuration
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
 
+// Mapping between client-standard symbols and TraderMade upstream symbols
+const CLIENT_TO_UPSTREAM: Record<string, string> = {
+  XAUUSD: 'XAUUSD',
+  BTCUSD: 'BTCUSD',
+  EURUSD: 'EURUSD',
+  USA30USD: 'US30',
+  NAS100USD: 'NAS100',
+};
+
+const UPSTREAM_TO_CLIENT: Record<string, string> = {
+  XAUUSD: 'XAUUSD',
+  BTCUSD: 'BTCUSD',
+  EURUSD: 'EURUSD',
+  US30: 'USA30USD',
+  NAS100: 'NAS100USD',
+};
+
+function normalizeClientSymbol(input: string): string | null {
+  const up = (input || '').toUpperCase().trim();
+  if (!up) return null;
+  const compact = up.replace(/[^A-Z0-9]/g, '');
+
+  // Direct known symbols
+  if (TRADERMADE_SYMBOLS.includes(up)) return up;
+
+  // Indices synonyms
+  if (compact.includes('US30') || compact.includes('USA30') || compact.includes('DOWJONES') || compact === 'DJI') {
+    return 'USA30USD';
+  }
+  if (compact.includes('NAS100') || compact.includes('NASDAQ100') || compact.includes('NASDAQ')) {
+    return 'NAS100USD';
+  }
+
+  // Passthrough common formats
+  if (up === 'XAU/USD') return 'XAUUSD';
+  if (up === 'EUR/USD') return 'EURUSD';
+  if (up === 'BTC/USD') return 'BTCUSD';
+
+  // Upstream codes typed by clients
+  if (up === 'US30') return 'USA30USD';
+  if (up === 'NAS100') return 'NAS100USD';
+
+  return null;
+}
+
+function toUpstreamSymbol(clientSymbol: string): string {
+  return CLIENT_TO_UPSTREAM[clientSymbol] || clientSymbol;
+}
+
+function toClientSymbol(upstreamSymbol: string): string {
+  return UPSTREAM_TO_CLIENT[upstreamSymbol] || upstreamSymbol;
+}
+
 interface TradermadePriceData {
   symbol: string;
   price: number;
@@ -52,8 +105,8 @@ const MAX_RECONNECT_DELAY = 60000; // Maximum reconnection delay
 
 // Validate and normalize symbols
 function validateSymbol(symbol: string): string | null {
-  const upperSymbol = symbol.toUpperCase().trim();
-  return TRADERMADE_SYMBOLS.includes(upperSymbol) ? upperSymbol : null;
+  const normalized = normalizeClientSymbol(symbol);
+  return normalized && TRADERMADE_SYMBOLS.includes(normalized) ? normalized : null;
 }
 
 // Business Plan Tiered Cache Management - Different TTLs based on asset volatility
@@ -116,16 +169,19 @@ function isRateLimited(): boolean {
 }
 
 // Optimized HTTP API fetching with better error handling
-async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData | null> {
+async function fetchTradermadePrice(clientSymbol: string): Promise<TradermadePriceData | null> {
+  const normalized = normalizeClientSymbol(clientSymbol);
+  if (!normalized) return null;
+
   if (isRateLimited()) {
-    return getCachedPrice(symbol);
+    return getCachedPrice(normalized);
   }
 
   const apiKey = Deno.env.get('TRADERMADE_API_KEY');
   
   if (!apiKey) {
-    return getCachedPrice(symbol) || {
-      symbol,
+    return getCachedPrice(normalized) || {
+      symbol: normalized,
       price: 0,
       bid: 0,
       ask: 0,
@@ -138,10 +194,11 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
   try {
     globalRateLimitCount++;
     
-    const url = `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${apiKey}`;
+    const upstream = toUpstreamSymbol(normalized);
+    const url = `https://marketdata.tradermade.com/api/v1/live?currency=${upstream}&api_key=${apiKey}`;
     
     const controller = new AbortController();
-    const abortTimer = setTimeout(() => controller.abort(), WEBSOCKET_TIMEOUT_MS); // Business plan: 5s timeout
+    const abortTimer = setTimeout(() => controller.abort(), WEBSOCKET_TIMEOUT_MS);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -155,7 +212,7 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
     clearTimeout(abortTimer);
 
     if (!response.ok) {
-      return getCachedPrice(symbol);
+      return getCachedPrice(normalized);
     }
 
     const data = await response.json();
@@ -167,7 +224,7 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
       
       if (price > 0) {
         const priceData: TradermadePriceData = {
-          symbol: symbol,
+          symbol: normalized,
           price: price,
           bid: quote.bid || price,
           ask: quote.ask || price,
@@ -176,14 +233,14 @@ async function fetchTradermadePrice(symbol: string): Promise<TradermadePriceData
           changePercent: 0
         };
 
-        setCachedPrice(symbol, priceData);
+        setCachedPrice(normalized, priceData);
         return priceData;
       }
     }
 
-    return getCachedPrice(symbol);
-  } catch (error) {
-    return getCachedPrice(symbol);
+    return getCachedPrice(normalized);
+  } catch (_error) {
+    return getCachedPrice(normalized);
   }
 }
 
@@ -299,9 +356,10 @@ serve(async (req) => {
         
         // Authenticate
         if (tradermadeSocket) {
+          const upstreamList = TRADERMADE_SYMBOLS.map(toUpstreamSymbol).join(',');
           tradermadeSocket.send(JSON.stringify({
             userKey: apiKey,
-            symbol: TRADERMADE_SYMBOLS.join(',')
+            symbol: upstreamList
           }));
         }
 
@@ -371,54 +429,40 @@ serve(async (req) => {
             return;
           }
 
-            // Handle price updates with enhanced validation for USA30/NAS100
-            let symbol = data.symbol || data.instrument;
-            if (symbol && (data.bid || data.ask || data.price || data.mid)) {
-              symbol = symbol.toUpperCase();
-              
-              // Calculate mid price from available data
-              let price = data.mid || data.price;
-              if (!price && data.bid && data.ask) {
-                price = (parseFloat(data.bid) + parseFloat(data.ask)) / 2;
-              } else if (!price) {
-                price = data.bid || data.ask;
-              }
-              
-              price = parseFloat(price);
-              
-              // Enhanced validation specifically for USA30USD and NAS100USD
-              if (!price || price <= 0 || isNaN(price)) {
-                console.warn(`⚠️ Invalid price for ${symbol}: ${price}`);
-                return;
-              }
-              
-              // Validate reasonable price ranges for US indices
-              if (symbol === 'USA30USD' && (price < 10000 || price > 100000)) {
-                console.warn(`⚠️ USA30USD price out of range: ${price}`);
-                return;
-              }
-              if (symbol === 'NAS100USD' && (price < 5000 || price > 50000)) {
-                console.warn(`⚠️ NAS100USD price out of range: ${price}`);
-                return;
-              }
-            }
-            
-            const priceUpdate: TradermadePriceData = {
-              symbol: symbol,
-              price: price,
-              bid: data.bid ? parseFloat(data.bid) : price,
-              ask: data.ask ? parseFloat(data.ask) : price,
-              timestamp: new Date().toISOString(),
-              change: 0,
-              changePercent: 0
-            };
+          // Extract and normalize symbols/prices
+          let upstreamSymbol: string | undefined = (data.symbol || data.instrument)?.toUpperCase();
+          if (!upstreamSymbol) return;
+          const clientSymbol = toClientSymbol(upstreamSymbol);
 
-            // Cache the update (batching timer will deliver to client)
-            setCachedPrice(symbol, priceUpdate);
+          let price: number | undefined = data.mid || data.price;
+          if (price === undefined && data.bid && data.ask) {
+            price = (parseFloat(data.bid) + parseFloat(data.ask)) / 2;
+          } else if (price === undefined) {
+            price = data.bid || data.ask;
           }
+          price = price !== undefined ? parseFloat(price) : undefined;
+
+          if (!price || isNaN(price) || price <= 0) {
+            return;
+          }
+
+          // Reasonable range checks for indices
+          if (clientSymbol === 'USA30USD' && (price < 10000 || price > 100000)) return;
+          if (clientSymbol === 'NAS100USD' && (price < 5000 || price > 50000)) return;
+
+          const priceUpdate: TradermadePriceData = {
+            symbol: clientSymbol,
+            price,
+            bid: data.bid ? parseFloat(data.bid) : price,
+            ask: data.ask ? parseFloat(data.ask) : price,
+            timestamp: new Date().toISOString(),
+            change: 0,
+            changePercent: 0
+          };
+
+          setCachedPrice(clientSymbol, priceUpdate);
         } catch (error) {
-          // Only log parsing errors for actual JSON messages
-          if (event.data.startsWith('{')) {
+          if (typeof event.data === 'string' && event.data.startsWith('{')) {
             console.error('❌ Error parsing Tradermade message:', error);
           }
         }

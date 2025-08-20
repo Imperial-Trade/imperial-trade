@@ -681,8 +681,8 @@ const LivePriceWidgetComponent = ({
         </div>
       )}
 
-      {/* Market Status Banner */}
-      {marketStatus.isClosed ? (
+      {/* Market Status Banner - Only show when market is closed */}
+      {marketStatus.isClosed && (
         <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -700,13 +700,6 @@ const LivePriceWidgetComponent = ({
             {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
               <span className="ml-1">• Opens in {formatCountdown(marketStatus.countdown)}</span>
             )}
-          </div>
-        </div>
-      ) : marketStatus.currentSession && (
-        <div className="mb-3 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <div className="text-green-400 text-xs font-medium">{marketStatus.currentSession}</div>
           </div>
         </div>
       )}

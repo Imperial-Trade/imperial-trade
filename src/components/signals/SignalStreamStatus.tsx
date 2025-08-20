@@ -127,7 +127,7 @@ export function SignalStreamStatus() {
   const needsAction = status.monitor === 'inactive' || status.monitor === 'error';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 hidden">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Xeon Stream Status</h3>
         <Button 

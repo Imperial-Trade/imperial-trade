@@ -43,10 +43,12 @@ let globalRateLimitCount = 0;
 let lastRateLimitReset = Date.now();
 const RATE_LIMIT_PER_MINUTE = 1200; // Business plan: 1200 requests/minute (20 req/s)
 
-// Ultra-fast batching for business plan
-const BATCH_SEND_INTERVAL_MS = 100; // Ultra-fast 100ms batching for real-time performance
-const HEARTBEAT_INTERVAL_MS = 15000; // Optimized 15s heartbeat for better health monitoring
-const WEBSOCKET_TIMEOUT_MS = 5000; // Reduced to 5s for faster failover
+// Ultra-fast batching for business plan - optimized for stability
+const BATCH_SEND_INTERVAL_MS = 50; // Ultra-fast 50ms batching for Business Plan performance
+const HEARTBEAT_INTERVAL_MS = 30000; // Extended 30s heartbeat for connection stability
+const WEBSOCKET_TIMEOUT_MS = 10000; // Increased to 10s for better stability
+const RECONNECT_BASE_DELAY = 2000; // Base delay for exponential backoff
+const MAX_RECONNECT_DELAY = 60000; // Maximum reconnection delay
 
 // Validate and normalize symbols
 function validateSymbol(symbol: string): string | null {
@@ -369,23 +371,36 @@ serve(async (req) => {
             return;
           }
 
-          // Handle price updates with optimized processing
-          let symbol = data.symbol || data.instrument;
-          if (symbol && (data.bid || data.ask || data.price || data.mid)) {
-            symbol = symbol.toUpperCase();
-            
-            // Calculate mid price from available data
-            let price = data.mid || data.price;
-            if (!price && data.bid && data.ask) {
-              price = (parseFloat(data.bid) + parseFloat(data.ask)) / 2;
-            } else if (!price) {
-              price = data.bid || data.ask;
-            }
-            
-            price = parseFloat(price);
-            
-            if (!price || price <= 0 || isNaN(price)) {
-              return;
+            // Handle price updates with enhanced validation for USA30/NAS100
+            let symbol = data.symbol || data.instrument;
+            if (symbol && (data.bid || data.ask || data.price || data.mid)) {
+              symbol = symbol.toUpperCase();
+              
+              // Calculate mid price from available data
+              let price = data.mid || data.price;
+              if (!price && data.bid && data.ask) {
+                price = (parseFloat(data.bid) + parseFloat(data.ask)) / 2;
+              } else if (!price) {
+                price = data.bid || data.ask;
+              }
+              
+              price = parseFloat(price);
+              
+              // Enhanced validation specifically for USA30USD and NAS100USD
+              if (!price || price <= 0 || isNaN(price)) {
+                console.warn(`⚠️ Invalid price for ${symbol}: ${price}`);
+                return;
+              }
+              
+              // Validate reasonable price ranges for US indices
+              if (symbol === 'USA30USD' && (price < 10000 || price > 100000)) {
+                console.warn(`⚠️ USA30USD price out of range: ${price}`);
+                return;
+              }
+              if (symbol === 'NAS100USD' && (price < 5000 || price > 50000)) {
+                console.warn(`⚠️ NAS100USD price out of range: ${price}`);
+                return;
+              }
             }
             
             const priceUpdate: TradermadePriceData = {

@@ -64,6 +64,59 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const refCountsRef = useRef<Map<string, number>>(new Map());
   const pendingSubscribeBatchRef = useRef<Set<string>>(new Set());
   const subscribeFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Enhanced stability constants for improved USA30/NAS100 performance
+  const MAX_RECONNECT_ATTEMPTS = 10;
+  const RECONNECT_BASE_DELAY = 2000; // 2 seconds base delay  
+  const MAX_RECONNECT_DELAY = 60000; // Max 60 seconds delay
+  const HEALTH_CHECK_INTERVAL = 30000; // 30 seconds health check
+  const STALE_DATA_THRESHOLD = 10000; // 10 seconds stale threshold
+  // Enhanced health check mechanism for connection stability
+  const healthCheckRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const startHealthCheck = useCallback(() => {
+    if (healthCheckRef.current) {
+      clearInterval(healthCheckRef.current);
+    }
+    
+    healthCheckRef.current = setInterval(() => {
+      const now = Date.now();
+      const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
+      
+      if (timeSinceLastMessage > STALE_DATA_THRESHOLD && connectionStatus === 'connected') {
+        console.warn('🚨 WebSocket connection appears stale, triggering reconnect...');
+        if (socketRef.current) {
+          socketRef.current.close();
+        }
+      }
+    }, HEALTH_CHECK_INTERVAL);
+  }, [connectionStatus]);
+
+  const stopHealthCheck = useCallback(() => {
+    if (healthCheckRef.current) {
+      clearInterval(healthCheckRef.current);
+      healthCheckRef.current = null;
+    }
+  }, []);
+
+  // US Market Hours detection for USA30/NAS100
+  const isUSMarketOpen = useCallback(() => {
+    const now = new Date();
+    const utc = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
+    const est = new Date(utc.getTime() + (-5 * 3600000)); // EST timezone
+    
+    const hour = est.getHours();
+    const day = est.getDay(); // 0 = Sunday, 6 = Saturday
+    
+    // Market closed on weekends
+    if (day === 0 || day === 6) return false;
+    
+    // Regular trading hours: 9:30 AM - 4:00 PM EST (Mon-Fri)
+    // Pre-market: 4:00 AM - 9:30 AM EST 
+    // After-market: 4:00 PM - 8:00 PM EST
+    return (hour >= 4 && hour < 20); // Extended hours 4 AM - 8 PM EST
+  }, []);
+
   const flushPendingSubscriptions = useCallback(() => {
     if (socketRef.current?.readyState !== WebSocket.OPEN) return;
     const pending = Array.from(pendingSubscribeBatchRef.current);
@@ -101,9 +154,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const getReconnectDelay = useCallback(() => {
-    const baseDelay = 5000;
-    const maxDelay = 30000;
-    const delay = Math.min(baseDelay * Math.pow(2, reconnectAttemptsRef.current), maxDelay);
+    // Enhanced exponential backoff with jitter for improved stability
+    const jitter = Math.random() * 1000; // Add 0-1s jitter to prevent thundering herd
+    const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttemptsRef.current) + jitter, MAX_RECONNECT_DELAY);
     return delay;
   }, []);
 

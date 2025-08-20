@@ -271,7 +271,6 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
           </div>
           {!(isLoading || isRefreshing || connectionStatusInfo.text === 'Fetching') && (
             <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
-              {/* Status text and effects hidden for a smoother interface */}
               {dataAge && (
                 <span className={`${
                   dataAge === 'Live' ? 'text-green-400' : 
@@ -308,7 +307,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Loading State for Initial Load - Only show skeleton for actual loading, not connection issues */}
+      {/* Loading State for Initial Load */}
       {price === 0 && connectionStatus === 'connecting' && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -325,7 +324,7 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
         </div>
       )}
 
-      {/* Market Status Banner */}
+      {/* Enhanced Market Status Banner */}
       {marketStatus.isClosed ? (
         <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
           <div className="flex items-center justify-between">
@@ -340,18 +339,35 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             )}
           </div>
           <div className="text-xs text-gray-400 mt-1">
-            {marketStatus.label} • Last price: {lastUpdated ? formatTime(lastUpdated) : '—'}
-            {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
-              <span className="ml-1">• Opens in {formatCountdown(marketStatus.countdown)}</span>
+            {marketStatus.sessionDetails?.name || marketStatus.label}
+            {marketStatus.sessionDetails?.nextSession && (
+              <span className="ml-1">• Next: {marketStatus.sessionDetails.nextSession}</span>
             )}
           </div>
+          {marketStatus.countdown && marketStatus.countdown.totalSeconds > 0 && (
+            <div className="text-xs text-gray-400 mt-1">
+              Opens in {formatCountdown(marketStatus.countdown)}
+            </div>
+          )}
         </div>
       ) : marketStatus.currentSession && (
         <div className="mb-3 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <div className="text-green-400 text-xs font-medium">{marketStatus.currentSession}</div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <div className="text-green-400 text-xs font-medium">{marketStatus.currentSession}</div>
+            </div>
+            {marketStatus.sessionDetails?.nextSession && marketStatus.countdown && (
+              <div className="text-green-300 text-xs">
+                {marketStatus.sessionDetails.nextSession} in {formatCountdown(marketStatus.countdown)}
+              </div>
+            )}
           </div>
+          {marketStatus.sessionDetails?.name && (
+            <div className="text-xs text-gray-400 mt-1">
+              {marketStatus.sessionDetails.name}
+            </div>
+          )}
         </div>
       )}
 
@@ -372,8 +388,6 @@ const EnhancedLivePriceDisplay: React.FC<EnhancedLivePriceDisplayProps> = ({
             ) : (
               <div className="text-gray-500 font-mono text-xl">---.--</div>
             )}
-            
-            {/* Updating indicator hidden for smooth UI */}
           </div>
           
           {!error && price > 0 && (

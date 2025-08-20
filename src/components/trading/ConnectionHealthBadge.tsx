@@ -65,7 +65,7 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
 
   if (!showDetails) {
     return (
-      <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border ${status.bgColor} ${status.borderColor} ${className}`}>
+      <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border ${status.bgColor} ${status.borderColor} ${className} hidden`}>
         <Icon className={`w-3 h-3 ${status.color}`} />
         <span className={`text-xs font-medium ${status.color}`}>
           {status.text}
@@ -80,7 +80,7 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
   }
 
   return (
-    <div className={`${status.bgColor} ${status.borderColor} border rounded-lg p-3 ${className}`}>
+    <div className={`${status.bgColor} ${status.borderColor} border rounded-lg p-3 ${className} hidden`}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Icon className={`w-4 h-4 ${status.color}`} />

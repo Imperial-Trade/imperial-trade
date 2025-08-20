@@ -53,22 +53,35 @@ export type AssetKey = keyof typeof ASSET_REGISTRY;
 // Supported symbols for validation
 export const SUPPORTED_ASSET_SYMBOLS = Object.values(ASSET_REGISTRY).map(asset => asset.symbol);
 
-// Symbol validation function
+// Symbol validation function with enhanced composite label handling
 export function validateAssetSymbol(symbol: string): AssetDefinition | null {
-  const upperSymbol = symbol.toUpperCase();
+  const upperSymbol = symbol.toUpperCase().trim();
   
-  // Direct symbol match
+  // Direct symbol match first (fastest path)
   const assetBySymbol = Object.values(ASSET_REGISTRY).find(
     asset => asset.symbol === upperSymbol || asset.tradermadeSymbol === upperSymbol
   );
   
   if (assetBySymbol) return assetBySymbol;
   
-  // Alternative name matching
+  // Enhanced composite label handling - create compact form for matching
+  const compact = upperSymbol.replace(/[^A-Z0-9]/g, ''); // Remove spaces, special chars
+  
+  // USA30/Dow Jones matching (handle "Dow Jones USA30", "US30", etc.)
+  if (compact.includes('USA30') || compact.includes('US30') || compact.includes('DOWJONES')) {
+    console.log(`🔄 Normalized composite label '${symbol}' → 'USA30'`);
+    return ASSET_REGISTRY.USA30;
+  }
+  
+  // NAS100/Nasdaq matching (handle "Nasdaq 100 NAS100", "NASDAQ100", etc.)
+  if (compact.includes('NAS100') || compact.includes('NASDAQ100') || compact.includes('NASDAQ')) {
+    console.log(`🔄 Normalized composite label '${symbol}' → 'NAS100'`);
+    return ASSET_REGISTRY.NAS100;
+  }
+  
+  // Legacy alternative name matching (kept for backwards compatibility)
   if (upperSymbol === 'GOLD' || upperSymbol === 'XAUUSD') return ASSET_REGISTRY.GOLD;
   if (upperSymbol === 'BITCOIN' || upperSymbol === 'BTCUSD') return ASSET_REGISTRY.BITCOIN;
-  if (upperSymbol === 'USA30' || upperSymbol === 'US30') return ASSET_REGISTRY.USA30;
-  if (upperSymbol === 'NAS100' || upperSymbol === 'NASDAQ') return ASSET_REGISTRY.NAS100;
   if (upperSymbol === 'EURUSD' || upperSymbol === 'EUR/USD') return ASSET_REGISTRY.EURUSD;
   
   return null;

@@ -102,7 +102,8 @@ export function useOptimizedLivePrice(
         return null;
       }
 
-      const priceData = data?.[sym];
+      // Fix: Edge function returns { success, prices: { [symbol]: priceData } }
+      const priceData = data?.prices?.[sym] || data?.prices?.[sym.toUpperCase()];
       if (priceData && priceData.price > 0) {
         console.log(`✅ [${sym}] HTTP fallback success:`, priceData.price);
         setLocalPriceSource('http');

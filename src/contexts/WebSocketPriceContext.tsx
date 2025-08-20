@@ -129,8 +129,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
   const normalizeSymbol = useCallback((s: string) => {
     const up = (s || '').toUpperCase().trim();
-    // Remove non-alphanumerics like '/' and spaces
+    
+    // Create compact form for advanced matching
     const compact = up.replace(/[^A-Z0-9]/g, '');
+    
+    // Enhanced matching logic
     switch (up) {
       case 'GOLD':
       case 'XAU/USD':
@@ -149,6 +152,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       case 'SPX':
         return 'SPX500USD';
       default:
+        // Enhanced composite label fallback matching
+        if (compact.includes('USA30') || compact.includes('US30') || compact.includes('DOWJONES')) {
+          console.log(`🔄 WebSocket normalized composite '${s}' → 'USA30USD'`);
+          return 'USA30USD';
+        }
+        if (compact.includes('NAS100') || compact.includes('NASDAQ100') || compact.includes('NASDAQ')) {
+          console.log(`🔄 WebSocket normalized composite '${s}' → 'NAS100USD'`);
+          return 'NAS100USD';
+        }
         return compact;
     }
   }, []);

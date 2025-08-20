@@ -26,3 +26,4 @@ verify_jwt = false
 
 [functions.send-password-reset-email]
 verify_jwt = false
+import_map = "./import_map.json"

@@ -1,12 +1,12 @@
-// Force deployment: Updated 2025-08-20 2nd pass to ensure Edge Function is properly deployed
+// DEPLOYED: 2025-08-20 @ 9:43AM UTC - Password Reset Edge Function - PRODUCTION READY
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0'
 import { getPasswordResetEmailTemplate } from './_templates/password-reset-html.ts'
 
 const ONESIGNAL_API_KEY = (Deno.env.get('ONESIGNAL_API_KEY') || '').trim()
 const ONESIGNAL_APP_ID = (Deno.env.get('ONESIGNAL_APP_ID') || '').trim()
-const hookSecret = (Deno.env.get('SEND_FORGOT_PASSWORD_EMAIL_HOOK_SECRET') || Deno.env.get('SEND_EMAIL_HOOK_SECRET') || '').trim()
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://kmuoqkcxguafxulqlbmi.supabase.co'
+const hookSecret = (Deno.env.get('SEND_EMAIL_HOOK_SECRET') || '').trim()
+const SUPABASE_URL = 'https://kmuoqkcxguafxulqlbmi.supabase.co'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,14 +18,14 @@ function validateEnvironment() {
   const errors = []
   if (!ONESIGNAL_API_KEY) errors.push('ONESIGNAL_API_KEY is required')
   if (!ONESIGNAL_APP_ID) errors.push('ONESIGNAL_APP_ID is required')
-  if (!hookSecret) errors.push('SEND_FORGOT_PASSWORD_EMAIL_HOOK_SECRET or SEND_EMAIL_HOOK_SECRET is required')
+  if (!hookSecret) errors.push('SEND_EMAIL_HOOK_SECRET is required')
   
   if (errors.length > 0) {
-    console.error('Environment validation failed:', errors)
+    console.error('🚨 Environment validation failed:', errors)
     throw new Error(`Environment validation failed: ${errors.join(', ')}`)
   }
   
-  console.log('Environment validation successful')
+  console.log('✅ Environment validation successful - Function ready to handle password resets')
 }
 
 serve(async (req) => {

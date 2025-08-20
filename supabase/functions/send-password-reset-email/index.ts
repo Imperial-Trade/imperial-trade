@@ -1,4 +1,4 @@
-// Force deployment: Updated 2025-08-20 to ensure Edge Function is properly deployed
+// Force deployment: Updated 2025-08-20 2nd pass to ensure Edge Function is properly deployed
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts'
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0'
 import { getPasswordResetEmailTemplate } from './_templates/password-reset-html.ts'

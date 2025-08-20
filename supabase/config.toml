@@ -24,5 +24,8 @@ verify_jwt = false
 [functions.order-trigger-monitor]
 verify_jwt = false
 
+[functions.hello]
+verify_jwt = false
+
 [functions.password-reset]
 verify_jwt = false

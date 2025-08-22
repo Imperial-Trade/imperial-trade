@@ -72,24 +72,32 @@ export function SignalStreamFilters({
     { value: 'sell', label: 'Sell Orders', count: signalCounts.sell, icon: TrendingDown }
   ];
 
+  // Safely call native stopImmediatePropagation if available (TS-safe)
+  const stopImmediate = (e: React.MouseEvent) => {
+    const ne = e.nativeEvent as any;
+    if (ne && typeof ne.stopImmediatePropagation === 'function') {
+      ne.stopImmediatePropagation();
+    }
+  };
+
   const handleStatusClick = (e: React.MouseEvent, statusValue: string) => {
     e.preventDefault();
     e.stopPropagation();
-    e.stopImmediatePropagation();
+    stopImmediate(e);
     updateFilter('status', statusValue);
   };
 
   const handleTradeTypeClick = (e: React.MouseEvent, tradeTypeValue: string) => {
     e.preventDefault();
     e.stopPropagation();
-    e.stopImmediatePropagation();
+    stopImmediate(e);
     updateFilter('tradeType', tradeTypeValue);
   };
 
   const handleCreateSignalClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    e.stopImmediatePropagation();
+    stopImmediate(e);
     if (onCreateSignal) {
       onCreateSignal();
     }
@@ -98,14 +106,14 @@ export function SignalStreamFilters({
   const handleClearFilterClick = (e: React.MouseEvent, key: keyof FilterState) => {
     e.preventDefault();
     e.stopPropagation();
-    e.stopImmediatePropagation();
+    stopImmediate(e);
     clearFilter(key);
   };
 
   const handleClearAllClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    e.stopImmediatePropagation();
+    stopImmediate(e);
     clearAllFilters();
   };
 

@@ -57,13 +57,13 @@ export const ComplianceFooter: React.FC = () => {
 
         {/* Copyright and Legal Notice */}
         <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+          <div className="flex flex-col items-center gap-2 text-center">
             <p>
-              © 2025 Imperial Trading Platform. All rights reserved.
-            </p>
-            <p className="max-w-md text-right">
               Not registered as a securities broker-dealer or investment adviser. 
               All information is for educational purposes only. CFTC Rule 4.41 applies.
+            </p>
+            <p>
+              © 2025 Imperial Trading Platform. All rights reserved.
             </p>
           </div>
         </div>

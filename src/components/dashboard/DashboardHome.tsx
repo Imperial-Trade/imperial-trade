@@ -32,62 +32,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useWelcome } from "@/contexts/WelcomeContext";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 
-interface StatCardProps {
-  title: string;
-  value: string;
-  change?: string;
-  trend?: "up" | "down";
-  icon: React.ReactNode;
-}
-
-const StatCard: React.FC<StatCardProps> = ({
-  title,
-  value,
-  change,
-  trend,
-  icon,
-}) => (
-  <Card className="group relative overflow-hidden bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1">
-    {/* Gradient overlay */}
-    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-    <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3">
-      <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-        {title}
-      </CardTitle>
-      <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-        {icon}
-      </div>
-    </CardHeader>
-    <CardContent className="relative">
-      <div className="text-3xl font-bold tracking-tight mb-1 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-        {value}
-      </div>
-      {change && (
-        <div
-          className={`flex items-center text-sm font-medium ${
-            trend === "up"
-              ? "text-green-600 dark:text-green-400"
-              : "text-red-600 dark:text-red-400"
-          }`}
-        >
-          {trend === "up" ? (
-            <div className="flex items-center gap-1">
-              <TrendingUp className="w-4 h-4" />
-              <span>{change}</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1">
-              <TrendingDown className="w-4 h-4" />
-              <span>{change}</span>
-            </div>
-          )}
-        </div>
-      )}
-    </CardContent>
-  </Card>
-);
-
 export const DashboardHome: React.FC = () => {
   const { user } = useAuth();
   const { hasSeenWelcome, markWelcomeAsSeen } = useWelcome();
@@ -163,40 +107,6 @@ export const DashboardHome: React.FC = () => {
             {/* Large spacer to push content below viewport */}
             <div className="pt-32"></div>
           </div>
-        </div>
-      </div>
-
-      {/* Premium Stats Grid */}
-      <div className="relative z-20 container mx-auto px-6 mb-12">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Active Signals"
-            value="127"
-            change="+15% from yesterday"
-            trend="up"
-            icon={<Target className="h-5 w-5" />}
-          />
-          <StatCard
-            title="Win Rate"
-            value="84.2%"
-            change="+7.3% this week"
-            trend="up"
-            icon={<Award className="h-5 w-5" />}
-          />
-          <StatCard
-            title="Total PnL"
-            value="$47,892"
-            change="+23.8% this month"
-            trend="up"
-            icon={<DollarSign className="h-5 w-5" />}
-          />
-          <StatCard
-            title="Portfolio Value"
-            value="$2.4M"
-            change="+$127K today"
-            trend="up"
-            icon={<TrendingUp className="h-5 w-5" />}
-          />
         </div>
       </div>
 

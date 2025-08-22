@@ -201,20 +201,6 @@ const PrivacyPage: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Risk Warning Banner */}
-            <Card className="bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
-                  <AlertTriangle className="w-5 h-5" />
-                  Educational Platform - High Risk Warning
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-orange-700 dark:text-orange-300 font-medium">
-                  Trading involves substantial risk of loss. All content is for educational purposes only. We are not registered investment advisers. Past performance does not guarantee future results.
-                </p>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Footer */}

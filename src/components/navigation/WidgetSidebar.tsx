@@ -1,6 +1,5 @@
-
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, PanInfo } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen,
@@ -17,6 +16,7 @@ import {
   Settings,
   Shield,
   LogOut,
+  X,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { TradingSessionIndicator } from "@/components/ui/TradingSessionIndicator";
@@ -71,46 +71,134 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number>(0);
+  const touchStartTime = useRef<number>(0);
 
-  // Mouse position tracking for edge detection
+  // Enhanced mouse position tracking for edge detection
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as Element | null;
-      // Prevent sidebar from opening when interacting with protected UI (e.g., Quick Copy panel)
+      // Prevent sidebar from opening when interacting with protected UI
       if (target && (target as Element).closest('[data-prevent-widget-open="true"]')) {
         if (isVisible) setIsVisible(false);
         return;
       }
 
-      const isNearLeftEdge = e.clientX <= 50; // Show when mouse is within 50px of left edge
+      const isNearLeftEdge = e.clientX <= 50;
 
-      if (isNearLeftEdge && !isVisible) {
+      if (isNearLeftEdge && !isVisible && !isDragging) {
         setIsVisible(true);
       }
     };
 
     const handleMouseLeave = () => {
-      // Hide sidebar when mouse leaves the window entirely
-      if (!isHovering) {
+      if (!isHovering && !isDragging) {
         setIsVisible(false);
+      }
+    };
+
+    // Click outside to close
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node) && isVisible) {
+        setIsVisible(false);
+        setShowProfileDropdown(false);
+      }
+    };
+
+    // Escape key to close
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isVisible) {
+        setIsVisible(false);
+        setShowProfileDropdown(false);
       }
     };
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseleave", handleMouseLeave);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscapeKey);
 
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseleave", handleMouseLeave);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscapeKey);
     };
-  }, [isVisible, isHovering]);
+  }, [isVisible, isHovering, isDragging]);
+
+  // Touch event handlers for swipe gestures
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      if (!isVisible || !sidebarRef.current?.contains(e.target as Node)) return;
+      
+      touchStartX.current = e.touches[0].clientX;
+      touchStartTime.current = Date.now();
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!isVisible || !sidebarRef.current?.contains(e.target as Node)) return;
+
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchDuration = Date.now() - touchStartTime.current;
+      const swipeDistance = touchStartX.current - touchEndX;
+      const swipeVelocity = swipeDistance / touchDuration;
+
+      // Swipe left to close (minimum 50px swipe or fast velocity)
+      if (swipeDistance > 50 || (swipeVelocity > 0.3 && swipeDistance > 20)) {
+        setIsVisible(false);
+        setShowProfileDropdown(false);
+        
+        // Haptic feedback if supported
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+      }
+    };
+
+    document.addEventListener("touchstart", handleTouchStart, { passive: true });
+    document.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [isVisible]);
 
   const handleToolClick = (tool: (typeof tradingTools)[0]) => {
     setActiveTool(tool.name);
-    // Navigate using React Router
     navigate(tool.route);
+  };
+
+  // Drag handlers for smooth gesture control
+  const handleDragStart = () => {
+    setIsDragging(true);
+  };
+
+  const handleDrag = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    // Only allow dragging to the left
+    if (info.offset.x > 0) return false;
+  };
+
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    setIsDragging(false);
+    
+    const dragDistance = Math.abs(info.offset.x);
+    const dragVelocity = Math.abs(info.velocity.x);
+    
+    // Close if dragged more than 100px or with sufficient velocity
+    if (dragDistance > 100 || dragVelocity > 500) {
+      setIsVisible(false);
+      setShowProfileDropdown(false);
+    }
+  };
+
+  const handleClose = () => {
+    setIsVisible(false);
+    setShowProfileDropdown(false);
   };
 
   const WidgetTool = ({
@@ -314,6 +402,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
   return (
     <motion.aside
+      ref={sidebarRef}
       className={`fixed left-2 sm:left-4 top-16 sm:top-20 z-[60] h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] w-64 sm:w-72 md:w-80 lg:w-96 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
       initial={{ x: -280, opacity: 0 }}
       animate={{
@@ -322,30 +411,54 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
       }}
       transition={{
         type: "spring",
-        stiffness: 300,
-        damping: 30,
+        stiffness: 350,
+        damping: 35,
         mass: 0.8,
       }}
+      drag={isVisible ? "x" : false}
+      dragConstraints={{ left: -280, right: 0 }}
+      dragElastic={0.1}
+      onDragStart={handleDragStart}
+      onDrag={handleDrag}
+      onDragEnd={handleDragEnd}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => {
         setIsHovering(false);
-        setIsVisible(false);
-        setShowProfileDropdown(false);
+        if (!isDragging) {
+          setIsVisible(false);
+          setShowProfileDropdown(false);
+        }
       }}
-      whileHover={{
+      whileHover={!isDragging ? {
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
         scale: 1.01,
+      } : {}}
+      style={{
+        touchAction: 'pan-y pinch-zoom',
       }}
     >
       <div className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
-        {/* Header */}
-        <div className="mb-3 sm:mb-4 md:mb-6">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1">
-            Today
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-            Trading Arsenal
-          </p>
+        {/* Header with Close Button */}
+        <div className="mb-3 sm:mb-4 md:mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1">
+              Today
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+              Trading Arsenal
+            </p>
+          </div>
+          
+          {/* Close Button */}
+          <motion.button
+            onClick={handleClose}
+            className="p-1.5 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 text-foreground/60 hover:text-foreground"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            aria-label="Close sidebar"
+          >
+            <X className="w-4 h-4" />
+          </motion.button>
         </div>
 
         {/* Trading Session Indicator */}
@@ -355,22 +468,11 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
 
         {/* Widget Grid */}
         <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
-          {/* Trading Journal - Large Widget */}
           <WidgetTool tool={tradingTools[0]} size="large" />
-
-          {/* Economic Calendar */}
           <WidgetTool tool={tradingTools[1]} size="small" />
-
-          {/* Risk Calculator */}
           <WidgetTool tool={tradingTools[2]} size="small" />
-
-          {/* Trade Analyst - Medium Widget */}
           <WidgetTool tool={tradingTools[3]} size="medium" />
-
-          {/* Opportunity Scanner */}
           <WidgetTool tool={tradingTools[4]} size="small" />
-
-          {/* Risk Simulator */}
           <WidgetTool tool={tradingTools[5]} size="small" />
         </div>
 

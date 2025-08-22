@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
+
 export default function SignalStream() {
   const {
     user,
@@ -461,6 +462,7 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+
   return (
     <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
@@ -495,7 +497,12 @@ export default function SignalStream() {
         </div>
 
         {/* Main Content - Mobile Optimized grid layout */}
-        <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
+        <div 
+          className="w-full px-2 sm:px-4 py-3 sm:py-6"
+          data-prevent-widget-open="true"
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerMove={(e) => e.stopPropagation()}
+        >
           <div className="max-w-none w-full">
             <div className="w-full">
               {/* System Status */}

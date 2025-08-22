@@ -75,25 +75,47 @@ export function SignalStreamFilters({
   const handleStatusClick = (e: React.MouseEvent, statusValue: string) => {
     e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
     updateFilter('status', statusValue);
   };
 
   const handleTradeTypeClick = (e: React.MouseEvent, tradeTypeValue: string) => {
     e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
     updateFilter('tradeType', tradeTypeValue);
   };
 
   const handleCreateSignalClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
     if (onCreateSignal) {
       onCreateSignal();
     }
   };
 
+  const handleClearFilterClick = (e: React.MouseEvent, key: keyof FilterState) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    clearFilter(key);
+  };
+
+  const handleClearAllClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    clearAllFilters();
+  };
+
   return (
-    <Card className="mb-6 bg-card/80 backdrop-blur-sm border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300">
+    <Card 
+      className="mb-6 bg-card/80 backdrop-blur-sm border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300"
+      data-prevent-widget-open="true"
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerMove={(e) => e.stopPropagation()}
+    >
       <CardContent className="p-3 space-y-3">
         {/* Compact Top Bar with Search and Clear */}
         <div className="flex items-center gap-3">
@@ -107,9 +129,10 @@ export function SignalStreamFilters({
             />
             {filters.search && (
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => clearFilter('search')}
+                onClick={(e) => handleClearFilterClick(e, 'search')}
                 className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
               >
                 <X className="w-3 h-3" />
@@ -120,9 +143,10 @@ export function SignalStreamFilters({
           <div className="flex items-center gap-2 ml-auto">
             {hasActiveFilters && (
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                onClick={clearAllFilters}
+                onClick={handleClearAllClick}
                 className="h-8 px-3 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/30"
               >
                 <X className="w-3 h-3 mr-1" />
@@ -131,6 +155,7 @@ export function SignalStreamFilters({
             )}
             {canCreateSignals && (
               <Button 
+                type="button"
                 onClick={handleCreateSignalClick}
                 className="h-8 px-3 text-xs bg-foreground text-background hover:bg-foreground/90 border border-border"
               >
@@ -153,6 +178,7 @@ export function SignalStreamFilters({
                 return (
                   <Button
                     key={option.value}
+                    type="button"
                     variant={isActive ? "default" : "outline"}
                     size="sm"
                     onClick={(e) => handleStatusClick(e, option.value)}
@@ -190,6 +216,7 @@ export function SignalStreamFilters({
                 return (
                   <Button
                     key={option.value}
+                    type="button"
                     variant={isActive ? "default" : "outline"}
                     size="sm"
                     onClick={(e) => handleTradeTypeClick(e, option.value)}
@@ -245,9 +272,10 @@ export function SignalStreamFilters({
                 <Search className="w-3 h-3" />
                 "{filters.search}"
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => clearFilter('search')}
+                  onClick={(e) => handleClearFilterClick(e, 'search')}
                   className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
                 >
                   <X className="w-2.5 h-2.5" />
@@ -259,9 +287,10 @@ export function SignalStreamFilters({
                 <Clock className="w-3 h-3" />
                 {statusOptions.find(o => o.value === filters.status)?.label}
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => clearFilter('status')}
+                  onClick={(e) => handleClearFilterClick(e, 'status')}
                   className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
                 >
                   <X className="w-2.5 h-2.5" />
@@ -273,9 +302,10 @@ export function SignalStreamFilters({
                 {filters.tradeType === 'buy' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                 {tradeTypeOptions.find(o => o.value === filters.tradeType)?.label}
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => clearFilter('tradeType')}
+                  onClick={(e) => handleClearFilterClick(e, 'tradeType')}
                   className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
                 >
                   <X className="w-2.5 h-2.5" />
@@ -287,9 +317,10 @@ export function SignalStreamFilters({
                 <Users className="w-3 h-3" />
                 {educatorOptions.find(e => e.id === filters.educator)?.name}
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => clearFilter('educator')}
+                  onClick={(e) => handleClearFilterClick(e, 'educator')}
                   className="h-4 w-4 p-0 ml-1 hover:bg-destructive/10 hover:text-destructive"
                 >
                   <X className="w-2.5 h-2.5" />

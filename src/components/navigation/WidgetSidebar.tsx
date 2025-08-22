@@ -85,7 +85,7 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   // Detect if user prefers reduced motion
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Enhanced mouse position tracking for edge detection
+  // Enhanced mouse position tracking for edge detection with reduced sensitivity
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as Element | null;
@@ -95,7 +95,8 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
         return;
       }
 
-      const isNearLeftEdge = e.clientX <= 50;
+      // Reduced edge detection threshold from 50px to 25px for less sensitivity
+      const isNearLeftEdge = e.clientX <= 25;
 
       if (isNearLeftEdge && !isVisible && !isDragging) {
         setIsVisible(true);
@@ -397,13 +398,13 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     <motion.aside
       ref={sidebarRef}
       className={`fixed left-2 sm:left-4 top-16 sm:top-20 z-[60] h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] w-64 sm:w-72 md:w-80 lg:w-96 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
-      initial={{ x: -280, opacity: 0 }}
+      initial={{ x: "-110%", opacity: 0 }}
       animate={{
-        x: isVisible ? 0 : -280,
+        x: isVisible ? 0 : "-110%",
         opacity: isVisible ? 1 : 0,
       }}
       exit={{
-        x: -280,
+        x: "-110%",
         opacity: 0,
         transition: { 
           type: "spring", 
@@ -414,14 +415,14 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
       }}
       transition={{
         type: "spring",
-        stiffness: prefersReducedMotion ? 200 : 260, // Reduced from 350 for smoother feel
-        damping: prefersReducedMotion ? 40 : 25, // Reduced from 35 for less resistance
-        mass: 0.6, // Reduced from 0.8 for lighter feel
+        stiffness: prefersReducedMotion ? 200 : 260,
+        damping: prefersReducedMotion ? 40 : 25,
+        mass: 0.6,
       }}
       drag={isVisible ? "x" : false}
-      dragConstraints={{ left: -320, right: 0 }} // Wider constraint for easier closing
-      dragElastic={0.2} // Increased from 0.1 for more natural feel
-      dragMomentum={!prefersReducedMotion} // Enable momentum for smoother gestures
+      dragConstraints={{ left: -320, right: 0 }}
+      dragElastic={0.2}
+      dragMomentum={!prefersReducedMotion}
       onDragStart={handleDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
@@ -443,6 +444,8 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
         scale: isDragging ? scale : undefined,
         filter: isDragging ? `blur(${blur}px)` : undefined,
         touchAction: 'pan-y pinch-zoom',
+        // Critical: Make completely non-interactive when not visible
+        pointerEvents: isVisible ? 'auto' : 'none',
       }}
     >
       <div className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">

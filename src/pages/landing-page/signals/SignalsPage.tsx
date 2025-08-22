@@ -99,11 +99,11 @@ const SignalsPage: React.FC = () => {
               </div>
               
               <div className="flex items-center gap-4">
-                <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8">
+                <Button size="lg" className="bg-green-600 text-white px-8">
                   Start Learning Patterns
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-                <Button variant="outline" size="lg" className="border-green-500/20 hover:bg-green-500/5 px-8">
+                <Button variant="outline" size="lg" className="border-green-500/20 px-8">
                   View Educational Results
                 </Button>
               </div>
@@ -169,17 +169,17 @@ const SignalsPage: React.FC = () => {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
-            {signalFeatures.map((feature, index) => <Card key={index} className="group border-border/50 hover:border-green-500/30 transition-all duration-300 overflow-hidden">
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+            {signalFeatures.map((feature, index) => <Card key={index} className="border-border/50 transition-all duration-300 overflow-hidden">
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 transition-opacity duration-500`} />
                 <div className="relative">
                   <CardHeader className="space-y-4">
                     <div className="flex items-start gap-6">
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 group-hover:from-green-500/20 group-hover:to-green-500/10 transition-all duration-300">
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 transition-all duration-300">
                         <feature.icon className="h-8 w-8 text-green-600" />
                       </div>
                       <div className="flex-1">
                         <div className="space-y-1">
-                          <CardTitle className="text-2xl text-foreground group-hover:text-green-600 transition-colors">
+                          <CardTitle className="text-2xl text-foreground transition-colors">
                             {feature.title}
                           </CardTitle>
                           <div className="text-sm font-medium text-green-600">
@@ -233,7 +233,7 @@ const SignalsPage: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {tradingApproach.map((approach, index) => <Card key={index} className="text-center border-border/50 hover:border-green-500/30 transition-all duration-300">
+            {tradingApproach.map((approach, index) => <Card key={index} className="text-center border-border/50 transition-all duration-300">
                 <CardHeader className="space-y-4">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 mx-auto">
                     <approach.icon className="h-8 w-8 text-green-600" />
@@ -279,11 +279,11 @@ const SignalsPage: React.FC = () => {
             </div>
             
             <div className="flex items-center justify-center gap-4">
-              <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8">
+              <Button size="lg" className="bg-green-600 text-white px-8">
                 Get Educational Patterns
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button variant="outline" size="lg" className="border-green-500/20 hover:bg-green-500/5 px-8">
+              <Button variant="outline" size="lg" className="border-green-500/20 px-8">
                 View Educational Record
               </Button>
             </div>

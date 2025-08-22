@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion, PanInfo } from "framer-motion";
+import { motion, PanInfo, useMotionValue, useTransform } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen,
@@ -75,8 +75,15 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const touchStartX = useRef<number>(0);
-  const touchStartTime = useRef<number>(0);
+
+  // Motion values for smooth drag animations
+  const dragX = useMotionValue(0);
+  const opacity = useTransform(dragX, [-280, -140, 0], [0, 0.5, 1]);
+  const scale = useTransform(dragX, [-280, -140, 0], [0.8, 0.9, 1]);
+  const blur = useTransform(dragX, [0, -140, -280], [0, 2, 8]);
+
+  // Detect if user prefers reduced motion
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // Enhanced mouse position tracking for edge detection
   useEffect(() => {
@@ -130,57 +137,28 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     };
   }, [isVisible, isHovering, isDragging]);
 
-  // Touch event handlers for swipe gestures
-  useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
-      if (!isVisible || !sidebarRef.current?.contains(e.target as Node)) return;
-      
-      touchStartX.current = e.touches[0].clientX;
-      touchStartTime.current = Date.now();
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (!isVisible || !sidebarRef.current?.contains(e.target as Node)) return;
-
-      const touchEndX = e.changedTouches[0].clientX;
-      const touchDuration = Date.now() - touchStartTime.current;
-      const swipeDistance = touchStartX.current - touchEndX;
-      const swipeVelocity = swipeDistance / touchDuration;
-
-      // Swipe left to close (minimum 50px swipe or fast velocity)
-      if (swipeDistance > 50 || (swipeVelocity > 0.3 && swipeDistance > 20)) {
-        setIsVisible(false);
-        setShowProfileDropdown(false);
-        
-        // Haptic feedback if supported
-        if ('vibrate' in navigator) {
-          navigator.vibrate(50);
-        }
-      }
-    };
-
-    document.addEventListener("touchstart", handleTouchStart, { passive: true });
-    document.addEventListener("touchend", handleTouchEnd, { passive: true });
-
-    return () => {
-      document.removeEventListener("touchstart", handleTouchStart);
-      document.removeEventListener("touchend", handleTouchEnd);
-    };
-  }, [isVisible]);
-
   const handleToolClick = (tool: (typeof tradingTools)[0]) => {
     setActiveTool(tool.name);
     navigate(tool.route);
   };
 
-  // Drag handlers for smooth gesture control
+  // Enhanced drag handlers with smooth animations and lower thresholds
   const handleDragStart = () => {
     setIsDragging(true);
+    // Add haptic feedback if supported
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10);
+    }
   };
 
   const handleDrag = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    // Only allow dragging to the left
+    // Only allow dragging to the left (negative x)
     if (info.offset.x > 0) return false;
+    
+    // Progressive resistance - make it harder to drag as distance increases
+    const resistance = Math.abs(info.offset.x) / 280;
+    const adjustedOffset = info.offset.x * (1 - resistance * 0.3);
+    dragX.set(adjustedOffset);
   };
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -189,16 +167,31 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
     const dragDistance = Math.abs(info.offset.x);
     const dragVelocity = Math.abs(info.velocity.x);
     
-    // Close if dragged more than 100px or with sufficient velocity
-    if (dragDistance > 100 || dragVelocity > 500) {
+    // More sensitive thresholds for smoother UX
+    const distanceThreshold = window.innerWidth < 768 ? 60 : 80; // Lower for mobile
+    const velocityThreshold = window.innerWidth < 768 ? 300 : 400; // Lower for mobile
+    
+    // Close if dragged sufficient distance OR with sufficient velocity
+    const shouldClose = dragDistance > distanceThreshold || dragVelocity > velocityThreshold;
+    
+    if (shouldClose) {
       setIsVisible(false);
       setShowProfileDropdown(false);
+      
+      // Stronger haptic feedback for successful close
+      if ('vibrate' in navigator) {
+        navigator.vibrate(25);
+      }
+    } else {
+      // Snap back animation - reset drag position
+      dragX.set(0);
     }
   };
 
   const handleClose = () => {
     setIsVisible(false);
     setShowProfileDropdown(false);
+    dragX.set(0); // Reset drag position
   };
 
   const WidgetTool = ({
@@ -409,15 +402,26 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
         x: isVisible ? 0 : -280,
         opacity: isVisible ? 1 : 0,
       }}
+      exit={{
+        x: -280,
+        opacity: 0,
+        transition: { 
+          type: "spring", 
+          stiffness: 400, 
+          damping: 30,
+          duration: 0.3
+        }
+      }}
       transition={{
         type: "spring",
-        stiffness: 350,
-        damping: 35,
-        mass: 0.8,
+        stiffness: prefersReducedMotion ? 200 : 260, // Reduced from 350 for smoother feel
+        damping: prefersReducedMotion ? 40 : 25, // Reduced from 35 for less resistance
+        mass: 0.6, // Reduced from 0.8 for lighter feel
       }}
       drag={isVisible ? "x" : false}
-      dragConstraints={{ left: -280, right: 0 }}
-      dragElastic={0.1}
+      dragConstraints={{ left: -320, right: 0 }} // Wider constraint for easier closing
+      dragElastic={0.2} // Increased from 0.1 for more natural feel
+      dragMomentum={!prefersReducedMotion} // Enable momentum for smoother gestures
       onDragStart={handleDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
@@ -434,6 +438,10 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
         scale: 1.01,
       } : {}}
       style={{
+        x: dragX,
+        opacity: isDragging ? opacity : undefined,
+        scale: isDragging ? scale : undefined,
+        filter: isDragging ? `blur(${blur}px)` : undefined,
         touchAction: 'pan-y pinch-zoom',
       }}
     >

@@ -131,7 +131,7 @@ export const DashboardHome: React.FC = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
-                    Signal Analytics
+                    Xeon Alerts
                   </CardTitle>
                   <CardDescription className="text-sm">
                     Real-time performance tracking
@@ -166,7 +166,7 @@ export const DashboardHome: React.FC = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
-                    Elite Community
+                    Orderflow
                   </CardTitle>
                   <CardDescription className="text-sm">
                     Connect with top traders
@@ -200,7 +200,7 @@ export const DashboardHome: React.FC = () => {
                 </div>
                 <div>
                   <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
-                    Live Market
+                    Imperial Academy
                   </CardTitle>
                   <CardDescription className="text-sm">
                     Educational trading sessions

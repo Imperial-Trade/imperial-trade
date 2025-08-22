@@ -1,32 +1,13 @@
 import React, { useState } from "react";
-import {
-  Video,
-  Users,
-  Calendar,
-  Presentation,
-  Clock,
-  Database,
-  ArrowRight,
-  CheckCircle,
-  Play,
-  Zap,
-  Eye,
-  MessageSquare,
-  Monitor,
-  Archive,
-  AlertTriangle,
-  BookOpen
-} from "lucide-react";
+import { Video, Users, Calendar, Presentation, Clock, Database, ArrowRight, CheckCircle, Play, Zap, Eye, MessageSquare, Monitor, Archive, AlertTriangle, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ComplianceFooter } from "@/components/compliance/ComplianceFooter";
 import { LiveSessionCompliance, LiveSessionEducationalBanner } from "@/components/compliance/LiveSessionCompliance";
-
 const LiveSessionsPage: React.FC = () => {
   const [complianceOpen, setComplianceOpen] = useState(false);
   const [complianceAccepted, setComplianceAccepted] = useState(false);
-
   const handleJoinSession = () => {
     if (!complianceAccepted) {
       setComplianceOpen(true);
@@ -35,132 +16,86 @@ const LiveSessionsPage: React.FC = () => {
       window.location.href = '/dashboard/live';
     }
   };
-
   const handleComplianceAccept = () => {
     setComplianceAccepted(true);
     setComplianceOpen(false);
     // Redirect to actual session or dashboard
     window.location.href = '/dashboard/live';
   };
-
   const handleComplianceDecline = () => {
     setComplianceOpen(false);
   };
-
-  const sessionTypes = [
-    {
-      icon: Monitor,
-      title: "Pre-Session Briefing",
-      subtitle: "Market Preparation (15 mins)",
-      description: "Every session starts with comprehensive market preparation to set the stage for professional analysis.",
-      features: [
-        "Economic Calendar Review: Analysis of the day's high-impact events and potential market movers",
-        "Market Themes Identification: Current macro themes affecting major currency pairs and commodities",
-        "Key Levels Mapping: Critical support/resistance levels and institutional price zones to watch",
-        "Session Focus Areas: Specific instruments and setups the host will be monitoring during the session",
-        "Risk Assessment: Current market volatility and risk considerations for the trading day"
-      ],
-      gradient: "from-purple-500/20 to-violet-500/20"
-    },
-    {
-      icon: Eye,
-      title: "Live Analysis & Execution",
-      subtitle: "Real-Time Trading (Core Session)",
-      description: "The heart of the session - watch professional traders analyze and execute trades in real-time.",
-      features: [
-        "Live Chart Sharing: Professional charting platform shared with real-time analysis overlay",
-        "Top-Down Analysis: Multi-timeframe analysis from monthly down to intraday charts",
-        "Setup Identification: Real-time identification and explanation of valid trading setups",
-        "Live Trade Execution: When valid setups appear, trades are executed live with full transparency",
-        "Risk Management: Live demonstration of position sizing, stop placement, and educational trade management",
-        "Market Psychology: Explanation of sentiment indicators and institutional positioning"
-      ],
-      gradient: "from-blue-500/20 to-cyan-500/20"
-    },
-    {
-      icon: MessageSquare,
-      title: "Interactive Q&A",
-      subtitle: "Direct Expert Access (Throughout)",
-      description: "The most valuable feature - direct access to professional traders for your specific questions.",
-      features: [
-        "Live Question Feed: Dedicated moderator feeds your questions from chat to the host",
-        "Personal Analysis Review: Submit your own chart analysis for professional feedback",
-        "Strategy Clarification: Get immediate explanations of complex trading concepts",
-        "Market Opinion Requests: Ask for professional opinions on specific currency pairs or setups",
-        "Psychology Support: Discuss trading psychology challenges with experienced professionals",
-        "Career Guidance: Advice on developing your trading career and skill progression"
-      ],
-      gradient: "from-green-500/20 to-emerald-500/20"
-    }
-  ];
-
-  const sessionFeatures = [
-    {
-      icon: Calendar,
-      title: "Daily Scheduled Sessions",
-      description: "Comprehensive coverage during key market hours with predictable scheduling.",
-      details: [
-        "London Session (8:00-12:00 GMT): European market opening coverage",
-        "New York Session (13:00-17:00 GMT): US market overlap and major USD pairs",
-        "Asian Preparation (21:00 GMT Sunday): Week ahead preparation and Asian session preview"
-      ]
-    },
-    {
-      icon: Archive,
-      title: "The Archive Vault",
-      description: "Complete library of recorded sessions with searchable content and timestamps.",
-      details: [
-        "Searchable Content: Find specific topics like 'Fed day analysis' or 'Gold breakout' instantly",
-        "Timestamped Topics: Jump directly to specific discussions within each session",
-        "24-Hour Upload: All sessions archived and available within 24 hours",
-        "Mobile Access: Watch archived sessions on any device, anywhere"
-      ]
-    },
-    {
-      icon: Users,
-      title: "Advanced Integration",
-      description: "High-quality technical setup with robust interactive features.",
-      details: [
-        "Advanced Zoom Setup: High-quality audio/video with minimal latency",
-        "Screen Sharing: Crystal clear chart sharing with annotation capabilities",
-        "Interactive Features: Polls, emoji reactions, and chat moderation",
-        "Backup Systems: Redundant streaming to ensure session continuity"
-      ]
-    }
-  ];
-
-  const upcomingSessions = [
-    {
-      date: "Today",
-      time: "3:00 PM GMT",
-      title: "London Close Analysis",
-      host: "Senior Analyst Marcus",
-      focus: "EUR/USD breakout setup"
-    },
-    {
-      date: "Tomorrow",
-      time: "8:00 AM GMT", 
-      title: "London Open Preparation",
-      host: "Lead Trader Sarah",
-      focus: "Weekly market outlook"
-    },
-    {
-      date: "Friday",
-      time: "1:00 PM GMT",
-      title: "NFP Event Trading",
-      host: "Chief Analyst David",
-      focus: "High-impact news strategy"
-    }
-  ];
-
-  const stats = [
-    { value: "Daily", label: "Live Sessions", subtitle: "Never Miss A Day" },
-    { value: "5+", label: "Expert Hosts", subtitle: "Educational Contributors" },
-    { value: "1000+", label: "Archived Sessions", subtitle: "Complete Library" }
-  ];
-
-  return (
-    <div className="bg-background min-h-screen font-sans">
+  const sessionTypes = [{
+    icon: Monitor,
+    title: "Pre-Session Briefing",
+    subtitle: "Market Preparation (15 mins)",
+    description: "Every session starts with comprehensive market preparation to set the stage for professional analysis.",
+    features: ["Economic Calendar Review: Analysis of the day's high-impact events and potential market movers", "Market Themes Identification: Current macro themes affecting major currency pairs and commodities", "Key Levels Mapping: Critical support/resistance levels and institutional price zones to watch", "Session Focus Areas: Specific instruments and setups the host will be monitoring during the session", "Risk Assessment: Current market volatility and risk considerations for the trading day"],
+    gradient: "from-purple-500/20 to-violet-500/20"
+  }, {
+    icon: Eye,
+    title: "Live Analysis & Execution",
+    subtitle: "Real-Time Trading (Core Session)",
+    description: "The heart of the session - watch professional traders analyze and execute trades in real-time.",
+    features: ["Live Chart Sharing: Professional charting platform shared with real-time analysis overlay", "Top-Down Analysis: Multi-timeframe analysis from monthly down to intraday charts", "Setup Identification: Real-time identification and explanation of valid trading setups", "Live Trade Execution: When valid setups appear, trades are executed live with full transparency", "Risk Management: Live demonstration of position sizing, stop placement, and educational trade management", "Market Psychology: Explanation of sentiment indicators and institutional positioning"],
+    gradient: "from-blue-500/20 to-cyan-500/20"
+  }, {
+    icon: MessageSquare,
+    title: "Interactive Q&A",
+    subtitle: "Direct Expert Access (Throughout)",
+    description: "The most valuable feature - direct access to professional traders for your specific questions.",
+    features: ["Live Question Feed: Dedicated moderator feeds your questions from chat to the host", "Personal Analysis Review: Submit your own chart analysis for professional feedback", "Strategy Clarification: Get immediate explanations of complex trading concepts", "Market Opinion Requests: Ask for professional opinions on specific currency pairs or setups", "Psychology Support: Discuss trading psychology challenges with experienced professionals", "Career Guidance: Advice on developing your trading career and skill progression"],
+    gradient: "from-green-500/20 to-emerald-500/20"
+  }];
+  const sessionFeatures = [{
+    icon: Calendar,
+    title: "Daily Scheduled Sessions",
+    description: "Comprehensive coverage during key market hours with predictable scheduling.",
+    details: ["London Session (8:00-12:00 GMT): European market opening coverage", "New York Session (13:00-17:00 GMT): US market overlap and major USD pairs", "Asian Preparation (21:00 GMT Sunday): Week ahead preparation and Asian session preview"]
+  }, {
+    icon: Archive,
+    title: "The Archive Vault",
+    description: "Complete library of recorded sessions with searchable content and timestamps.",
+    details: ["Searchable Content: Find specific topics like 'Fed day analysis' or 'Gold breakout' instantly", "Timestamped Topics: Jump directly to specific discussions within each session", "24-Hour Upload: All sessions archived and available within 24 hours", "Mobile Access: Watch archived sessions on any device, anywhere"]
+  }, {
+    icon: Users,
+    title: "Advanced Integration",
+    description: "High-quality technical setup with robust interactive features.",
+    details: ["Advanced Zoom Setup: High-quality audio/video with minimal latency", "Screen Sharing: Crystal clear chart sharing with annotation capabilities", "Interactive Features: Polls, emoji reactions, and chat moderation", "Backup Systems: Redundant streaming to ensure session continuity"]
+  }];
+  const upcomingSessions = [{
+    date: "Today",
+    time: "3:00 PM GMT",
+    title: "London Close Analysis",
+    host: "Senior Analyst Marcus",
+    focus: "EUR/USD breakout setup"
+  }, {
+    date: "Tomorrow",
+    time: "8:00 AM GMT",
+    title: "London Open Preparation",
+    host: "Lead Trader Sarah",
+    focus: "Weekly market outlook"
+  }, {
+    date: "Friday",
+    time: "1:00 PM GMT",
+    title: "NFP Event Trading",
+    host: "Chief Analyst David",
+    focus: "High-impact news strategy"
+  }];
+  const stats = [{
+    value: "Daily",
+    label: "Live Sessions",
+    subtitle: "Never Miss A Day"
+  }, {
+    value: "5+",
+    label: "Expert Hosts",
+    subtitle: "Educational Contributors"
+  }, {
+    value: "1000+",
+    label: "Archived Sessions",
+    subtitle: "Complete Library"
+  }];
+  return <div className="bg-background min-h-screen font-sans">
       {/* Hero Section */}
       <section className="relative py-24 px-6 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-purple-500/5" />
@@ -173,11 +108,9 @@ const LiveSessionsPage: React.FC = () => {
                   Educational Trading Platform
                 </Badge>
                 <h1 className="text-6xl font-bold leading-tight tracking-tight">
-                  <span className="bg-gradient-to-r from-purple-500 via-violet-400 to-purple-600 bg-clip-text text-transparent">
-                    Educational Live Sessions
-                  </span>
+                  <span className="bg-gradient-to-r from-purple-500 via-violet-400 to-purple-600 bg-clip-text text-transparent text-6xl">Live Sessions</span>
                   <br />
-                  <span className="text-foreground">Learn Real-Time Trading</span>
+                  <span className="text-foreground text-5xl">Learn Real-Time Trading</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
                   Educational access to professional trading analysis and decision-making processes for learning purposes only. 
@@ -190,21 +123,19 @@ const LiveSessionsPage: React.FC = () => {
               
               {/* Stats */}
               <div className="grid grid-cols-3 gap-6">
-                {stats.map((stat, index) => (
-                  <div key={index} className="text-center space-y-2">
+                {stats.map((stat, index) => <div key={index} className="text-center space-y-2">
                     <div className="text-3xl font-bold text-purple-600">{stat.value}</div>
                     <div className="text-sm font-medium text-foreground">{stat.label}</div>
                     <div className="text-xs text-muted-foreground">{stat.subtitle}</div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
               
               <div className="flex items-center gap-4">
-                <Button size="lg" onClick={handleJoinSession} className="bg-orange-600 text-white px-8">
+                <Button size="lg" onClick={handleJoinSession} className="bg-orange-600 hover:bg-orange-700 text-white px-8">
                   <AlertTriangle className="mr-2 h-4 w-4" />
                   Join Educational Session
                 </Button>
-                <Button variant="outline" size="lg" className="border-purple-500/20 px-8">
+                <Button variant="outline" size="lg" className="border-purple-500/20 hover:bg-purple-500/5 px-8">
                   View Schedule
                 </Button>
               </div>
@@ -244,7 +175,7 @@ const LiveSessionsPage: React.FC = () => {
                       </div>
                     </div>
                     
-                    <Button className="w-full bg-purple-600 text-white">
+                    <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
                       <Play className="mr-2 h-4 w-4" />
                       Join Live Session
                     </Button>
@@ -271,17 +202,17 @@ const LiveSessionsPage: React.FC = () => {
           </div>
 
           <div className="space-y-8">
-            {sessionTypes.map((session, index) => (
-              <Card key={index} className="group border-border/50 transition-all duration-300 overflow-hidden">
+            {sessionTypes.map((session, index) => <Card key={index} className="group border-border/50 hover:border-purple-500/30 transition-all duration-300 overflow-hidden">
+                <div className={`absolute inset-0 bg-gradient-to-br ${session.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
                 <div className="relative">
                   <CardHeader className="space-y-4">
                     <div className="flex items-start gap-6">
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 transition-all duration-300">
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 group-hover:from-purple-500/20 group-hover:to-purple-500/10 transition-all duration-300">
                         <session.icon className="h-8 w-8 text-purple-600" />
                       </div>
                       <div className="flex-1">
                         <div className="space-y-1">
-                          <CardTitle className="text-2xl text-foreground transition-colors">
+                          <CardTitle className="text-2xl text-foreground group-hover:text-purple-600 transition-colors">
                             {session.title}
                           </CardTitle>
                           <div className="text-sm font-medium text-purple-600">
@@ -299,18 +230,15 @@ const LiveSessionsPage: React.FC = () => {
                     <div className="space-y-3">
                       <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">Session Components:</h4>
                       <div className="space-y-2">
-                        {session.features.map((feature, idx) => (
-                          <div key={idx} className="flex items-start gap-3 text-sm bg-muted/30 p-3 rounded-lg">
+                        {session.features.map((feature, idx) => <div key={idx} className="flex items-start gap-3 text-sm bg-muted/30 p-3 rounded-lg">
                             <div className="w-1.5 h-1.5 rounded-full bg-purple-600 mt-2 flex-shrink-0" />
                             <span className="text-muted-foreground leading-relaxed">{feature}</span>
-                          </div>
-                        ))}
+                          </div>)}
                       </div>
                     </div>
                   </CardContent>
                 </div>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -325,8 +253,7 @@ const LiveSessionsPage: React.FC = () => {
                 Technical Excellence
               </h2>
               <div className="space-y-6">
-                {sessionFeatures.map((feature, index) => (
-                   <Card key={index} className="border-border/50 transition-all duration-300">
+                {sessionFeatures.map((feature, index) => <Card key={index} className="border-border/50 hover:border-purple-500/30 transition-all duration-300">
                     <CardHeader className="space-y-3">
                       <div className="flex items-center gap-4">
                         <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-500/5">
@@ -343,21 +270,16 @@ const LiveSessionsPage: React.FC = () => {
                     
                     <CardContent>
                       <div className="space-y-2">
-                        {feature.details.slice(0, 2).map((detail, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-sm">
+                        {feature.details.slice(0, 2).map((detail, idx) => <div key={idx} className="flex items-start gap-2 text-sm">
                             <CheckCircle className="h-4 w-4 text-purple-600 flex-shrink-0 mt-0.5" />
                             <span className="text-muted-foreground leading-relaxed">{detail}</span>
-                          </div>
-                        ))}
-                        {feature.details.length > 2 && (
-                          <div className="text-xs text-purple-600 font-medium">
+                          </div>)}
+                        {feature.details.length > 2 && <div className="text-xs text-purple-600 font-medium">
                             +{feature.details.length - 2} more features
-                          </div>
-                        )}
+                          </div>}
                       </div>
                     </CardContent>
-                  </Card>
-                ))}
+                  </Card>)}
               </div>
             </div>
 
@@ -367,8 +289,7 @@ const LiveSessionsPage: React.FC = () => {
                 Upcoming Sessions
               </h2>
               <div className="space-y-4">
-                {upcomingSessions.map((session, index) => (
-                  <Card key={index} className="border-border/50 transition-all duration-300">
+                {upcomingSessions.map((session, index) => <Card key={index} className="border-border/50 hover:border-purple-500/30 transition-all duration-300">
                     <CardContent className="p-6">
                       <div className="flex items-start gap-4">
                         <div className="flex-shrink-0">
@@ -389,10 +310,9 @@ const LiveSessionsPage: React.FC = () => {
                         </div>
                       </div>
                     </CardContent>
-                  </Card>
-                ))}
+                  </Card>)}
                 
-                <Button className="w-full bg-purple-600/10 text-purple-600 border border-purple-600/20">
+                <Button className="w-full bg-purple-600/10 hover:bg-purple-600 hover:text-white text-purple-600 border border-purple-600/20">
                   View Full Schedule
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -422,11 +342,11 @@ const LiveSessionsPage: React.FC = () => {
             </div>
             
             <div className="flex items-center justify-center gap-4">
-              <Button size="lg" className="bg-purple-600 text-white px-8">
+              <Button size="lg" className="bg-purple-600 hover:bg-purple-700 text-white px-8">
                 Access Live Sessions
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button variant="outline" size="lg" className="border-purple-500/20 px-8">
+              <Button variant="outline" size="lg" className="border-purple-500/20 hover:bg-purple-500/5 px-8">
                 Browse Archive
               </Button>
             </div>
@@ -453,14 +373,7 @@ const LiveSessionsPage: React.FC = () => {
       <ComplianceFooter />
 
       {/* Live Session Compliance Modal */}
-      <LiveSessionCompliance
-        isOpen={complianceOpen}
-        onAccept={handleComplianceAccept}
-        onDecline={handleComplianceDecline}
-        sessionType="live"
-      />
-    </div>
-  );
+      <LiveSessionCompliance isOpen={complianceOpen} onAccept={handleComplianceAccept} onDecline={handleComplianceDecline} sessionType="live" />
+    </div>;
 };
-
 export default LiveSessionsPage;

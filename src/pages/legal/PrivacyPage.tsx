@@ -204,7 +204,7 @@ const PrivacyPage: React.FC = () => {
           </div>
 
           {/* Footer */}
-          <div className="mt-12 text-center text-sm text-muted-foreground space-y-4">
+          <div className="mt-12 text-center text-sm text-muted-foreground space-y-2">
             <p>
               Not registered as a securities broker-dealer or investment adviser. All information is for educational purposes only. CFTC Rule 4.41 applies.
             </p>

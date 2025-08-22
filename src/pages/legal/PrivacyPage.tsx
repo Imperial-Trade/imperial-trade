@@ -203,36 +203,6 @@ const PrivacyPage: React.FC = () => {
 
           </div>
 
-          {/* Footer */}
-          <div className="mt-12 text-center text-sm text-muted-foreground space-y-2">
-            
-            <p>
-              Not registered as a securities broker-dealer or investment adviser. All information is for educational purposes only. CFTC Rule 4.41 applies.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
-              <Link 
-                to="/legal/disclaimers" 
-                className="text-primary hover:underline font-medium"
-              >
-                Risk Disclaimers
-              </Link>
-              <Link 
-                to="/legal/terms" 
-                className="text-primary hover:underline font-medium"
-              >
-                Terms of Service
-              </Link>
-              <Link 
-                to="/legal/privacy" 
-                className="text-primary hover:underline font-medium"
-              >
-                Privacy Policy
-              </Link>
-            </div>
-            <p className="text-xs mt-4">
-              © 2025 Imperial Trading Platform. All rights reserved.
-            </p>
-          </div>
         </div>
       </div>
     </Layout>

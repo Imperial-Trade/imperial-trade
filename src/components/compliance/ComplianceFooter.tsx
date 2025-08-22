@@ -63,7 +63,7 @@ export const ComplianceFooter: React.FC = () => {
               All information is for educational purposes only. CFTC Rule 4.41 applies.
             </p>
             <p>
-              © 2025 Imperial Trading Platform. All rights reserved.
+              © 2025 Trade Imperial Platform. All rights reserved.
             </p>
           </div>
         </div>

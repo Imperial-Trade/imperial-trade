@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,6 +72,26 @@ export function SignalStreamFilters({
     { value: 'sell', label: 'Sell Orders', count: signalCounts.sell, icon: TrendingDown }
   ];
 
+  const handleStatusClick = (e: React.MouseEvent, statusValue: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    updateFilter('status', statusValue);
+  };
+
+  const handleTradeTypeClick = (e: React.MouseEvent, tradeTypeValue: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    updateFilter('tradeType', tradeTypeValue);
+  };
+
+  const handleCreateSignalClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onCreateSignal) {
+      onCreateSignal();
+    }
+  };
+
   return (
     <Card className="mb-6 bg-card/80 backdrop-blur-sm border-border/40 hover:border-lightGreenHover dark:hover:border-primary/30 transition-all duration-300">
       <CardContent className="p-3 space-y-3">
@@ -110,7 +131,7 @@ export function SignalStreamFilters({
             )}
             {canCreateSignals && (
               <Button 
-                onClick={onCreateSignal} 
+                onClick={handleCreateSignalClick}
                 className="h-8 px-3 text-xs bg-foreground text-background hover:bg-foreground/90 border border-border"
               >
                 <Plus className="w-3 h-3 mr-1" />
@@ -134,7 +155,7 @@ export function SignalStreamFilters({
                     key={option.value}
                     variant={isActive ? "default" : "outline"}
                     size="sm"
-                    onClick={() => updateFilter('status', option.value)}
+                    onClick={(e) => handleStatusClick(e, option.value)}
                     className={`h-7 px-2.5 text-xs transition-all duration-200 group ${
                       isActive 
                         ? "bg-primary/90 border-primary/20 shadow-sm shadow-primary/20" 
@@ -171,7 +192,7 @@ export function SignalStreamFilters({
                     key={option.value}
                     variant={isActive ? "default" : "outline"}
                     size="sm"
-                    onClick={() => updateFilter('tradeType', option.value)}
+                    onClick={(e) => handleTradeTypeClick(e, option.value)}
                     className={`h-7 px-2.5 text-xs transition-all duration-200 group ${
                       isActive 
                         ? "bg-primary/90 border-primary/20 shadow-sm shadow-primary/20" 

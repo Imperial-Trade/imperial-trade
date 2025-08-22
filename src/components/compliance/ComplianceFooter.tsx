@@ -4,7 +4,7 @@ import { AlertTriangle, Shield, FileText } from "lucide-react";
 
 export const ComplianceFooter: React.FC = () => {
   return (
-    <div className="border-t border-default bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="relative z-50 border-t border-default bg-background backdrop-blur supports-[backdrop-filter]:bg-background/95">
       <div className="container mx-auto px-4 py-6">
         {/* Risk Warning Banner */}
         <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-4">

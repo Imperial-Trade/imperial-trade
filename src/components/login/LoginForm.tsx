@@ -19,7 +19,6 @@ interface LoginFormProps {
   form: UseFormReturn<LoginFormData>;
   onSubmit: (data: LoginFormData) => Promise<void>;
   isSubmitting: boolean;
-  canSubmit: boolean;
   onForgotPassword?: () => void;
 }
 
@@ -27,7 +26,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   form,
   onSubmit,
   isSubmitting,
-  canSubmit,
   onForgotPassword,
 }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -113,7 +111,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         {/* Submit Button */}
         <Button
           type="submit"
-          disabled={isSubmitting || !canSubmit}
+          disabled={isSubmitting}
           className="w-full bg-accent-green text-white font-semibold py-3 h-12 rounded-sm bg-lime-300 hover:bg-lime-200 text-base"
         >
           {isSubmitting ? (
@@ -125,12 +123,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             "Sign In"
           )}
         </Button>
-
-        {!canSubmit && (
-          <p className="text-sm text-red-400 text-center">
-            Too many login attempts. Please wait before trying again.
-          </p>
-        )}
 
         {onForgotPassword && (
           <div className="text-center">

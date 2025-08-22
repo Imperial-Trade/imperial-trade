@@ -176,11 +176,11 @@ const AdvancedToolsPage: React.FC = () => {
             </div>
             
             <div className="flex items-center justify-center gap-4">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
+              <Button size="lg" className="bg-primary text-primary-foreground px-8">
                 Start Your Educational Arsenal
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button variant="outline" size="lg" className="border-primary/20 hover:bg-primary/5 px-8">
+              <Button variant="outline" size="lg" className="border-primary/20 px-8">
                 Explore Educational Tools
               </Button>
             </div>
@@ -204,17 +204,16 @@ const AdvancedToolsPage: React.FC = () => {
 
           <div className="grid lg:grid-cols-2 gap-8">
             {tools.map((tool, index) => (
-              <Card key={index} className="group border-border/50 hover:border-primary/30 transition-all duration-300 overflow-hidden">
-                <div className={`absolute inset-0 bg-gradient-to-br ${tool.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+              <Card key={index} className="group border-border/50 transition-all duration-300 overflow-hidden">
                 <div className="relative">
                   <CardHeader className="space-y-4">
                     <div className="flex items-start gap-6">
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 group-hover:from-primary/20 group-hover:to-primary/10 transition-all duration-300">
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 transition-all duration-300">
                         <tool.icon className="h-8 w-8 text-primary" />
                       </div>
                       <div className="flex-1">
                         <div className="space-y-1">
-                          <CardTitle className="text-2xl text-foreground group-hover:text-primary transition-colors">
+                          <CardTitle className="text-2xl text-foreground transition-colors">
                             {tool.title}
                           </CardTitle>
                           <div className="text-sm font-medium text-primary">
@@ -255,7 +254,7 @@ const AdvancedToolsPage: React.FC = () => {
                       </div>
                     </div>
                     
-                    <Button className="w-full bg-primary/10 hover:bg-primary hover:text-primary-foreground text-primary border border-primary/20 transition-all duration-300">
+                    <Button className="w-full bg-primary/10 text-primary border border-primary/20 transition-all duration-300">
                       Explore {tool.title}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -287,11 +286,11 @@ const AdvancedToolsPage: React.FC = () => {
             </div>
             
             <div className="flex items-center justify-center gap-4">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
+              <Button size="lg" className="bg-primary text-primary-foreground px-8">
                 Access Educational Tools
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button variant="outline" size="lg" className="border-primary/20 hover:bg-primary/5 px-8">
+              <Button variant="outline" size="lg" className="border-primary/20 px-8">
                 Schedule Educational Demo
               </Button>
             </div>

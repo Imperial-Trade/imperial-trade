@@ -41,10 +41,7 @@ const IBPartnership = () => {
               with our industry-leading IB program.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                className="bg-primary hover:bg-primary/90 text-white px-8 py-4 text-lg"
-              >
+              <Button size="lg" className="bg-primary text-white px-8 py-4 text-lg">
                 <Crown className="mr-2 h-5 w-5" />
                 Become an IB Partner
               </Button>
@@ -107,7 +104,7 @@ const IBPartnership = () => {
               },
             ].map((tier, index) => (
               <ScrollReveal key={index} delay={index * 200}>
-                <Card className="relative overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 transform hover:-translate-y-2 white-gold-bg">
+                <Card className="relative overflow-hidden border-2 transition-all duration-300 white-gold-bg">
                   <div
                     className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${tier.color}`}
                   />
@@ -177,7 +174,7 @@ const IBPartnership = () => {
               },
             ].map((benefit, index) => (
               <ScrollReveal key={index} delay={index * 100}>
-                <Card className="text-center p-6 hover:shadow-lg transition-all duration-300">
+                <Card className="text-center p-6 transition-all duration-300">
                   <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-primary to-amber-300 rounded-full flex items-center justify-center">
                     <benefit.icon className="h-8 w-8 text-white" />
                   </div>

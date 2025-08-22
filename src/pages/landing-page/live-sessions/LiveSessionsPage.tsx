@@ -200,11 +200,11 @@ const LiveSessionsPage: React.FC = () => {
               </div>
               
               <div className="flex items-center gap-4">
-                <Button size="lg" onClick={handleJoinSession} className="bg-orange-600 hover:bg-orange-700 text-white px-8">
+                <Button size="lg" onClick={handleJoinSession} className="bg-orange-600 text-white px-8">
                   <AlertTriangle className="mr-2 h-4 w-4" />
                   Join Educational Session
                 </Button>
-                <Button variant="outline" size="lg" className="border-purple-500/20 hover:bg-purple-500/5 px-8">
+                <Button variant="outline" size="lg" className="border-purple-500/20 px-8">
                   View Schedule
                 </Button>
               </div>
@@ -244,7 +244,7 @@ const LiveSessionsPage: React.FC = () => {
                       </div>
                     </div>
                     
-                    <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+                    <Button className="w-full bg-purple-600 text-white">
                       <Play className="mr-2 h-4 w-4" />
                       Join Live Session
                     </Button>
@@ -272,17 +272,16 @@ const LiveSessionsPage: React.FC = () => {
 
           <div className="space-y-8">
             {sessionTypes.map((session, index) => (
-              <Card key={index} className="group border-border/50 hover:border-purple-500/30 transition-all duration-300 overflow-hidden">
-                <div className={`absolute inset-0 bg-gradient-to-br ${session.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+              <Card key={index} className="group border-border/50 transition-all duration-300 overflow-hidden">
                 <div className="relative">
                   <CardHeader className="space-y-4">
                     <div className="flex items-start gap-6">
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 group-hover:from-purple-500/20 group-hover:to-purple-500/10 transition-all duration-300">
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 transition-all duration-300">
                         <session.icon className="h-8 w-8 text-purple-600" />
                       </div>
                       <div className="flex-1">
                         <div className="space-y-1">
-                          <CardTitle className="text-2xl text-foreground group-hover:text-purple-600 transition-colors">
+                          <CardTitle className="text-2xl text-foreground transition-colors">
                             {session.title}
                           </CardTitle>
                           <div className="text-sm font-medium text-purple-600">
@@ -327,7 +326,7 @@ const LiveSessionsPage: React.FC = () => {
               </h2>
               <div className="space-y-6">
                 {sessionFeatures.map((feature, index) => (
-                  <Card key={index} className="border-border/50 hover:border-purple-500/30 transition-all duration-300">
+                   <Card key={index} className="border-border/50 transition-all duration-300">
                     <CardHeader className="space-y-3">
                       <div className="flex items-center gap-4">
                         <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-500/5">
@@ -369,7 +368,7 @@ const LiveSessionsPage: React.FC = () => {
               </h2>
               <div className="space-y-4">
                 {upcomingSessions.map((session, index) => (
-                  <Card key={index} className="border-border/50 hover:border-purple-500/30 transition-all duration-300">
+                  <Card key={index} className="border-border/50 transition-all duration-300">
                     <CardContent className="p-6">
                       <div className="flex items-start gap-4">
                         <div className="flex-shrink-0">
@@ -393,7 +392,7 @@ const LiveSessionsPage: React.FC = () => {
                   </Card>
                 ))}
                 
-                <Button className="w-full bg-purple-600/10 hover:bg-purple-600 hover:text-white text-purple-600 border border-purple-600/20">
+                <Button className="w-full bg-purple-600/10 text-purple-600 border border-purple-600/20">
                   View Full Schedule
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -423,11 +422,11 @@ const LiveSessionsPage: React.FC = () => {
             </div>
             
             <div className="flex items-center justify-center gap-4">
-              <Button size="lg" className="bg-purple-600 hover:bg-purple-700 text-white px-8">
+              <Button size="lg" className="bg-purple-600 text-white px-8">
                 Access Live Sessions
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button variant="outline" size="lg" className="border-purple-500/20 hover:bg-purple-500/5 px-8">
+              <Button variant="outline" size="lg" className="border-purple-500/20 px-8">
                 Browse Archive
               </Button>
             </div>

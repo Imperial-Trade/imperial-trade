@@ -204,12 +204,11 @@ const PrivacyPage: React.FC = () => {
           </div>
 
           {/* Footer */}
-          <div className="mt-12 text-center text-sm text-muted-foreground space-y-2">
-            
+          <div className="mt-12 text-center text-sm text-muted-foreground space-y-4">
             <p>
               Not registered as a securities broker-dealer or investment adviser. All information is for educational purposes only. CFTC Rule 4.41 applies.
             </p>
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
+            <div className="flex flex-wrap justify-center gap-4">
               <Link 
                 to="/legal/disclaimers" 
                 className="text-primary hover:underline font-medium"
@@ -229,7 +228,7 @@ const PrivacyPage: React.FC = () => {
                 Privacy Policy
               </Link>
             </div>
-            <p className="text-xs mt-4">
+            <p className="text-xs">
               © 2025 Imperial Trading Platform. All rights reserved.
             </p>
           </div>

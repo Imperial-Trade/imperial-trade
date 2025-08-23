@@ -23,10 +23,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Plus, Zap, CalendarIcon } from "lucide-react";
+import { Plus, Zap, CalendarIcon, Upload, X, Image } from "lucide-react";
 import { useTradeForm, TradeFormData } from "@/hooks/useTradeForm";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { validateImageFile, compressImage } from "@/utils/imageCompression";
+import { UploadFile } from "@/api/integrations";
 
 // Static data to prevent re-creation on every render
 const TRADING_STRATEGIES = [
@@ -85,14 +87,47 @@ const AddTradeModal = memo<AddTradeModalProps>(({
     return new Date();
   });
 
+  // Chart upload state
+  const [chartFile, setChartFile] = useState<File | null>(null);
+  const [chartPreview, setChartPreview] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string>("");
+
   const handleSave = useCallback(async (formData: TradeFormData) => {
+    // Handle image upload first if there's a chart file
+    if (chartFile) {
+      try {
+        setUploading(true);
+        setStatusMessage("Compressing image...");
+        
+        const compressedFile = await compressImage(chartFile, {
+          maxWidth: 1600,
+          maxHeight: 1200,
+          quality: 0.8,
+          maxFileSize: 1.5 * 1024 * 1024 // 1.5MB
+        });
+        
+        setStatusMessage("Uploading image...");
+        const { file_url } = await UploadFile({ file: compressedFile });
+        updateScreenshotUrl(file_url);
+        
+        setStatusMessage("");
+      } catch (error) {
+        console.error('Upload failed:', error);
+        setUploadError('Failed to upload image. Please try again.');
+        setUploading(false);
+        return;
+      }
+    }
+
     const dateToUse = tradeDate ? tradeDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     await onSave({
       ...formData,
       date: dateToUse,
     });
     onClose();
-  }, [onSave, onClose, tradeDate]);
+  }, [onSave, onClose, tradeDate, chartFile]);
 
   const {
     formData,
@@ -106,23 +141,83 @@ const AddTradeModal = memo<AddTradeModalProps>(({
     updateEmotion,
     updateSession,
     updateNotes,
+    updateScreenshotUrl,
     handleSubmit,
     resetForm,
   } = useTradeForm(handleSave);
 
   const handleClose = useCallback(() => {
     resetForm();
+    // Clean up upload state
+    if (chartPreview) {
+      URL.revokeObjectURL(chartPreview);
+    }
+    setChartFile(null);
+    setChartPreview(null);
+    setUploadError(null);
+    setUploading(false);
+    setStatusMessage("");
     onClose();
-  }, [resetForm, onClose]);
+  }, [resetForm, onClose, chartPreview]);
 
   const handlePnLChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     updatePnL(value === '' ? '' : parseFloat(value));
   }, [updatePnL]);
 
+  // Chart upload handlers
+  const handleFileSelect = useCallback((file: File) => {
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setUploadError(validationError);
+      return;
+    }
+
+    setUploadError(null);
+    setChartFile(file);
+    
+    // Create preview
+    const previewUrl = URL.createObjectURL(file);
+    if (chartPreview) {
+      URL.revokeObjectURL(chartPreview);
+    }
+    setChartPreview(previewUrl);
+  }, [chartPreview]);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  }, [handleFileSelect]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  }, [handleFileSelect]);
+
+  const handleRemoveChart = useCallback(() => {
+    if (chartPreview) {
+      URL.revokeObjectURL(chartPreview);
+    }
+    setChartFile(null);
+    setChartPreview(null);
+    setUploadError(null);
+  }, [chartPreview]);
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
@@ -308,16 +403,88 @@ const AddTradeModal = memo<AddTradeModalProps>(({
             />
           </div>
 
+          {/* Upload your chart section */}
+          <div>
+            <Label>Upload your chart</Label>
+            <div className="mt-2">
+              {!chartFile ? (
+                <div
+                  className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/40 transition-colors cursor-pointer"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById('chart-upload')?.click()}
+                >
+                  <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Drag and drop your chart here, or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    PNG, JPG, WEBP up to 10MB
+                  </p>
+                  <input
+                    id="chart-upload"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleFileInputChange}
+                    className="hidden"
+                  />
+                </div>
+              ) : (
+                <div className="border rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0">
+                      {chartPreview && (
+                        <img
+                          src={chartPreview}
+                          alt="Chart preview"
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{chartFile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(chartFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveChart}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Error message */}
+              {uploadError && (
+                <p className="mt-2 text-sm text-destructive" aria-live="polite">
+                  {uploadError}
+                </p>
+              )}
+              
+              {/* Status message */}
+              {statusMessage && (
+                <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
+                  {statusMessage}
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={handleClose}>
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!isValid || isSubmitting}
+              disabled={!isValid || isSubmitting || uploading || !!uploadError}
             >
               <Zap className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Saving..." : "Save Trade"}
+              {uploading ? "Uploading..." : isSubmitting ? "Saving..." : "Save Trade"}
             </Button>
           </div>
         </div>

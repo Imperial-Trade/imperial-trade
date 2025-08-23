@@ -242,7 +242,13 @@ const AddTradeModal = memo<AddTradeModalProps>(({
                   <SelectTrigger>
                     <SelectValue placeholder="Select strategy" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent 
+                    side="bottom" 
+                    avoidCollisions={false} 
+                    position="popper" 
+                    sideOffset={4}
+                    className="max-h-60 overflow-y-auto"
+                  >
                     {TRADING_STRATEGIES.map((strategy) => (
                       <SelectItem key={strategy} value={strategy}>
                         {strategy}
@@ -258,7 +264,13 @@ const AddTradeModal = memo<AddTradeModalProps>(({
                   <SelectTrigger>
                     <SelectValue placeholder="Select emotion" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent 
+                    side="bottom" 
+                    avoidCollisions={false} 
+                    position="popper" 
+                    sideOffset={4}
+                    className="max-h-60 overflow-y-auto"
+                  >
                     {EMOTIONS.map((emotion) => (
                       <SelectItem key={emotion} value={emotion}>
                         {emotion}

@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 const TRADING_STRATEGIES = [
   "Breakout",
   "Reversal",
+  "Continuation",
   "Trend Following",
   "Support/Resistance",
   "Fibonacci",
@@ -41,7 +42,6 @@ const TRADING_STRATEGIES = [
   "Scalping",
   "Swing Trading",
   "Day Trading",
-  "Continuation",
   "Custom Strategy",
 ];
 

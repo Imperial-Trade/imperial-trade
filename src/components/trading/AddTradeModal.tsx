@@ -217,7 +217,17 @@ const AddTradeModal = memo<AddTradeModalProps>(({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent
+        className="
+          w-[92vw]
+          max-w-[700px]
+          sm:max-w-[700px]
+          md:max-w-[700px]
+          lg:max-w-[700px]
+          max-h-[85dvh] overflow-y-auto
+          px-6 py-6
+        "
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />

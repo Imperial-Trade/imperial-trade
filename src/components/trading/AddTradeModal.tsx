@@ -41,6 +41,7 @@ const TRADING_STRATEGIES = [
   "Scalping",
   "Swing Trading",
   "Day Trading",
+  "Continuation",
   "Custom Strategy",
 ];
 

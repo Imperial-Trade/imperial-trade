@@ -23,9 +23,9 @@ import {
   Target,
   AlertCircle,
 } from "lucide-react";
-import { SignalCard } from "./components/SignalCard";
-import { SignalFilters } from "./components/SignalFilters";
-import { CreateSignalDialog } from "./components/CreateSignalDialog";
+// import { SignalCard } from "./components/SignalCard";
+// import { SignalFilters } from "./components/SignalFilters";
+// import { CreateSignalDialog } from "./components/CreateSignalDialog";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Signal {
@@ -58,9 +58,9 @@ const formatDate = (dateString: string): string => {
   });
 };
 
-export function SignalStream() {
+export default function SignalStream() {
   const { user } = useAuth();
-  const { signals, subscribeToSignals, createSignal } = useSignalRealtime();
+  const { signals } = useSignalRealtime();
   const [activeTab, setActiveTab] = useState<"all" | "active" | "pending" | "closed">("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -75,29 +75,13 @@ export function SignalStream() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        await subscribeToSignals();
-      } catch (error) {
-        console.error("Failed to subscribe to signals:", error);
-        toast.error("Failed to fetch signals. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      // Any cleanup logic here, like unsubscribing if necessary
-    };
-  }, [subscribeToSignals]);
+    setIsLoading(false);
+  }, []);
 
   const handleCreateSignal = async (signalData: Omit<Signal, 'id'>) => {
     setIsSubmitting(true);
     try {
-      await createSignal(signalData);
+      // await createSignal(signalData);
       toast.success("Signal created successfully!");
       setShowCreateDialog(false);
     } catch (error) {
@@ -114,18 +98,17 @@ export function SignalStream() {
     if (!signal) return false;
     
     const searchTermLower = searchTerm.toLowerCase();
-    const assetLower = signal.asset.toLowerCase();
-    const notesLower = signal.notes.toLowerCase();
+    const assetLower = signal.assetName?.toLowerCase() || '';
+    const notesLower = signal.notes?.toLowerCase() || '';
 
     const matchesSearch =
       assetLower.includes(searchTermLower) ||
-      notesLower.includes(searchTermLower) ||
-      (user?.user_metadata?.user_type === 'educator' && signal.educatorId.toLowerCase().includes(searchTermLower));
+      notesLower.includes(searchTermLower);
 
     const matchesStatus = statusFilter === "all" || signal.status === statusFilter;
-    const matchesType = typeFilter === "all" || signal.type === typeFilter;
-    const matchesEducator = !educatorFilter || signal.educatorId === educatorFilter;
-    const matchesAsset = !assetFilter || signal.asset === assetFilter;
+    const matchesType = typeFilter === "all" || signal.tradeType === typeFilter;
+    const matchesEducator = !educatorFilter || signal.userId === educatorFilter;
+    const matchesAsset = !assetFilter || signal.assetName === assetFilter;
 
     return matchesSearch && matchesStatus && matchesType && matchesEducator && matchesAsset;
   }) || [];
@@ -307,16 +290,7 @@ export function SignalStream() {
             >
               <Card className="border-border/50" data-prevent-widget-open="true">
                 <CardContent className="p-4">
-                  <SignalFilters
-                    educatorFilter={educatorFilter}
-                    setEducatorFilter={setEducatorFilter}
-                    assetFilter={assetFilter}
-                    setAssetFilter={setAssetFilter}
-                    sortBy={sortBy}
-                    setSortBy={setSortBy}
-                    sortOrder={sortOrder}
-                    setSortOrder={setSortOrder}
-                  />
+                  <div className="text-sm text-muted-foreground">Advanced filters coming soon...</div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -324,7 +298,7 @@ export function SignalStream() {
         </AnimatePresence>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "active" | "pending" | "closed")} className="w-full">
           <TabsList className="grid w-full grid-cols-4 bg-muted/50" data-prevent-widget-open="true">
             <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               All ({filteredSignals?.length || 0})
@@ -359,10 +333,19 @@ export function SignalStream() {
                         transition={{ delay: index * 0.05 }}
                         data-prevent-widget-open="true"
                       >
-                        <SignalCard 
-                          signal={signal} 
-                          canEdit={canCreateSignals}
-                        />
+                        <Card className="border-border/50 hover:border-primary/30 transition-colors">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="font-semibold text-foreground">{signal.assetName}</h3>
+                              <p className="text-sm text-muted-foreground">{signal.tradeType?.toUpperCase()}</p>
+                              <Badge variant={signal.status === 'active' ? 'default' : signal.status === 'pending' ? 'secondary' : 'outline'}>
+                                {signal.status}
+                              </Badge>
+                            </div>
+                            </div>
+                          </CardContent>
+                        </Card>
                       </motion.div>
                     ))}
                   </AnimatePresence>
@@ -383,13 +366,18 @@ export function SignalStream() {
         </Tabs>
       </div>
 
-      {/* Create Signal Dialog */}
-      <CreateSignalDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        onSubmit={handleCreateSignal}
-        isSubmitting={isSubmitting}
-      />
+      {/* Create Signal Dialog - Coming Soon */}
+      {showCreateDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-96">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-lg font-semibold mb-2">Create Signal</h3>
+              <p className="text-muted-foreground mb-4">Signal creation feature coming soon!</p>
+              <Button onClick={() => setShowCreateDialog(false)}>Close</Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,641 +1,395 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
-import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
-import TradeAlertCard from '@/components/signals/TradeAlertCard';
-import NotificationSystem from '@/components/notifications/NotificationSystem';
-import EconomicSidebar from '@/components/widgets/EconomicSidebar';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
-import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
-import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
+import React, { useState, useEffect } from "react";
+import { useSignalRealtime } from "@/contexts/SignalRealtimeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
+import {
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  DollarSign,
+  User,
+  Filter,
+  Search,
+  Plus,
+  Radio,
+  Target,
+  AlertCircle,
+} from "lucide-react";
+import { SignalCard } from "./components/SignalCard";
+import { SignalFilters } from "./components/SignalFilters";
+import { CreateSignalDialog } from "./components/CreateSignalDialog";
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function SignalStream() {
-  const {
-    user,
-    profile
-  } = useAuth();
-  const navigate = useNavigate();
-  const [filters, setFilters] = useState({
-    search: '',
-    status: '',
-    tradeType: '',
-    educator: ''
+interface Signal {
+  id: string;
+  asset: string;
+  type: 'buy' | 'sell';
+  entry: number;
+  takeProfit: number;
+  stopLoss: number;
+  leverage: number;
+  timestamp: string;
+  educatorId: string;
+  notes: string;
+  status: 'active' | 'pending' | 'closed';
+}
+
+interface UserMetadata {
+  user_type?: 'admin' | 'educator' | 'member';
+  access_level?: 'admin' | 'educator' | 'member';
+}
+
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
+};
 
-  // Use the optimized trading hook with real-time updates for all signals
-  // Pass the actual user ID for proper authorization, even when showing all signals
-  const {
-    alerts: allAlerts,
-    isLoading,
-    error,
-    updateAlert,
-    refreshAlerts,
-    connectionStatus,
-    lastUpdated,
-    nextRetryAt
-  } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
-
-  // Helper functions for role checking
-  const isAdmin = useMemo(() => {
-    return profile?.access_level === 'admin' || profile?.role === 'admin';
-  }, [profile]);
-  const isEducator = useMemo(() => {
-    return profile?.user_type === 'educator' || profile?.access_level === 'moderator' || profile?.role === 'educator';
-  }, [profile]);
-  const canCreateSignals = useMemo(() => {
-    const canCreate = isAdmin || isEducator;
-    console.log('SignalStream - canCreateSignals check:', {
-      profile,
-      isAdmin,
-      isEducator,
-      canCreate,
-      access_level: profile?.access_level,
-      role: profile?.role,
-      user_type: profile?.user_type
-    });
-    return canCreate;
-  }, [isAdmin, isEducator, profile]);
-  const isCreator = useCallback((alertCreatorId: string) => {
-    return profile?.id === alertCreatorId;
-  }, [profile?.id]);
-
-  // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
-  const alerts = useMemo(() => {
-    console.log('SignalStream - Processing alerts:', allAlerts.length);
-    console.log('SignalStream - All alerts with creators:', allAlerts.map(a => ({
-      id: a.id,
-      asset: a.assetName,
-      creator: a.creator?.display_name,
-      creatorId: a.creator?.id,
-      role: a.creator?.role,
-      userType: a.creator?.user_type,
-      accessLevel: a.creator?.access_level
-    })));
-    let filteredAlerts = allAlerts;
-
-    // Apply user filters
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filteredAlerts = filteredAlerts.filter(alert => alert.assetName.toLowerCase().includes(searchLower) || alert.tradermadeSymbol.toLowerCase().includes(searchLower) || alert.creator?.display_name?.toLowerCase().includes(searchLower));
-    }
-    if (filters.status) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.status === filters.status);
-    }
-    if (filters.tradeType) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.tradeType.includes(filters.tradeType));
-    }
-    if (filters.educator) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
-    }
-    return filteredAlerts;
-  }, [allAlerts, filters]);
-  const {
-    activeAlerts,
-    closedAlerts,
-    educatorOptions,
-    signalCounts
-  } = useMemo(() => {
-    const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
-    const closed = alerts.filter(a => a.status === 'closed');
-
-    // Get unique educators for filter dropdown
-    const educatorsMap = new Map();
-    allAlerts.forEach(alert => {
-      if (alert.creator && (alert.creator.user_type === 'educator' || alert.creator.access_level === 'admin' || alert.creator.role === 'admin')) {
-        educatorsMap.set(alert.creator.id, {
-          id: alert.creator.id,
-          name: alert.creator.display_name || 'Unknown Educator'
-        });
-      }
-    });
-    const educatorsList = Array.from(educatorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-
-    // Calculate signal counts for filter badges
-    const counts = {
-      total: alerts.length,
-      active: active.length,
-      closed: closed.length,
-      buy: alerts.filter(a => a.tradeType.includes('buy')).length,
-      sell: alerts.filter(a => a.tradeType.includes('sell')).length
-    };
-    return {
-      activeAlerts: active,
-      closedAlerts: closed,
-      educatorOptions: educatorsList,
-      signalCounts: counts
-    };
-  }, [alerts, allAlerts]);
-  const sortedClosedAlerts = useMemo(() => {
-    return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
-  }, [closedAlerts]);
-  const symbols = useMemo(() => {
-    const symbolSet = new Set<string>();
-    activeAlerts.forEach(alert => {
-      if (alert?.tradermadeSymbol?.trim()) {
-        symbolSet.add(alert.tradermadeSymbol.trim());
-      }
-    });
-    const symbolList = Array.from(symbolSet).sort(); // Sort for consistent comparison
-    return symbolList;
-  }, [activeAlerts]);
-  const {
-    prices: livePricesData,
-    connectionStatus: priceConnectionStatus,
-    dataSource: priceSource,
-    subscribe,
-    unsubscribe,
-    getPrice
-  } = useWebSocketPrices();
-
-  // Convert price data to simple number format for compatibility
-  const livePrices = useMemo(() => {
-    const result: Record<string, number> = {};
-    Object.entries(livePricesData).forEach(([symbol, priceData]) => {
-      if (priceData && typeof priceData.price === 'number') {
-        result[symbol] = priceData.price;
-      }
-    });
-    return result;
-  }, [livePricesData]);
-
-  // Stable symbol subscription to prevent thrashing
-  const symbolsRef = useRef<string[]>([]);
-  const subscriptionActiveRef = useRef(false);
+export function SignalStream() {
+  const { user } = useAuth();
+  const { signals, subscribeToSignals, createSignal } = useSignalRealtime();
+  const [activeTab, setActiveTab] = useState<"all" | "active" | "pending" | "closed">("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [educatorFilter, setEducatorFilter] = useState("");
+  const [assetFilter, setAssetFilter] = useState("");
+  const [sortBy, setSortBy] = useState("timestamp");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [showFilters, setShowFilters] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Compute diffs to avoid full unsubscribe/subscribe churn
-    const prev = symbolsRef.current;
-    const added = symbols.filter(s => !prev.includes(s));
-    const removed = prev.filter(s => !symbols.includes(s));
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        await subscribeToSignals();
+      } catch (error) {
+        console.error("Failed to subscribe to signals:", error);
+        toast.error("Failed to fetch signals. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    if (added.length > 0) {
-      console.log('🔄 SignalStream - Subscribing (diff):', added);
-      subscribe(added);
-      subscriptionActiveRef.current = true;
-    }
-
-    if (removed.length > 0) {
-      console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
-      unsubscribe(removed);
-    }
-
-    // Update reference after applying diffs
-    symbolsRef.current = [...symbols];
+    fetchData();
 
     return () => {
-      // On unmount, clean up any remaining subscriptions
-      if (symbolsRef.current.length > 0) {
-        console.log('🔄 SignalStream - Cleanup unsubscribe all:', symbolsRef.current);
-        unsubscribe(symbolsRef.current);
-        symbolsRef.current = [];
-        subscriptionActiveRef.current = false;
-      }
+      // Any cleanup logic here, like unsubscribing if necessary
     };
-  }, [symbols, subscribe, unsubscribe]);
-  const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
-  const [reconnectIn, setReconnectIn] = useState<number | null>(null);
-  const [justAddedIds, setJustAddedIds] = useState(new Set<string>());
-  const prevAlertIdsRef = useRef(new Set<string>());
+  }, [subscribeToSignals]);
 
-  // Track newly added alerts to highlight them briefly
-  useEffect(() => {
-    const currentIds = new Set(alerts.map(alert => alert.id));
-    const previousIds = prevAlertIdsRef.current;
-    
-    // Find newly added alerts
-    const newlyAdded = new Set<string>();
-    for (const id of currentIds) {
-      if (!previousIds.has(id)) {
-        newlyAdded.add(id);
-      }
-    }
-    
-    if (newlyAdded.size > 0) {
-      setJustAddedIds(newlyAdded);
-      // Clear the highlight after 3 seconds
-      const timeout = setTimeout(() => {
-        setJustAddedIds(new Set());
-      }, 3000);
-      return () => clearTimeout(timeout);
-    }
-    
-    prevAlertIdsRef.current = currentIds;
-  }, [alerts]);
-
-  useEffect(() => {
-    if (connectionStatus === 'connecting' && nextRetryAt) {
-      const update = () => {
-        const ms = nextRetryAt - Date.now();
-        setReconnectIn(ms > 0 ? Math.ceil(ms / 1000) : 0);
-      };
-      update();
-      const id = setInterval(update, 1000);
-      return () => clearInterval(id);
-    } else {
-      setReconnectIn(null);
-    }
-  }, [connectionStatus, nextRetryAt]);
-  const getConnectionStatusBadge = () => {
-    switch (connectionStatus) {
-      case 'connected':
-        return <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
-            <Wifi className="w-3 h-3 mr-1" />
-            Live Updates
-          </Badge>;
-      case 'connecting':
-        return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
-            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-            Connecting...
-          </Badge>;
-      case 'error':
-      case 'disconnected':
-        return <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
-            <WifiOff className="w-3 h-3 mr-1" />
-            Offline Mode
-          </Badge>;
-      default:
-        return null;
+  const handleCreateSignal = async (signalData: Omit<Signal, 'id'>) => {
+    setIsSubmitting(true);
+    try {
+      await createSignal(signalData);
+      toast.success("Signal created successfully!");
+      setShowCreateDialog(false);
+    } catch (error) {
+      console.error("Failed to create signal:", error);
+      toast.error("Failed to create signal. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
-    if (updateInProgress.has(alert.id)) return;
 
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    console.log('SignalStream - handleStatusUpdate authorization check:', {
-      alertId: alert.id,
-      alertCreatorId: alert.creator?.id,
-      currentUserId: profile?.id,
-      isCreator: alertIsCreator,
-      isAdmin,
-      canUpdate: alertIsCreator || isAdmin
-    });
-    if (!alertIsCreator && !isAdmin) {
-      console.warn('SignalStream - User not authorized to update this signal:', {
-        userId: profile?.id,
-        creatorId: alert.creator?.id,
-        userRole: profile?.role,
-        userAccessLevel: profile?.access_level,
-        isCreator: alertIsCreator,
-        isAdmin
-      });
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'error',
-          title: 'Access Denied',
-          message: 'You can only close your own signals'
-        });
-      }
-      return;
-    }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
-    try {
-      console.log(`Updating alert ${alert.id} status to ${newStatus}`);
-      const updateDto: UpdateTradeAlertDto = {
-        status: newStatus as 'pending' | 'active' | 'closed',
-        closeReason: newStatus === 'closed' ? 'manual' : undefined
-      };
-      const result = await updateAlert(alert.id, updateDto);
-      console.log('SignalStream - Update result:', result);
-      if (result && newStatus === 'closed' && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'trade_closed',
-          title: `🔒 Signal Closed`,
-          message: `${alert.assetName} signal has been closed`
-        });
-      }
-    } catch (err) {
-      console.error("Failed to update status:", err);
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'error',
-          title: 'Update Failed',
-          message: 'Could not update signal status. Please try again.'
-        });
-      }
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
-    if (updateInProgress.has(alert.id)) return;
+  const canCreateSignals = user?.user_metadata?.user_type === "educator" || user?.user_metadata?.access_level === "admin";
 
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    if (!alertIsCreator && !isAdmin) {
-      return;
-    }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
-    try {
-      console.log(`Updating TP hits for alert ${alert.id}:`, newTPHits);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined = undefined;
-      if (shouldAutoClose && closeReason) {
-        switch (closeReason) {
-          case 'manual':
-          case 'stop_loss':
-          case 'tp1':
-          case 'tp2':
-          case 'tp3':
-          case 'tp4':
-          case 'tp5':
-          case 'reversal_after_tp':
-            typedCloseReason = closeReason;
-            break;
-          default:
-            typedCloseReason = 'manual';
-        }
-      }
-      const updateDto: UpdateTradeAlertDto = {
-        tpHits: newTPHits,
-        ...(shouldAutoClose && {
-          status: 'closed',
-          closeReason: typedCloseReason
-        })
-      };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
-        if (highestTP !== null) {
-          (window as any).addNotification({
-            type: 'tp_hit',
-            title: `🎯 TP${highestTP} Hit!`,
-            message: `${alert.assetName} reached Take Profit ${highestTP}`
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Failed to update TP hits:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
-    if (updateInProgress.has(alert.id)) return;
+  const filteredSignals = signals?.filter(signal => {
+    if (!signal) return false;
+    
+    const searchTermLower = searchTerm.toLowerCase();
+    const assetLower = signal.asset.toLowerCase();
+    const notesLower = signal.notes.toLowerCase();
 
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    if (!alertIsCreator && !isAdmin) {
-      return;
-    }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
-    try {
-      console.log(`Stop loss hit for alert ${alert.id}, reason: ${closeReason}`);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' = 'stop_loss';
-      switch (closeReason) {
-        case 'manual':
-        case 'stop_loss':
-        case 'tp1':
-        case 'tp2':
-        case 'tp3':
-        case 'tp4':
-        case 'tp5':
-        case 'reversal_after_tp':
-          typedCloseReason = closeReason;
-          break;
-        default:
-          typedCloseReason = 'stop_loss';
-      }
-      const updateDto: UpdateTradeAlertDto = {
-        status: 'closed',
-        closeReason: typedCloseReason
-      };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'stop_loss',
-          title: `🚨 Stop Loss Hit!`,
-          message: `${alert.assetName} trade closed at stop loss`
-        });
-      }
-    } catch (err) {
-      console.error("Failed to update stop loss:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  const handleOrderActivation = useCallback(async (alert: any) => {
-    if (updateInProgress.has(alert.id)) return;
+    const matchesSearch =
+      assetLower.includes(searchTermLower) ||
+      notesLower.includes(searchTermLower) ||
+      (user?.user_metadata?.user_type === 'educator' && signal.educatorId.toLowerCase().includes(searchTermLower));
 
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    if (!alertIsCreator && !isAdmin) {
-      return;
-    }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
-    try {
-      console.log(`Activating order for alert ${alert.id}`);
-      const updateDto: UpdateTradeAlertDto = {
-        status: 'active'
-      };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'trade_activated',
-          title: `🚀 Order Activated!`,
-          message: `${alert.assetName} ${alert.tradeType} is now active`
-        });
-      }
-    } catch (err) {
-      console.error("Failed to activate order:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+    const matchesStatus = statusFilter === "all" || signal.status === statusFilter;
+    const matchesType = typeFilter === "all" || signal.type === typeFilter;
+    const matchesEducator = !educatorFilter || signal.educatorId === educatorFilter;
+    const matchesAsset = !assetFilter || signal.asset === assetFilter;
+
+    return matchesSearch && matchesStatus && matchesType && matchesEducator && matchesAsset;
+  }) || [];
 
   return (
-    <StreamErrorBoundary>
-      <div className="min-h-screen bg-background w-full">
-        <NotificationSystem />
-        
-        {/* Header - Mobile Optimized spacing */}
-        <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                    Xeon <span className="text-accent-green">Stream</span>
-                  </h1>
-                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs w-fit">
-                    <Shield className="w-3 h-3 mr-1 flex-shrink-0" />
-                    <span className="truncate">Educational Contributors</span>
-                  </Badge>
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
+            <Radio className="w-6 h-6 sm:w-8 sm:h-8 text-primary animate-pulse" />
+            Signal Stream
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Real-time trading signals from professional traders
+          </p>
+        </div>
+
+        {canCreateSignals && (
+          <Button 
+            onClick={() => setShowCreateDialog(true)}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+            data-prevent-widget-open="true"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Signal
+          </Button>
+        )}
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="border-border/50 hover:border-primary/30 transition-colors" data-prevent-widget-open="true">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-green-500/10 rounded-lg">
+                  <TrendingUp className="w-4 h-4 text-green-500" />
                 </div>
-                <p className="text-sm sm:text-base text-muted-foreground">
-                  Educational market analysis patterns with reference pricing from verified educational contributors
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active Signals</p>
+                  <p className="text-xl font-bold text-foreground">
+                    {filteredSignals?.filter(s => s?.status === 'active').length || 0}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="border-border/50 hover:border-amber-500/30 transition-colors" data-prevent-widget-open="true">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-amber-500/10 rounded-lg">
+                  <Clock className="w-4 h-4 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Pending Signals</p>
+                  <p className="text-xl font-bold text-foreground">
+                    {filteredSignals?.filter(s => s?.status === 'pending').length || 0}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card className="border-border/50 hover:border-red-500/30 transition-colors" data-prevent-widget-open="true">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-red-500/10 rounded-lg">
+                  <TrendingDown className="w-4 h-4 text-red-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Closed Signals</p>
+                  <p className="text-xl font-bold text-foreground">
+                    {filteredSignals?.filter(s => s?.status === 'closed').length || 0}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Card className="border-border/50 hover:border-blue-500/30 transition-colors" data-prevent-widget-open="true">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <DollarSign className="w-4 h-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Signals</p>
+                  <p className="text-xl font-bold text-foreground">{filteredSignals?.length || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Filters and Tabs */}
+      <div className="space-y-4">
+        {/* Search and Quick Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1" data-prevent-widget-open="true">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search signals by asset, educator, or notes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 border-border/50 focus:border-primary"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter} data-prevent-widget-open="true">
+              <SelectTrigger className="w-32 border-border/50">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={typeFilter} onValueChange={setTypeFilter} data-prevent-widget-open="true">
+              <SelectTrigger className="w-32 border-border/50">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="buy">Buy</SelectItem>
+                <SelectItem value="sell">Sell</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowFilters(!showFilters)}
+              className="border-border/50 hover:border-primary/50"
+              data-prevent-widget-open="true"
+            >
+              <Filter className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Advanced Filters */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <Card className="border-border/50" data-prevent-widget-open="true">
+                <CardContent className="p-4">
+                  <SignalFilters
+                    educatorFilter={educatorFilter}
+                    setEducatorFilter={setEducatorFilter}
+                    assetFilter={assetFilter}
+                    setAssetFilter={setAssetFilter}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
+                    sortOrder={sortOrder}
+                    setSortOrder={setSortOrder}
+                  />
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 bg-muted/50" data-prevent-widget-open="true">
+            <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              All ({filteredSignals?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Active ({filteredSignals?.filter(s => s?.status === 'active').length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Pending ({filteredSignals?.filter(s => s?.status === 'pending').length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="closed" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Closed ({filteredSignals?.filter(s => s?.status === 'closed').length || 0})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Signal Content */}
+          <TabsContent value={activeTab} className="mt-6">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredSignals && filteredSignals.length > 0 ? (
+              <ScrollArea className="h-[600px] pr-4">
+                <div className="space-y-4">
+                  <AnimatePresence mode="popLayout">
+                    {filteredSignals.map((signal, index) => (
+                      <motion.div
+                        key={signal.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ delay: index * 0.05 }}
+                        data-prevent-widget-open="true"
+                      >
+                        <SignalCard 
+                          signal={signal} 
+                          canEdit={canCreateSignals}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="text-center py-12">
+                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No signals found</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm || statusFilter !== "all" || typeFilter !== "all" || educatorFilter || assetFilter
+                    ? "Try adjusting your filters to see more signals."
+                    : "There are no signals available at the moment."}
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-                {getConnectionStatusBadge()}
-                {lastUpdated && <span className="text-xs text-muted-foreground">
-                    Last update: {lastUpdated.toLocaleTimeString()}
-                  </span>}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content - Mobile Optimized grid layout with granular protection */}
-        <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
-          <div className="max-w-none w-full">
-            <div className="w-full">
-              {/* System Status */}
-              <div data-prevent-widget-open="true">
-                <SignalStreamStatus />
-              </div>
-
-              <div className="mb-6" />
-              
-              {/* Enhanced Filters - Protected from widget opening */}
-              <div data-prevent-widget-open="true">
-                <SignalStreamFilters 
-                  filters={filters} 
-                  onFiltersChange={setFilters} 
-                  educatorOptions={educatorOptions} 
-                  signalCounts={signalCounts}
-                  canCreateSignals={canCreateSignals}
-                  onCreateSignal={() => navigate('/dashboard/new-signal')}
-                />
-              </div>
-              
-              {(isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0)) ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
-                      <div className="h-4 w-1/3 bg-muted rounded mb-3" />
-                      <div className="h-6 w-2/3 bg-muted rounded mb-4" />
-                      <div className="h-24 w-full bg-muted rounded" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
-                      Educational Market Patterns ({activeAlerts.length})
-                    </h2>
-                    {activeAlerts.length > 0 ? (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                        {activeAlerts.map(alert => (
-                          <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard 
-                              alert={{
-                                ...alert,
-                                asset_name: alert.assetName,
-                                tradermade_symbol: alert.tradermadeSymbol,
-                                trade_type: alert.tradeType,
-                                entry_price: alert.entryPrice,
-                                stop_loss: alert.stopLoss,
-                                tp_hits: alert.tpHits,
-                                close_reason: alert.closeReason,
-                                created_date: alert.createdAt,
-                                updated_date: alert.updatedAt
-                              }} 
-                              onStatusUpdate={handleStatusUpdate} 
-                              onTakeProfitHit={handleTakeProfitHit} 
-                              onStopLossHit={handleStopLossHit} 
-                              onOrderActivation={handleOrderActivation} 
-                              isAdmin={isAdmin} 
-                              isCreator={isCreator(alert.creator?.id)} 
-                              livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
-                              connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                              priceSource={priceSource} 
-                              isRecentClosure={false} 
-                              creator={alert.creator} 
-                              justAdded={justAddedIds.has(alert.id)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Shield className="w-8 h-8 text-muted-foreground/50" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
-                        <p className="text-muted-foreground">New educational analysis patterns will appear here when posted by educational contributors.</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
-                      Recent Educational Analysis ({closedAlerts.length})
-                    </h2>
-                    {sortedClosedAlerts.length > 0 ? (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                        {sortedClosedAlerts.map(alert => (
-                          <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard 
-                              alert={{
-                                ...alert,
-                                asset_name: alert.assetName,
-                                tradermade_symbol: alert.tradermadeSymbol,
-                                trade_type: alert.tradeType,
-                                entry_price: alert.entryPrice,
-                                stop_loss: alert.stopLoss,
-                                tp_hits: alert.tpHits,
-                                close_reason: alert.closeReason,
-                                created_date: alert.createdAt,
-                                updated_date: alert.updatedAt
-                              }} 
-                              onStatusUpdate={handleStatusUpdate} 
-                              onTakeProfitHit={handleTakeProfitHit} 
-                              onStopLossHit={handleStopLossHit} 
-                              onOrderActivation={handleOrderActivation} 
-                              isAdmin={isAdmin} 
-                              isCreator={isCreator(alert.creator?.id)} 
-                              livePrice={undefined} 
-                              connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                              priceSource={priceSource} 
-                              isRecentClosure={true} 
-                              creator={alert.creator} 
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                          <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
-                        </div>
-                        <h3 className="text-xl font-semibold text-foreground mb-2">No Completed Analysis</h3>
-                        <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Economic Sidebar - Protected positioning */}
-            <div data-prevent-widget-open="true">
-              <EconomicSidebar />
-            </div>
-          </div>
-        </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
-    </StreamErrorBoundary>
+
+      {/* Create Signal Dialog */}
+      <CreateSignalDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSubmit={handleCreateSignal}
+        isSubmitting={isSubmitting}
+      />
+    </div>
   );
 }

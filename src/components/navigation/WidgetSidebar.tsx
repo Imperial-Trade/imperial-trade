@@ -35,7 +35,7 @@ const tradingTools = [
     route: "/dashboard/advanced-tools?tool=journal",
   },
   {
-    name: "Economic Calendar",
+    name: "Economic Calendar", 
     icon: Calendar,
     description: "Stay ahead of market-moving events and news releases.",
     route: "/dashboard/advanced-tools?tool=calendar",

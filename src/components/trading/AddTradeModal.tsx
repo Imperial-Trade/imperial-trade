@@ -94,41 +94,6 @@ const AddTradeModal = memo<AddTradeModalProps>(({
   const [uploading, setUploading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>("");
 
-  const handleSave = useCallback(async (formData: TradeFormData) => {
-    // Handle image upload first if there's a chart file
-    if (chartFile) {
-      try {
-        setUploading(true);
-        setStatusMessage("Compressing image...");
-        
-        const compressedFile = await compressImage(chartFile, {
-          maxWidth: 1600,
-          maxHeight: 1200,
-          quality: 0.8,
-          maxFileSize: 1.5 * 1024 * 1024 // 1.5MB
-        });
-        
-        setStatusMessage("Uploading image...");
-        const { file_url } = await UploadFile({ file: compressedFile });
-        updateScreenshotUrl(file_url);
-        
-        setStatusMessage("");
-      } catch (error) {
-        console.error('Upload failed:', error);
-        setUploadError('Failed to upload image. Please try again.');
-        setUploading(false);
-        return;
-      }
-    }
-
-    const dateToUse = tradeDate ? tradeDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-    await onSave({
-      ...formData,
-      date: dateToUse,
-    });
-    onClose();
-  }, [onSave, onClose, tradeDate, chartFile]);
-
   const {
     formData,
     isSubmitting,
@@ -144,7 +109,48 @@ const AddTradeModal = memo<AddTradeModalProps>(({
     updateScreenshotUrl,
     handleSubmit,
     resetForm,
-  } = useTradeForm(handleSave);
+  } = useTradeForm(async (formData: TradeFormData) => {
+    let uploadedImageUrl = null;
+    
+    // Handle image upload first if there's a chart file
+    if (chartFile) {
+      try {
+        setUploading(true);
+        setStatusMessage("Compressing image...");
+        
+        const compressedFile = await compressImage(chartFile, {
+          maxWidth: 1600,
+          maxHeight: 1200,
+          quality: 0.8,
+          maxFileSize: 1.5 * 1024 * 1024 // 1.5MB
+        });
+        
+        setStatusMessage("Uploading image...");
+        const { file_url } = await UploadFile({ file: compressedFile });
+        uploadedImageUrl = file_url;
+        updateScreenshotUrl(file_url);
+        
+        setStatusMessage("");
+        console.log('Image uploaded successfully:', file_url);
+      } catch (error) {
+        console.error('Upload failed:', error);
+        setUploadError('Failed to upload image. Please try again.');
+        setUploading(false);
+        return;
+      }
+    }
+
+    const dateToUse = tradeDate ? tradeDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const dataToSave = {
+      ...formData,
+      date: dateToUse,
+      ...(uploadedImageUrl && { screenshot_url: uploadedImageUrl })
+    };
+    
+    console.log('Saving trade data:', dataToSave);
+    await onSave(dataToSave);
+    onClose();
+  });
 
   const handleClose = useCallback(() => {
     resetForm();

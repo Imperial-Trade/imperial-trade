@@ -220,10 +220,10 @@ const AddTradeModal = memo<AddTradeModalProps>(({
       <DialogContent
         className="
           w-[92vw]
-          max-w-[600px]
-          sm:max-w-[600px]
-          md:max-w-[600px]
-          lg:max-w-[600px]
+          max-w-[560px]
+          sm:max-w-[560px]
+          md:max-w-[560px]
+          lg:max-w-[560px]
           max-h-[85dvh] overflow-y-auto
           px-6 py-6
         "
@@ -235,17 +235,18 @@ const AddTradeModal = memo<AddTradeModalProps>(({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-4">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="min-w-0">
               <Label htmlFor="asset">Asset</Label>
               <Input
                 id="asset"
                 placeholder="e.g., EURUSD"
                 value={formData.asset}
                 onChange={(e) => updateAsset(e.target.value)}
+                className="w-full"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <Label htmlFor="pnl">P&L ($)</Label>
               <Input
                 id="pnl"
@@ -254,6 +255,7 @@ const AddTradeModal = memo<AddTradeModalProps>(({
                 placeholder="150.00"
                 value={formData.pnl}
                 onChange={handlePnLChange}
+                className="w-full"
               />
             </div>
           </div>

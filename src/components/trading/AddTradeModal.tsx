@@ -220,10 +220,10 @@ const AddTradeModal = memo<AddTradeModalProps>(({
       <DialogContent
         className="
           w-[92vw]
-          max-w-[700px]
-          sm:max-w-[700px]
-          md:max-w-[700px]
-          lg:max-w-[700px]
+          max-w-[600px]
+          sm:max-w-[600px]
+          md:max-w-[600px]
+          lg:max-w-[600px]
           max-h-[85dvh] overflow-y-auto
           px-6 py-6
         "
@@ -235,7 +235,7 @@ const AddTradeModal = memo<AddTradeModalProps>(({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
               <Label htmlFor="asset">Asset</Label>
               <Input
@@ -292,7 +292,7 @@ const AddTradeModal = memo<AddTradeModalProps>(({
             </Popover>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Direction</Label>
               <div className="flex gap-2 mt-1">
@@ -340,7 +340,7 @@ const AddTradeModal = memo<AddTradeModalProps>(({
           <div className="space-y-4 border-t pt-4">
             <h4 className="font-medium text-sm">AI Coach Data Points</h4>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="strategy">Strategy</Label>
                 <Select onValueChange={updateStrategy}>

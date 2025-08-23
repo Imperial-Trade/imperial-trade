@@ -1308,6 +1308,24 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           {trade.notes}
                         </p>}
 
+                      {trade.screenshot_url && (
+                        <div className="mt-3">
+                          <a
+                            href={trade.screenshot_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block"
+                          >
+                            <img
+                              src={trade.screenshot_url}
+                              alt={`Trade screenshot for ${trade.asset} on ${new Date(date + 'T00:00:00').toLocaleDateString()}`}
+                              loading="lazy"
+                              className="rounded-md border border-border max-h-56 object-cover"
+                            />
+                          </a>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         {trade.strategy && <div>
                             <span className="font-medium">Strategy:</span>{" "}

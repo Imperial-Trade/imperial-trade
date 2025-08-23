@@ -496,29 +496,28 @@ export default function SignalStream() {
           </div>
         </div>
 
-        {/* Main Content - Mobile Optimized grid layout */}
-        <div 
-          className="w-full px-2 sm:px-4 py-3 sm:py-6"
-          data-prevent-widget-open="true"
-          onPointerDown={(e) => e.stopPropagation()}
-          onPointerMove={(e) => e.stopPropagation()}
-        >
+        {/* Main Content - Mobile Optimized grid layout with granular protection */}
+        <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
           <div className="max-w-none w-full">
             <div className="w-full">
               {/* System Status */}
-              <SignalStreamStatus />
+              <div data-prevent-widget-open="true">
+                <SignalStreamStatus />
+              </div>
 
               <div className="mb-6" />
               
-              {/* Enhanced Filters */}
-              <SignalStreamFilters 
-                filters={filters} 
-                onFiltersChange={setFilters} 
-                educatorOptions={educatorOptions} 
-                signalCounts={signalCounts}
-                canCreateSignals={canCreateSignals}
-                onCreateSignal={() => navigate('/dashboard/new-signal')}
-              />
+              {/* Enhanced Filters - Protected from widget opening */}
+              <div data-prevent-widget-open="true">
+                <SignalStreamFilters 
+                  filters={filters} 
+                  onFiltersChange={setFilters} 
+                  educatorOptions={educatorOptions} 
+                  signalCounts={signalCounts}
+                  canCreateSignals={canCreateSignals}
+                  onCreateSignal={() => navigate('/dashboard/new-signal')}
+                />
+              </div>
               
               {(isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0)) ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
@@ -539,33 +538,34 @@ export default function SignalStream() {
                     {activeAlerts.length > 0 ? (
                       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                         {activeAlerts.map(alert => (
-                          <TradeAlertCard 
-                            key={alert.id} 
-                            alert={{
-                              ...alert,
-                              asset_name: alert.assetName,
-                              tradermade_symbol: alert.tradermadeSymbol,
-                              trade_type: alert.tradeType,
-                              entry_price: alert.entryPrice,
-                              stop_loss: alert.stopLoss,
-                              tp_hits: alert.tpHits,
-                              close_reason: alert.closeReason,
-                              created_date: alert.createdAt,
-                              updated_date: alert.updatedAt
-                            }} 
-                            onStatusUpdate={handleStatusUpdate} 
-                            onTakeProfitHit={handleTakeProfitHit} 
-                            onStopLossHit={handleStopLossHit} 
-                            onOrderActivation={handleOrderActivation} 
-                            isAdmin={isAdmin} 
-                            isCreator={isCreator(alert.creator?.id)} 
-                            livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
-                            connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                            priceSource={priceSource} 
-                            isRecentClosure={false} 
-                            creator={alert.creator} 
-                            justAdded={justAddedIds.has(alert.id)}
-                          />
+                          <div key={alert.id} data-prevent-widget-open="true">
+                            <TradeAlertCard 
+                              alert={{
+                                ...alert,
+                                asset_name: alert.assetName,
+                                tradermade_symbol: alert.tradermadeSymbol,
+                                trade_type: alert.tradeType,
+                                entry_price: alert.entryPrice,
+                                stop_loss: alert.stopLoss,
+                                tp_hits: alert.tpHits,
+                                close_reason: alert.closeReason,
+                                created_date: alert.createdAt,
+                                updated_date: alert.updatedAt
+                              }} 
+                              onStatusUpdate={handleStatusUpdate} 
+                              onTakeProfitHit={handleTakeProfitHit} 
+                              onStopLossHit={handleStopLossHit} 
+                              onOrderActivation={handleOrderActivation} 
+                              isAdmin={isAdmin} 
+                              isCreator={isCreator(alert.creator?.id)} 
+                              livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
+                              connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
+                              priceSource={priceSource} 
+                              isRecentClosure={false} 
+                              creator={alert.creator} 
+                              justAdded={justAddedIds.has(alert.id)}
+                            />
+                          </div>
                         ))}
                       </div>
                     ) : (
@@ -586,32 +586,33 @@ export default function SignalStream() {
                     {sortedClosedAlerts.length > 0 ? (
                       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                         {sortedClosedAlerts.map(alert => (
-                          <TradeAlertCard 
-                            key={alert.id} 
-                            alert={{
-                              ...alert,
-                              asset_name: alert.assetName,
-                              tradermade_symbol: alert.tradermadeSymbol,
-                              trade_type: alert.tradeType,
-                              entry_price: alert.entryPrice,
-                              stop_loss: alert.stopLoss,
-                              tp_hits: alert.tpHits,
-                              close_reason: alert.closeReason,
-                              created_date: alert.createdAt,
-                              updated_date: alert.updatedAt
-                            }} 
-                            onStatusUpdate={handleStatusUpdate} 
-                            onTakeProfitHit={handleTakeProfitHit} 
-                            onStopLossHit={handleStopLossHit} 
-                            onOrderActivation={handleOrderActivation} 
-                            isAdmin={isAdmin} 
-                            isCreator={isCreator(alert.creator?.id)} 
-                            livePrice={undefined} 
-                            connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                            priceSource={priceSource} 
-                            isRecentClosure={true} 
-                            creator={alert.creator} 
-                          />
+                          <div key={alert.id} data-prevent-widget-open="true">
+                            <TradeAlertCard 
+                              alert={{
+                                ...alert,
+                                asset_name: alert.assetName,
+                                tradermade_symbol: alert.tradermadeSymbol,
+                                trade_type: alert.tradeType,
+                                entry_price: alert.entryPrice,
+                                stop_loss: alert.stopLoss,
+                                tp_hits: alert.tpHits,
+                                close_reason: alert.closeReason,
+                                created_date: alert.createdAt,
+                                updated_date: alert.updatedAt
+                              }} 
+                              onStatusUpdate={handleStatusUpdate} 
+                              onTakeProfitHit={handleTakeProfitHit} 
+                              onStopLossHit={handleStopLossHit} 
+                              onOrderActivation={handleOrderActivation} 
+                              isAdmin={isAdmin} 
+                              isCreator={isCreator(alert.creator?.id)} 
+                              livePrice={undefined} 
+                              connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
+                              priceSource={priceSource} 
+                              isRecentClosure={true} 
+                              creator={alert.creator} 
+                            />
+                          </div>
                         ))}
                       </div>
                     ) : (
@@ -628,8 +629,10 @@ export default function SignalStream() {
               )}
             </div>
 
-            {/* Economic Sidebar - Optimized positioning and visibility */}
-            <EconomicSidebar />
+            {/* Economic Sidebar - Protected positioning */}
+            <div data-prevent-widget-open="true">
+              <EconomicSidebar />
+            </div>
           </div>
         </div>
       </div>

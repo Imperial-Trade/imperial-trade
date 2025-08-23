@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, PanInfo, useMotionValue, useTransform } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -21,6 +21,10 @@ import {
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { TradingSessionIndicator } from "@/components/ui/TradingSessionIndicator";
 import { useAuth } from "@/contexts/AuthContext";
+import { EdgeIndicator } from "./EdgeIndicator";
+import { useDeviceDetection } from "@/hooks/useDeviceDetection";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useSmartProtection } from "@/hooks/useSmartProtection";
 
 // Define the 6 trading arsenal tools with their correct existing routes
 const tradingTools = [
@@ -72,9 +76,26 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showEdgeIndicator, setShowEdgeIndicator] = useState(false);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Device detection and responsive behavior
+  const {
+    isMobile,
+    isTablet,
+    isTouchDevice,
+    edgeThreshold,
+    dragThreshold,
+    orientation
+  } = useDeviceDetection();
+
+  // Smart protection system
+  const { canTriggerSidebar } = useSmartProtection({
+    edgeThreshold,
+    allowedSelectors: ['.sidebar-safe-zone', '[data-sidebar-safe]']
+  });
 
   // Motion values for smooth drag animations
   const dragX = useMotionValue(0);
@@ -83,111 +104,182 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   const blur = useTransform(dragX, [0, -140, -280], [0, 2, 8]);
 
   // Detect if user prefers reduced motion
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const prefersReducedMotion = useMemo(() => 
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches, []);
 
-  // Enhanced mouse position tracking for edge detection with reduced sensitivity
+  const handleToggleSidebar = useCallback(() => {
+    setIsVisible(prev => !prev);
+    if (isVisible) {
+      setShowProfileDropdown(false);
+    }
+  }, [isVisible]);
+
+  const handleCloseSidebar = useCallback(() => {
+    if (isVisible) {
+      setIsVisible(false);
+      setShowProfileDropdown(false);
+      dragX.set(0);
+    }
+  }, [isVisible, dragX]);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onToggleSidebar: handleToggleSidebar,
+    onCloseSidebar: handleCloseSidebar,
+    isEnabled: true
+  });
+
+  // Enhanced mouse position tracking with smart protection
   useEffect(() => {
+    let edgeIndicatorTimeout: NodeJS.Timeout;
+    let hideIndicatorTimeout: NodeJS.Timeout;
+
     const handleMouseMove = (e: MouseEvent) => {
-      const target = e.target as Element | null;
-      // Prevent sidebar from opening when interacting with protected UI
-      if (target && (target as Element).closest('[data-prevent-widget-open="true"]')) {
-        if (isVisible) setIsVisible(false);
-        return;
-      }
+      const isNearLeftEdge = e.clientX <= edgeThreshold;
+      const canTrigger = canTriggerSidebar(e);
 
-      // Reduced edge detection threshold from 50px to 25px for less sensitivity
-      const isNearLeftEdge = e.clientX <= 25;
+      // Show edge indicator when near edge but not over protected elements
+      if (isNearLeftEdge && canTrigger && !isVisible) {
+        clearTimeout(hideIndicatorTimeout);
+        if (!showEdgeIndicator) {
+          edgeIndicatorTimeout = setTimeout(() => {
+            setShowEdgeIndicator(true);
+          }, 200); // Small delay to prevent flicker
+        }
 
-      if (isNearLeftEdge && !isVisible && !isDragging) {
-        setIsVisible(true);
+        // Open sidebar after brief hover in safe area
+        if (!isDragging) {
+          const openTimeout = setTimeout(() => {
+            if (!isVisible && canTriggerSidebar(e)) {
+              setIsVisible(true);
+              setShowEdgeIndicator(false);
+              
+              // Haptic feedback on mobile
+              if (isTouchDevice && 'vibrate' in navigator) {
+                navigator.vibrate(15);
+              }
+            }
+          }, isMobile ? 300 : 500); // Faster on mobile
+
+          return () => clearTimeout(openTimeout);
+        }
+      } else {
+        clearTimeout(edgeIndicatorTimeout);
+        if (showEdgeIndicator) {
+          hideIndicatorTimeout = setTimeout(() => {
+            setShowEdgeIndicator(false);
+          }, 100);
+        }
       }
     };
 
     const handleMouseLeave = () => {
       if (!isHovering && !isDragging) {
         setIsVisible(false);
+        setShowEdgeIndicator(false);
       }
     };
 
     // Click outside to close
     const handleClickOutside = (e: MouseEvent) => {
       if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node) && isVisible) {
-        setIsVisible(false);
-        setShowProfileDropdown(false);
+        handleCloseSidebar();
       }
     };
 
-    // Escape key to close
-    const handleEscapeKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isVisible) {
-        setIsVisible(false);
-        setShowProfileDropdown(false);
+    // Enhanced touch handling for mobile
+    const handleTouchStart = (e: TouchEvent) => {
+      if (isTouchDevice && e.touches.length === 1) {
+        const touch = e.touches[0];
+        if (touch.clientX <= edgeThreshold && canTriggerSidebar({
+          target: e.target,
+          clientX: touch.clientX
+        } as MouseEvent)) {
+          setIsVisible(true);
+          if ('vibrate' in navigator) {
+            navigator.vibrate(10);
+          }
+        }
       }
     };
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseleave", handleMouseLeave);
     document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscapeKey);
+    
+    if (isTouchDevice) {
+      document.addEventListener("touchstart", handleTouchStart, { passive: true });
+    }
 
     return () => {
+      clearTimeout(edgeIndicatorTimeout);
+      clearTimeout(hideIndicatorTimeout);
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseleave", handleMouseLeave);
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscapeKey);
+      
+      if (isTouchDevice) {
+        document.removeEventListener("touchstart", handleTouchStart);
+      }
     };
-  }, [isVisible, isHovering, isDragging]);
+  }, [
+    edgeThreshold,
+    canTriggerSidebar,
+    isVisible,
+    isHovering,
+    isDragging,
+    showEdgeIndicator,
+    isMobile,
+    isTouchDevice,
+    handleCloseSidebar
+  ]);
 
   const handleToolClick = (tool: (typeof tradingTools)[0]) => {
     setActiveTool(tool.name);
     navigate(tool.route);
   };
 
-  // Enhanced drag handlers with smooth animations and lower thresholds
-  const handleDragStart = () => {
+  // Enhanced drag handlers with device-specific optimizations
+  const handleDragStart = useCallback(() => {
     setIsDragging(true);
-    // Add haptic feedback if supported
-    if ('vibrate' in navigator) {
-      navigator.vibrate(10);
+    // Enhanced haptic feedback
+    if (isTouchDevice && 'vibrate' in navigator) {
+      navigator.vibrate(isMobile ? 15 : 10);
     }
-  };
+  }, [isTouchDevice, isMobile]);
 
-  const handleDrag = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDrag = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     // Only allow dragging to the left (negative x)
     if (info.offset.x > 0) return false;
     
-    // Progressive resistance - make it harder to drag as distance increases
-    const resistance = Math.abs(info.offset.x) / 280;
-    const adjustedOffset = info.offset.x * (1 - resistance * 0.3);
+    // Progressive resistance based on device type
+    const resistance = Math.abs(info.offset.x) / (isMobile ? 250 : 280);
+    const adjustedOffset = info.offset.x * (1 - resistance * (isMobile ? 0.2 : 0.3));
     dragX.set(adjustedOffset);
-  };
+  }, [dragX, isMobile]);
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false);
     
     const dragDistance = Math.abs(info.offset.x);
     const dragVelocity = Math.abs(info.velocity.x);
     
-    // More sensitive thresholds for smoother UX
-    const distanceThreshold = window.innerWidth < 768 ? 60 : 80; // Lower for mobile
-    const velocityThreshold = window.innerWidth < 768 ? 300 : 400; // Lower for mobile
-    
-    // Close if dragged sufficient distance OR with sufficient velocity
-    const shouldClose = dragDistance > distanceThreshold || dragVelocity > velocityThreshold;
+    // Device-specific thresholds
+    const shouldClose = dragDistance > dragThreshold || 
+                       dragVelocity > (isMobile ? 300 : 400);
     
     if (shouldClose) {
-      setIsVisible(false);
-      setShowProfileDropdown(false);
+      handleCloseSidebar();
       
-      // Stronger haptic feedback for successful close
-      if ('vibrate' in navigator) {
-        navigator.vibrate(25);
+      // Success haptic feedback
+      if (isTouchDevice && 'vibrate' in navigator) {
+        navigator.vibrate(isMobile ? 30 : 25);
       }
     } else {
-      // Snap back animation - reset drag position
+      // Snap back animation
       dragX.set(0);
     }
-  };
+  }, [dragThreshold, isMobile, isTouchDevice, handleCloseSidebar, dragX]);
 
   const handleClose = () => {
     setIsVisible(false);
@@ -395,234 +487,240 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
   };
 
   return (
-    <motion.aside
-      ref={sidebarRef}
-      className={`fixed left-2 sm:left-4 top-16 sm:top-20 z-[60] h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] w-64 sm:w-72 md:w-80 lg:w-96 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
-      initial={{ x: "-110%", opacity: 0 }}
-      animate={{
-        x: isVisible ? 0 : "-110%",
-        opacity: isVisible ? 1 : 0,
-      }}
-      exit={{
-        x: "-110%",
-        opacity: 0,
-        transition: { 
-          type: "spring", 
-          stiffness: 400, 
-          damping: 30,
-          duration: 0.3
-        }
-      }}
-      transition={{
-        type: "spring",
-        stiffness: prefersReducedMotion ? 200 : 260,
-        damping: prefersReducedMotion ? 40 : 25,
-        mass: 0.6,
-      }}
-      drag={isVisible ? "x" : false}
-      dragConstraints={{ left: -320, right: 0 }}
-      dragElastic={0.2}
-      dragMomentum={!prefersReducedMotion}
-      onDragStart={handleDragStart}
-      onDrag={handleDrag}
-      onDragEnd={handleDragEnd}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => {
-        setIsHovering(false);
-        if (!isDragging) {
-          setIsVisible(false);
-          setShowProfileDropdown(false);
-        }
-      }}
-      whileHover={!isDragging ? {
-        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-        scale: 1.01,
-      } : {}}
-      style={{
-        x: dragX,
-        opacity: isDragging ? opacity : undefined,
-        scale: isDragging ? scale : undefined,
-        filter: isDragging ? `blur(${blur}px)` : undefined,
-        touchAction: 'pan-y pinch-zoom',
-        // Critical: Make completely non-interactive when not visible
-        pointerEvents: isVisible ? 'auto' : 'none',
-      }}
-    >
-      <div className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
-        {/* Header with Close Button */}
-        <div className="mb-3 sm:mb-4 md:mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1">
-              Today
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-              Trading Arsenal
-            </p>
+    <>
+      <EdgeIndicator isVisible={isVisible} canTrigger={showEdgeIndicator} />
+      
+      <motion.aside
+        ref={sidebarRef}
+        className={`fixed left-2 sm:left-4 top-16 sm:top-20 z-[60] h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5rem)] w-64 sm:w-72 md:w-80 lg:w-96 bg-background/30 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl ${className}`}
+        initial={{ x: "-110%", opacity: 0 }}
+        animate={{
+          x: isVisible ? 0 : "-110%",
+          opacity: isVisible ? 1 : 0,
+        }}
+        exit={{
+          x: "-110%",
+          opacity: 0,
+          transition: { 
+            type: "spring", 
+            stiffness: 400, 
+            damping: 30,
+            duration: 0.3
+          }
+        }}
+        transition={{
+          type: "spring",
+          stiffness: prefersReducedMotion ? 200 : (isMobile ? 280 : 260),
+          damping: prefersReducedMotion ? 40 : (isMobile ? 20 : 25),
+          mass: isMobile ? 0.5 : 0.6,
+        }}
+        drag={isVisible ? "x" : false}
+        dragConstraints={{ left: isMobile ? -300 : -320, right: 0 }}
+        dragElastic={isMobile ? 0.15 : 0.2}
+        dragMomentum={!prefersReducedMotion}
+        onDragStart={handleDragStart}
+        onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => {
+          setIsHovering(false);
+          if (!isDragging) {
+            setIsVisible(false);
+            setShowProfileDropdown(false);
+          }
+        }}
+        whileHover={!isDragging && !isMobile ? {
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          scale: 1.01,
+        } : {}}
+        style={{
+          x: dragX,
+          opacity: isDragging ? opacity : undefined,
+          scale: isDragging ? scale : undefined,
+          filter: isDragging ? `blur(${blur}px)` : undefined,
+          touchAction: 'pan-y pinch-zoom',
+          pointerEvents: isVisible ? 'auto' : 'none',
+        }}
+        role="complementary"
+        aria-label="Trading Arsenal Sidebar"
+        aria-hidden={!isVisible}
+      >
+        <div className="p-2 sm:p-3 md:p-4 h-full overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+          {/* Header with Close Button */}
+          <div className="mb-3 sm:mb-4 md:mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-0.5 sm:mb-1">
+                Today
+              </h1>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                Trading Arsenal
+              </p>
+            </div>
+            
+            {/* Close Button */}
+            <motion.button
+              onClick={handleClose}
+              className="p-1.5 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 text-foreground/60 hover:text-foreground"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              aria-label="Close sidebar"
+            >
+              <X className="w-4 h-4" />
+            </motion.button>
           </div>
-          
-          {/* Close Button */}
-          <motion.button
-            onClick={handleClose}
-            className="p-1.5 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 text-foreground/60 hover:text-foreground"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            aria-label="Close sidebar"
-          >
-            <X className="w-4 h-4" />
-          </motion.button>
-        </div>
 
-        {/* Trading Session Indicator */}
-        <div className="mb-3 sm:mb-4">
-          <TradingSessionIndicator />
-        </div>
+          {/* Trading Session Indicator */}
+          <div className="mb-3 sm:mb-4">
+            <TradingSessionIndicator />
+          </div>
 
-        {/* Widget Grid */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
-          <WidgetTool tool={tradingTools[0]} size="large" />
-          <WidgetTool tool={tradingTools[1]} size="small" />
-          <WidgetTool tool={tradingTools[2]} size="small" />
-          <WidgetTool tool={tradingTools[3]} size="medium" />
-          <WidgetTool tool={tradingTools[4]} size="small" />
-          <WidgetTool tool={tradingTools[5]} size="small" />
-        </div>
+          {/* Widget Grid */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <WidgetTool tool={tradingTools[0]} size="large" />
+            <WidgetTool tool={tradingTools[1]} size="small" />
+            <WidgetTool tool={tradingTools[2]} size="small" />
+            <WidgetTool tool={tradingTools[3]} size="medium" />
+            <WidgetTool tool={tradingTools[4]} size="small" />
+            <WidgetTool tool={tradingTools[5]} size="small" />
+          </div>
 
-        {/* Profile and Controls Section */}
-        <div className="relative">
-          <motion.div
-            className="bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-3 md:p-4 border border-white/20 dark:border-white/10"
-            whileHover={{
-              backgroundColor: "rgba(255, 255, 255, 0.15)",
-              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-            }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="flex items-center justify-between">
-              {/* Profile Section */}
-              <motion.button
-                className="flex items-center gap-2 sm:gap-3 hover:bg-white/10 dark:hover:bg-black/20 rounded-lg p-1 sm:p-2 -m-1 sm:-m-2 transition-all duration-200"
-                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">
-                    {user?.user_metadata?.first_name &&
-                    user?.user_metadata?.last_name
-                      ? `${user.user_metadata.first_name.charAt(
-                          0
-                        )}${user.user_metadata.last_name.charAt(0)}`
-                      : user?.email
-                      ? getInitials(user.email)
-                      : "U"}
-                  </span>
-                </div>
-                <div className="text-left min-w-0 flex-1">
-                  <div className="text-foreground text-xs sm:text-sm font-medium truncate">
-                    {user?.user_metadata?.first_name &&
-                    user?.user_metadata?.last_name
-                      ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
-                      : user?.user_metadata?.full_name ||
-                        user?.user_metadata?.display_name ||
-                        user?.email?.split("@")[0] ||
-                        "User"}
-                  </div>
-                  <div className="text-foreground/60 text-xs">
-                    {user?.user_metadata?.access_level === "admin"
-                      ? "Administrator"
-                      : user?.user_metadata?.user_type === "educator"
-                      ? "Educator"
-                      : "Member"}
-                  </div>
-                </div>
-              </motion.button>
-
-              {/* Controls */}
-              <div className="flex items-center gap-1 sm:gap-1.5">
+          {/* Profile and Controls Section */}
+          <div className="relative">
+            <motion.div
+              className="bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-3 md:p-4 border border-white/20 dark:border-white/10"
+              whileHover={{
+                backgroundColor: "rgba(255, 255, 255, 0.15)",
+                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+              }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="flex items-center justify-between">
+                {/* Profile Section */}
                 <motion.button
-                  className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 flex items-center justify-center"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
+                  className="flex items-center gap-2 sm:gap-3 hover:bg-white/10 dark:hover:bg-black/20 rounded-lg p-1 sm:p-2 -m-1 sm:-m-2 transition-all duration-200"
+                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Bell className="w-3 h-3 sm:w-4 sm:h-4 text-foreground/60" />
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-medium">
+                      {user?.user_metadata?.first_name &&
+                      user?.user_metadata?.last_name
+                        ? `${user.user_metadata.first_name.charAt(
+                            0
+                          )}${user.user_metadata.last_name.charAt(0)}`
+                        : user?.email
+                        ? getInitials(user.email)
+                        : "U"}
+                    </span>
+                  </div>
+                  <div className="text-left min-w-0 flex-1">
+                    <div className="text-foreground text-xs sm:text-sm font-medium truncate">
+                      {user?.user_metadata?.first_name &&
+                      user?.user_metadata?.last_name
+                        ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                        : user?.user_metadata?.full_name ||
+                          user?.user_metadata?.display_name ||
+                          user?.email?.split("@")[0] ||
+                          "User"}
+                    </div>
+                    <div className="text-foreground/60 text-xs">
+                      {user?.user_metadata?.access_level === "admin"
+                        ? "Administrator"
+                        : user?.user_metadata?.user_type === "educator"
+                        ? "Educator"
+                        : "Member"}
+                    </div>
+                  </div>
                 </motion.button>
-                <div className="flex items-center justify-center">
-                  <ThemeToggle />
+
+                {/* Controls */}
+                <div className="flex items-center gap-1 sm:gap-1.5">
+                  <motion.button
+                    className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 dark:hover:bg-black/20 transition-all duration-200 flex items-center justify-center"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    <Bell className="w-3 h-3 sm:w-4 sm:h-4 text-foreground/60" />
+                  </motion.button>
+                  <div className="flex items-center justify-center">
+                    <ThemeToggle />
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          {/* Profile Dropdown */}
-          {showProfileDropdown && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="absolute bottom-full left-0 right-0 mb-2 bg-white/15 dark:bg-black/25 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 z-50"
-            >
-              <div className="p-1 sm:p-2">
-                <motion.button
-                  onClick={() => {
-                    setShowProfileDropdown(false);
-                    navigate("/dashboard/my-progress");
-                  }}
-                  className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
-                  whileHover={{ scale: 1.02, x: 4 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                  <span className="text-foreground text-xs sm:text-sm">My Progress</span>
-                </motion.button>
-
-                <motion.button
-                  onClick={() => {
-                    setShowProfileDropdown(false);
-                    navigate("/dashboard/administration");
-                  }}
-                  className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
-                  whileHover={{ scale: 1.02, x: 4 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Settings className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                  <span className="text-foreground text-xs sm:text-sm">
-                    Administration
-                  </span>
-                </motion.button>
-
-                {user?.user_metadata?.access_level === "admin" && (
+            {/* Profile Dropdown */}
+            {showProfileDropdown && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="absolute bottom-full left-0 right-0 mb-2 bg-white/15 dark:bg-black/25 backdrop-blur-xl rounded-xl sm:rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 z-50"
+              >
+                <div className="p-1 sm:p-2">
                   <motion.button
                     onClick={() => {
                       setShowProfileDropdown(false);
-                      navigate("/dashboard/admin");
+                      navigate("/dashboard/my-progress");
                     }}
                     className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
                     whileHover={{ scale: 1.02, x: 4 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
-                    <span className="text-foreground text-xs sm:text-sm">Admin Panel</span>
+                    <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
+                    <span className="text-foreground text-xs sm:text-sm">My Progress</span>
                   </motion.button>
-                )}
-              </div>
-            </motion.div>
-          )}
 
-          {/* Sign Out Button - Standalone */}
-          <motion.button
-            onClick={handleSignOut}
-            className="w-full mt-2 text-red-400 hover:text-red-300 text-xs sm:text-sm transition-colors duration-200 text-center py-1 sm:py-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <div className="flex items-center justify-center gap-1 sm:gap-2">
-              <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span>Sign Out</span>
-            </div>
-          </motion.button>
+                  <motion.button
+                    onClick={() => {
+                      setShowProfileDropdown(false);
+                      navigate("/dashboard/administration");
+                    }}
+                    className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
+                    whileHover={{ scale: 1.02, x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Settings className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
+                    <span className="text-foreground text-xs sm:text-sm">
+                      Administration
+                    </span>
+                  </motion.button>
+
+                  {user?.user_metadata?.access_level === "admin" && (
+                    <motion.button
+                      onClick={() => {
+                        setShowProfileDropdown(false);
+                        navigate("/dashboard/admin");
+                      }}
+                      className="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-left hover:bg-white/10 dark:hover:bg-black/20 rounded-lg transition-all duration-200"
+                      whileHover={{ scale: 1.02, x: 4 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-foreground" />
+                      <span className="text-foreground text-xs sm:text-sm">Admin Panel</span>
+                    </motion.button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Sign Out Button - Standalone */}
+            <motion.button
+              onClick={handleSignOut}
+              className="w-full mt-2 text-red-400 hover:text-red-300 text-xs sm:text-sm transition-colors duration-200 text-center py-1 sm:py-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="flex items-center justify-center gap-1 sm:gap-2">
+                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span>Sign Out</span>
+              </div>
+            </motion.button>
+          </div>
         </div>
-      </div>
-    </motion.aside>
+      </motion.aside>
+    </>
   );
 }

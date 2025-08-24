@@ -107,8 +107,7 @@ Return JSON: {"reply": "your 2-3 sentence congratulatory message with next-step 
         properties: {
           reply: { type: "string" }
         },
-        required: ["reply"],
-        additionalProperties: false
+        required: ["reply"]
       }
     });
     const modelLatencyMs = Date.now() - startTime;

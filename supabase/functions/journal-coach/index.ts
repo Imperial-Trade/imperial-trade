@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { callGoogleAI } from "../_shared/google-ai-helper.ts";
-import { smartTruncateNotes, generatePersonalizedFallback } from "../coach-agent/utils.ts";
+import { smartTruncateNotes, generatePersonalizedFallback } from "../_shared/coach-utils.ts";
 
 interface JournalCoachRequest {
   journal_entry_id: string;
@@ -171,8 +171,7 @@ Return JSON: {"feedback": "your 3-5 sentence message ending with motivational pu
         properties: {
           feedback: { type: "string" }
         },
-        required: ["feedback"],
-        additionalProperties: false
+        required: ["feedback"]
       }
     });
     const modelLatencyMs = Date.now() - startTime;

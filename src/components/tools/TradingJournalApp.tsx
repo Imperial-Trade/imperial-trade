@@ -512,21 +512,31 @@ Please provide a brief analysis focusing on what went well, what could be improv
       // Add new trade to the beginning of the trades array (most recent first)
       setTrades(prevTrades => [newTrade, ...prevTrades]);
 
-      // Generate AI feedback asynchronously and update both DB and local state
-      getAISummaryForTrade(tradeData).then(async feedback => {
-        await supabase.from("trade_journal_entries").update({
-          ai_positive_feedback: feedback
-        }).eq("id", data.id);
-        
-        // Update local state with AI feedback
-        setTrades(prevTrades => 
-          prevTrades.map(trade => 
-            trade.id === data.id 
-              ? { ...trade, ai_feedback: feedback }
-              : trade
-          )
-        );
-      });
+      // Generate AI coaching feedback asynchronously using journal-coach
+      try {
+        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('journal-coach', {
+          body: {
+            event_type: "LOG_TRADE",
+            user_id: user.id,
+            journal_entry_id: data.id
+          }
+        });
+
+        if (coachError) {
+          console.error("TradingJournalApp: Coach agent error:", coachError);
+        } else if (coachResponse && coachResponse.result) {
+          // Update local state with AI feedback
+          setTrades(prevTrades => 
+            prevTrades.map(trade => 
+              trade.id === data.id 
+                ? { ...trade, ai_feedback: coachResponse.result }
+                : trade
+            )
+          );
+        }
+      } catch (aiError) {
+        console.error("TradingJournalApp: AI coaching failed:", aiError);
+      }
 
       toast({
         title: "Trade Saved",

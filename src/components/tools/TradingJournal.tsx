@@ -138,17 +138,17 @@ export default function TradingJournal() {
       console.log("TradingJournal.handleSubmit - Created journal entry:", createdEntry);
       toast.success("Educational entry saved successfully!");
 
-      // Enhanced educational coaching analysis using coach-agent
+      // Enhanced educational coaching analysis using journal-coach
       try {
-        toast.info("Getting personalized educational coaching feedback...");
+        toast.info("Getting personalized coaching feedback...");
         
-        console.log("TradingJournal.handleSubmit - Invoking coach-agent with payload:", {
+        console.log("TradingJournal.handleSubmit - Invoking journal-coach with payload:", {
           event_type: "LOG_TRADE",
           user_id: user.id,
           journal_entry_id: createdEntry.id
         });
 
-        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('coach-agent', {
+        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('journal-coach', {
           body: {
             event_type: "LOG_TRADE",
             user_id: user.id,
@@ -156,32 +156,27 @@ export default function TradingJournal() {
           }
         });
 
-        console.log("TradingJournal.handleSubmit - Coach-agent response:", coachResponse);
-        console.log("TradingJournal.handleSubmit - Coach-agent error:", coachError);
+        console.log("TradingJournal.handleSubmit - Journal-coach response:", coachResponse);
+        console.log("TradingJournal.handleSubmit - Journal-coach error:", coachError);
 
         if (coachError) {
-          console.error("TradingJournal.handleSubmit - Coach agent error:", coachError);
-          toast.error("Educational coaching failed, but entry was saved");
-        } else if (coachResponse && coachResponse.reply) {
+          console.error("TradingJournal.handleSubmit - Journal coach error:", coachError);
+          toast.error("Coaching failed, but entry was saved");
+        } else if (coachResponse && coachResponse.result) {
           console.log("TradingJournal.handleSubmit - Coach feedback generated successfully");
-          
-          if (coachResponse.warning) {
-            toast.warning(coachResponse.warning);
-          } else {
-            toast.success("Personalized educational coaching feedback generated!");
-          }
+          toast.success("Beast coaching feedback generated!");
         } else {
-          console.warn("TradingJournal.handleSubmit - Coach response does not contain expected reply field:", coachResponse);
-          toast.warning("Coaching feedback format unexpected, but entry was saved");
+          console.warn("TradingJournal.handleSubmit - Coach response missing result field:", coachResponse);
+          toast.warning("Coaching format unexpected, but entry was saved");
         }
       } catch (aiError) {
-        console.error("TradingJournal.handleSubmit - Educational coaching analysis failed:", aiError);
+        console.error("TradingJournal.handleSubmit - Coaching analysis failed:", aiError);
         console.error("TradingJournal.handleSubmit - AI error details:", {
           name: aiError.name,
           message: aiError.message,
           stack: aiError.stack
         });
-        toast.error("Educational coaching failed, but entry was saved");
+        toast.error("Coaching failed, but entry was saved");
         // Continue - don't block since the educational entry is already saved
       }
 

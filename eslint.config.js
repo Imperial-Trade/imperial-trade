@@ -24,6 +24,16 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      "no-undef": "error",
+    },
+  },
+  // Supabase edge functions - allow Deno globals but keep no-undef for safety
+  {
+    files: ["supabase/functions/**/*.ts"],
+    languageOptions: {
+      globals: {
+        Deno: "readonly",
+      },
     },
   }
 );

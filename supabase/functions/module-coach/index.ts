@@ -144,18 +144,23 @@ Return JSON: {"reply": "your 2-3 sentence congratulatory message with next-step 
       final_reply_len: finalReply.length
     });
 
-    // Store agent output (module completions go to agent_outputs only, not journal entries)
-    const { error: agentOutputError } = await supabase
-      .from("agent_outputs")
-      .insert({
-        user_id,
-        agent_name: "Module Coach",
-        output_text: JSON.stringify({ reply: finalReply, fallback_reason, module: moduleInfo }),
-        user_readable_text: finalReply,
-      });
-
-    if (agentOutputError) {
+    // Store agent output - wrap in try/catch to never let logging throw
+    try {
+      await supabase
+        .from("agent_outputs")
+        .insert({
+          user_id,
+          agent_name: "Module Coach", 
+          output_text: JSON.stringify({ 
+            reply: finalReply, 
+            fallback_reason: fallbackReason, 
+            module: moduleInfo 
+          }),
+          user_readable_text: finalReply,
+        });
+    } catch (agentOutputError) {
       console.error("Module Coach - Error storing agent output:", agentOutputError);
+      // Continue execution - don't let logging errors break the response
     }
 
     return new Response(

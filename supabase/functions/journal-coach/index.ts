@@ -8,6 +8,16 @@ interface JournalCoachRequest {
   journal_entry_id: string;
 }
 
+interface GenerationMetrics {
+  fallback_reason: string | null;
+  used_retry: boolean;
+  notes_len: number;
+  model_latency_ms: number;
+  final_feedback_len: number;
+  tokens_out: string;
+  finish_reason: string;
+}
+
 const JOURNAL_SYSTEM_PROMPT = `SYSTEM PROMPT — Motivational Trading Coach
 
 ROLE
@@ -253,32 +263,21 @@ Return JSON: {"feedback": "your 3-5 sentence message ending with motivational pu
       }
     }
 
-    // Log metrics
-    console.log("Journal Coach - Generation complete:", {
+    // Build typed metrics object to prevent undefined references
+    const metrics: GenerationMetrics = {
       fallback_reason: fallbackReason,
       used_retry: usedRetry,
       notes_len: tradeNotes.length,
       model_latency_ms: modelLatencyMs,
       final_feedback_len: finalFeedback.length,
-      tokens_out: finalMeta.tokensOut,
-      finish_reason: finalMeta.finishReason
-    });
+      tokens_out: finalMeta.tokensOut || "unknown",
+      finish_reason: finalMeta.finishReason || "unknown"
+    };
 
-    // Store agent output
-    const { error: agentOutputError } = await supabase
-      .from("agent_outputs")
-      .insert({
-        user_id,
-        agent_name: "Journal Coach",
-        output_text: JSON.stringify({ feedback: finalFeedback, fallback_reason, used_retry }),
-        user_readable_text: finalFeedback,
-      });
+    // Log metrics
+    console.log("Journal Coach - Generation complete:", metrics);
 
-    if (agentOutputError) {
-      console.error("Journal Coach - Error storing agent output:", agentOutputError);
-    }
-
-    // CRITICAL: Always update trade_journal_entries.ai_positive_feedback to prevent UI hanging
+    // CRITICAL: Always update trade_journal_entries.ai_positive_feedback FIRST to prevent UI hanging
     const { error: updateError } = await supabase
       .from("trade_journal_entries")
       .update({ ai_positive_feedback: finalFeedback })
@@ -296,6 +295,24 @@ Return JSON: {"feedback": "your 3-5 sentence message ending with motivational pu
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Store agent output - wrap in try/catch to never let logging throw
+    try {
+      await supabase
+        .from("agent_outputs")
+        .insert({
+          user_id,
+          agent_name: "Journal Coach",
+          output_text: JSON.stringify({ 
+            feedback: finalFeedback, 
+            ...metrics 
+          }),
+          user_readable_text: finalFeedback,
+        });
+    } catch (agentOutputError) {
+      console.error("Journal Coach - Error storing agent output:", agentOutputError);
+      // Continue execution - don't let logging errors break the response
     }
 
     console.log("Journal Coach - Successfully updated journal entry with feedback");

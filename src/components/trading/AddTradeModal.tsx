@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback, useState } from "react";
+import React, { memo, useCallback, useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -130,13 +130,14 @@ const AddTradeModal = memo<AddTradeModalProps>(({
         uploadedImageUrl = file_url;
         updateScreenshotUrl(file_url);
         
-        setStatusMessage("");
         console.log('Image uploaded successfully:', file_url);
       } catch (error) {
         console.error('Upload failed:', error);
         setUploadError('Failed to upload image. Please try again.');
-        setUploading(false);
         return;
+      } finally {
+        setUploading(false);
+        setStatusMessage("");
       }
     }
 
@@ -219,7 +220,23 @@ const AddTradeModal = memo<AddTradeModalProps>(({
     setChartFile(null);
     setChartPreview(null);
     setUploadError(null);
+    setUploading(false);
+    setStatusMessage("");
   }, [chartPreview]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (chartPreview) {
+        URL.revokeObjectURL(chartPreview);
+      }
+      setChartFile(null);
+      setChartPreview(null);
+      setUploadError(null);
+      setUploading(false);
+      setStatusMessage("");
+      resetForm();
+    }
+  }, [isOpen, chartPreview, resetForm]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>

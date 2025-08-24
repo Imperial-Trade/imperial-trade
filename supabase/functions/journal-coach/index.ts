@@ -1,215 +1,305 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
+import { callGoogleAI } from "../_shared/google-ai-helper.ts";
+import { smartTruncateNotes, generatePersonalizedFallback } from "../coach-agent/utils.ts";
 
 interface JournalCoachRequest {
-  user_id: string;
   journal_entry_id: string;
-  event_type: string;
 }
 
-// Beast Motivational Trading Coach Persona
-const COACH_SYSTEM_PROMPT = `Role:
-You are a beast motivational trading coach inside a Trading Journal. Your job is to give short, powerful, human-like feedback every time a trader logs a trade.
+const JOURNAL_SYSTEM_PROMPT = `SYSTEM PROMPT — Motivational Trading Coach
 
-🔑 Core Rules
+ROLE
+You are a human-sounding motivational trading coach. Write as if you're speaking directly to the trader. Keep it conversational and natural. Your job is to give short, powerful feedback for trade journal entries.
 
-Keep replies 3–5 sentences max (short, sharp, cost-efficient).
+OUTPUT CONTRACT
+- Return ONLY valid JSON as: { "feedback": "<coach message>" }
+- 3–5 sentences total. No lists, no headings.
+- End with a single motivational punchline (one sentence).
+- Keep it concise and conversational (≤100 words).
 
-Always motivational and uplifting.
+PERSONALIZATION RULES
+- Read the trader's notes and reference them directly.
+- If a screenshot/chart is provided, reference what's visible.
+- Use natural language with contractions. Avoid buzzword spam and emoji.
+- Vary tone (Hype, Calm Mentor, Tough-Love, Identity, etc.). Do NOT label the tone.
 
-Never discourage — always reframe into growth, resilience, or mastery.
+STYLE GUARDRAILS
+- Always motivational and uplifting.
+- Never discourage—reframe into growth, resilience, or mastery.
+- Human voice > slogan machine. Avoid all-caps and repeated catchphrases.
 
-Always end with a motivational punchline that energizes the trader.
+GREEN DAY LOGIC (Profitable Trades)
+- Highlight what went well (execution, patience, strategy, chart reading).
+- If screenshot exists, mention a concrete visual detail.
+- Frame the win as mastery/consistency (not luck).
+- Finish with a motivating punchline.
 
-Vary tone deliberately (Hype, Calm Mentor, Tough-Love, etc.).
+RED DAY LOGIC (Losing Trades)
+- Briefly acknowledge the sting, then move on.
+- Praise courage for logging and naming what went wrong.
+- If screenshot exists, acknowledge what the chart reveals.
+- Reframe to resilience, awareness, identity growth.
+- Finish with a motivational punchline that keeps the trader proud to continue.
 
-Tone titles are internal only — never show them to the trader.
+EXECUTION GOALS
+- Green days: Celebrate execution and mastery.
+- Red days: Celebrate journaling courage and resilience.
+- Always tie comments to notes/screenshot specifics.
+- Always finish with a strong punchline.
+- Keep total length tight (3–5 sentences, ≤100 words).
 
-Use rotation banks as inspiration only. Never copy word-for-word. Always paraphrase, adapt, and personalize.
-
-Personalize using trader's notes and any attached screenshots/charts (comment on what's visible: setups, indicators, entries, exits, or patterns).
-
-✅ Green Day Logic (Profitable Trades)
-
-Do not mention journaling here.
-
-Highlight what the trader did well (execution, patience, strategy, chart reading).
-
-If screenshot is provided, reference what's visible (e.g., "That retracement entry was clean," or "You spotted the breakout perfectly on that chart").
-
-Frame the win as mastery, growth, or consistency — not luck.
-
-End with a motivating and rewarding punchline.
-
-❌ Red Day Logic (Losing Trades)
-
-Briefly acknowledge the sting, but don't dwell.
-
-Highlight courage in logging and recognizing what went wrong.
-
-If screenshot is provided, acknowledge what the chart reveals (e.g., "Your stop placement shows you trusted your level—good call, even if market disagreed").
-
-Reframe the loss into resilience, awareness, and identity growth.
-
-Praise journaling discipline here (never on green days).
-
-End with a motivational punchline that leaves the trader proud to continue.
-
-⚡ Execution Goal
-
-For Green Days: Highlight execution and mastery.
-
-For Red Days: Highlight journaling courage and resilience.
-
-Rotate tone styles so no two entries feel the same.
-
-Always paraphrase, adapt, and tie into the trader's actual notes/screenshots.
-
-Always end with a strong motivational punchline.
-
-Return your response as a JSON object with this exact structure:
-{
-  "result": "Your 3-5 sentence motivational coaching response with punchline"
-}`;
+RESPONSE FORMAT
+Return ONLY: { "feedback": "<3–5 sentence human message ending with a motivational punchline>" }`;
 
 serve(async (req) => {
-  console.log('Journal Coach: Request received', req.method);
-
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS")
+    return new Response("ok", { headers: corsHeaders });
 
   try {
-    // Get environment variables
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!supabaseUrl || !supabaseServiceKey || !openaiApiKey) {
-      console.error('Journal Coach: Missing environment variables');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!apiKey || !supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Missing required environment variables.");
     }
 
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Parse request body
-    const { user_id, journal_entry_id, event_type }: JournalCoachRequest = await req.json();
-
-    console.log('Journal Coach: Processing request', { user_id, journal_entry_id, event_type });
-
-    // Fetch the journal entry
-    const { data: journalEntry, error: entryError } = await supabase
-      .from('trade_journal_entries')
-      .select('*')
-      .eq('id', journal_entry_id)
-      .single();
-
-    if (entryError || !journalEntry) {
-      console.error('Journal Coach: Error fetching journal entry:', entryError);
-      return new Response(
-        JSON.stringify({ error: 'Journal entry not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Get user ID from JWT token for security
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error("Authorization header required");
     }
 
-    // Build coaching prompt
-    const isProfit = journalEntry.pnl >= 0;
-    const hasScreenshot = journalEntry.screenshot_url && journalEntry.screenshot_url.length > 0;
-    
-    const tradeDetails = `
-Trade Details:
-- Asset: ${journalEntry.asset_ticker}
-- P&L: $${journalEntry.pnl}
-- Outcome: ${isProfit ? 'WIN' : 'LOSS'}
-- Entry Price: ${journalEntry.entry_price || 'Not specified'}
-- Exit Price: ${journalEntry.exit_price || 'Not specified'}
-- Position Size: ${journalEntry.position_size || 'Not specified'}
-- Notes: ${journalEntry.notes || 'No notes provided'}
-- Screenshot: ${hasScreenshot ? 'YES - Comment on what you see in the chart/setup' : 'NO'}
-- Date: ${new Date(journalEntry.trade_date).toLocaleDateString()}
-
-Based on this ${isProfit ? 'profitable' : 'losing'} trade, provide motivational coaching feedback following your persona rules.
-${hasScreenshot ? 'Since there is a screenshot, reference what you can see in the chart setup, entry/exit points, or patterns.' : ''}
-`;
-
-    console.log('Journal Coach: Calling OpenAI with trade details');
-
-    // Call OpenAI
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
+    // Use anon key with user's JWT for RLS compliance
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
       },
-      body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
-        messages: [
-          { role: 'system', content: COACH_SYSTEM_PROMPT },
-          { role: 'user', content: tradeDetails }
-        ],
-        max_tokens: 200,
-        temperature: 0.9
-      }),
     });
 
-    if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.json();
-      console.error('Journal Coach: OpenAI API error:', errorData);
+    // Get authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error("Invalid or expired token");
+    }
+
+    const user_id = user.id;
+    const { journal_entry_id }: JournalCoachRequest = await req.json();
+    
+    if (!journal_entry_id) {
+      throw new Error("journal_entry_id is required.");
+    }
+
+    console.log("Journal Coach - Processing request:", { user_id, journal_entry_id });
+
+    // Check if feedback already exists (idempotency)
+    const { data: existingEntry } = await supabase
+      .from('trade_journal_entries')
+      .select('ai_positive_feedback')
+      .eq('id', journal_entry_id)
+      .eq('user_id', user_id)
+      .maybeSingle();
+
+    if (existingEntry?.ai_positive_feedback) {
+      console.log('Journal Coach - Feedback already exists for entry', journal_entry_id);
       return new Response(
-        JSON.stringify({ error: 'AI coaching service unavailable' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ reply: existingEntry.ai_positive_feedback, cached: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const openaiData = await openaiResponse.json();
-    const coachingResponse = openaiData.choices[0].message.content;
+    // Fetch user profile for personalization
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("real_name, display_name")
+      .eq("id", user_id)
+      .maybeSingle();
 
-    console.log('Journal Coach: AI response received');
+    const userName = userProfile?.display_name || userProfile?.real_name || "Trader";
 
-    let parsedResponse;
-    try {
-      parsedResponse = JSON.parse(coachingResponse);
-    } catch (parseError) {
-      console.error('Journal Coach: Failed to parse AI response, using fallback');
-      parsedResponse = { result: coachingResponse };
+    // Fetch trade journal entry
+    const { data: journalEntry, error: journalError } = await supabase
+      .from("trade_journal_entries")
+      .select("asset_ticker, pnl, notes, entry_price, exit_price, position_size, trade_type, screenshot_url")
+      .eq("id", journal_entry_id)
+      .eq("user_id", user_id)
+      .maybeSingle();
+
+    if (journalError || !journalEntry) {
+      throw new Error("Failed to fetch trade journal entry or entry not found");
     }
 
-    // Update the journal entry with AI feedback
+    // Analyze trade data
+    const tradeOutcome = journalEntry.pnl > 0 ? "winning trade" : "losing trade";
+    const pnlAmount = Math.abs(journalEntry.pnl);
+    const tradeNotes = journalEntry.notes || "No notes provided";
+
+    console.log("Journal Coach - Trade analysis:", {
+      outcome: tradeOutcome,
+      pnl: pnlAmount,
+      notes_len: tradeNotes.length
+    });
+
+    // Smart truncation for token efficiency
+    const notes_trunc_1 = smartTruncateNotes(tradeNotes, 1200);
+    const notes_trunc_2 = smartTruncateNotes(tradeNotes, 800);
+    
+    // Build single compact prompt
+    const singlePrompt = `${JOURNAL_SYSTEM_PROMPT}
+
+--- TASK ---
+${userName} submitted a ${tradeOutcome} with ${pnlAmount} USD ${journalEntry.pnl > 0 ? "profit" : "loss"}.
+Asset: ${journalEntry.asset_ticker}
+Trade Type: ${journalEntry.trade_type || "Not specified"}
+Their notes: "${notes_trunc_1}"
+${journalEntry.screenshot_url ? "They also uploaded a screenshot for analysis." : ""}
+
+Provide a supportive coaching response that highlights specific concepts from their notes and validates their trading analysis skills.
+
+Return JSON: {"feedback": "your 3-5 sentence message ending with motivational punchline"}`;
+
+    const startTime = Date.now();
+    let aiResponse = await callGoogleAI(apiKey, "gemini-2.5-flash", singlePrompt, {
+      maxOutputTokens: 300,
+      timeoutMs: 12000,
+      responseSchema: {
+        type: "object",
+        properties: {
+          feedback: { type: "string" }
+        },
+        required: ["feedback"],
+        additionalProperties: false
+      }
+    });
+    const modelLatencyMs = Date.now() - startTime;
+
+    let usedRetry = false;
+    let fallbackReason: string | null = null;
+
+    // Check if we got a transport fallback and retry once
+    try {
+      const parsedResponse = JSON.parse(aiResponse);
+      if (parsedResponse.is_fallback) {
+        console.log("Journal Coach - First attempt failed, retrying...", parsedResponse);
+        fallbackReason = parsedResponse.fallback_reason;
+        
+        // Retry with shorter notes and lower token limit
+        const retryPrompt = singlePrompt
+          .replace(notes_trunc_1, notes_trunc_2)
+          .replace('Return JSON: {"feedback": "your 3-5 sentence message ending with motivational punchline"}',
+                  'Return JSON: {"feedback": "your 3-5 sentence message (≤80 words) ending with motivational punchline"}');
+        
+        aiResponse = await callGoogleAI(apiKey, "gemini-2.5-flash", retryPrompt, {
+          maxOutputTokens: 200,
+          timeoutMs: 12000
+        });
+        usedRetry = true;
+        
+        // Check retry result
+        const retryParsed = JSON.parse(aiResponse);
+        if (retryParsed.is_fallback) {
+          fallbackReason = retryParsed.fallback_reason;
+        } else {
+          fallbackReason = null; // Retry succeeded
+        }
+      }
+    } catch (parseError) {
+      console.error("Journal Coach - Failed to parse AI response:", parseError);
+      fallbackReason = 'invalid_json';
+    }
+
+    // Generate final response (AI or personalized fallback)
+    let finalFeedback: string;
+    if (fallbackReason) {
+      // Generate personalized deterministic fallback
+      finalFeedback = generatePersonalizedFallback({
+        userName,
+        asset: journalEntry.asset_ticker,
+        tradeType: journalEntry.trade_type,
+        isWin: journalEntry.pnl > 0,
+        pnlAmount,
+        notes: tradeNotes,
+        hasScreenshot: !!journalEntry.screenshot_url
+      });
+      console.log("Journal Coach - Using personalized fallback due to:", fallbackReason);
+    } else {
+      // Extract feedback from successful AI response
+      try {
+        const parsedResponse = JSON.parse(aiResponse);
+        finalFeedback = parsedResponse.feedback || "Great work on analyzing this trade! Your detailed approach shows real growth as a trader.";
+      } catch (parseError) {
+        console.error("Journal Coach - Failed to parse successful AI response:", parseError);
+        finalFeedback = generatePersonalizedFallback({
+          userName,
+          asset: journalEntry.asset_ticker,
+          tradeType: journalEntry.trade_type,
+          isWin: journalEntry.pnl > 0,
+          pnlAmount,
+          notes: tradeNotes,
+          hasScreenshot: !!journalEntry.screenshot_url
+        });
+        fallbackReason = 'invalid_json';
+      }
+    }
+
+    // Log metrics
+    console.log("Journal Coach - Generation complete:", {
+      fallback_reason: fallbackReason,
+      used_retry: usedRetry,
+      notes_len: tradeNotes.length,
+      model_latency_ms: modelLatencyMs,
+      final_feedback_len: finalFeedback.length
+    });
+
+    // Store agent output
+    const { error: agentOutputError } = await supabase
+      .from("agent_outputs")
+      .insert({
+        user_id,
+        agent_name: "Journal Coach",
+        output_text: JSON.stringify({ feedback: finalFeedback, fallback_reason, used_retry }),
+        user_readable_text: finalFeedback,
+      });
+
+    if (agentOutputError) {
+      console.error("Journal Coach - Error storing agent output:", agentOutputError);
+    }
+
+    // CRITICAL: Always update trade_journal_entries.ai_positive_feedback to prevent UI hanging
     const { error: updateError } = await supabase
-      .from('trade_journal_entries')
-      .update({ ai_positive_feedback: parsedResponse.result })
-      .eq('id', journal_entry_id);
+      .from("trade_journal_entries")
+      .update({ ai_positive_feedback: finalFeedback })
+      .eq("id", journal_entry_id)
+      .eq("user_id", user_id);
 
     if (updateError) {
-      console.error('Journal Coach: Error updating journal entry:', updateError);
-    } else {
-      console.log('Journal Coach: Successfully updated journal entry with AI feedback');
+      console.error("Journal Coach - Error updating journal entry:", updateError);
+      // Still return success but log the issue
+      return new Response(
+        JSON.stringify({
+          reply: finalFeedback,
+          success: true,
+          note: "Generated feedback but database update failed"
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Return the coaching response
+    console.log("Journal Coach - Successfully updated journal entry with feedback");
+    
     return new Response(
-      JSON.stringify(parsedResponse),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ reply: finalFeedback, success: true }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Journal Coach: Unexpected error:', error);
+    console.error("Journal Coach - Error:", error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

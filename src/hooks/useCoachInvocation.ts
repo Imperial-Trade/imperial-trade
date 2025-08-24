@@ -19,7 +19,7 @@ export const useCoachInvocation = () => {
     inFlightRequests.add(journalEntryId);
 
     try {
-      console.log('Invoking coach-agent for entry:', journalEntryId);
+      console.log('Invoking journal-coach for entry:', journalEntryId);
 
       // Create a timeout promise - increased for more reliable completion
       const timeoutPromise = new Promise((_, reject) => {
@@ -28,10 +28,9 @@ export const useCoachInvocation = () => {
         }, 30000);
       });
 
-      // Create the coach invocation promise
-      const coachPromise = supabase.functions.invoke('coach-agent', {
+      // Create the journal coach invocation promise
+      const coachPromise = supabase.functions.invoke('journal-coach', {
         body: {
-          event_type: "LOG_TRADE",
           journal_entry_id: journalEntryId
         }
       });

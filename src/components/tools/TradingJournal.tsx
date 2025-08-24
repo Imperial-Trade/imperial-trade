@@ -31,30 +31,33 @@ export default function TradingJournal() {
   // Coach invocation hook
   const { invokeCoach } = useCoachInvocation();
 
-  // Real-time subscription for AI feedback updates
+  // Real-time subscription for AI feedback updates with per-entry tracking
   useEffect(() => {
     const channel = supabase
-      .channel('ai-feedback-updates')
+      .channel('trade-journal-updates')
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'trade_journal_entries',
-          filter: 'ai_positive_feedback=not.null'
+          filter: `user_id=eq.${userProfile?.id}`,
         },
         (payload) => {
-          console.log('AI feedback update received:', payload);
-          // Update the entry in our local state
-          setEntries(prevEntries => 
-            prevEntries.map(entry => 
-              entry.id === payload.new.id 
-                ? { ...entry, ai_positive_feedback: payload.new.ai_positive_feedback }
-                : entry
-            )
-          );
-          // Show success toast when feedback arrives
-          toast.success('AI coaching feedback generated!');
+          console.log('Real-time update received:', payload);
+          if (payload.new?.ai_positive_feedback && payload.old && !payload.old.ai_positive_feedback) {
+            // AI feedback was just added
+            setEntries(current => 
+              current.map(entry => 
+                entry.id === payload.new.id 
+                  ? { ...entry, ai_positive_feedback: payload.new.ai_positive_feedback }
+                  : entry
+              )
+            );
+            
+            // Show success toast once per entry
+            toast.success("AI coaching analysis complete!");
+          }
         }
       )
       .subscribe();
@@ -62,7 +65,7 @@ export default function TradingJournal() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [userProfile?.id]);
 
   const loadUserProfile = useCallback(async () => {
     try {

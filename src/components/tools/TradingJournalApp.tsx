@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AddTradeModal from "@/components/trading/AddTradeModal";
 import { TradeFormData } from "@/hooks/useTradeForm";
+import { useCoachInvocation } from "@/hooks/useCoachInvocation";
 
 // Enhanced Types
 interface Trade {
@@ -197,6 +198,7 @@ export const TradingJournalApp: React.FC = () => {
   const {
     toast
   } = useToast();
+  const { invokeCoach } = useCoachInvocation();
 
   // Enhanced state management
   const [journalState, setJournalState] = useState<JournalState>({
@@ -463,11 +465,14 @@ Please provide a brief analysis focusing on what went well, what could be improv
     }
   };
 
-  // Optimized save trade handler with immediate UI update
+  // Optimized save trade handler with immediate UI update and fire-and-forget AI coaching
   const handleSaveTrade = useCallback(async (tradeData: TradeFormData & {
     date: string;
   }) => {
     if (!user) return;
+
+    console.log('Saving trade:', tradeData);
+    
     try {
       const tradeEntry = {
         user_id: user.id,
@@ -481,11 +486,15 @@ Please provide a brief analysis focusing on what went well, what could be improv
         notes: tradeData.notes,
         screenshot_url: tradeData.screenshot_url
       };
+
+      // Insert the trade into the database
       const {
         data,
         error
       } = await supabase.from("trade_journal_entries").insert([tradeEntry]).select().single();
       if (error) throw error;
+
+      console.log('Trade saved successfully:', data);
 
       // Optimistic update: immediately add the new trade to local state
       const newTrade: Trade = {
@@ -504,7 +513,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
         session: undefined,
         notes: data.notes,
         screenshot_url: data.screenshot_url,
-        ai_feedback: "Analysis pending...",
+        ai_feedback: undefined, // Will be set via realtime when coach responds
         created_at: data.created_at,
         updated_at: data.updated_at
       };
@@ -512,35 +521,17 @@ Please provide a brief analysis focusing on what went well, what could be improv
       // Add new trade to the beginning of the trades array (most recent first)
       setTrades(prevTrades => [newTrade, ...prevTrades]);
 
-      // Generate AI coaching feedback asynchronously using coach-agent
-      try {
-        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('coach-agent', {
-          body: {
-            event_type: "LOG_TRADE",
-            journal_entry_id: data.id
-          }
-        });
-
-        if (coachError) {
-          console.error("TradingJournalApp: Coach agent error:", coachError);
-        } else if (coachResponse && coachResponse.reply) {
-          // Update local state with AI feedback
-          setTrades(prevTrades => 
-            prevTrades.map(trade => 
-              trade.id === data.id 
-                ? { ...trade, ai_feedback: coachResponse.reply }
-                : trade
-            )
-          );
-        }
-      } catch (aiError) {
-        console.error("TradingJournalApp: AI coaching failed:", aiError);
-      }
+      // Generate AI coaching feedback in the background (fire-and-forget)
+      console.log('Triggering AI coaching feedback...');
+      invokeCoach(data.id).catch(() => {
+        // Silent catch - errors are handled in the hook
+      });
 
       toast({
         title: "Trade Saved",
         description: "Your trade has been logged successfully"
       });
+
     } catch (error) {
       console.error("Error saving trade:", error);
       toast({
@@ -550,7 +541,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
       });
       throw error;
     }
-  }, [user, toast]);
+  }, [user, toast, invokeCoach]);
 
   // Get most traded assets with currency normalization
   const getMostTradedAssets = () => {
@@ -1406,14 +1397,21 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           </div>}
                       </div>
 
-                      {trade.ai_feedback && <div className="mt-4 p-3 rounded-lg bg-muted/30 border-l-4 border-l-primary">
+                      {trade.ai_feedback ? (
+                        <div className="mt-4 p-3 rounded-lg bg-muted/30 border-l-4 border-l-primary">
                           <div className="flex items-start gap-2">
                             <Brain className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                          </div>
                             <p className="text-sm text-foreground leading-relaxed">
                               {trade.ai_feedback}
                             </p>
-                        </div>}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-muted/50 border border-muted rounded-lg">
+                          <div className="animate-spin h-3 w-3 border border-muted-foreground/30 border-t-muted-foreground rounded-full"></div>
+                          <span className="text-xs text-muted-foreground">Analyzing...</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-right ml-6">

@@ -212,13 +212,16 @@ export const TradingJournalApp: React.FC = () => {
   const [showAddTradeModal, setShowAddTradeModal] = useState(false);
   const dayViewRef = useRef<HTMLDivElement>(null);
 
-  // Real-time database sync with Supabase
+  // Real-time database sync with Supabase with improved cleanup
   const setupJournalListener = useCallback(async () => {
     if (!user) return;
     setJournalState(prev => ({
       ...prev,
       isLoading: true
     }));
+    
+    let channel: any = null;
+    
     try {
       const {
         data: initialTrades,
@@ -227,6 +230,7 @@ export const TradingJournalApp: React.FC = () => {
         ascending: false
       });
       if (error) throw error;
+      
       const mappedTrades: Trade[] = initialTrades?.map(trade => ({
         id: trade.id,
         user_id: trade.user_id,
@@ -248,45 +252,51 @@ export const TradingJournalApp: React.FC = () => {
         updated_at: trade.updated_at
       })) || [];
       setTrades(mappedTrades);
-      const channel = supabase.channel("trade_journal_updates").on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "trade_journal_entries",
-        filter: `user_id=eq.${user.id}`
-      }, () => {
-        supabase.from("trade_journal_entries").select("*").eq("user_id", user.id).order("trade_date", {
-          ascending: false
-        }).then(({
-          data
-        }) => {
-          if (data) {
-            const updatedTrades: Trade[] = data.map(trade => ({
-              id: trade.id,
-              user_id: trade.user_id,
-              date: trade.trade_date,
-              asset: trade.asset_ticker,
-              direction: trade.trade_type?.toLowerCase() as "long" | "short" || "long",
-              outcome: trade.pnl >= 0 ? "win" : "loss",
-              pnl: trade.pnl,
-              entry_price: trade.entry_price,
-              exit_price: trade.exit_price,
-              position_size: trade.position_size,
-              strategy: undefined,
-              emotion: undefined,
-              session: undefined,
-              notes: trade.notes,
-              screenshot_url: trade.screenshot_url,
-              ai_feedback: trade.ai_positive_feedback,
-              created_at: trade.created_at,
-              updated_at: trade.updated_at
-            }));
-            setTrades(updatedTrades);
+      
+      // Set up realtime subscription with proper cleanup
+      channel = supabase.channel(`trade_journal_updates_${user.id}`)
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "trade_journal_entries",
+          filter: `user_id=eq.${user.id}`
+        }, (payload) => {
+          // Handle real-time updates more efficiently
+          // Only sync from database for updates/deletes, not inserts (which are handled optimistically)
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+            supabase.from("trade_journal_entries").select("*").eq("user_id", user.id).order("trade_date", {
+              ascending: false
+            }).then(({
+              data
+            }) => {
+              if (data) {
+                const updatedTrades: Trade[] = data.map(trade => ({
+                  id: trade.id,
+                  user_id: trade.user_id,
+                  date: trade.trade_date,
+                  asset: trade.asset_ticker,
+                  direction: trade.trade_type?.toLowerCase() as "long" | "short" || "long",
+                  outcome: trade.pnl >= 0 ? "win" : "loss",
+                  pnl: trade.pnl,
+                  entry_price: trade.entry_price,
+                  exit_price: trade.exit_price,
+                  position_size: trade.position_size,
+                  strategy: undefined,
+                  emotion: undefined,
+                  session: undefined,
+                  notes: trade.notes,
+                  screenshot_url: trade.screenshot_url,
+                  ai_feedback: trade.ai_positive_feedback,
+                  created_at: trade.created_at,
+                  updated_at: trade.updated_at
+                }));
+                setTrades(updatedTrades);
+              }
+            });
           }
-        });
-      }).subscribe();
-      return () => {
-        supabase.removeChannel(channel);
-      };
+        })
+        .subscribe();
+        
     } catch (error) {
       console.error("Error setting up journal listener:", error);
       toast({
@@ -300,6 +310,13 @@ export const TradingJournalApp: React.FC = () => {
         isLoading: false
       }));
     }
+    
+    // Return cleanup function
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, [user, toast]);
   useEffect(() => {
     setupJournalListener();
@@ -446,7 +463,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
     }
   };
 
-  // Optimized save trade handler
+  // Optimized save trade handler with immediate UI update
   const handleSaveTrade = useCallback(async (tradeData: TradeFormData & {
     date: string;
   }) => {
@@ -470,12 +487,47 @@ Please provide a brief analysis focusing on what went well, what could be improv
       } = await supabase.from("trade_journal_entries").insert([tradeEntry]).select().single();
       if (error) throw error;
 
-      // Generate AI feedback asynchronously
+      // Optimistic update: immediately add the new trade to local state
+      const newTrade: Trade = {
+        id: data.id,
+        user_id: data.user_id,
+        date: data.trade_date,
+        asset: data.asset_ticker,
+        direction: data.trade_type?.toLowerCase() as "long" | "short" || "long",
+        outcome: data.pnl >= 0 ? "win" : "loss",
+        pnl: data.pnl,
+        entry_price: data.entry_price,
+        exit_price: data.exit_price,
+        position_size: data.position_size,
+        strategy: undefined,
+        emotion: undefined,
+        session: undefined,
+        notes: data.notes,
+        screenshot_url: data.screenshot_url,
+        ai_feedback: "Analysis pending...",
+        created_at: data.created_at,
+        updated_at: data.updated_at
+      };
+
+      // Add new trade to the beginning of the trades array (most recent first)
+      setTrades(prevTrades => [newTrade, ...prevTrades]);
+
+      // Generate AI feedback asynchronously and update both DB and local state
       getAISummaryForTrade(tradeData).then(async feedback => {
         await supabase.from("trade_journal_entries").update({
           ai_positive_feedback: feedback
         }).eq("id", data.id);
+        
+        // Update local state with AI feedback
+        setTrades(prevTrades => 
+          prevTrades.map(trade => 
+            trade.id === data.id 
+              ? { ...trade, ai_feedback: feedback }
+              : trade
+          )
+        );
       });
+
       toast({
         title: "Trade Saved",
         description: "Your trade has been logged successfully"

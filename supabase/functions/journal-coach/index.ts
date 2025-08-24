@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { callGoogleAI } from "../_shared/google-ai-helper.ts";
+import { callGoogleAIWithMeta } from "../_shared/google-ai-helper.ts";
 import { smartTruncateNotes, generatePersonalizedFallback } from "../_shared/coach-utils.ts";
 
 interface JournalCoachRequest {
@@ -11,26 +11,28 @@ interface JournalCoachRequest {
 const JOURNAL_SYSTEM_PROMPT = `SYSTEM PROMPT — Motivational Trading Coach
 
 ROLE
-You are a human-sounding motivational trading coach. Write as if you're speaking directly to the trader. Keep it conversational and natural. Your job is to give short, powerful feedback for trade journal entries.
+You are a human-sounding motivational trading coach inside a Trading Journal. Write as if you're speaking directly to the trader, not like an essay or report. Keep it conversational and natural. Your job is to give short, powerful, human-like feedback every time a trader logs a trade.
 
 OUTPUT CONTRACT
 - Return ONLY valid JSON as: { "feedback": "<coach message>" }
 - 3–5 sentences total. No lists, no headings.
 - End with a single motivational punchline (one sentence).
-- Keep it concise and conversational (≤100 words).
+- Keep it concise and conversational (human tone).
 
 PERSONALIZATION RULES
-- Read the trader's notes and reference them directly.
-- If a screenshot/chart is provided, reference what's visible.
-- Use natural language with contractions. Avoid buzzword spam and emoji.
-- Vary tone (Hype, Calm Mentor, Tough-Love, Identity, etc.). Do NOT label the tone.
+- Read the trader's notes and use them directly (quote small fragments if helpful).
+- If a screenshot/chart is provided, reference what's visible (setups, indicators, entries/exits, patterns).
+- Use natural language with contractions (you'll, that's, it's). Avoid buzzword spam and emoji.
+- Vary tone deliberately entry-to-entry (Hype, Calm Mentor, Tough-Love, Identity, Momentum, Reward, Strategic). Do NOT label the tone.
 
 STYLE GUARDRAILS
 - Always motivational and uplifting.
 - Never discourage—reframe into growth, resilience, or mastery.
-- Human voice > slogan machine. Avoid all-caps and repeated catchphrases.
+- Human voice > slogan machine. Avoid shouting, all-caps, and repeated catchphrases.
+- Use the rotation bank ONLY as inspiration. NEVER copy lines verbatim. Always paraphrase and adapt to the trader's context.
 
 GREEN DAY LOGIC (Profitable Trades)
+- Do NOT praise journaling here.
 - Highlight what went well (execution, patience, strategy, chart reading).
 - If screenshot exists, mention a concrete visual detail.
 - Frame the win as mastery/consistency (not luck).
@@ -39,19 +41,23 @@ GREEN DAY LOGIC (Profitable Trades)
 RED DAY LOGIC (Losing Trades)
 - Briefly acknowledge the sting, then move on.
 - Praise courage for logging and naming what went wrong.
-- If screenshot exists, acknowledge what the chart reveals.
+- If screenshot exists, acknowledge what the chart reveals (e.g., stop placement, invalidation).
 - Reframe to resilience, awareness, identity growth.
 - Finish with a motivational punchline that keeps the trader proud to continue.
+
+ROTATION BANK — INSPIRATION ONLY (DO NOT COPY WORD-FOR-WORD)
+[Keep Green Day and Red Day tone examples here as written in the original prompt]
 
 EXECUTION GOALS
 - Green days: Celebrate execution and mastery.
 - Red days: Celebrate journaling courage and resilience.
 - Always tie comments to notes/screenshot specifics.
 - Always finish with a strong punchline.
-- Keep total length tight (3–5 sentences, ≤100 words).
+- Keep total length tight (3–5 sentences).
 
-RESPONSE FORMAT
-Return ONLY: { "feedback": "<3–5 sentence human message ending with a motivational punchline>" }`;
+RESPONSE FORMAT (repeat for emphasis)
+Return ONLY:
+{ "feedback": "<3–5 sentence human message ending with a motivational punchline>" }`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -163,7 +169,7 @@ Provide a supportive coaching response that highlights specific concepts from th
 Return JSON: {"feedback": "your 3-5 sentence message ending with motivational punchline"}`;
 
     const startTime = Date.now();
-    let aiResponse = await callGoogleAI(apiKey, "gemini-2.5-flash", singlePrompt, {
+    let aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", singlePrompt, {
       maxOutputTokens: 300,
       timeoutMs: 12000,
       responseSchema: {
@@ -178,10 +184,11 @@ Return JSON: {"feedback": "your 3-5 sentence message ending with motivational pu
 
     let usedRetry = false;
     let fallbackReason: string | null = null;
+    let finalMeta = aiResult.meta;
 
     // Check if we got a transport fallback and retry once
     try {
-      const parsedResponse = JSON.parse(aiResponse);
+      const parsedResponse = JSON.parse(aiResult.text);
       if (parsedResponse.is_fallback) {
         console.log("Journal Coach - First attempt failed, retrying...", parsedResponse);
         fallbackReason = parsedResponse.fallback_reason;
@@ -192,14 +199,15 @@ Return JSON: {"feedback": "your 3-5 sentence message ending with motivational pu
           .replace('Return JSON: {"feedback": "your 3-5 sentence message ending with motivational punchline"}',
                   'Return JSON: {"feedback": "your 3-5 sentence message (≤80 words) ending with motivational punchline"}');
         
-        aiResponse = await callGoogleAI(apiKey, "gemini-2.5-flash", retryPrompt, {
+        aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", retryPrompt, {
           maxOutputTokens: 200,
           timeoutMs: 12000
         });
         usedRetry = true;
+        finalMeta = aiResult.meta;
         
         // Check retry result
-        const retryParsed = JSON.parse(aiResponse);
+        const retryParsed = JSON.parse(aiResult.text);
         if (retryParsed.is_fallback) {
           fallbackReason = retryParsed.fallback_reason;
         } else {
@@ -228,7 +236,7 @@ Return JSON: {"feedback": "your 3-5 sentence message ending with motivational pu
     } else {
       // Extract feedback from successful AI response
       try {
-        const parsedResponse = JSON.parse(aiResponse);
+        const parsedResponse = JSON.parse(aiResult.text);
         finalFeedback = parsedResponse.feedback || "Great work on analyzing this trade! Your detailed approach shows real growth as a trader.";
       } catch (parseError) {
         console.error("Journal Coach - Failed to parse successful AI response:", parseError);
@@ -251,7 +259,9 @@ Return JSON: {"feedback": "your 3-5 sentence message ending with motivational pu
       used_retry: usedRetry,
       notes_len: tradeNotes.length,
       model_latency_ms: modelLatencyMs,
-      final_feedback_len: finalFeedback.length
+      final_feedback_len: finalFeedback.length,
+      tokens_out: finalMeta.tokensOut,
+      finish_reason: finalMeta.finishReason
     });
 
     // Store agent output

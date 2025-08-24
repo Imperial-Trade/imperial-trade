@@ -31,6 +31,9 @@ export default function TradingJournal() {
   // Coach invocation hook
   const { invokeCoach } = useCoachInvocation();
 
+  // Track entries that have already shown toast to avoid duplicates
+  const [toastedEntries, setToastedEntries] = useState<Set<string>>(new Set());
+
   // Real-time subscription for AI feedback updates with per-entry tracking
   useEffect(() => {
     const channel = supabase
@@ -46,7 +49,7 @@ export default function TradingJournal() {
         (payload) => {
           console.log('Real-time update received:', payload);
           if (payload.new?.ai_positive_feedback && payload.old && !payload.old.ai_positive_feedback) {
-            // AI feedback was just added
+            // AI feedback was just added - update state using payload data
             setEntries(current => 
               current.map(entry => 
                 entry.id === payload.new.id 
@@ -55,8 +58,11 @@ export default function TradingJournal() {
               )
             );
             
-            // Show success toast once per entry
-            toast.success("AI coaching analysis complete!");
+            // Gate toast to fire only once per entry
+            if (!toastedEntries.has(payload.new.id)) {
+              toast.success("AI coaching analysis complete!");
+              setToastedEntries(prev => new Set(prev).add(payload.new.id));
+            }
           }
         }
       )
@@ -65,7 +71,66 @@ export default function TradingJournal() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.id]);
+  }, [userProfile?.id, toastedEntries]);
+
+  // Per-entry realtime subscription helper
+  const createPerEntrySubscription = useCallback((entryId: string) => {
+    let timeoutId: NodeJS.Timeout;
+    
+    const channel = supabase
+      .channel(`per-entry-${entryId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'trade_journal_entries',
+          filter: `id=eq.${entryId}`,
+        },
+        (payload) => {
+          console.log(`Per-entry update for ${entryId}:`, payload);
+          if (payload.new?.ai_positive_feedback && payload.old && !payload.old.ai_positive_feedback) {
+            // Update local state using payload data
+            setEntries(current => 
+              current.map(entry => 
+                entry.id === entryId 
+                  ? { ...entry, ai_positive_feedback: payload.new.ai_positive_feedback }
+                  : entry
+              )
+            );
+            
+            // Gate toast to prevent double-firing
+            if (!toastedEntries.has(entryId)) {
+              toast.success("AI coaching analysis complete!");
+              setToastedEntries(prev => new Set(prev).add(entryId));
+            }
+            
+            // Cleanup immediately on first update
+            cleanup();
+          }
+        }
+      )
+      .subscribe();
+
+    // 30-second timeout guard to prevent stuck subscriptions
+    timeoutId = setTimeout(() => {
+      console.log(`Per-entry subscription timeout for ${entryId}`);
+      cleanup();
+    }, 30000);
+
+    const cleanup = () => {
+      try {
+        channel.unsubscribe();
+      } catch (error) {
+        console.error('Error unsubscribing per-entry channel:', error);
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    return cleanup;
+  }, [toastedEntries]);
 
   const loadUserProfile = useCallback(async () => {
     try {
@@ -178,10 +243,14 @@ export default function TradingJournal() {
       console.log("TradingJournal.handleSubmit - Created journal entry:", createdEntry);
       toast.success("Educational entry saved successfully!");
 
+      // Create per-entry subscription before invoking coach
+      const cleanupPerEntry = createPerEntrySubscription(createdEntry.id);
+
       // Fire-and-forget coach invocation (don't await - let it run in background)
       invokeCoach(createdEntry.id).catch(error => {
         console.error('Background coach invocation failed:', error);
-        // Error already handled in useCoachInvocation hook
+        // Cleanup subscription if coach fails
+        cleanupPerEntry();
       });
 
       // Immediately reload entries to show the new entry (with analyzing state)

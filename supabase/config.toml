@@ -9,3 +9,18 @@ max_rows = 1000
 
 [functions.journal-coach]
 verify_jwt = true
+
+[functions.coach-agent]
+verify_jwt = true
+
+[functions.deconstructor-agent]
+verify_jwt = true
+
+[functions.persistent-alert-monitor]
+verify_jwt = true
+
+[functions.posthog-config]
+verify_jwt = false
+
+[functions.signal-finder-agent]
+verify_jwt = true

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { callGoogleAI } from "../_shared/google-ai-helper.ts";
+import { smartTruncateNotes, generatePersonalizedFallback } from "./utils.ts";
 
 interface CoachRequest {
   event_type: "LOG_TRADE" | "MODULE_COMPLETE";
@@ -79,7 +80,12 @@ EXECUTION GOALS
 
 RESPONSE FORMAT (repeat for emphasis)
 Return ONLY:
-{ "feedback": "<3–5 sentence human message ending with a motivational punchline>" }`;
+{ "feedback": "<3–5 sentence human message ending with a motivational punchline>" }
+
+LENGTH CONSTRAINTS
+- 3–5 sentences, ≤100 words
+- Avoid restating notes verbatim
+- Focus on specific trading concepts mentioned`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -238,66 +244,136 @@ serve(async (req) => {
 Return your response in JSON format: {"feedback": "your encouraging message here"}`;
     const modelName = "gemini-2.5-flash";
 
-    console.log("Coach Agent - Generating AI responses in parallel...");
+    // Smart truncation for token efficiency
+    const notes_trunc_1 = smartTruncateNotes(tradeNotes, 1200);
+    const notes_trunc_2 = smartTruncateNotes(tradeNotes, 800);
     
-    // Run both AI calls in parallel for better performance
-    const [technicalResult, userReadableResult] = await Promise.allSettled([
-      callGoogleAI(apiKey, modelName, fullPrompt),
-      callGoogleAI(apiKey, modelName, userReadableFullPrompt)
-    ]);
-
-    // Extract results with fallbacks
-    let coachResponse: string;
-    let rawUserReadableResponse: string;
+    console.log("Coach Agent - Generating single AI response...", {
+      notes_len: tradeNotes.length,
+      notes_trunc_1_len: notes_trunc_1.length,
+      notes_trunc_2_len: notes_trunc_2.length
+    });
     
-    if (technicalResult.status === 'fulfilled') {
-      coachResponse = technicalResult.value;
-      console.log('Coach Agent - Technical AI response generated successfully');
-    } else {
-      console.error('Coach Agent - Technical AI failed:', technicalResult.reason);
-      coachResponse = JSON.stringify({
-        feedback: "Technical analysis shows this trade provided valuable learning insights. Continue applying your strategy with discipline.",
-        fallback_reason: `Technical AI failed: ${technicalResult.reason}`
-      });
+    // Build single prompt for feedback only
+    const singlePrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userName} submitted a ${tradeOutcome} with ${pnlAmount} USD ${
+      journalEntry.pnl > 0 ? "profit" : "loss"
+    }.
+    Asset: ${journalEntry.asset_ticker}
+    Trade Type: ${journalEntry.trade_type || "Not specified"}
+    Their notes: "${notes_trunc_1}"
+    ${
+      journalEntry.screenshot_url
+        ? "They also uploaded a screenshot for analysis."
+        : ""
     }
+    
+    Provide a supportive coaching response that highlights specific concepts from their notes and validates their trading analysis skills.
+    
+    Return JSON: {"feedback": "your 3-5 sentence message ending with motivational punchline"}`;
 
-    if (userReadableResult.status === 'fulfilled') {
-      rawUserReadableResponse = userReadableResult.value;
-      console.log('Coach Agent - User-readable AI response generated successfully');
-    } else {
-      console.error('Coach Agent - User-readable AI failed:', userReadableResult.reason);
-      rawUserReadableResponse = JSON.stringify({
-        feedback: `Great work on this trade, ${userName}! Every trade is a step forward in your trading journey. Keep building on your experience and stay disciplined with your approach.`,
-        fallback_reason: `User-readable AI failed: ${userReadableResult.reason}`
-      });
-    }
+    const startTime = Date.now();
+    let aiResponse = await callGoogleAI(apiKey, modelName, singlePrompt, {
+      maxOutputTokens: 300,
+      timeoutMs: 12000,
+      responseSchema: {
+        type: "object",
+        properties: {
+          feedback: { type: "string" }
+        },
+        required: ["feedback"],
+        additionalProperties: false
+      }
+    });
+    const modelLatencyMs = Date.now() - startTime;
 
-    // Parse the JSON response to extract the feedback text
-    let userReadableResponse = rawUserReadableResponse;
+    let usedRetry = false;
+    let fallbackReason: string | null = null;
+
+    // Check if we got a transport fallback
     try {
-      const parsedResponse = JSON.parse(rawUserReadableResponse);
-      if (parsedResponse.feedback) {
-        userReadableResponse = parsedResponse.feedback;
-        console.log("Coach Agent - Extracted feedback text from JSON");
+      const parsedResponse = JSON.parse(aiResponse);
+      if (parsedResponse.is_fallback) {
+        console.log("Coach Agent - First attempt returned fallback, retrying...", parsedResponse);
+        fallbackReason = parsedResponse.fallback_reason;
+        
+        // Retry with shorter notes and lower token limit
+        const retryPrompt = singlePrompt.replace(notes_trunc_1, notes_trunc_2).replace(
+          'Return JSON: {"feedback": "your 3-5 sentence message ending with motivational punchline"}',
+          'Return JSON: {"feedback": "your 3-5 sentence message (≤80-100 words) ending with motivational punchline"}'
+        );
+        
+        aiResponse = await callGoogleAI(apiKey, modelName, retryPrompt, {
+          maxOutputTokens: 200,
+          timeoutMs: 12000
+        });
+        usedRetry = true;
+        
+        // Check retry result
+        const retryParsed = JSON.parse(aiResponse);
+        if (retryParsed.is_fallback) {
+          fallbackReason = retryParsed.fallback_reason;
+        } else {
+          fallbackReason = null; // Retry succeeded
+        }
       }
     } catch (parseError) {
-      console.log(
-        "Coach Agent - Failed to parse JSON, using fallback message:",
-        parseError
-      );
-      // If JSON parsing fails, use a safe fallback
-      userReadableResponse = `Great work on this trade, ${userName}! Every trading experience helps you grow stronger as a trader.`;
+      console.error("Coach Agent - Failed to parse AI response:", parseError);
+      fallbackReason = 'invalid_json';
     }
 
-    // Store the coach output in agent_outputs table with both versions
+    // Generate final response (AI or personalized fallback)
+    let finalFeedback: string;
+    if (fallbackReason) {
+      // Generate personalized deterministic fallback
+      finalFeedback = generatePersonalizedFallback({
+        userName,
+        asset: journalEntry.asset_ticker,
+        tradeType: journalEntry.trade_type,
+        isWin: journalEntry.pnl > 0,
+        pnlAmount,
+        notes: tradeNotes,
+        hasScreenshot: !!journalEntry.screenshot_url
+      });
+      console.log("Coach Agent - Using personalized fallback due to:", fallbackReason);
+    } else {
+      // Extract feedback from successful AI response
+      try {
+        const parsedResponse = JSON.parse(aiResponse);
+        finalFeedback = parsedResponse.feedback || "Great work on analyzing this trade! Your detailed approach shows real growth as a trader.";
+        console.log("Coach Agent - Extracted feedback from AI response");
+      } catch (parseError) {
+        console.error("Coach Agent - Failed to parse successful AI response:", parseError);
+        finalFeedback = generatePersonalizedFallback({
+          userName,
+          asset: journalEntry.asset_ticker,
+          tradeType: journalEntry.trade_type,
+          isWin: journalEntry.pnl > 0,
+          pnlAmount,
+          notes: tradeNotes,
+          hasScreenshot: !!journalEntry.screenshot_url
+        });
+        fallbackReason = 'invalid_json';
+      }
+    }
+
+    // Log metrics
+    console.log("Coach Agent - Generation complete:", {
+      fallback_reason: fallbackReason,
+      used_retry: usedRetry,
+      notes_len: tradeNotes.length,
+      model_latency_ms: modelLatencyMs,
+      final_feedback_len: finalFeedback.length
+    });
+
+    // Store the coach output in agent_outputs table
     console.log("Coach Agent - Storing agent output...");
     const { error: agentOutputError } = await supabase
       .from("agent_outputs")
       .insert({
         user_id,
         agent_name: "Coach",
-        output_text: coachResponse,
-        user_readable_text: userReadableResponse,
+        output_text: JSON.stringify({ feedback: finalFeedback, fallback_reason, used_retry }),
+        user_readable_text: finalFeedback,
       });
 
     if (agentOutputError) {
@@ -319,7 +395,7 @@ Return your response in JSON format: {"feedback": "your encouraging message here
       try {
         const { data: updateResult, error: updateError } = await supabase
           .from("trade_journal_entries")
-          .update({ ai_positive_feedback: userReadableResponse })
+          .update({ ai_positive_feedback: finalFeedback })
           .eq("id", journal_entry_id)
           .eq("user_id", user_id) // Extra security check
           .select();
@@ -332,7 +408,7 @@ Return your response in JSON format: {"feedback": "your encouraging message here
           // Still return success with the feedback, but log the issue
           return new Response(
             JSON.stringify({
-              reply: userReadableResponse,
+              reply: finalFeedback,
               success: true,
               note: "Generated feedback but database update failed"
             }),
@@ -347,7 +423,7 @@ Return your response in JSON format: {"feedback": "your encouraging message here
           console.error("Coach Agent - No journal entry found to update");
           return new Response(
             JSON.stringify({
-              reply: userReadableResponse,
+              reply: finalFeedback,
               success: true,
               note: "Feedback generated but journal entry not found for update"
             }),
@@ -369,7 +445,7 @@ Return your response in JSON format: {"feedback": "your encouraging message here
         );
         return new Response(
           JSON.stringify({
-            reply: userReadableResponse,
+            reply: finalFeedback,
             success: true,
             note: "Feedback generated but update failed due to exception"
           }),
@@ -381,7 +457,7 @@ Return your response in JSON format: {"feedback": "your encouraging message here
       }
     }
 
-    return new Response(JSON.stringify({ reply: userReadableResponse }), {
+    return new Response(JSON.stringify({ reply: finalFeedback }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

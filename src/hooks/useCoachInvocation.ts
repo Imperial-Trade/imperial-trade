@@ -21,11 +21,11 @@ export const useCoachInvocation = () => {
     try {
       console.log('Invoking coach-agent for entry:', journalEntryId);
 
-      // Create a timeout promise
+      // Create a timeout promise - increased for more reliable completion
       const timeoutPromise = new Promise((_, reject) => {
         timeoutRef.current = setTimeout(() => {
-          reject(new Error('Coach invocation timed out after 15 seconds'));
-        }, 15000);
+          reject(new Error('Coach invocation timed out after 30 seconds'));
+        }, 30000);
       });
 
       // Create the coach invocation promise
@@ -52,7 +52,7 @@ export const useCoachInvocation = () => {
         toast.error('Coaching analysis failed, but entry was saved');
       } else if (coachResponse?.reply) {
         console.log('Coach feedback generated successfully');
-        toast.success('AI coaching feedback generated!');
+        // Toast will be shown by real-time subscription when feedback arrives
       } else {
         console.warn('Coach response missing reply field:', coachResponse);
       }

@@ -31,6 +31,39 @@ export default function TradingJournal() {
   // Coach invocation hook
   const { invokeCoach } = useCoachInvocation();
 
+  // Real-time subscription for AI feedback updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('ai-feedback-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'trade_journal_entries',
+          filter: 'ai_positive_feedback=not.null'
+        },
+        (payload) => {
+          console.log('AI feedback update received:', payload);
+          // Update the entry in our local state
+          setEntries(prevEntries => 
+            prevEntries.map(entry => 
+              entry.id === payload.new.id 
+                ? { ...entry, ai_positive_feedback: payload.new.ai_positive_feedback }
+                : entry
+            )
+          );
+          // Show success toast when feedback arrives
+          toast.success('AI coaching feedback generated!');
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const loadUserProfile = useCallback(async () => {
     try {
       const {

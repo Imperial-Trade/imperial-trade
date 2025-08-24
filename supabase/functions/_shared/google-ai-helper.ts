@@ -1,13 +1,27 @@
+// Fallback reason enums for consistent logging/metrics
+export type FallbackReason = "max_tokens" | "invalid_json" | "timeout" | "safety" | "empty_candidates" | "unknown";
+
+export interface GoogleAIOptions {
+  maxOutputTokens?: number;
+  timeoutMs?: number;
+  responseSchema?: object;
+}
+
 /**
  * Helper function to call Google AI Gemini API
- * Supports both text-only and multi-modal prompts
+ * Optimized for short responses with robust fallback handling
  */
 export async function callGoogleAI(
   apiKey: string,
   modelName: string,
-  promptOrContents: string | any[]
+  promptOrContents: string | any[],
+  opts: GoogleAIOptions = {}
 ): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  
+  // Default options optimized for short responses
+  const maxOutputTokens = opts.maxOutputTokens ?? 300;
+  const timeoutMs = opts.timeoutMs ?? 12000;
   
   let requestBody: any;
   
@@ -18,9 +32,9 @@ export async function callGoogleAI(
         parts: [{ text: promptOrContents }]
       }],
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1000,
-        responseMimeType: "application/json"
+        maxOutputTokens,
+        responseMimeType: "application/json",
+        ...(opts.responseSchema && { responseSchema: opts.responseSchema })
       }
     };
   } else {
@@ -30,16 +44,16 @@ export async function callGoogleAI(
         parts: promptOrContents
       }],
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1000,
-        responseMimeType: "application/json"
+        maxOutputTokens,
+        responseMimeType: "application/json",
+        ...(opts.responseSchema && { responseSchema: opts.responseSchema })
       }
     };
   }
 
-  // Create a timeout controller for 20 seconds
+  // Create a timeout controller
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
@@ -63,32 +77,46 @@ export async function callGoogleAI(
     // Safely extract response with proper fallbacks
     if (!data.candidates || data.candidates.length === 0) {
       console.error('No candidates in response:', data);
-      return createFallbackResponse('No AI response candidates available');
+      return createTransportFallback('empty_candidates');
     }
 
     const candidate = data.candidates[0];
     if (!candidate) {
       console.error('First candidate is null/undefined:', data);
-      return createFallbackResponse('AI response candidate is empty');
+      return createTransportFallback('empty_candidates');
     }
 
-    if (candidate.finishReason === 'SAFETY') {
+    // Map finishReason to enum
+    const finishReason = candidate.finishReason;
+    console.log('AI response finishReason:', finishReason);
+
+    if (finishReason === 'SAFETY') {
       console.error('Content blocked by safety filters:', candidate);
-      return createFallbackResponse('Content was blocked by safety filters');
+      return createTransportFallback('safety');
+    }
+
+    if (finishReason === 'MAX_TOKENS') {
+      console.error('Response truncated due to token limit:', candidate);
+      return createTransportFallback('max_tokens');
     }
 
     if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
       console.error('No content parts in candidate:', candidate);
-      return createFallbackResponse('AI response has no content');
+      return createTransportFallback('empty_candidates');
     }
 
-    const part = candidate.content.parts[0];
-    if (!part || !part.text) {
-      console.error('No text in first content part:', part);
-      return createFallbackResponse('AI response text is empty');
+    // Join all text parts safely
+    const textParts = candidate.content.parts
+      .map(part => part.text)
+      .filter(text => text && text.trim())
+      .join(' ');
+
+    if (!textParts) {
+      console.error('No text in content parts:', candidate.content.parts);
+      return createTransportFallback('empty_candidates');
     }
 
-    let responseText = part.text.trim();
+    let responseText = textParts.trim();
     
     // Strip markdown code fences if present
     responseText = responseText.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
@@ -99,27 +127,35 @@ export async function callGoogleAI(
         JSON.parse(responseText);
       } catch (parseError) {
         console.error(`Invalid JSON response from AI: ${responseText}`, parseError);
-        return createFallbackResponse('AI returned invalid JSON format');
+        return createTransportFallback('invalid_json');
       }
     }
+
+    // Log successful completion with metrics
+    console.log('AI call successful:', {
+      finishReason,
+      tokensOut: data.usageMetadata?.candidatesTokenCount || 'unknown',
+      responseLength: responseText.length
+    });
     
     return responseText;
   } catch (error) {
     clearTimeout(timeoutId);
     console.error('Google AI API call failed:', error);
     
-    // Return fallback instead of throwing
+    // Return transport-only fallback
     if (error.name === 'AbortError') {
-      return createFallbackResponse('AI request timed out');
+      return createTransportFallback('timeout');
     }
     
-    return createFallbackResponse(`AI request failed: ${error.message}`);
+    return createTransportFallback('unknown');
   }
 }
 
-function createFallbackResponse(reason: string): string {
+// Returns only transport-level fallback (no content)
+function createTransportFallback(reason: FallbackReason): string {
   return JSON.stringify({
-    feedback: "Great job on this trade! Every trading experience is a learning opportunity that helps you grow as a trader. Keep analyzing your decisions and trust your process.",
+    is_fallback: true,
     fallback_reason: reason
   });
 }

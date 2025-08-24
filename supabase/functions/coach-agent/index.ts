@@ -233,29 +233,44 @@ serve(async (req) => {
 
     // Generate technical response (with IDs for logging)
     const fullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userActionPrompt}`;
-    const modelName = "gemini-2.5-flash";
-
-    console.log("Coach Agent - Generating AI response...");
-    const coachResponse = await callGoogleAI(apiKey, modelName, fullPrompt);
-    console.log(
-      "Coach Agent - AI response generated:",
-      coachResponse.substring(0, 100) + "..."
-    );
-
-    // Generate user-readable response (with actual names)
     const userReadableFullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userReadablePrompt}
 
 Return your response in JSON format: {"feedback": "your encouraging message here"}`;
-    console.log("Coach Agent - Generating user-readable response...");
-    const rawUserReadableResponse = await callGoogleAI(
-      apiKey,
-      modelName,
-      userReadableFullPrompt
-    );
-    console.log(
-      "Coach Agent - User-readable response generated:",
-      rawUserReadableResponse.substring(0, 100) + "..."
-    );
+    const modelName = "gemini-2.5-flash";
+
+    console.log("Coach Agent - Generating AI responses in parallel...");
+    
+    // Run both AI calls in parallel for better performance
+    const [technicalResult, userReadableResult] = await Promise.allSettled([
+      callGoogleAI(apiKey, modelName, fullPrompt),
+      callGoogleAI(apiKey, modelName, userReadableFullPrompt)
+    ]);
+
+    // Extract results with fallbacks
+    let coachResponse: string;
+    let rawUserReadableResponse: string;
+    
+    if (technicalResult.status === 'fulfilled') {
+      coachResponse = technicalResult.value;
+      console.log('Coach Agent - Technical AI response generated successfully');
+    } else {
+      console.error('Coach Agent - Technical AI failed:', technicalResult.reason);
+      coachResponse = JSON.stringify({
+        feedback: "Technical analysis shows this trade provided valuable learning insights. Continue applying your strategy with discipline.",
+        fallback_reason: `Technical AI failed: ${technicalResult.reason}`
+      });
+    }
+
+    if (userReadableResult.status === 'fulfilled') {
+      rawUserReadableResponse = userReadableResult.value;
+      console.log('Coach Agent - User-readable AI response generated successfully');
+    } else {
+      console.error('Coach Agent - User-readable AI failed:', userReadableResult.reason);
+      rawUserReadableResponse = JSON.stringify({
+        feedback: `Great work on this trade, ${userName}! Every trade is a step forward in your trading journey. Keep building on your experience and stay disciplined with your approach.`,
+        fallback_reason: `User-readable AI failed: ${userReadableResult.reason}`
+      });
+    }
 
     // Parse the JSON response to extract the feedback text
     let userReadableResponse = rawUserReadableResponse;
@@ -267,10 +282,11 @@ Return your response in JSON format: {"feedback": "your encouraging message here
       }
     } catch (parseError) {
       console.log(
-        "Coach Agent - Failed to parse JSON, using response as-is:",
+        "Coach Agent - Failed to parse JSON, using fallback message:",
         parseError
       );
-      // If JSON parsing fails, use the response as-is
+      // If JSON parsing fails, use a safe fallback
+      userReadableResponse = `Great work on this trade, ${userName}! Every trading experience helps you grow stronger as a trader.`;
     }
 
     // Store the coach output in agent_outputs table with both versions
@@ -294,6 +310,7 @@ Return your response in JSON format: {"feedback": "your encouraging message here
     }
 
     // If this is a trade log event and we have a journal entry ID, update the journal entry
+    // This MUST always succeed to prevent UI hanging
     if (event_type === "LOG_TRADE" && journal_entry_id) {
       console.log(
         "Coach Agent - Updating journal entry with coaching feedback..."
@@ -312,13 +329,15 @@ Return your response in JSON format: {"feedback": "your encouraging message here
             "Coach Agent - Error updating journal entry:",
             updateError
           );
+          // Still return success with the feedback, but log the issue
           return new Response(
             JSON.stringify({
-              reply: coachResponse,
-              warning: "Feedback generated but failed to update journal entry",
-              error: updateError.message,
+              reply: userReadableResponse,
+              success: true,
+              note: "Generated feedback but database update failed"
             }),
             {
+              status: 200,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             }
           );
@@ -328,11 +347,12 @@ Return your response in JSON format: {"feedback": "your encouraging message here
           console.error("Coach Agent - No journal entry found to update");
           return new Response(
             JSON.stringify({
-              reply: coachResponse,
-              warning:
-                "Feedback generated but journal entry not found for update",
+              reply: userReadableResponse,
+              success: true,
+              note: "Feedback generated but journal entry not found for update"
             }),
             {
+              status: 200,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             }
           );
@@ -349,11 +369,12 @@ Return your response in JSON format: {"feedback": "your encouraging message here
         );
         return new Response(
           JSON.stringify({
-            reply: coachResponse,
-            warning: "Feedback generated but update failed due to exception",
-            error: updateException.message,
+            reply: userReadableResponse,
+            success: true,
+            note: "Feedback generated but update failed due to exception"
           }),
           {
+            status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
         );
@@ -361,6 +382,7 @@ Return your response in JSON format: {"feedback": "your encouraging message here
     }
 
     return new Response(JSON.stringify({ reply: userReadableResponse }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

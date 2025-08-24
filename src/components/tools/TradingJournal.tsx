@@ -142,31 +142,29 @@ export default function TradingJournal() {
       try {
         toast.info("Getting personalized coaching feedback...");
         
-        console.log("TradingJournal.handleSubmit - Invoking journal-coach with payload:", {
+        console.log("TradingJournal.handleSubmit - Invoking coach-agent with payload:", {
           event_type: "LOG_TRADE",
-          user_id: user.id,
           journal_entry_id: createdEntry.id
         });
 
-        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('journal-coach', {
+        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('coach-agent', {
           body: {
             event_type: "LOG_TRADE",
-            user_id: user.id,
             journal_entry_id: createdEntry.id
           }
         });
 
-        console.log("TradingJournal.handleSubmit - Journal-coach response:", coachResponse);
-        console.log("TradingJournal.handleSubmit - Journal-coach error:", coachError);
+        console.log("TradingJournal.handleSubmit - Coach-agent response:", coachResponse);
+        console.log("TradingJournal.handleSubmit - Coach-agent error:", coachError);
 
         if (coachError) {
           console.error("TradingJournal.handleSubmit - Journal coach error:", coachError);
           toast.error("Coaching failed, but entry was saved");
-        } else if (coachResponse && coachResponse.result) {
+        } else if (coachResponse && coachResponse.reply) {
           console.log("TradingJournal.handleSubmit - Coach feedback generated successfully");
           toast.success("Beast coaching feedback generated!");
         } else {
-          console.warn("TradingJournal.handleSubmit - Coach response missing result field:", coachResponse);
+          console.warn("TradingJournal.handleSubmit - Coach response missing reply field:", coachResponse);
           toast.warning("Coaching format unexpected, but entry was saved");
         }
       } catch (aiError) {

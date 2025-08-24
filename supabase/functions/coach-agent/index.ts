@@ -5,11 +5,10 @@ import { callGoogleAI } from "../_shared/google-ai-helper.ts";
 
 interface CoachRequest {
   event_type: "LOG_TRADE" | "MODULE_COMPLETE";
-  user_id: string;
   journal_entry_id?: string;
 }
 
-const SYSTEM_PROMPT = `You are a supportive trading coach who acts like a human mentor. Your role is to analyze trade entries and provide personalized, encouraging feedback that validates the trader's understanding and reinforces good habits.
+const SYSTEM_PROMPT = `You are a BEAST motivational trading coach - an intense, passionate mentor who pushes traders to achieve greatness. Your role is to analyze trade entries and provide fired-up, encouraging feedback that validates their skills while pushing them toward elite performance.
 
 **Core Analysis Framework:**
 1. **Trade Outcome Analysis**: Determine if this was a winning trade (positive P&L) or losing trade (negative P&L)
@@ -24,18 +23,19 @@ const SYSTEM_PROMPT = `You are a supportive trading coach who acts like a human 
    - Any other sophisticated trading terminology
 
 **Response Guidelines:**
-- Provide 1-2 sentences of encouraging, tailored feedback
+- Be INTENSE and MOTIVATIONAL - use power words and energy
+- Provide 1-2 sentences of fired-up, encouraging feedback
 - Acknowledge specific concepts mentioned in their notes by name
-- Validate their understanding of advanced market behaviors
-- Frame their observations positively as part of professional analysis
-- Encourage continued development of the specific skills they demonstrated
-- Make them feel seen and validated in their learning journey
+- Validate their understanding while pushing them to the next level
+- Frame their observations as signs of an elite trader in development
+- Use phrases like "BEAST MODE", "CRUSHING IT", "ELITE MINDSET", "UNSTOPPABLE"
+- Make them feel like they're becoming a trading machine
 
 **Example Response Structure:**
-For winning trades: "Excellent work identifying [specific concept from notes]! Your ability to recognize [trading concept] shows sophisticated market understanding that's crucial for consistent success."
-For losing trades: "Great analysis noting [specific concept from notes]. This level of detailed observation of [trading concept] demonstrates the professional mindset needed to improve and succeed."
+For winning trades: "BEAST MODE ACTIVATED! Your ability to identify [specific concept from notes] shows you're developing ELITE trader instincts - keep CRUSHING these setups!"
+For losing trades: "CHAMPIONS analyze losses like this! Your detailed observation of [trading concept] proves you have the ELITE mindset needed to dominate the markets - this is how legends are made!"
 
-**Key Principle**: Act like a mentor who reads their trade notes, understands what they're learning, and gives personalized validation of their specific insights and efforts.`;
+**Key Principle**: Be their hype coach who recognizes their potential and fuels their drive to become an unstoppable trading force.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -50,10 +50,31 @@ serve(async (req) => {
       throw new Error("Missing required environment variables.");
     }
 
-    const { event_type, user_id, journal_entry_id }: CoachRequest =
-      await req.json();
-    if (!event_type || !user_id) {
-      throw new Error("event_type and user_id are required.");
+    // Get user ID from JWT token for security
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error("Authorization header required");
+    }
+
+    // Use anon key with user's JWT for RLS compliance
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+    });
+
+    // Get authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error("Invalid or expired token");
+    }
+
+    const user_id = user.id;
+    const { event_type, journal_entry_id }: CoachRequest = await req.json();
+    if (!event_type) {
+      throw new Error("event_type is required.");
     }
 
     console.log("Coach Agent - Processing request:", {
@@ -62,16 +83,13 @@ serve(async (req) => {
       journal_entry_id,
     });
 
-    // Use service role key for database operations to bypass RLS
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     // Fetch user profile information for personalized feedback
     console.log("Coach Agent - Fetching user profile...");
     const { data: userProfile, error: profileError } = await supabase
       .from("profiles")
       .select("real_name, display_name")
       .eq("id", user_id)
-      .single();
+      .maybeSingle();
 
     if (profileError) {
       console.error("Coach Agent - Error fetching user profile:", profileError);
@@ -95,7 +113,7 @@ serve(async (req) => {
         )
         .eq("id", journal_entry_id)
         .eq("user_id", user_id)
-        .single();
+        .maybeSingle();
 
       if (journalError) {
         console.error(

@@ -14,6 +14,7 @@ import JournalAnalytics from "../trading/JournalAnalytics";
 import JournalLogList from "../trading/JournalLogList";
 import { compressImage, validateImageFile } from "@/utils/imageCompression";
 import { toast } from "sonner";
+import { useCoachInvocation } from "@/hooks/useCoachInvocation";
 
 
 export default function TradingJournal() {
@@ -26,6 +27,9 @@ export default function TradingJournal() {
   // Mobile detection
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
+
+  // Coach invocation hook
+  const { invokeCoach } = useCoachInvocation();
 
   const loadUserProfile = useCallback(async () => {
     try {
@@ -138,47 +142,13 @@ export default function TradingJournal() {
       console.log("TradingJournal.handleSubmit - Created journal entry:", createdEntry);
       toast.success("Educational entry saved successfully!");
 
-      // Enhanced educational coaching analysis using journal-coach
-      try {
-        toast.info("Getting personalized coaching feedback...");
-        
-        console.log("TradingJournal.handleSubmit - Invoking coach-agent with payload:", {
-          event_type: "LOG_TRADE",
-          journal_entry_id: createdEntry.id
-        });
+      // Fire-and-forget coach invocation (don't await - let it run in background)
+      invokeCoach(createdEntry.id).catch(error => {
+        console.error('Background coach invocation failed:', error);
+        // Error already handled in useCoachInvocation hook
+      });
 
-        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('coach-agent', {
-          body: {
-            event_type: "LOG_TRADE",
-            journal_entry_id: createdEntry.id
-          }
-        });
-
-        console.log("TradingJournal.handleSubmit - Coach-agent response:", coachResponse);
-        console.log("TradingJournal.handleSubmit - Coach-agent error:", coachError);
-
-        if (coachError) {
-          console.error("TradingJournal.handleSubmit - Journal coach error:", coachError);
-          toast.error("Coaching failed, but entry was saved");
-        } else if (coachResponse && coachResponse.reply) {
-          console.log("TradingJournal.handleSubmit - Coach feedback generated successfully");
-          toast.success("Beast coaching feedback generated!");
-        } else {
-          console.warn("TradingJournal.handleSubmit - Coach response missing reply field:", coachResponse);
-          toast.warning("Coaching format unexpected, but entry was saved");
-        }
-      } catch (aiError) {
-        console.error("TradingJournal.handleSubmit - Coaching analysis failed:", aiError);
-        console.error("TradingJournal.handleSubmit - AI error details:", {
-          name: aiError.name,
-          message: aiError.message,
-          stack: aiError.stack
-        });
-        toast.error("Coaching failed, but entry was saved");
-        // Continue - don't block since the educational entry is already saved
-      }
-
-      // Reload entries to show the updated data (including AI feedback if successful)
+      // Immediately reload entries to show the new entry (with analyzing state)
       console.log("TradingJournal.handleSubmit - Reloading entries...");
       loadEntries();
 

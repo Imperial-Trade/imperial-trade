@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
-import { Trash2, Brain, MessageSquare, Trophy, Target } from "lucide-react";
+import { Trash2, Brain, MessageSquare, Trophy, Target, Loader2 } from "lucide-react";
 import { TradeJournalEntry } from "@/api/entities";
 
 interface JournalLogListProps {
@@ -104,7 +104,7 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                   </div>
                 )}
 
-                {entry.ai_positive_feedback && (
+                {entry.ai_positive_feedback ? (
                   <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-4 border border-primary/20 mb-3">
                     <div className="flex items-start gap-3">
                       <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
@@ -117,6 +117,23 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                         </div>
                         <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                           {entry.ai_positive_feedback}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gradient-to-r from-muted/5 to-muted/10 rounded-lg p-4 border border-muted/20 mb-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-muted/20 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                        <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-semibold text-muted-foreground">AI Coach</span>
+                          <Badge variant="outline" className="text-xs">Analyzing...</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground leading-relaxed">
+                          Analyzing your trade and preparing personalized coaching feedback...
                         </div>
                       </div>
                     </div>

@@ -77,6 +77,25 @@ serve(async (req) => {
       throw new Error("event_type is required.");
     }
 
+    // For LOG_TRADE events, check if feedback already exists to prevent duplicates
+    if (event_type === 'LOG_TRADE' && journal_entry_id) {
+      console.log("Coach Agent - Checking for existing feedback...");
+      const { data: existingEntry } = await supabase
+        .from('trade_journal_entries')
+        .select('ai_positive_feedback')
+        .eq('id', journal_entry_id)
+        .eq('user_id', user_id)
+        .maybeSingle();
+
+      if (existingEntry?.ai_positive_feedback) {
+        console.log('Coach Agent - Feedback already exists for entry', journal_entry_id);
+        return new Response(
+          JSON.stringify({ reply: existingEntry.ai_positive_feedback, cached: true }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     console.log("Coach Agent - Processing request:", {
       event_type,
       user_id,

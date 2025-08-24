@@ -26,19 +26,13 @@ import { useDeviceDetection } from "@/hooks/useDeviceDetection";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useSmartProtection } from "@/hooks/useSmartProtection";
 
-// Define the 6 trading arsenal tools with their correct existing routes
+// Define the 3 core trading arsenal tools with their correct existing routes
 const tradingTools = [
   {
     name: "Trading Journal",
     icon: BookOpen,
     description: "Log and analyze your trades with AI-powered feedback.",
     route: "/dashboard/advanced-tools?tool=journal",
-  },
-  {
-    name: "Economic Calendar", 
-    icon: Calendar,
-    description: "Stay ahead of market-moving events and news releases.",
-    route: "/dashboard/advanced-tools?tool=calendar",
   },
   {
     name: "Risk Calculator",
@@ -51,18 +45,6 @@ const tradingTools = [
     icon: Brain,
     description: "Upload screenshots for deep performance analysis.",
     route: "/dashboard/advanced-tools?tool=analyst",
-  },
-  {
-    name: "Opportunity Scanner",
-    icon: Search,
-    description: "Scan markets for high-probability trading setups.",
-    route: "/dashboard/advanced-tools?tool=scanner",
-  },
-  {
-    name: "Risk Simulator",
-    icon: Scale,
-    description: "Simulate trade setups to assess risk before you enter.",
-    route: "/dashboard/advanced-tools?tool=simulator",
   },
 ];
 
@@ -324,28 +306,6 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
             </div>
           );
 
-        case "Economic Calendar":
-          return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-purple-900 dark:from-purple-100 dark:to-pink-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full">
-                <div className="grid grid-cols-7 gap-0.5 h-full">
-                  {Array.from({ length: 14 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`rounded-sm ${
-                        i === 5
-                          ? "bg-purple-300 dark:bg-purple-700"
-                          : i === 9
-                          ? "bg-red-300 dark:bg-red-700"
-                          : "bg-gray-600 dark:bg-gray-300"
-                      }`}
-                    ></div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          );
-
         case "Risk Calculator":
           return (
             <div className="w-full h-full bg-gradient-to-br from-slate-800 to-emerald-900 dark:from-green-100 dark:to-emerald-50 rounded-lg overflow-hidden">
@@ -376,41 +336,6 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
                   <div className="w-4 sm:w-6 h-4 sm:h-6 border-2 border-dashed border-orange-300 dark:border-orange-700 rounded flex items-center justify-center">
                     <Icon className="w-2 sm:w-3 h-2 sm:h-3 text-orange-200 dark:text-orange-800" />
                   </div>
-                </div>
-              </div>
-            </div>
-          );
-
-        case "Opportunity Scanner":
-          return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-blue-900 dark:from-cyan-100 dark:to-blue-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full">
-                <div className="space-y-0.5 sm:space-y-1">
-                  <div className="flex items-center gap-0.5 sm:gap-1">
-                    <div className="w-0.5 sm:w-1 h-0.5 sm:h-1 bg-cyan-300 dark:bg-cyan-700 rounded-full animate-pulse"></div>
-                    <div className="h-0.5 sm:h-1 bg-cyan-200 dark:bg-cyan-600 rounded flex-1"></div>
-                  </div>
-                  <div className="flex items-center gap-0.5 sm:gap-1">
-                    <div className="w-0.5 sm:w-1 h-0.5 sm:h-1 bg-blue-300 dark:bg-blue-700 rounded-full animate-pulse delay-100"></div>
-                    <div className="h-0.5 sm:h-1 bg-blue-200 dark:bg-blue-600 rounded flex-1"></div>
-                  </div>
-                  <div className="flex items-center gap-0.5 sm:gap-1">
-                    <div className="w-0.5 sm:w-1 h-0.5 sm:h-1 bg-indigo-300 dark:bg-indigo-700 rounded-full animate-pulse delay-200"></div>
-                    <div className="h-0.5 sm:h-1 bg-indigo-200 dark:bg-indigo-600 rounded flex-1"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-
-        case "Risk Simulator":
-          return (
-            <div className="w-full h-full bg-gradient-to-br from-slate-800 to-rose-900 dark:from-red-100 dark:to-rose-50 rounded-lg overflow-hidden">
-              <div className="p-1 sm:p-2 h-full flex items-center justify-center">
-                <div className="relative">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-red-300 dark:border-red-700 rounded-full"></div>
-                  <div className="absolute inset-0 border-2 border-red-400 dark:border-red-800 rounded-full animate-ping"></div>
-                  <div className="absolute inset-1 sm:inset-2 bg-red-400 dark:bg-red-800 rounded-full"></div>
                 </div>
               </div>
             </div>
@@ -577,11 +502,8 @@ export function WidgetSidebar({ className = "" }: WidgetSidebarProps) {
           {/* Widget Grid */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4 sm:mb-6">
             <WidgetTool tool={tradingTools[0]} size="large" />
-            <WidgetTool tool={tradingTools[1]} size="small" />
-            <WidgetTool tool={tradingTools[2]} size="small" />
-            <WidgetTool tool={tradingTools[3]} size="medium" />
-            <WidgetTool tool={tradingTools[4]} size="small" />
-            <WidgetTool tool={tradingTools[5]} size="small" />
+            <WidgetTool tool={tradingTools[1]} size="medium" />
+            <WidgetTool tool={tradingTools[2]} size="medium" />
           </div>
 
           {/* Profile and Controls Section */}

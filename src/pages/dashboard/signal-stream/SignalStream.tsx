@@ -192,30 +192,36 @@ export default function SignalStream() {
 
             {/* Filter Dropdowns */}
             <div className="flex items-center gap-3">
-              <Select value={filters.type} onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))}>
-                <SelectTrigger className="w-36 bg-black/20 border-gray-700/50 text-white">
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent className="bg-black/90 border-gray-700/50">
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="buy">Buy</SelectItem>
-                  <SelectItem value="sell">Sell</SelectItem>
-                  <SelectItem value="buy_limit">Buy Limit</SelectItem>
-                  <SelectItem value="sell_limit">Sell Limit</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-400 mb-1">Trade Type</label>
+                <Select value={filters.type} onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))}>
+                  <SelectTrigger className="w-36 bg-white border-gray-300 text-gray-900">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-300 z-50">
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="buy">Buy</SelectItem>
+                    <SelectItem value="sell">Sell</SelectItem>
+                    <SelectItem value="buy_limit">Buy Limit</SelectItem>
+                    <SelectItem value="sell_limit">Sell Limit</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <Select value={filters.educator} onValueChange={(value) => setFilters(prev => ({ ...prev, educator: value }))}>
-                <SelectTrigger className="w-40 bg-black/20 border-gray-700/50 text-white">
-                  <SelectValue placeholder="All Educators" />
-                </SelectTrigger>
-                <SelectContent className="bg-black/90 border-gray-700/50">
-                  <SelectItem value="all">All Educators</SelectItem>
-                  {educators.map((educator) => (
-                    <SelectItem key={educator} value={educator}>{educator}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex flex-col">
+                <label className="text-xs text-gray-400 mb-1">Educator</label>
+                <Select value={filters.educator} onValueChange={(value) => setFilters(prev => ({ ...prev, educator: value }))}>
+                  <SelectTrigger className="w-40 bg-white border-gray-300 text-gray-900">
+                    <SelectValue placeholder="All Educators" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-300 z-50">
+                    <SelectItem value="all">All Educators</SelectItem>
+                    {educators.map((educator) => (
+                      <SelectItem key={educator} value={educator}>{educator}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>

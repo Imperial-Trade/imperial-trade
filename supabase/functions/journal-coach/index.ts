@@ -12,6 +12,8 @@ interface GenerationMetrics {
   fallback_reason: string | null;
   used_retry: boolean;
   notes_len: number;
+  notes_trunc_len: number;
+  prompt_char_len: number;
   model_latency_ms: number;
   final_feedback_len: number;
   tokens_out: string;
@@ -25,9 +27,10 @@ You are a human-sounding motivational trading coach inside a Trading Journal. Wr
 
 OUTPUT CONTRACT
 - Return ONLY valid JSON as: { "feedback": "<coach message>" }
-- 3–5 sentences total. No lists, no headings.
-- End with a single motivational punchline (one sentence).
-- Keep it concise and conversational (human tone).
+- STRICT LIMITS: 3–5 sentences total, maximum 200 characters, under 35 words
+- No lists, no headings, no bullet points
+- End with a single motivational punchline (one sentence)
+- Keep it concise and conversational (human tone)
 
 PERSONALIZATION RULES
 - Read the trader's notes and use them directly (quote small fragments if helpful).
@@ -40,6 +43,7 @@ STYLE GUARDRAILS
 - Never discourage—reframe into growth, resilience, or mastery.
 - Human voice > slogan machine. Avoid shouting, all-caps, and repeated catchphrases.
 - Use the rotation bank ONLY as inspiration. NEVER copy lines verbatim. Always paraphrase and adapt to the trader's context.
+- CRITICAL: Never quote more than 12 consecutive words from user notes. Paraphrase or reference concepts instead.
 
 GREEN DAY LOGIC (Profitable Trades)
 - Do NOT praise journaling here.
@@ -67,7 +71,7 @@ EXECUTION GOALS
 
 RESPONSE FORMAT (repeat for emphasis)
 Return ONLY:
-{ "feedback": "<3–5 sentence human message ending with a motivational punchline>" }`;
+{ "feedback": "<3–5 sentence human message (max 200 chars, under 35 words) ending with a motivational punchline>" }`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -176,16 +180,19 @@ ${journalEntry.screenshot_url ? "They also uploaded a screenshot for analysis." 
 
 Provide a supportive coaching response that highlights specific concepts from their notes and validates their trading analysis skills.
 
-Return JSON: {"feedback": "your 3-5 sentence message ending with motivational punchline"}`;
+Return JSON: {"feedback": "your 3-5 sentence message (max 200 chars, under 35 words) ending with motivational punchline"}`;
 
     const startTime = Date.now();
     let aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", singlePrompt, {
-      maxOutputTokens: 300,
+      maxOutputTokens: 512,
       timeoutMs: 12000,
       responseSchema: {
         type: "object",
         properties: {
-          feedback: { type: "string" }
+          feedback: { 
+            type: "string",
+            maxLength: 200
+          }
         },
         required: ["feedback"]
       }
@@ -203,15 +210,25 @@ Return JSON: {"feedback": "your 3-5 sentence message ending with motivational pu
         console.log("Journal Coach - First attempt failed, retrying...", parsedResponse);
         fallbackReason = parsedResponse.fallback_reason;
         
-        // Retry with shorter notes and lower token limit
+        // Retry with shorter notes and stricter constraints
         const retryPrompt = singlePrompt
           .replace(notes_trunc_1, notes_trunc_2)
-          .replace('Return JSON: {"feedback": "your 3-5 sentence message ending with motivational punchline"}',
-                  'Return JSON: {"feedback": "your 3-5 sentence message (≤80 words) ending with motivational punchline"}');
+          .replace('Return JSON: {"feedback": "your 3-5 sentence message (max 200 chars, under 35 words) ending with motivational punchline"}',
+                  'Return JSON: {"feedback": "your 3-4 sentence message (max 150 chars, under 25 words) ending with motivational punchline"}');
         
         aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", retryPrompt, {
-          maxOutputTokens: 200,
-          timeoutMs: 12000
+          maxOutputTokens: 384,
+          timeoutMs: 12000,
+          responseSchema: {
+            type: "object",
+            properties: {
+              feedback: { 
+                type: "string",
+                maxLength: 150
+              }
+            },
+            required: ["feedback"]
+          }
         });
         usedRetry = true;
         finalMeta = aiResult.meta;
@@ -268,6 +285,8 @@ Return JSON: {"feedback": "your 3-5 sentence message ending with motivational pu
       fallback_reason: fallbackReason,
       used_retry: usedRetry,
       notes_len: tradeNotes.length,
+      notes_trunc_len: notes_trunc_1.length,
+      prompt_char_len: singlePrompt.length,
       model_latency_ms: modelLatencyMs,
       final_feedback_len: finalFeedback.length,
       tokens_out: finalMeta.tokensOut || "unknown",

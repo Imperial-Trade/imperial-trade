@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSignalRealtime } from "@/contexts/SignalRealtimeContext";
@@ -19,7 +18,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import TradeAlertCard from "@/components/signals/TradeAlertCard";
-import { LiveMarketTicker } from "@/components/signals/LiveMarketTicker";
 import { TradeAlertData } from "@/types/components";
 
 interface FilterState {
@@ -132,10 +130,7 @@ export default function SignalStream() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
-      {/* Live Market Ticker */}
-      <LiveMarketTicker className="sticky top-0 z-40" />
-
-      <div className="flex h-[calc(100vh-60px)]">
+      <div className="flex h-screen">
         {/* Left Sidebar */}
         <div className="w-80 bg-black/40 backdrop-blur-xl border-r border-gray-800/50 flex flex-col">
           {/* Header */}

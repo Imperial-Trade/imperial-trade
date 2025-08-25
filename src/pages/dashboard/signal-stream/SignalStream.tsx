@@ -1,23 +1,23 @@
+
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSignalRealtime } from "@/contexts/SignalRealtimeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
   Radio,
-  Search,
   Activity,
   Clock,
-  CheckCircle,
-  BookOpen
+  CheckCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import TradeAlertCard from "@/components/signals/TradeAlertCard";
+import CompactSignalSearch from "@/components/signals/CompactSignalSearch";
 import { TradeAlertData } from "@/types/components";
 
 interface FilterState {
@@ -109,110 +109,91 @@ export default function SignalStream() {
   }, [signals]);
 
   const handleStatusUpdate = async (alert: TradeAlertData, newStatus: string) => {
-    // Implementation for status updates would go here
     console.log('Status update:', alert.id, newStatus);
   };
 
   const handleTakeProfitHit = async (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => {
-    // Implementation for TP hits would go here
     console.log('TP hit:', alert.id, newTPHits);
   };
 
   const handleStopLossHit = async (alert: TradeAlertData, closeReason: string) => {
-    // Implementation for SL hits would go here
     console.log('SL hit:', alert.id, closeReason);
   };
 
   const handleOrderActivation = async (alert: TradeAlertData) => {
-    // Implementation for order activation would go here
     console.log('Order activation:', alert.id);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
-      <div className="flex h-screen">
-        {/* Left Sidebar */}
-        <div className="w-80 bg-black/40 backdrop-blur-xl border-r border-gray-800/50 flex flex-col">
-          {/* Header */}
-          <div className="p-6 border-b border-gray-800/50">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="relative">
-                <Radio className="w-8 h-8 text-green-500" />
-                <motion.div
-                  className="absolute inset-0 w-8 h-8 border-2 border-green-500 rounded-full"
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-green-400 to-white bg-clip-text text-transparent">
-                  Xeon Stream
-                </h1>
-                <p className="text-gray-400 text-sm">Live trading signals</p>
-              </div>
-            </div>
-
-            {canCreateSignals && (
-              <Button 
-                onClick={handleCreateSignal}
-                className="w-full bg-green-500 hover:bg-green-600 text-black font-semibold"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Signal
-              </Button>
-            )}
-          </div>
-
-          {/* Status Filters */}
-          <div className="p-6 border-b border-gray-800/50">
-            <div className="space-y-2">
-              {[
-                { key: "all", label: "All Signals", count: signalCount.total, icon: Activity },
-                { key: "active", label: "Active", count: signalCount.active, icon: Radio },
-                { key: "pending", label: "Pending", count: signalCount.pending, icon: Clock },
-                { key: "closed", label: "Closed", count: signalCount.closed, icon: CheckCircle }
-              ].map((item) => (
-                <motion.button
-                  key={item.key}
-                  onClick={() => setFilters(prev => ({ ...prev, status: item.key as any }))}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg transition-all duration-200 ${
-                    filters.status === item.key 
-                      ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                      : 'hover:bg-gray-800/50 text-gray-300'
-                  }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="flex items-center gap-3">
-                    <item.icon className="w-4 h-4" />
-                    <span className="font-medium">{item.label}</span>
-                  </div>
-                  <Badge variant="secondary" className="bg-gray-700/50 text-gray-300">
-                    {item.count}
-                  </Badge>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="p-6 space-y-4 flex-1">
-            {/* Search */}
+      {/* Top Navigation Bar */}
+      <div className="sticky top-0 z-50 bg-black/40 backdrop-blur-xl border-b border-gray-800/50">
+        <div className="flex items-center justify-between p-4">
+          {/* Left: Branding */}
+          <div className="flex items-center gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search signals..."
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                className="pl-10 bg-black/20 border-gray-700/50 text-white placeholder:text-gray-400 focus:border-green-500/50"
+              <Radio className="w-8 h-8 text-green-500" />
+              <motion.div
+                className="absolute inset-0 w-8 h-8 border-2 border-green-500 rounded-full"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
               />
             </div>
-
-            {/* Type Filter */}
             <div>
-              <label className="text-sm font-medium text-gray-300 mb-2 block">TYPE</label>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-green-400 to-white bg-clip-text text-transparent">
+                Xeon Stream
+              </h1>
+              <p className="text-gray-400 text-sm">Live trading signals</p>
+            </div>
+          </div>
+
+          {/* Center: Search */}
+          <CompactSignalSearch 
+            onSearchChange={(value) => setFilters(prev => ({ ...prev, search: value }))}
+            placeholder="Search signals, assets..."
+          />
+
+          {/* Right: Create Signal Button */}
+          {canCreateSignals && (
+            <Button 
+              onClick={handleCreateSignal}
+              className="bg-green-500 hover:bg-green-600 text-black font-semibold"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Signal
+            </Button>
+          )}
+        </div>
+
+        {/* Navigation Filters Row */}
+        <div className="px-4 pb-4">
+          <div className="flex items-center justify-between gap-6">
+            {/* Status Tabs */}
+            <Tabs value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as any }))}>
+              <TabsList className="bg-black/20 border-gray-700/50">
+                <TabsTrigger value="all" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
+                  <Activity className="w-4 h-4 mr-2" />
+                  All ({signalCount.total})
+                </TabsTrigger>
+                <TabsTrigger value="active" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
+                  <Radio className="w-4 h-4 mr-2" />
+                  Active ({signalCount.active})
+                </TabsTrigger>
+                <TabsTrigger value="pending" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Pending ({signalCount.pending})
+                </TabsTrigger>
+                <TabsTrigger value="closed" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Closed ({signalCount.closed})
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {/* Filter Dropdowns */}
+            <div className="flex items-center gap-3">
               <Select value={filters.type} onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))}>
-                <SelectTrigger className="bg-black/20 border-gray-700/50 text-white">
+                <SelectTrigger className="w-36 bg-black/20 border-gray-700/50 text-white">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent className="bg-black/90 border-gray-700/50">
@@ -223,13 +204,9 @@ export default function SignalStream() {
                   <SelectItem value="sell_limit">Sell Limit</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
 
-            {/* Educator Filter */}
-            <div>
-              <label className="text-sm font-medium text-gray-300 mb-2 block">EDUCATOR</label>
               <Select value={filters.educator} onValueChange={(value) => setFilters(prev => ({ ...prev, educator: value }))}>
-                <SelectTrigger className="bg-black/20 border-gray-700/50 text-white">
+                <SelectTrigger className="w-40 bg-black/20 border-gray-700/50 text-white">
                   <SelectValue placeholder="All Educators" />
                 </SelectTrigger>
                 <SelectContent className="bg-black/90 border-gray-700/50">
@@ -242,69 +219,66 @@ export default function SignalStream() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Content Area */}
-          <div className="flex-1 p-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="relative">
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-700 border-t-green-500"></div>
-                  <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-green-500 opacity-20"></div>
-                </div>
-              </div>
-            ) : filteredSignals && filteredSignals.length > 0 ? (
-              <ScrollArea className="h-full pr-4">
-                <div className="space-y-4">
-                  <AnimatePresence mode="popLayout">
-                    {filteredSignals.map((signal, index) => (
-                      <motion.div
-                        key={signal.id}
-                        layout
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ delay: index * 0.03 }}
-                      >
-                        <TradeAlertCard
-                          alert={signal}
-                          creator={signals?.find(s => s.id === signal.id)?.creator}
-                          onStatusUpdate={handleStatusUpdate}
-                          onTakeProfitHit={handleTakeProfitHit}
-                          onStopLossHit={handleStopLossHit}
-                          onOrderActivation={handleOrderActivation}
-                          isAdmin={user?.user_metadata?.access_level === "admin"}
-                          isCreator={user?.id === signals?.find(s => s.id === signal.id)?.userId}
-                          livePrice={Math.random() * 100}
-                          connectionStatus="connected"
-                          priceSource="WebSocket"
-                          isRecentClosure={false}
-                        />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </ScrollArea>
-            ) : (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-16"
-              >
-                <div className="mx-auto w-24 h-24 bg-gray-800/50 rounded-full flex items-center justify-center mb-6">
-                  <Radio className="w-12 h-12 text-gray-500" />
-                </div>
-                <h3 className="text-2xl font-semibold text-white mb-3">No signals found</h3>
-                <p className="text-gray-400 max-w-md mx-auto">
-                  {filters.search || filters.type !== "all" || filters.educator !== "all" || filters.status !== "all"
-                    ? "Try adjusting your filters to discover more trading opportunities."
-                    : "No signals are currently available. Check back soon for new trading opportunities."}
-                </p>
-              </motion.div>
-            )}
+      {/* Main Content */}
+      <div className="p-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-700 border-t-green-500"></div>
+              <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-green-500 opacity-20"></div>
+            </div>
           </div>
-        </div>
+        ) : filteredSignals && filteredSignals.length > 0 ? (
+          <ScrollArea className="h-full">
+            <div className="space-y-4">
+              <AnimatePresence mode="popLayout">
+                {filteredSignals.map((signal, index) => (
+                  <motion.div
+                    key={signal.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ delay: index * 0.03 }}
+                  >
+                    <TradeAlertCard
+                      alert={signal}
+                      creator={signals?.find(s => s.id === signal.id)?.creator}
+                      onStatusUpdate={handleStatusUpdate}
+                      onTakeProfitHit={handleTakeProfitHit}
+                      onStopLossHit={handleStopLossHit}
+                      onOrderActivation={handleOrderActivation}
+                      isAdmin={user?.user_metadata?.access_level === "admin"}
+                      isCreator={user?.id === signals?.find(s => s.id === signal.id)?.userId}
+                      livePrice={Math.random() * 100}
+                      connectionStatus="connected"
+                      priceSource="WebSocket"
+                      isRecentClosure={false}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </ScrollArea>
+        ) : (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center py-16"
+          >
+            <div className="mx-auto w-24 h-24 bg-gray-800/50 rounded-full flex items-center justify-center mb-6">
+              <Radio className="w-12 h-12 text-gray-500" />
+            </div>
+            <h3 className="text-2xl font-semibold text-white mb-3">No signals found</h3>
+            <p className="text-gray-400 max-w-md mx-auto">
+              {filters.search || filters.type !== "all" || filters.educator !== "all" || filters.status !== "all"
+                ? "Try adjusting your filters to discover more trading opportunities."
+                : "No signals are currently available. Check back soon for new trading opportunities."}
+            </p>
+          </motion.div>
+        )}
       </div>
     </div>
   );

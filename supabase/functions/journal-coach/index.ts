@@ -20,7 +20,13 @@ interface GenerationMetrics {
   finish_reason: string;
   salvaged_from_max_tokens: boolean;
   was_clamped: boolean;
+  path_chosen: 'primary' | 'backup' | 'model_fallback' | 'deterministic_fallback';
+  backup_reason?: string;
+  model_used: string;
 }
+
+// In-flight request tracking for idempotency
+const inFlightRequests = new Map<string, Promise<any>>();
 
 // Plain-text system prompt for text mode
 const PLAIN_TEXT_SYSTEM_PROMPT = `You are an encouraging trading coach. Give motivational feedback in 2-3 sentences (≤500 characters). Be positive and constructive. Reference the trader's notes. End with encouragement. Do not return JSON. Return plain text only.`;
@@ -96,6 +102,235 @@ function isTransportFallback(text: string): boolean {
   } catch {
     return false;
   }
+}
+
+// Robust AI generation with hedged requests and model fallback
+async function generateFeedbackRobust(
+  apiKey: string, 
+  userName: string, 
+  tradeOutcome: string, 
+  journalEntry: any, 
+  pnlAmount: number, 
+  notes_trunc_1: string, 
+  notes_trunc_2: string,
+  forceJsonMode: boolean
+): Promise<{
+  finalFeedback: string;
+  metrics: Partial<GenerationMetrics>;
+  wasClamped: boolean;
+}> {
+  const startTime = Date.now();
+  let pathChosen: 'primary' | 'backup' | 'model_fallback' | 'deterministic_fallback' = 'deterministic_fallback';
+  let modelUsed = 'none';
+  let backupReason = '';
+  let salvagedFromMaxTokens = false;
+  let wasClamped = false;
+  let finalMeta: any = {};
+
+  // Helper function to validate AI response
+  const isValidResponse = (text: string, meta: any): boolean => {
+    // Accept ANY non-empty text that's not a transport fallback
+    if (!text || text.trim().length === 0) return false;
+    if (isTransportFallback(text)) return false;
+    
+    // For JSON mode, try to parse - but accept partial JSON too
+    if (forceJsonMode) {
+      try {
+        const parsed = JSON.parse(text);
+        return parsed.feedback && parsed.feedback.length > 10; // At least 10 chars
+      } catch {
+        // If it's not valid JSON but has substantial content, accept it anyway
+        return text.length > 20;
+      }
+    }
+    
+    // For text mode, accept anything with reasonable length
+    return text.length > 15; // Very generous threshold
+  };
+
+  // Primary request configuration
+  const primaryConfig = forceJsonMode ? {
+    prompt: buildLegacyJsonPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_1, !!journalEntry.screenshot_url),
+    maxOutputTokens: 1000,
+    timeoutMs: 15000,
+    responseSchema: {
+      type: "object",
+      properties: {
+        feedback: { type: "string", maxLength: 500 }
+      },
+      required: ["feedback"]
+    }
+  } : {
+    prompt: buildPlainTextPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_1, !!journalEntry.screenshot_url),
+    maxOutputTokens: 1000,
+    timeoutMs: 15000
+  };
+
+  // Backup request configuration (more aggressive)
+  const backupConfig = {
+    prompt: buildRetryPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_2),
+    maxOutputTokens: 750,
+    timeoutMs: 12000
+  };
+
+  try {
+    // Primary request with gemini-2.5-flash
+    console.log("Journal Coach - Starting primary request (gemini-2.5-flash)");
+    const primaryPromise = callGoogleAIWithMeta(
+      apiKey, 
+      "gemini-2.5-flash", 
+      primaryConfig.prompt, 
+      primaryConfig
+    );
+
+    // Start backup request after 2.5s delay
+    const backupPromise = new Promise((resolve, reject) => {
+      setTimeout(async () => {
+        try {
+          console.log("Journal Coach - Starting backup request (shorter prompt)");
+          const result = await callGoogleAIWithMeta(
+            apiKey, 
+            "gemini-2.5-flash", 
+            backupConfig.prompt, 
+            backupConfig
+          );
+          resolve({ result, source: 'backup' });
+        } catch (error) {
+          reject(error);
+        }
+      }, 2500); // 2.5 second delay
+    });
+
+    // Race primary vs backup
+    const raceResult = await Promise.race([
+      primaryPromise.then(result => ({ result, source: 'primary' })),
+      backupPromise
+    ]);
+
+    const aiResult = (raceResult as any).result;
+    const source = (raceResult as any).source;
+
+    if (isValidResponse(aiResult.text, aiResult.meta)) {
+      console.log(`Journal Coach - ${source} request succeeded`);
+      pathChosen = source as 'primary' | 'backup';
+      modelUsed = 'gemini-2.5-flash';
+      finalMeta = aiResult.meta;
+      
+      // Check for MAX_TOKENS salvage
+      if (aiResult.meta.finishReason === 'MAX_TOKENS') {
+        salvagedFromMaxTokens = true;
+        console.log("Journal Coach - Salvaged text from MAX_TOKENS");
+      }
+
+      // Process the successful response
+      let finalFeedback: string;
+      if (forceJsonMode) {
+        try {
+          const parsed = JSON.parse(aiResult.text);
+          finalFeedback = parsed.feedback || aiResult.text; // Fallback to raw text if parsing fails
+        } catch {
+          // Accept raw text even in JSON mode if we can't parse
+          finalFeedback = aiResult.text;
+        }
+      } else {
+        finalFeedback = aiResult.text;
+      }
+
+      // Clamp and sanitize
+      const clampResult = clampAndSanitize(finalFeedback, 500);
+      finalFeedback = clampResult.text;
+      wasClamped = clampResult.wasClamped;
+
+      return {
+        finalFeedback,
+        metrics: {
+          fallback_reason: null,
+          path_chosen: pathChosen,
+          model_used: modelUsed,
+          salvaged_from_max_tokens: salvagedFromMaxTokens,
+          was_clamped: wasClamped,
+          tokens_out: finalMeta.tokensOut?.toString() || "unknown",
+          finish_reason: finalMeta.finishReason || "unknown",
+          model_latency_ms: Date.now() - startTime
+        },
+        wasClamped
+      };
+    } else {
+      backupReason = `${source}_invalid_response`;
+    }
+  } catch (primaryError) {
+    console.log("Journal Coach - Primary/backup failed, trying model fallback:", primaryError.message);
+    backupReason = 'primary_backup_failed';
+  }
+
+  // Model fallback: try gemini-1.5-flash
+  try {
+    console.log("Journal Coach - Trying model fallback (gemini-1.5-flash)");
+    const fallbackResult = await callGoogleAIWithMeta(
+      apiKey,
+      "gemini-1.5-flash",
+      backupConfig.prompt,
+      {
+        maxOutputTokens: 500,
+        timeoutMs: 10000
+      }
+    );
+
+    if (isValidResponse(fallbackResult.text, fallbackResult.meta)) {
+      console.log("Journal Coach - Model fallback succeeded");
+      pathChosen = 'model_fallback';
+      modelUsed = 'gemini-1.5-flash';
+      finalMeta = fallbackResult.meta;
+
+      const clampResult = clampAndSanitize(fallbackResult.text, 500);
+      
+      return {
+        finalFeedback: clampResult.text,
+        metrics: {
+          fallback_reason: null,
+          backup_reason,
+          path_chosen: pathChosen,
+          model_used: modelUsed,
+          salvaged_from_max_tokens: fallbackResult.meta.finishReason === 'MAX_TOKENS',
+          was_clamped: clampResult.wasClamped,
+          tokens_out: fallbackResult.meta.tokensOut?.toString() || "unknown",
+          finish_reason: fallbackResult.meta.finishReason || "unknown",
+          model_latency_ms: Date.now() - startTime
+        },
+        wasClamped: clampResult.wasClamped
+      };
+    }
+  } catch (fallbackError) {
+    console.log("Journal Coach - Model fallback failed:", fallbackError.message);
+  }
+
+  // Ultimate fallback: deterministic response
+  console.log("Journal Coach - All AI attempts failed, using deterministic fallback");
+  const deterministicFeedback = generatePersonalizedFallback({
+    userName,
+    asset: journalEntry.asset_ticker,
+    tradeType: journalEntry.trade_type,
+    isWin: journalEntry.pnl > 0,
+    pnlAmount,
+    notes: journalEntry.notes || "No notes provided",
+    hasScreenshot: !!journalEntry.screenshot_url
+  });
+
+  return {
+    finalFeedback: deterministicFeedback,
+    metrics: {
+      fallback_reason: 'all_ai_failed',
+      backup_reason,
+      path_chosen: 'deterministic_fallback',
+      model_used: 'none',
+      salvaged_from_max_tokens: false,
+      was_clamped: false,
+      tokens_out: "0",
+      finish_reason: "fallback",
+      model_latency_ms: Date.now() - startTime
+    },
+    wasClamped: false
+  };
 }
 
 serve(async (req) => {
@@ -196,221 +431,102 @@ serve(async (req) => {
     // Check feature flag for rollback to JSON mode
     const forceJsonMode = Deno.env.get("JOURNAL_COACH_FORCE_JSON") === "true";
     
-    const startTime = Date.now();
-    let aiResult;
-    let usedRetry = false;
-    let fallbackReason: string | null = null;
-    let finalMeta;
-    let salvagedFromMaxTokens = false;
-    let wasClamped = false;
-
-    if (forceJsonMode) {
-      // Legacy JSON mode path
-      const jsonPrompt = buildLegacyJsonPrompt(
-        userName,
-        tradeOutcome,
-        journalEntry.asset_ticker,
-        pnlAmount,
-        notes_trunc_1,
-        !!journalEntry.screenshot_url
-      );
-      
-      aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", jsonPrompt, {
-        maxOutputTokens: 1000,
-        timeoutMs: 15000,
-        responseSchema: {
-          type: "object",
-          properties: {
-            feedback: { 
-              type: "string",
-              maxLength: 120
-            }
-          },
-          required: ["feedback"]
-        }
-      });
-      
-      // Handle JSON mode result (existing logic)
-      try {
-        const parsedResponse = JSON.parse(aiResult.text);
-        if (parsedResponse.is_fallback) {
-          fallbackReason = parsedResponse.fallback_reason;
-        }
-      } catch (parseError) {
-        console.error("Journal Coach - Failed to parse AI response:", parseError);
-        fallbackReason = 'invalid_json';
-      }
-    } else {
-      // New text mode path (default)
-      const textPrompt = buildPlainTextPrompt(
-        userName,
-        tradeOutcome,
-        journalEntry.asset_ticker,
-        pnlAmount,
-        notes_trunc_1,
-        !!journalEntry.screenshot_url
-      );
-      
-      aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", textPrompt, {
-        maxOutputTokens: 1000,
-        timeoutMs: 15000
-        // No responseSchema - defaults to text/plain mode
-      });
-
-      finalMeta = aiResult.meta;
-      
-      // Check if we got a transport fallback
-      if (isTransportFallback(aiResult.text)) {
-        const parsedFallback = JSON.parse(aiResult.text);
-        console.log("Journal Coach - First attempt failed, retrying...", parsedFallback);
-        fallbackReason = parsedFallback.fallback_reason;
-        
-        // Retry with shorter prompt and lower token budget
-        const retryPrompt = buildRetryPrompt(
-          userName,
-          tradeOutcome,
-          journalEntry.asset_ticker,
-          pnlAmount,
-          notes_trunc_2
-        );
-        
-        aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", retryPrompt, {
-          maxOutputTokens: 750,
-          timeoutMs: 12000
-        });
-        
-        usedRetry = true;
-        finalMeta = aiResult.meta;
-        
-        // Check retry result
-        if (isTransportFallback(aiResult.text)) {
-          const retryParsed = JSON.parse(aiResult.text);
-          fallbackReason = retryParsed.fallback_reason;
-        } else {
-          fallbackReason = null; // Retry succeeded
-        }
-      } else {
-        // Check if we salvaged text from MAX_TOKENS
-        if (finalMeta.finishReason === 'MAX_TOKENS') {
-          salvagedFromMaxTokens = true;
-          console.log("Journal Coach - Salvaged text from MAX_TOKENS");
-        }
-      }
-    }
-
-    const modelLatencyMs = Date.now() - startTime;
-
-    // Generate final response (AI or personalized fallback)
-    let finalFeedback: string;
-    if (fallbackReason) {
-      // Generate personalized deterministic fallback
-      finalFeedback = generatePersonalizedFallback({
-        userName,
-        asset: journalEntry.asset_ticker,
-        tradeType: journalEntry.trade_type,
-        isWin: journalEntry.pnl > 0,
-        pnlAmount,
-        notes: tradeNotes,
-        hasScreenshot: !!journalEntry.screenshot_url
-      });
-      console.log("Journal Coach - Using personalized fallback due to:", fallbackReason);
-    } else {
-      if (forceJsonMode) {
-        // Extract feedback from JSON response
-        try {
-          const parsedResponse = JSON.parse(aiResult.text);
-          finalFeedback = parsedResponse.feedback || "Great work on analyzing this trade! Your detailed approach shows real growth as a trader.";
-        } catch (parseError) {
-          console.error("Journal Coach - Failed to parse successful AI response:", parseError);
-          finalFeedback = generatePersonalizedFallback({
-            userName,
-            asset: journalEntry.asset_ticker,
-            tradeType: journalEntry.trade_type,
-            isWin: journalEntry.pnl > 0,
-            pnlAmount,
-            notes: tradeNotes,
-            hasScreenshot: !!journalEntry.screenshot_url
-          });
-          fallbackReason = 'invalid_json';
-        }
-      } else {
-        // Use plain text response directly, clamp and sanitize
-        const clampResult = clampAndSanitize(aiResult.text, 500);
-        finalFeedback = clampResult.text;
-        wasClamped = clampResult.wasClamped;
-        
-        if (wasClamped) {
-          console.log("Journal Coach - Clamped response to 500 characters");
-        }
-      }
-    }
-
-    // Build typed metrics object
-    const metrics: GenerationMetrics = {
-      fallback_reason: fallbackReason,
-      used_retry: usedRetry,
-      notes_len: tradeNotes.length,
-      notes_trunc_len: usedRetry ? notes_trunc_2.length : notes_trunc_1.length,
-      prompt_char_len: forceJsonMode ? 
-        (usedRetry ? buildRetryPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_2).length : 
-         buildLegacyJsonPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_1, !!journalEntry.screenshot_url).length) :
-        (usedRetry ? buildRetryPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_2).length :
-         buildPlainTextPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_1, !!journalEntry.screenshot_url).length),
-      model_latency_ms: modelLatencyMs,
-      final_feedback_len: finalFeedback.length,
-      tokens_out: finalMeta?.tokensOut?.toString() || "unknown",
-      finish_reason: finalMeta?.finishReason || "unknown",
-      salvaged_from_max_tokens: salvagedFromMaxTokens,
-      was_clamped: wasClamped
-    };
-
-    // Log metrics
-    console.log("Journal Coach - Generation complete:", metrics);
-
-    // CRITICAL: Always update trade_journal_entries.ai_positive_feedback FIRST to prevent UI hanging
-    const { error: updateError } = await supabase
-      .from("trade_journal_entries")
-      .update({ ai_positive_feedback: finalFeedback })
-      .eq("id", journal_entry_id)
-      .eq("user_id", user_id);
-
-    if (updateError) {
-      console.error("Journal Coach - Error updating journal entry:", updateError);
-      // Still return success but log the issue
+    // Idempotency protection: prevent concurrent requests for same entry
+    const requestKey = `${user_id}:${journal_entry_id}`;
+    if (inFlightRequests.has(requestKey)) {
+      console.log("Journal Coach - Request already in progress, returning cached result");
+      const result = await inFlightRequests.get(requestKey);
       return new Response(
-        JSON.stringify({
-          reply: finalFeedback,
-          success: true,
-          note: "Generated feedback but database update failed"
-        }),
+        JSON.stringify({ reply: result.finalFeedback, success: true, cached: true }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Store agent output - wrap in try/catch to never let logging throw
-    try {
-      await supabase
-        .from("agent_outputs")
-        .insert({
-          user_id,
-          agent_name: "Journal Coach",
-          output_text: JSON.stringify({ 
-            feedback: finalFeedback, 
-            ...metrics 
-          }),
-          user_readable_text: finalFeedback,
-        });
-    } catch (agentOutputError) {
-      console.error("Journal Coach - Error storing agent output:", agentOutputError);
-      // Continue execution - don't let logging errors break the response
-    }
-
-    console.log("Journal Coach - Successfully updated journal entry with feedback");
-    
-    return new Response(
-      JSON.stringify({ reply: finalFeedback, success: true }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    // Create and track the generation promise
+    const generationPromise = generateFeedbackRobust(
+      apiKey,
+      userName,
+      tradeOutcome,
+      journalEntry,
+      pnlAmount,
+      notes_trunc_1,
+      notes_trunc_2,
+      forceJsonMode
     );
+
+    inFlightRequests.set(requestKey, generationPromise);
+
+    try {
+      // Generate feedback using robust method
+      const result = await generationPromise;
+      const { finalFeedback, metrics } = result;
+
+      // Build complete metrics object
+      const completeMetrics: GenerationMetrics = {
+        ...metrics,
+        used_retry: metrics.path_chosen === 'backup',
+        notes_len: tradeNotes.length,
+        notes_trunc_len: metrics.path_chosen === 'backup' ? notes_trunc_2.length : notes_trunc_1.length,
+        prompt_char_len: forceJsonMode ? 
+          (metrics.path_chosen === 'backup' ? buildRetryPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_2).length : 
+           buildLegacyJsonPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_1, !!journalEntry.screenshot_url).length) :
+          (metrics.path_chosen === 'backup' ? buildRetryPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_2).length :
+           buildPlainTextPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_1, !!journalEntry.screenshot_url).length),
+        final_feedback_len: finalFeedback.length
+      } as GenerationMetrics;
+
+      // Log enhanced metrics
+      console.log("Journal Coach - Generation complete:", completeMetrics);
+
+      // CRITICAL: Always update trade_journal_entries.ai_positive_feedback FIRST to prevent UI hanging
+      const { error: updateError } = await supabase
+        .from("trade_journal_entries")
+        .update({ ai_positive_feedback: finalFeedback })
+        .eq("id", journal_entry_id)
+        .eq("user_id", user_id);
+
+      if (updateError) {
+        console.error("Journal Coach - Error updating journal entry:", updateError);
+        // Still return success but log the issue
+        return new Response(
+          JSON.stringify({
+            reply: finalFeedback,
+            success: true,
+            note: "Generated feedback but database update failed"
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Store agent output - wrap in try/catch to never let logging throw
+      try {
+        await supabase
+          .from("agent_outputs")
+          .insert({
+            user_id,
+            agent_name: "Journal Coach",
+            output_text: JSON.stringify({ 
+              feedback: finalFeedback, 
+              ...completeMetrics 
+            }),
+            user_readable_text: finalFeedback,
+          });
+      } catch (agentOutputError) {
+        console.error("Journal Coach - Error storing agent output:", agentOutputError);
+        // Continue execution - don't let logging errors break the response
+      }
+
+      console.log("Journal Coach - Successfully updated journal entry with feedback");
+      
+      return new Response(
+        JSON.stringify({ reply: finalFeedback, success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+
+    } finally {
+      // Clean up in-flight request tracking
+      inFlightRequests.delete(requestKey);
+    }
 
   } catch (error) {
     console.error("Journal Coach - Error:", error);

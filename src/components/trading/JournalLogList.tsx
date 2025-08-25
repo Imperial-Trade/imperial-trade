@@ -8,7 +8,8 @@ import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { Trash2, Brain, MessageSquare, Trophy, Target } from "lucide-react";
 import { TradeJournalEntry } from "@/api/entities";
-import { ImageGallery } from "@/components/ui/image-gallery";
+import { ImageGallery } from '@/components/ui/image-gallery';
+import { useSignedUrls } from '@/hooks/useSignedUrls';
 
 interface JournalLogListProps {
   entries: TradeJournalEntry[];
@@ -125,10 +126,9 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                 )}
 
                 {(entry as any).screenshot_urls && (entry as any).screenshot_urls.length > 0 ? (
-                  <ImageGallery 
-                    images={(entry as any).screenshot_urls} 
+                  <ImageGalleryWithUrls 
+                    paths={(entry as any).screenshot_urls} 
                     alt="Trade charts"
-                    className="mt-3"
                   />
                 ) : entry.screenshot_url && (
                   <div className="mt-3">
@@ -156,6 +156,17 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
 });
 
 JournalLogList.displayName = 'JournalLogList';
+
+// Helper component for image gallery with signed URLs
+const ImageGalleryWithUrls: React.FC<{ paths: string[], alt: string }> = ({ paths, alt }) => {
+  const { signedUrls, loading, error } = useSignedUrls(paths);
+  
+  if (loading) return <div className="text-sm text-muted-foreground mt-3">Loading images...</div>;
+  if (error) return <div className="text-sm text-red-600 mt-3">Error loading images: {error}</div>;
+  if (signedUrls.length === 0) return null;
+  
+  return <ImageGallery images={signedUrls} alt={alt} className="mt-3" />;
+};
 
 export default JournalLogList;
 

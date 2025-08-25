@@ -153,20 +153,22 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   if (!images || images.length === 0) return null;
 
-  // Single image display
+  // Render single image - centered with max height
   if (images.length === 1) {
     return (
       <>
-        <div className={cn("relative group cursor-pointer", className)}>
-          <img
-            src={images[0]}
-            alt={alt}
-            className="w-full max-h-32 object-cover rounded-lg transition-all duration-200 group-hover:opacity-80 border border-border"
-            onClick={() => openLightbox(0)}
-          />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all duration-200 flex items-center justify-center">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2">
-              <ZoomIn className="w-4 h-4 text-white" />
+        <div className={cn("cursor-pointer group relative flex justify-center", className)}>
+          <div className="relative overflow-hidden rounded-lg">
+            <img 
+              src={images[0]} 
+              alt={alt || 'Image'}
+              className="max-h-48 w-auto object-contain transition-transform duration-300 group-hover:scale-105 rounded-lg"
+              onClick={() => openLightbox(0)}
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all duration-200 flex items-center justify-center">
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2">
+                <ZoomIn className="w-4 h-4 text-white" />
+              </div>
             </div>
           </div>
         </div>
@@ -182,49 +184,32 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
     );
   }
 
-  // Multiple images grid display
+  // Multiple images grid display - single row for 2-3 images
   return (
     <>
-      <div className={cn("grid gap-2", className)}>
-        {images.length === 2 && (
-          <div className="grid grid-cols-2 gap-2">
-            {images.map((image, index) => (
-              <div key={index} className="relative group cursor-pointer">
-                <img
-                  src={image}
-                  alt={`${alt} ${index + 1}`}
-                  className="w-full h-24 object-cover rounded-lg transition-all duration-200 group-hover:opacity-80 border border-border"
-                  onClick={() => openLightbox(index)}
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all duration-200 flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-1">
-                    <ZoomIn className="w-3 h-3 text-white" />
-                  </div>
+      <div className={cn("flex gap-2 justify-start", className)}>
+        {images.slice(0, 3).map((image, index) => (
+          <div key={index} className="cursor-pointer group relative flex-1 min-w-0">
+            <div className="relative overflow-hidden rounded-lg">
+              <img 
+                src={image} 
+                alt={`${alt} ${index + 1}`}
+                className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105"
+                onClick={() => openLightbox(index)}
+              />
+              {index === 2 && images.length > 3 && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <span className="text-white text-lg font-semibold">+{images.length - 3}</span>
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all duration-200 flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-1">
+                  <ZoomIn className="w-3 h-3 text-white" />
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        )}
-
-        {images.length === 3 && (
-          <div className="grid grid-cols-3 gap-2">
-            {images.map((image, index) => (
-              <div key={index} className="relative group cursor-pointer">
-                <img
-                  src={image}
-                  alt={`${alt} ${index + 1}`}
-                  className="w-full h-20 object-cover rounded-lg transition-all duration-200 group-hover:opacity-80 border border-border"
-                  onClick={() => openLightbox(index)}
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all duration-200 flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-1">
-                    <ZoomIn className="w-3 h-3 text-white" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        ))}
       </div>
 
       <ImageLightbox

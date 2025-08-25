@@ -16,7 +16,7 @@ interface JournalFormCardProps {
     asset_ticker: string;
     pnl: string;
     notes: string;
-    screenshotFile?: File;
+    screenshotFiles?: File[];
   }) => void;
   isSubmitting: boolean;
 }
@@ -27,8 +27,8 @@ export default function JournalFormCard({ onSubmit, isSubmitting }: JournalFormC
     pnl: '',
     notes: ''
   });
-  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-  const [screenshotPreview, setScreenshotPreview] = useState<string>('');
+  const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
+  const [screenshotPreviews, setScreenshotPreviews] = useState<string[]>([]);
   
   // Asset selection states
   const [showAssetDropdown, setShowAssetDropdown] = useState(false);
@@ -84,24 +84,33 @@ export default function JournalFormCard({ onSubmit, isSubmitting }: JournalFormC
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setScreenshotFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      const newFiles = [...screenshotFiles, ...files].slice(0, 3); // Max 3 files
+      setScreenshotFiles(newFiles);
       
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          setScreenshotPreview(e.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      // Create previews for all files
+      const newPreviews: string[] = [];
+      newFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            newPreviews[index] = e.target.result as string;
+            if (newPreviews.filter(Boolean).length === newFiles.length) {
+              setScreenshotPreviews(newPreviews);
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
-  const removeScreenshot = () => {
-    setScreenshotFile(null);
-    setScreenshotPreview('');
+  const removeScreenshot = (index: number) => {
+    const newFiles = screenshotFiles.filter((_, i) => i !== index);
+    const newPreviews = screenshotPreviews.filter((_, i) => i !== index);
+    setScreenshotFiles(newFiles);
+    setScreenshotPreviews(newPreviews);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -109,7 +118,7 @@ export default function JournalFormCard({ onSubmit, isSubmitting }: JournalFormC
     
     onSubmit({
       ...formData,
-      screenshotFile: screenshotFile || undefined
+      screenshotFiles: screenshotFiles.length > 0 ? screenshotFiles : undefined
     });
 
     // Reset form
@@ -118,8 +127,8 @@ export default function JournalFormCard({ onSubmit, isSubmitting }: JournalFormC
       pnl: '',
       notes: ''
     });
-    setScreenshotFile(null);
-    setScreenshotPreview('');
+    setScreenshotFiles([]);
+    setScreenshotPreviews([]);
   };
 
   const isValid = formData.asset_ticker && formData.pnl && formData.notes;
@@ -231,46 +240,66 @@ export default function JournalFormCard({ onSubmit, isSubmitting }: JournalFormC
 
           {/* Educational Screenshot Upload */}
           <div className="space-y-4">
-            <Label>Educational Screenshot (Optional)</Label>
+            <Label>Educational Screenshots (Optional)</Label>
             <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleFileUpload}
                 className="hidden"
                 id="screenshot-upload"
               />
               
-              {!screenshotPreview ? (
+              {screenshotPreviews.length === 0 ? (
                 <label
                   htmlFor="screenshot-upload"
                   className="cursor-pointer flex flex-col items-center space-y-2"
                 >
                   <Upload className="w-8 h-8 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    Upload educational screenshot (optional)
+                    Upload educational screenshots (optional)
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    PNG, JPG up to 10MB - For educational analysis only
+                    PNG, JPG up to 15MB each • Up to 3 images - For educational analysis only
                   </span>
                 </label>
               ) : (
-                <div className="relative">
-                  <img
-                    src={screenshotPreview}
-                    alt="Educational screenshot preview"
-                    className="max-w-full max-h-48 mx-auto rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={removeScreenshot}
-                    className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                  <div className="mt-2 flex items-center justify-center gap-2">
+                <div className="space-y-4">
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    {screenshotPreviews.map((preview, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={preview}
+                          alt={`Educational screenshot ${index + 1}`}
+                          className="w-24 h-24 object-cover rounded-lg border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeScreenshot(index)}
+                          className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {screenshotFiles.length < 3 && (
+                    <label
+                      htmlFor="screenshot-upload"
+                      className="cursor-pointer inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Add more screenshots ({screenshotFiles.length}/3)
+                    </label>
+                  )}
+
+                  <div className="flex items-center justify-center gap-2">
                     <FileImage className="w-4 h-4 text-green-400" />
-                    <span className="text-sm text-green-400">Educational screenshot ready</span>
+                    <span className="text-sm text-green-400">
+                      {screenshotFiles.length} educational screenshot{screenshotFiles.length !== 1 ? 's' : ''} ready
+                    </span>
                   </div>
                 </div>
               )}

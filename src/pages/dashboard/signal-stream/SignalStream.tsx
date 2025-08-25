@@ -163,17 +163,6 @@ export default function SignalStream() {
             )}
           </div>
 
-          {/* Educational Market Patterns */}
-          <div className="p-6 border-b border-gray-800/50">
-            <div className="flex items-center gap-2 mb-3">
-              <BookOpen className="w-5 h-5 text-green-500" />
-              <h3 className="text-white font-semibold">Educational Market Patterns</h3>
-            </div>
-            <p className="text-gray-400 text-sm">
-              Learn from real-time market movements and trading strategies from our expert educators.
-            </p>
-          </div>
-
           {/* Status Filters */}
           <div className="p-6 border-b border-gray-800/50">
             <div className="space-y-2">

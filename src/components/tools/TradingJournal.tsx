@@ -116,8 +116,8 @@ export default function TradingJournal() {
             const compressedFile = await compressImage(data.screenshotFile, {
               maxWidth: 1920,
               maxHeight: 1080,
-              quality: 0.8,
-              maxFileSize: 2 * 1024 * 1024 // 2MB
+              quality: 0.9,
+              maxFileSize: 15 * 1024 * 1024 // 15MB - matching JournalFormCard
             });
             
             toast.info("Uploading educational screenshot...");

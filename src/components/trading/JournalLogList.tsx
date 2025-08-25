@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { Trash2, Brain, MessageSquare, Trophy, Target } from "lucide-react";
 import { TradeJournalEntry } from "@/api/entities";
-import { ImageGallery } from '@/components/ui/image-gallery';
+import { ImageGalleryWithUrls } from "@/components/tools/ImageGalleryWithUrls";
 import { useSignedUrls } from '@/hooks/useSignedUrls';
 
 interface JournalLogListProps {
@@ -125,27 +125,12 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                   </div>
                 )}
 
+                {/* Screenshots Display */}
                 {(entry as any).screenshot_urls && (entry as any).screenshot_urls.length > 0 ? (
-                  <ImageGalleryWithUrls 
-                    paths={(entry as any).screenshot_urls} 
-                    alt="Trade charts"
-                  />
-                ) : entry.screenshot_url && (
-                  <div className="mt-3">
-                    <div className="relative group cursor-pointer" onClick={() => window.open(entry.screenshot_url, "_blank")}>
-                      <img
-                        src={entry.screenshot_url}
-                        alt="Trade screenshot"
-                        className="rounded-lg max-h-32 object-cover transition-all duration-200 group-hover:opacity-80 border border-border"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg transition-all duration-200 flex items-center justify-center">
-                        <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                          Click to expand
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  <ImageGalleryWithUrls paths={(entry as any).screenshot_urls} />
+                ) : entry.screenshot_url ? (
+                  <ImageGalleryWithUrls paths={[entry.screenshot_url]} />
+                ) : null}
               </CardContent>
             </Card>
           </motion.div>
@@ -156,17 +141,6 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
 });
 
 JournalLogList.displayName = 'JournalLogList';
-
-// Helper component for image gallery with signed URLs
-const ImageGalleryWithUrls: React.FC<{ paths: string[], alt: string }> = ({ paths, alt }) => {
-  const { signedUrls, loading, error } = useSignedUrls(paths);
-  
-  if (loading) return <div className="text-sm text-muted-foreground mt-3">Loading images...</div>;
-  if (error) return <div className="text-sm text-red-600 mt-3">Error loading images: {error}</div>;
-  if (signedUrls.length === 0) return null;
-  
-  return <ImageGallery images={signedUrls} alt={alt} className="mt-3" />;
-};
 
 export default JournalLogList;
 

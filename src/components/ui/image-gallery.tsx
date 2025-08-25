@@ -153,26 +153,26 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   if (!images || images.length === 0) return null;
 
-  // Render single image - centered with max height
+  // Single image: consistent thumbnail size like multi-image
   if (images.length === 1) {
     return (
-      <>
-        <div className={cn("cursor-pointer group relative flex justify-center", className)}>
-          <div className="relative overflow-hidden rounded-lg">
-            <img 
-              src={images[0]} 
-              alt={alt || 'Image'}
-              className="max-h-48 w-auto object-contain transition-transform duration-300 group-hover:scale-105 rounded-lg"
-              onClick={() => openLightbox(0)}
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all duration-200 flex items-center justify-center">
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-2">
-                <ZoomIn className="w-4 h-4 text-white" />
-              </div>
+      <div className="flex justify-start">
+        <div 
+          className="relative overflow-hidden rounded-lg bg-muted group cursor-pointer transition-all duration-300 hover:shadow-lg w-32 h-24"
+          onClick={() => openLightbox(0)}
+        >
+          <img
+            src={images[0]}
+            alt="Gallery image"
+            className="w-full h-full object-contain"
+          />
+          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <div className="text-white text-sm font-medium flex items-center gap-2">
+              <ZoomIn className="w-4 h-4" />
+              View
             </div>
           </div>
         </div>
-
         <ImageLightbox
           images={images}
           currentIndex={currentIndex}
@@ -180,38 +180,32 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
           onClose={closeLightbox}
           alt={alt}
         />
-      </>
+      </div>
     );
   }
 
-  // Multiple images grid display - single row for 2-3 images
+  // Multiple images: horizontal scroll layout with consistent sizing
   return (
-    <>
-      <div className={cn("flex gap-2 justify-start", className)}>
-        {images.slice(0, 3).map((image, index) => (
-          <div key={index} className="cursor-pointer group relative flex-1 min-w-0">
-            <div className="relative overflow-hidden rounded-lg">
-              <img 
-                src={image} 
-                alt={`${alt} ${index + 1}`}
-                className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105"
-                onClick={() => openLightbox(index)}
-              />
-              {index === 2 && images.length > 3 && (
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                  <span className="text-white text-lg font-semibold">+{images.length - 3}</span>
-                </div>
-              )}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all duration-200 flex items-center justify-center">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded-full p-1">
-                  <ZoomIn className="w-3 h-3 text-white" />
-                </div>
-              </div>
+    <div className="flex gap-2 overflow-x-auto pb-2">
+      {images.map((image, index) => (
+        <div 
+          key={index} 
+          className="relative overflow-hidden rounded-lg bg-muted group cursor-pointer transition-all duration-300 hover:shadow-lg flex-shrink-0 w-32 h-24"
+          onClick={() => openLightbox(index)}
+        >
+          <img
+            src={image}
+            alt={`Gallery image ${index + 1}`}
+            className="w-full h-full object-contain"
+          />
+          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <div className="text-white text-sm font-medium flex items-center gap-2">
+              <ZoomIn className="w-4 h-4" />
+              View
             </div>
           </div>
-        ))}
-      </div>
-
+        </div>
+      ))}
       <ImageLightbox
         images={images}
         currentIndex={currentIndex}
@@ -219,6 +213,6 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
         onClose={closeLightbox}
         alt={alt}
       />
-    </>
+    </div>
   );
 };

@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AddTradeModal from "@/components/trading/AddTradeModal";
 import { TradeFormData } from "@/hooks/useTradeForm";
+import { ImageGalleryWithUrls } from "@/components/tools/ImageGalleryWithUrls";
 
 // Enhanced Types
 interface Trade {
@@ -31,6 +32,7 @@ interface Trade {
   session?: "sydney" | "tokyo" | "london" | "newyork";
   notes?: string;
   screenshot_url?: string;
+  screenshot_urls?: string[];
   ai_feedback?: string;
   created_at: string;
   updated_at: string;
@@ -243,6 +245,7 @@ export const TradingJournalApp: React.FC = () => {
         session: undefined,
         notes: trade.notes,
         screenshot_url: trade.screenshot_url,
+        screenshot_urls: trade.screenshot_urls,
         ai_feedback: trade.ai_positive_feedback,
         created_at: trade.created_at,
         updated_at: trade.updated_at
@@ -276,6 +279,7 @@ export const TradingJournalApp: React.FC = () => {
               session: undefined,
               notes: trade.notes,
               screenshot_url: trade.screenshot_url,
+              screenshot_urls: trade.screenshot_urls,
               ai_feedback: trade.ai_positive_feedback,
               created_at: trade.created_at,
               updated_at: trade.updated_at
@@ -452,6 +456,32 @@ Please provide a brief analysis focusing on what went well, what could be improv
     screenshotFiles?: File[];
   }) => {
     if (!user) return;
+    
+    // Create optimistic entry for immediate UI update
+    const optimisticTrade: Trade = {
+      id: `optimistic-${Date.now()}`,
+      user_id: user.id,
+      date: tradeData.date,
+      asset: tradeData.asset,
+      direction: tradeData.direction || "long",
+      outcome: tradeData.outcome || "win",
+      pnl: tradeData.pnl || 0,
+      entry_price: tradeData.entry_price,
+      exit_price: tradeData.exit_price,
+      position_size: tradeData.position_size,
+      strategy: tradeData.strategy,
+      emotion: tradeData.emotion,
+      session: tradeData.session || undefined,
+      notes: tradeData.notes,
+      screenshot_urls: [], // Will be updated after upload
+      ai_feedback: undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    // Add optimistic entry immediately
+    setTrades(prev => [optimisticTrade, ...prev]);
+
     try {
       let screenshotUrls: string[] = [];
 
@@ -506,7 +536,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
         exit_price: tradeData.exit_price,
         position_size: tradeData.position_size,
         notes: tradeData.notes,
-        screenshot_url: tradeData.screenshot_url, // Keep legacy field for backward compatibility
+        screenshot_url: tradeData.screenshot_url || (screenshotUrls.length > 0 ? screenshotUrls[0] : null), // Keep legacy field for backward compatibility
         screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : []
       };
 
@@ -1377,14 +1407,12 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           </div>}
                       </div>
 
-                      {trade.ai_feedback && <div className="mt-4 p-3 rounded-lg bg-muted/30 border-l-4 border-l-primary">
-                          <div className="flex items-start gap-2">
-                            <Brain className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                          </div>
-                            <p className="text-sm text-foreground leading-relaxed">
-                              {trade.ai_feedback}
-                            </p>
-                        </div>}
+                      {/* Screenshots Display */}
+                      {(trade.screenshot_urls && trade.screenshot_urls.length > 0) ? (
+                        <ImageGalleryWithUrls paths={trade.screenshot_urls} />
+                      ) : trade.screenshot_url ? (
+                        <ImageGalleryWithUrls paths={[trade.screenshot_url]} />
+                      ) : null}
                     </div>
 
                     <div className="text-right ml-6">

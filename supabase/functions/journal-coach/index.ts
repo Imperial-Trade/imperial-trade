@@ -20,58 +20,28 @@ interface GenerationMetrics {
   finish_reason: string;
 }
 
-const JOURNAL_SYSTEM_PROMPT = `SYSTEM PROMPT — Motivational Trading Coach
+const JOURNAL_SYSTEM_PROMPT = `Trading Coach - Give motivational feedback in JSON format.
 
-ROLE
-You are a human-sounding motivational trading coach inside a Trading Journal. Write as if you're speaking directly to the trader, not like an essay or report. Keep it conversational and natural. Your job is to give short, powerful, human-like feedback every time a trader logs a trade.
+Rules:
+- Return: {"feedback": "2-4 sentences max 120 chars"}
+- Be encouraging and reference trader's notes
+- End with motivational punchline
+- Winning trades: praise execution, strategy
+- Losing trades: praise courage to log, frame as learning
+- Human tone with contractions (you're, that's, it's)
 
-OUTPUT CONTRACT
-- Return ONLY valid JSON as: { "feedback": "<coach message>" }
-- STRICT LIMITS: 3–5 sentences total, maximum 200 characters, under 35 words
-- No lists, no headings, no bullet points
-- End with a single motivational punchline (one sentence)
-- Keep it concise and conversational (human tone)
+Examples:
+Win: "Your patience paid off on EURUSD! That setup recognition shows real skill. You're becoming consistent!"
+Loss: "Logging this GBPJPY loss shows courage. Every pro trader learns from setups like this. You're growing!"`;
 
-PERSONALIZATION RULES
-- Read the trader's notes and use them directly (quote small fragments if helpful).
-- If a screenshot/chart is provided, reference what's visible (setups, indicators, entries/exits, patterns).
-- Use natural language with contractions (you'll, that's, it's). Avoid buzzword spam and emoji.
-- Vary tone deliberately entry-to-entry (Hype, Calm Mentor, Tough-Love, Identity, Momentum, Reward, Strategic). Do NOT label the tone.
+// Build compact prompt for efficient token usage
+const buildPrompt = (userName: string, outcome: string, asset: string, pnl: number, notes: string, hasScreenshot: boolean) => `
+${userName} traded ${asset}: ${outcome} (${pnl} USD)
+Notes: "${notes}"
+${hasScreenshot ? "Screenshot attached." : ""}
 
-STYLE GUARDRAILS
-- Always motivational and uplifting.
-- Never discourage—reframe into growth, resilience, or mastery.
-- Human voice > slogan machine. Avoid shouting, all-caps, and repeated catchphrases.
-- Use the rotation bank ONLY as inspiration. NEVER copy lines verbatim. Always paraphrase and adapt to the trader's context.
-- CRITICAL: Never quote more than 12 consecutive words from user notes. Paraphrase or reference concepts instead.
-
-GREEN DAY LOGIC (Profitable Trades)
-- Do NOT praise journaling here.
-- Highlight what went well (execution, patience, strategy, chart reading).
-- If screenshot exists, mention a concrete visual detail.
-- Frame the win as mastery/consistency (not luck).
-- Finish with a motivating punchline.
-
-RED DAY LOGIC (Losing Trades)
-- Briefly acknowledge the sting, then move on.
-- Praise courage for logging and naming what went wrong.
-- If screenshot exists, acknowledge what the chart reveals (e.g., stop placement, invalidation).
-- Reframe to resilience, awareness, identity growth.
-- Finish with a motivational punchline that keeps the trader proud to continue.
-
-ROTATION BANK — INSPIRATION ONLY (DO NOT COPY WORD-FOR-WORD)
-[Keep Green Day and Red Day tone examples here as written in the original prompt]
-
-EXECUTION GOALS
-- Green days: Celebrate execution and mastery.
-- Red days: Celebrate journaling courage and resilience.
-- Always tie comments to notes/screenshot specifics.
-- Always finish with a strong punchline.
-- Keep total length tight (3–5 sentences).
-
-RESPONSE FORMAT (repeat for emphasis)
-Return ONLY:
-{ "feedback": "<3–5 sentence human message (max 200 chars, under 35 words) ending with a motivational punchline>" }`;
+${JOURNAL_SYSTEM_PROMPT}
+Return JSON: {"feedback": "encouraging message"}`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -168,30 +138,27 @@ serve(async (req) => {
     const notes_trunc_1 = smartTruncateNotes(tradeNotes, 1200);
     const notes_trunc_2 = smartTruncateNotes(tradeNotes, 800);
     
-    // Build single compact prompt
-    const singlePrompt = `${JOURNAL_SYSTEM_PROMPT}
-
---- TASK ---
-${userName} submitted a ${tradeOutcome} with ${pnlAmount} USD ${journalEntry.pnl > 0 ? "profit" : "loss"}.
-Asset: ${journalEntry.asset_ticker}
-Trade Type: ${journalEntry.trade_type || "Not specified"}
-Their notes: "${notes_trunc_1}"
-${journalEntry.screenshot_url ? "They also uploaded a screenshot for analysis." : ""}
-
-Provide a supportive coaching response that highlights specific concepts from their notes and validates their trading analysis skills.
-
-Return JSON: {"feedback": "your 3-5 sentence message (max 200 chars, under 35 words) ending with motivational punchline"}`;
-
+    // Build compact prompt using new efficient structure
+    const singlePrompt = buildPrompt(
+      userName,
+      tradeOutcome,
+      journalEntry.asset_ticker,
+      pnlAmount,
+      notes_trunc_1,
+      !!journalEntry.screenshot_url
+    );
+    
     const startTime = Date.now();
+    // Start with very conservative limits to avoid MAX_TOKENS
     let aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", singlePrompt, {
-      maxOutputTokens: 512,
+      maxOutputTokens: 180,
       timeoutMs: 12000,
       responseSchema: {
         type: "object",
         properties: {
           feedback: { 
             type: "string",
-            maxLength: 200
+            maxLength: 120
           }
         },
         required: ["feedback"]
@@ -210,21 +177,23 @@ Return JSON: {"feedback": "your 3-5 sentence message (max 200 chars, under 35 wo
         console.log("Journal Coach - First attempt failed, retrying...", parsedResponse);
         fallbackReason = parsedResponse.fallback_reason;
         
-        // Retry with shorter notes and stricter constraints
-        const retryPrompt = singlePrompt
-          .replace(notes_trunc_1, notes_trunc_2)
-          .replace('Return JSON: {"feedback": "your 3-5 sentence message (max 200 chars, under 35 words) ending with motivational punchline"}',
-                  'Return JSON: {"feedback": "your 3-4 sentence message (max 150 chars, under 25 words) ending with motivational punchline"}');
+        // Retry with ultra-minimal prompt and aggressive limits
+        const minimalPrompt = `Trading coach feedback for ${userName}'s ${tradeOutcome} (${pnlAmount} USD).
+Asset: ${journalEntry.asset_ticker}
+Notes: "${notes_trunc_2}"
+
+Give encouraging 2-3 sentence feedback in JSON.
+Return: {"feedback": "max 80 chars motivational message"}`;
         
-        aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", retryPrompt, {
-          maxOutputTokens: 384,
-          timeoutMs: 12000,
+        aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", minimalPrompt, {
+          maxOutputTokens: 120,
+          timeoutMs: 8000,
           responseSchema: {
             type: "object",
             properties: {
               feedback: { 
                 type: "string",
-                maxLength: 150
+                maxLength: 80
               }
             },
             required: ["feedback"]
@@ -285,8 +254,14 @@ Return JSON: {"feedback": "your 3-5 sentence message (max 200 chars, under 35 wo
       fallback_reason: fallbackReason,
       used_retry: usedRetry,
       notes_len: tradeNotes.length,
-      notes_trunc_len: notes_trunc_1.length,
-      prompt_char_len: singlePrompt.length,
+      notes_trunc_len: notes_trunc_2.length,
+      prompt_char_len: usedRetry ? 
+        `Trading coach feedback for ${userName}'s ${tradeOutcome} (${pnlAmount} USD).
+Asset: ${journalEntry.asset_ticker}
+Notes: "${notes_trunc_2}"
+
+Give encouraging 2-3 sentence feedback in JSON.
+Return: {"feedback": "max 80 chars motivational message"}`.length : singlePrompt.length,
       model_latency_ms: modelLatencyMs,
       final_feedback_len: finalFeedback.length,
       tokens_out: finalMeta.tokensOut || "unknown",

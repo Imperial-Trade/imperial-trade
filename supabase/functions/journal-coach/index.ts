@@ -523,17 +523,26 @@ serve(async (req) => {
       );
     }
 
-    // Get API key
-    const googleApiKey = Deno.env.get('GOOGLE_AI_API_KEY');
+    // Get API key - check multiple possible names
+    const googleApiKey = Deno.env.get('GOOGLE_AI_API_KEY') || 
+                         Deno.env.get('GOOGLE_API_KEY') || 
+                         Deno.env.get('GEMINI_API_KEY');
+    
     if (!googleApiKey) {
+      console.error('Journal Coach - No API key found. Checked: GOOGLE_AI_API_KEY, GOOGLE_API_KEY, GEMINI_API_KEY');
       return new Response(
-        JSON.stringify({ error: 'Google AI API key not configured' }),
+        JSON.stringify({ error: 'Google AI API key not configured. Please set GOOGLE_AI_API_KEY, GOOGLE_API_KEY, or GEMINI_API_KEY' }),
         {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
+
+    // Log which key was used (for debugging)
+    const keyUsed = Deno.env.get('GOOGLE_AI_API_KEY') ? 'GOOGLE_AI_API_KEY' :
+                   Deno.env.get('GOOGLE_API_KEY') ? 'GOOGLE_API_KEY' : 'GEMINI_API_KEY';
+    console.log(`Journal Coach - Using API key: ${keyUsed}`);
 
     const notes = journalEntry.notes || '';
     const asset = journalEntry.asset_ticker || 'Unknown';

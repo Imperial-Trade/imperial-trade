@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { supabase } from '@/integrations/supabase/client';
 import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';

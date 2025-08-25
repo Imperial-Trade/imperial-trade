@@ -23,7 +23,7 @@ interface GenerationMetrics {
 }
 
 // Plain-text system prompt for text mode
-const PLAIN_TEXT_SYSTEM_PROMPT = `You are an encouraging trading coach. Give motivational feedback in 2-3 sentences (≤300 characters). Be positive and constructive. Reference the trader's notes. End with encouragement. Do not return JSON. Return plain text only.`;
+const PLAIN_TEXT_SYSTEM_PROMPT = `You are an encouraging trading coach. Give motivational feedback in 2-3 sentences (≤500 characters). Be positive and constructive. Reference the trader's notes. End with encouragement. Do not return JSON. Return plain text only.`;
 
 // Build plain-text prompt for text mode
 const buildPlainTextPrompt = (userName: string, outcome: string, asset: string, pnl: number, notes: string, hasScreenshot: boolean) => `
@@ -65,7 +65,7 @@ ${JOURNAL_SYSTEM_PROMPT}
 Return JSON: {"feedback": "encouraging message"}`;
 
 // Clamp and sanitize text response
-function clampAndSanitize(text: string, maxLength: number = 300): { text: string; wasClamped: boolean } {
+function clampAndSanitize(text: string, maxLength: number = 500): { text: string; wasClamped: boolean } {
   // Normalize whitespace and trim
   let cleaned = text.replace(/\s+/g, ' ').trim();
   
@@ -216,8 +216,8 @@ serve(async (req) => {
       );
       
       aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", jsonPrompt, {
-        maxOutputTokens: 180,
-        timeoutMs: 12000,
+        maxOutputTokens: 1000,
+        timeoutMs: 15000,
         responseSchema: {
           type: "object",
           properties: {
@@ -252,8 +252,8 @@ serve(async (req) => {
       );
       
       aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", textPrompt, {
-        maxOutputTokens: 220,
-        timeoutMs: 12000
+        maxOutputTokens: 1000,
+        timeoutMs: 15000
         // No responseSchema - defaults to text/plain mode
       });
 
@@ -275,8 +275,8 @@ serve(async (req) => {
         );
         
         aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", retryPrompt, {
-          maxOutputTokens: 160,
-          timeoutMs: 8000
+          maxOutputTokens: 750,
+          timeoutMs: 12000
         });
         
         usedRetry = true;
@@ -335,12 +335,12 @@ serve(async (req) => {
         }
       } else {
         // Use plain text response directly, clamp and sanitize
-        const clampResult = clampAndSanitize(aiResult.text, 300);
+        const clampResult = clampAndSanitize(aiResult.text, 500);
         finalFeedback = clampResult.text;
         wasClamped = clampResult.wasClamped;
         
         if (wasClamped) {
-          console.log("Journal Coach - Clamped response to 300 characters");
+          console.log("Journal Coach - Clamped response to 500 characters");
         }
       }
     }

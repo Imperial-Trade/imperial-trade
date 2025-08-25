@@ -292,7 +292,10 @@ export default function SignalStream() {
                           onOrderActivation={handleOrderActivation}
                           isAdmin={user?.user_metadata?.access_level === "admin"}
                           isCreator={user?.id === signals?.find(s => s.id === signal.id)?.userId}
-                          livePrice={Math.random() * 100} // Mock current price
+                          livePrice={Math.random() * 100}
+                          connectionStatus="connected"
+                          priceSource="WebSocket"
+                          isRecentClosure={false}
                         />
                       </motion.div>
                     ))}

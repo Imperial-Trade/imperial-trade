@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSignalRealtime } from "@/contexts/SignalRealtimeContext";
@@ -103,7 +102,7 @@ export default function SignalStream() {
     return matchesSearch && matchesStatus && matchesType && matchesAsset;
   });
 
-  // Event handlers for TradeAlertCard
+  // Event handlers for TradeAlertCard - Fixed to match expected signatures
   const handleStatusUpdate = async (alert: TradeAlertData, newStatus: string) => {
     try {
       // Implementation would be handled by the signal realtime context
@@ -113,10 +112,10 @@ export default function SignalStream() {
     }
   };
 
-  const handleTakeProfitHit = async (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => {
+  const handleTakeProfitHit = async (signal: TradeAlertData, tpLevel: number) => {
     try {
       // Implementation would be handled by the signal realtime context
-      toast.success(`Take Profit ${newTPHits[newTPHits.length - 1]} hit!`);
+      toast.success(`Take Profit ${tpLevel} hit!`);
     } catch (error) {
       toast.error("Failed to update take profit");
     }

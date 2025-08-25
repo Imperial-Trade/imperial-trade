@@ -62,7 +62,15 @@ const formatDate = (dateString: string): string => {
 
 export default function SignalStream() {
   const { user } = useAuth();
-  const { signals } = useSignalRealtime();
+  const {
+    signals,
+    subscribe,
+    unsubscribe,
+    refreshSignals,
+    connectionStatus,
+    error: rtError,
+    lastUpdated
+  } = useSignalRealtime();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"all" | "active" | "pending" | "closed">("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,6 +82,23 @@ export default function SignalStream() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Ensure realtime subscription is active on this page
+  useEffect(() => {
+    console.log("[SignalStream] Mount -> subscribing to realtime");
+    subscribe();
+    return () => {
+      console.log("[SignalStream] Unmount -> unsubscribing from realtime");
+      unsubscribe();
+    };
+  }, [subscribe, unsubscribe]);
+
+  // Initial data load (in case already connected) and basic status logging
+  useEffect(() => {
+    console.log("[SignalStream] connectionStatus:", connectionStatus, "error:", rtError, "lastUpdated:", lastUpdated);
+    // Kick off a refresh so the list is populated immediately on mount
+    refreshSignals();
+  }, [refreshSignals, connectionStatus, rtError, lastUpdated]);
 
   useEffect(() => {
     setIsLoading(false);

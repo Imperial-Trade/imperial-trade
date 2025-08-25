@@ -78,7 +78,7 @@ export const LiveMarketTicker: React.FC<LiveMarketTickerProps> = ({ className })
               </span>
               <div className={cn(
                 "flex items-center gap-1 text-sm",
-                item.isUp ? "text-accentGreen-light" : "text-red-400"
+                item.isUp ? "text-green-500" : "text-red-400"
               )}>
                 {item.isUp ? (
                   <TrendingUp className="w-3 h-3" />
@@ -91,7 +91,7 @@ export const LiveMarketTicker: React.FC<LiveMarketTickerProps> = ({ className })
               </div>
               <div className={cn(
                 "text-xs font-medium",
-                item.isUp ? "text-accentGreen-light" : "text-red-400"
+                item.isUp ? "text-green-500" : "text-red-400"
               )}>
                 {item.isUp ? '+' : ''}{item.changePercent.toFixed(2)}%
               </div>

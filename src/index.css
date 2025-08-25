@@ -5,15 +5,35 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Apple Monochrome Design System */
+/* Professional Trading Platform Design System */
 
 @layer base {
 :root {
-  /* Trading Journal specific variables */
-  --accent-sage: 150 30% 60%;
-  --accent-mint: 160 40% 70%; 
-  --accent-forest: 140 50% 30%;
-    /* Spanish Gray Monochromatic Palette - Exact from image */
+    /* Trading Journal specific variables */
+    --accent-sage: 150 30% 60%;
+    --accent-mint: 160 40% 70%; 
+    --accent-forest: 140 50% 30%;
+    
+    /* Professional Trading Color Palette */
+    --trading-bg-primary: 220 13% 9%;      /* Deep charcoal background */
+    --trading-bg-secondary: 220 13% 12%;    /* Slightly lighter panels */
+    --trading-bg-tertiary: 220 13% 15%;     /* Cards and elevated surfaces */
+    --trading-border: 220 13% 20%;          /* Border color */
+    --trading-text-primary: 0 0% 98%;       /* Primary white text */
+    --trading-text-secondary: 0 0% 70%;     /* Secondary gray text */
+    --trading-text-muted: 0 0% 45%;         /* Muted text */
+    --trading-success: 142 76% 36%;         /* Professional green */
+    --trading-success-bg: 142 76% 36% / 0.1; /* Green background */
+    --trading-danger: 0 84% 60%;            /* Professional red */
+    --trading-danger-bg: 0 84% 60% / 0.1;   /* Red background */
+    --trading-warning: 43 96% 56%;          /* Professional yellow/gold */
+    --trading-warning-bg: 43 96% 56% / 0.1; /* Yellow background */
+    --trading-info: 217 91% 60%;            /* Professional blue */
+    --trading-info-bg: 217 91% 60% / 0.1;   /* Blue background */
+    --trading-premium: 280 100% 70%;        /* Premium purple accent */
+    --trading-glass: 220 13% 15% / 0.8;     /* Glass effect */
+
+    /* Spanish Gray Monochromatic Palette - Light mode base */
     --background: 0 0% 100%; /* Pure white background */
     --foreground: 0 0% 26%; /* #434343 */
 
@@ -78,7 +98,7 @@
     --sidebar-border: 0 0% 80%;
     --sidebar-ring: 0 0% 26%;
 
-    /* Imperial White Gold & Bronze Gradient Colors for Feature Fonts - Updated to match image */
+    /* Imperial White Gold & Bronze Gradient Colors for Feature Fonts */
     --imperial-white: 0 0% 98%;
     --imperial-platinum: 0 0% 92%;
     --imperial-gold-light: 43 80% 75%;
@@ -93,11 +113,6 @@
     --bg-gradient-medium: 0 0% 89%;
     --bg-gradient-dark: 0 0% 49%;
     --bg-gradient-black: 0 0% 26%;
-
-    /* Subtle Green Accent Colors */
-    --accent-sage: 140 25% 65%;
-    --accent-mint: 150 30% 75%;
-    --accent-forest: 145 40% 45%;
 
     /* Feature accent colors - for product features only */
     --feature-blue: 210 100% 56%;
@@ -130,79 +145,61 @@
   }
 
   .dark {
-    /* Trading platform dark mode - inspired by professional trading interfaces */
-    --background: 210 24% 9%; /* Dark navy background #121826 */
-    --foreground: 0 0% 95%; /* Pure white text */
+    /* Professional Trading Platform Dark Mode */
+    --background: hsl(var(--trading-bg-primary));
+    --foreground: hsl(var(--trading-text-primary));
 
-    --card: 210 20% 12%; /* Darker navy cards #1A1F2E */
-    --card-foreground: 0 0% 95%; /* White text */
+    --card: hsl(var(--trading-bg-tertiary));
+    --card-foreground: hsl(var(--trading-text-primary));
 
-    --popover: 210 20% 12%; /* Dark navy */
-    --popover-foreground: 0 0% 95%; /* White text */
+    --popover: hsl(var(--trading-bg-tertiary));
+    --popover-foreground: hsl(var(--trading-text-primary));
 
-    --primary: 43 74% 60%; /* Gold primary #E6B800 */
-    --primary-foreground: 210 24% 9%; /* Dark text on gold */
+    --primary: hsl(var(--trading-success));
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 16% 16%; /* Medium dark navy #242937 */
-    --secondary-foreground: 0 0% 85%; /* Light grey text */
+    --secondary: hsl(var(--trading-bg-secondary));
+    --secondary-foreground: hsl(var(--trading-text-secondary));
 
-    --muted: 210 18% 14%; /* Dark muted background #1E232F */
-    --muted-foreground: 0 0% 65%; /* Medium grey text */
+    --muted: hsl(var(--trading-bg-secondary));
+    --muted-foreground: hsl(var(--trading-text-muted));
 
-    --accent: 210 14% 18%; /* Dark accent background #282F3E */
-    --accent-foreground: 0 0% 95%; /* White text */
+    --accent: hsl(var(--trading-bg-tertiary));
+    --accent-foreground: hsl(var(--trading-text-primary));
 
-    --destructive: 0 84% 60%;
+    --destructive: hsl(var(--trading-danger));
     --destructive-foreground: 0 0% 98%;
 
-    --border: 210 12% 22%; /* Dark navy border #323849 */
-    --input: 210 18% 14%; /* Dark input background */
-    --ring: 43 74% 60%; /* Gold ring */
-
-    /* Sidebar colors for trading dark theme */
-    --sidebar-background: 210 24% 9%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 43 74% 60%;
-    --sidebar-primary-foreground: 210 24% 9%;
-    --sidebar-accent: 210 14% 18%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 210 12% 22%;
-    --sidebar-ring: 43 74% 60%;
+    --border: hsl(var(--trading-border));
+    --input: hsl(var(--trading-bg-secondary));
+    --ring: hsl(var(--trading-success));
 
     /* Trading platform gradient colors */
-    --bg-gradient-white: 210 24% 9%;
-    --bg-gradient-light: 210 20% 12%;
-    --bg-gradient-medium: 210 16% 16%;
-    --bg-gradient-dark: 210 12% 22%;
-    --bg-gradient-black: 210 28% 7%;
+    --bg-gradient-white: hsl(var(--trading-bg-primary));
+    --bg-gradient-light: hsl(var(--trading-bg-secondary));
+    --bg-gradient-medium: hsl(var(--trading-bg-tertiary));
+    --bg-gradient-dark: hsl(var(--trading-border));
+    --bg-gradient-black: 220 28% 7%;
 
-    /* Gold accents for trading interface */
-    --imperial-white: 0 0% 95%;
-    --imperial-platinum: 0 0% 85%;
-    --imperial-gold-light: 43 80% 70%;
-    --imperial-gold: 43 74% 60%;
-    --imperial-bronze-light: 43 70% 50%;
-    --imperial-bronze: 43 65% 40%;
-    --imperial-bronze-dark: 43 60% 30%;
+    /* Sidebar colors for trading dark theme */
+    --sidebar-background: hsl(var(--trading-bg-primary));
+    --sidebar-foreground: hsl(var(--trading-text-primary));
+    --sidebar-primary: hsl(var(--trading-success));
+    --sidebar-primary-foreground: hsl(var(--trading-bg-primary));
+    --sidebar-accent: hsl(var(--trading-bg-tertiary));
+    --sidebar-accent-foreground: hsl(var(--trading-text-primary));
+    --sidebar-border: hsl(var(--trading-border));
+    --sidebar-ring: hsl(var(--trading-success));
 
-    /* Trading accent colors */
-    --accent-green: 142 69% 58%; /* Trading green #00C896 */
-    --accent-blue: 210 100% 60%; /* Trading blue #0080FF */
-    --accent-gold: 43 74% 60%; /* Trading gold #E6B800 */
-    --accent-red: 0 84% 60%; /* Trading red */
+    /* Trading accent colors for dark mode */
+    --accent-green: hsl(var(--trading-success));
+    --accent-blue: 210 100% 60%;
+    --accent-gold: 43 74% 60%;
+    --accent-red: hsl(var(--trading-danger));
     
-    /* Gold to Blue-Green Gradient Colors for dark mode */
-    --gradient-gold-start: 43 74% 60%; /* Gold start */
-    --gradient-gold-mid: 165 50% 50%; /* Blue-green transition */
-    --gradient-bluegreen-end: 180 60% 40%; /* Blue-green end */
-    
-    /* Gold to Red-Bronze Gradient Colors for dark mode */
-    --gradient-gold-bronze-start: 43 74% 60%; /* Gold start */
-    --gradient-red-bronze-end: 15 75% 50%; /* Red-bronze end */
-
     /* Surface colors for components */
-    --surface: 210 20% 12%; /* Component surface */
-    --surface-hover: 210 16% 16%; /* Hover state */
+    --surface: hsl(var(--trading-bg-secondary));
+    --surface-hover: hsl(var(--trading-bg-tertiary));
 
     /* Spanish Gray Palette for dark mode */
     --gray-darkest: 0 0% 95%; /* White text in dark mode */
@@ -212,6 +209,15 @@
     --gray-light: 0 0% 35%; /* Dark grey */
     --gray-lighter: 0 0% 25%; /* Darker grey */
     --gray-lightest: 0 0% 15%; /* Very dark grey */
+
+    /* Imperial colors adjusted for dark mode */
+    --imperial-white: 0 0% 95%;
+    --imperial-platinum: 0 0% 85%;
+    --imperial-gold-light: 43 80% 70%;
+    --imperial-gold: 43 74% 60%;
+    --imperial-bronze-light: 43 70% 50%;
+    --imperial-bronze: 43 65% 40%;
+    --imperial-bronze-dark: 43 60% 30%;
   }
 }
 
@@ -231,7 +237,7 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Apple typography hierarchy */
+  /* Professional Typography */
   h1, h2, h3, h4, h5, h6 {
     color: hsl(var(--foreground));
     font-weight: 600;
@@ -264,348 +270,205 @@
     line-height: 1.6;
   }
 
-  /* Specific overrides for muted text */
-  .text-muted-foreground {
-    color: hsl(var(--muted-foreground)) !important;
+  /* Professional Trading Platform Scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
   }
 
-  .text-secondary {
-    color: hsl(var(--secondary-foreground)) !important;
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--trading-bg-secondary));
   }
 
-  /* Card content text */
-  .card {
-    background: hsl(var(--card));
-    color: hsl(var(--card-foreground));
-    border: 1px solid hsl(var(--border));
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--trading-success));
+    border-radius: 3px;
   }
 
-  /* Input styling */
-  input, textarea, select {
-    background: hsl(var(--input));
-    color: hsl(var(--foreground));
-    border-color: hsl(var(--border));
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--trading-success) / 0.8);
   }
+}
 
-  /* Button text */
-  button {
-    color: hsl(var(--foreground));
-    font-weight: 500;
+/* Professional Trading Animations */
+@keyframes professional-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(var(--trading-success) / 0.3);
   }
+  50% {
+    box-shadow: 0 0 30px hsl(var(--trading-success) / 0.5);
+  }
+}
 
-  /* Labels */
-  label {
-    color: hsl(var(--foreground));
-    font-weight: 500;
+@keyframes price-flash-up {
+  0% { background-color: transparent; }
+  50% { background-color: hsl(var(--trading-success) / 0.2); }
+  100% { background-color: transparent; }
+}
+
+@keyframes price-flash-down {
+  0% { background-color: transparent; }
+  50% { background-color: hsl(var(--trading-danger) / 0.2); }
+  100% { background-color: transparent; }
+}
+
+@keyframes slide-up-professional {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-professional {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Professional Trading Utility Classes */
+.professional-glow {
+  animation: professional-glow 2s ease-in-out infinite;
+}
+
+.price-flash-up {
+  animation: price-flash-up 0.6s ease-out;
+}
+
+.price-flash-down {
+  animation: price-flash-down 0.6s ease-out;
+}
+
+.slide-up-professional {
+  animation: slide-up-professional 0.4s ease-out;
+}
+
+.fade-in-professional {
+  animation: fade-in-professional 0.3s ease-out;
+}
+
+/* Professional Glass Effects */
+.trading-glass {
+  background: hsl(var(--trading-glass));
+  backdrop-filter: blur(20px);
+  border: 1px solid hsl(var(--trading-border));
+}
+
+.trading-card-elevated {
+  box-shadow: 
+    0 4px 12px hsl(var(--trading-bg-primary) / 0.3),
+    0 1px 3px hsl(var(--trading-bg-primary) / 0.1);
+}
+
+.trading-glow-success {
+  box-shadow: 0 0 20px hsl(var(--trading-success) / 0.3);
+}
+
+.trading-glow-danger {
+  box-shadow: 0 0 20px hsl(var(--trading-danger) / 0.3);
+}
+
+.trading-glow-warning {
+  box-shadow: 0 0 20px hsl(var(--trading-warning) / 0.3);
+}
+
+/* Professional Button Styles */
+.trading-button-primary {
+  background: hsl(var(--trading-success));
+  color: white;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.trading-button-primary:hover {
+  background: hsl(var(--trading-success) / 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px hsl(var(--trading-success) / 0.3);
+}
+
+.trading-button-danger {
+  background: hsl(var(--trading-danger));
+  color: white;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.trading-button-danger:hover {
+  background: hsl(var(--trading-danger) / 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px hsl(var(--trading-danger) / 0.3);
+}
+
+/* Professional Card Styles */
+.trading-card {
+  background: hsl(var(--trading-bg-tertiary));
+  border: 1px solid hsl(var(--trading-border));
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.trading-card:hover {
+  border-color: hsl(var(--trading-success) / 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px hsl(var(--trading-bg-primary) / 0.3);
+}
+
+/* Professional Badge Styles */
+.trading-badge-success {
+  background: hsl(var(--trading-success-bg));
+  color: hsl(var(--trading-success));
+  border: 1px solid hsl(var(--trading-success) / 0.2);
+}
+
+.trading-badge-danger {
+  background: hsl(var(--trading-danger-bg));
+  color: hsl(var(--trading-danger));
+  border: 1px solid hsl(var(--trading-danger) / 0.2);
+}
+
+.trading-badge-warning {
+  background: hsl(var(--trading-warning-bg));
+  color: hsl(var(--trading-warning));
+  border: 1px solid hsl(var(--trading-warning) / 0.2);
+}
+
+.trading-badge-info {
+  background: hsl(var(--trading-info-bg));
+  color: hsl(var(--trading-info));
+  border: 1px solid hsl(var(--trading-info) / 0.2);
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .trading-card {
+    margin: 0.5rem 0;
+  }
+  
+  .trading-button-primary,
+  .trading-button-danger {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}
+
+/* High DPI displays optimization */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .trading-glow-success,
+  .trading-glow-danger,
+  .trading-glow-warning {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
   }
 }
 
 /* Theme-aware transitions */
 * {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
-
-/* Apple & Stripe Inspired Animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(40px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes floatAnimation {
-  0%, 100% {
-    transform: translateY(0px) scale(1);
-  }
-  50% {
-    transform: translateY(-20px) scale(1.05);
-  }
-}
-
-@keyframes pulseGlow {
-  0%, 100% {
-    box-shadow: 0 0 40px hsla(242, 47%, 58%, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 60px hsla(242, 47%, 58%, 0.4);
-  }
-}
-
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-@keyframes slideInFromLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-100px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(100px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.animate-float {
-  animation: floatAnimation 8s ease-in-out infinite;
-}
-
-.animate-pulse-glow {
-  animation: pulseGlow 3s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  animation: shimmer 2s linear infinite;
-}
-
-.animate-slide-in-left {
-  animation: slideInFromLeft 0.6s ease-out;
-}
-
-.animate-slide-in-right {
-  animation: slideInFromRight 0.6s ease-out;
-}
-
-.animate-scale-in {
-  animation: scaleIn 0.5s ease-out;
-}
-
-/* Equity curve animations */
-@keyframes drawLine {
-  from {
-    stroke-dashoffset: 300;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes parallaxFloat {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  33% {
-    transform: translateY(-20px) rotate(120deg);
-  }
-  66% {
-    transform: translateY(10px) rotate(240deg);
-  }
-}
-
-@keyframes tech-scan {
-  0% {
-    background-position: -200% center;
-  }
-  100% {
-    background-position: 200% center;
-  }
-}
-
-.animate-parallax-float {
-  animation: parallaxFloat 20s ease-in-out infinite;
-}
-
-/* Scroll reveal animation */
-.scroll-reveal {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 0.6s ease-out;
-}
-
-.scroll-reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Apple/Stripe Inspired Effects */
-.glass-effect {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.dark .glass-effect {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Trading platform dark mode effects */
-.dark .glass-effect {
-  background: rgba(26, 31, 46, 0.4); /* Dark navy with transparency */
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Trading accent glow effects */
-.glow-effect-green {
-  box-shadow: 0 0 20px hsla(142, 69%, 58%, 0.3);
-}
-
-.glow-effect-gold {
-  box-shadow: 0 0 20px hsla(43, 74%, 60%, 0.3);
-}
-
-.glow-effect-blue {
-  box-shadow: 0 0 20px hsla(210, 100%, 60%, 0.3);
-}
-
-/* Trading gradient text effects */
-.gold-text-gradient {
-  background: linear-gradient(135deg, 
-    hsl(var(--accent-gold)) 0%, 
-    hsl(var(--imperial-gold-light)) 50%, 
-    hsl(var(--accent-gold)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: hsl(var(--accent-gold)); /* Fallback color */
-}
-
-/* Two-tone tool title styling */
-.tool-title-two-tone .first-part {
-  color: hsl(var(--foreground)); /* Dark in light mode, light in dark mode */
-}
-
-.tool-title-two-tone .second-part {
-  background: linear-gradient(135deg, 
-    hsl(var(--accent-gold)) 0%, 
-    hsl(var(--imperial-gold-light)) 50%, 
-    hsl(var(--accent-gold)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: hsl(var(--accent-gold)); /* Fallback color */
-}
-
-/* Dark mode optimized gradients */
-.dark .elegant-bg-gradient {
-  background: linear-gradient(135deg, 
-    hsl(var(--bg-gradient-black)) 0%, 
-    hsl(var(--bg-gradient-dark)) 25%, 
-    hsl(var(--bg-gradient-medium)) 50%, 
-    hsl(var(--bg-gradient-light)) 75%, 
-    hsl(var(--bg-gradient-white)) 100%);
-}
-
-.dark .subtle-bg-gradient {
-  background: linear-gradient(180deg, 
-    hsl(var(--bg-gradient-black)) 0%, 
-    hsl(var(--bg-gradient-light)) 100%);
-}
-
-.dark .sophisticated-bg-mesh {
-  background: 
-    radial-gradient(at 40% 20%, hsl(var(--bg-gradient-light)) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, hsl(var(--bg-gradient-medium)) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsl(var(--accent-green) / 0.2) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, hsl(var(--bg-gradient-dark)) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsl(var(--accent-gold) / 0.1) 0px, transparent 50%),
-    radial-gradient(at 80% 100%, hsl(var(--bg-gradient-black)) 0px, transparent 50%),
-    hsl(var(--bg-gradient-black));
-}
-
-/* Imperial White Gold Gradient Text - Updated to match logo */
-.imperial-gradient-text {
-  background: linear-gradient(135deg, 
-    hsl(var(--imperial-white)) 0%, 
-    hsl(var(--imperial-platinum)) 20%, 
-    hsl(var(--imperial-gold-light)) 50%, 
-    hsl(var(--imperial-gold)) 80%, 
-    hsl(var(--imperial-bronze)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.white-gold-gradient {
-  background: linear-gradient(90deg, #ffd700, #ffed4a, #f59e0b, #d97706);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.imperial-bronze-gradient {
-  background: linear-gradient(135deg, 
-    hsl(var(--imperial-bronze-light)) 0%, 
-    hsl(var(--imperial-bronze)) 50%, 
-    hsl(var(--imperial-bronze-dark)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* White Gold Layout Accents */
-.white-gold-border {
-  border: 2px solid;
-  border-image: linear-gradient(135deg, 
-    hsl(var(--imperial-white)) 0%, 
-    hsl(var(--imperial-gold-light)) 50%, 
-    hsl(var(--imperial-gold)) 100%) 1;
-}
-
-.white-gold-bg {
-  background: linear-gradient(135deg, 
-    hsl(var(--imperial-white) / 0.1) 0%, 
-    hsl(var(--imperial-platinum) / 0.05) 30%, 
-    hsl(var(--imperial-gold-light) / 0.1) 100%);
 }
 
 /* Elegant Background Gradients */
@@ -624,15 +487,45 @@
     hsl(var(--bg-gradient-light)) 100%);
 }
 
-.sophisticated-bg-mesh {
-  background: 
-    radial-gradient(at 40% 20%, hsl(var(--bg-gradient-light)) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, hsl(var(--bg-gradient-medium)) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsl(var(--accent-sage) / 0.1) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, hsl(var(--bg-gradient-dark)) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsl(var(--accent-mint) / 0.05) 0px, transparent 50%),
-    radial-gradient(at 80% 100%, hsl(var(--bg-gradient-black)) 0px, transparent 50%),
-    hsl(var(--bg-gradient-white));
+/* Imperial White Gold Gradient Text */
+.imperial-gradient-text {
+  background: linear-gradient(135deg, 
+    hsl(var(--imperial-white)) 0%, 
+    hsl(var(--imperial-platinum)) 20%, 
+    hsl(var(--imperial-gold-light)) 50%, 
+    hsl(var(--imperial-gold)) 80%, 
+    hsl(var(--imperial-bronze)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gold text gradient for trading interface */
+.gold-text-gradient {
+  background: linear-gradient(135deg, 
+    hsl(var(--accent-gold)) 0%, 
+    hsl(var(--imperial-gold-light)) 50%, 
+    hsl(var(--accent-gold)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: hsl(var(--accent-gold)); /* Fallback color */
+}
+
+/* Green Accent Classes */
+.sage-accent { color: hsl(var(--accent-sage)); }
+.mint-accent { color: hsl(var(--accent-mint)); }
+.forest-accent { color: hsl(var(--accent-forest)); }
+
+/* Professional interactive elements */
+.interactive-hover {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.interactive-hover:hover {
+  transform: scale(1.02);
+  filter: brightness(1.1);
 }
 
 /* Enhanced theme-aware components */
@@ -649,470 +542,4 @@
 
 .dark .apple-card:hover {
   box-shadow: 0 20px 40px -12px hsl(var(--primary) / 0.2);
-}
-
-.apple-button {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border: 1px solid hsl(var(--primary));
-  transition: all 0.3s ease;
-}
-
-.apple-button:hover {
-  background: hsl(var(--primary) / 0.9);
-  transform: translateY(-1px);
-  box-shadow: 0 10px 25px -5px hsl(var(--primary) / 0.3);
-}
-
-/* Green Accent Classes */
-.sage-accent { color: hsl(var(--accent-sage)); }
-.mint-accent { color: hsl(var(--accent-mint)); }
-.forest-accent { color: hsl(var(--accent-forest)); }
-
-.gradient-text {
-  background: linear-gradient(135deg, hsl(var(--feature-green)) 0%, hsl(142 76% 56%) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.gradient-border {
-  background: linear-gradient(135deg, hsl(242, 47%, 58%), hsl(250, 84%, 54%));
-  padding: 1px;
-  border-radius: 1rem;
-}
-
-.gradient-border-inner {
-  background: hsl(var(--background));
-  border-radius: calc(1rem - 1px);
-}
-
-.card-hover {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  transform-style: preserve-3d;
-}
-
-.card-hover:hover {
-  transform: translateY(-12px) rotateX(5deg);
-  box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.25);
-}
-
-.shimmer-effect {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
-  background-size: 200% 100%;
-}
-
-.bento-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-.interactive-hover {
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.interactive-hover:hover {
-  transform: scale(1.02);
-  filter: brightness(1.1);
-}
-
-/* Professional scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: hsl(217 19% 15%);
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(45 93% 58%);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(45 93% 65%);
-}
-
-/* Apple Monochrome Design Components */
-.apple-card {
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.apple-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-}
-
-.monochrome-gradient {
-  background: linear-gradient(135deg, hsl(0, 0%, 98%) 0%, hsl(0, 0%, 96%) 100%);
-}
-
-.dark .monochrome-gradient {
-  background: linear-gradient(135deg, hsl(0, 0%, 7%) 0%, hsl(0, 0%, 5%) 100%);
-}
-
-/* Circular Tool Box Animation - All 8 boxes moving every 1 second */
-/* Animation pattern: 3→2→1→0→4→5→6→7 (clockwise) */
-/* 8-second cycle, each box highlighted for 1 second */
-
-@keyframes highlightBox0 {
-  0%, 36% { opacity: 0; }
-  37.5%, 50% { opacity: 0.5; }
-  51%, 100% { opacity: 0; }
-}
-
-@keyframes highlightBox1 {
-  0%, 23% { opacity: 0; }
-  25%, 37.5% { opacity: 0.5; }
-  38%, 100% { opacity: 0; }
-}
-
-@keyframes highlightBox2 {
-  0%, 11% { opacity: 0; }
-  12.5%, 25% { opacity: 0.5; }
-  26%, 100% { opacity: 0; }
-}
-
-@keyframes highlightBox3 {
-  0%, 1% { opacity: 0.5; }
-  2%, 98% { opacity: 0; }
-  99%, 100% { opacity: 0.5; }
-}
-
-@keyframes highlightBox4 {
-  0%, 48% { opacity: 0; }
-  50%, 62.5% { opacity: 0.5; }
-  63%, 100% { opacity: 0; }
-}
-
-@keyframes highlightBox5 {
-  0%, 61% { opacity: 0; }
-  62.5%, 75% { opacity: 0.5; }
-  76%, 100% { opacity: 0; }
-}
-
-@keyframes highlightBox6 {
-  0%, 73% { opacity: 0; }
-  75%, 87.5% { opacity: 0.5; }
-  88%, 100% { opacity: 0; }
-}
-
-@keyframes highlightBox7 {
-  0%, 86% { opacity: 0; }
-  87.5%, 100% { opacity: 0.5; }
-}
-
-/* Apply animations to all 8 tool boxes with faster timing */
-.tool-box-0 .circular-highlight {
-  animation: highlightBox0 8s infinite ease-in-out;
-}
-
-.tool-box-1 .circular-highlight {
-  animation: highlightBox1 8s infinite ease-in-out;
-}
-
-.tool-box-2 .circular-highlight {
-  animation: highlightBox2 8s infinite ease-in-out;
-}
-
-.tool-box-3 .circular-highlight {
-  animation: highlightBox3 8s infinite ease-in-out;
-}
-
-.tool-box-4 .circular-highlight {
-  animation: highlightBox4 8s infinite ease-in-out;
-}
-
-.tool-box-5 .circular-highlight {
-  animation: highlightBox5 8s infinite ease-in-out;
-}
-
-.tool-box-6 .circular-highlight {
-  animation: highlightBox6 8s infinite ease-in-out;
-}
-
-.tool-box-7 .circular-highlight {
-  animation: highlightBox7 8s infinite ease-in-out;
-}
-
-/* Enhanced hover effects for all tool boxes */
-.tool-box-0:hover .circular-highlight,
-.tool-box-1:hover .circular-highlight,
-.tool-box-2:hover .circular-highlight,
-.tool-box-3:hover .circular-highlight,
-.tool-box-4:hover .circular-highlight,
-.tool-box-5:hover .circular-highlight,
-.tool-box-6:hover .circular-highlight,
-.tool-box-7:hover .circular-highlight {
-  opacity: 0.7 !important;
-  animation-play-state: paused;
-}
-
-.feature-accent-blue { color: hsl(var(--feature-blue)); }
-.feature-accent-green { color: hsl(var(--feature-green)); }
-.feature-accent-orange { color: hsl(var(--feature-orange)); }
-.feature-accent-purple { color: hsl(var(--feature-purple)); }
-.feature-accent-pink { color: hsl(var(--feature-pink)); }
-.feature-accent-red { color: hsl(var(--feature-red)); }
-
-.apple-button {
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  border: none;
-  font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.apple-button:hover {
-  background: hsl(var(--primary));
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.feature-tab {
-  position: relative;
-  overflow: hidden;
-}
-
-.feature-tab::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  transition: left 0.5s;
-}
-
-.feature-tab:hover::before {
-  left: 100%;
-}
-
-.gradient-mesh {
-  background: 
-    radial-gradient(at 40% 20%, hsl(242, 47%, 98%) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, hsl(250, 84%, 98%) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsl(264, 83%, 98%) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, hsl(210, 100%, 98%) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsl(142, 76%, 98%) 0px, transparent 50%),
-    radial-gradient(at 80% 100%, hsl(330, 81%, 98%) 0px, transparent 50%),
-    radial-gradient(at 0% 0%, hsl(25, 95%, 98%) 0px, transparent 50%);
-}
-
-.trading-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 2rem;
-  padding: 2rem 0;
-}
-
-@media (max-width: 768px) {
-  .trading-card-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-}
-
-.premium-button {
-  background: linear-gradient(135deg, hsl(242, 47%, 58%) 0%, hsl(250, 84%, 54%) 100%);
-  border: none;
-  box-shadow: 0 4px 14px 0 rgba(0, 118, 255, 0.39);
-  transition: all 0.3s ease;
-}
-
-.premium-button:hover {
-  box-shadow: 0 6px 20px rgba(0, 118, 255, 0.23);
-  transform: translateY(-2px);
-}
-
-.feature-icon-container {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-/* Animation Styles */
-.animate-fade-in {
-  animation: fadeIn 0.7s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* AI Tech Font Styles */
-.imperial-tech-font {
-  font-family: 'Orbitron', 'Courier New', monospace;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  background: linear-gradient(135deg, #e6d3b3, #c09a58);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 0 20px rgba(192, 154, 88, 0.4);
-  position: relative;
-}
-
-.imperial-tech-font::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(192, 154, 88, 0.3), transparent);
-  animation: tech-scan 3s infinite;
-  pointer-events: none;
-}
-
-@keyframes tech-scan {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-/* Premium Financial Dashboard Utilities */
-.glass-button {
-  @apply backdrop-blur-sm bg-background/50 border border-border/20 hover:bg-background/80 hover:border-primary/30 transition-all duration-300;
-}
-
-.premium-card {
-  @apply bg-card/50 backdrop-blur-sm border-border/20 hover:border-primary/30 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20;
-}
-
-.gradient-overlay {
-  background: linear-gradient(135deg, hsl(var(--primary)/.05) 0%, transparent 50%, hsl(var(--accent)/.05) 100%);
-}
-
-.mesh-gradient {
-  background: 
-    radial-gradient(at 40% 20%, hsl(var(--primary)/.1) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, hsl(var(--accent)/.05) 0px, transparent 50%),
-    radial-gradient(at 40% 50%, hsl(var(--primary)/.05) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, hsl(var(--accent)/.1) 0px, transparent 50%),
-    radial-gradient(at 40% 80%, hsl(var(--primary)/.05) 0px, transparent 50%),
-    radial-gradient(at 80% 100%, hsl(var(--accent)/.05) 0px, transparent 50%);
-}
-
-/* Enhanced gradient text with fallbacks for both light and dark modes */
-.gradient-text-visible {
-  /* First set a visible color as base */
-  color: hsl(var(--foreground));
-  /* Apply gradient */
-  background: linear-gradient(to right, 
-    hsl(var(--accent-green)), 
-    hsl(var(--accent-blue)), 
-    hsl(var(--accent-gold))
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  /* Fallback support */
-  background-size: 100%;
-  background-repeat: no-repeat;
-}
-
-/* Fallback for browsers that don't support gradient text */
-@supports not (-webkit-background-clip: text) {
-  .gradient-text-visible {
-    color: hsl(var(--primary)) !important;
-    background: none !important;
-    -webkit-text-fill-color: unset !important;
-    background-clip: unset !important;
-  }
-}
-
-/* Force visible text in case gradient fails */
-.gradient-text-visible::before {
-  content: attr(data-text);
-  position: absolute;
-  color: hsl(var(--foreground));
-  z-index: -1;
-  opacity: 0;
-}
-
-/* If gradient is invisible, show the fallback */
-@media (-webkit-text-fill-color: transparent) {
-  .gradient-text-visible {
-    position: relative;
-  }
-  .gradient-text-visible::before {
-    opacity: 1;
-  }
-}
-
-/* Gold to Blue-Green Gradient Utility Classes */
-.gradient-gold-bluegreen {
-  background: linear-gradient(135deg, 
-    hsl(var(--gradient-gold-start)) 0%, 
-    hsl(var(--gradient-gold-start)) 50%, 
-    hsl(var(--gradient-bluegreen-end)) 100%);
-}
-
-.gradient-gold-bluegreen-text {
-  background: linear-gradient(135deg, 
-    hsl(var(--gradient-gold-start)) 0%, 
-    hsl(var(--gradient-gold-start)) 50%, 
-    hsl(var(--gradient-bluegreen-end)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: hsl(var(--gradient-gold-start)); /* Fallback color */
-}
-
-.border-gradient-gold-bluegreen {
-  border: 2px solid;
-  border-image: linear-gradient(135deg, 
-    hsl(var(--gradient-gold-start)) 0%, 
-    hsl(var(--gradient-gold-start)) 50%, 
-    hsl(var(--gradient-bluegreen-end)) 100%) 1;
-}
-
-.bg-gradient-gold-bluegreen-subtle {
-  background: linear-gradient(135deg, 
-    hsl(var(--gradient-gold-start) / 0.1) 0%, 
-    hsl(var(--gradient-gold-start) / 0.1) 50%, 
-    hsl(var(--gradient-bluegreen-end) / 0.1) 100%);
-}
-
-/* Gold to Red-Bronze Gradient Utility Classes */
-.gradient-gold-redbronze {
-  background: linear-gradient(135deg, 
-    hsl(var(--gradient-gold-bronze-start)) 0%, 
-    hsl(var(--gradient-gold-bronze-start)) 50%, 
-    hsl(var(--gradient-red-bronze-end)) 100%);
-}
-
-.gradient-gold-redbronze-text {
-  background: linear-gradient(135deg, 
-    hsl(var(--gradient-gold-bronze-start)) 0%, 
-    hsl(var(--gradient-gold-bronze-start)) 50%, 
-    hsl(var(--gradient-red-bronze-end)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: hsl(var(--gradient-gold-bronze-start)); /* Fallback color */
-}
-
-/* Shimmer animation for gold shine effect */
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
 }

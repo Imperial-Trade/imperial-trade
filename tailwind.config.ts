@@ -62,6 +62,26 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))'
         },
+        // Professional Trading Colors
+        trading: {
+          'bg-primary': '220 13% 9%',     // Deep charcoal background
+          'bg-secondary': '220 13% 12%',   // Slightly lighter panels
+          'bg-tertiary': '220 13% 15%',    // Cards and elevated surfaces
+          'border': '220 13% 20%',         // Border color
+          'text-primary': '0 0% 98%',      // Primary white text
+          'text-secondary': '0 0% 70%',    // Secondary gray text
+          'text-muted': '0 0% 45%',        // Muted text
+          'success': '142 76% 36%',        // Professional green
+          'success-bg': '142 76% 36% / 0.1', // Green background
+          'danger': '0 84% 60%',           // Professional red
+          'danger-bg': '0 84% 60% / 0.1',  // Red background
+          'warning': '43 96% 56%',         // Professional yellow
+          'warning-bg': '43 96% 56% / 0.1', // Yellow background
+          'info': '217 91% 60%',           // Professional blue
+          'info-bg': '217 91% 60% / 0.1',  // Blue background
+          'premium': '280 100% 70%',       // Premium purple accent
+          'glass': '220 13% 15% / 0.8',    // Glass effect
+        },
         // Spanish Gray Monochromatic Palette
         gray: {
           'darkest': 'hsl(var(--gray-darkest))',
@@ -134,14 +154,13 @@ export default {
           'gold': 'hsl(var(--accent-gold))',
           'red': 'hsl(var(--accent-red))'
         },
-				// Surface colors for components
 				surface: 'hsl(var(--surface))',
-				// Light mode specific colors
 				lightGreenHover: 'hsl(var(--light-green-hover))'
 			},
 			fontFamily: {
 				'apple': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
 				'display': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'system-ui', 'sans-serif'],
+				'mono': ['SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'monospace'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -192,6 +211,51 @@ export default {
 						backgroundColor: 'hsl(var(--destructive) / 0)',
 						color: 'hsl(var(--destructive))'
 					}
+				},
+				// Professional Trading Animations
+				'pulse-glow': {
+					'0%, 100%': {
+						boxShadow: '0 0 0 0 hsl(142 76% 36% / 0.4)',
+					},
+					'50%': {
+						boxShadow: '0 0 0 10px hsl(142 76% 36% / 0)',
+					},
+				},
+				'slide-up': {
+					from: {
+						opacity: '0',
+						transform: 'translateY(20px)'
+					},
+					to: {
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
+				},
+				'slide-in-right': {
+					from: {
+						opacity: '0',
+						transform: 'translateX(20px)'
+					},
+					to: {
+						opacity: '1',
+						transform: 'translateX(0)'
+					}
+				},
+				'fade-in': {
+					from: {
+						opacity: '0'
+					},
+					to: {
+						opacity: '1'
+					}
+				},
+				'bounce-subtle': {
+					'0%, 100%': {
+						transform: 'translateY(0)',
+					},
+					'50%': {
+						transform: 'translateY(-2px)',
+					},
 				}
 			},
 			animation: {
@@ -200,7 +264,21 @@ export default {
 				'flash-green': 'flash-green 0.7s ease-in-out',
 				'flash-red': 'flash-red 0.7s ease-in-out',
 				'flash-green-intense': 'flash-green 0.4s ease-in-out',
-				'flash-red-intense': 'flash-red 0.4s ease-in-out'
+				'flash-red-intense': 'flash-red 0.4s ease-in-out',
+				'pulse-glow': 'pulse-glow 2s infinite',
+				'slide-up': 'slide-up 0.3s ease-out',
+				'slide-in-right': 'slide-in-right 0.3s ease-out',
+				'fade-in': 'fade-in 0.2s ease-out',
+				'bounce-subtle': 'bounce-subtle 2s ease-in-out infinite',
+			},
+			backdropBlur: {
+				'xs': '2px',
+			},
+			boxShadow: {
+				'trading-card': '0 4px 12px 0 hsl(220 13% 9% / 0.15)',
+				'trading-glow-green': '0 0 20px hsl(142 76% 36% / 0.3)',
+				'trading-glow-red': '0 0 20px hsl(0 84% 60% / 0.3)',
+				'trading-elevated': '0 8px 32px hsl(220 13% 9% / 0.3)',
 			}
 		}
 	},

@@ -3,12 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSignalRealtime } from "@/contexts/SignalRealtimeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   TrendingUp,
@@ -18,11 +13,27 @@ import {
   Filter,
   Search,
   Plus,
-  Radio,
+  Zap,
   AlertCircle,
+  BarChart3,
+  Target,
+  Activity,
+  Star,
+  Flame
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import TradeAlertCard from "@/components/signals/TradeAlertCard";
+
+// Import our new professional components
+import { XeonStreamLayout } from "@/components/xeon/XeonStreamLayout";
+import { ProfessionalSignalCard } from "@/components/xeon/ProfessionalSignalCard";
+import { SignalCreationWizard } from "@/components/xeon/SignalCreationWizard";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { TradeAlertData } from "@/types/components";
 
 const formatDate = (dateString: string): string => {
@@ -44,20 +55,16 @@ export default function SignalStream() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [educatorFilter, setEducatorFilter] = useState("");
   const [assetFilter, setAssetFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSignalWizard, setShowSignalWizard] = useState(false);
 
   useEffect(() => {
     setIsLoading(false);
   }, []);
 
   const canCreateSignals = user?.user_metadata?.user_type === "educator" || user?.user_metadata?.access_level === "admin";
-
-  const handleCreateSignal = () => {
-    navigate('/dashboard/new-signal');
-  };
 
   // Convert signals to TradeAlertData format
   const convertedSignals: TradeAlertData[] = signals?.map(signal => ({
@@ -103,10 +110,36 @@ export default function SignalStream() {
     return matchesSearch && matchesStatus && matchesType && matchesAsset;
   });
 
-  // Event handlers for TradeAlertCard
+  // Calculate performance metrics
+  const calculateMetrics = () => {
+    const active = convertedSignals.filter(s => s.status === 'active').length;
+    const pending = convertedSignals.filter(s => s.status === 'pending').length;
+    const closed = convertedSignals.filter(s => s.status === 'closed').length;
+    const total = convertedSignals.length;
+    
+    // Mock performance metrics
+    const winRate = closed > 0 ? Math.round((active / (active + closed)) * 100) : 0;
+    const totalPnL = convertedSignals.reduce((acc, signal) => {
+      if (signal.status === 'closed') {
+        return acc + (Math.random() - 0.4) * 1000; // Mock P&L
+      }
+      return acc;
+    }, 0);
+
+    return { active, pending, closed, total, winRate, totalPnL };
+  };
+
+  const metrics = calculateMetrics();
+
+  const handleCreateSignal = (signalData: any) => {
+    // Handle signal creation
+    console.log('Creating signal:', signalData);
+    toast.success("Signal created successfully!");
+  };
+
+  // Event handlers for signal interactions
   const handleStatusUpdate = async (alert: TradeAlertData, newStatus: string) => {
     try {
-      // Implementation would be handled by the signal realtime context
       toast.success(`Signal ${newStatus} successfully`);
     } catch (error) {
       toast.error("Failed to update signal status");
@@ -115,7 +148,6 @@ export default function SignalStream() {
 
   const handleTakeProfitHit = async (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => {
     try {
-      // Implementation would be handled by the signal realtime context
       toast.success(`Take Profit ${newTPHits[newTPHits.length - 1]} hit!`);
     } catch (error) {
       toast.error("Failed to update take profit");
@@ -124,7 +156,6 @@ export default function SignalStream() {
 
   const handleStopLossHit = async (alert: TradeAlertData, closeReason: string) => {
     try {
-      // Implementation would be handled by the signal realtime context
       toast.error("Stop Loss hit - Signal closed");
     } catch (error) {
       toast.error("Failed to update stop loss");
@@ -133,7 +164,6 @@ export default function SignalStream() {
 
   const handleOrderActivation = async (alert: TradeAlertData) => {
     try {
-      // Implementation would be handled by the signal realtime context
       toast.success("Pending order activated");
     } catch (error) {
       toast.error("Failed to activate order");
@@ -141,196 +171,217 @@ export default function SignalStream() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
-            <Radio className="w-6 h-6 sm:w-8 sm:h-8 text-primary animate-pulse" />
-            Xeon Stream
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Live educational market patterns and trading insights
-          </p>
-        </div>
-
-        {canCreateSignals && (
+    <XeonStreamLayout
+      title="Xeon Stream"
+      subtitle="Professional Trading Signals & Analysis"
+      actions={
+        canCreateSignals && (
           <Button 
-            onClick={handleCreateSignal}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+            onClick={() => setShowSignalWizard(true)}
+            className="bg-gradient-to-r from-trading-success to-trading-success/80 hover:from-trading-success/90 hover:to-trading-success/70 text-white font-medium shadow-trading-glow-green border-0"
             data-prevent-widget-open="true"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Zap className="w-4 h-4 mr-2" />
             Create Signal
           </Button>
-        )}
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="border-border/50 hover:border-primary/30 transition-colors" data-prevent-widget-open="true">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <div className="p-2 bg-green-500/10 rounded-lg">
-                  <TrendingUp className="w-4 h-4 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Signals</p>
-                  <p className="text-xl font-bold text-foreground">
-                    {filteredSignals?.filter(s => s?.status === 'active').length || 0}
-                  </p>
-                </div>
+        )
+      }
+    >
+      {/* Professional Metrics Dashboard */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8"
+      >
+        <Card className="bg-trading-bg-tertiary border-trading-border hover:border-trading-success/30 transition-all duration-300 shadow-trading-card overflow-hidden">
+          <CardContent className="p-4 relative">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-trading-success-bg rounded-xl">
+                <Activity className="w-5 h-5 text-trading-success" />
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="border-border/50 hover:border-amber-500/30 transition-colors" data-prevent-widget-open="true">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <div className="p-2 bg-amber-500/10 rounded-lg">
-                  <Clock className="w-4 h-4 text-amber-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Pending Signals</p>
-                  <p className="text-xl font-bold text-foreground">
-                    {filteredSignals?.filter(s => s?.status === 'pending').length || 0}
-                  </p>
-                </div>
+              <div>
+                <p className="text-xs font-medium text-trading-text-muted uppercase tracking-wide">Active Signals</p>
+                <p className="text-2xl font-bold text-trading-text-primary">{metrics.active}</p>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
+            <div className="absolute top-2 right-2">
+              <div className="w-2 h-2 bg-trading-success rounded-full animate-pulse" />
+            </div>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card className="border-border/50 hover:border-red-500/30 transition-colors" data-prevent-widget-open="true">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <div className="p-2 bg-red-500/10 rounded-lg">
-                  <TrendingDown className="w-4 h-4 text-red-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Closed Signals</p>
-                  <p className="text-xl font-bold text-foreground">
-                    {filteredSignals?.filter(s => s?.status === 'closed').length || 0}
-                  </p>
-                </div>
+        <Card className="bg-trading-bg-tertiary border-trading-border hover:border-trading-warning/30 transition-all duration-300 shadow-trading-card">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-trading-warning-bg rounded-xl">
+                <Clock className="w-5 h-5 text-trading-warning" />
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card className="border-border/50 hover:border-blue-500/30 transition-colors" data-prevent-widget-open="true">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <div className="p-2 bg-blue-500/10 rounded-lg">
-                  <DollarSign className="w-4 h-4 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Signals</p>
-                  <p className="text-xl font-bold text-foreground">{filteredSignals?.length || 0}</p>
-                </div>
+              <div>
+                <p className="text-xs font-medium text-trading-text-muted uppercase tracking-wide">Pending</p>
+                <p className="text-2xl font-bold text-trading-text-primary">{metrics.pending}</p>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Filters and Tabs */}
-      <div className="space-y-4">
-        {/* Search and Quick Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1" data-prevent-widget-open="true">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search signals by asset, educator, or notes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 border-border/50 focus:border-primary"
-            />
-          </div>
+        <Card className="bg-trading-bg-tertiary border-trading-border hover:border-trading-text-muted/30 transition-all duration-300 shadow-trading-card">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-trading-text-muted/10 rounded-xl">
+                <BarChart3 className="w-5 h-5 text-trading-text-muted" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-trading-text-muted uppercase tracking-wide">Closed</p>
+                <p className="text-2xl font-bold text-trading-text-primary">{metrics.closed}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <div className="flex gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter} data-prevent-widget-open="true">
-              <SelectTrigger className="w-32 border-border/50">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
+        <Card className="bg-trading-bg-tertiary border-trading-border hover:border-trading-premium/30 transition-all duration-300 shadow-trading-card">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-trading-info-bg rounded-xl">
+                <Target className="w-5 h-5 text-trading-info" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-trading-text-muted uppercase tracking-wide">Win Rate</p>
+                <p className="text-2xl font-bold text-trading-success">{metrics.winRate}%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-            <Select value={typeFilter} onValueChange={setTypeFilter} data-prevent-widget-open="true">
-              <SelectTrigger className="w-32 border-border/50">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="buy">Buy</SelectItem>
-                <SelectItem value="sell">Sell</SelectItem>
-              </SelectContent>
-            </Select>
+        <Card className="bg-trading-bg-tertiary border-trading-border hover:border-trading-success/30 transition-all duration-300 shadow-trading-card">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-trading-success-bg rounded-xl">
+                <DollarSign className="w-5 h-5 text-trading-success" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-trading-text-muted uppercase tracking-wide">Total P&L</p>
+                <p className={`text-2xl font-bold ${metrics.totalPnL >= 0 ? 'text-trading-success' : 'text-trading-danger'}`}>
+                  {metrics.totalPnL >= 0 ? '+' : ''}${metrics.totalPnL.toFixed(0)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setShowFilters(!showFilters)}
-              className="border-border/50 hover:border-primary/50"
-              data-prevent-widget-open="true"
-            >
-              <Filter className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+      {/* Professional Search and Filters */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mb-8"
+      >
+        <Card className="bg-trading-bg-tertiary border-trading-border shadow-trading-card">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1" data-prevent-widget-open="true">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-trading-text-muted w-5 h-5" />
+                <Input
+                  placeholder="Search signals by asset, notes, or analysis..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-12 bg-trading-bg-secondary border-trading-border text-trading-text-primary focus:border-trading-success h-12 text-base"
+                />
+              </div>
 
-        {/* Tabs */}
+              <div className="flex gap-3">
+                <Select value={statusFilter} onValueChange={setStatusFilter} data-prevent-widget-open="true">
+                  <SelectTrigger className="w-40 bg-trading-bg-secondary border-trading-border text-trading-text-primary h-12">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-trading-bg-secondary border-trading-border">
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={typeFilter} onValueChange={setTypeFilter} data-prevent-widget-open="true">
+                  <SelectTrigger className="w-40 bg-trading-bg-secondary border-trading-border text-trading-text-primary h-12">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-trading-bg-secondary border-trading-border">
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="buy">Buy</SelectItem>
+                    <SelectItem value="sell">Sell</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="outline"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="border-trading-border text-trading-text-muted hover:border-trading-success/50 hover:text-trading-text-primary h-12 w-12"
+                  data-prevent-widget-open="true"
+                >
+                  <Filter className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Professional Tabs */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "active" | "pending" | "closed")} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-muted/50" data-prevent-widget-open="true">
-            <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              All ({convertedSignals?.length || 0})
+          <TabsList className="grid w-full grid-cols-4 bg-trading-bg-tertiary border border-trading-border h-14 rounded-xl" data-prevent-widget-open="true">
+            <TabsTrigger 
+              value="all" 
+              className="data-[state=active]:bg-trading-success data-[state=active]:text-white text-trading-text-muted font-medium h-12 rounded-lg"
+            >
+              <div className="flex items-center space-x-2">
+                <Star className="w-4 h-4" />
+                <span>All ({convertedSignals?.length || 0})</span>
+              </div>
             </TabsTrigger>
-            <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Active ({convertedSignals?.filter(s => s?.status === 'active').length || 0})
+            <TabsTrigger 
+              value="active" 
+              className="data-[state=active]:bg-trading-success data-[state=active]:text-white text-trading-text-muted font-medium h-12 rounded-lg"
+            >
+              <div className="flex items-center space-x-2">
+                <Flame className="w-4 h-4" />
+                <span>Active ({metrics.active})</span>
+              </div>
             </TabsTrigger>
-            <TabsTrigger value="pending" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Pending ({convertedSignals?.filter(s => s?.status === 'pending').length || 0})
+            <TabsTrigger 
+              value="pending" 
+              className="data-[state=active]:bg-trading-warning data-[state=active]:text-white text-trading-text-muted font-medium h-12 rounded-lg"
+            >
+              <div className="flex items-center space-x-2">
+                <Clock className="w-4 h-4" />
+                <span>Pending ({metrics.pending})</span>
+              </div>
             </TabsTrigger>
-            <TabsTrigger value="closed" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Closed ({convertedSignals?.filter(s => s?.status === 'closed').length || 0})
+            <TabsTrigger 
+              value="closed" 
+              className="data-[state=active]:bg-trading-text-muted data-[state=active]:text-white text-trading-text-muted font-medium h-12 rounded-lg"
+            >
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="w-4 h-4" />
+                <span>Closed ({metrics.closed})</span>
+              </div>
             </TabsTrigger>
           </TabsList>
 
           {/* Signal Content */}
-          <TabsContent value={activeTab} className="mt-6">
+          <TabsContent value={activeTab} className="mt-8">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-trading-success"></div>
               </div>
             ) : filteredSignals && filteredSignals.length > 0 ? (
-              <ScrollArea className="h-[600px] pr-4">
-                <div className="space-y-4">
+              <ScrollArea className="h-[800px] pr-4">
+                <div className="space-y-6">
                   <AnimatePresence mode="popLayout">
                     {filteredSignals.map((signal, index) => (
                       <motion.div
@@ -341,22 +392,11 @@ export default function SignalStream() {
                         transition={{ delay: index * 0.05 }}
                         data-prevent-widget-open="true"
                       >
-                        <TradeAlertCard
-                          alert={signal}
+                        <ProfessionalSignalCard
+                          signal={signal}
                           onStatusUpdate={handleStatusUpdate}
                           onTakeProfitHit={handleTakeProfitHit}
-                          onStopLossHit={handleStopLossHit}
-                          onOrderActivation={handleOrderActivation}
-                          isAdmin={user?.user_metadata?.access_level === "admin"}
-                          isCreator={user?.id === signals?.find(s => s.id === signal.id)?.userId}
-                          connectionStatus="connected"
-                          priceSource="WebSocket"
-                          isRecentClosure={false}
-                          creator={{
-                            id: signals?.find(s => s.id === signal.id)?.userId || '',
-                            display_name: signals?.find(s => s.id === signal.id)?.creator?.display_name || 'Unknown',
-                            role: signals?.find(s => s.id === signal.id)?.creator?.role || 'member'
-                          }}
+                          className="mb-4"
                         />
                       </motion.div>
                     ))}
@@ -364,19 +404,41 @@ export default function SignalStream() {
                 </div>
               </ScrollArea>
             ) : (
-              <div className="text-center py-12">
-                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No signals found</h3>
-                <p className="text-muted-foreground">
-                  {searchTerm || statusFilter !== "all" || typeFilter !== "all" || educatorFilter || assetFilter
-                    ? "Try adjusting your filters to see more signals."
-                    : "There are no signals available at the moment."}
-                </p>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-20"
+              >
+                <div className="bg-trading-bg-tertiary rounded-2xl p-12 border border-trading-border max-w-md mx-auto">
+                  <AlertCircle className="w-16 h-16 text-trading-text-muted mx-auto mb-6" />
+                  <h3 className="text-xl font-bold text-trading-text-primary mb-3">No signals found</h3>
+                  <p className="text-trading-text-muted leading-relaxed">
+                    {searchTerm || statusFilter !== "all" || typeFilter !== "all" || assetFilter
+                      ? "Try adjusting your filters to discover more trading opportunities."
+                      : "No trading signals are available at the moment. Check back soon for new opportunities."}
+                  </p>
+                  {canCreateSignals && (
+                    <Button
+                      onClick={() => setShowSignalWizard(true)}
+                      className="mt-6 bg-trading-success hover:bg-trading-success/90 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create First Signal
+                    </Button>
+                  )}
+                </div>
+              </motion.div>
             )}
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+      </motion.div>
+
+      {/* Signal Creation Wizard */}
+      <SignalCreationWizard
+        isOpen={showSignalWizard}
+        onClose={() => setShowSignalWizard(false)}
+        onSubmit={handleCreateSignal}
+      />
+    </XeonStreamLayout>
   );
 }

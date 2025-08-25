@@ -1,4 +1,6 @@
+
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useSignalRealtime } from "@/contexts/SignalRealtimeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -61,6 +63,7 @@ const formatDate = (dateString: string): string => {
 export default function SignalStream() {
   const { user } = useAuth();
   const { signals } = useSignalRealtime();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"all" | "active" | "pending" | "closed">("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -70,26 +73,14 @@ export default function SignalStream() {
   const [sortBy, setSortBy] = useState("timestamp");
   const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(false);
   }, []);
 
-  const handleCreateSignal = async (signalData: Omit<Signal, 'id'>) => {
-    setIsSubmitting(true);
-    try {
-      // await createSignal(signalData);
-      toast.success("Signal created successfully!");
-      setShowCreateDialog(false);
-    } catch (error) {
-      console.error("Failed to create signal:", error);
-      toast.error("Failed to create signal. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleCreateSignal = () => {
+    navigate('/dashboard/new-signal');
   };
 
   const canCreateSignals = user?.user_metadata?.user_type === "educator" || user?.user_metadata?.access_level === "admin";
@@ -129,7 +120,7 @@ export default function SignalStream() {
 
         {canCreateSignals && (
           <Button 
-            onClick={() => setShowCreateDialog(true)}
+            onClick={handleCreateSignal}
             className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
             data-prevent-widget-open="true"
           >
@@ -365,19 +356,6 @@ export default function SignalStream() {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Create Signal Dialog - Coming Soon */}
-      {showCreateDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-96">
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-semibold mb-2">Create Signal</h3>
-              <p className="text-muted-foreground mb-4">Signal creation feature coming soon!</p>
-              <Button onClick={() => setShowCreateDialog(false)}>Close</Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

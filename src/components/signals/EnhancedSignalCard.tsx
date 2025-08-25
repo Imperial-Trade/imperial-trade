@@ -88,6 +88,11 @@ export const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
+  // Check if a TP level has been hit
+  const isTpHit = (level: string) => {
+    return signal.tpHits && signal.tpHits.includes(level.toLowerCase());
+  };
+
   return (
     <Card className={cn(
       "border-border/50 hover:border-primary/30 transition-all duration-200 hover:shadow-lg",
@@ -219,7 +224,7 @@ export const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
                       key={level}
                       className={cn(
                         "px-2 py-1 rounded text-xs text-center",
-                        signal.tpHits?.includes(level.toLowerCase()) 
+                        isTpHit(level) 
                           ? "bg-green-500/20 text-green-700 border border-green-500/30" 
                           : "bg-muted/50 text-muted-foreground"
                       )}

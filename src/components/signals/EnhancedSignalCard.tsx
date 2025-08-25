@@ -89,50 +89,48 @@ export const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
-  // Check if a TP level has been hit
-  const isTpHit = (level: string) => {
-    return signal.tpHits && signal.tpHits.includes(level.toLowerCase());
+  // Check if a TP level has been hit - Fixed TypeScript error
+  const isTpHit = (tpLevel: number) => {
+    if (!signal.tpHits || !Array.isArray(signal.tpHits)) return false;
+    return signal.tpHits.includes(`tp${tpLevel}`);
   };
 
   return (
     <Card className={cn(
-      "border-border/50 hover:border-primary/30 transition-all duration-200 hover:shadow-lg",
+      "border-border/50 hover:border-primary/30 transition-all duration-200 hover:shadow-lg h-fit",
       className
     )}>
-      <CardContent className="p-6 space-y-6">
+      <CardContent className="p-4 space-y-4">
         {/* Header - Creator and Time */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8">
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
               <AvatarImage src={signal.creator?.avatar_url || undefined} />
               <AvatarFallback className="text-xs">
                 {signal.creator?.display_name?.charAt(0) || 'U'}
               </AvatarFallback>
             </Avatar>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-medium text-foreground truncate">
                 {signal.creator?.display_name || 'Unknown User'}
               </span>
               {getCreatorIcon()}
-              <Badge variant="outline" className="text-xs">
-                {signal.creator?.access_level === 'admin' ? 'Admin' : 'Educator'}
-              </Badge>
             </div>
           </div>
           
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
-            <span>{formatTimeAgo(signal.createdAt)}</span>
+            <span className="truncate">{formatTimeAgo(signal.createdAt)}</span>
           </div>
         </div>
 
         {/* Asset and Status */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold text-foreground">
+            <h3 className="text-xl font-bold text-foreground truncate">
               {signal.assetName}
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1">
               <Badge 
                 variant={getStatusBadgeVariant()}
                 className={cn(
@@ -140,7 +138,7 @@ export const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
                   signal.status === 'pending' && "bg-amber-500/10 text-amber-600 border-amber-500/30"
                 )}
               >
-                {signal.status === 'pending' ? '⏳ PENDING BUY LIMIT' : signal.status.toUpperCase()}
+                {signal.status === 'pending' ? 'PENDING' : signal.status.toUpperCase()}
               </Badge>
               <Badge 
                 variant="outline" 
@@ -151,7 +149,7 @@ export const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
                     : "border-red-500/30 text-red-600 bg-red-500/5"
                 )}
               >
-                {isBuySignal ? 'Active Buy' : 'Active Sell'}
+                {isBuySignal ? 'BUY' : 'SELL'}
               </Badge>
             </div>
           </div>
@@ -159,47 +157,43 @@ export const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
 
         {/* Live Price Section (for active signals) */}
         {isActiveSignal && (
-          <div className="bg-card/50 border border-green-500/20 rounded-lg p-4">
+          <div className="bg-card/50 border border-green-500/20 rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Live Price for {signal.assetName}</span>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-green-600">15ms</span>
-                  <span className="text-xs text-muted-foreground">Live</span>
-                </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-600">Live</span>
               </div>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
                 <RefreshCw className="w-3 h-3" />
               </Button>
             </div>
             
-            <div className="flex items-center justify-between">
+            <div className="space-y-2">
               {priceLoading ? (
-                <div className="animate-pulse h-8 w-32 bg-muted rounded" />
+                <div className="animate-pulse h-6 w-24 bg-muted rounded" />
               ) : (
-                <span className="text-2xl font-bold text-green-500">
+                <span className="text-lg font-bold text-green-500">
                   ${currentPrice ? formatPrice(currentPrice) : '--'}
                 </span>
               )}
               
               {pnl && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between">
                   <div className={cn(
                     "flex items-center gap-1",
                     pnl.isProfit ? "text-green-500" : "text-red-500"
                   )}>
                     {pnl.isProfit ? (
-                      <TrendingUp className="w-4 h-4" />
+                      <TrendingUp className="w-3 h-3" />
                     ) : (
-                      <TrendingDown className="w-4 h-4" />
+                      <TrendingDown className="w-3 h-3" />
                     )}
-                    <span className="font-medium">
+                    <span className="text-sm font-medium">
                       {pnl.isProfit ? '+' : ''}{pnl.absolute.toFixed(2)}
                     </span>
                   </div>
                   <span className={cn(
-                    "text-xs font-medium px-2 py-1 rounded",
+                    "text-xs font-medium px-1 py-0.5 rounded",
                     pnl.isProfit 
                       ? "bg-green-500/10 text-green-600" 
                       : "bg-red-500/10 text-red-600"
@@ -209,65 +203,64 @@ export const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
                 </div>
               )}
             </div>
-            
-            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-              <span>📈 Updated: 12:41:30 PM</span>
-            </div>
           </div>
         )}
 
         <Separator />
 
-        {/* Trading Levels - Vertical Layout */}
-        <div className="space-y-4">
+        {/* Trading Levels - Compact Vertical Layout */}
+        <div className="space-y-2">
           {/* Entry Price */}
-          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+          <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm font-medium text-muted-foreground">Entry Price</span>
+              <span className="text-xs font-medium text-muted-foreground">Entry</span>
             </div>
-            <span className="text-lg font-bold text-foreground">
+            <span className="text-sm font-bold text-foreground">
               ${formatPrice(signal.entryPrice)}
             </span>
           </div>
 
           {/* Stop Loss */}
-          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+          <div className="flex items-center justify-between p-2 bg-muted/30 rounded-md">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-              <span className="text-sm font-medium text-muted-foreground">Stop Loss</span>
+              <span className="text-xs font-medium text-muted-foreground">Stop Loss</span>
             </div>
-            <span className="text-lg font-bold text-red-600">
+            <span className="text-sm font-bold text-red-600">
               ${formatPrice(signal.stopLoss)}
             </span>
           </div>
 
           {/* Take Profit Levels */}
-          {(signal.tp1 || signal.tp2 || signal.tp3 || signal.tp4 || signal.tp5) && (
-            <div className="space-y-2">
-              {[
-                { level: 'Take Profit 1', price: signal.tp1 },
-                { level: 'Take Profit 2', price: signal.tp2 },
-                { level: 'Take Profit 3', price: signal.tp3 },
-                { level: 'Take Profit 4', price: signal.tp4 },
-                { level: 'Take Profit 5', price: signal.tp5 },
-              ].map(({ level, price }, index) => 
-                price ? (
-                  <div 
-                    key={level}
-                    className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm font-medium text-muted-foreground">{level}</span>
-                    </div>
-                    <span className="text-lg font-bold text-blue-600">
-                      ${formatPrice(price)}
-                    </span>
-                  </div>
-                ) : null
-              )}
-            </div>
+          {[
+            { level: 1, price: signal.tp1 },
+            { level: 2, price: signal.tp2 },
+            { level: 3, price: signal.tp3 },
+            { level: 4, price: signal.tp4 },
+            { level: 5, price: signal.tp5 },
+          ].map(({ level, price }) => 
+            price ? (
+              <div 
+                key={level}
+                className={cn(
+                  "flex items-center justify-between p-2 bg-muted/30 rounded-md",
+                  isTpHit(level) && "bg-blue-500/10 border border-blue-500/30"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "w-2 h-2 rounded-full",
+                    isTpHit(level) ? "bg-blue-600" : "bg-blue-500"
+                  )}></div>
+                  <span className="text-xs font-medium text-muted-foreground">TP{level}</span>
+                  {isTpHit(level) && <span className="text-xs text-blue-600">✓</span>}
+                </div>
+                <span className="text-sm font-bold text-blue-600">
+                  ${formatPrice(price)}
+                </span>
+              </div>
+            ) : null
           )}
         </div>
 
@@ -275,9 +268,9 @@ export const EnhancedSignalCard: React.FC<EnhancedSignalCardProps> = ({
         {signal.notes && (
           <>
             <Separator />
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Notes</h4>
-              <p className="text-sm text-foreground bg-muted/30 p-3 rounded-lg">
+            <div className="space-y-1">
+              <h4 className="text-xs font-medium text-muted-foreground">Notes</h4>
+              <p className="text-xs text-foreground bg-muted/30 p-2 rounded-md line-clamp-3">
                 {signal.notes}
               </p>
             </div>

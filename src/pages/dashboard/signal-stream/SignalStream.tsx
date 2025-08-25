@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSignalRealtime } from "@/contexts/SignalRealtimeContext";
@@ -299,7 +298,7 @@ export default function SignalStream() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Signal Content */}
+        {/* Signal Content - Updated to 3-column grid */}
         <TabsContent value={activeTab} className="mt-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -307,7 +306,7 @@ export default function SignalStream() {
             </div>
           ) : filteredSignals && filteredSignals.length > 0 ? (
             <ScrollArea className="h-[800px] pr-4">
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <AnimatePresence mode="popLayout">
                   {filteredSignals.map((signal, index) => (
                     <motion.div

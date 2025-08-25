@@ -121,14 +121,14 @@ const AddTradeModal = memo<AddTradeModalProps>(({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[calc(100vh-48px)] md:max-h-[85vh] p-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
             Log New Trade
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-2 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="asset">Asset</Label>

@@ -39,21 +39,30 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     try {
       console.log('SignalRealtimeContext - Starting Xeon Stream signal refresh...');
       
-      // First, let's update existing educator/admin signals to be Xeon Stream signals
-      const { error: updateError } = await supabase
-        .from('trade_alerts')
-        .update({ is_xeon_stream: true })
-        .in('user_id', 
-          supabase
-            .from('profiles')
-            .select('id')
-            .or('access_level.eq.admin,access_level.eq.moderator,user_type.eq.educator')
-        );
+      // Fetch educator/admin profile IDs first
+      const { data: educatorProfiles, error: profilesFetchError } = await supabase
+        .from('profiles')
+        .select('id, display_name, role, avatar_url, user_type, access_level')
+        .or('access_level.eq.admin,access_level.eq.moderator,user_type.eq.educator');
 
-      if (updateError) {
-        console.warn('SignalRealtimeContext - Could not update existing signals:', updateError);
-      } else {
-        console.log('SignalRealtimeContext - Updated existing educator/admin signals to Xeon Stream');
+      if (profilesFetchError) {
+        console.warn('SignalRealtimeContext - Could not fetch educator/admin profiles:', profilesFetchError);
+      }
+
+      const educatorIds = (educatorProfiles || []).map(p => p.id);
+      
+      if (educatorIds.length > 0) {
+        // Update existing alerts for these users to be Xeon Stream
+        const { error: updateError } = await supabase
+          .from('trade_alerts')
+          .update({ is_xeon_stream: true })
+          .in('user_id', educatorIds);
+
+        if (updateError) {
+          console.warn('SignalRealtimeContext - Could not update existing signals:', updateError);
+        } else {
+          console.log('SignalRealtimeContext - Updated existing educator/admin signals to Xeon Stream');
+        }
       }
 
       // Fetch Xeon Stream alerts only - RLS policies will handle educator/admin filtering
@@ -145,7 +154,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
             user_type: null,
             access_level: null
           }
-        };
+        } as TradeAlertWithProfile;
         
         return mappedAlert;
       });
@@ -303,7 +312,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     } catch (err) {
       console.error('SignalRealtimeContext - Failed to handle realtime update:', err);
     }
-  }, [refreshSignals]);
+  }, []);
 
   const subscribe = useCallback(() => {
     if (channelRef.current) {

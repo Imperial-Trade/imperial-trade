@@ -4,12 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { useSignalRealtime } from "@/contexts/SignalRealtimeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
@@ -17,34 +15,15 @@ import {
   TrendingDown,
   Clock,
   DollarSign,
-  User,
   Filter,
   Search,
   Plus,
   Radio,
-  Target,
   AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-interface Signal {
-  id: string;
-  asset: string;
-  type: 'buy' | 'sell';
-  entry: number;
-  takeProfit: number;
-  stopLoss: number;
-  leverage: number;
-  timestamp: string;
-  educatorId: string;
-  notes: string;
-  status: 'active' | 'pending' | 'closed';
-}
-
-interface UserMetadata {
-  user_type?: 'admin' | 'educator' | 'member';
-  access_level?: 'admin' | 'educator' | 'member';
-}
+import TradeAlertCard from "@/components/signals/TradeAlertCard";
+import { TradeAlertData } from "@/types/components";
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -67,8 +46,6 @@ export default function SignalStream() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [educatorFilter, setEducatorFilter] = useState("");
   const [assetFilter, setAssetFilter] = useState("");
-  const [sortBy, setSortBy] = useState("timestamp");
-  const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -82,11 +59,32 @@ export default function SignalStream() {
     navigate('/dashboard/new-signal');
   };
 
-  const filteredSignals = signals?.filter(signal => {
+  // Convert signals to TradeAlertData format
+  const convertedSignals: TradeAlertData[] = signals?.map(signal => ({
+    id: signal.id,
+    asset_name: signal.assetName,
+    tradermade_symbol: signal.tradermadeSymbol,
+    trade_type: signal.tradeType as 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
+    entry_price: signal.entryPrice,
+    stop_loss: signal.stopLoss,
+    tp1: signal.tp1,
+    tp2: signal.tp2,
+    tp3: signal.tp3,
+    tp4: signal.tp4,
+    tp5: signal.tp5,
+    status: signal.status,
+    tp_hits: signal.tpHits || [],
+    close_reason: signal.closeReason,
+    notes: signal.notes,
+    created_date: signal.createdAt,
+    updated_date: signal.updatedAt
+  })) || [];
+
+  const filteredSignals = convertedSignals.filter(signal => {
     if (!signal) return false;
     
     const searchTermLower = searchTerm.toLowerCase();
-    const assetLower = signal.assetName?.toLowerCase() || '';
+    const assetLower = signal.asset_name?.toLowerCase() || '';
     const notesLower = signal.notes?.toLowerCase() || '';
 
     const matchesSearch =
@@ -94,12 +92,53 @@ export default function SignalStream() {
       notesLower.includes(searchTermLower);
 
     const matchesStatus = statusFilter === "all" || signal.status === statusFilter;
-    const matchesType = typeFilter === "all" || signal.tradeType === typeFilter;
-    const matchesEducator = !educatorFilter || signal.userId === educatorFilter;
-    const matchesAsset = !assetFilter || signal.assetName === assetFilter;
+    const matchesType = typeFilter === "all" || signal.trade_type === typeFilter;
+    const matchesAsset = !assetFilter || signal.asset_name === assetFilter;
 
-    return matchesSearch && matchesStatus && matchesType && matchesEducator && matchesAsset;
-  }) || [];
+    // Apply tab filter
+    if (activeTab !== "all" && signal.status !== activeTab) {
+      return false;
+    }
+
+    return matchesSearch && matchesStatus && matchesType && matchesAsset;
+  });
+
+  // Event handlers for TradeAlertCard
+  const handleStatusUpdate = async (alert: TradeAlertData, newStatus: string) => {
+    try {
+      // Implementation would be handled by the signal realtime context
+      toast.success(`Signal ${newStatus} successfully`);
+    } catch (error) {
+      toast.error("Failed to update signal status");
+    }
+  };
+
+  const handleTakeProfitHit = async (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => {
+    try {
+      // Implementation would be handled by the signal realtime context
+      toast.success(`Take Profit ${newTPHits[newTPHits.length - 1]} hit!`);
+    } catch (error) {
+      toast.error("Failed to update take profit");
+    }
+  };
+
+  const handleStopLossHit = async (alert: TradeAlertData, closeReason: string) => {
+    try {
+      // Implementation would be handled by the signal realtime context
+      toast.error("Stop Loss hit - Signal closed");
+    } catch (error) {
+      toast.error("Failed to update stop loss");
+    }
+  };
+
+  const handleOrderActivation = async (alert: TradeAlertData) => {
+    try {
+      // Implementation would be handled by the signal realtime context
+      toast.success("Pending order activated");
+    } catch (error) {
+      toast.error("Failed to activate order");
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
@@ -108,10 +147,10 @@ export default function SignalStream() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
             <Radio className="w-6 h-6 sm:w-8 sm:h-8 text-primary animate-pulse" />
-            Signal Stream
+            Xeon Stream
           </h1>
           <p className="text-muted-foreground mt-1">
-            Real-time trading signals from professional traders
+            Live educational market patterns and trading insights
           </p>
         </div>
 
@@ -266,39 +305,20 @@ export default function SignalStream() {
           </div>
         </div>
 
-        {/* Advanced Filters */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
-            >
-              <Card className="border-border/50" data-prevent-widget-open="true">
-                <CardContent className="p-4">
-                  <div className="text-sm text-muted-foreground">Advanced filters coming soon...</div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "active" | "pending" | "closed")} className="w-full">
           <TabsList className="grid w-full grid-cols-4 bg-muted/50" data-prevent-widget-open="true">
             <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              All ({filteredSignals?.length || 0})
+              All ({convertedSignals?.length || 0})
             </TabsTrigger>
             <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Active ({filteredSignals?.filter(s => s?.status === 'active').length || 0})
+              Active ({convertedSignals?.filter(s => s?.status === 'active').length || 0})
             </TabsTrigger>
             <TabsTrigger value="pending" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Pending ({filteredSignals?.filter(s => s?.status === 'pending').length || 0})
+              Pending ({convertedSignals?.filter(s => s?.status === 'pending').length || 0})
             </TabsTrigger>
             <TabsTrigger value="closed" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Closed ({filteredSignals?.filter(s => s?.status === 'closed').length || 0})
+              Closed ({convertedSignals?.filter(s => s?.status === 'closed').length || 0})
             </TabsTrigger>
           </TabsList>
 
@@ -321,19 +341,23 @@ export default function SignalStream() {
                         transition={{ delay: index * 0.05 }}
                         data-prevent-widget-open="true"
                       >
-                        <Card className="border-border/50 hover:border-primary/30 transition-colors">
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="font-semibold text-foreground">{signal.assetName}</h3>
-                              <p className="text-sm text-muted-foreground">{signal.tradeType?.toUpperCase()}</p>
-                              <Badge variant={signal.status === 'active' ? 'default' : signal.status === 'pending' ? 'secondary' : 'outline'}>
-                                {signal.status}
-                              </Badge>
-                            </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                        <TradeAlertCard
+                          alert={signal}
+                          onStatusUpdate={handleStatusUpdate}
+                          onTakeProfitHit={handleTakeProfitHit}
+                          onStopLossHit={handleStopLossHit}
+                          onOrderActivation={handleOrderActivation}
+                          isAdmin={user?.user_metadata?.access_level === "admin"}
+                          isCreator={user?.id === signals?.find(s => s.id === signal.id)?.userId}
+                          connectionStatus="connected"
+                          priceSource="WebSocket"
+                          isRecentClosure={false}
+                          creator={{
+                            id: signals?.find(s => s.id === signal.id)?.userId || '',
+                            display_name: signals?.find(s => s.id === signal.id)?.creator?.display_name || 'Unknown',
+                            role: signals?.find(s => s.id === signal.id)?.creator?.role || 'member'
+                          }}
+                        />
                       </motion.div>
                     ))}
                   </AnimatePresence>

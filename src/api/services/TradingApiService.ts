@@ -1,4 +1,3 @@
-
 import { apiClient } from '../client/ApiClient';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { ApiResponse } from '@/types/common';
@@ -82,7 +81,7 @@ export class TradingApiService {
         tp4: dto.tp4,
         tp5: dto.tp5,
         notes: dto.notes,
-        status: 'pending', // CreateTradeAlertDto has no status; default to pending
+        status: 'pending' as const, // Properly type the status as a const literal
         is_xeon_stream: isEducatorOrAdmin
       };
 

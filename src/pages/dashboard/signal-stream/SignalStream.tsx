@@ -1,310 +1,383 @@
-
-import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
 import { useSignalRealtime } from "@/contexts/SignalRealtimeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 import {
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  DollarSign,
+  User,
+  Filter,
+  Search,
   Plus,
   Radio,
-  Activity,
-  Clock,
-  CheckCircle,
-  Settings
+  Target,
+  AlertCircle,
 } from "lucide-react";
+// import { SignalCard } from "./components/SignalCard";
+// import { SignalFilters } from "./components/SignalFilters";
+// import { CreateSignalDialog } from "./components/CreateSignalDialog";
 import { motion, AnimatePresence } from "framer-motion";
-import CompactSignalSearch from "@/components/signals/CompactSignalSearch";
-import { RealtimeConnectionStatus } from "@/components/signals/RealtimeConnectionStatus";
-import { EnhancedSignalCard } from "@/components/signals/EnhancedSignalCard";
-import { useSignalNotifications } from "@/hooks/useSignalNotifications";
-import { TradeAlertData } from "@/types/components";
 
-interface FilterState {
-  search: string;
-  type: string;
-  educator: string;
-  status: "all" | "active" | "pending" | "closed";
+interface Signal {
+  id: string;
+  asset: string;
+  type: 'buy' | 'sell';
+  entry: number;
+  takeProfit: number;
+  stopLoss: number;
+  leverage: number;
+  timestamp: string;
+  educatorId: string;
+  notes: string;
+  status: 'active' | 'pending' | 'closed';
 }
+
+interface UserMetadata {
+  user_type?: 'admin' | 'educator' | 'member';
+  access_level?: 'admin' | 'educator' | 'member';
+}
+
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
 
 export default function SignalStream() {
   const { user } = useAuth();
-  const { signals, connectionStatus, lastUpdated, refreshSignals } = useSignalRealtime();
-  const { requestNotificationPermission, permission } = useSignalNotifications();
-  const navigate = useNavigate();
-  
-  const [filters, setFilters] = useState<FilterState>({
-    search: '',
-    type: 'all',
-    educator: 'all',
-    status: 'all'
-  });
+  const { signals } = useSignalRealtime();
+  const [activeTab, setActiveTab] = useState<"all" | "active" | "pending" | "closed">("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [educatorFilter, setEducatorFilter] = useState("");
+  const [assetFilter, setAssetFilter] = useState("");
+  const [sortBy, setSortBy] = useState("timestamp");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [showFilters, setShowFilters] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [newSignalIds, setNewSignalIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setIsLoading(false);
   }, []);
 
-  // Track new signals for highlighting
-  useEffect(() => {
-    const currentIds = new Set(signals.map(s => s.id));
-    const previousIds = new Set(Array.from(newSignalIds));
-    
-    // Find truly new signals (not just from initial load)
-    const genuinelyNewIds = new Set(
-      Array.from(currentIds).filter(id => !previousIds.has(id) && signals.length > 0)
-    );
-    
-    if (genuinelyNewIds.size > 0) {
-      setNewSignalIds(prev => new Set([...prev, ...genuinelyNewIds]));
-      
-      // Clear the "new" status after 10 seconds
-      setTimeout(() => {
-        setNewSignalIds(prev => {
-          const updated = new Set(prev);
-          genuinelyNewIds.forEach(id => updated.delete(id));
-          return updated;
-        });
-      }, 10000);
+  const handleCreateSignal = async (signalData: Omit<Signal, 'id'>) => {
+    setIsSubmitting(true);
+    try {
+      // await createSignal(signalData);
+      toast.success("Signal created successfully!");
+      setShowCreateDialog(false);
+    } catch (error) {
+      console.error("Failed to create signal:", error);
+      toast.error("Failed to create signal. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [signals]);
-
-  // Auto-request notification permission
-  useEffect(() => {
-    if (user && permission === 'default') {
-      requestNotificationPermission();
-    }
-  }, [user, permission, requestNotificationPermission]);
+  };
 
   const canCreateSignals = user?.user_metadata?.user_type === "educator" || user?.user_metadata?.access_level === "admin";
 
-  const handleCreateSignal = () => {
-    navigate('/dashboard/new-signal');
-  };
+  const filteredSignals = signals?.filter(signal => {
+    if (!signal) return false;
+    
+    const searchTermLower = searchTerm.toLowerCase();
+    const assetLower = signal.assetName?.toLowerCase() || '';
+    const notesLower = signal.notes?.toLowerCase() || '';
 
-  // Convert signals to TradeAlertData format
-  const convertedSignals: TradeAlertData[] = signals?.map(signal => ({
-    id: signal.id,
-    asset_name: signal.assetName,
-    tradermade_symbol: signal.tradermadeSymbol,
-    trade_type: signal.tradeType as 'buy' | 'sell' | 'buy_limit' | 'sell_limit',
-    entry_price: signal.entryPrice,
-    stop_loss: signal.stopLoss,
-    tp1: signal.tp1,
-    tp2: signal.tp2,
-    tp3: signal.tp3,
-    tp4: signal.tp4,
-    tp5: signal.tp5,
-    status: signal.status,
-    tp_hits: signal.tpHits || [],
-    close_reason: signal.closeReason,
-    notes: signal.notes,
-    created_date: signal.createdAt,
-    updated_date: signal.updatedAt
-  })) || [];
+    const matchesSearch =
+      assetLower.includes(searchTermLower) ||
+      notesLower.includes(searchTermLower);
 
-  // Apply all filters
-  const filteredSignals = useMemo(() => {
-    return convertedSignals.filter(signal => {
-      if (!signal) return false;
-      
-      const searchTermLower = filters.search.toLowerCase();
-      const assetLower = signal.asset_name?.toLowerCase() || '';
-      const notesLower = signal.notes?.toLowerCase() || '';
+    const matchesStatus = statusFilter === "all" || signal.status === statusFilter;
+    const matchesType = typeFilter === "all" || signal.tradeType === typeFilter;
+    const matchesEducator = !educatorFilter || signal.userId === educatorFilter;
+    const matchesAsset = !assetFilter || signal.assetName === assetFilter;
 
-      const matchesSearch = !filters.search || 
-        assetLower.includes(searchTermLower) ||
-        notesLower.includes(searchTermLower);
-
-      const matchesType = filters.type === "all" || signal.trade_type === filters.type;
-
-      // Apply status filter
-      if (filters.status !== "all" && signal.status !== filters.status) {
-        return false;
-      }
-
-      return matchesSearch && matchesType;
-    });
-  }, [convertedSignals, filters]);
-
-  // Calculate signal counts
-  const signalCount = useMemo(() => ({
-    total: convertedSignals.length,
-    active: convertedSignals.filter(s => s?.status === 'active').length,
-    pending: convertedSignals.filter(s => s?.status === 'pending').length,
-    closed: convertedSignals.filter(s => s?.status === 'closed').length
-  }), [convertedSignals]);
-
-  // Get educators for filter
-  const educators = useMemo(() => {
-    const educatorList = signals?.map(s => s.creator?.display_name).filter(Boolean) || [];
-    return [...new Set(educatorList)].slice(0, 10);
-  }, [signals]);
+    return matchesSearch && matchesStatus && matchesType && matchesEducator && matchesAsset;
+  }) || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
-      {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-50 bg-black/40 backdrop-blur-xl border-b border-gray-800/50">
-        <div className="flex items-center justify-between p-4">
-          {/* Left: Branding */}
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Radio className="w-8 h-8 text-green-500" />
-              <motion.div
-                className="absolute inset-0 w-8 h-8 border-2 border-green-500 rounded-full"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-green-400 to-white bg-clip-text text-transparent">
-                Xeon Stream
-              </h1>
-              <p className="text-gray-400 text-sm">Live trading signals</p>
-            </div>
-          </div>
-
-          {/* Center: Search & Status */}
-          <div className="flex items-center gap-4">
-            <CompactSignalSearch 
-              onSearchChange={(value) => setFilters(prev => ({ ...prev, search: value }))}
-              placeholder="Search signals, assets..."
-            />
-            <RealtimeConnectionStatus
-              connectionStatus={connectionStatus}
-              lastUpdated={lastUpdated}
-              onRefresh={refreshSignals}
-              signalCount={signalCount.total}
-            />
-          </div>
-
-          {/* Right: Create Signal Button */}
-          {canCreateSignals && (
-            <Button 
-              onClick={handleCreateSignal}
-              className="bg-green-500 hover:bg-green-600 text-black font-semibold"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Signal
-            </Button>
-          )}
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
+            <Radio className="w-6 h-6 sm:w-8 sm:h-8 text-primary animate-pulse" />
+            Signal Stream
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Real-time trading signals from professional traders
+          </p>
         </div>
 
-        {/* Navigation Filters Row */}
-        <div className="px-4 pb-4">
-          <div className="flex items-center justify-between gap-6">
-            {/* Status Tabs */}
-            <Tabs value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value as any }))}>
-              <TabsList className="bg-black/20 border-gray-700/50">
-                <TabsTrigger value="all" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
-                  <Activity className="w-4 h-4 mr-2" />
-                  All ({signalCount.total})
-                </TabsTrigger>
-                <TabsTrigger value="active" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
-                  <Radio className="w-4 h-4 mr-2" />
-                  Active ({signalCount.active})
-                </TabsTrigger>
-                <TabsTrigger value="pending" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Pending ({signalCount.pending})
-                </TabsTrigger>
-                <TabsTrigger value="closed" className="data-[state=active]:bg-green-500/20 data-[state=active]:text-green-400">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Closed ({signalCount.closed})
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            {/* Filter Dropdowns */}
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-400 mb-1">Trade Type</label>
-                <Select value={filters.type} onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))}>
-                  <SelectTrigger className="w-36 bg-white border-gray-300 text-gray-900">
-                    <SelectValue placeholder="All Types" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-gray-300 z-50">
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="buy">Buy</SelectItem>
-                    <SelectItem value="sell">Sell</SelectItem>
-                    <SelectItem value="buy_limit">Buy Limit</SelectItem>
-                    <SelectItem value="sell_limit">Sell Limit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col">
-                <label className="text-xs text-gray-400 mb-1">Educator</label>
-                <Select value={filters.educator} onValueChange={(value) => setFilters(prev => ({ ...prev, educator: value }))}>
-                  <SelectTrigger className="w-40 bg-white border-gray-300 text-gray-900">
-                    <SelectValue placeholder="All Educators" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-gray-300 z-50">
-                    <SelectItem value="all">All Educators</SelectItem>
-                    {educators.map((educator) => (
-                      <SelectItem key={educator} value={educator}>{educator}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="p-6">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-700 border-t-green-500"></div>
-              <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-green-500 opacity-20"></div>
-            </div>
-          </div>
-        ) : filteredSignals && filteredSignals.length > 0 ? (
-          <ScrollArea className="h-full">
-            <div className="space-y-4">
-              <AnimatePresence mode="popLayout">
-                {filteredSignals.map((signal, index) => (
-                  <motion.div
-                    key={signal.id}
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ delay: index * 0.03 }}
-                  >
-                    <EnhancedSignalCard
-                      signal={signal}
-                      creator={signals?.find(s => s.id === signal.id)?.creator}
-                      isNew={newSignalIds.has(signal.id)}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </ScrollArea>
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-16"
+        {canCreateSignals && (
+          <Button 
+            onClick={() => setShowCreateDialog(true)}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
+            data-prevent-widget-open="true"
           >
-            <div className="mx-auto w-24 h-24 bg-gray-800/50 rounded-full flex items-center justify-center mb-6">
-              <Radio className="w-12 h-12 text-gray-500" />
-            </div>
-            <h3 className="text-2xl font-semibold text-white mb-3">No signals found</h3>
-            <p className="text-gray-400 max-w-md mx-auto">
-              {filters.search || filters.type !== "all" || filters.educator !== "all" || filters.status !== "all"
-                ? "Try adjusting your filters to discover more trading opportunities."
-                : "No signals are currently available. Check back soon for new trading opportunities."}
-            </p>
-          </motion.div>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Signal
+          </Button>
         )}
       </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="border-border/50 hover:border-primary/30 transition-colors" data-prevent-widget-open="true">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-green-500/10 rounded-lg">
+                  <TrendingUp className="w-4 h-4 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active Signals</p>
+                  <p className="text-xl font-bold text-foreground">
+                    {filteredSignals?.filter(s => s?.status === 'active').length || 0}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="border-border/50 hover:border-amber-500/30 transition-colors" data-prevent-widget-open="true">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-amber-500/10 rounded-lg">
+                  <Clock className="w-4 h-4 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Pending Signals</p>
+                  <p className="text-xl font-bold text-foreground">
+                    {filteredSignals?.filter(s => s?.status === 'pending').length || 0}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card className="border-border/50 hover:border-red-500/30 transition-colors" data-prevent-widget-open="true">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-red-500/10 rounded-lg">
+                  <TrendingDown className="w-4 h-4 text-red-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Closed Signals</p>
+                  <p className="text-xl font-bold text-foreground">
+                    {filteredSignals?.filter(s => s?.status === 'closed').length || 0}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Card className="border-border/50 hover:border-blue-500/30 transition-colors" data-prevent-widget-open="true">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <DollarSign className="w-4 h-4 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Signals</p>
+                  <p className="text-xl font-bold text-foreground">{filteredSignals?.length || 0}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Filters and Tabs */}
+      <div className="space-y-4">
+        {/* Search and Quick Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1" data-prevent-widget-open="true">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search signals by asset, educator, or notes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 border-border/50 focus:border-primary"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter} data-prevent-widget-open="true">
+              <SelectTrigger className="w-32 border-border/50">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={typeFilter} onValueChange={setTypeFilter} data-prevent-widget-open="true">
+              <SelectTrigger className="w-32 border-border/50">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="buy">Buy</SelectItem>
+                <SelectItem value="sell">Sell</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowFilters(!showFilters)}
+              className="border-border/50 hover:border-primary/50"
+              data-prevent-widget-open="true"
+            >
+              <Filter className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Advanced Filters */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <Card className="border-border/50" data-prevent-widget-open="true">
+                <CardContent className="p-4">
+                  <div className="text-sm text-muted-foreground">Advanced filters coming soon...</div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "active" | "pending" | "closed")} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 bg-muted/50" data-prevent-widget-open="true">
+            <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              All ({filteredSignals?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="active" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Active ({filteredSignals?.filter(s => s?.status === 'active').length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Pending ({filteredSignals?.filter(s => s?.status === 'pending').length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="closed" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Closed ({filteredSignals?.filter(s => s?.status === 'closed').length || 0})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Signal Content */}
+          <TabsContent value={activeTab} className="mt-6">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredSignals && filteredSignals.length > 0 ? (
+              <ScrollArea className="h-[600px] pr-4">
+                <div className="space-y-4">
+                  <AnimatePresence mode="popLayout">
+                    {filteredSignals.map((signal, index) => (
+                      <motion.div
+                        key={signal.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ delay: index * 0.05 }}
+                        data-prevent-widget-open="true"
+                      >
+                        <Card className="border-border/50 hover:border-primary/30 transition-colors">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="font-semibold text-foreground">{signal.assetName}</h3>
+                              <p className="text-sm text-muted-foreground">{signal.tradeType?.toUpperCase()}</p>
+                              <Badge variant={signal.status === 'active' ? 'default' : signal.status === 'pending' ? 'secondary' : 'outline'}>
+                                {signal.status}
+                              </Badge>
+                            </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="text-center py-12">
+                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No signals found</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm || statusFilter !== "all" || typeFilter !== "all" || educatorFilter || assetFilter
+                    ? "Try adjusting your filters to see more signals."
+                    : "There are no signals available at the moment."}
+                </p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Create Signal Dialog - Coming Soon */}
+      {showCreateDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-96">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-lg font-semibold mb-2">Create Signal</h3>
+              <p className="text-muted-foreground mb-4">Signal creation feature coming soon!</p>
+              <Button onClick={() => setShowCreateDialog(false)}>Close</Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

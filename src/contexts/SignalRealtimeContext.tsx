@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
@@ -37,59 +38,32 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 
   const refreshSignals = useCallback(async () => {
     try {
-      console.log('SignalRealtimeContext - Starting Xeon Stream signal refresh...');
+      console.log('SignalRealtimeContext - Starting signal refresh with new RLS policies...');
       
-      // Fetch educator/admin profile IDs first
-      const { data: educatorProfiles, error: profilesFetchError } = await supabase
-        .from('profiles')
-        .select('id, display_name, role, avatar_url, user_type, access_level')
-        .or('access_level.eq.admin,access_level.eq.moderator,user_type.eq.educator');
-
-      if (profilesFetchError) {
-        console.warn('SignalRealtimeContext - Could not fetch educator/admin profiles:', profilesFetchError);
-      }
-
-      const educatorIds = (educatorProfiles || []).map(p => p.id);
-      
-      if (educatorIds.length > 0) {
-        // Update existing alerts for these users to be Xeon Stream
-        const { error: updateError } = await supabase
-          .from('trade_alerts')
-          .update({ is_xeon_stream: true })
-          .in('user_id', educatorIds);
-
-        if (updateError) {
-          console.warn('SignalRealtimeContext - Could not update existing signals:', updateError);
-        } else {
-          console.log('SignalRealtimeContext - Updated existing educator/admin signals to Xeon Stream');
-        }
-      }
-
-      // Fetch Xeon Stream alerts only - RLS policies will handle educator/admin filtering
+      // Fetch ALL alerts - RLS policies will handle filtering to only show educator/admin alerts
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
         .select('*')
-        .eq('is_xeon_stream', true)
         .order('created_at', { ascending: false });
 
       if (alertsError) {
-        console.error('SignalRealtimeContext - Error fetching Xeon Stream alerts:', alertsError);
+        console.error('SignalRealtimeContext - Error fetching alerts:', alertsError);
         throw alertsError;
       }
 
-      console.log('SignalRealtimeContext - Fetched Xeon Stream alerts:', alertsData?.length || 0);
+      console.log('SignalRealtimeContext - Fetched alerts (filtered by RLS):', alertsData?.length || 0);
 
       if (!alertsData || alertsData.length === 0) {
-        console.log('SignalRealtimeContext - No Xeon Stream alerts found, setting empty array');
+        console.log('SignalRealtimeContext - No alerts found, setting empty array');
         setSignals([]);
         return;
       }
 
-      // Get unique user IDs from alerts
+      // Get ALL unique user IDs from alerts
       const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
-      console.log('SignalRealtimeContext - Unique user IDs from Xeon Stream alerts:', userIds);
+      console.log('SignalRealtimeContext - Unique user IDs from alerts:', userIds);
 
-      // Fetch profiles for these users
+      // Fetch ALL profiles for these users
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -116,8 +90,8 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         });
       }
 
-      // Map Xeon Stream alerts with their profiles
-      const xeonStreamAlertsWithProfiles: TradeAlertWithProfile[] = alertsData.map(alert => {
+      // Map ALL alerts with their profiles - RLS already filtered to educator/admin signals
+      const allAlertsWithProfiles: TradeAlertWithProfile[] = alertsData.map(alert => {
         const profile = profilesMap.get(alert.user_id);
         
         const mappedAlert = {
@@ -154,13 +128,13 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
             user_type: null,
             access_level: null
           }
-        } as TradeAlertWithProfile;
+        };
         
         return mappedAlert;
       });
 
-      console.log('SignalRealtimeContext - Final Xeon Stream signals:', xeonStreamAlertsWithProfiles.length);
-      console.log('SignalRealtimeContext - Signal details:', xeonStreamAlertsWithProfiles.map(s => ({
+      console.log('SignalRealtimeContext - Final signals from RLS-filtered data:', allAlertsWithProfiles.length);
+      console.log('SignalRealtimeContext - Signal details:', allAlertsWithProfiles.map(s => ({
         id: s.id,
         asset: s.assetName,
         creator: s.creator?.display_name,
@@ -169,15 +143,15 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         accessLevel: s.creator?.access_level
       })));
 
-      setSignals(xeonStreamAlertsWithProfiles);
+      setSignals(allAlertsWithProfiles);
       setLastUpdated(new Date());
       setError(null);
       
-      console.log('SignalRealtimeContext - Successfully set Xeon Stream signals:', xeonStreamAlertsWithProfiles.length);
+      console.log('SignalRealtimeContext - Successfully set signals:', allAlertsWithProfiles.length);
       
     } catch (err) {
-      console.error('SignalRealtimeContext - Failed to refresh Xeon Stream signals:', err);
-      setError(err instanceof Error ? err.message : 'Failed to refresh Xeon Stream signals');
+      console.error('SignalRealtimeContext - Failed to refresh signals:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh signals');
     }
   }, []);
 
@@ -187,15 +161,8 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     try {
       const { eventType, new: newRecord, old: oldRecord } = payload;
       
-      // Only process records that are Xeon Stream or could become Xeon Stream
       if (eventType === 'INSERT' && newRecord) {
         console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
-        
-        // Check if this is a Xeon Stream signal
-        if (!newRecord.is_xeon_stream) {
-          console.log('SignalRealtimeContext - Not a Xeon Stream signal, ignoring INSERT');
-          return;
-        }
         
         // Get profile for the new signal
         const { data: profile, error: profileError } = await supabase
@@ -208,7 +175,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
           console.error('SignalRealtimeContext - Error fetching profile for new signal:', profileError);
         }
 
-        console.log('SignalRealtimeContext - Profile for new Xeon Stream signal:', profile);
+        console.log('SignalRealtimeContext - Profile for new signal:', profile);
 
         const newSignal: TradeAlertWithProfile = {
           id: newRecord.id,
@@ -246,8 +213,9 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
           }
         };
 
-        console.log('SignalRealtimeContext - Adding new Xeon Stream signal to state:', newSignal);
+        console.log('SignalRealtimeContext - Adding new signal to state:', newSignal);
         setSignals(prev => {
+          // Check for duplicates using the state from the setter to avoid stale closure
           const alreadyExists = prev.find(signal => signal.id === newSignal.id);
           if (alreadyExists) {
             console.log('SignalRealtimeContext - Signal already in state during update, skipping duplication:', newSignal.id);
@@ -262,24 +230,6 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       else if (eventType === 'UPDATE' && newRecord) {
         console.log('SignalRealtimeContext - Processing UPDATE for alert:', newRecord.id);
         
-        // Handle case where signal becomes Xeon Stream or stops being Xeon Stream
-        if (newRecord.is_xeon_stream && !oldRecord?.is_xeon_stream) {
-          // Signal became Xeon Stream - add it
-          console.log('SignalRealtimeContext - Signal became Xeon Stream, adding to state');
-          await refreshSignals(); // Refresh to get the new signal with profile
-          return;
-        } else if (!newRecord.is_xeon_stream && oldRecord?.is_xeon_stream) {
-          // Signal is no longer Xeon Stream - remove it
-          console.log('SignalRealtimeContext - Signal no longer Xeon Stream, removing from state');
-          setSignals(prev => prev.filter(signal => signal.id !== newRecord.id));
-          return;
-        } else if (!newRecord.is_xeon_stream) {
-          // Not a Xeon Stream signal, ignore
-          console.log('SignalRealtimeContext - Not a Xeon Stream signal, ignoring UPDATE');
-          return;
-        }
-        
-        // Update existing Xeon Stream signal
         setSignals(prev => prev.map(signal => 
           signal.id === newRecord.id ? {
             ...signal,
@@ -300,7 +250,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
             updatedAt: newRecord.updated_at
           } : signal
         ));
-        console.log('SignalRealtimeContext - Updated Xeon Stream signal in state:', newRecord.id);
+        console.log('SignalRealtimeContext - Updated signal in state:', newRecord.id);
       }
       else if (eventType === 'DELETE' && oldRecord) {
         console.log('SignalRealtimeContext - Processing DELETE for alert:', oldRecord.id);
@@ -320,12 +270,12 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       return;
     }
 
-    console.log('SignalRealtimeContext - Subscribing to Xeon Stream signal real-time updates');
+    console.log('SignalRealtimeContext - Subscribing to global signal real-time updates');
     setConnectionStatus('connecting');
 
-    // Subscribe to ALL trade_alerts changes globally - we'll filter in the handler
+    // Subscribe to ALL trade_alerts changes globally - RLS will filter appropriately
     channelRef.current = supabase
-      .channel('xeon-stream-signals-realtime')
+      .channel('global-signals-realtime')
       .on(
         'postgres_changes',
         {
@@ -360,7 +310,7 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
     }
 
     if (channelRef.current) {
-      console.log('Unsubscribing from Xeon Stream signal realtime');
+      console.log('Unsubscribing from signal realtime');
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }

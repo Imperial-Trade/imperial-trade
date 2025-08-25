@@ -1,300 +1,180 @@
-
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sparkles, TrendingUp, Target, AlertCircle, Lightbulb, BarChart3 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useCoachInvocation } from '@/hooks/useCoachInvocation';
-import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Brain, Star, TrendingUp, Target, AlertTriangle, Lightbulb, Loader2 } from 'lucide-react';
+import { CoachingAnalysis, AiCoachFeedback } from '@/api/client/types';
+import { tradeJournalEntry } from '@/api/client/operations/TradeJournalEntry';
 
 interface AICoachFeedbackProps {
-  journalEntryId: string;
-  existingFeedback?: string;
+  entryId: string;
+  onFeedbackReceived?: (feedback: AiCoachFeedback) => void;
 }
 
-interface CoachingAnalysis {
-  execution_analysis: string;
-  risk_management: string;
-  strengths: string;
-  improvements: string;
-  recommendations: string;
-  overall_score: number;
-  key_insights: string[];
-}
+export function AICoachFeedback({ entryId, onFeedbackReceived }: AICoachFeedbackProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [feedback, setFeedback] = useState<AiCoachFeedback | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-const AICoachFeedback: React.FC<AICoachFeedbackProps> = ({ 
-  journalEntryId, 
-  existingFeedback 
-}) => {
-  const [feedback, setFeedback] = useState<string>(existingFeedback || '');
-  const [isRequesting, setIsRequesting] = useState(false);
-  const [coachingAnalysis, setCoachingAnalysis] = useState<CoachingAnalysis | null>(null);
-  const [pollCount, setPollCount] = useState(0);
-  
-  const { invokeCoach } = useCoachInvocation();
+  const handleGetCoaching = async () => {
+    setIsLoading(true);
+    setError(null);
 
-  // Sync with prop changes for optimistic updates
-  useEffect(() => {
-    if (existingFeedback !== undefined && existingFeedback !== feedback) {
-      setFeedback(existingFeedback);
-    }
-  }, [existingFeedback, feedback]);
-
-  // Parse coaching analysis from feedback string
-  useEffect(() => {
-    if (feedback && feedback.trim()) {
-      try {
-        // Try to parse as JSON first (new format)
-        const parsed = JSON.parse(feedback);
-        if (parsed.execution_analysis) {
-          setCoachingAnalysis(parsed);
-          return;
-        }
-      } catch {
-        // Fallback: treat as plain text feedback
-        setCoachingAnalysis({
-          execution_analysis: feedback,
-          risk_management: '',
-          strengths: '',
-          improvements: '',
-          recommendations: '',
-          overall_score: 7,
-          key_insights: []
-        });
-      }
-    }
-  }, [feedback]);
-
-  // Polling backup for cases where realtime doesn't work
-  useEffect(() => {
-    if (isRequesting && pollCount < 6) { // Poll for up to 30 seconds (6 * 5s)
-      const timer = setTimeout(async () => {
-        try {
-          const { data: entry } = await supabase
-            .from('trade_journal_entries')
-            .select('ai_positive_feedback')
-            .eq('id', journalEntryId)
-            .single();
-
-          if (entry?.ai_positive_feedback) {
-            setFeedback(entry.ai_positive_feedback);
-            setIsRequesting(false);
-            setPollCount(0);
-          } else {
-            setPollCount(prev => prev + 1);
-          }
-        } catch (error) {
-          console.error('Polling error:', error);
-          setPollCount(prev => prev + 1);
-        }
-      }, 5000);
-
-      return () => clearTimeout(timer);
-    } else if (pollCount >= 6) {
-      // Stop polling after 6 attempts
-      setIsRequesting(false);
-      setPollCount(0);
-    }
-  }, [isRequesting, pollCount, journalEntryId]);
-
-  const handleRequestFeedback = async () => {
-    setIsRequesting(true);
-    setPollCount(0);
-    
     try {
-      const reply = await invokeCoach(journalEntryId);
+      const result = await tradeJournalEntry.getCoachFeedback(entryId);
       
-      // Optimistic update - set feedback immediately if reply received
-      if (reply) {
-        setFeedback(reply);
-        setIsRequesting(false);
+      if (result.success) {
+        setFeedback(result.feedback);
+        onFeedbackReceived?.(result.feedback);
+      } else {
+        setError(result.error || 'Failed to get AI coaching');
       }
-      // If no reply, polling will continue to check for updates
-    } catch (error) {
-      console.error('Coach invocation failed:', error);
-      setIsRequesting(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // If we have no feedback and aren't requesting, show the request button
-  if (!feedback && !isRequesting) {
-    return (
-      <Card className="border-2 border-dashed border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-        <CardContent className="p-6 text-center">
-          <Sparkles className="w-12 h-12 mx-auto mb-4 text-primary" />
-          <h3 className="text-lg font-semibold mb-2">Get AI Coach Feedback</h3>
-          <p className="text-muted-foreground mb-4">
-            Let our AI coach analyze your trade and provide personalized insights to improve your trading.
-          </p>
-          <Button onClick={handleRequestFeedback} className="gap-2">
-            <Sparkles className="w-4 h-4" />
-            Analyze Trade
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  const getScoreColor = (score: number) => {
+    if (score >= 8) return 'bg-green-500';
+    if (score >= 6) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
 
-  // Show loading state while requesting
-  if (isRequesting) {
-    return (
-      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-        <CardContent className="p-6 text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="w-12 h-12 mx-auto mb-4"
-          >
-            <Sparkles className="w-12 h-12 text-primary" />
-          </motion.div>
-          <h3 className="text-lg font-semibold mb-2">AI Coach is Analyzing...</h3>
-          <p className="text-muted-foreground">
-            Our AI is carefully reviewing your trade. This usually takes 10-15 seconds.
-          </p>
-          {pollCount > 2 && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Still analyzing... ({pollCount * 5}s elapsed)
-            </p>
+  const analysis = feedback?.coaching_analysis as CoachingAnalysis;
+
+  return (
+    <div className="space-y-4">
+      {!feedback && (
+        <Button 
+          onClick={handleGetCoaching}
+          disabled={isLoading}
+          className="w-full"
+          variant="outline"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Getting AI Coach Analysis...
+            </>
+          ) : (
+            <>
+              <Brain className="w-4 h-4 mr-2" />
+              Get AI Coach Feedback
+            </>
           )}
-        </CardContent>
-      </Card>
-    );
-  }
+        </Button>
+      )}
 
-  // Show structured coaching analysis if available
-  if (coachingAnalysis && coachingAnalysis.execution_analysis) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              AI Coach Analysis
-              <div className="ml-auto flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-normal">
-                  Score: {coachingAnalysis.overall_score}/10
-                </span>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Execution Analysis */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-blue-500" />
-                <h4 className="font-semibold text-sm">Execution Analysis</h4>
-              </div>
-              <p className="text-sm text-muted-foreground pl-6">
-                {coachingAnalysis.execution_analysis}
-              </p>
-            </div>
-
-            {/* Risk Management */}
-            {coachingAnalysis.risk_management && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-orange-500" />
-                  <h4 className="font-semibold text-sm">Risk Management</h4>
-                </div>
-                <p className="text-sm text-muted-foreground pl-6">
-                  {coachingAnalysis.risk_management}
-                </p>
-              </div>
-            )}
-
-            {/* Strengths */}
-            {coachingAnalysis.strengths && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-green-500" />
-                  <h4 className="font-semibold text-sm">Strengths</h4>
-                </div>
-                <p className="text-sm text-muted-foreground pl-6">
-                  {coachingAnalysis.strengths}
-                </p>
-              </div>
-            )}
-
-            {/* Recommendations */}
-            {coachingAnalysis.recommendations && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 text-yellow-500" />
-                  <h4 className="font-semibold text-sm">Recommendations</h4>
-                </div>
-                <p className="text-sm text-muted-foreground pl-6">
-                  {coachingAnalysis.recommendations}
-                </p>
-              </div>
-            )}
-
-            {/* Key Insights */}
-            {coachingAnalysis.key_insights && coachingAnalysis.key_insights.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-semibold text-sm flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  Key Insights
-                </h4>
-                <ul className="space-y-1 pl-6">
-                  {coachingAnalysis.key_insights.map((insight, index) => (
-                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                      <span className="text-primary mt-1">•</span>
-                      {insight}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <div className="pt-2 border-t border-primary/10">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleRequestFeedback}
-                disabled={isRequesting}
-                className="gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                Get Fresh Analysis
-              </Button>
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2 text-destructive">
+              <AlertTriangle className="w-4 h-4" />
+              <span className="text-sm">{error}</span>
             </div>
           </CardContent>
         </Card>
-      </motion.div>
-    );
-  }
+      )}
 
-  // Fallback for plain text feedback
-  return (
-    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          AI Coach Feedback
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{feedback}</p>
-        <div className="pt-4 border-t border-primary/10 mt-4">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRequestFeedback}
-            disabled={isRequesting}
-            className="gap-2"
-          >
-            <Sparkles className="w-4 h-4" />
-            Get Fresh Analysis
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      {feedback && analysis && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center space-x-2">
+                <Brain className="w-5 h-5" />
+                <span>AI Coach Analysis</span>
+              </CardTitle>
+              <div className="flex items-center space-x-2">
+                <Badge className={`${getScoreColor(analysis.overall_score)} text-white`}>
+                  <Star className="w-3 h-3 mr-1" />
+                  {analysis.overall_score}/10
+                </Badge>
+                <Badge variant="secondary">
+                  {feedback.model_used}
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Execution Analysis */}
+            <div>
+              <div className="flex items-center space-x-2 mb-2">
+                <Target className="w-4 h-4 text-primary" />
+                <h4 className="font-medium">Execution Analysis</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">{analysis.execution_analysis}</p>
+            </div>
+
+            <Separator />
+
+            {/* Risk Management */}
+            <div>
+              <div className="flex items-center space-x-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-orange-500" />
+                <h4 className="font-medium">Risk Management</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">{analysis.risk_management}</p>
+            </div>
+
+            <Separator />
+
+            {/* Strengths */}
+            <div>
+              <div className="flex items-center space-x-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-green-500" />
+                <h4 className="font-medium">Strengths</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">{analysis.strengths}</p>
+            </div>
+
+            <Separator />
+
+            {/* Areas for Improvement */}
+            <div>
+              <div className="flex items-center space-x-2 mb-2">
+                <Lightbulb className="w-4 h-4 text-blue-500" />
+                <h4 className="font-medium">Areas for Improvement</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">{analysis.improvements}</p>
+            </div>
+
+            <Separator />
+
+            {/* Recommendations */}
+            <div>
+              <div className="flex items-center space-x-2 mb-2">
+                <Star className="w-4 h-4 text-purple-500" />
+                <h4 className="font-medium">Recommendations</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">{analysis.recommendations}</p>
+            </div>
+
+            {/* Key Insights */}
+            {analysis.key_insights && analysis.key_insights.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-2">Key Insights</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {analysis.key_insights.map((insight, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {insight}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="text-xs text-muted-foreground mt-4">
+              Generated on {new Date(feedback.created_at).toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
-};
-
-export default AICoachFeedback;
+}

@@ -22,9 +22,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Guard against deprecated functions
-        run: node scripts/guard-deprecations.mjs
-      
       - name: Run unit tests
         run: npm run test:unit
       

@@ -5,11 +5,6 @@ export interface GoogleAIOptions {
   maxOutputTokens?: number;
   timeoutMs?: number;
   responseSchema?: object;
-  temperature?: number;
-  topP?: number;
-  topK?: number;
-  stopSequences?: string[];
-  signal?: AbortSignal;
 }
 
 /**
@@ -43,12 +38,8 @@ export async function callGoogleAI(
       }],
       generationConfig: {
         maxOutputTokens,
-        responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
-        ...(opts.responseSchema && { responseSchema: opts.responseSchema }),
-        ...(opts.temperature !== undefined && { temperature: opts.temperature }),
-        ...(opts.topP !== undefined && { topP: opts.topP }),
-        ...(opts.topK !== undefined && { topK: opts.topK }),
-        ...(opts.stopSequences && { stopSequences: opts.stopSequences })
+        responseMimeType: "application/json",
+        ...(opts.responseSchema && { responseSchema: opts.responseSchema })
       }
     };
   } else {
@@ -59,20 +50,15 @@ export async function callGoogleAI(
       }],
       generationConfig: {
         maxOutputTokens,
-        responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
-        ...(opts.responseSchema && { responseSchema: opts.responseSchema }),
-        ...(opts.temperature !== undefined && { temperature: opts.temperature }),
-        ...(opts.topP !== undefined && { topP: opts.topP }),
-        ...(opts.topK !== undefined && { topK: opts.topK }),
-        ...(opts.stopSequences && { stopSequences: opts.stopSequences })
+        responseMimeType: "application/json",
+        ...(opts.responseSchema && { responseSchema: opts.responseSchema })
       }
     };
   }
 
-  // Use provided signal or create timeout controller
-  const controller = opts.signal ? undefined : new AbortController();
-  const signal = opts.signal || controller?.signal;
-  const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
+  // Create a timeout controller
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
@@ -81,10 +67,10 @@ export async function callGoogleAI(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
-      signal,
+      signal: controller.signal,
     });
 
-    if (timeoutId) clearTimeout(timeoutId);
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -116,24 +102,6 @@ export async function callGoogleAI(
 
     if (finishReason === 'MAX_TOKENS') {
       console.error('Response truncated due to token limit:', candidate);
-      
-      // For text mode, salvage partial content instead of fallback
-      if (requestBody.generationConfig.responseMimeType === "text/plain") {
-        const textParts = candidate.content?.parts
-          ?.map(part => part.text)
-          ?.filter(text => text && text.trim())
-          ?.join(' ') || '';
-        
-        if (textParts.trim()) {
-          console.log('AI call salvaged text from MAX_TOKENS:', {
-            finishReason,
-            tokensOut: data.usageMetadata?.candidatesTokenCount || 'unknown',
-            responseLength: textParts.length
-          });
-          return textParts.trim();
-        }
-      }
-      
       return createTransportFallback('max_tokens');
     }
 
@@ -177,7 +145,7 @@ export async function callGoogleAI(
     
     return responseText;
   } catch (error) {
-    if (timeoutId) clearTimeout(timeoutId);
+    clearTimeout(timeoutId);
     console.error('Google AI API call failed:', error);
     
     // Return transport-only fallback
@@ -214,12 +182,8 @@ export async function callGoogleAIWithMeta(
       }],
       generationConfig: {
         maxOutputTokens,
-        responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
-        ...(opts.responseSchema && { responseSchema: opts.responseSchema }),
-        ...(opts.temperature !== undefined && { temperature: opts.temperature }),
-        ...(opts.topP !== undefined && { topP: opts.topP }),
-        ...(opts.topK !== undefined && { topK: opts.topK }),
-        ...(opts.stopSequences && { stopSequences: opts.stopSequences })
+        responseMimeType: "application/json",
+        ...(opts.responseSchema && { responseSchema: opts.responseSchema })
       }
     };
   } else {
@@ -230,20 +194,15 @@ export async function callGoogleAIWithMeta(
       }],
       generationConfig: {
         maxOutputTokens,
-        responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
-        ...(opts.responseSchema && { responseSchema: opts.responseSchema }),
-        ...(opts.temperature !== undefined && { temperature: opts.temperature }),
-        ...(opts.topP !== undefined && { topP: opts.topP }),
-        ...(opts.topK !== undefined && { topK: opts.topK }),
-        ...(opts.stopSequences && { stopSequences: opts.stopSequences })
+        responseMimeType: "application/json",
+        ...(opts.responseSchema && { responseSchema: opts.responseSchema })
       }
     };
   }
 
-  // Use provided signal or create timeout controller
-  const controller = opts.signal ? undefined : new AbortController();
-  const signal = opts.signal || controller?.signal;
-  const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
+  // Create a timeout controller
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
@@ -252,10 +211,10 @@ export async function callGoogleAIWithMeta(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
-      signal,
+      signal: controller.signal,
     });
 
-    if (timeoutId) clearTimeout(timeoutId);
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -300,27 +259,6 @@ export async function callGoogleAIWithMeta(
 
     if (finishReason === 'MAX_TOKENS') {
       console.error('Response truncated due to token limit:', candidate);
-      
-      // For text mode, salvage partial content instead of fallback
-      if (requestBody.generationConfig.responseMimeType === "text/plain") {
-        const textParts = candidate.content?.parts
-          ?.map(part => part.text)
-          ?.filter(text => text && text.trim())
-          ?.join(' ') || '';
-        
-        if (textParts.trim()) {
-          console.log('AI call salvaged text from MAX_TOKENS:', {
-            finishReason,
-            tokensOut,
-            responseLength: textParts.length
-          });
-          return {
-            text: textParts.trim(),
-            meta: { tokensOut, finishReason }
-          };
-        }
-      }
-      
       return {
         text: createTransportFallback('max_tokens'),
         meta: { tokensOut, finishReason }
@@ -379,7 +317,7 @@ export async function callGoogleAIWithMeta(
       meta: { tokensOut, finishReason }
     };
   } catch (error) {
-    if (timeoutId) clearTimeout(timeoutId);
+    clearTimeout(timeoutId);
     console.error('Google AI API call failed:', error);
     
     // Return transport-only fallback

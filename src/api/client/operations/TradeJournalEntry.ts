@@ -48,7 +48,7 @@ export class TradeJournalEntry {
         throw new Error('No active session');
       }
 
-      const response = await supabase.functions.invoke('journal-coach', {
+      const response = await supabase.functions.invoke('trading-journal-ai-coach-gemini', {
         body: {
           entryId,
           customPrompt,

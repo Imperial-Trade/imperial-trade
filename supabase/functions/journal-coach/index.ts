@@ -1,634 +1,315 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
-import { callGoogleAIWithMeta, GoogleAIMeta } from '../_shared/google-ai-helper.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
+import { callGoogleAIWithMeta } from "../_shared/google-ai-helper.ts";
+import { smartTruncateNotes, generatePersonalizedFallback } from "../_shared/coach-utils.ts";
 
-// Data structures for metrics and requests
 interface JournalCoachRequest {
   journal_entry_id: string;
 }
 
-interface GenerationMetrics {
-  fallback_reason: string | null;
-  path_chosen: string; // "primary" | "backup" | "deterministic"
-  model_used: string;
-  salvaged_from_max_tokens: boolean;
-  was_clamped: boolean;
-  tokens_out: string | number;
-  finish_reason: string | null;
-  model_latency_ms: number;
-  used_retry: boolean;
-  notes_len: number;
-  notes_trunc_len: number;
-  prompt_char_len: number;
-  final_feedback_len: number;
-  primary_ms?: number;
-  backup_ms?: number;
-  timed_out: boolean;
-  quality_passed: boolean;
-  quality_reason?: string;
-}
+const JOURNAL_SYSTEM_PROMPT = `SYSTEM PROMPT — Motivational Trading Coach
 
-// Feature flags with defaults
-const JOURNAL_COACH_PRIMARY_SLA_MS = parseInt(Deno.env.get('JOURNAL_COACH_PRIMARY_SLA_MS') || '3000');
-const JOURNAL_COACH_ENABLE_BACKUP = Deno.env.get('JOURNAL_COACH_ENABLE_BACKUP') !== 'false';
-const JOURNAL_COACH_REQUIRE_KEYWORD = Deno.env.get('JOURNAL_COACH_REQUIRE_KEYWORD') !== 'false';
+ROLE
+You are a human-sounding motivational trading coach inside a Trading Journal. Write as if you're speaking directly to the trader, not like an essay or report. Keep it conversational and natural. Your job is to give short, powerful, human-like feedback every time a trader logs a trade.
 
-// Updated prompts with explicit instructions
-const PLAIN_TEXT_SYSTEM_PROMPT = "You are an encouraging trading coach. Give motivational feedback in 2-3 sentences (≤500 characters). Be positive and constructive. Reference one idea from the trader's notes and the asset if relevant. Plain text only; no JSON.";
-const BACKUP_SYSTEM_PROMPT = "You are a trading coach. Provide brief, encouraging feedback (120-500 characters). Reference the asset or one concept from notes. Be positive and specific.";
+OUTPUT CONTRACT
+- Return ONLY valid JSON as: { "feedback": "<coach message>" }
+- 3–5 sentences total. No lists, no headings.
+- End with a single motivational punchline (one sentence).
+- Keep it concise and conversational (human tone).
 
-// Quality gate keywords for trade analysis
-const QUALITY_KEYWORDS = [
-  "FVG", "equal highs", "equal lows", "TP", "SL", "entry", "exit", 
-  "liquidity", "reversal", "continuation", "support", "resistance",
-  "breakout", "pullback", "momentum", "trend", "volume"
-];
+PERSONALIZATION RULES
+- Read the trader's notes and use them directly (quote small fragments if helpful).
+- If a screenshot/chart is provided, reference what's visible (setups, indicators, entries/exits, patterns).
+- Use natural language with contractions (you'll, that's, it's). Avoid buzzword spam and emoji.
+- Vary tone deliberately entry-to-entry (Hype, Calm Mentor, Tough-Love, Identity, Momentum, Reward, Strategic). Do NOT label the tone.
 
-function buildPlainTextPrompt(notes: string, asset: string, pnl: number): string {
-  const outcome = pnl >= 0 ? "winning" : "losing";
-  const truncatedNotes = notes.length > 500 ? notes.substring(0, 500) + "..." : notes;
-  
-  return `${PLAIN_TEXT_SYSTEM_PROMPT}
+STYLE GUARDRAILS
+- Always motivational and uplifting.
+- Never discourage—reframe into growth, resilience, or mastery.
+- Human voice > slogan machine. Avoid shouting, all-caps, and repeated catchphrases.
+- Use the rotation bank ONLY as inspiration. NEVER copy lines verbatim. Always paraphrase and adapt to the trader's context.
 
-Trade: ${outcome} trade on ${asset} (P&L: ${pnl})
-Notes: ${truncatedNotes}`;
-}
+GREEN DAY LOGIC (Profitable Trades)
+- Do NOT praise journaling here.
+- Highlight what went well (execution, patience, strategy, chart reading).
+- If screenshot exists, mention a concrete visual detail.
+- Frame the win as mastery/consistency (not luck).
+- Finish with a motivating punchline.
 
-function buildBackupPrompt(notes: string, asset: string, pnl: number): string {
-  const outcome = pnl >= 0 ? "win" : "loss";
-  const truncatedNotes = notes.length > 200 ? notes.substring(0, 200) + "..." : notes;
-  
-  return `${BACKUP_SYSTEM_PROMPT}
+RED DAY LOGIC (Losing Trades)
+- Briefly acknowledge the sting, then move on.
+- Praise courage for logging and naming what went wrong.
+- If screenshot exists, acknowledge what the chart reveals (e.g., stop placement, invalidation).
+- Reframe to resilience, awareness, identity growth.
+- Finish with a motivational punchline that keeps the trader proud to continue.
 
-${outcome} on ${asset}: ${truncatedNotes}`;
-}
+ROTATION BANK — INSPIRATION ONLY (DO NOT COPY WORD-FOR-WORD)
+[Keep Green Day and Red Day tone examples here as written in the original prompt]
 
-function clampAndSanitize(text: string, maxLength: number = 500): string {
-  if (!text || typeof text !== 'string') return '';
-  
-  let cleaned = text
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\n\s*\n/g, '\n')
-    .trim();
-  
-  if (cleaned.length > maxLength) {
-    cleaned = cleaned.substring(0, maxLength - 3) + '...';
-  }
-  
-  return cleaned;
-}
+EXECUTION GOALS
+- Green days: Celebrate execution and mastery.
+- Red days: Celebrate journaling courage and resilience.
+- Always tie comments to notes/screenshot specifics.
+- Always finish with a strong punchline.
+- Keep total length tight (3–5 sentences).
 
-function isTransportFallback(text: string): boolean {
-  try {
-    const parsed = JSON.parse(text);
-    return parsed.is_fallback === true;
-  } catch {
-    return false;
-  }
-}
+RESPONSE FORMAT (repeat for emphasis)
+Return ONLY:
+{ "feedback": "<3–5 sentence human message ending with a motivational punchline>" }`;
 
-function checkQualityGates(text: string, asset: string, notes: string): { passed: boolean; reason?: string } {
-  if (!text || text.length < 60) {
-    return { passed: false, reason: 'too-short-<60' };
-  }
-  
-  if (text.length < 120) {
-    return { passed: false, reason: 'too-short-<120' };
-  }
-  
-  const textLower = text.toLowerCase();
-  const assetLower = asset.toLowerCase();
-  
-  // Check for asset mention
-  const hasAsset = textLower.includes(assetLower);
-  
-  // Check for keyword mentions
-  const hasKeyword = QUALITY_KEYWORDS.some(keyword => 
-    textLower.includes(keyword.toLowerCase())
-  );
-  
-  if (JOURNAL_COACH_REQUIRE_KEYWORD) {
-    if (!hasAsset && !hasKeyword) {
-      return { passed: false, reason: 'no-asset-no-keyword' };
-    }
-  } else {
-    if (!hasAsset) {
-      return { passed: false, reason: 'no-asset-mention' };
-    }
-  }
-  
-  return { passed: true };
-}
-
-function createDeterministicFallback(asset: string, pnl: number): string {
-  const outcome = pnl >= 0 ? "winning" : "losing";
-  const encouragement = pnl >= 0 
-    ? "Great execution on this trade! Your discipline and analysis paid off."
-    : "Every trade is a learning opportunity. Review your entry and risk management for future improvement.";
-  
-  return `Nice work analyzing your ${outcome} ${asset} trade. ${encouragement} Keep documenting your process to build consistent trading habits.`;
-}
-
-// Track in-flight requests for deduplication
-const inFlightRequests = new Map<string, Promise<{ text: string; meta: GoogleAIMeta }>>();
-
-async function generateFeedbackRobust(
-  notes: string,
-  asset: string,
-  pnl: number,
-  apiKey: string,
-  forceJson: boolean = false
-): Promise<{ feedback: string; metrics: GenerationMetrics }> {
-  const startTime = Date.now();
-  const notesLen = notes.length;
-  const notesTruncLen = notes.length > 500 ? 500 : notes.length;
-  
-  const metrics: GenerationMetrics = {
-    fallback_reason: null,
-    path_chosen: "primary",
-    model_used: "gemini-2.5-flash",
-    salvaged_from_max_tokens: false,
-    was_clamped: false,
-    tokens_out: 0,
-    finish_reason: null,
-    model_latency_ms: 0,
-    used_retry: false,
-    notes_len: notesLen,
-    notes_trunc_len: notesTruncLen,
-    prompt_char_len: 0,
-    final_feedback_len: 0,
-    timed_out: false,
-    quality_passed: false
-  };
-
-  // Build primary prompt
-  const primaryPrompt = forceJson 
-    ? buildPlainTextPrompt(notes, asset, pnl) // Keep consistent for now
-    : buildPlainTextPrompt(notes, asset, pnl);
-  
-  metrics.prompt_char_len = primaryPrompt.length;
-
-  // Primary request setup
-  const primaryController = new AbortController();
-  let primaryStartTime = Date.now();
-  
-  const primaryOptions = {
-    maxOutputTokens: 1000,
-    timeoutMs: 15000,
-    signal: primaryController.signal,
-    temperature: 0.6,
-    topP: 0.9,
-    topK: 40,
-    stopSequences: ["\n\n", "</end>"]
-  };
-
-  console.log('Journal Coach - Starting primary request (gemini-2.5-flash)');
-  
-  // Start primary request
-  const primaryPromise = callGoogleAIWithMeta(
-    apiKey,
-    'gemini-2.5-flash',
-    primaryPrompt,
-    primaryOptions
-  );
-
-  // SLA timeout setup
-  let slaTimeout: number | undefined;
-  let backupPromise: Promise<{ text: string; meta: GoogleAIMeta }> | null = null;
-  let slaFired = false;
-
-  if (JOURNAL_COACH_ENABLE_BACKUP) {
-    slaTimeout = setTimeout(() => {
-      slaFired = true;
-      metrics.timed_out = true;
-      
-      console.log('Journal Coach - Primary SLA exceeded, starting backup request');
-      
-      // Cancel primary request
-      primaryController.abort();
-      
-      // Start backup request
-      const backupPrompt = buildBackupPrompt(notes, asset, pnl);
-      const backupStartTime = Date.now();
-      
-      backupPromise = callGoogleAIWithMeta(
-        apiKey,
-        'gemini-2.5-flash',
-        backupPrompt,
-        {
-          maxOutputTokens: 750,
-          timeoutMs: 12000,
-          temperature: 0.6,
-          topP: 0.9,
-          topK: 40,
-          stopSequences: ["\n\n", "</end>"]
-        }
-      ).then(result => {
-        metrics.backup_ms = Date.now() - backupStartTime;
-        return result;
-      });
-      
-      metrics.path_chosen = "backup";
-    }, JOURNAL_COACH_PRIMARY_SLA_MS);
-  }
-
-  try {
-    let result: { text: string; meta: GoogleAIMeta };
-    
-    if (slaFired && backupPromise) {
-      // Wait for backup
-      result = await backupPromise;
-      console.log('Journal Coach - backup request completed');
-    } else {
-      // Wait for primary
-      result = await primaryPromise;
-      metrics.primary_ms = Date.now() - primaryStartTime;
-      
-      // Clear SLA timeout since primary succeeded
-      if (slaTimeout) {
-        clearTimeout(slaTimeout);
-      }
-      
-      console.log('Journal Coach - primary request completed');
-    }
-
-    metrics.model_latency_ms = Date.now() - startTime;
-    metrics.tokens_out = result.meta.tokensOut;
-    metrics.finish_reason = result.meta.finishReason;
-
-    // Check if this is a transport fallback
-    if (isTransportFallback(result.text)) {
-      console.log('Journal Coach - received transport fallback, attempting model fallback');
-      
-      // Try model fallback to gemini-1.5-flash
-      const fallbackStartTime = Date.now();
-      const fallbackResult = await callGoogleAIWithMeta(
-        apiKey,
-        'gemini-1.5-flash',
-        buildBackupPrompt(notes, asset, pnl),
-        {
-          maxOutputTokens: 750,
-          timeoutMs: 10000,
-          temperature: 0.6,
-          topP: 0.9
-        }
-      );
-      
-      metrics.model_used = "gemini-1.5-flash";
-      metrics.model_latency_ms = Date.now() - fallbackStartTime;
-      metrics.path_chosen = "backup";
-      metrics.used_retry = true;
-      
-      if (!isTransportFallback(fallbackResult.text)) {
-        result = fallbackResult;
-        metrics.tokens_out = result.meta.tokensOut;
-        metrics.finish_reason = result.meta.finishReason;
-      } else {
-        // Use deterministic fallback
-        const deterministicFeedback = createDeterministicFallback(asset, pnl);
-        metrics.path_chosen = "deterministic";
-        metrics.fallback_reason = "all_models_failed";
-        metrics.final_feedback_len = deterministicFeedback.length;
-        
-        return {
-          feedback: deterministicFeedback,
-          metrics
-        };
-      }
-    }
-
-    // Clamp and sanitize the response
-    let finalFeedback = clampAndSanitize(result.text, 500);
-    metrics.was_clamped = finalFeedback.length < result.text.length;
-    
-    // Apply quality gates
-    const qualityCheck = checkQualityGates(finalFeedback, asset, notes);
-    metrics.quality_passed = qualityCheck.passed;
-    metrics.quality_reason = qualityCheck.reason;
-    
-    if (!qualityCheck.passed && !metrics.used_retry) {
-      console.log(`Journal Coach - quality check failed: ${qualityCheck.reason}, attempting retry`);
-      
-      // Single bounded retry with backup prompt
-      const retryStartTime = Date.now();
-      const retryResult = await callGoogleAIWithMeta(
-        apiKey,
-        'gemini-2.5-flash',
-        buildBackupPrompt(notes, asset, pnl),
-        {
-          maxOutputTokens: 750,
-          timeoutMs: 10000,
-          temperature: 0.6,
-          topP: 0.9,
-          topK: 40,
-          stopSequences: ["\n\n", "</end>"]
-        }
-      );
-      
-      metrics.used_retry = true;
-      metrics.model_latency_ms += Date.now() - retryStartTime;
-      
-      if (!isTransportFallback(retryResult.text)) {
-        const retryFeedback = clampAndSanitize(retryResult.text, 500);
-        const retryQualityCheck = checkQualityGates(retryFeedback, asset, notes);
-        
-        if (retryQualityCheck.passed) {
-          finalFeedback = retryFeedback;
-          metrics.quality_passed = true;
-          metrics.quality_reason = undefined;
-          metrics.tokens_out = retryResult.meta.tokensOut;
-          metrics.finish_reason = retryResult.meta.finishReason;
-          
-          console.log('Journal Coach - retry request succeeded with quality gates');
-        } else {
-          console.log(`Journal Coach - retry also failed quality: ${retryQualityCheck.reason}`);
-          // Use deterministic fallback
-          finalFeedback = createDeterministicFallback(asset, pnl);
-          metrics.path_chosen = "deterministic";
-          metrics.fallback_reason = "quality_gates_failed";
-        }
-      } else {
-        // Retry was transport fallback, use deterministic
-        finalFeedback = createDeterministicFallback(asset, pnl);
-        metrics.path_chosen = "deterministic";
-        metrics.fallback_reason = "retry_transport_fallback";
-      }
-    } else if (!qualityCheck.passed && metrics.used_retry) {
-      // Already retried, use deterministic fallback
-      finalFeedback = createDeterministicFallback(asset, pnl);
-      metrics.path_chosen = "deterministic";
-      metrics.fallback_reason = "quality_gates_failed_after_retry";
-    }
-    
-    metrics.final_feedback_len = finalFeedback.length;
-    
-    console.log(`Journal Coach - Generation complete:`, {
-      fallback_reason: metrics.fallback_reason,
-      path_chosen: metrics.path_chosen,
-      model_used: metrics.model_used,
-      salvaged_from_max_tokens: metrics.salvaged_from_max_tokens,
-      was_clamped: metrics.was_clamped,
-      tokens_out: String(metrics.tokens_out),
-      finish_reason: metrics.finish_reason,
-      model_latency_ms: metrics.model_latency_ms,
-      used_retry: metrics.used_retry,
-      notes_len: metrics.notes_len,
-      notes_trunc_len: metrics.notes_trunc_len,
-      prompt_char_len: metrics.prompt_char_len,
-      final_feedback_len: metrics.final_feedback_len,
-      timed_out: metrics.timed_out,
-      quality_passed: metrics.quality_passed,
-      quality_reason: metrics.quality_reason
-    });
-
-    return {
-      feedback: finalFeedback,
-      metrics
-    };
-
-  } catch (error) {
-    // Clear timeout on error
-    if (slaTimeout) {
-      clearTimeout(slaTimeout);
-    }
-    
-    console.error('Journal Coach - Generation failed with error:', error);
-    
-    // Use deterministic fallback
-    const deterministicFeedback = createDeterministicFallback(asset, pnl);
-    metrics.path_chosen = "deterministic";
-    metrics.fallback_reason = "generation_error";
-    metrics.model_latency_ms = Date.now() - startTime;
-    metrics.final_feedback_len = deterministicFeedback.length;
-    
-    return {
-      feedback: deterministicFeedback,
-      metrics
-    };
-  }
-}
-
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-// Main handler
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS")
+    return new Response("ok", { headers: corsHeaders });
 
   try {
-    // Parse request
-    const requestBody = await req.json();
-    const { journal_entry_id } = requestBody as JournalCoachRequest;
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!journal_entry_id) {
-      return new Response(
-        JSON.stringify({ error: 'Missing journal_entry_id parameter' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+    if (!apiKey || !supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Missing required environment variables.");
     }
 
-    // Check for in-flight request (idempotency)
-    if (inFlightRequests.has(journal_entry_id)) {
-      console.log(`Journal Coach - Request already in flight for entry: ${journal_entry_id}`);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Request already in progress for this journal entry' 
-        }),
-        {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    // Get Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Authenticate user
+    // Get user ID from JWT token for security
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      throw new Error("Authorization header required");
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authorization token' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    console.log(`Journal Coach - Processing request:`, {
-      user_id: user.id,
-      journal_entry_id
+    // Use anon key with user's JWT for RLS compliance
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
     });
 
-    // Get journal entry
-    const { data: journalEntry, error: journalError } = await supabase
+    // Get authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error("Invalid or expired token");
+    }
+
+    const user_id = user.id;
+    const { journal_entry_id }: JournalCoachRequest = await req.json();
+    
+    if (!journal_entry_id) {
+      throw new Error("journal_entry_id is required.");
+    }
+
+    console.log("Journal Coach - Processing request:", { user_id, journal_entry_id });
+
+    // Check if feedback already exists (idempotency)
+    const { data: existingEntry } = await supabase
       .from('trade_journal_entries')
-      .select('*')
+      .select('ai_positive_feedback')
       .eq('id', journal_entry_id)
-      .eq('user_id', user.id)
-      .single();
+      .eq('user_id', user_id)
+      .maybeSingle();
+
+    if (existingEntry?.ai_positive_feedback) {
+      console.log('Journal Coach - Feedback already exists for entry', journal_entry_id);
+      return new Response(
+        JSON.stringify({ reply: existingEntry.ai_positive_feedback, cached: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Fetch user profile for personalization
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("real_name, display_name")
+      .eq("id", user_id)
+      .maybeSingle();
+
+    const userName = userProfile?.display_name || userProfile?.real_name || "Trader";
+
+    // Fetch trade journal entry
+    const { data: journalEntry, error: journalError } = await supabase
+      .from("trade_journal_entries")
+      .select("asset_ticker, pnl, notes, entry_price, exit_price, position_size, trade_type, screenshot_url")
+      .eq("id", journal_entry_id)
+      .eq("user_id", user_id)
+      .maybeSingle();
 
     if (journalError || !journalEntry) {
-      return new Response(
-        JSON.stringify({ error: 'Journal entry not found or access denied' }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      throw new Error("Failed to fetch trade journal entry or entry not found");
     }
 
-    // Check if feedback already exists
-    if (journalEntry.ai_positive_feedback && journalEntry.ai_positive_feedback.trim()) {
-      console.log(`Journal Coach - Feedback already exists for entry: ${journal_entry_id}`);
-      return new Response(
-        JSON.stringify({
-          success: true,
-          reply: journalEntry.ai_positive_feedback,
-          cached: true
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
+    // Analyze trade data
+    const tradeOutcome = journalEntry.pnl > 0 ? "winning trade" : "losing trade";
+    const pnlAmount = Math.abs(journalEntry.pnl);
+    const tradeNotes = journalEntry.notes || "No notes provided";
 
-    // Get API key - check multiple possible names
-    const googleApiKey = Deno.env.get('GOOGLE_AI_API_KEY') || 
-                         Deno.env.get('GOOGLE_API_KEY') || 
-                         Deno.env.get('GEMINI_API_KEY');
-    
-    if (!googleApiKey) {
-      console.error('Journal Coach - No API key found. Checked: GOOGLE_AI_API_KEY, GOOGLE_API_KEY, GEMINI_API_KEY');
-      return new Response(
-        JSON.stringify({ error: 'Google AI API key not configured. Please set GOOGLE_AI_API_KEY, GOOGLE_API_KEY, or GEMINI_API_KEY' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    // Log which key was used (for debugging)
-    const keyUsed = Deno.env.get('GOOGLE_AI_API_KEY') ? 'GOOGLE_AI_API_KEY' :
-                   Deno.env.get('GOOGLE_API_KEY') ? 'GOOGLE_API_KEY' : 'GEMINI_API_KEY';
-    console.log(`Journal Coach - Using API key: ${keyUsed}`);
-
-    const notes = journalEntry.notes || '';
-    const asset = journalEntry.asset_ticker || 'Unknown';
-    const pnl = journalEntry.pnl || 0;
-
-    console.log(`Journal Coach - Trade analysis:`, {
-      outcome: pnl >= 0 ? 'winning trade' : 'losing trade',
-      pnl,
-      notes_len: notes.length
+    console.log("Journal Coach - Trade analysis:", {
+      outcome: tradeOutcome,
+      pnl: pnlAmount,
+      notes_len: tradeNotes.length
     });
 
-    // Create generation promise and track it
-    const generationPromise = generateFeedbackRobust(notes, asset, pnl, googleApiKey);
-    inFlightRequests.set(journal_entry_id, generationPromise as any);
+    // Smart truncation for token efficiency
+    const notes_trunc_1 = smartTruncateNotes(tradeNotes, 1200);
+    const notes_trunc_2 = smartTruncateNotes(tradeNotes, 800);
+    
+    // Build single compact prompt
+    const singlePrompt = `${JOURNAL_SYSTEM_PROMPT}
 
-    try {
-      // Generate feedback
-      const { feedback, metrics } = await generationPromise;
+--- TASK ---
+${userName} submitted a ${tradeOutcome} with ${pnlAmount} USD ${journalEntry.pnl > 0 ? "profit" : "loss"}.
+Asset: ${journalEntry.asset_ticker}
+Trade Type: ${journalEntry.trade_type || "Not specified"}
+Their notes: "${notes_trunc_1}"
+${journalEntry.screenshot_url ? "They also uploaded a screenshot for analysis." : ""}
 
-      // Update journal entry
-      const { error: updateError } = await supabase
-        .from('trade_journal_entries')
-        .update({ ai_positive_feedback: feedback })
-        .eq('id', journal_entry_id);
+Provide a supportive coaching response that highlights specific concepts from their notes and validates their trading analysis skills.
 
-      if (updateError) {
-        console.error('Journal Coach - Failed to update journal entry:', updateError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to save feedback' }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
+Return JSON: {"feedback": "your 3-5 sentence message ending with motivational punchline"}`;
+
+    const startTime = Date.now();
+    let aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", singlePrompt, {
+      maxOutputTokens: 300,
+      timeoutMs: 12000,
+      responseSchema: {
+        type: "object",
+        properties: {
+          feedback: { type: "string" }
+        },
+        required: ["feedback"]
       }
+    });
+    const modelLatencyMs = Date.now() - startTime;
 
-      console.log('Journal Coach - Successfully updated journal entry with feedback');
+    let usedRetry = false;
+    let fallbackReason: string | null = null;
+    let finalMeta = aiResult.meta;
 
-      // Log to agent outputs
-      await supabase
-        .from('agent_outputs')
-        .insert({
-          user_id: user.id,
-          agent_name: 'journal-coach',
-          output_text: feedback,
-          user_readable_text: feedback,
-          metadata: {
-            journal_entry_id,
-            generation_metrics: metrics,
-            feature_flags: {
-              primary_sla_ms: JOURNAL_COACH_PRIMARY_SLA_MS,
-              enable_backup: JOURNAL_COACH_ENABLE_BACKUP,
-              require_keyword: JOURNAL_COACH_REQUIRE_KEYWORD
-            }
-          }
+    // Check if we got a transport fallback and retry once
+    try {
+      const parsedResponse = JSON.parse(aiResult.text);
+      if (parsedResponse.is_fallback) {
+        console.log("Journal Coach - First attempt failed, retrying...", parsedResponse);
+        fallbackReason = parsedResponse.fallback_reason;
+        
+        // Retry with shorter notes and lower token limit
+        const retryPrompt = singlePrompt
+          .replace(notes_trunc_1, notes_trunc_2)
+          .replace('Return JSON: {"feedback": "your 3-5 sentence message ending with motivational punchline"}',
+                  'Return JSON: {"feedback": "your 3-5 sentence message (≤80 words) ending with motivational punchline"}');
+        
+        aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", retryPrompt, {
+          maxOutputTokens: 200,
+          timeoutMs: 12000
         });
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          reply: feedback,
-          metrics,
-          cached: false
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        usedRetry = true;
+        finalMeta = aiResult.meta;
+        
+        // Check retry result
+        const retryParsed = JSON.parse(aiResult.text);
+        if (retryParsed.is_fallback) {
+          fallbackReason = retryParsed.fallback_reason;
+        } else {
+          fallbackReason = null; // Retry succeeded
         }
-      );
-
-    } finally {
-      // Always cleanup in-flight tracking
-      inFlightRequests.delete(journal_entry_id);
+      }
+    } catch (parseError) {
+      console.error("Journal Coach - Failed to parse AI response:", parseError);
+      fallbackReason = 'invalid_json';
     }
 
-  } catch (error) {
-    console.error('Journal Coach - Request failed:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error', 
-        details: error.message 
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    // Generate final response (AI or personalized fallback)
+    let finalFeedback: string;
+    if (fallbackReason) {
+      // Generate personalized deterministic fallback
+      finalFeedback = generatePersonalizedFallback({
+        userName,
+        asset: journalEntry.asset_ticker,
+        tradeType: journalEntry.trade_type,
+        isWin: journalEntry.pnl > 0,
+        pnlAmount,
+        notes: tradeNotes,
+        hasScreenshot: !!journalEntry.screenshot_url
+      });
+      console.log("Journal Coach - Using personalized fallback due to:", fallbackReason);
+    } else {
+      // Extract feedback from successful AI response
+      try {
+        const parsedResponse = JSON.parse(aiResult.text);
+        finalFeedback = parsedResponse.feedback || "Great work on analyzing this trade! Your detailed approach shows real growth as a trader.";
+      } catch (parseError) {
+        console.error("Journal Coach - Failed to parse successful AI response:", parseError);
+        finalFeedback = generatePersonalizedFallback({
+          userName,
+          asset: journalEntry.asset_ticker,
+          tradeType: journalEntry.trade_type,
+          isWin: journalEntry.pnl > 0,
+          pnlAmount,
+          notes: tradeNotes,
+          hasScreenshot: !!journalEntry.screenshot_url
+        });
+        fallbackReason = 'invalid_json';
       }
+    }
+
+    // Log metrics
+    console.log("Journal Coach - Generation complete:", {
+      fallback_reason: fallbackReason,
+      used_retry: usedRetry,
+      notes_len: tradeNotes.length,
+      model_latency_ms: modelLatencyMs,
+      final_feedback_len: finalFeedback.length,
+      tokens_out: finalMeta.tokensOut,
+      finish_reason: finalMeta.finishReason
+    });
+
+    // Store agent output
+    const { error: agentOutputError } = await supabase
+      .from("agent_outputs")
+      .insert({
+        user_id,
+        agent_name: "Journal Coach",
+        output_text: JSON.stringify({ feedback: finalFeedback, fallback_reason, used_retry }),
+        user_readable_text: finalFeedback,
+      });
+
+    if (agentOutputError) {
+      console.error("Journal Coach - Error storing agent output:", agentOutputError);
+    }
+
+    // CRITICAL: Always update trade_journal_entries.ai_positive_feedback to prevent UI hanging
+    const { error: updateError } = await supabase
+      .from("trade_journal_entries")
+      .update({ ai_positive_feedback: finalFeedback })
+      .eq("id", journal_entry_id)
+      .eq("user_id", user_id);
+
+    if (updateError) {
+      console.error("Journal Coach - Error updating journal entry:", updateError);
+      // Still return success but log the issue
+      return new Response(
+        JSON.stringify({
+          reply: finalFeedback,
+          success: true,
+          note: "Generated feedback but database update failed"
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log("Journal Coach - Successfully updated journal entry with feedback");
+    
+    return new Response(
+      JSON.stringify({ reply: finalFeedback, success: true }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error("Journal Coach - Error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

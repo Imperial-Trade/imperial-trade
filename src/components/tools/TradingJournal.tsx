@@ -14,7 +14,6 @@ import JournalAnalytics from "../trading/JournalAnalytics";
 import JournalLogList from "../trading/JournalLogList";
 import { compressImage, validateImageFile } from "@/utils/imageCompression";
 import { toast } from "sonner";
-import { useCoachInvocation } from "@/hooks/useCoachInvocation";
 
 
 export default function TradingJournal() {
@@ -27,110 +26,6 @@ export default function TradingJournal() {
   // Mobile detection
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
-
-  // Coach invocation hook
-  const { invokeCoach } = useCoachInvocation();
-
-  // Track entries that have already shown toast to avoid duplicates
-  const [toastedEntries, setToastedEntries] = useState<Set<string>>(new Set());
-
-  // Real-time subscription for AI feedback updates with per-entry tracking
-  useEffect(() => {
-    const channel = supabase
-      .channel('trade-journal-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'trade_journal_entries',
-          filter: `user_id=eq.${userProfile?.id}`,
-        },
-        (payload) => {
-          console.log('Real-time update received:', payload);
-          if (payload.new?.ai_positive_feedback && payload.old && !payload.old.ai_positive_feedback) {
-            // AI feedback was just added - update state using payload data
-            setEntries(current => 
-              current.map(entry => 
-                entry.id === payload.new.id 
-                  ? { ...entry, ai_positive_feedback: payload.new.ai_positive_feedback }
-                  : entry
-              )
-            );
-            
-            // Gate toast to fire only once per entry
-            if (!toastedEntries.has(payload.new.id)) {
-              toast.success("AI coaching analysis complete!");
-              setToastedEntries(prev => new Set(prev).add(payload.new.id));
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userProfile?.id, toastedEntries]);
-
-  // Per-entry realtime subscription helper
-  const createPerEntrySubscription = useCallback((entryId: string) => {
-    let timeoutId: NodeJS.Timeout;
-    
-    const channel = supabase
-      .channel(`per-entry-${entryId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'trade_journal_entries',
-          filter: `id=eq.${entryId}`,
-        },
-        (payload) => {
-          console.log(`Per-entry update for ${entryId}:`, payload);
-          if (payload.new?.ai_positive_feedback && payload.old && !payload.old.ai_positive_feedback) {
-            // Update local state using payload data
-            setEntries(current => 
-              current.map(entry => 
-                entry.id === entryId 
-                  ? { ...entry, ai_positive_feedback: payload.new.ai_positive_feedback }
-                  : entry
-              )
-            );
-            
-            // Gate toast to prevent double-firing
-            if (!toastedEntries.has(entryId)) {
-              toast.success("AI coaching analysis complete!");
-              setToastedEntries(prev => new Set(prev).add(entryId));
-            }
-            
-            // Cleanup immediately on first update
-            cleanup();
-          }
-        }
-      )
-      .subscribe();
-
-    // 30-second timeout guard to prevent stuck subscriptions
-    timeoutId = setTimeout(() => {
-      console.log(`Per-entry subscription timeout for ${entryId}`);
-      cleanup();
-    }, 30000);
-
-    const cleanup = () => {
-      try {
-        channel.unsubscribe();
-      } catch (error) {
-        console.error('Error unsubscribing per-entry channel:', error);
-      }
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-
-    return cleanup;
-  }, [toastedEntries]);
 
   const loadUserProfile = useCallback(async () => {
     try {
@@ -243,17 +138,54 @@ export default function TradingJournal() {
       console.log("TradingJournal.handleSubmit - Created journal entry:", createdEntry);
       toast.success("Educational entry saved successfully!");
 
-      // Create per-entry subscription before invoking coach
-      const cleanupPerEntry = createPerEntrySubscription(createdEntry.id);
+      // Enhanced educational coaching analysis using coach-agent
+      try {
+        toast.info("Getting personalized educational coaching feedback...");
+        
+        console.log("TradingJournal.handleSubmit - Invoking coach-agent with payload:", {
+          event_type: "LOG_TRADE",
+          user_id: user.id,
+          journal_entry_id: createdEntry.id
+        });
 
-      // Fire-and-forget coach invocation (don't await - let it run in background)
-      invokeCoach(createdEntry.id).catch(error => {
-        console.error('Background coach invocation failed:', error);
-        // Cleanup subscription if coach fails
-        cleanupPerEntry();
-      });
+        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('coach-agent', {
+          body: {
+            event_type: "LOG_TRADE",
+            user_id: user.id,
+            journal_entry_id: createdEntry.id
+          }
+        });
 
-      // Immediately reload entries to show the new entry (with analyzing state)
+        console.log("TradingJournal.handleSubmit - Coach-agent response:", coachResponse);
+        console.log("TradingJournal.handleSubmit - Coach-agent error:", coachError);
+
+        if (coachError) {
+          console.error("TradingJournal.handleSubmit - Coach agent error:", coachError);
+          toast.error("Educational coaching failed, but entry was saved");
+        } else if (coachResponse && coachResponse.reply) {
+          console.log("TradingJournal.handleSubmit - Coach feedback generated successfully");
+          
+          if (coachResponse.warning) {
+            toast.warning(coachResponse.warning);
+          } else {
+            toast.success("Personalized educational coaching feedback generated!");
+          }
+        } else {
+          console.warn("TradingJournal.handleSubmit - Coach response does not contain expected reply field:", coachResponse);
+          toast.warning("Coaching feedback format unexpected, but entry was saved");
+        }
+      } catch (aiError) {
+        console.error("TradingJournal.handleSubmit - Educational coaching analysis failed:", aiError);
+        console.error("TradingJournal.handleSubmit - AI error details:", {
+          name: aiError.name,
+          message: aiError.message,
+          stack: aiError.stack
+        });
+        toast.error("Educational coaching failed, but entry was saved");
+        // Continue - don't block since the educational entry is already saved
+      }
+
+      // Reload entries to show the updated data (including AI feedback if successful)
       console.log("TradingJournal.handleSubmit - Reloading entries...");
       loadEntries();
 

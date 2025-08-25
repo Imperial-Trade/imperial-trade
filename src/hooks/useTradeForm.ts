@@ -70,10 +70,6 @@ export const useTradeForm = (onSubmit: (data: TradeFormData) => void) => {
     setFormData(prev => ({ ...prev, notes }));
   }, []);
 
-  const updateScreenshotUrl = useCallback((screenshot_url: string) => {
-    setFormData(prev => ({ ...prev, screenshot_url }));
-  }, []);
-
   // Form validation
   const isValid = useCallback(() => {
     return formData.asset && formData.pnl !== '';
@@ -113,7 +109,6 @@ export const useTradeForm = (onSubmit: (data: TradeFormData) => void) => {
     updateEmotion,
     updateSession,
     updateNotes,
-    updateScreenshotUrl,
     handleSubmit,
     resetForm,
   };

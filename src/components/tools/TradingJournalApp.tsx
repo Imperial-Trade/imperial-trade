@@ -13,7 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AddTradeModal from "@/components/trading/AddTradeModal";
 import { TradeFormData } from "@/hooks/useTradeForm";
-import { useCoachInvocation } from "@/hooks/useCoachInvocation";
 
 // Enhanced Types
 interface Trade {
@@ -198,7 +197,6 @@ export const TradingJournalApp: React.FC = () => {
   const {
     toast
   } = useToast();
-  const { invokeCoach } = useCoachInvocation();
 
   // Enhanced state management
   const [journalState, setJournalState] = useState<JournalState>({
@@ -214,16 +212,13 @@ export const TradingJournalApp: React.FC = () => {
   const [showAddTradeModal, setShowAddTradeModal] = useState(false);
   const dayViewRef = useRef<HTMLDivElement>(null);
 
-  // Real-time database sync with Supabase with improved cleanup
+  // Real-time database sync with Supabase
   const setupJournalListener = useCallback(async () => {
     if (!user) return;
     setJournalState(prev => ({
       ...prev,
       isLoading: true
     }));
-    
-    let channel: any = null;
-    
     try {
       const {
         data: initialTrades,
@@ -232,7 +227,6 @@ export const TradingJournalApp: React.FC = () => {
         ascending: false
       });
       if (error) throw error;
-      
       const mappedTrades: Trade[] = initialTrades?.map(trade => ({
         id: trade.id,
         user_id: trade.user_id,
@@ -254,51 +248,45 @@ export const TradingJournalApp: React.FC = () => {
         updated_at: trade.updated_at
       })) || [];
       setTrades(mappedTrades);
-      
-      // Set up realtime subscription with proper cleanup
-      channel = supabase.channel(`trade_journal_updates_${user.id}`)
-        .on("postgres_changes", {
-          event: "*",
-          schema: "public",
-          table: "trade_journal_entries",
-          filter: `user_id=eq.${user.id}`
-        }, (payload) => {
-          // Handle real-time updates more efficiently
-          // Only sync from database for updates/deletes, not inserts (which are handled optimistically)
-          if (payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
-            supabase.from("trade_journal_entries").select("*").eq("user_id", user.id).order("trade_date", {
-              ascending: false
-            }).then(({
-              data
-            }) => {
-              if (data) {
-                const updatedTrades: Trade[] = data.map(trade => ({
-                  id: trade.id,
-                  user_id: trade.user_id,
-                  date: trade.trade_date,
-                  asset: trade.asset_ticker,
-                  direction: trade.trade_type?.toLowerCase() as "long" | "short" || "long",
-                  outcome: trade.pnl >= 0 ? "win" : "loss",
-                  pnl: trade.pnl,
-                  entry_price: trade.entry_price,
-                  exit_price: trade.exit_price,
-                  position_size: trade.position_size,
-                  strategy: undefined,
-                  emotion: undefined,
-                  session: undefined,
-                  notes: trade.notes,
-                  screenshot_url: trade.screenshot_url,
-                  ai_feedback: trade.ai_positive_feedback,
-                  created_at: trade.created_at,
-                  updated_at: trade.updated_at
-                }));
-                setTrades(updatedTrades);
-              }
-            });
+      const channel = supabase.channel("trade_journal_updates").on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "trade_journal_entries",
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        supabase.from("trade_journal_entries").select("*").eq("user_id", user.id).order("trade_date", {
+          ascending: false
+        }).then(({
+          data
+        }) => {
+          if (data) {
+            const updatedTrades: Trade[] = data.map(trade => ({
+              id: trade.id,
+              user_id: trade.user_id,
+              date: trade.trade_date,
+              asset: trade.asset_ticker,
+              direction: trade.trade_type?.toLowerCase() as "long" | "short" || "long",
+              outcome: trade.pnl >= 0 ? "win" : "loss",
+              pnl: trade.pnl,
+              entry_price: trade.entry_price,
+              exit_price: trade.exit_price,
+              position_size: trade.position_size,
+              strategy: undefined,
+              emotion: undefined,
+              session: undefined,
+              notes: trade.notes,
+              screenshot_url: trade.screenshot_url,
+              ai_feedback: trade.ai_positive_feedback,
+              created_at: trade.created_at,
+              updated_at: trade.updated_at
+            }));
+            setTrades(updatedTrades);
           }
-        })
-        .subscribe();
-        
+        });
+      }).subscribe();
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } catch (error) {
       console.error("Error setting up journal listener:", error);
       toast({
@@ -312,13 +300,6 @@ export const TradingJournalApp: React.FC = () => {
         isLoading: false
       }));
     }
-    
-    // Return cleanup function
-    return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-    };
   }, [user, toast]);
   useEffect(() => {
     setupJournalListener();
@@ -465,14 +446,11 @@ Please provide a brief analysis focusing on what went well, what could be improv
     }
   };
 
-  // Optimized save trade handler with immediate UI update and fire-and-forget AI coaching
+  // Optimized save trade handler
   const handleSaveTrade = useCallback(async (tradeData: TradeFormData & {
     date: string;
   }) => {
     if (!user) return;
-
-    console.log('Saving trade:', tradeData);
-    
     try {
       const tradeEntry = {
         user_id: user.id,
@@ -486,52 +464,22 @@ Please provide a brief analysis focusing on what went well, what could be improv
         notes: tradeData.notes,
         screenshot_url: tradeData.screenshot_url
       };
-
-      // Insert the trade into the database
       const {
         data,
         error
       } = await supabase.from("trade_journal_entries").insert([tradeEntry]).select().single();
       if (error) throw error;
 
-      console.log('Trade saved successfully:', data);
-
-      // Optimistic update: immediately add the new trade to local state
-      const newTrade: Trade = {
-        id: data.id,
-        user_id: data.user_id,
-        date: data.trade_date,
-        asset: data.asset_ticker,
-        direction: data.trade_type?.toLowerCase() as "long" | "short" || "long",
-        outcome: data.pnl >= 0 ? "win" : "loss",
-        pnl: data.pnl,
-        entry_price: data.entry_price,
-        exit_price: data.exit_price,
-        position_size: data.position_size,
-        strategy: undefined,
-        emotion: undefined,
-        session: undefined,
-        notes: data.notes,
-        screenshot_url: data.screenshot_url,
-        ai_feedback: undefined, // Will be set via realtime when coach responds
-        created_at: data.created_at,
-        updated_at: data.updated_at
-      };
-
-      // Add new trade to the beginning of the trades array (most recent first)
-      setTrades(prevTrades => [newTrade, ...prevTrades]);
-
-      // Generate AI coaching feedback in the background (fire-and-forget)
-      console.log('Triggering AI coaching feedback...');
-      invokeCoach(data.id).catch(() => {
-        // Silent catch - errors are handled in the hook
+      // Generate AI feedback asynchronously
+      getAISummaryForTrade(tradeData).then(async feedback => {
+        await supabase.from("trade_journal_entries").update({
+          ai_positive_feedback: feedback
+        }).eq("id", data.id);
       });
-
       toast({
         title: "Trade Saved",
         description: "Your trade has been logged successfully"
       });
-
     } catch (error) {
       console.error("Error saving trade:", error);
       toast({
@@ -541,7 +489,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
       });
       throw error;
     }
-  }, [user, toast, invokeCoach]);
+  }, [user, toast]);
 
   // Get most traded assets with currency normalization
   const getMostTradedAssets = () => {
@@ -1360,24 +1308,6 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           {trade.notes}
                         </p>}
 
-                      {trade.screenshot_url && (
-                        <div className="mt-3">
-                          <a
-                            href={trade.screenshot_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block"
-                          >
-                            <img
-                              src={trade.screenshot_url}
-                              alt={`Trade screenshot for ${trade.asset} on ${new Date(date + 'T00:00:00').toLocaleDateString()}`}
-                              loading="lazy"
-                              className="rounded-md border border-border max-h-56 object-cover"
-                            />
-                          </a>
-                        </div>
-                      )}
-
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         {trade.strategy && <div>
                             <span className="font-medium">Strategy:</span>{" "}
@@ -1397,21 +1327,14 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           </div>}
                       </div>
 
-                      {trade.ai_feedback ? (
-                        <div className="mt-4 p-3 rounded-lg bg-muted/30 border-l-4 border-l-primary">
+                      {trade.ai_feedback && <div className="mt-4 p-3 rounded-lg bg-muted/30 border-l-4 border-l-primary">
                           <div className="flex items-start gap-2">
                             <Brain className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                          </div>
                             <p className="text-sm text-foreground leading-relaxed">
                               {trade.ai_feedback}
                             </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-muted/50 border border-muted rounded-lg">
-                          <div className="animate-spin h-3 w-3 border border-muted-foreground/30 border-t-muted-foreground rounded-full"></div>
-                          <span className="text-xs text-muted-foreground">Analyzing...</span>
-                        </div>
-                      )}
+                        </div>}
                     </div>
 
                     <div className="text-right ml-6">

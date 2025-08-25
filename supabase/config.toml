@@ -1,26 +1,34 @@
 project_id = "kmuoqkcxguafxulqlbmi"
 
+[project]
+name = "imperial-trading"
+
 [api]
 enabled = true
-port = 54321
-schemas = ["public", "storage", "graphql_public"]
-extra_search_path = ["public", "extensions"]
-max_rows = 1000
 
-[functions.journal-coach]
-verify_jwt = true
+[auth]
+enabled = true
 
-[functions.coach-agent]
-verify_jwt = true
+[edge_functions]
+enabled = true
 
-[functions.deconstructor-agent]
-verify_jwt = true
-
-[functions.persistent-alert-monitor]
-verify_jwt = true
-
-[functions.posthog-config]
+[functions.get-market-data]
 verify_jwt = false
 
-[functions.signal-finder-agent]
-verify_jwt = true
+[functions.tradermade-streaming]
+verify_jwt = false
+
+[functions.check-user-existence]
+verify_jwt = false
+
+[functions.order-trigger-monitor]
+verify_jwt = false
+
+[functions.hello]
+verify_jwt = false
+
+[functions.password-reset]
+verify_jwt = false
+
+[functions.reset]
+verify_jwt = false

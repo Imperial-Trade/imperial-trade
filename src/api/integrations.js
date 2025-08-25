@@ -1,14 +1,6 @@
+
 // Real implementations using Supabase Edge Functions
 import { supabase } from '@/integrations/supabase/client';
-
-const UPLOAD_TIMEOUT_MS = 45000;
-const withTimeout = (promise, ms, label) =>
-  Promise.race([
-    promise,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
-    ),
-  ]);
 
 export const UploadFile = async ({ file }) => {
   try {
@@ -18,11 +10,10 @@ export const UploadFile = async ({ file }) => {
     const formData = new FormData();
     formData.append('file', file);
     
-    // Call Supabase Edge Function for file upload with timeout
-    const invokePromise = supabase.functions.invoke('file-upload', {
+    // Call Supabase Edge Function for file upload
+    const { data, error } = await supabase.functions.invoke('file-upload', {
       body: formData,
     });
-    const { data, error } = await withTimeout(invokePromise, UPLOAD_TIMEOUT_MS, 'File upload');
     
     if (error) {
       console.error('Upload error:', error);

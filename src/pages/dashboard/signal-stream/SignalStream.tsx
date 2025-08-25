@@ -6,18 +6,20 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
   Radio,
   Activity,
   Clock,
-  CheckCircle
+  CheckCircle,
+  Settings
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import TradeAlertCard from "@/components/signals/TradeAlertCard";
 import CompactSignalSearch from "@/components/signals/CompactSignalSearch";
+import { RealtimeConnectionStatus } from "@/components/signals/RealtimeConnectionStatus";
+import { EnhancedSignalCard } from "@/components/signals/EnhancedSignalCard";
+import { useSignalNotifications } from "@/hooks/useSignalNotifications";
 import { TradeAlertData } from "@/types/components";
 
 interface FilterState {
@@ -29,8 +31,10 @@ interface FilterState {
 
 export default function SignalStream() {
   const { user } = useAuth();
-  const { signals } = useSignalRealtime();
+  const { signals, connectionStatus, lastUpdated, refreshSignals } = useSignalRealtime();
+  const { requestNotificationPermission, permission } = useSignalNotifications();
   const navigate = useNavigate();
+  
   const [filters, setFilters] = useState<FilterState>({
     search: '',
     type: 'all',
@@ -38,10 +42,42 @@ export default function SignalStream() {
     status: 'all'
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [newSignalIds, setNewSignalIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setIsLoading(false);
   }, []);
+
+  // Track new signals for highlighting
+  useEffect(() => {
+    const currentIds = new Set(signals.map(s => s.id));
+    const previousIds = new Set(Array.from(newSignalIds));
+    
+    // Find truly new signals (not just from initial load)
+    const genuinelyNewIds = new Set(
+      Array.from(currentIds).filter(id => !previousIds.has(id) && signals.length > 0)
+    );
+    
+    if (genuinelyNewIds.size > 0) {
+      setNewSignalIds(prev => new Set([...prev, ...genuinelyNewIds]));
+      
+      // Clear the "new" status after 10 seconds
+      setTimeout(() => {
+        setNewSignalIds(prev => {
+          const updated = new Set(prev);
+          genuinelyNewIds.forEach(id => updated.delete(id));
+          return updated;
+        });
+      }, 10000);
+    }
+  }, [signals]);
+
+  // Auto-request notification permission
+  useEffect(() => {
+    if (user && permission === 'default') {
+      requestNotificationPermission();
+    }
+  }, [user, permission, requestNotificationPermission]);
 
   const canCreateSignals = user?.user_metadata?.user_type === "educator" || user?.user_metadata?.access_level === "admin";
 
@@ -108,22 +144,6 @@ export default function SignalStream() {
     return [...new Set(educatorList)].slice(0, 10);
   }, [signals]);
 
-  const handleStatusUpdate = async (alert: TradeAlertData, newStatus: string) => {
-    console.log('Status update:', alert.id, newStatus);
-  };
-
-  const handleTakeProfitHit = async (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => {
-    console.log('TP hit:', alert.id, newTPHits);
-  };
-
-  const handleStopLossHit = async (alert: TradeAlertData, closeReason: string) => {
-    console.log('SL hit:', alert.id, closeReason);
-  };
-
-  const handleOrderActivation = async (alert: TradeAlertData) => {
-    console.log('Order activation:', alert.id);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
       {/* Top Navigation Bar */}
@@ -147,11 +167,19 @@ export default function SignalStream() {
             </div>
           </div>
 
-          {/* Center: Search */}
-          <CompactSignalSearch 
-            onSearchChange={(value) => setFilters(prev => ({ ...prev, search: value }))}
-            placeholder="Search signals, assets..."
-          />
+          {/* Center: Search & Status */}
+          <div className="flex items-center gap-4">
+            <CompactSignalSearch 
+              onSearchChange={(value) => setFilters(prev => ({ ...prev, search: value }))}
+              placeholder="Search signals, assets..."
+            />
+            <RealtimeConnectionStatus
+              connectionStatus={connectionStatus}
+              lastUpdated={lastUpdated}
+              onRefresh={refreshSignals}
+              signalCount={signalCount.total}
+            />
+          </div>
 
           {/* Right: Create Signal Button */}
           {canCreateSignals && (
@@ -249,19 +277,10 @@ export default function SignalStream() {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ delay: index * 0.03 }}
                   >
-                    <TradeAlertCard
-                      alert={signal}
+                    <EnhancedSignalCard
+                      signal={signal}
                       creator={signals?.find(s => s.id === signal.id)?.creator}
-                      onStatusUpdate={handleStatusUpdate}
-                      onTakeProfitHit={handleTakeProfitHit}
-                      onStopLossHit={handleStopLossHit}
-                      onOrderActivation={handleOrderActivation}
-                      isAdmin={user?.user_metadata?.access_level === "admin"}
-                      isCreator={user?.id === signals?.find(s => s.id === signal.id)?.userId}
-                      livePrice={Math.random() * 100}
-                      connectionStatus="connected"
-                      priceSource="WebSocket"
-                      isRecentClosure={false}
+                      isNew={newSignalIds.has(signal.id)}
                     />
                   </motion.div>
                 ))}

@@ -112,10 +112,11 @@ export default function SignalStream() {
     }
   };
 
-  const handleTakeProfitHit = async (signal: TradeAlertData, tpLevel: number) => {
+  const handleTakeProfitHit = async (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => {
     try {
       // Implementation would be handled by the signal realtime context
-      toast.success(`Take Profit ${tpLevel} hit!`);
+      const lastTP = newTPHits[newTPHits.length - 1];
+      toast.success(`Take Profit ${lastTP} hit!`);
     } catch (error) {
       toast.error("Failed to update take profit");
     }

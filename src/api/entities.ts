@@ -192,6 +192,25 @@ export class TradeJournalEntry {
     }
   }
 
+  static async getCoachFeedback(entryId: string): Promise<any> {
+    // Record deprecation hit
+    try {
+      const { recordDeprecationHit } = await import('@/utils/deprecationTelemetry');
+      await recordDeprecationHit('TradeJournalEntry.getCoachFeedback', {
+        entryId,
+        caller: 'TradeJournalEntry.getCoachFeedback'
+      });
+    } catch (telemetryError) {
+      console.error('Telemetry error:', telemetryError);
+    }
+
+    throw new Error(
+      'DEPRECATED: TradeJournalEntry.getCoachFeedback() is no longer supported. ' +
+      'Use useCoachInvocation().invokeCoach(entryId) instead. ' +
+      'This ensures all coaching goes through the hardened journal-coach path.'
+    );
+  }
+
   static async list(user_id: string): Promise<TradeJournalEntry[]> {
     const { data, error } = await supabase
       .from("trade_journal_entries")

@@ -808,6 +808,8 @@ export type Database = {
           category: Database["public"]["Enums"]["post_category"]
           content: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           difficulty: string | null
           id: string
           images: string[] | null
@@ -822,6 +824,8 @@ export type Database = {
           category?: Database["public"]["Enums"]["post_category"]
           content: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           difficulty?: string | null
           id?: string
           images?: string[] | null
@@ -836,6 +840,8 @@ export type Database = {
           category?: Database["public"]["Enums"]["post_category"]
           content?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           difficulty?: string | null
           id?: string
           images?: string[] | null
@@ -847,6 +853,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      function_deprecation_hits: {
+        Row: {
+          created_at: string
+          function_name: string
+          http_method: string | null
+          id: string
+          metadata: Json | null
+          route: string | null
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          function_name: string
+          http_method?: string | null
+          id?: string
+          metadata?: Json | null
+          route?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          function_name?: string
+          http_method?: string | null
+          id?: string
+          metadata?: Json | null
+          route?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "function_deprecation_hits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       group_journal_entries: {
         Row: {
@@ -1357,6 +1404,27 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_read_receipts: {
+        Row: {
+          created_at: string
+          notification_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          notification_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          notification_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           admin_id: string
@@ -1387,6 +1455,27 @@ export type Database = {
           resubmissions?: boolean
           updated_at?: string
           weekly_report?: boolean
+        }
+        Relationships: []
+      }
+      notification_user_state: {
+        Row: {
+          created_at: string
+          last_cleared_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_cleared_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          last_cleared_at?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1941,8 +2030,11 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           likes: number
+          parent_id: string | null
           post_id: string
           updated_at: string
           user_id: string
@@ -1950,8 +2042,11 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           likes?: number
+          parent_id?: string | null
           post_id: string
           updated_at?: string
           user_id: string
@@ -1959,13 +2054,23 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           likes?: number
+          parent_id?: string | null
           post_id?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "replies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "replies_post_id_fkey"
             columns: ["post_id"]
@@ -3116,6 +3221,18 @@ export type Database = {
           p_signal_id: string
         }
         Returns: string
+      }
+      delete_comment_cascade: {
+        Args: { p_comment_id: string }
+        Returns: number
+      }
+      delete_comment_single: {
+        Args: { p_comment_id: string }
+        Returns: number
+      }
+      delete_post_cascade: {
+        Args: { p_post_id: string }
+        Returns: number
       }
       expire_limit_orders: {
         Args: Record<PropertyKey, never>

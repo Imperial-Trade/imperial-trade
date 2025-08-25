@@ -1,3 +1,4 @@
+
 import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -28,7 +29,7 @@ export const useCoachInvocation = () => {
         }, 30000);
       });
 
-      // Create the journal coach invocation promise
+      // Create the journal coach invocation promise - ONLY use journal-coach
       const coachPromise = supabase.functions.invoke('journal-coach', {
         body: {
           journal_entry_id: journalEntryId

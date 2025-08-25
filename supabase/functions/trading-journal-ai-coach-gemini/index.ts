@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log('DEPRECATED: trading-journal-ai-coach-gemeni called - redirecting to journal-coach');
+  console.log('DEPRECATED: trading-journal-ai-coach-gemini called - redirecting to journal-coach');
   
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -45,7 +45,7 @@ serve(async (req) => {
       if (userId) {
         await supabase.from('function_deprecation_hits').insert({
           user_id: userId,
-          function_name: 'trading-journal-ai-coach-gemeni',
+          function_name: 'trading-journal-ai-coach-gemini',
           source: 'edge',
           http_method: req.method,
           route: new URL(req.url).pathname,
@@ -96,7 +96,7 @@ serve(async (req) => {
           headers: { 
             ...corsHeaders, 
             'Content-Type': 'application/json',
-            'X-Deprecated-Function': 'trading-journal-ai-coach-gemeni',
+            'X-Deprecated-Function': 'trading-journal-ai-coach-gemini',
             'X-Redirected-To': 'journal-coach'
           } 
         }
@@ -114,7 +114,7 @@ serve(async (req) => {
         headers: { 
           ...corsHeaders, 
           'Content-Type': 'application/json',
-          'X-Deprecated-Function': 'trading-journal-ai-coach-gemeni',
+          'X-Deprecated-Function': 'trading-journal-ai-coach-gemini',
           'X-Redirected-To': 'journal-coach'
         } 
       }
@@ -147,7 +147,7 @@ serve(async (req) => {
         headers: { 
           ...corsHeaders, 
           'Content-Type': 'application/json',
-          'X-Deprecated-Function': 'trading-journal-ai-coach-gemeni',
+          'X-Deprecated-Function': 'trading-journal-ai-coach-gemini',
           'X-Safety-Fallback': 'true'
         } 
       }

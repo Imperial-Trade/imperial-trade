@@ -5,6 +5,11 @@ export interface GoogleAIOptions {
   maxOutputTokens?: number;
   timeoutMs?: number;
   responseSchema?: object;
+  temperature?: number;
+  topP?: number;
+  topK?: number;
+  stopSequences?: string[];
+  signal?: AbortSignal;
 }
 
 /**
@@ -39,7 +44,11 @@ export async function callGoogleAI(
       generationConfig: {
         maxOutputTokens,
         responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
-        ...(opts.responseSchema && { responseSchema: opts.responseSchema })
+        ...(opts.responseSchema && { responseSchema: opts.responseSchema }),
+        ...(opts.temperature !== undefined && { temperature: opts.temperature }),
+        ...(opts.topP !== undefined && { topP: opts.topP }),
+        ...(opts.topK !== undefined && { topK: opts.topK }),
+        ...(opts.stopSequences && { stopSequences: opts.stopSequences })
       }
     };
   } else {
@@ -51,14 +60,19 @@ export async function callGoogleAI(
       generationConfig: {
         maxOutputTokens,
         responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
-        ...(opts.responseSchema && { responseSchema: opts.responseSchema })
+        ...(opts.responseSchema && { responseSchema: opts.responseSchema }),
+        ...(opts.temperature !== undefined && { temperature: opts.temperature }),
+        ...(opts.topP !== undefined && { topP: opts.topP }),
+        ...(opts.topK !== undefined && { topK: opts.topK }),
+        ...(opts.stopSequences && { stopSequences: opts.stopSequences })
       }
     };
   }
 
-  // Create a timeout controller
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  // Use provided signal or create timeout controller
+  const controller = opts.signal ? undefined : new AbortController();
+  const signal = opts.signal || controller?.signal;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
 
   try {
     const response = await fetch(url, {
@@ -67,10 +81,10 @@ export async function callGoogleAI(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
-      signal: controller.signal,
+      signal,
     });
 
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -163,7 +177,7 @@ export async function callGoogleAI(
     
     return responseText;
   } catch (error) {
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
     console.error('Google AI API call failed:', error);
     
     // Return transport-only fallback
@@ -201,7 +215,11 @@ export async function callGoogleAIWithMeta(
       generationConfig: {
         maxOutputTokens,
         responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
-        ...(opts.responseSchema && { responseSchema: opts.responseSchema })
+        ...(opts.responseSchema && { responseSchema: opts.responseSchema }),
+        ...(opts.temperature !== undefined && { temperature: opts.temperature }),
+        ...(opts.topP !== undefined && { topP: opts.topP }),
+        ...(opts.topK !== undefined && { topK: opts.topK }),
+        ...(opts.stopSequences && { stopSequences: opts.stopSequences })
       }
     };
   } else {
@@ -213,14 +231,19 @@ export async function callGoogleAIWithMeta(
       generationConfig: {
         maxOutputTokens,
         responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
-        ...(opts.responseSchema && { responseSchema: opts.responseSchema })
+        ...(opts.responseSchema && { responseSchema: opts.responseSchema }),
+        ...(opts.temperature !== undefined && { temperature: opts.temperature }),
+        ...(opts.topP !== undefined && { topP: opts.topP }),
+        ...(opts.topK !== undefined && { topK: opts.topK }),
+        ...(opts.stopSequences && { stopSequences: opts.stopSequences })
       }
     };
   }
 
-  // Create a timeout controller
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  // Use provided signal or create timeout controller
+  const controller = opts.signal ? undefined : new AbortController();
+  const signal = opts.signal || controller?.signal;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
 
   try {
     const response = await fetch(url, {
@@ -229,10 +252,10 @@ export async function callGoogleAIWithMeta(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
-      signal: controller.signal,
+      signal,
     });
 
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -356,7 +379,7 @@ export async function callGoogleAIWithMeta(
       meta: { tokensOut, finishReason }
     };
   } catch (error) {
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
     console.error('Google AI API call failed:', error);
     
     // Return transport-only fallback

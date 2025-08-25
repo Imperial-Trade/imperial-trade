@@ -33,6 +33,13 @@ const AICoachFeedback: React.FC<AICoachFeedbackProps> = ({
   
   const { invokeCoach } = useCoachInvocation();
 
+  // Sync with prop changes for optimistic updates
+  useEffect(() => {
+    if (existingFeedback !== undefined && existingFeedback !== feedback) {
+      setFeedback(existingFeedback);
+    }
+  }, [existingFeedback, feedback]);
+
   // Parse coaching analysis from feedback string
   useEffect(() => {
     if (feedback && feedback.trim()) {
@@ -95,9 +102,14 @@ const AICoachFeedback: React.FC<AICoachFeedbackProps> = ({
     setPollCount(0);
     
     try {
-      await invokeCoach(journalEntryId);
-      // The invokeCoach handles all the complexity and realtime updates
-      // We just wait for the realtime subscription to update our state
+      const reply = await invokeCoach(journalEntryId);
+      
+      // Optimistic update - set feedback immediately if reply received
+      if (reply) {
+        setFeedback(reply);
+        setIsRequesting(false);
+      }
+      // If no reply, polling will continue to check for updates
     } catch (error) {
       console.error('Coach invocation failed:', error);
       setIsRequesting(false);

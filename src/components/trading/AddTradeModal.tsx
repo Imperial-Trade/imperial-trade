@@ -34,6 +34,7 @@ import { ImageUpload } from "@/components/ui/image-upload";
 const TRADING_STRATEGIES = [
   "Breakout",
   "Reversal",
+  "Continuation",
   "Trend Following",
   "Support/Resistance",
   "Fibonacci",

@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { Trash2, Brain, MessageSquare, Trophy, Target } from "lucide-react";
 import { TradeJournalEntry } from "@/api/entities";
+import { ImageGallery } from "@/components/ui/image-gallery";
 
 interface JournalLogListProps {
   entries: TradeJournalEntry[];
@@ -123,7 +124,13 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                   </div>
                 )}
 
-                {entry.screenshot_url && (
+                {(entry as any).screenshot_urls && (entry as any).screenshot_urls.length > 0 ? (
+                  <ImageGallery 
+                    images={(entry as any).screenshot_urls} 
+                    alt="Trade charts"
+                    className="mt-3"
+                  />
+                ) : entry.screenshot_url && (
                   <div className="mt-3">
                     <div className="relative group cursor-pointer" onClick={() => window.open(entry.screenshot_url, "_blank")}>
                       <img

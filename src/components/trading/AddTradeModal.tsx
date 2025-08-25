@@ -27,6 +27,8 @@ import { Plus, Zap, CalendarIcon } from "lucide-react";
 import { useTradeForm, TradeFormData } from "@/hooks/useTradeForm";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useImageUpload } from "@/hooks/useImageUpload";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 // Static data to prevent re-creation on every render
 const TRADING_STRATEGIES = [
@@ -67,7 +69,7 @@ const SESSIONS = [
 interface AddTradeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: TradeFormData & { date: string }) => Promise<void>;
+  onSave: (data: TradeFormData & { date: string; screenshotFiles?: File[] }) => Promise<void>;
   selectedDate?: string;
 }
 
@@ -84,14 +86,25 @@ const AddTradeModal = memo<AddTradeModalProps>(({
     return new Date();
   });
 
+  const {
+    imageFiles,
+    isUploading,
+    uploadErrors,
+    addFiles,
+    removeFile,
+    clearFiles
+  } = useImageUpload();
+
   const handleSave = useCallback(async (formData: TradeFormData) => {
     const dateToUse = tradeDate ? tradeDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const screenshotFiles = imageFiles.map(img => img.file);
     await onSave({
       ...formData,
       date: dateToUse,
+      screenshotFiles
     });
-    onClose();
-  }, [onSave, onClose, tradeDate]);
+    handleClose();
+  }, [onSave, tradeDate, imageFiles]);
 
   const {
     formData,
@@ -111,8 +124,9 @@ const AddTradeModal = memo<AddTradeModalProps>(({
 
   const handleClose = useCallback(() => {
     resetForm();
+    clearFiles();
     onClose();
-  }, [resetForm, onClose]);
+  }, [resetForm, clearFiles, onClose]);
 
   const handlePnLChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -295,16 +309,30 @@ const AddTradeModal = memo<AddTradeModalProps>(({
             />
           </div>
 
+          <div>
+            <Label htmlFor="charts" className="text-sm font-medium mb-2 block">
+              Upload Charts
+            </Label>
+            <ImageUpload
+              images={imageFiles}
+              onAddFiles={addFiles}
+              onRemoveFile={removeFile}
+              maxFiles={3}
+              disabled={isSubmitting || isUploading}
+              errors={uploadErrors}
+            />
+          </div>
+
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose}>
+            <Button variant="outline" onClick={handleClose} disabled={isSubmitting || isUploading}>
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!isValid || isSubmitting}
+              disabled={!isValid || isSubmitting || isUploading}
             >
               <Zap className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Saving..." : "Save Trade"}
+              {isSubmitting || isUploading ? "Saving..." : "Save Trade"}
             </Button>
           </div>
         </div>

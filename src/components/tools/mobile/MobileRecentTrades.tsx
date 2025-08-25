@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { Trash2, Brain, MessageSquare, Target, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { TradeJournalEntry } from '@/api/entities';
+import { ImageGallery } from '@/components/ui/image-gallery';
+import { useSignedUrls } from '@/hooks/useSignedUrls';
 
 interface MobileRecentTradesProps {
   entries: TradeJournalEntry[];
@@ -135,7 +137,12 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
                     )}
 
                     {/* Screenshot */}
-                    {entry.screenshot_url && (
+                    {(entry as any).screenshot_urls && (entry as any).screenshot_urls.length > 0 ? (
+                      <ImageGalleryWithUrls 
+                        paths={(entry as any).screenshot_urls}
+                        alt="Trade charts"
+                      />
+                    ) : entry.screenshot_url && (
                       <div className="relative group cursor-pointer rounded-lg overflow-hidden">
                         <img
                           src={entry.screenshot_url}
@@ -173,6 +180,21 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
     </div>
   );
 });
+
+// Helper component to handle signed URLs
+const ImageGalleryWithUrls: React.FC<{ paths: string[], alt: string }> = ({ paths, alt }) => {
+  const { signedUrls, loading, error } = useSignedUrls(paths);
+  
+  if (loading) {
+    return <div className="text-xs text-muted-foreground">Loading images...</div>;
+  }
+  
+  if (error || signedUrls.length === 0) {
+    return null;
+  }
+  
+  return <ImageGallery images={signedUrls} alt={alt} />;
+};
 
 MobileRecentTrades.displayName = 'MobileRecentTrades';
 

@@ -10,7 +10,8 @@ export interface JournalEntry {
   notes?: string;
   trade_date: string;
   ai_positive_feedback?: string;
-  screenshot_url?: string;
+  screenshot_url?: string; // Legacy field for backward compatibility
+  screenshot_urls?: string[]; // New field for multiple images
   user_id: string;
   entry_price?: number;
   exit_price?: number;

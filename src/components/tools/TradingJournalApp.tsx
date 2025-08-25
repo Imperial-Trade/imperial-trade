@@ -449,9 +449,53 @@ Please provide a brief analysis focusing on what went well, what could be improv
   // Optimized save trade handler
   const handleSaveTrade = useCallback(async (tradeData: TradeFormData & {
     date: string;
+    screenshotFiles?: File[];
   }) => {
     if (!user) return;
     try {
+      let screenshotUrls: string[] = [];
+
+      // Upload images if present
+      if (tradeData.screenshotFiles && tradeData.screenshotFiles.length > 0) {
+        const uploadPromises = tradeData.screenshotFiles.map(async (file, index) => {
+          try {
+            const timestamp = Date.now();
+            const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const filePath = `${user.id}/${tradeData.date}/${timestamp}-${index}-${sanitizedFilename}`;
+
+            const { data, error } = await supabase.storage
+              .from('journal-charts')
+              .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+              });
+
+            if (error) {
+              console.error(`Upload failed for ${file.name}:`, error);
+              return null;
+            }
+
+            return data.path;
+          } catch (error) {
+            console.error(`Upload error for ${file.name}:`, error);
+            return null;
+          }
+        });
+
+        const results = await Promise.all(uploadPromises);
+        screenshotUrls = results.filter(path => path !== null) as string[];
+
+        // Show toast if some uploads failed
+        if (screenshotUrls.length !== tradeData.screenshotFiles.length) {
+          const failedCount = tradeData.screenshotFiles.length - screenshotUrls.length;
+          toast({
+            title: "Partial Upload Success", 
+            description: `${screenshotUrls.length} images uploaded successfully. ${failedCount} failed.`,
+            variant: "default"
+          });
+        }
+      }
+
       const tradeEntry = {
         user_id: user.id,
         asset_ticker: tradeData.asset,
@@ -462,13 +506,18 @@ Please provide a brief analysis focusing on what went well, what could be improv
         exit_price: tradeData.exit_price,
         position_size: tradeData.position_size,
         notes: tradeData.notes,
-        screenshot_url: tradeData.screenshot_url
+        screenshot_url: tradeData.screenshot_url, // Keep legacy field for backward compatibility
+        screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : []
       };
+
       const {
         data,
         error
       } = await supabase.from("trade_journal_entries").insert([tradeEntry]).select().single();
       if (error) throw error;
+
+      // Optimistically update local state - let realtime channel handle the updates
+      // Don't manually update state here to avoid type conflicts
 
       // Generate AI feedback asynchronously
       getAISummaryForTrade(tradeData).then(async feedback => {
@@ -476,9 +525,10 @@ Please provide a brief analysis focusing on what went well, what could be improv
           ai_positive_feedback: feedback
         }).eq("id", data.id);
       });
+
       toast({
         title: "Trade Saved",
-        description: "Your trade has been logged successfully"
+        description: `Your trade has been logged${screenshotUrls.length > 0 ? ` with ${screenshotUrls.length} image(s)` : ''}`
       });
     } catch (error) {
       console.error("Error saving trade:", error);

@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { TradeJournalEntry } from '@/api/client/operations/TradeJournalEntry';
+import { ImageGallery } from '@/components/ui/image-gallery';
+import { useSignedUrls } from '@/hooks/useSignedUrls';
 
 interface MobileDayViewProps {
   date: Date;
@@ -304,7 +306,12 @@ export default function MobileDayView({
                         )}
 
                         {/* Screenshot */}
-                        {trade.screenshot_url && (
+                        {(trade as any).screenshot_urls && (trade as any).screenshot_urls.length > 0 ? (
+                          <ImageGalleryWithUrls 
+                            paths={(trade as any).screenshot_urls}
+                            alt="Trade charts"
+                          />
+                        ) : trade.screenshot_url && (
                           <div>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
@@ -366,3 +373,26 @@ export default function MobileDayView({
     </motion.div>
   );
 }
+
+// Helper component to handle signed URLs
+const ImageGalleryWithUrls: React.FC<{ paths: string[], alt: string }> = ({ paths, alt }) => {
+  const { signedUrls, loading, error } = useSignedUrls(paths);
+  
+  if (loading) {
+    return <div className="text-xs text-muted-foreground">Loading images...</div>;
+  }
+  
+  if (error || signedUrls.length === 0) {
+    return null;
+  }
+  
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <ImageIcon className="w-4 h-4 text-muted-foreground" />
+        <span className="text-sm font-medium">Charts ({signedUrls.length})</span>
+      </div>
+      <ImageGallery images={signedUrls} alt={alt} />
+    </div>
+  );
+};

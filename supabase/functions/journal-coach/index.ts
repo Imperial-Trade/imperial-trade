@@ -18,8 +18,30 @@ interface GenerationMetrics {
   final_feedback_len: number;
   tokens_out: string;
   finish_reason: string;
+  salvaged_from_max_tokens: boolean;
+  was_clamped: boolean;
 }
 
+// Plain-text system prompt for text mode
+const PLAIN_TEXT_SYSTEM_PROMPT = `You are an encouraging trading coach. Give motivational feedback in 2-3 sentences (≤300 characters). Be positive and constructive. Reference the trader's notes. End with encouragement. Do not return JSON. Return plain text only.`;
+
+// Build plain-text prompt for text mode
+const buildPlainTextPrompt = (userName: string, outcome: string, asset: string, pnl: number, notes: string, hasScreenshot: boolean) => `
+Trading coach feedback for ${userName}'s ${outcome} (${pnl} USD).
+Asset: ${asset}
+Notes: "${notes}"
+${hasScreenshot ? "Screenshot attached." : ""}
+
+${PLAIN_TEXT_SYSTEM_PROMPT}`;
+
+// Build retry prompt (even shorter)
+const buildRetryPrompt = (userName: string, outcome: string, asset: string, pnl: number, notes: string) => `
+${userName} traded ${asset}: ${outcome} (${pnl} USD)
+Notes: "${notes}"
+
+Give encouraging 2 sentences (≤200 chars). Plain text only, no JSON.`;
+
+// Legacy JSON prompt (for rollback feature flag)
 const JOURNAL_SYSTEM_PROMPT = `Trading Coach - Give motivational feedback in JSON format.
 
 Rules:
@@ -34,14 +56,47 @@ Examples:
 Win: "Your patience paid off on EURUSD! That setup recognition shows real skill. You're becoming consistent!"
 Loss: "Logging this GBPJPY loss shows courage. Every pro trader learns from setups like this. You're growing!"`;
 
-// Build compact prompt for efficient token usage
-const buildPrompt = (userName: string, outcome: string, asset: string, pnl: number, notes: string, hasScreenshot: boolean) => `
+const buildLegacyJsonPrompt = (userName: string, outcome: string, asset: string, pnl: number, notes: string, hasScreenshot: boolean) => `
 ${userName} traded ${asset}: ${outcome} (${pnl} USD)
 Notes: "${notes}"
 ${hasScreenshot ? "Screenshot attached." : ""}
 
 ${JOURNAL_SYSTEM_PROMPT}
 Return JSON: {"feedback": "encouraging message"}`;
+
+// Clamp and sanitize text response
+function clampAndSanitize(text: string, maxLength: number = 300): { text: string; wasClamped: boolean } {
+  // Normalize whitespace and trim
+  let cleaned = text.replace(/\s+/g, ' ').trim();
+  
+  // Strip any stray code fences
+  cleaned = cleaned.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+  
+  // Clamp to max length
+  const wasClamped = cleaned.length > maxLength;
+  if (wasClamped) {
+    cleaned = cleaned.substring(0, maxLength).trim();
+    // Try to end at a sentence boundary
+    const lastPeriod = cleaned.lastIndexOf('.');
+    const lastExclamation = cleaned.lastIndexOf('!');
+    const lastSentenceEnd = Math.max(lastPeriod, lastExclamation);
+    if (lastSentenceEnd > maxLength * 0.7) {
+      cleaned = cleaned.substring(0, lastSentenceEnd + 1);
+    }
+  }
+  
+  return { text: cleaned, wasClamped };
+}
+
+// Check if response is a transport fallback
+function isTransportFallback(text: string): boolean {
+  try {
+    const parsed = JSON.parse(text);
+    return parsed.is_fallback === true;
+  } catch {
+    return false;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -135,85 +190,115 @@ serve(async (req) => {
     });
 
     // Smart truncation for token efficiency
-    const notes_trunc_1 = smartTruncateNotes(tradeNotes, 1200);
-    const notes_trunc_2 = smartTruncateNotes(tradeNotes, 800);
-    
-    // Build compact prompt using new efficient structure
-    const singlePrompt = buildPrompt(
-      userName,
-      tradeOutcome,
-      journalEntry.asset_ticker,
-      pnlAmount,
-      notes_trunc_1,
-      !!journalEntry.screenshot_url
-    );
+    const notes_trunc_1 = smartTruncateNotes(tradeNotes, 800);
+    const notes_trunc_2 = smartTruncateNotes(tradeNotes, 400);
+
+    // Check feature flag for rollback to JSON mode
+    const forceJsonMode = Deno.env.get("JOURNAL_COACH_FORCE_JSON") === "true";
     
     const startTime = Date.now();
-    // Start with very conservative limits to avoid MAX_TOKENS
-    let aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", singlePrompt, {
-      maxOutputTokens: 180,
-      timeoutMs: 12000,
-      responseSchema: {
-        type: "object",
-        properties: {
-          feedback: { 
-            type: "string",
-            maxLength: 120
-          }
-        },
-        required: ["feedback"]
-      }
-    });
-    const modelLatencyMs = Date.now() - startTime;
-
+    let aiResult;
     let usedRetry = false;
     let fallbackReason: string | null = null;
-    let finalMeta = aiResult.meta;
+    let finalMeta;
+    let salvagedFromMaxTokens = false;
+    let wasClamped = false;
 
-    // Check if we got a transport fallback and retry once
-    try {
-      const parsedResponse = JSON.parse(aiResult.text);
-      if (parsedResponse.is_fallback) {
-        console.log("Journal Coach - First attempt failed, retrying...", parsedResponse);
-        fallbackReason = parsedResponse.fallback_reason;
-        
-        // Retry with ultra-minimal prompt and aggressive limits
-        const minimalPrompt = `Trading coach feedback for ${userName}'s ${tradeOutcome} (${pnlAmount} USD).
-Asset: ${journalEntry.asset_ticker}
-Notes: "${notes_trunc_2}"
+    if (forceJsonMode) {
+      // Legacy JSON mode path
+      const jsonPrompt = buildLegacyJsonPrompt(
+        userName,
+        tradeOutcome,
+        journalEntry.asset_ticker,
+        pnlAmount,
+        notes_trunc_1,
+        !!journalEntry.screenshot_url
+      );
+      
+      aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", jsonPrompt, {
+        maxOutputTokens: 180,
+        timeoutMs: 12000,
+        responseSchema: {
+          type: "object",
+          properties: {
+            feedback: { 
+              type: "string",
+              maxLength: 120
+            }
+          },
+          required: ["feedback"]
+        }
+      });
+      
+      // Handle JSON mode result (existing logic)
+      try {
+        const parsedResponse = JSON.parse(aiResult.text);
+        if (parsedResponse.is_fallback) {
+          fallbackReason = parsedResponse.fallback_reason;
+        }
+      } catch (parseError) {
+        console.error("Journal Coach - Failed to parse AI response:", parseError);
+        fallbackReason = 'invalid_json';
+      }
+    } else {
+      // New text mode path (default)
+      const textPrompt = buildPlainTextPrompt(
+        userName,
+        tradeOutcome,
+        journalEntry.asset_ticker,
+        pnlAmount,
+        notes_trunc_1,
+        !!journalEntry.screenshot_url
+      );
+      
+      aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", textPrompt, {
+        maxOutputTokens: 220,
+        timeoutMs: 12000
+        // No responseSchema - defaults to text/plain mode
+      });
 
-Give encouraging 2-3 sentence feedback in JSON.
-Return: {"feedback": "max 80 chars motivational message"}`;
+      finalMeta = aiResult.meta;
+      
+      // Check if we got a transport fallback
+      if (isTransportFallback(aiResult.text)) {
+        const parsedFallback = JSON.parse(aiResult.text);
+        console.log("Journal Coach - First attempt failed, retrying...", parsedFallback);
+        fallbackReason = parsedFallback.fallback_reason;
         
-        aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", minimalPrompt, {
-          maxOutputTokens: 120,
-          timeoutMs: 8000,
-          responseSchema: {
-            type: "object",
-            properties: {
-              feedback: { 
-                type: "string",
-                maxLength: 80
-              }
-            },
-            required: ["feedback"]
-          }
+        // Retry with shorter prompt and lower token budget
+        const retryPrompt = buildRetryPrompt(
+          userName,
+          tradeOutcome,
+          journalEntry.asset_ticker,
+          pnlAmount,
+          notes_trunc_2
+        );
+        
+        aiResult = await callGoogleAIWithMeta(apiKey, "gemini-2.5-flash", retryPrompt, {
+          maxOutputTokens: 160,
+          timeoutMs: 8000
         });
+        
         usedRetry = true;
         finalMeta = aiResult.meta;
         
         // Check retry result
-        const retryParsed = JSON.parse(aiResult.text);
-        if (retryParsed.is_fallback) {
+        if (isTransportFallback(aiResult.text)) {
+          const retryParsed = JSON.parse(aiResult.text);
           fallbackReason = retryParsed.fallback_reason;
         } else {
           fallbackReason = null; // Retry succeeded
         }
+      } else {
+        // Check if we salvaged text from MAX_TOKENS
+        if (finalMeta.finishReason === 'MAX_TOKENS') {
+          salvagedFromMaxTokens = true;
+          console.log("Journal Coach - Salvaged text from MAX_TOKENS");
+        }
       }
-    } catch (parseError) {
-      console.error("Journal Coach - Failed to parse AI response:", parseError);
-      fallbackReason = 'invalid_json';
     }
+
+    const modelLatencyMs = Date.now() - startTime;
 
     // Generate final response (AI or personalized fallback)
     let finalFeedback: string;
@@ -230,42 +315,53 @@ Return: {"feedback": "max 80 chars motivational message"}`;
       });
       console.log("Journal Coach - Using personalized fallback due to:", fallbackReason);
     } else {
-      // Extract feedback from successful AI response
-      try {
-        const parsedResponse = JSON.parse(aiResult.text);
-        finalFeedback = parsedResponse.feedback || "Great work on analyzing this trade! Your detailed approach shows real growth as a trader.";
-      } catch (parseError) {
-        console.error("Journal Coach - Failed to parse successful AI response:", parseError);
-        finalFeedback = generatePersonalizedFallback({
-          userName,
-          asset: journalEntry.asset_ticker,
-          tradeType: journalEntry.trade_type,
-          isWin: journalEntry.pnl > 0,
-          pnlAmount,
-          notes: tradeNotes,
-          hasScreenshot: !!journalEntry.screenshot_url
-        });
-        fallbackReason = 'invalid_json';
+      if (forceJsonMode) {
+        // Extract feedback from JSON response
+        try {
+          const parsedResponse = JSON.parse(aiResult.text);
+          finalFeedback = parsedResponse.feedback || "Great work on analyzing this trade! Your detailed approach shows real growth as a trader.";
+        } catch (parseError) {
+          console.error("Journal Coach - Failed to parse successful AI response:", parseError);
+          finalFeedback = generatePersonalizedFallback({
+            userName,
+            asset: journalEntry.asset_ticker,
+            tradeType: journalEntry.trade_type,
+            isWin: journalEntry.pnl > 0,
+            pnlAmount,
+            notes: tradeNotes,
+            hasScreenshot: !!journalEntry.screenshot_url
+          });
+          fallbackReason = 'invalid_json';
+        }
+      } else {
+        // Use plain text response directly, clamp and sanitize
+        const clampResult = clampAndSanitize(aiResult.text, 300);
+        finalFeedback = clampResult.text;
+        wasClamped = clampResult.wasClamped;
+        
+        if (wasClamped) {
+          console.log("Journal Coach - Clamped response to 300 characters");
+        }
       }
     }
 
-    // Build typed metrics object to prevent undefined references
+    // Build typed metrics object
     const metrics: GenerationMetrics = {
       fallback_reason: fallbackReason,
       used_retry: usedRetry,
       notes_len: tradeNotes.length,
-      notes_trunc_len: notes_trunc_2.length,
-      prompt_char_len: usedRetry ? 
-        `Trading coach feedback for ${userName}'s ${tradeOutcome} (${pnlAmount} USD).
-Asset: ${journalEntry.asset_ticker}
-Notes: "${notes_trunc_2}"
-
-Give encouraging 2-3 sentence feedback in JSON.
-Return: {"feedback": "max 80 chars motivational message"}`.length : singlePrompt.length,
+      notes_trunc_len: usedRetry ? notes_trunc_2.length : notes_trunc_1.length,
+      prompt_char_len: forceJsonMode ? 
+        (usedRetry ? buildRetryPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_2).length : 
+         buildLegacyJsonPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_1, !!journalEntry.screenshot_url).length) :
+        (usedRetry ? buildRetryPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_2).length :
+         buildPlainTextPrompt(userName, tradeOutcome, journalEntry.asset_ticker, pnlAmount, notes_trunc_1, !!journalEntry.screenshot_url).length),
       model_latency_ms: modelLatencyMs,
       final_feedback_len: finalFeedback.length,
-      tokens_out: finalMeta.tokensOut || "unknown",
-      finish_reason: finalMeta.finishReason || "unknown"
+      tokens_out: finalMeta?.tokensOut?.toString() || "unknown",
+      finish_reason: finalMeta?.finishReason || "unknown",
+      salvaged_from_max_tokens: salvagedFromMaxTokens,
+      was_clamped: wasClamped
     };
 
     // Log metrics

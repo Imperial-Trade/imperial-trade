@@ -38,7 +38,7 @@ export async function callGoogleAI(
       }],
       generationConfig: {
         maxOutputTokens,
-        responseMimeType: "application/json",
+        responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
         ...(opts.responseSchema && { responseSchema: opts.responseSchema })
       }
     };
@@ -50,7 +50,7 @@ export async function callGoogleAI(
       }],
       generationConfig: {
         maxOutputTokens,
-        responseMimeType: "application/json",
+        responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
         ...(opts.responseSchema && { responseSchema: opts.responseSchema })
       }
     };
@@ -102,6 +102,24 @@ export async function callGoogleAI(
 
     if (finishReason === 'MAX_TOKENS') {
       console.error('Response truncated due to token limit:', candidate);
+      
+      // For text mode, salvage partial content instead of fallback
+      if (requestBody.generationConfig.responseMimeType === "text/plain") {
+        const textParts = candidate.content?.parts
+          ?.map(part => part.text)
+          ?.filter(text => text && text.trim())
+          ?.join(' ') || '';
+        
+        if (textParts.trim()) {
+          console.log('AI call salvaged text from MAX_TOKENS:', {
+            finishReason,
+            tokensOut: data.usageMetadata?.candidatesTokenCount || 'unknown',
+            responseLength: textParts.length
+          });
+          return textParts.trim();
+        }
+      }
+      
       return createTransportFallback('max_tokens');
     }
 
@@ -182,7 +200,7 @@ export async function callGoogleAIWithMeta(
       }],
       generationConfig: {
         maxOutputTokens,
-        responseMimeType: "application/json",
+        responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
         ...(opts.responseSchema && { responseSchema: opts.responseSchema })
       }
     };
@@ -194,7 +212,7 @@ export async function callGoogleAIWithMeta(
       }],
       generationConfig: {
         maxOutputTokens,
-        responseMimeType: "application/json",
+        responseMimeType: opts.responseSchema ? "application/json" : "text/plain",
         ...(opts.responseSchema && { responseSchema: opts.responseSchema })
       }
     };
@@ -259,6 +277,27 @@ export async function callGoogleAIWithMeta(
 
     if (finishReason === 'MAX_TOKENS') {
       console.error('Response truncated due to token limit:', candidate);
+      
+      // For text mode, salvage partial content instead of fallback
+      if (requestBody.generationConfig.responseMimeType === "text/plain") {
+        const textParts = candidate.content?.parts
+          ?.map(part => part.text)
+          ?.filter(text => text && text.trim())
+          ?.join(' ') || '';
+        
+        if (textParts.trim()) {
+          console.log('AI call salvaged text from MAX_TOKENS:', {
+            finishReason,
+            tokensOut,
+            responseLength: textParts.length
+          });
+          return {
+            text: textParts.trim(),
+            meta: { tokensOut, finishReason }
+          };
+        }
+      }
+      
       return {
         text: createTransportFallback('max_tokens'),
         meta: { tokensOut, finishReason }

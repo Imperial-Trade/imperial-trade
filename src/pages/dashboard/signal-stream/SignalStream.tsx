@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
@@ -52,16 +53,20 @@ export default function SignalStream() {
   const { user, profile, loading: authLoading, profileLoading } = authData;
   const navigate = useNavigate();
 
-  // Update init stage based on auth status
+  // Update init stage based on auth status (guard to avoid infinite re-renders)
   useEffect(() => {
     if (authLoading) {
-      setInitStage('auth');
-      addDebugInfo('Waiting for authentication');
+      if (initStage !== 'auth') {
+        setInitStage('auth');
+        addDebugInfo('Waiting for authentication');
+      }
     } else if (user && !profileLoading) {
-      setInitStage('contexts');
-      addDebugInfo('Authentication complete, initializing contexts');
+      if (initStage !== 'contexts') {
+        setInitStage('contexts');
+        addDebugInfo('Authentication complete, initializing contexts');
+      }
     }
-  }, [authLoading, profileLoading, user, addDebugInfo]);
+  }, [authLoading, profileLoading, user, initStage, addDebugInfo]);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -316,13 +321,15 @@ export default function SignalStream() {
 
     if (added.length > 0) {
       console.log('🔄 SignalStream - Subscribing (diff):', added);
-      subscribe(added);
+      // Subscribe per-symbol to satisfy strict typings
+      added.forEach(sym => subscribe(sym));
       subscriptionActiveRef.current = true;
     }
 
     if (removed.length > 0) {
       console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
-      unsubscribe(removed);
+      // Unsubscribe per-symbol to satisfy strict typings
+      removed.forEach(sym => unsubscribe(sym));
     }
 
     symbolsRef.current = [...symbols];
@@ -330,7 +337,7 @@ export default function SignalStream() {
     return () => {
       if (symbolsRef.current.length > 0) {
         console.log('🔄 SignalStream - Cleanup unsubscribe all:', symbolsRef.current);
-        unsubscribe(symbolsRef.current);
+        symbolsRef.current.forEach(sym => unsubscribe(sym));
         symbolsRef.current = [];
         subscriptionActiveRef.current = false;
       }
@@ -343,7 +350,7 @@ export default function SignalStream() {
   const prevAlertIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
-    const currentIds = new Set(alerts.map(alert => alert.id));
+    const currentIds = new Set<string>(alerts.map(alert => alert.id));
     const previousIds = prevAlertIdsRef.current;
     
     const newlyAdded = new Set<string>();
@@ -356,7 +363,7 @@ export default function SignalStream() {
     if (newlyAdded.size > 0) {
       setJustAddedIds(newlyAdded);
       const timeout = setTimeout(() => {
-        setJustAddedIds(new Set());
+        setJustAddedIds(new Set<string>());
       }, 3000);
       return () => clearTimeout(timeout);
     }

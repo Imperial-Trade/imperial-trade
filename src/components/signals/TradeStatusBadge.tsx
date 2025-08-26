@@ -5,7 +5,7 @@ import { Check, X, Target, TrendingUp, Hourglass } from 'lucide-react';
 
 interface TradeStatusBadgeProps {
   alert: {
-    status: 'pending' | 'active' | 'closed';
+    status: 'pending' | 'active' | 'closed' | 'partially_profited';
     trade_type?: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
     tp_hits?: number[];
     close_reason?: string;
@@ -18,6 +18,7 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     const hitTPs = alert.tp_hits || [];
     const isActive = alert.status === 'active';
     const isPending = alert.status === 'pending';
+    const isPartiallyProfited = alert.status === 'partially_profited';
     const closeReason = alert.close_reason;
     const isClosed = alert.status === 'closed';
     const tradeType = alert.trade_type;
@@ -37,26 +38,26 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
         );
     }
 
-    if (isActive && hitTPs.length > 0) {
+    if ((isActive || isPartiallyProfited) && hitTPs.length > 0) {
         const highestTP = Math.max(...hitTPs);
-        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
+        const statusText = isPartiallyProfited ? 'Partially Profited' : (isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active');
         return (
             <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-emerald-400 border-emerald-400 animate-pulse whitespace-nowrap uppercase">
                     <Target className="w-3 h-3 mr-1" /> TP{highestTP} HIT
                 </Badge>
                 <Badge variant="outline" className="text-emerald-400 border-emerald-400 uppercase whitespace-nowrap">
-                    {activeText}
+                    {statusText}
                 </Badge>
             </div>
         );
     }
 
-    if (isActive) {
-        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
+    if (isActive || isPartiallyProfited) {
+        const statusText = isPartiallyProfited ? 'Partially Profited' : (isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active');
         return (
             <Badge variant="outline" className="text-emerald-400 border-emerald-400">
-                {activeText}
+                {statusText}
             </Badge>
         );
     }
@@ -66,6 +67,15 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
             return (
                 <Badge className="bg-red-500/30 text-red-200 border-red-400 shadow-lg shadow-red-500/50 border-2">
                     <X className="w-4 h-4 mr-1" /> STOP LOSS HIT
+                </Badge>
+            );
+        }
+
+        if (closeReason === 'all_tps_hit') {
+            return (
+                <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400 shadow-lg shadow-emerald-500/50 border-2">
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    ALL TPs HIT
                 </Badge>
             );
         }

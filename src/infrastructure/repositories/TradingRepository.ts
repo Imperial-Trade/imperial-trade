@@ -32,7 +32,7 @@ export class TradingRepository implements ITradingRepository {
     return TradingMapper.toDomain(result.data[0]);
   }
 
-  async findAlertsByStatus(status: 'pending' | 'active' | 'closed', userId: string): Promise<TradeAlert[]> {
+  async findAlertsByStatus(status: 'pending' | 'active' | 'closed' | 'partially_profited', userId: string): Promise<TradeAlert[]> {
     const result = await apiClient.select('trade_alerts', {
       eq: { column: 'user_id', value: userId },
       order: { column: 'created_at', ascending: false }
@@ -74,13 +74,14 @@ export class TradingRepository implements ITradingRepository {
   }
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto): Promise<TradeAlert> {
-    const updateData = {
-      ...(dto.status && { status: dto.status }),
-      ...(dto.tpHits && { tp_hits: dto.tpHits }),
-      ...(dto.closeReason && { close_reason: dto.closeReason }),
-      ...(dto.notes && { notes: dto.notes }),
+    const updateData: any = {
       updated_at: new Date().toISOString()
     };
+
+    if (dto.status) updateData.status = dto.status;
+    if (dto.tpHits) updateData.tp_hits = dto.tpHits;
+    if (dto.closeReason) updateData.close_reason = dto.closeReason;
+    if (dto.notes) updateData.notes = dto.notes;
 
     const result = await apiClient.update('trade_alerts', id, updateData);
     

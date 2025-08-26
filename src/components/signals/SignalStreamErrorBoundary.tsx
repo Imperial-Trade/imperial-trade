@@ -13,19 +13,30 @@ interface State {
   hasError: boolean;
   error?: Error;
   errorInfo?: ErrorInfo;
+  retryCount: number;
 }
 
 export class SignalStreamErrorBoundary extends Component<Props, State> {
-  public state: State = {
-    hasError: false,
-  };
+  private maxRetries = 3;
 
-  public static getDerivedStateFromError(error: Error): State {
-    console.error('SignalStreamErrorBoundary caught error:', error);
-    return { hasError: true, error };
+  constructor(props: Props) {
+    super(props);
+    this.state = { 
+      hasError: false, 
+      retryCount: 0 
+    };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  static getDerivedStateFromError(error: Error): State {
+    console.error('SignalStreamErrorBoundary caught error:', error);
+    return { 
+      hasError: true, 
+      error,
+      retryCount: 0
+    };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('SignalStreamErrorBoundary - Full error details:', {
       error: error.message,
       stack: error.stack,
@@ -36,11 +47,33 @@ export class SignalStreamErrorBoundary extends Component<Props, State> {
       error,
       errorInfo
     });
+
+    // Report to monitoring service (could be PostHog, Sentry, etc.)
+    if (typeof window !== 'undefined' && (window as any).posthog) {
+      (window as any).posthog.capture('signal_stream_error', {
+        error: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack
+      });
+    }
   }
 
   private handleRetry = () => {
-    console.log('SignalStreamErrorBoundary - Retrying...');
-    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+    if (this.state.retryCount < this.maxRetries) {
+      console.log(`SignalStreamErrorBoundary - Retry attempt ${this.state.retryCount + 1}/${this.maxRetries}`);
+      this.setState({ 
+        hasError: false, 
+        error: undefined, 
+        errorInfo: undefined,
+        retryCount: this.state.retryCount + 1
+      });
+    } else {
+      window.location.reload();
+    }
+  };
+
+  private handleRefresh = () => {
+    window.location.reload();
   };
 
   public render() {
@@ -49,24 +82,31 @@ export class SignalStreamErrorBoundary extends Component<Props, State> {
         return this.props.fallbackComponent;
       }
 
+      const isNetworkError = this.state.error?.message?.includes('Network') || 
+                           this.state.error?.message?.includes('fetch') ||
+                           this.state.error?.message?.includes('WebSocket');
+
       return (
         <div className="min-h-screen bg-background p-4 flex items-center justify-center">
           <Card className="border-destructive/50 bg-destructive/5 max-w-2xl w-full">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-5 w-5" />
-                Signal Stream Error
+                {isNetworkError ? <WifiOff className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+                {isNetworkError ? 'Connection Error' : 'Xeon Stream Error'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                The Signal Stream encountered an error and couldn't load properly. This might be due to:
+                {isNetworkError 
+                  ? 'Unable to connect to the trading signal stream. Please check your internet connection.'
+                  : 'The Xeon Stream encountered an error and couldn\'t load properly.'
+                }
               </p>
               
               <ul className="text-sm text-muted-foreground list-disc pl-6 space-y-1">
                 <li>Network connectivity issues</li>
-                <li>Authentication problems</li>
                 <li>Real-time service unavailable</li>
+                <li>Authentication problems</li>
                 <li>Browser compatibility issues</li>
               </ul>
 
@@ -83,24 +123,27 @@ export class SignalStreamErrorBoundary extends Component<Props, State> {
               )}
               
               <div className="flex gap-2">
-                <Button 
-                  onClick={this.handleRetry}
-                  variant="outline"
-                  size="sm"
-                  className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Try Again
-                </Button>
-                
-                <Button 
-                  onClick={() => window.location.reload()}
-                  variant="outline"
-                  size="sm"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh Page
-                </Button>
+                {this.state.retryCount < this.maxRetries ? (
+                  <Button 
+                    onClick={this.handleRetry}
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Try Again ({this.maxRetries - this.state.retryCount} attempts left)
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={this.handleRefresh}
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Page
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -111,3 +154,5 @@ export class SignalStreamErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+export default SignalStreamErrorBoundary;

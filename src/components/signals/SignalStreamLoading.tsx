@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Shield, Wifi } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, Shield, Wifi, Database, User } from 'lucide-react';
 
 interface SignalStreamLoadingProps {
   stage: 'auth' | 'contexts' | 'data' | 'complete';
@@ -10,73 +10,76 @@ interface SignalStreamLoadingProps {
   progress?: number;
 }
 
+const stageIcons = {
+  auth: User,
+  contexts: Wifi,
+  data: Database,
+  complete: Shield
+};
+
+const stageMessages = {
+  auth: 'Authenticating user...',
+  contexts: 'Initializing connections...',
+  data: 'Loading signal data...',
+  complete: 'Ready!'
+};
+
 export const SignalStreamLoading: React.FC<SignalStreamLoadingProps> = ({ 
   stage, 
-  message = 'Loading...', 
+  message, 
   progress = 0 
 }) => {
-  const getStageInfo = () => {
-    switch (stage) {
-      case 'auth':
-        return { 
-          title: 'Authenticating...', 
-          description: 'Verifying user credentials',
-          icon: <Shield className="w-4 h-4" />
-        };
-      case 'contexts':
-        return { 
-          title: 'Initializing Services...', 
-          description: 'Setting up real-time connections',
-          icon: <Wifi className="w-4 h-4" />
-        };
-      case 'data':
-        return { 
-          title: 'Loading Signals...', 
-          description: 'Fetching latest market data',
-          icon: <Loader2 className="w-4 h-4 animate-spin" />
-        };
-      default:
-        return { 
-          title: 'Loading...', 
-          description: 'Preparing Signal Stream',
-          icon: <Loader2 className="w-4 h-4 animate-spin" />
-        };
-    }
-  };
-
-  const stageInfo = getStageInfo();
+  const Icon = stageIcons[stage];
+  const stageMessage = message || stageMessages[stage];
 
   return (
-    <div className="min-h-screen bg-background w-full flex items-center justify-center p-4">
-      <Card className="max-w-md w-full">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="flex items-center justify-center gap-2 text-xl">
-            {stageInfo.icon}
-            Xeon <span className="text-accent-green">Stream</span>
+          <CardTitle className="flex items-center justify-center gap-2">
+            <Shield className="h-5 w-5 text-accent-green" />
+            Xeon Stream
           </CardTitle>
-          <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 mx-auto">
-            <Shield className="w-3 h-3 mr-1" />
-            Educational Platform
-          </Badge>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-center space-y-2">
-            <h3 className="font-semibold">{stageInfo.title}</h3>
-            <p className="text-sm text-muted-foreground">{stageInfo.description}</p>
-            {message && (
-              <p className="text-xs text-muted-foreground italic">{message}</p>
-            )}
+        <CardContent className="space-y-6">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="relative">
+              <Icon className="h-12 w-12 text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin absolute -bottom-1 -right-1 text-accent-green" />
+            </div>
+            
+            <div className="text-center space-y-2">
+              <p className="font-medium">{stageMessage}</p>
+              <p className="text-sm text-muted-foreground">
+                Connecting to educational trading signals...
+              </p>
+            </div>
           </div>
-          
-          <div className="w-full bg-muted rounded-full h-2">
-            <div 
-              className="bg-accent-green h-2 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${Math.min(progress, 100)}%` }}
-            />
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Loading Progress</span>
+              <span>{progress}%</span>
+            </div>
+            <Progress value={progress} className="w-full" />
           </div>
-          
-          <div className="text-xs text-center text-muted-foreground">
-            Please wait while we prepare your trading dashboard...
+
+          <div className="grid grid-cols-4 gap-2 text-xs text-center">
+            {Object.entries(stageIcons).map(([key, StageIcon], index) => {
+              const isActive = key === stage;
+              const isComplete = ['auth', 'contexts', 'data', 'complete'].indexOf(key) < ['auth', 'contexts', 'data', 'complete'].indexOf(stage);
+              
+              return (
+                <div key={key} className={`flex flex-col items-center p-2 rounded ${
+                  isActive ? 'bg-accent-green/20 text-accent-green' :
+                  isComplete ? 'bg-green-500/20 text-green-600' :
+                  'text-muted-foreground'
+                }`}>
+                  <StageIcon className="h-4 w-4 mb-1" />
+                  <span className="capitalize">{key}</span>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
@@ -15,6 +14,7 @@ import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import { SignalStreamErrorBoundary } from '@/components/signals/SignalStreamErrorBoundary';
 import { SignalStreamLoading } from '@/components/signals/SignalStreamLoading';
+import { useConnectionHealth } from '@/hooks/useConnectionHealth';
 
 interface PriceData {
   price: number;
@@ -24,16 +24,20 @@ interface PriceData {
 export default function SignalStream() {
   console.log('🚀 SignalStream - Component starting to render');
   
+  // Connection health monitoring
+  const connectionHealth = useConnectionHealth('https://kmuoqkcxguafxulqlbmi.supabase.co/rest/v1/', 30000);
+  
   // Debug state for tracking initialization
   const [initStage, setInitStage] = useState<'auth' | 'contexts' | 'data' | 'complete'>('auth');
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [lastError, setLastError] = useState<string | null>(null);
   
   const addDebugInfo = useCallback((info: string) => {
     console.log(`📋 SignalStream Debug: ${info}`);
     setDebugInfo(prev => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${info}`]);
   }, []);
 
-  // Authentication with error handling
+  // Authentication with comprehensive error handling
   let authData;
   try {
     addDebugInfo('Initializing authentication context');
@@ -45,15 +49,27 @@ export default function SignalStream() {
       profileLoading: authData.profileLoading
     });
   } catch (error) {
+    const errorMsg = `Auth context failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
     console.error('❌ SignalStream - Auth context failed:', error);
-    addDebugInfo(`Auth context error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    throw new Error(`Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    addDebugInfo(errorMsg);
+    setLastError(errorMsg);
+    
+    // Return fallback component for auth failures
+    return (
+      <SignalStreamErrorBoundary>
+        <SignalStreamLoading 
+          stage="auth" 
+          message="Authentication service unavailable"
+          progress={0}
+        />
+      </SignalStreamErrorBoundary>
+    );
   }
 
   const { user, profile, loading: authLoading, profileLoading } = authData;
   const navigate = useNavigate();
 
-  // Update init stage based on auth status (guard to avoid infinite re-renders)
+  // Update init stage based on auth status (prevent infinite re-renders)
   useEffect(() => {
     if (authLoading) {
       if (initStage !== 'auth') {
@@ -75,7 +91,7 @@ export default function SignalStream() {
     educator: ''
   });
 
-  // WebSocket context with error handling
+  // WebSocket context with comprehensive error handling
   let webSocketData;
   try {
     addDebugInfo('Initializing WebSocket context');
@@ -86,9 +102,12 @@ export default function SignalStream() {
       pricesCount: Object.keys(webSocketData.prices || {}).length
     });
   } catch (error) {
+    const errorMsg = `WebSocket context failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
     console.error('❌ SignalStream - WebSocket context failed:', error);
-    addDebugInfo(`WebSocket context error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    // Don't throw here - WebSocket is optional
+    addDebugInfo(errorMsg);
+    setLastError(errorMsg);
+    
+    // Provide fallback WebSocket data
     webSocketData = {
       prices: {},
       connectionStatus: 'error' as const,
@@ -96,14 +115,14 @@ export default function SignalStream() {
       lastUpdated: null,
       errors: {},
       priceUpdateSources: {},
-      subscribe: () => {},
-      unsubscribe: () => {},
+      subscribe: () => console.warn('WebSocket unavailable - subscribe'),
+      unsubscribe: () => console.warn('WebSocket unavailable - unsubscribe'),
       getPrice: () => null,
-      refreshPrice: () => {}
+      refreshPrice: () => console.warn('WebSocket unavailable - refreshPrice')
     };
   }
 
-  // Trading context with error handling
+  // Trading context with comprehensive error handling
   let tradingData;
   try {
     addDebugInfo('Initializing trading context');
@@ -115,9 +134,21 @@ export default function SignalStream() {
       hasError: !!tradingData.error
     });
   } catch (error) {
+    const errorMsg = `Trading context failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
     console.error('❌ SignalStream - Trading context failed:', error);
-    addDebugInfo(`Trading context error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    throw new Error(`Trading system failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    addDebugInfo(errorMsg);
+    setLastError(errorMsg);
+    
+    // This is critical - return error state
+    return (
+      <SignalStreamErrorBoundary>
+        <SignalStreamLoading 
+          stage="data" 
+          message="Trading service unavailable - please refresh"
+          progress={75}
+        />
+      </SignalStreamErrorBoundary>
+    );
   }
 
   const {
@@ -140,7 +171,7 @@ export default function SignalStream() {
     getPrice
   } = webSocketData;
 
-  // Update init stage based on data loading
+  // Update init stage based on data loading (prevent infinite loops)
   useEffect(() => {
     if (initStage === 'contexts' && !isLoading) {
       setInitStage('data');
@@ -148,13 +179,14 @@ export default function SignalStream() {
     } else if (initStage === 'data' && allAlerts !== undefined) {
       setInitStage('complete');
       addDebugInfo(`Data loaded successfully: ${allAlerts.length} alerts`);
+      setLastError(null); // Clear any previous errors
     }
   }, [initStage, isLoading, allAlerts, addDebugInfo]);
 
   // Show loading state during initialization
   if (authLoading || profileLoading || initStage !== 'complete') {
     const progress = initStage === 'auth' ? 25 : initStage === 'contexts' ? 50 : initStage === 'data' ? 75 : 100;
-    const message = debugInfo[debugInfo.length - 1] || 'Initializing...';
+    const message = lastError || debugInfo[debugInfo.length - 1] || 'Initializing...';
     
     return (
       <SignalStreamErrorBoundary>
@@ -322,14 +354,26 @@ export default function SignalStream() {
     if (added.length > 0) {
       console.log('🔄 SignalStream - Subscribing (diff):', added);
       // Subscribe per-symbol to satisfy strict typings
-      added.forEach(sym => subscribe(sym));
+      added.forEach(sym => {
+        try {
+          subscribe(sym);
+        } catch (error) {
+          console.warn(`Failed to subscribe to ${sym}:`, error);
+        }
+      });
       subscriptionActiveRef.current = true;
     }
 
     if (removed.length > 0) {
       console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
       // Unsubscribe per-symbol to satisfy strict typings
-      removed.forEach(sym => unsubscribe(sym));
+      removed.forEach(sym => {
+        try {
+          unsubscribe(sym);
+        } catch (error) {
+          console.warn(`Failed to unsubscribe from ${sym}:`, error);
+        }
+      });
     }
 
     symbolsRef.current = [...symbols];
@@ -337,7 +381,13 @@ export default function SignalStream() {
     return () => {
       if (symbolsRef.current.length > 0) {
         console.log('🔄 SignalStream - Cleanup unsubscribe all:', symbolsRef.current);
-        symbolsRef.current.forEach(sym => unsubscribe(sym));
+        symbolsRef.current.forEach(sym => {
+          try {
+            unsubscribe(sym);
+          } catch (error) {
+            console.warn(`Failed to cleanup unsubscribe ${sym}:`, error);
+          }
+        });
         symbolsRef.current = [];
         subscriptionActiveRef.current = false;
       }
@@ -386,11 +436,15 @@ export default function SignalStream() {
   }, [connectionStatus, nextRetryAt]);
 
   const getConnectionStatusBadge = () => {
+    // Enhanced connection status with health monitoring
+    const healthStatus = connectionHealth.status;
+    const isHealthy = healthStatus === 'healthy';
+    
     switch (connectionStatus) {
       case 'connected':
-        return <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+        return <Badge className={`${isHealthy ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'}`}>
             <Wifi className="w-3 h-3 mr-1" />
-            Live Updates
+            {isHealthy ? 'Live Updates' : 'Degraded Connection'}
           </Badge>;
       case 'connecting':
         return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
@@ -617,12 +671,17 @@ export default function SignalStream() {
                 {debugInfo.map((info, i) => (
                   <div key={i} className="text-muted-foreground">{info}</div>
                 ))}
+                <div className="mt-2 pt-2 border-t">
+                  <div>Health: {connectionHealth.status}</div>
+                  <div>Latency: {connectionHealth.latency}ms</div>
+                  <div>Failures: {connectionHealth.consecutiveFailures}</div>
+                </div>
               </div>
             </details>
           </div>
         )}
         
-        {/* Header - Mobile Optimized spacing */}
+        {/* Enhanced Header with Connection Health */}
         <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
@@ -645,12 +704,17 @@ export default function SignalStream() {
                 {lastUpdated && <span className="text-xs text-muted-foreground">
                     Last update: {lastUpdated.toLocaleTimeString()}
                   </span>}
+                {connectionHealth.latency && (
+                  <span className="text-xs text-muted-foreground">
+                    {connectionHealth.latency}ms
+                  </span>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main Content - Mobile Optimized grid layout with granular protection */}
+        {/* Main Content with Enhanced Error Handling */}
         <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
           <div className="max-w-none w-full">
             <div className="w-full">
@@ -661,7 +725,7 @@ export default function SignalStream() {
 
               <div className="mb-6" />
               
-              {/* Enhanced Filters - Protected from widget opening */}
+              {/* Enhanced Filters */}
               <div data-prevent-widget-open="true">
                 <SignalStreamFilters 
                   filters={filters} 
@@ -673,23 +737,36 @@ export default function SignalStream() {
                 />
               </div>
               
-              {/* Show error state if there's a persistent error */}
-              {error && (
+              {/* Enhanced Error State with Connection Health */}
+              {(error || connectionHealth.consecutiveFailures > 3) && (
                 <div className="mb-6 p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
                   <div className="flex items-center gap-2 text-destructive mb-2">
                     <AlertTriangle className="w-4 h-4" />
-                    <span className="font-semibold">Connection Issue</span>
+                    <span className="font-semibold">
+                      {connectionHealth.consecutiveFailures > 3 ? 'Network Issues Detected' : 'Connection Issue'}
+                    </span>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">{error}</p>
-                  <Button 
-                    onClick={() => refreshAlerts()} 
-                    size="sm" 
-                    variant="outline"
-                    className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                  >
-                    <RefreshCw className="w-3 h-3 mr-1" />
-                    Retry Connection
-                  </Button>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {error || `Connection has failed ${connectionHealth.consecutiveFailures} times. Signals may be delayed.`}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => refreshAlerts()} 
+                      size="sm" 
+                      variant="outline"
+                      className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                    >
+                      <RefreshCw className="w-3 h-3 mr-1" />
+                      Retry Connection
+                    </Button>
+                    <Button 
+                      onClick={() => connectionHealth.checkHealth()} 
+                      size="sm" 
+                      variant="outline"
+                    >
+                      Test Connection
+                    </Button>
+                  </div>
                 </div>
               )}
               
@@ -803,7 +880,7 @@ export default function SignalStream() {
               )}
             </div>
 
-            {/* Economic Sidebar - Protected positioning */}
+            {/* Economic Sidebar */}
             <div data-prevent-widget-open="true">
               <EconomicSidebar />
             </div>

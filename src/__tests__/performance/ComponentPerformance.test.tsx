@@ -3,10 +3,27 @@ import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { performance } from 'perf_hooks';
 import { TestWrapper } from '@/test/utils/test-helpers';
-import TradeAlertCard from '@/components/signals/TradeAlertCard';
+import TradeAlertCard, { type TradeAlertData } from '@/components/signals/TradeAlertCard';
 import { EnhancedSystemMonitoring } from '@/components/admin/EnhancedSystemMonitoring';
 import LivePriceWidget from '@/components/signals/LivePriceWidget';
-import { TestDataFactory } from '@/__tests__/utils/testDataFactory';
+
+// Mock data factory that matches TradeAlertCard's TradeAlertData interface
+const createMockTradeAlertData = (): TradeAlertData => ({
+  id: 'test-alert-123',
+  asset_name: 'EUR/USD',
+  tradermade_symbol: 'EURUSD',
+  trade_type: 'buy' as const,
+  entry_price: 1.0850,
+  stop_loss: 1.0800,
+  status: 'active' as const,
+  tp1: 1.0900,
+  tp2: 1.0950,
+  tp3: 1.1000,
+  tp_hits: [1], // Required property - ensure it's always present
+  notes: 'Test trade alert',
+  created_date: new Date().toISOString(),
+  updated_date: new Date().toISOString()
+});
 
 describe('Component Performance Tests', () => {
   let memoryBefore: number;
@@ -32,7 +49,7 @@ describe('Component Performance Tests', () => {
 
   describe('TradeAlertCard Performance', () => {
     it('should render within performance threshold', () => {
-      const mockAlert = TestDataFactory.createMockTradeAlertData();
+      const mockAlert = createMockTradeAlertData();
       const mockProps = {
         alert: mockAlert,
         onStatusUpdate: vi.fn(),
@@ -64,7 +81,7 @@ describe('Component Performance Tests', () => {
     });
 
     it('should handle rapid prop updates efficiently', () => {
-      const mockAlert = TestDataFactory.createMockTradeAlertData();
+      const mockAlert = createMockTradeAlertData();
       const mockProps = {
         alert: mockAlert,
         onStatusUpdate: vi.fn(),
@@ -127,7 +144,7 @@ describe('Component Performance Tests', () => {
 
   describe('Memory Leak Detection', () => {
     it('should not leak memory with LivePriceWidget', () => {
-      const mockAlert = TestDataFactory.createMockTradeAlertData();
+      const mockAlert = createMockTradeAlertData();
       const mockProps = {
         alert: mockAlert,
         onTakeProfitHit: vi.fn(),

@@ -32,7 +32,7 @@ export class TradingRepository implements ITradingRepository {
     return TradingMapper.toDomain(result.data[0]);
   }
 
-  async findAlertsByStatus(status: 'pending' | 'active' | 'closed', userId: string): Promise<TradeAlert[]> {
+  async findAlertsByStatus(status: 'pending' | 'active' | 'closed' | 'partially_profited', userId: string): Promise<TradeAlert[]> {
     const result = await apiClient.select('trade_alerts', {
       eq: { column: 'user_id', value: userId },
       order: { column: 'created_at', ascending: false }

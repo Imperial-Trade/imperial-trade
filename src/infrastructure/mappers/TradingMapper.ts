@@ -6,6 +6,9 @@ type TradeAlertRow = Database['public']['Tables']['trade_alerts']['Row'];
 
 export class TradingMapper {
   static toDomain(row: TradeAlertRow): TradeAlert {
+    // Map database status to domain status, including partially_profited
+    const status = row.status as 'pending' | 'active' | 'closed' | 'partially_profited';
+    
     return new TradeAlert(
       row.id,
       row.asset_name,
@@ -14,7 +17,7 @@ export class TradingMapper {
       row.entry_price,
       row.stop_loss,
       row.user_id,
-      row.status,
+      status,
       row.tp1 || undefined,
       row.tp2 || undefined,
       row.tp3 || undefined,

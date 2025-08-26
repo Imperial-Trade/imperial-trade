@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -58,7 +57,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
   const calculateStats = () => {
     const total = alerts.length;
-    const active = alerts.filter(alert => alert.status === 'active').length;
+    const active = alerts.filter(alert => alert.status === 'active' || alert.status === 'partially_profited').length;
     const closed = alerts.filter(alert => alert.status === 'closed').length;
     const successful = alerts.filter(alert => 
       alert.status === 'closed' && alert.tpHits && alert.tpHits.length > 0
@@ -126,7 +125,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
     try {
       const result = await tradingApiService.updateAlert(
         alert.id, 
-        { status: newStatus as 'pending' | 'active' | 'closed' }, 
+        { status: newStatus as 'pending' | 'active' | 'closed' | 'partially_profited' }, 
         currentUser?.id || ''
       );
       
@@ -154,7 +153,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
         alert.id,
         { 
           tpHits: newTPHits,
-          closeReason: closeReason as any,
+          closeReason: closeReason as 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp',
           status: shouldAutoClose ? 'closed' as const : alert.status
         },
         currentUser?.id || ''
@@ -181,7 +180,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
       const result = await tradingApiService.updateAlert(
         alert.id,
         { 
-          closeReason: closeReason as any,
+          closeReason: closeReason as 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp',
           status: 'closed' as const
         },
         currentUser?.id || ''
@@ -347,7 +346,8 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                         tp_hits: alert.tpHits,
                         close_reason: alert.closeReason,
                         created_date: alert.createdAt,
-                        updated_date: alert.updatedAt
+                        updated_date: alert.updatedAt,
+                        status: alert.status === 'partially_profited' ? 'active' : alert.status
                       }}
                       onStatusUpdate={handleSignalStatusUpdate}
                       onTakeProfitHit={handleTakeProfitHit}
@@ -376,20 +376,21 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
             <TabsContent value="active" className="p-6">
               <div className="grid gap-4">
-                {alerts.filter(alert => alert.status === 'active').map((alert) => (
+                {alerts.filter(alert => alert.status === 'active' || alert.status === 'partially_profited').map((alert) => (
                   <TradeAlertCard
                     key={alert.id}
                     alert={{
                       ...alert,
                       asset_name: alert.assetName,
-                       tradermade_symbol: alert.tradermadeSymbol,
+                      tradermade_symbol: alert.tradermadeSymbol,
                       trade_type: alert.tradeType,
                       entry_price: alert.entryPrice,
                       stop_loss: alert.stopLoss,
                       tp_hits: alert.tpHits,
                       close_reason: alert.closeReason,
                       created_date: alert.createdAt,
-                      updated_date: alert.updatedAt
+                      updated_date: alert.updatedAt,
+                      status: alert.status === 'partially_profited' ? 'active' : alert.status
                     }}
                     onStatusUpdate={handleSignalStatusUpdate}
                     onTakeProfitHit={handleTakeProfitHit}
@@ -420,7 +421,8 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       tp_hits: alert.tpHits,
                       close_reason: alert.closeReason,
                       created_date: alert.createdAt,
-                      updated_date: alert.updatedAt
+                      updated_date: alert.updatedAt,
+                      status: alert.status === 'partially_profited' ? 'active' : alert.status
                     }}
                     onStatusUpdate={handleSignalStatusUpdate}
                     onTakeProfitHit={handleTakeProfitHit}

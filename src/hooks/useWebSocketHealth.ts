@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-interface WebSocketHealth {
+export interface WebSocketHealth {
   isConnected: boolean;
   reconnectAttempts: number;
   maxReconnectAttempts: number;
@@ -13,7 +14,7 @@ interface WebSocketHealth {
   averageLatency: number;
 }
 
-interface UseWebSocketHealthReturn extends WebSocketHealth {
+export interface UseWebSocketHealthReturn extends WebSocketHealth {
   startHealthCheck: (ws: WebSocket) => void;
   stopHealthCheck: () => void;
   forceReconnect: () => void;

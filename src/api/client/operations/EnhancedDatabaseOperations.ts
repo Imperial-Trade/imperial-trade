@@ -26,7 +26,7 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
     const cacheKey = this.generateCacheKey(table, options);
     
     // Try cache first for read operations
-    const cachedResult = redisCache.get(cacheKey);
+    const cachedResult = redisCache.read<TableRow<T>[]>(cacheKey);
     if (cachedResult && !config.bypassCache) {
       console.log(`⚡ Cache HIT for ${table} query`);
       return {
@@ -44,7 +44,7 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
         if (result.success && result.data) {
           // Cache successful results with appropriate TTL
           const ttl = this.getCacheTTL(table);
-          redisCache.set(cacheKey, result.data, ttl);
+          redisCache.write<TableRow<T>[]>(cacheKey, result.data, ttl);
           console.log(`💾 Cached ${table} result for ${ttl}ms`);
         }
         
@@ -145,25 +145,25 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
     const cacheKey = `prices:${symbols.sort().join(',')}`;
     
     // Try batch cache lookup
-    const cached = redisCache.get(cacheKey);
+    const cached = redisCache.read<TableRow<'market_prices'>[]>(cacheKey);
     if (cached) {
       return { success: true, data: cached, error: undefined };
     }
 
     // Fetch from database with optimized query
     const result = await this.select('market_prices', {
-      select: 'symbol, bid_price, ask_price, updated_at',
+      select: 'symbol, bid, ask, updated_at',
       limit: symbols.length * 2 // Allow for multiple entries per symbol
     });
     
     if (result.success && result.data) {
       // Cache prices for 5 seconds (very short TTL for market data)
-      redisCache.set(cacheKey, result.data, 5000);
+      redisCache.write(cacheKey, result.data, 5000);
       
       // Also cache individual symbol prices
-      result.data.forEach(price => {
+      result.data.forEach((price: TableRow<'market_prices'>) => {
         if (price.symbol) {
-          redisCache.setPrice(price.symbol, price.bid_price || 0, 5000);
+          redisCache.setPrice(price.symbol, (price as any).bid || 0, 5000);
         }
       });
     }

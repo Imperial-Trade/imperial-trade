@@ -1,3 +1,4 @@
+
 import { performanceMonitor } from './PerformanceMonitorService';
 import { redisCache } from './RedisCache';
 import { connectionPool } from './ConnectionPoolManager';
@@ -7,7 +8,7 @@ interface PerformanceAlert {
   severity: 'warning' | 'critical';
   message: string;
   timestamp: Date;
-  metrics: Record<string, number>;
+  metrics: Record<string, number | string>;
 }
 
 interface SystemPerformanceSnapshot {
@@ -69,7 +70,7 @@ class EnhancedPerformanceMonitor {
       
       this.recordResponseTime(deliveryTime);
       performanceMonitor.trackMetric('signal_delivery', deliveryTime, 'response_time', {
-        signalId,
+        signalId: signalId || 'unknown',
         success: true,
         target: 100 // Target: sub-100ms
       });
@@ -89,7 +90,7 @@ class EnhancedPerformanceMonitor {
       this.recordResponseTime(deliveryTime);
       
       performanceMonitor.trackMetric('signal_delivery', deliveryTime, 'response_time', {
-        signalId,
+        signalId: signalId || 'unknown',
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -112,7 +113,7 @@ class EnhancedPerformanceMonitor {
       const updateTime = performance.now() - startTime;
       
       performanceMonitor.trackMetric('price_update', updateTime, 'response_time', {
-        symbol,
+        symbol: symbol || 'unknown',
         success: true,
         target: 50 // Target: sub-50ms for price updates
       });
@@ -130,7 +131,7 @@ class EnhancedPerformanceMonitor {
       const updateTime = performance.now() - startTime;
       
       performanceMonitor.trackMetric('price_update', updateTime, 'response_time', {
-        symbol,
+        symbol: symbol || 'unknown',
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -150,7 +151,7 @@ class EnhancedPerformanceMonitor {
     });
 
     // Alert on low cache hit rate
-    if (hitRate < 80 && parseInt(cacheStats.hits) + parseInt(cacheStats.misses) > 100) {
+    if (hitRate < 80 && (cacheStats.hits + cacheStats.misses) > 100) {
       this.createAlert('cache_miss', 'warning',
         `Cache hit rate low: ${hitRate}% (target: >80%)`, {
         hitRate,
@@ -273,7 +274,7 @@ class EnhancedPerformanceMonitor {
   }
 
   private createAlert(type: PerformanceAlert['type'], severity: PerformanceAlert['severity'], 
-                     message: string, metrics: Record<string, number>): void {
+                     message: string, metrics: Record<string, number | string>): void {
     const alert: PerformanceAlert = {
       type,
       severity,

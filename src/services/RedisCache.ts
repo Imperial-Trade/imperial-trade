@@ -84,6 +84,16 @@ class RedisCache {
     return this.get(key);
   }
 
+  // PUBLIC generic cache helpers (wrap private get/set)
+  // These provide a safe, typed way to use the cache from other modules.
+  public write<T>(key: string, data: T, ttl = this.config.defaultTTL): void {
+    this.set(key, data, ttl);
+  }
+
+  public read<T>(key: string): T | null {
+    return this.get<T>(key);
+  }
+
   // Core cache operations
   private set<T>(key: string, data: T, ttl = this.config.defaultTTL): void {
     // Evict oldest entries if at capacity

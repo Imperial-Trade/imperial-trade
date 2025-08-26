@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -68,9 +69,16 @@ export function SignalEngineDiagnostics() {
       console.log('📊 Diagnostic results:', diagnosticResponse.data);
       setDiagnostics(diagnosticResponse.data);
 
-      // Step 2: Run manual reconciliation to fix issues
-      const fixedSignals = await fixProblematicSignals(diagnosticResponse.data);
-      setReconcileResult(fixedSignals);
+      // Step 2: Run database reconciliation using the new enhanced function
+      const { data: reconcileResponse, error: reconcileError } = await supabase.rpc('reconcile_signal_consistency');
+      
+      if (reconcileError) {
+        console.error('❌ Reconciliation failed:', reconcileError);
+        toast.error('Reconciliation failed: ' + reconcileError.message);
+      } else {
+        console.log('✅ Reconciliation completed:', reconcileResponse);
+        setReconcileResult(reconcileResponse);
+      }
 
       // Step 3: Trigger enhanced alert monitor
       const { error: monitorError } = await supabase.functions.invoke('enhanced-alert-monitor');
@@ -81,87 +89,18 @@ export function SignalEngineDiagnostics() {
       }
 
       setLastRun(new Date());
-      toast.success(`Fixed ${fixedSignals.signals_closed} signals and activated ${fixedSignals.orders_activated} orders`);
+      
+      if (reconcileResponse) {
+        toast.success(`Fixed ${reconcileResponse.signals_fixed} signals and activated ${reconcileResponse.orders_activated} orders`);
+      } else {
+        toast.success('Diagnostic completed successfully');
+      }
     } catch (error) {
       console.error('❌ Diagnostic failed:', error);
       toast.error('Diagnostic failed: ' + (error as Error).message);
     } finally {
       setIsRunning(false);
     }
-  };
-
-  const fixProblematicSignals = async (diagnosticData: DiagnosticResult): Promise<ReconcileResult> => {
-    let signalsClosed = 0;
-    let ordersActivated = 0;
-
-    // Fix signals with all TPs hit - determine the highest TP hit for close_reason
-    for (const signal of diagnosticData.problem_all_tps_hit) {
-      try {
-        // Find the highest TP that was hit
-        const highestTp = Math.max(...signal.tp_hits);
-        const closeReason = `tp${highestTp}` as 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5';
-
-        const { error } = await supabase
-          .from('trade_alerts')
-          .update({
-            status: 'closed',
-            close_reason: closeReason,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', signal.id);
-
-        if (!error) {
-          signalsClosed++;
-          console.log(`✅ Closed signal ${signal.asset} (${closeReason} hit)`);
-        }
-      } catch (error) {
-        console.error(`❌ Failed to close signal ${signal.asset}:`, error);
-      }
-    }
-
-    // Fix single TP signals that should be closed
-    for (const signal of diagnosticData.problem_single_tp_not_closed) {
-      try {
-        const { error } = await supabase
-          .from('trade_alerts')
-          .update({
-            status: 'closed',
-            close_reason: 'tp1',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', signal.id);
-
-        if (!error) {
-          signalsClosed++;
-          console.log(`✅ Closed signal ${signal.asset} (TP1 hit)`);
-        }
-      } catch (error) {
-        console.error(`❌ Failed to close signal ${signal.asset}:`, error);
-      }
-    }
-
-    // Activate pending orders that are ready
-    for (const order of diagnosticData.pending_ready_to_activate) {
-      try {
-        const { error } = await supabase
-          .from('trade_alerts')
-          .update({
-            status: 'active',
-            activated_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', order.id);
-
-        if (!error) {
-          ordersActivated++;
-          console.log(`✅ Activated pending order ${order.asset}`);
-        }
-      } catch (error) {
-        console.error(`❌ Failed to activate order ${order.asset}:`, error);
-      }
-    }
-
-    return { signals_closed: signalsClosed, orders_activated: ordersActivated };
   };
 
   const getTotalIssues = () => {

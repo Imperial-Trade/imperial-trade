@@ -23,55 +23,20 @@ export interface FormState<T extends Record<string, unknown>> {
   isValid: boolean;
 }
 
-// Trading Alert Component Types
-export interface TradeAlertData {
-  id: string;
-  asset_name: string;
-  tradermade_symbol: string;
-  trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
-  entry_price: number;
-  stop_loss: number;
-  tp1?: number;
-  tp2?: number;
-  tp3?: number;
-  tp4?: number;
-  tp5?: number;
-  status: 'pending' | 'active' | 'closed';
-  tp_hits?: number[];
-  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp';
-  notes?: string;
-  created_date: string;
-  updated_date?: string;
-}
-
-export interface TradeAlertCardProps extends BaseComponentProps {
-  alert: TradeAlertData;
-  onStatusUpdate: (alert: TradeAlertData, newStatus: string) => Promise<void>;
-  onTakeProfitHit: (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => Promise<void>;
-  onStopLossHit: (alert: TradeAlertData, closeReason: string) => Promise<void>;
-  onOrderActivation: (alert: TradeAlertData) => Promise<void>;
-  isAdmin: boolean;
-  isCreator: boolean;
-  livePrice?: number;
-  connectionStatus: 'connecting' | 'connected' | 'error';
-  priceSource: string;
-  isRecentClosure: boolean;
-}
-
 // Live Price Widget Types
 export interface LivePriceWidgetProps extends BaseComponentProps {
-  alert: TradeAlertData;
-  onTakeProfitHit: (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => Promise<void>;
-  onStopLossHit: (alert: TradeAlertData, closeReason: string) => Promise<void>;
-  onOrderActivation: (alert: TradeAlertData) => Promise<void>;
+  alert: import('./TradeAlertData').TradeAlertData;
+  onTakeProfitHit: (alert: import('./TradeAlertData').TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => Promise<void>;
+  onStopLossHit: (alert: import('./TradeAlertData').TradeAlertData, closeReason: string) => Promise<void>;
+  onOrderActivation: (alert: import('./TradeAlertData').TradeAlertData) => Promise<void>;
   livePrice?: number;
-  connectionStatus: 'connecting' | 'connected' | 'error';
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   priceSource: string;
 }
 
 // Trading Calculator Types
 export interface TradingCalculatorProps extends BaseComponentProps {
-  alert: TradeAlertData;
+  alert: import('./TradeAlertData').TradeAlertData;
   livePrice?: number;
 }
 
@@ -99,6 +64,21 @@ export interface TradeStatusBadgeProps extends BaseComponentProps {
   };
   updatedDate?: string;
   isRecentClosure?: boolean;
+}
+
+// Trading Alert Component Types - Use the canonical TradeAlertData
+export interface TradeAlertCardProps extends BaseComponentProps {
+  alert: import('./TradeAlertData').TradeAlertData;
+  onStatusUpdate: (alert: import('./TradeAlertData').TradeAlertData, newStatus: string) => Promise<void>;
+  onTakeProfitHit: (alert: import('./TradeAlertData').TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => Promise<void>;
+  onStopLossHit: (alert: import('./TradeAlertData').TradeAlertData, closeReason: string) => Promise<void>;
+  onOrderActivation: (alert: import('./TradeAlertData').TradeAlertData) => Promise<void>;
+  isAdmin: boolean;
+  isCreator: boolean;
+  livePrice?: number;
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  priceSource: string;
+  isRecentClosure: boolean;
 }
 
 // Form Types with strict validation

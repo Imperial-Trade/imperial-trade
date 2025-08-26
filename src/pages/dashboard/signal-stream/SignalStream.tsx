@@ -1,641 +1,415 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
-import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
-import TradeAlertCard from '@/components/signals/TradeAlertCard';
-import NotificationSystem from '@/components/notifications/NotificationSystem';
-import EconomicSidebar from '@/components/widgets/EconomicSidebar';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useSignalRealtime } from '@/hooks/useSignalRealtime';
+import { useWebSocketPriceFeed } from '@/hooks/useWebSocketPriceFeed';
+import { TradeAlertCard } from '@/components/signals/TradeAlertCard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
-import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
-import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ConnectionStatusIndicator } from '@/components/signals/ConnectionStatusIndicator';
+import { AlertCircle, TrendingUp, TrendingDown, Clock, Filter, Search, Zap, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import { TradeAlertData } from '@/types/TradeAlertData';
+import { cn } from '@/lib/utils';
 
-export default function SignalStream() {
-  const {
-    user,
-    profile
-  } = useAuth();
-  const navigate = useNavigate();
-  const [filters, setFilters] = useState({
-    search: '',
-    status: '',
-    tradeType: '',
-    educator: ''
-  });
+// Define a type for the status filter
+type StatusFilter = 'all' | 'pending' | 'active' | 'closed' | 'partially_profited';
+type TypeFilter = 'all' | 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+type SortBy = 'newest' | 'oldest' | 'asset';
 
-  // Use the optimized trading hook with real-time updates for all signals
-  // Pass the actual user ID for proper authorization, even when showing all signals
+const SignalStream: React.FC = () => {
+  const { user, isLoading: authLoading } = useAuth();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('newest');
+  const [showAllSignals, setShowAllSignals] = useState(true);
+
+  // Real-time signal data
   const {
-    alerts: allAlerts,
-    isLoading,
-    error,
+    alerts: realtimeAlerts,
+    isLoading: signalsLoading,
+    error: signalsError,
+    connectionStatus: signalConnectionStatus,
     updateAlert,
     refreshAlerts,
-    connectionStatus,
-    lastUpdated,
-    nextRetryAt
-  } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
+    lastUpdated
+  } = useSignalRealtime(user?.id || '', showAllSignals);
 
-  // Helper functions for role checking
-  const isAdmin = useMemo(() => {
-    return profile?.access_level === 'admin' || profile?.role === 'admin';
-  }, [profile]);
-  const isEducator = useMemo(() => {
-    return profile?.user_type === 'educator' || profile?.access_level === 'moderator' || profile?.role === 'educator';
-  }, [profile]);
-  const canCreateSignals = useMemo(() => {
-    const canCreate = isAdmin || isEducator;
-    console.log('SignalStream - canCreateSignals check:', {
-      profile,
-      isAdmin,
-      isEducator,
-      canCreate,
-      access_level: profile?.access_level,
-      role: profile?.role,
-      user_type: profile?.user_type
-    });
-    return canCreate;
-  }, [isAdmin, isEducator, profile]);
-  const isCreator = useCallback((alertCreatorId: string) => {
-    return profile?.id === alertCreatorId;
-  }, [profile?.id]);
+  // Filter alerts based on search term, status, and trade type
+  const filteredAlerts = useMemo(() => {
+    let filtered = realtimeAlerts;
 
-  // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
-  const alerts = useMemo(() => {
-    console.log('SignalStream - Processing alerts:', allAlerts.length);
-    console.log('SignalStream - All alerts with creators:', allAlerts.map(a => ({
-      id: a.id,
-      asset: a.assetName,
-      creator: a.creator?.display_name,
-      creatorId: a.creator?.id,
-      role: a.creator?.role,
-      userType: a.creator?.user_type,
-      accessLevel: a.creator?.access_level
-    })));
-    let filteredAlerts = allAlerts;
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(alert =>
+        alert.asset_name.toLowerCase().includes(searchLower) ||
+        alert.tradermade_symbol.toLowerCase().includes(searchLower) ||
+        alert.notes?.toLowerCase().includes(searchLower)
+      );
+    }
 
-    // Apply user filters
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filteredAlerts = filteredAlerts.filter(alert => alert.assetName.toLowerCase().includes(searchLower) || alert.tradermadeSymbol.toLowerCase().includes(searchLower) || alert.creator?.display_name?.toLowerCase().includes(searchLower));
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(alert => alert.status === statusFilter);
     }
-    if (filters.status) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.status === filters.status);
-    }
-    if (filters.tradeType) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.tradeType.includes(filters.tradeType));
-    }
-    if (filters.educator) {
-      filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
-    }
-    return filteredAlerts;
-  }, [allAlerts, filters]);
-  const {
-    activeAlerts,
-    closedAlerts,
-    educatorOptions,
-    signalCounts
-  } = useMemo(() => {
-    const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
-    const closed = alerts.filter(a => a.status === 'closed');
 
-    // Get unique educators for filter dropdown
-    const educatorsMap = new Map();
-    allAlerts.forEach(alert => {
-      if (alert.creator && (alert.creator.user_type === 'educator' || alert.creator.access_level === 'admin' || alert.creator.role === 'admin')) {
-        educatorsMap.set(alert.creator.id, {
-          id: alert.creator.id,
-          name: alert.creator.display_name || 'Unknown Educator'
-        });
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(alert => alert.trade_type === typeFilter);
+    }
+
+    return filtered;
+  }, [realtimeAlerts, searchTerm, statusFilter, typeFilter]);
+
+  // Sort alerts based on selected criteria
+  const sortedAlerts = useMemo(() => {
+    const sorted = [...filteredAlerts];
+
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.created_date).getTime() - new Date(a.created_date).getTime();
+        case 'oldest':
+          return new Date(a.created_date).getTime() - new Date(b.created_date).getTime();
+        case 'asset':
+          return a.asset_name.localeCompare(b.asset_name);
+        default:
+          return 0;
       }
     });
-    const educatorsList = Array.from(educatorsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
-    // Calculate signal counts for filter badges
-    const counts = {
-      total: alerts.length,
-      active: active.length,
-      closed: closed.length,
-      buy: alerts.filter(a => a.tradeType.includes('buy')).length,
-      sell: alerts.filter(a => a.tradeType.includes('sell')).length
-    };
-    return {
-      activeAlerts: active,
-      closedAlerts: closed,
-      educatorOptions: educatorsList,
-      signalCounts: counts
-    };
-  }, [alerts, allAlerts]);
-  const sortedClosedAlerts = useMemo(() => {
-    return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
-  }, [closedAlerts]);
+    return sorted;
+  }, [filteredAlerts, sortBy]);
+
+  const filteredAndSortedAlerts = useMemo(() => {
+    return sortedAlerts;
+  }, [sortedAlerts]);
+
+  // Extract unique symbols for price feed
   const symbols = useMemo(() => {
-    const symbolSet = new Set<string>();
-    activeAlerts.forEach(alert => {
-      if (alert?.tradermadeSymbol?.trim()) {
-        symbolSet.add(alert.tradermadeSymbol.trim());
-      }
-    });
-    const symbolList = Array.from(symbolSet).sort(); // Sort for consistent comparison
-    return symbolList;
-  }, [activeAlerts]);
-  const {
-    prices: livePricesData,
-    connectionStatus: priceConnectionStatus,
-    dataSource: priceSource,
-    subscribe,
-    unsubscribe,
-    getPrice
-  } = useWebSocketPrices();
+    return Array.from(new Set(
+      filteredAndSortedAlerts
+        .filter(alert => alert.status === 'active' || alert.status === 'partially_profited')
+        .map(alert => alert.tradermade_symbol)
+    ));
+  }, [filteredAndSortedAlerts]);
 
-  // Convert price data to simple number format for compatibility
-  const livePrices = useMemo(() => {
-    const result: Record<string, number> = {};
-    Object.entries(livePricesData).forEach(([symbol, priceData]) => {
-      if (priceData && typeof priceData.price === 'number') {
-        result[symbol] = priceData.price;
-      }
-    });
-    return result;
-  }, [livePricesData]);
+  // WebSocket price feed
+  const { 
+    prices, 
+    connectionStatus: priceConnectionStatus, 
+    priceSource 
+  } = useWebSocketPriceFeed(symbols);
 
-  // Stable symbol subscription to prevent thrashing
-  const symbolsRef = useRef<string[]>([]);
-  const subscriptionActiveRef = useRef(false);
-
-  useEffect(() => {
-    // Compute diffs to avoid full unsubscribe/subscribe churn
-    const prev = symbolsRef.current;
-    const added = symbols.filter(s => !prev.includes(s));
-    const removed = prev.filter(s => !symbols.includes(s));
-
-    if (added.length > 0) {
-      console.log('🔄 SignalStream - Subscribing (diff):', added);
-      subscribe(added);
-      subscriptionActiveRef.current = true;
-    }
-
-    if (removed.length > 0) {
-      console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
-      unsubscribe(removed);
-    }
-
-    // Update reference after applying diffs
-    symbolsRef.current = [...symbols];
-
-    return () => {
-      // On unmount, clean up any remaining subscriptions
-      if (symbolsRef.current.length > 0) {
-        console.log('🔄 SignalStream - Cleanup unsubscribe all:', symbolsRef.current);
-        unsubscribe(symbolsRef.current);
-        symbolsRef.current = [];
-        subscriptionActiveRef.current = false;
-      }
-    };
-  }, [symbols, subscribe, unsubscribe]);
-  const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
-  const [reconnectIn, setReconnectIn] = useState<number | null>(null);
-  const [justAddedIds, setJustAddedIds] = useState(new Set<string>());
-  const prevAlertIdsRef = useRef(new Set<string>());
-
-  // Track newly added alerts to highlight them briefly
-  useEffect(() => {
-    const currentIds = new Set(alerts.map(alert => alert.id));
-    const previousIds = prevAlertIdsRef.current;
-    
-    // Find newly added alerts
-    const newlyAdded = new Set<string>();
-    for (const id of currentIds) {
-      if (!previousIds.has(id)) {
-        newlyAdded.add(id);
-      }
-    }
-    
-    if (newlyAdded.size > 0) {
-      setJustAddedIds(newlyAdded);
-      // Clear the highlight after 3 seconds
-      const timeout = setTimeout(() => {
-        setJustAddedIds(new Set());
-      }, 3000);
-      return () => clearTimeout(timeout);
-    }
-    
-    prevAlertIdsRef.current = currentIds;
-  }, [alerts]);
-
-  useEffect(() => {
-    if (connectionStatus === 'connecting' && nextRetryAt) {
-      const update = () => {
-        const ms = nextRetryAt - Date.now();
-        setReconnectIn(ms > 0 ? Math.ceil(ms / 1000) : 0);
-      };
-      update();
-      const id = setInterval(update, 1000);
-      return () => clearInterval(id);
-    } else {
-      setReconnectIn(null);
-    }
-  }, [connectionStatus, nextRetryAt]);
-  const getConnectionStatusBadge = () => {
-    switch (connectionStatus) {
-      case 'connected':
-        return <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
-            <Wifi className="w-3 h-3 mr-1" />
-            Live Updates
-          </Badge>;
-      case 'connecting':
-        return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
-            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-            Connecting...
-          </Badge>;
-      case 'error':
-      case 'disconnected':
-        return <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
-            <WifiOff className="w-3 h-3 mr-1" />
-            Offline Mode
-          </Badge>;
-      default:
-        return null;
-    }
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
   };
-  const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
-    if (updateInProgress.has(alert.id)) return;
 
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    console.log('SignalStream - handleStatusUpdate authorization check:', {
-      alertId: alert.id,
-      alertCreatorId: alert.creator?.id,
-      currentUserId: profile?.id,
-      isCreator: alertIsCreator,
-      isAdmin,
-      canUpdate: alertIsCreator || isAdmin
-    });
-    if (!alertIsCreator && !isAdmin) {
-      console.warn('SignalStream - User not authorized to update this signal:', {
-        userId: profile?.id,
-        creatorId: alert.creator?.id,
-        userRole: profile?.role,
-        userAccessLevel: profile?.access_level,
-        isCreator: alertIsCreator,
-        isAdmin
-      });
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'error',
-          title: 'Access Denied',
-          message: 'You can only close your own signals'
-        });
-      }
-      return;
-    }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+  const handleStatusFilterChange = (value: StatusFilter) => {
+    setStatusFilter(value);
+  };
+
+  const handleTypeFilterChange = (value: TypeFilter) => {
+    setTypeFilter(value);
+  };
+
+  const handleSortByChange = (value: SortBy) => {
+    setSortBy(value);
+  };
+
+  const handleToggleShowAllSignals = () => {
+    setShowAllSignals(prev => !prev);
+  };
+
+  const handleStatusUpdate = useCallback(async (alert: TradeAlertData, newStatus: string) => {
     try {
-      console.log(`Updating alert ${alert.id} status to ${newStatus}`);
-      const updateDto: UpdateTradeAlertDto = {
-        status: newStatus as 'pending' | 'active' | 'closed',
+      const dto: UpdateTradeAlertDto = {
+        status: newStatus as 'pending' | 'active' | 'closed' | 'partially_profited',
         closeReason: newStatus === 'closed' ? 'manual' : undefined
       };
-      const result = await updateAlert(alert.id, updateDto);
-      console.log('SignalStream - Update result:', result);
-      if (result && newStatus === 'closed' && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'trade_closed',
-          title: `🔒 Signal Closed`,
-          message: `${alert.assetName} signal has been closed`
-        });
-      }
-    } catch (err) {
-      console.error("Failed to update status:", err);
-      if ((window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'error',
-          title: 'Update Failed',
-          message: 'Could not update signal status. Please try again.'
-        });
-      }
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
-    if (updateInProgress.has(alert.id)) return;
 
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    if (!alertIsCreator && !isAdmin) {
-      return;
+      await updateAlert(alert.id, dto);
+      toast.success(`Signal ${alert.asset_name} ${newStatus === 'closed' ? 'closed' : 'updated'} successfully`);
+    } catch (error) {
+      console.error('Failed to update signal status:', error);
+      toast.error('Failed to update signal status');
     }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+  }, [updateAlert]);
+
+  const handleTakeProfitHit = useCallback(async (
+    alert: TradeAlertData, 
+    newTPHits: number[], 
+    shouldAutoClose?: boolean, 
+    closeReason?: string | null
+  ) => {
     try {
-      console.log(`Updating TP hits for alert ${alert.id}:`, newTPHits);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined = undefined;
-      if (shouldAutoClose && closeReason) {
-        switch (closeReason) {
-          case 'manual':
-          case 'stop_loss':
-          case 'tp1':
-          case 'tp2':
-          case 'tp3':
-          case 'tp4':
-          case 'tp5':
-          case 'reversal_after_tp':
-            typedCloseReason = closeReason;
-            break;
-          default:
-            typedCloseReason = 'manual';
-        }
-      }
-      const updateDto: UpdateTradeAlertDto = {
+      const dto: UpdateTradeAlertDto = {
         tpHits: newTPHits,
-        ...(shouldAutoClose && {
-          status: 'closed',
-          closeReason: typedCloseReason
-        })
+        status: shouldAutoClose ? 'closed' : 'partially_profited',
+        closeReason: shouldAutoClose && closeReason ? closeReason as any : undefined
       };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
-        if (highestTP !== null) {
-          (window as any).addNotification({
-            type: 'tp_hit',
-            title: `🎯 TP${highestTP} Hit!`,
-            message: `${alert.assetName} reached Take Profit ${highestTP}`
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Failed to update TP hits:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
-    if (updateInProgress.has(alert.id)) return;
 
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    if (!alertIsCreator && !isAdmin) {
-      return;
-    }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
-    try {
-      console.log(`Stop loss hit for alert ${alert.id}, reason: ${closeReason}`);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' = 'stop_loss';
-      switch (closeReason) {
-        case 'manual':
-        case 'stop_loss':
-        case 'tp1':
-        case 'tp2':
-        case 'tp3':
-        case 'tp4':
-        case 'tp5':
-        case 'reversal_after_tp':
-          typedCloseReason = closeReason;
-          break;
-        default:
-          typedCloseReason = 'stop_loss';
+      await updateAlert(alert.id, dto);
+      
+      if (shouldAutoClose) {
+        toast.success(`🎯 ${alert.asset_name} - All take profits hit! Signal closed.`);
+      } else {
+        toast.success(`🎯 ${alert.asset_name} - Take Profit ${newTPHits[newTPHits.length - 1]} hit!`);
       }
-      const updateDto: UpdateTradeAlertDto = {
+    } catch (error) {
+      console.error('Failed to update TP hits:', error);
+      toast.error('Failed to update take profit status');
+    }
+  }, [updateAlert]);
+
+  const handleStopLossHit = useCallback(async (alert: TradeAlertData, closeReason: string) => {
+    try {
+      const dto: UpdateTradeAlertDto = {
         status: 'closed',
-        closeReason: typedCloseReason
+        closeReason: closeReason as any
       };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'stop_loss',
-          title: `🚨 Stop Loss Hit!`,
-          message: `${alert.assetName} trade closed at stop loss`
-        });
-      }
-    } catch (err) {
-      console.error("Failed to update stop loss:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
-    }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-  const handleOrderActivation = useCallback(async (alert: any) => {
-    if (updateInProgress.has(alert.id)) return;
 
-    // Check if user can edit this signal (creator or admin only)
-    const alertIsCreator = isCreator(alert.creator?.id);
-    if (!alertIsCreator && !isAdmin) {
-      return;
+      await updateAlert(alert.id, dto);
+      toast.error(`🛑 ${alert.asset_name} - Stop Loss hit. Signal closed.`);
+    } catch (error) {
+      console.error('Failed to update stop loss:', error);
+      toast.error('Failed to update stop loss status');
     }
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+  }, [updateAlert]);
+
+  const handleOrderActivation = useCallback(async (alert: TradeAlertData) => {
     try {
-      console.log(`Activating order for alert ${alert.id}`);
-      const updateDto: UpdateTradeAlertDto = {
+      const dto: UpdateTradeAlertDto = {
         status: 'active'
       };
-      const result = await updateAlert(alert.id, updateDto);
-      if (result && (window as any).addNotification) {
-        (window as any).addNotification({
-          type: 'trade_activated',
-          title: `🚀 Order Activated!`,
-          message: `${alert.assetName} ${alert.tradeType} is now active`
-        });
-      }
-    } catch (err) {
-      console.error("Failed to activate order:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
+
+      await updateAlert(alert.id, dto);
+      toast.success(`✅ ${alert.asset_name} - Order activated!`);
+    } catch (error) {
+      console.error('Failed to activate order:', error);
+      toast.error('Failed to activate order');
     }
-  }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
+  }, [updateAlert]);
+
+  // Transform alerts to include user_id and fix creator avatar_url
+  const transformedAlerts = useMemo(() => {
+    return filteredAndSortedAlerts.map(alert => ({
+      ...alert,
+      user_id: alert.user_id || user?.id || '',
+      creator: alert.creator ? {
+        ...alert.creator,
+        avatar_url: alert.creator.avatar_url || null
+      } : undefined
+    }));
+  }, [filteredAndSortedAlerts, user?.id]);
+
+  const totalSignals = realtimeAlerts.length;
+  const activeSignals = realtimeAlerts.filter(alert => alert.status === 'active').length;
+  const pendingSignals = realtimeAlerts.filter(alert => alert.status === 'pending').length;
+  const closedSignals = realtimeAlerts.filter(alert => alert.status === 'closed').length;
+
+  if (authLoading || signalsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (signalsError) {
+    return (
+      <Card className="border-red-200">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 text-red-600 mb-4">
+            <AlertCircle className="h-5 w-5" />
+            <span className="font-medium">Failed to load signals</span>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">{signalsError}</p>
+          <Button onClick={refreshAlerts} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Try Again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <StreamErrorBoundary>
-      <div className="min-h-screen bg-background w-full">
-        <NotificationSystem />
-        
-        {/* Header - Mobile Optimized spacing */}
-        <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                    Xeon <span className="text-accent-green">Stream</span>
-                  </h1>
-                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs w-fit">
-                    <Shield className="w-3 h-3 mr-1 flex-shrink-0" />
-                    <span className="truncate">Educational Contributors</span>
-                  </Badge>
-                </div>
-                <p className="text-sm sm:text-base text-muted-foreground">
-                  Educational market analysis patterns with reference pricing from verified educational contributors
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-                {getConnectionStatusBadge()}
-                {lastUpdated && <span className="text-xs text-muted-foreground">
-                    Last update: {lastUpdated.toLocaleTimeString()}
-                  </span>}
-              </div>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Zap className="h-6 w-6 text-blue-600" />
+            Live Signal Stream
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Real-time trading signals with live market data
+          </p>
         </div>
-
-        {/* Main Content - Mobile Optimized grid layout with granular protection */}
-        <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
-          <div className="max-w-none w-full">
-            <div className="w-full">
-              {/* System Status */}
-              <div data-prevent-widget-open="true">
-                <SignalStreamStatus />
-              </div>
-
-              <div className="mb-6" />
-              
-              {/* Enhanced Filters - Protected from widget opening */}
-              <div data-prevent-widget-open="true">
-                <SignalStreamFilters 
-                  filters={filters} 
-                  onFiltersChange={setFilters} 
-                  educatorOptions={educatorOptions} 
-                  signalCounts={signalCounts}
-                  canCreateSignals={canCreateSignals}
-                  onCreateSignal={() => navigate('/dashboard/new-signal')}
-                />
-              </div>
-              
-              {(isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0)) ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
-                      <div className="h-4 w-1/3 bg-muted rounded mb-3" />
-                      <div className="h-6 w-2/3 bg-muted rounded mb-4" />
-                      <div className="h-24 w-full bg-muted rounded" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
-                      Educational Market Patterns ({activeAlerts.length})
-                    </h2>
-                    {activeAlerts.length > 0 ? (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                        {activeAlerts.map(alert => (
-                          <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard 
-                              alert={{
-                                ...alert,
-                                asset_name: alert.assetName,
-                                tradermade_symbol: alert.tradermadeSymbol,
-                                trade_type: alert.tradeType,
-                                entry_price: alert.entryPrice,
-                                stop_loss: alert.stopLoss,
-                                tp_hits: alert.tpHits,
-                                close_reason: alert.closeReason,
-                                created_date: alert.createdAt,
-                                updated_date: alert.updatedAt
-                              }} 
-                              onStatusUpdate={handleStatusUpdate} 
-                              onTakeProfitHit={handleTakeProfitHit} 
-                              onStopLossHit={handleStopLossHit} 
-                              onOrderActivation={handleOrderActivation} 
-                              isAdmin={isAdmin} 
-                              isCreator={isCreator(alert.creator?.id)} 
-                              livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
-                              connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                              priceSource={priceSource} 
-                              isRecentClosure={false} 
-                              creator={alert.creator} 
-                              justAdded={justAddedIds.has(alert.id)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Shield className="w-8 h-8 text-muted-foreground/50" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-foreground mb-2">No Active Educational Patterns</h3>
-                        <p className="text-muted-foreground">New educational analysis patterns will appear here when posted by educational contributors.</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
-                      Recent Educational Analysis ({closedAlerts.length})
-                    </h2>
-                    {sortedClosedAlerts.length > 0 ? (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                        {sortedClosedAlerts.map(alert => (
-                          <div key={alert.id} data-prevent-widget-open="true">
-                            <TradeAlertCard 
-                              alert={{
-                                ...alert,
-                                asset_name: alert.assetName,
-                                tradermade_symbol: alert.tradermadeSymbol,
-                                trade_type: alert.tradeType,
-                                entry_price: alert.entryPrice,
-                                stop_loss: alert.stopLoss,
-                                tp_hits: alert.tpHits,
-                                close_reason: alert.closeReason,
-                                created_date: alert.createdAt,
-                                updated_date: alert.updatedAt
-                              }} 
-                              onStatusUpdate={handleStatusUpdate} 
-                              onTakeProfitHit={handleTakeProfitHit} 
-                              onStopLossHit={handleStopLossHit} 
-                              onOrderActivation={handleOrderActivation} 
-                              isAdmin={isAdmin} 
-                              isCreator={isCreator(alert.creator?.id)} 
-                              livePrice={undefined} 
-                              connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
-                              priceSource={priceSource} 
-                              isRecentClosure={true} 
-                              creator={alert.creator} 
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                          <div className="w-8 h-8 text-muted-foreground/50">🔒</div>
-                        </div>
-                        <h3 className="text-xl font-semibold text-foreground mb-2">No Completed Analysis</h3>
-                        <p className="text-muted-foreground">Completed educational analysis will be shown here for reference and learning.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Economic Sidebar - Protected positioning */}
-            <div data-prevent-widget-open="true">
-              <EconomicSidebar />
-            </div>
-          </div>
+        
+        <div className="flex items-center gap-4">
+          <ConnectionStatusIndicator 
+            signalStatus={signalConnectionStatus}
+            priceStatus={priceConnectionStatus}
+            priceSource={priceSource}
+            lastUpdated={lastUpdated}
+          />
+          
+          <Button
+            onClick={refreshAlerts}
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
       </div>
-    </StreamErrorBoundary>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Signals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalSignals}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Active Signals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">{activeSignals}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending Signals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">{pendingSignals}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Closed Signals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{closedSignals}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Filter className="h-5 w-5" />
+              Filters & Search
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <Input
+              type="text"
+              placeholder="Search signals..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="col-span-1"
+            />
+
+            <Select onValueChange={handleStatusFilterChange}>
+              <SelectTrigger className="col-span-1">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="partially_profited">Partially Profited</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select onValueChange={handleTypeFilterChange}>
+              <SelectTrigger className="col-span-1">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="buy">Buy</SelectItem>
+                <SelectItem value="sell">Sell</SelectItem>
+                <SelectItem value="buy_limit">Buy Limit</SelectItem>
+                <SelectItem value="sell_limit">Sell Limit</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select onValueChange={handleSortByChange}>
+              <SelectTrigger className="col-span-1">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
+                <SelectItem value="asset">Asset Name</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Signal Tabs */}
+      <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="active">Active</TabsTrigger>
+          <TabsTrigger value="partially_profited">Partial</TabsTrigger>
+          <TabsTrigger value="closed">Closed</TabsTrigger>
+        </TabsList>
+        
+        <div className="space-y-4">
+          {transformedAlerts.length === 0 ? (
+            <EmptyState
+              icon={TrendingUp}
+              title="No signals found"
+              description={statusFilter === 'all' 
+                ? "No trading signals available at the moment."
+                : `No ${statusFilter} signals found. Try adjusting your filters.`}
+            />
+          ) : (
+            transformedAlerts.map((alert) => (
+              <TradeAlertCard
+                key={alert.id}
+                alert={alert}
+                onStatusUpdate={handleStatusUpdate}
+                onTakeProfitHit={handleTakeProfitHit}
+                onStopLossHit={handleStopLossHit}
+                onOrderActivation={handleOrderActivation}
+                isAdmin={user?.role === 'admin'}
+                isCreator={alert.user_id === user?.id}
+                livePrice={prices[alert.tradermade_symbol]}
+                connectionStatus={priceConnectionStatus}
+                priceSource={priceSource}
+                isRecentClosure={false}
+              />
+            ))
+          )}
+        </div>
+      </Tabs>
+    </div>
   );
-}
+};
+
+export default SignalStream;

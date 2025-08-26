@@ -1,314 +1,260 @@
-import React, { useState, useMemo } from 'react';
+
+import React from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Target, 
-  Shield, 
-  Clock, 
-  Zap,
-  User,
-  Wifi,
-  WifiOff,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Play,
-  Pause
-} from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { TradeAlertData } from '@/types/TradeAlertData';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { TradeStatusBadge } from './TradeStatusBadge';
+import { LivePriceWidget } from './LivePriceWidget';
+import { TradingCalculator } from './TradingCalculator';
+import { QuickCopyPanel } from './QuickCopyPanel';
+import { TrendingUp, TrendingDown, Clock, AlertTriangle } from 'lucide-react';
+import { TradeAlertCardProps } from '@/types/components';
+import { formatPrice } from '@/utils/priceUtils';
+import { cn } from '@/lib/utils';
 
-interface TradeAlertCardProps {
-  alert: TradeAlertData;
-  onStatusUpdate?: (alert: TradeAlertData, newStatus: string) => void;
-  onTakeProfitHit?: (alert: TradeAlertData, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string | null) => void;
-  onStopLossHit?: (alert: TradeAlertData, closeReason: string) => void;
-  onOrderActivation?: (alert: TradeAlertData) => void;
-  isAdmin?: boolean;
-  isCreator?: boolean;
-  livePrice?: number;
-  connectionStatus?: 'connecting' | 'connected' | 'error';
-  priceSource?: string;
-  isRecentClosure?: boolean;
-  creator?: {
-    id: string;
-    display_name: string;
-    role: string;
-    avatar_url: string | null;
-  };
-  justAdded?: boolean;
-}
-
-export default function TradeAlertCard({
+export const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
   alert,
   onStatusUpdate,
   onTakeProfitHit,
   onStopLossHit,
   onOrderActivation,
-  isAdmin = false,
-  isCreator = false,
+  isAdmin,
+  isCreator,
   livePrice,
   connectionStatus,
   priceSource,
-  isRecentClosure = false,
-  creator,
-  justAdded = false
-}: TradeAlertCardProps) {
-  const [closing, setClosing] = useState(false);
-  const [activating, setActivating] = useState(false);
-  const [tpUpdating, setTpUpdating] = useState(false);
-  const [slUpdating, setSlUpdating] = useState(false);
-  const [showFullNotes, setShowFullNotes] = useState(false);
+  isRecentClosure,
+  className,
+}) => {
+  const isLong = alert.trade_type === 'buy' || alert.trade_type === 'buy_limit';
+  const isLimitOrder = alert.trade_type === 'buy_limit' || alert.trade_type === 'sell_limit';
+  
+  const getTradeTypeIcon = () => {
+    return isLong ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />;
+  };
 
-  const timeAgo = useMemo(() => {
-    return formatDistanceToNow(new Date(alert.updated_date), { addSuffix: true });
-  }, [alert.updated_date]);
+  const getTradeTypeColor = () => {
+    return isLong ? 'text-emerald-600' : 'text-red-600';
+  };
 
-  const handleClose = async () => {
-    if (!onStatusUpdate) return;
-    setClosing(true);
+  const getBorderColor = () => {
+    if (alert.status === 'closed') return 'border-slate-200';
+    if (alert.status === 'active') return isLong ? 'border-emerald-500' : 'border-red-500';
+    if (alert.status === 'partially_profited') return 'border-amber-500';
+    return 'border-slate-300';
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getCreatorInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const handleManualClose = async () => {
     await onStatusUpdate(alert, 'closed');
-    setClosing(false);
   };
 
-  const handleActivate = async () => {
-    if (!onOrderActivation) return;
-    setActivating(true);
+  const handleActivateOrder = async () => {
     await onOrderActivation(alert);
-    setActivating(false);
   };
 
-  const handleTakeProfit = async (tpLevel: number) => {
-    if (!onTakeProfitHit) return;
-    setTpUpdating(true);
-    const newTPHits = [...alert.tp_hits, tpLevel];
-    await onTakeProfitHit(alert, newTPHits);
-    setTpUpdating(false);
-  };
-
-  const handleStopLossHit = async () => {
-    if (!onStopLossHit) return;
-    setSlUpdating(true);
-    await onStopLossHit(alert, 'stop_loss');
-    setSlUpdating(false);
-  };
-
-  const getStatusBadge = () => {
-    switch (alert.status) {
-      case 'pending':
-        return <Badge className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30">
-          <Clock className="h-3 w-3 mr-1" />
-          Pending
-        </Badge>;
-      case 'active':
-        return <Badge className="bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">
-          <TrendingUp className="h-3 w-3 mr-1" />
-          Active
-        </Badge>;
-      case 'partially_profited':
-        return <Badge className="bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/30">
-          <TrendingUp className="h-3 w-3 mr-1" />
-          Partially Profited
-        </Badge>;
-      case 'closed':
-        return <Badge className="bg-gray-500/20 text-gray-600 dark:text-gray-400 border-gray-500/30">
-          <CheckCircle2 className="h-3 w-3 mr-1" />
-          Closed
-        </Badge>;
-      default:
-        return <Badge className="bg-gray-500/20 text-gray-600 dark:text-gray-400 border-gray-500/30">
-          <XCircle className="h-3 w-3 mr-1" />
-          {alert.status}
-        </Badge>;
-    }
-  };
-
-  const getTradeTypeBadge = () => {
-    const isBuy = alert.trade_type.includes('buy');
-    const color = isBuy ? 'emerald' : 'red';
-    const tradeTypeText = alert.trade_type.charAt(0).toUpperCase() + alert.trade_type.slice(1);
-
-    return (
-      <Badge className={`bg-${color}-500/20 text-${color}-300 border-${color}-500/30`}>
-        {isBuy ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
-        {tradeTypeText}
-      </Badge>
-    );
-  };
-
-  const getPriceStatus = () => {
-    if (!livePrice) {
-      if (connectionStatus === 'connecting') {
-        return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
-          <Wifi className="w-3 h-3 mr-1 animate-spin" />
-          Connecting...
-        </Badge>;
-      } else if (connectionStatus === 'error' || connectionStatus === 'disconnected') {
-        return <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
-          <WifiOff className="w-3 h-3 mr-1" />
-          Offline
-        </Badge>;
-      } else {
-        return <Badge className="bg-muted-foreground/10 text-muted-foreground border-muted-foreground/30">
-          <AlertTriangle className="w-3 h-3 mr-1" />
-          No Price
-        </Badge>;
-      }
-    }
-
-    const diff = livePrice - alert.entry_price;
-    const percentChange = (diff / alert.entry_price) * 100;
-    const isProfitable = (alert.trade_type.includes('buy') && diff > 0) || (alert.trade_type.includes('sell') && diff < 0);
-    const color = isProfitable ? 'emerald' : 'red';
-  
-    const formattedPercentChange = percentChange.toFixed(2);
-    const formattedDiff = diff.toFixed(5);
-  
-    return (
-      <Badge className={`bg-${color}-500/20 text-${color}-300 border-${color}-500/30`}>
-        {isProfitable ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
-        {formattedDiff} ({formattedPercentChange}%)
-      </Badge>
-    );
-  };
-
-  const getCreatorBadge = () => {
-    if (!creator) return null;
-    return (
-      <div className="flex items-center space-x-2">
-        {creator.avatar_url ? (
-          <img src={creator.avatar_url} alt={creator.display_name} className="w-6 h-6 rounded-full" />
-        ) : (
-          <User className="w-4 h-4 text-muted-foreground" />
-        )}
-        <span className="text-sm font-medium">{creator.display_name}</span>
-      </div>
-    );
-  };
-
-  const getTpButton = (tpLevel: number) => {
-    const tpValue = (alert as any)[`tp${tpLevel}`];
-    if (!tpValue) return null;
-
-    const hasHit = alert.tp_hits.includes(tpLevel);
-    const buttonColor = hasHit ? 'gray' : 'emerald';
-    const textColor = hasHit ? 'muted-foreground' : `${buttonColor}-foreground`;
-    const buttonText = hasHit ? `TP${tpLevel} Hit` : `Hit TP${tpLevel}`;
-
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        className={`w-full justify-start text-left font-medium border-${buttonColor}-500 text-${textColor} hover:bg-${buttonColor}-500/10`}
-        onClick={() => handleTakeProfit(tpLevel)}
-        disabled={tpUpdating || hasHit}
-      >
-        <Target className="h-4 w-4 mr-2" />
-        {buttonText} ({tpValue})
-      </Button>
-    );
+  const shouldShowConnectionWarning = () => {
+    return connectionStatus === 'disconnected' || connectionStatus === 'error';
   };
 
   return (
-    <Card className={`w-full ${justAdded ? 'animate-in fade-in duration-700' : ''}`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div className="space-y-0.5">
-          <h4 className="text-sm font-semibold">
-            {alert.asset_name} ({alert.tradermade_symbol})
-          </h4>
-          <div className="flex items-center space-x-2">
-            {getStatusBadge()}
-            {getTradeTypeBadge()}
-            {isRecentClosure ? <Badge className="bg-muted-foreground/10 text-muted-foreground border-muted-foreground/30">
-              Closed {timeAgo}
-            </Badge> : <span className="text-xs text-muted-foreground">Updated {timeAgo}</span>}
+    <Card className={cn(
+      `transition-all duration-200 hover:shadow-lg ${getBorderColor()}`,
+      {
+        'bg-slate-50': alert.status === 'closed',
+        'shadow-md': alert.status === 'active' || alert.status === 'partially_profited',
+        'ring-2 ring-emerald-500/20': isRecentClosure && alert.close_reason?.includes('tp'),
+        'ring-2 ring-red-500/20': isRecentClosure && alert.close_reason === 'stop_loss',
+      },
+      className
+    )}>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-full bg-slate-100 ${getTradeTypeColor()}`}>
+              {getTradeTypeIcon()}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-lg">{alert.asset_name}</h3>
+                <Badge variant="outline" className="text-xs">
+                  {alert.trade_type.toUpperCase()}
+                </Badge>
+                {isLimitOrder && alert.status === 'pending' && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Clock className="h-3 w-3 mr-1" />
+                    LIMIT
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-slate-600">{alert.tradermade_symbol}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {shouldShowConnectionWarning() && (
+              <AlertTriangle className="h-4 w-4 text-amber-500" title="Connection issues" />
+            )}
+            <TradeStatusBadge 
+              alert={alert} 
+              updatedDate={alert.updated_date}
+              isRecentClosure={isRecentClosure}
+            />
           </div>
         </div>
-        {getCreatorBadge()}
-      </CardHeader>
-      <CardContent>
-        <div className="text-sm text-muted-foreground">
-          {livePrice && <div className="mb-2">{getPriceStatus()}</div>}
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div>Entry: {alert.entry_price}</div>
-            <div>Stop Loss: {alert.stop_loss}</div>
+
+        {alert.creator && (
+          <div className="flex items-center gap-2 mt-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={alert.creator.avatar_url || ''} alt={alert.creator.display_name} />
+              <AvatarFallback className="text-xs">
+                {getCreatorInitials(alert.creator.display_name)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-slate-600">
+              {alert.creator.display_name}
+            </span>
+            <Badge variant="outline" className="text-xs">
+              {alert.creator.role}
+            </Badge>
           </div>
+        )}
+      </CardHeader>
 
-          {getTpButton(1)}
-          {getTpButton(2)}
-          {getTpButton(3)}
-          {getTpButton(4)}
-          {getTpButton(5)}
-
-          {alert.notes && (
-            <div className="mt-4">
-              <h5 className="mb-1 font-medium">Notes:</h5>
-              {showFullNotes ? (
-                <p className="whitespace-pre-line">{alert.notes}</p>
-              ) : (
-                <>
-                  <p className="line-clamp-3 whitespace-pre-line">{alert.notes}</p>
-                  {alert.notes.length > 100 && (
-                    <Button variant="link" size="sm" onClick={() => setShowFullNotes(true)}>
-                      Show More
-                    </Button>
-                  )}
-                </>
-              )}
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <p className="text-slate-500 font-medium">Entry</p>
+            <p className="font-semibold">{formatPrice(alert.entry_price)}</p>
+          </div>
+          <div>
+            <p className="text-slate-500 font-medium">Stop Loss</p>
+            <p className="font-semibold text-red-600">{formatPrice(alert.stop_loss)}</p>
+          </div>
+          <div>
+            <p className="text-slate-500 font-medium">Created</p>
+            <p className="font-semibold">{formatDate(alert.created_date)}</p>
+          </div>
+          {alert.updated_date !== alert.created_date && (
+            <div>
+              <p className="text-slate-500 font-medium">Updated</p>
+              <p className="font-semibold">{formatDate(alert.updated_date)}</p>
             </div>
           )}
         </div>
-        <div className="flex justify-end mt-4 space-x-2">
-          {alert.status === 'pending' && isCreator && onStatusUpdate && (
-            <Button variant="outline" size="sm" disabled={activating} onClick={handleActivate}>
-              {activating ? (
-                <>
-                  <Play className="mr-2 h-4 w-4 animate-spin" />
-                  Activating...
-                </>
-              ) : (
-                <>
-                  <Play className="mr-2 h-4 w-4" />
+
+        {(alert.tp1 || alert.tp2 || alert.tp3 || alert.tp4 || alert.tp5) && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-700">Take Profit Levels</p>
+              <div className="grid grid-cols-5 gap-2 text-xs">
+                {[1, 2, 3, 4, 5].map((tpNum) => {
+                  const tpValue = alert[`tp${tpNum}` as keyof typeof alert] as number;
+                  const isHit = alert.tp_hits?.includes(tpNum);
+                  
+                  if (!tpValue) return null;
+                  
+                  return (
+                    <div key={tpNum} className={cn(
+                      "p-2 rounded border text-center",
+                      isHit 
+                        ? "bg-emerald-100 border-emerald-300 text-emerald-800" 
+                        : "bg-slate-50 border-slate-200"
+                    )}>
+                      <div className="font-medium">TP{tpNum}</div>
+                      <div>{formatPrice(tpValue)}</div>
+                      {isHit && <div className="text-emerald-600">✓ HIT</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        {alert.notes && (
+          <>
+            <Separator />
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-1">Notes</p>
+              <p className="text-sm text-slate-600 bg-slate-50 p-2 rounded">
+                {alert.notes}
+              </p>
+            </div>
+          </>
+        )}
+
+        {(alert.status === 'active' || alert.status === 'partially_profited') && (
+          <>
+            <Separator />
+            <LivePriceWidget
+              alert={alert}
+              onTakeProfitHit={onTakeProfitHit}
+              onStopLossHit={onStopLossHit}
+              onOrderActivation={onOrderActivation}
+              livePrice={livePrice}
+              connectionStatus={connectionStatus}
+              priceSource={priceSource}
+            />
+          </>
+        )}
+
+        {livePrice && (
+          <>
+            <Separator />
+            <TradingCalculator alert={alert} livePrice={livePrice} />
+          </>
+        )}
+
+        <Separator />
+        <QuickCopyPanel alert={alert} />
+
+        {(isAdmin || isCreator) && alert.status !== 'closed' && (
+          <>
+            <Separator />
+            <div className="flex gap-2">
+              {alert.status === 'pending' && isLimitOrder && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleActivateOrder}
+                  className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                >
                   Activate Order
-                </>
+                </Button>
               )}
-            </Button>
-          )}
-          {alert.status === 'active' && (isAdmin || isCreator) && onStatusUpdate && (
-            <>
-              <Button variant="outline" size="sm" disabled={slUpdating} onClick={handleStopLossHit}>
-                {slUpdating ? (
-                  <>
-                    <Pause className="mr-2 h-4 w-4 animate-spin" />
-                    Closing SL...
-                  </>
-                ) : (
-                  <>
-                    <Pause className="mr-2 h-4 w-4" />
-                    Stop Loss Hit
-                  </>
-                )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManualClose}
+                className="text-red-600 border-red-300 hover:bg-red-50"
+              >
+                Close Manually
               </Button>
-              <Button variant="destructive" size="sm" disabled={closing} onClick={handleClose}>
-                {closing ? (
-                  <>
-                    <XCircle className="mr-2 h-4 w-4 animate-spin" />
-                    Closing...
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Close Signal
-                  </>
-                )}
-              </Button>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
-}
+};

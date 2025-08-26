@@ -5,23 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, TrendingUp, TrendingDown, Target, Shield, CheckCircle2 } from 'lucide-react';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { SignalStatusBadge } from './SignalStatusBadge';
-import { PipsDisplay } from './PipsDisplay';
-import { CompactSignalCard } from './CompactSignalCard';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 
 interface EnhancedSignalCardProps {
   alert: TradeAlertWithProfile;
   onUpdate?: (id: string, updates: any) => Promise<void>;
   isOwner?: boolean;
-  compact?: boolean;
 }
 
-export const EnhancedSignalCard = ({ alert, onUpdate, isOwner, compact = false }: EnhancedSignalCardProps) => {
-  // Return compact version if requested
-  if (compact) {
-    return <CompactSignalCard alert={alert} onUpdate={onUpdate} isOwner={isOwner} />;
-  }
-
+export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalCardProps) => {
   const { prices } = useWebSocketPrices();
   const currentPrice = prices[alert.tradermadeSymbol || alert.assetName]?.price || 0;
 
@@ -57,18 +49,6 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner, compact = false }
 
   const nextTP = getNextTPTarget();
 
-  // Derive a valid label from the allowed closeReason values
-  const closeReasonLabel =
-    alert.closeReason === 'stop_loss'
-      ? 'Closed - Stop Loss Hit'
-      : alert.closeReason === 'manual'
-      ? 'Manually Closed'
-      : alert.closeReason === 'reversal_after_tp'
-      ? 'Closed - Reversal After TP'
-      : alert.closeReason && alert.closeReason.startsWith('tp')
-      ? `Closed - TP${alert.closeReason.replace('tp', '')} Hit`
-      : undefined;
-
   return (
     <Card className="bg-card border-border hover:border-primary/20 transition-colors">
       <CardHeader className="pb-3">
@@ -102,20 +82,13 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner, compact = false }
           </div>
         </div>
 
-        {/* Enhanced Pips Display */}
-        {currentPrice > 0 && (
+        {/* P&L Display for Active/Partially Profited Signals */}
+        {(alert.status === 'active' || alert.status === 'partially_profited') && currentPrice && (
           <div className="flex items-center justify-between p-2 bg-secondary/30 rounded-md">
-            <span className="text-sm text-muted-foreground">
-              {alert.status === 'pending' ? 'Distance to Entry' : 'Current P&L'}
+            <span className="text-sm text-muted-foreground">Unrealized P&L</span>
+            <span className={`font-semibold ${pnlColor}`}>
+              {unrealizedPnL >= 0 ? '+' : ''}{unrealizedPnL.toFixed(4)} pips
             </span>
-            <PipsDisplay
-              entryPrice={alert.entryPrice}
-              currentPrice={currentPrice}
-              symbol={alert.tradermadeSymbol || alert.assetName}
-              tradeType={alert.tradeType}
-              status={alert.status}
-              size="md"
-            />
           </div>
         )}
 
@@ -163,11 +136,13 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner, compact = false }
         </div>
 
         {/* Close Reason for Closed Signals */}
-        {alert.status === 'closed' && closeReasonLabel && (
+        {alert.status === 'closed' && alert.closeReason && (
           <div className="flex items-center gap-2 p-2 bg-secondary/30 rounded-md">
             <CheckCircle2 className="h-4 w-4 text-green-500" />
             <span className="text-sm font-medium">
-              {closeReasonLabel}
+              {alert.closeReason === 'stop_loss' && 'Closed - Stop Loss Hit'}
+              {alert.closeReason === 'all_tps_hit' && 'Closed - All Take Profits Hit'}
+              {alert.closeReason === 'manual' && 'Manually Closed'}
             </span>
           </div>
         )}

@@ -8,7 +8,7 @@ export class TradeAlert {
     public readonly entryPrice: number,
     public readonly stopLoss: number,
     public readonly userId: string,
-    public readonly status: 'pending' | 'active' | 'closed' | 'partially_profited',
+    public readonly status: 'pending' | 'active' | 'closed',
     public readonly tp1?: number,
     public readonly tp2?: number,
     public readonly tp3?: number,
@@ -26,7 +26,7 @@ export class TradeAlert {
   }
 
   public isActive(): boolean {
-    return this.status === 'active' || this.status === 'partially_profited';
+    return this.status === 'active';
   }
 
   public getRiskRewardRatio(): number | null {

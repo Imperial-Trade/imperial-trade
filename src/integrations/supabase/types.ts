@@ -3336,6 +3336,10 @@ export type Database = {
         Args: { p_current_price: number; p_is_buy: boolean; p_trade_id: string }
         Returns: Json
       }
+      reconcile_signal_consistency: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       should_show_onesignal_prompt: {
         Args: { p_device_fingerprint: string; p_user_id: string }
         Returns: boolean
@@ -3408,6 +3412,7 @@ export type Database = {
         | "tp4"
         | "tp5"
         | "reversal_after_tp"
+        | "all_tps_hit"
       course_difficulty: "Beginner" | "Intermediate" | "Advanced"
       difficulty_level: "beginner" | "intermediate" | "advanced"
       impact_level: "High" | "Medium" | "Low"
@@ -3590,6 +3595,7 @@ export const Constants = {
         "tp4",
         "tp5",
         "reversal_after_tp",
+        "all_tps_hit",
       ],
       course_difficulty: ["Beginner", "Intermediate", "Advanced"],
       difficulty_level: ["beginner", "intermediate", "advanced"],

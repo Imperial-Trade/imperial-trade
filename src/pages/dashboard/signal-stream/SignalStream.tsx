@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
@@ -280,7 +279,7 @@ const SignalStream: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Zap className="h-6 w-6 text-blue-600" />
-            Live Signal Stream
+            Xeon Stream
           </h1>
           <p className="text-gray-600 mt-1">
             Real-time trading signals with live market data
@@ -292,7 +291,7 @@ const SignalStream: React.FC = () => {
             signalStatus={signalConnectionStatus}
             priceStatus={priceConnectionStatus}
             priceSource={priceSource}
-            lastUpdated={lastUpdated}
+            lastUpdated={typeof lastUpdated === 'object' ? lastUpdated.getTime() : lastUpdated}
           />
           
           <Button

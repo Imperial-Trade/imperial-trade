@@ -1,31 +1,42 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
-import { faker } from '@faker-js/faker';
 
-// Update incorrect import to use the canonical TradeAlertData
-import type { TradeAlertData } from '@/types/TradeAlertData';
+import { TradeAlertData } from '@/types/TradeAlertData';
 
-export const createMockTradeAlert = (overrides?: Partial<TradeAlertData>): TradeAlertData => {
-  return {
-    id: faker.string.uuid(),
-    user_id: faker.string.uuid(),
-    asset_name: faker.finance.currencyName(),
-    tradermade_symbol: faker.finance.currencyCode(),
-    trade_type: faker.helpers.arrayElement(['buy', 'sell', 'buy_limit', 'sell_limit']),
-    entry_price: faker.number.float(),
-    stop_loss: faker.number.float(),
-    status: faker.helpers.arrayElement(['pending', 'active', 'closed', 'partially_profited']),
-    tp1: faker.number.float(),
-    tp2: faker.number.float(),
-    tp_hits: [],
-    notes: faker.lorem.sentence(),
-    created_date: faker.date.past().toISOString(),
-    updated_date: faker.date.recent().toISOString(),
-    creator: {
-      id: faker.string.uuid(),
-      display_name: faker.person.fullName(),
-      role: faker.person.jobType(),
-      avatar_url: faker.image.avatar(),
-    },
-    ...overrides,
-  };
-};
+// Simple test data generator without external dependencies
+export class TestDataFactory {
+  static createTradeAlert(overrides: Partial<TradeAlertData> = {}): TradeAlertData {
+    const baseId = Math.random().toString(36).substring(2, 15);
+    
+    return {
+      id: `test-${baseId}`,
+      user_id: 'test-user-id',
+      asset_name: 'EUR/USD',
+      tradermade_symbol: 'EURUSD',
+      trade_type: 'buy',
+      entry_price: 1.1000,
+      stop_loss: 1.0950,
+      status: 'active',
+      tp1: 1.1050,
+      tp2: 1.1100,
+      tp_hits: [],
+      notes: 'Test signal',
+      created_date: new Date().toISOString(),
+      updated_date: new Date().toISOString(),
+      creator: {
+        id: 'creator-id',
+        display_name: 'Test Creator',
+        role: 'educator',
+        avatar_url: null
+      },
+      ...overrides
+    };
+  }
+
+  static createMultipleTradeAlerts(count: number): TradeAlertData[] {
+    return Array.from({ length: count }, (_, index) => 
+      this.createTradeAlert({
+        id: `test-alert-${index}`,
+        asset_name: `Test Asset ${index}`
+      })
+    );
+  }
+}

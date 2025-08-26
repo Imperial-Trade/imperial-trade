@@ -38,6 +38,7 @@ import MeccaAnalysisHub from "@/components/ai/MeccaAnalysisHub";
 import OpportunityScanner from "@/components/ai/OpportunityScanner";
 import RiskSimulator from "@/components/ai/RiskSimulator";
 import TradingJournal from "@/components/tools/TradingJournal";
+import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
 
 const coreTools = [
   {
@@ -311,7 +312,9 @@ export default function AdvancedTools() {
                         : "none",
                   }}
                 >
-                  <TradingJournal />
+                  <TradeJournalProvider>
+                    <TradingJournal />
+                  </TradeJournalProvider>
                 </div>
                 <div
                   style={{

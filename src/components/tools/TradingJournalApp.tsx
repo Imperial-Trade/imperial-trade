@@ -362,29 +362,26 @@ export const TradingJournalApp: React.FC = () => {
     }
   }, []);
 
-  // AI Analysis Function - Fixed type compatibility
-  const getAISummaryForTrade = async (tradeData: TradeFormData) => {
+  // AI Coaching Analysis Function - Using coach-agent for consistency
+  const triggerCoachingAnalysis = async (journalEntryId: string, userId: string) => {
     try {
-      const prompt = `Analyze this trading data and provide insights:
-Asset: ${tradeData.asset}
-Direction: ${tradeData.direction}
-Outcome: ${tradeData.outcome}
-P/L: $${tradeData.pnl}
-Strategy: ${tradeData.strategy || "Not specified"}
-Emotion: ${tradeData.emotion || "Not specified"}
-Session: ${tradeData.session || "Not specified"}
-Notes: ${tradeData.notes || "None"}
-
-Please provide a brief analysis focusing on what went well, what could be improved, and any patterns you notice.`;
-      const response = await supabase.functions.invoke("ai-trade-analysis", {
+      console.log('🤖 Triggering coaching analysis for journal entry:', journalEntryId);
+      
+      const { error } = await supabase.functions.invoke('coach-agent', {
         body: {
-          prompt
+          event_type: "LOG_TRADE",
+          user_id: userId,
+          journal_entry_id: journalEntryId
         }
       });
-      return typeof response.data === 'string' ? response.data : "AI analysis temporarily unavailable.";
+      
+      if (error) {
+        console.error('Coaching analysis error:', error);
+      } else {
+        console.log('✅ Coaching analysis triggered successfully');
+      }
     } catch (error) {
-      console.error("AI analysis failed:", error);
-      return "AI analysis temporarily unavailable.";
+      console.error("Coaching analysis failed:", error);
     }
   };
 
@@ -425,7 +422,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
       id: tempId,
       user_id: optimisticTrade.user_id,
       asset_ticker: optimisticTrade.asset,
-      trade_type: optimisticTrade.direction.toUpperCase(),
+      trade_type: optimisticTrade.direction === "long" ? "Long" : "Short", // Title case for consistency
       pnl: optimisticTrade.pnl,
       entry_price: optimisticTrade.entry_price,
       exit_price: optimisticTrade.exit_price,
@@ -508,12 +505,8 @@ Please provide a brief analysis focusing on what went well, what could be improv
       console.log('🔄 Updating optimistic entry with real DB data:', tempId, '->', data.id);
       updateOptimisticEntry(tempId, data);
 
-      // Generate AI feedback asynchronously
-      getAISummaryForTrade(tradeData).then(async feedback => {
-        await supabase.from("trade_journal_entries").update({
-          ai_positive_feedback: feedback
-        }).eq("id", data.id);
-      });
+      // Trigger AI coaching analysis (coach-agent handles database updates automatically)
+      triggerCoachingAnalysis(data.id, user.id);
 
       toast({
         title: "Trade Saved",

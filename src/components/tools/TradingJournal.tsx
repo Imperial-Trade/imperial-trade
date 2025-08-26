@@ -204,11 +204,11 @@ const TradingJournal: React.FC = () => {
       if (newEntry.id) {
         console.log('🤖 Triggering AI coaching analysis for entry:', newEntry.id);
         
-        const { error: coachingError } = await supabase.functions.invoke('ai-coaching-analysis', {
+        const { error: coachingError } = await supabase.functions.invoke('coach-agent', {
           body: { 
-            entryId: newEntry.id, 
-            userId: user.id,
-            entryData: newEntry
+            event_type: "LOG_TRADE",
+            user_id: user.id,
+            journal_entry_id: newEntry.id
           }
         });
         

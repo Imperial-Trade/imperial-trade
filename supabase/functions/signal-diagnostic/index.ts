@@ -19,138 +19,161 @@ serve(async (req) => {
 
     console.log('🔍 Running comprehensive signal engine diagnostic...');
 
-    // Run the comprehensive diagnostic query
-    const diagnosticQuery = `
-      WITH signals AS (
-        SELECT 
-          id,
-          asset_name,
-          tradermade_symbol,
-          status,
-          tp1, tp2, tp3, tp4, tp5,
-          tp_hits,
-          ((CASE WHEN tp1 IS NOT NULL THEN 1 ELSE 0 END) +
-           (CASE WHEN tp2 IS NOT NULL THEN 1 ELSE 0 END) +
-           (CASE WHEN tp3 IS NOT NULL THEN 1 ELSE 0 END) +
-           (CASE WHEN tp4 IS NOT NULL THEN 1 ELSE 0 END) +
-           (CASE WHEN tp5 IS NOT NULL THEN 1 ELSE 0 END)) AS total_tps,
-          array_length(tp_hits, 1) AS tp_hits_count
-        FROM trade_alerts
-        WHERE status IN ('active','partially_profited','pending')
-      ),
-      problem_all_tps_hit AS (
-        SELECT *
-        FROM signals
-        WHERE total_tps > 0 
-          AND tp_hits_count IS NOT NULL 
-          AND tp_hits_count >= total_tps
-          AND status <> 'closed'
-      ),
-      problem_single_tp_not_closed AS (
-        SELECT *
-        FROM signals
-        WHERE total_tps = 1
-          AND tp_hits IS NOT NULL
-          AND tp_hits @> ARRAY[1]
-          AND status <> 'closed'
-      ),
-      pending_limits AS (
-        SELECT 
-          ta.id,
-          ta.asset_name,
-          ta.trade_type,
-          ta.entry_price,
-          ta.tradermade_symbol,
-          mp.bid,
-          mp.ask
-        FROM trade_alerts ta
-        JOIN market_prices mp 
-          ON mp.symbol = ta.tradermade_symbol
-        WHERE ta.status = 'pending'
-          AND ta.trade_type IN ('buy_limit', 'sell_limit')
-      ),
-      pending_ready AS (
-        SELECT *
-        FROM pending_limits
-        WHERE (trade_type = 'buy_limit' AND bid <= entry_price)
-           OR (trade_type = 'sell_limit' AND ask >= entry_price)
-      ),
-      monitoring_inactive AS (
-        SELECT 
-          ta.id AS signal_id, 
-          ta.asset_name, 
-          ta.status, 
-          COUNT(am.*) AS total_monitors, 
-          COUNT(*) FILTER (WHERE am.is_active) AS active_monitors
-        FROM trade_alerts ta
-        LEFT JOIN alert_monitoring am 
-          ON am.signal_id = ta.id
-        WHERE ta.status IN ('active','partially_profited')
-        GROUP BY ta.id, ta.asset_name, ta.status
-        HAVING COUNT(am.*) = 0 OR COUNT(*) FILTER (WHERE am.is_active) = 0
-      )
-      SELECT jsonb_build_object(
-        'problem_all_tps_hit', COALESCE((
-          SELECT jsonb_agg(jsonb_build_object(
-            'id', id,
-            'asset', asset_name,
-            'symbol', tradermade_symbol,
-            'tp_hits', tp_hits,
-            'total_tps', total_tps,
-            'status', status
-          )) FROM problem_all_tps_hit
-        ), '[]'::jsonb),
-        'problem_single_tp_not_closed', COALESCE((
-          SELECT jsonb_agg(jsonb_build_object(
-            'id', id,
-            'asset', asset_name,
-            'symbol', tradermade_symbol,
-            'tp_hits', tp_hits,
-            'status', status
-          )) FROM problem_single_tp_not_closed
-        ), '[]'::jsonb),
-        'pending_ready_to_activate', COALESCE((
-          SELECT jsonb_agg(jsonb_build_object(
-            'id', id,
-            'asset', asset_name,
-            'type', trade_type,
-            'entry', entry_price,
-            'bid', bid,
-            'ask', ask
-          )) FROM pending_ready
-        ), '[]'::jsonb),
-        'monitoring_inactive', COALESCE((
-          SELECT jsonb_agg(jsonb_build_object(
-            'signal_id', signal_id,
-            'asset', asset_name,
-            'status', status,
-            'total_monitors', total_monitors,
-            'active_monitors', active_monitors
-          )) FROM monitoring_inactive
-        ), '[]'::jsonb)
-      ) AS diagnostics
-    `;
+    // Query problematic signals directly using the client
+    const { data: problemSignals, error: problemError } = await supabase
+      .from('trade_alerts')
+      .select(`
+        id,
+        asset_name,
+        tradermade_symbol,
+        status,
+        tp1, tp2, tp3, tp4, tp5,
+        tp_hits,
+        trade_type,
+        entry_price
+      `)
+      .in('status', ['active', 'partially_profited']);
 
-    const { data, error } = await supabase.rpc('execute_diagnostic_query', { 
-      query_sql: diagnosticQuery 
+    if (problemError) {
+      console.error('❌ Problem signals query failed:', problemError);
+      throw problemError;
+    }
+
+    // Query pending orders that might be ready to activate
+    const { data: pendingOrders, error: pendingError } = await supabase
+      .from('trade_alerts')
+      .select(`
+        id,
+        asset_name,
+        trade_type,
+        entry_price,
+        tradermade_symbol
+      `)
+      .eq('status', 'pending')
+      .in('trade_type', ['buy_limit', 'sell_limit']);
+
+    if (pendingError) {
+      console.error('❌ Pending orders query failed:', pendingError);
+      throw pendingError;
+    }
+
+    // Get current market prices for comparison
+    const symbols = [...new Set([
+      ...(problemSignals || []).map(s => s.tradermade_symbol),
+      ...(pendingOrders || []).map(s => s.tradermade_symbol)
+    ])];
+
+    const { data: marketPrices, error: pricesError } = await supabase
+      .from('market_prices')
+      .select('symbol, bid, ask')
+      .in('symbol', symbols);
+
+    if (pricesError) {
+      console.warn('⚠️ Market prices query failed:', pricesError);
+    }
+
+    // Process the data to find issues
+    const priceMap = new Map();
+    (marketPrices || []).forEach(price => {
+      priceMap.set(price.symbol, price);
     });
 
-    if (error) {
-      console.error('❌ Diagnostic query failed:', error);
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: error.message 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    // Find signals with all TPs hit but not closed
+    const problemAllTpsHit = (problemSignals || []).filter(signal => {
+      const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5]
+        .filter(tp => tp !== null).length;
+      const tpHits = signal.tp_hits || [];
+      return totalTPs > 0 && tpHits.length >= totalTPs && signal.status !== 'closed';
+    });
+
+    // Find single TP signals that should be closed
+    const problemSingleTpNotClosed = (problemSignals || []).filter(signal => {
+      const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5]
+        .filter(tp => tp !== null).length;
+      const tpHits = signal.tp_hits || [];
+      return totalTPs === 1 && tpHits.includes(1) && signal.status !== 'closed';
+    });
+
+    // Find pending orders ready to activate
+    const pendingReadyToActivate = (pendingOrders || []).filter(order => {
+      const marketPrice = priceMap.get(order.tradermade_symbol);
+      if (!marketPrice) return false;
+      
+      return (
+        (order.trade_type === 'buy_limit' && marketPrice.bid <= order.entry_price) ||
+        (order.trade_type === 'sell_limit' && marketPrice.ask >= order.entry_price)
+      );
+    });
+
+    // Check monitoring status
+    const { data: monitoringData, error: monitoringError } = await supabase
+      .from('alert_monitoring')
+      .select(`
+        signal_id,
+        is_active,
+        trade_alerts!inner(asset_name, status)
+      `)
+      .eq('is_active', true);
+
+    const monitoringInactive = [];
+    if (!monitoringError) {
+      // Group by signal_id and check for inactive monitoring
+      const signalMonitoring = new Map();
+      (monitoringData || []).forEach(monitor => {
+        if (!signalMonitoring.has(monitor.signal_id)) {
+          signalMonitoring.set(monitor.signal_id, {
+            signal_id: monitor.signal_id,
+            asset: monitor.trade_alerts?.asset_name || 'Unknown',
+            status: monitor.trade_alerts?.status || 'Unknown',
+            total_monitors: 0,
+            active_monitors: 0
+          });
+        }
+        const entry = signalMonitoring.get(monitor.signal_id);
+        entry.total_monitors++;
+        if (monitor.is_active) entry.active_monitors++;
+      });
+
+      // Find signals with no active monitoring
+      signalMonitoring.forEach(entry => {
+        if (entry.active_monitors === 0) {
+          monitoringInactive.push(entry);
+        }
       });
     }
+
+    const diagnostics = {
+      problem_all_tps_hit: problemAllTpsHit.map(s => ({
+        id: s.id,
+        asset: s.asset_name,
+        symbol: s.tradermade_symbol,
+        tp_hits: s.tp_hits || [],
+        total_tps: [s.tp1, s.tp2, s.tp3, s.tp4, s.tp5].filter(tp => tp !== null).length,
+        status: s.status
+      })),
+      problem_single_tp_not_closed: problemSingleTpNotClosed.map(s => ({
+        id: s.id,
+        asset: s.asset_name,
+        symbol: s.tradermade_symbol,
+        tp_hits: s.tp_hits || [],
+        status: s.status
+      })),
+      pending_ready_to_activate: pendingReadyToActivate.map(o => ({
+        id: o.id,
+        asset: o.asset_name,
+        type: o.trade_type,
+        entry: o.entry_price,
+        bid: priceMap.get(o.tradermade_symbol)?.bid || 0,
+        ask: priceMap.get(o.tradermade_symbol)?.ask || 0
+      })),
+      monitoring_inactive: monitoringInactive
+    };
 
     console.log('✅ Diagnostic completed successfully');
     
     return new Response(JSON.stringify({
       success: true,
-      data: data || {},
+      data: diagnostics,
       timestamp: new Date().toISOString()
     }), {
       status: 200,

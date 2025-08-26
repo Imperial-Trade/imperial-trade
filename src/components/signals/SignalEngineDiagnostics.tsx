@@ -41,40 +41,37 @@ interface DiagnosticResult {
   }>;
 }
 
+interface ReconcileResult {
+  signals_closed: number;
+  orders_activated: number;
+}
+
 export function SignalEngineDiagnostics() {
   const [diagnostics, setDiagnostics] = useState<DiagnosticResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [lastRun, setLastRun] = useState<Date | null>(null);
-  const [reconcileResult, setReconcileResult] = useState<any>(null);
+  const [reconcileResult, setReconcileResult] = useState<ReconcileResult | null>(null);
 
   const runFullDiagnostic = async () => {
     setIsRunning(true);
     try {
       console.log('🔍 Starting comprehensive signal engine diagnostic...');
 
-      // Step 1: Run comprehensive diagnostic query
-      const { data: diagnosticData, error: diagnosticError } = await supabase.rpc('run_signal_diagnostic');
+      // Step 1: Run diagnostic using the edge function
+      const { data: diagnosticResponse, error: diagnosticError } = await supabase.functions.invoke('signal-diagnostic');
       
-      if (diagnosticError) {
-        console.error('❌ Diagnostic query failed:', diagnosticError);
-        toast.error('Diagnostic failed: ' + diagnosticError.message);
+      if (diagnosticError || !diagnosticResponse?.success) {
+        console.error('❌ Diagnostic query failed:', diagnosticError || diagnosticResponse?.error);
+        toast.error('Diagnostic failed: ' + (diagnosticError?.message || diagnosticResponse?.error || 'Unknown error'));
         return;
       }
 
-      console.log('📊 Diagnostic results:', diagnosticData);
-      setDiagnostics(diagnosticData);
+      console.log('📊 Diagnostic results:', diagnosticResponse.data);
+      setDiagnostics(diagnosticResponse.data);
 
-      // Step 2: Run reconciliation to fix issues
-      const { data: reconcileData, error: reconcileError } = await supabase.rpc('reconcile_signal_consistency');
-      
-      if (reconcileError) {
-        console.error('❌ Reconciliation failed:', reconcileError);
-        toast.error('Reconciliation failed: ' + reconcileError.message);
-      } else {
-        console.log('✅ Reconciliation completed:', reconcileData);
-        setReconcileResult(reconcileData);
-        toast.success(`Fixed ${reconcileData.signals_closed} signals and activated ${reconcileData.orders_activated} orders`);
-      }
+      // Step 2: Run manual reconciliation to fix issues
+      const fixedSignals = await fixProblematicSignals(diagnosticResponse.data);
+      setReconcileResult(fixedSignals);
 
       // Step 3: Trigger enhanced alert monitor
       const { error: monitorError } = await supabase.functions.invoke('enhanced-alert-monitor');
@@ -85,12 +82,83 @@ export function SignalEngineDiagnostics() {
       }
 
       setLastRun(new Date());
+      toast.success(`Fixed ${fixedSignals.signals_closed} signals and activated ${fixedSignals.orders_activated} orders`);
     } catch (error) {
       console.error('❌ Diagnostic failed:', error);
       toast.error('Diagnostic failed: ' + (error as Error).message);
     } finally {
       setIsRunning(false);
     }
+  };
+
+  const fixProblematicSignals = async (diagnosticData: DiagnosticResult): Promise<ReconcileResult> => {
+    let signalsClosed = 0;
+    let ordersActivated = 0;
+
+    // Fix signals with all TPs hit
+    for (const signal of diagnosticData.problem_all_tps_hit) {
+      try {
+        const { error } = await supabase
+          .from('trade_alerts')
+          .update({
+            status: 'closed',
+            close_reason: 'all_tps_hit',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', signal.id);
+
+        if (!error) {
+          signalsClosed++;
+          console.log(`✅ Closed signal ${signal.asset} (all TPs hit)`);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to close signal ${signal.asset}:`, error);
+      }
+    }
+
+    // Fix single TP signals that should be closed
+    for (const signal of diagnosticData.problem_single_tp_not_closed) {
+      try {
+        const { error } = await supabase
+          .from('trade_alerts')
+          .update({
+            status: 'closed',
+            close_reason: 'tp1_hit',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', signal.id);
+
+        if (!error) {
+          signalsClosed++;
+          console.log(`✅ Closed signal ${signal.asset} (TP1 hit)`);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to close signal ${signal.asset}:`, error);
+      }
+    }
+
+    // Activate pending orders that are ready
+    for (const order of diagnosticData.pending_ready_to_activate) {
+      try {
+        const { error } = await supabase
+          .from('trade_alerts')
+          .update({
+            status: 'active',
+            activated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', order.id);
+
+        if (!error) {
+          ordersActivated++;
+          console.log(`✅ Activated pending order ${order.asset}`);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to activate order ${order.asset}:`, error);
+      }
+    }
+
+    return { signals_closed: signalsClosed, orders_activated: ordersActivated };
   };
 
   const getTotalIssues = () => {

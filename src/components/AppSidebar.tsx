@@ -16,7 +16,7 @@ import { SidebarUserMenu } from "./sidebar/SidebarUserMenu";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export function AppSidebar() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { state: sidebarState } = useSidebar();
   const isCollapsed = sidebarState === "collapsed";
   const isMobile = useIsMobile();
@@ -47,7 +47,7 @@ export function AppSidebar() {
             />
             <SidebarAdminSection 
               isCollapsed={false} 
-              userAccessLevel={user?.user_metadata?.access_level} 
+              userAccessLevel={profile?.access_level} 
             />
           </div>
         </SidebarContent>
@@ -79,7 +79,7 @@ export function AppSidebar() {
           />
           <SidebarAdminSection 
             isCollapsed={false} 
-            userAccessLevel={user?.user_metadata?.access_level} 
+            userAccessLevel={profile?.access_level} 
           />
         </div>
       </SidebarContent>

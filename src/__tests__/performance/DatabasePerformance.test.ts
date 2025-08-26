@@ -27,7 +27,7 @@ describe('Database Performance Tests', () => {
 
   describe('Query Performance', () => {
     it('should execute select queries within acceptable time', async () => {
-      const mockData = TestDataFactory.createMockTradeAlerts(10);
+      const mockData = TestDataFactory.createMultipleTradeAlerts(10);
       
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockResolvedValue({
@@ -57,7 +57,7 @@ describe('Database Performance Tests', () => {
     });
 
     it('should handle bulk operations efficiently', async () => {
-      const mockData = TestDataFactory.createMockTradeAlerts(100);
+      const mockData = TestDataFactory.createMultipleTradeAlerts(100);
       
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockResolvedValue({
@@ -89,7 +89,7 @@ describe('Database Performance Tests', () => {
     });
 
     it('should efficiently handle request deduplication', async () => {
-      const mockData = TestDataFactory.createMockTradeAlerts(5);
+      const mockData = TestDataFactory.createMultipleTradeAlerts(5);
       const mockSelect = vi.fn().mockResolvedValue({
         data: mockData,
         error: null
@@ -122,7 +122,7 @@ describe('Database Performance Tests', () => {
 
   describe('Connection Pool Performance', () => {
     it('should handle rapid successive queries', async () => {
-      const mockData = [TestDataFactory.createMockTradeAlert()];
+      const mockData = [TestDataFactory.createTradeAlert()];
       
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockResolvedValue({

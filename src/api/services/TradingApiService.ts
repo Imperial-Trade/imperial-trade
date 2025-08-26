@@ -100,7 +100,7 @@ export class TradingApiService {
         tradeType: result.data.trade_type,
         entryPrice: Number(result.data.entry_price),
         stopLoss: Number(result.data.stop_loss),
-        status: result.data.status as 'pending' | 'active' | 'closed' | 'partially_profited',
+        status: result.data.status,
         tp1: result.data.tp1 ? Number(result.data.tp1) : undefined,
         tp2: result.data.tp2 ? Number(result.data.tp2) : undefined,
         tp3: result.data.tp3 ? Number(result.data.tp3) : undefined,
@@ -108,7 +108,7 @@ export class TradingApiService {
         tp5: result.data.tp5 ? Number(result.data.tp5) : undefined,
         tpHits: result.data.tp_hits || [],
         notes: result.data.notes,
-        closeReason: result.data.close_reason as 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined,
+        closeReason: result.data.close_reason,
         createdAt: result.data.created_at,
         updatedAt: result.data.updated_at
       };
@@ -209,7 +209,7 @@ export class TradingApiService {
         tradeType: result.data.trade_type,
         entryPrice: Number(result.data.entry_price),
         stopLoss: Number(result.data.stop_loss),
-        status: result.data.status as 'pending' | 'active' | 'closed' | 'partially_profited',
+        status: result.data.status,
         tp1: result.data.tp1 ? Number(result.data.tp1) : undefined,
         tp2: result.data.tp2 ? Number(result.data.tp2) : undefined,
         tp3: result.data.tp3 ? Number(result.data.tp3) : undefined,
@@ -217,7 +217,7 @@ export class TradingApiService {
         tp5: result.data.tp5 ? Number(result.data.tp5) : undefined,
         tpHits: result.data.tp_hits || [],
         notes: result.data.notes,
-        closeReason: result.data.close_reason as 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined,
+        closeReason: result.data.close_reason,
         createdAt: result.data.created_at,
         updatedAt: result.data.updated_at
       };
@@ -262,7 +262,7 @@ export class TradingApiService {
           tradeType: alert.trade_type,
           entryPrice: Number(alert.entry_price),
           stopLoss: Number(alert.stop_loss),
-          status: alert.status as 'pending' | 'active' | 'closed' | 'partially_profited',
+          status: alert.status,
           tp1: alert.tp1 ? Number(alert.tp1) : undefined,
           tp2: alert.tp2 ? Number(alert.tp2) : undefined,
           tp3: alert.tp3 ? Number(alert.tp3) : undefined,
@@ -270,7 +270,7 @@ export class TradingApiService {
           tp5: alert.tp5 ? Number(alert.tp5) : undefined,
           tpHits: alert.tp_hits || [],
           notes: alert.notes,
-          closeReason: alert.close_reason as 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined,
+          closeReason: alert.close_reason,
           createdAt: alert.created_at,
           updatedAt: alert.updated_at
         }));
@@ -289,6 +289,7 @@ export class TradingApiService {
     }
   }
 
+  // NEW: Get all public signals with user profile information
   async getAllPublicAlertsWithProfiles(): Promise<ApiResponse<TradeAlertWithProfile[]>> {
     try {
       // First get all trade alerts
@@ -347,7 +348,7 @@ export class TradingApiService {
             tradeType: alert.trade_type,
             entryPrice: Number(alert.entry_price),
             stopLoss: Number(alert.stop_loss),
-            status: alert.status as 'pending' | 'active' | 'closed' | 'partially_profited',
+            status: alert.status,
             tp1: alert.tp1 ? Number(alert.tp1) : undefined,
             tp2: alert.tp2 ? Number(alert.tp2) : undefined,
             tp3: alert.tp3 ? Number(alert.tp3) : undefined,
@@ -355,7 +356,7 @@ export class TradingApiService {
             tp5: alert.tp5 ? Number(alert.tp5) : undefined,
             tpHits: alert.tp_hits || [],
             notes: alert.notes,
-            closeReason: alert.close_reason as 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined,
+            closeReason: alert.close_reason,
             createdAt: alert.created_at,
             updatedAt: alert.updated_at,
             creator: profile ? {
@@ -383,7 +384,7 @@ export class TradingApiService {
     }
   }
 
-  async getAlertsByStatus(status: 'pending' | 'active' | 'closed' | 'partially_profited', userId: string): Promise<ApiResponse<TradeAlertResponseDto[]>> {
+  async getAlertsByStatus(status: 'pending' | 'active' | 'closed', userId: string): Promise<ApiResponse<TradeAlertResponseDto[]>> {
     try {
       const result = await apiClient.select('trade_alerts', {
         eq: { column: 'user_id', value: userId },
@@ -409,7 +410,7 @@ export class TradingApiService {
           tradeType: alert.trade_type,
           entryPrice: Number(alert.entry_price),
           stopLoss: Number(alert.stop_loss),
-          status: alert.status as 'pending' | 'active' | 'closed' | 'partially_profited',
+          status: alert.status,
           tp1: alert.tp1 ? Number(alert.tp1) : undefined,
           tp2: alert.tp2 ? Number(alert.tp2) : undefined,
           tp3: alert.tp3 ? Number(alert.tp3) : undefined,
@@ -417,7 +418,7 @@ export class TradingApiService {
           tp5: alert.tp5 ? Number(alert.tp5) : undefined,
           tpHits: alert.tp_hits || [],
           notes: alert.notes,
-          closeReason: alert.close_reason as 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined,
+          closeReason: alert.close_reason,
           createdAt: alert.created_at,
           updatedAt: alert.updated_at
         }));

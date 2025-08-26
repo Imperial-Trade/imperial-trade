@@ -41,7 +41,7 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
   const navigationItems = [
     { to: "/dashboard/home", icon: Home, label: "Home" },
     { to: "/dashboard/education", icon: GraduationCap, label: "Education" },
-    { to: "/dashboard/signal-stream", icon: Radio, label: "Xeon Stream" },
+    { to: "/dashboard/signal-stream", icon: Radio, label: "Signal Stream" },
     { to: "/dashboard/live", icon: Video, label: "Live Sessions" },
     { to: "/dashboard/forum", icon: MessageSquare, label: "Forum" },
     { to: "/dashboard/advanced-tools", icon: Wrench, label: "Advanced Tools" },

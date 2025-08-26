@@ -181,35 +181,51 @@ export class SignalEngineHealthCheck {
 
   private async checkDatabaseConsistency(): Promise<HealthCheckResult> {
     try {
-      // Check for orphaned alert_monitoring entries
-      const { data: orphanedAlerts, error: orphanError } = await supabase
-        .rpc('check_orphaned_alerts'); // This would need to be a custom function
-
-      // For now, do a simpler check
+      // Check for orphaned alert_monitoring entries using available joins
       const { data: alerts, error } = await supabase
         .from('alert_monitoring')
         .select(`
           id, 
           signal_id, 
+          is_active,
           trade_alerts!inner(id, status)
         `)
         .eq('is_active', true);
 
       if (error) throw error;
 
+      // Find inconsistent alerts (active monitoring for closed signals)
       const inconsistentAlerts = alerts?.filter(alert => 
         alert.trade_alerts?.status === 'closed'
       ) || [];
 
+      // Check for missing monitoring entries for active signals
+      const { data: activeSignalsWithoutMonitoring, error: missingError } = await supabase
+        .from('trade_alerts')
+        .select(`
+          id,
+          tradermade_symbol,
+          status,
+          alert_monitoring!left(signal_id)
+        `)
+        .in('status', ['active', 'partially_profited'])
+        .is('alert_monitoring.signal_id', null);
+
+      if (missingError) throw missingError;
+
+      const totalInconsistencies = inconsistentAlerts.length + (activeSignalsWithoutMonitoring?.length || 0);
+
       return {
         component: 'Database Consistency',
-        status: inconsistentAlerts.length > 0 ? 'warning' : 'healthy',
-        details: inconsistentAlerts.length > 0 
-          ? `${inconsistentAlerts.length} active alerts for closed signals`
+        status: totalInconsistencies > 0 ? 'warning' : 'healthy',
+        details: totalInconsistencies > 0 
+          ? `${inconsistentAlerts.length} active alerts for closed signals, ${activeSignalsWithoutMonitoring?.length || 0} active signals without monitoring`
           : 'Database consistency maintained',
         metrics: {
           totalActiveAlerts: alerts?.length || 0,
-          inconsistentAlerts: inconsistentAlerts.length
+          inconsistentAlerts: inconsistentAlerts.length,
+          missingMonitoringEntries: activeSignalsWithoutMonitoring?.length || 0,
+          totalInconsistencies
         }
       };
     } catch (error) {

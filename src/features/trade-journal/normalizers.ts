@@ -85,6 +85,7 @@ export function mapDbRowToEntry(row: any): TradeJournalEntry {
     trade_date,
     notes: row.notes || undefined,
     screenshot_url: row.screenshot_url || undefined,
+    screenshot_urls, // Include normalized screenshot URLs array
     ai_positive_feedback: cleanCoachFeedback(row.ai_positive_feedback),
     created_at: row.created_at,
     updated_at: row.updated_at,

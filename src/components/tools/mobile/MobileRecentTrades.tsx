@@ -6,8 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { Trash2, Brain, MessageSquare, Target, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { TradeJournalEntry } from '@/api/entities';
-import { ImageGallery } from '@/components/ui/image-gallery';
-import { useSignedUrls } from '@/hooks/useSignedUrls';
+import { ImageGalleryWithUrls } from '@/components/tools/ImageGalleryWithUrls';
 import { parseYmdToLocalDate } from '@/lib/date';
 
 interface MobileRecentTradesProps {
@@ -182,20 +181,6 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
   );
 });
 
-// Helper component to handle signed URLs
-const ImageGalleryWithUrls: React.FC<{ paths: string[], alt: string }> = ({ paths, alt }) => {
-  const { signedUrls, loading, error } = useSignedUrls(paths);
-  
-  if (loading) {
-    return <div className="text-xs text-muted-foreground">Loading images...</div>;
-  }
-  
-  if (error || signedUrls.length === 0) {
-    return null;
-  }
-  
-  return <ImageGallery images={signedUrls} alt={alt} />;
-};
 
 MobileRecentTrades.displayName = 'MobileRecentTrades';
 

@@ -36,6 +36,7 @@ interface Trade {
   screenshot_url?: string;
   screenshot_urls?: string[];
   ai_feedback?: string;
+  ai_positive_feedback?: string; // Add support for AI coach feedback
   created_at: string;
   updated_at: string;
 }
@@ -231,6 +232,7 @@ export const TradingJournalApp: React.FC = () => {
       screenshot_url: entry.screenshot_url,
       screenshot_urls: entry.screenshot_urls,
       ai_feedback: entry.ai_positive_feedback,
+      ai_positive_feedback: entry.ai_positive_feedback, // Also map to ai_positive_feedback property
       created_at: entry.created_at,
       updated_at: entry.updated_at
     }));
@@ -1357,6 +1359,26 @@ export const TradingJournalApp: React.FC = () => {
                       ) : trade.screenshot_url ? (
                         <ImageGalleryWithUrls paths={[trade.screenshot_url]} />
                       ) : null}
+
+                      {/* Your Trading Coach Feedback */}
+                      {trade.ai_positive_feedback && (
+                        <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-4 border border-primary/20">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                              <Brain className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-sm font-semibold text-primary">Your Trading Coach</span>
+                                <Badge variant="outline" className="text-xs">AI Analysis</Badge>
+                              </div>
+                              <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                                {trade.ai_positive_feedback}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-right ml-6">

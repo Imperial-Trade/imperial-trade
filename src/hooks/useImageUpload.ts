@@ -129,7 +129,7 @@ export const useImageUpload = () => {
         return [];
       }
 
-      return data.map(item => item.signedUrl);
+      return data.map(item => item.signedUrl || (item as any)['signedURL']);
     } catch (error) {
       console.error('Error creating signed URLs:', error);
       return [];

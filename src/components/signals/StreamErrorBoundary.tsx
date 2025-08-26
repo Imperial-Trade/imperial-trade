@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,7 @@ export class StreamErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Signal Stream Error:', error, errorInfo);
+    console.error('Xeon Stream Error:', error, errorInfo);
   }
 
   render() {
@@ -36,7 +37,7 @@ export class StreamErrorBoundary extends React.Component<Props, State> {
               <AlertDescription>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-semibold">Something went wrong with the Signal Stream</h3>
+                    <h3 className="font-semibold">Something went wrong with Xeon Stream</h3>
                     <p className="text-sm text-muted-foreground mt-1">
                       We're working to fix this issue. Please try refreshing the page.
                     </p>

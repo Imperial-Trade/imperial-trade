@@ -176,7 +176,7 @@ export default function SignalStreamAPI() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-primary">
             <Database className="w-6 h-6 text-accent-green" />
-            Signal Stream API Documentation (Mock Mode)
+            Xeon Stream API Documentation (Mock Mode)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">

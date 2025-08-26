@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
@@ -51,7 +50,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
   const menuItems = [
     { title: 'Home', url: '/', accessLevel: 'free' },
     { title: 'Education', url: '/Education', accessLevel: 'user' },
-    { title: 'Signal Stream', url: '/SignalStream', accessLevel: 'user' },
+    { title: 'Xeon Stream', url: '/SignalStream', accessLevel: 'user' },
     { title: 'Live Sessions', url: '/Live', accessLevel: 'user' },
     { title: 'Forum', url: '/Forum', accessLevel: 'user' },
     { title: 'IB Partnership', url: '/IBPartnership', accessLevel: 'free' },

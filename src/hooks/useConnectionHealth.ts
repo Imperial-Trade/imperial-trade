@@ -1,107 +1,98 @@
+import { useState, useEffect, useRef } from 'react';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-
-interface ConnectionHealth {
-  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
-  latency: number | null;
-  lastCheck: Date | null;
-  consecutiveFailures: number;
+interface ConnectionHealthMetrics {
+  tickFrequency: number; // in ms
+  actualFrequency: number; // measured actual frequency
+  connectionUptime: number; // in percentage
+  missedTicks: number;
+  isHealthy: boolean;
+  lastTickTime: number | null;
+  averageLatency: number;
 }
 
-interface UseConnectionHealthReturn extends ConnectionHealth {
-  checkHealth: () => Promise<void>;
-  reset: () => void;
-}
-
-export const useConnectionHealth = (
-  checkUrl?: string,
-  interval: number = 30000 // 30 seconds
-): UseConnectionHealthReturn => {
-  const [health, setHealth] = useState<ConnectionHealth>({
-    status: 'unknown',
-    latency: null,
-    lastCheck: null,
-    consecutiveFailures: 0
+export function useConnectionHealth() {
+  const { connectionStatus, lastUpdated, prices } = useWebSocketPrices();
+  const [metrics, setMetrics] = useState<ConnectionHealthMetrics>({
+    tickFrequency: 250,
+    actualFrequency: 0,
+    connectionUptime: 0,
+    missedTicks: 0,
+    isHealthy: false,
+    lastTickTime: null,
+    averageLatency: 0
   });
 
-  const intervalRef = useRef<NodeJS.Timeout>();
-  const abortControllerRef = useRef<AbortController>();
-
-  const checkHealth = useCallback(async () => {
-    if (!checkUrl) return;
-
-    // Abort previous request if still pending
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    abortControllerRef.current = new AbortController();
-    const startTime = performance.now();
-
-    try {
-      const response = await fetch(checkUrl, {
-        method: 'HEAD',
-        signal: abortControllerRef.current.signal,
-        timeout: 10000 // 10 second timeout
-      } as RequestInit);
-
-      const latency = performance.now() - startTime;
-      const isHealthy = response.ok && latency < 5000; // Consider healthy if response is ok and under 5s
-
-      setHealth(prev => ({
-        status: isHealthy ? 'healthy' : latency > 5000 ? 'degraded' : 'unhealthy',
-        latency: Math.round(latency),
-        lastCheck: new Date(),
-        consecutiveFailures: isHealthy ? 0 : prev.consecutiveFailures + 1
-      }));
-
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return; // Ignore aborted requests
-      }
-
-      console.warn('Connection health check failed:', error);
-      
-      setHealth(prev => ({
-        status: 'unhealthy',
-        latency: null,
-        lastCheck: new Date(),
-        consecutiveFailures: prev.consecutiveFailures + 1
-      }));
-    }
-  }, [checkUrl]);
-
-  const reset = useCallback(() => {
-    setHealth({
-      status: 'unknown',
-      latency: null,
-      lastCheck: null,
-      consecutiveFailures: 0
-    });
-  }, []);
+  const tickTimesRef = useRef<number[]>([]);
+  const startTimeRef = useRef<number>(Date.now());
+  const lastUpdateRef = useRef<Date | null>(null);
+  const missedTicksRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!checkUrl) return;
-
-    // Initial check
-    checkHealth();
-
-    // Set up interval
-    intervalRef.current = setInterval(checkHealth, interval);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+    if (lastUpdated && lastUpdated !== lastUpdateRef.current) {
+      const now = Date.now();
+      const tickTime = lastUpdated.getTime();
+      
+      // Track tick times for frequency calculation
+      tickTimesRef.current.push(tickTime);
+      
+      // Keep only the last 20 ticks for rolling average
+      if (tickTimesRef.current.length > 20) {
+        tickTimesRef.current.shift();
       }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      
+      // Calculate actual frequency
+      let actualFrequency = 0;
+      if (tickTimesRef.current.length >= 2) {
+        const intervals = [];
+        for (let i = 1; i < tickTimesRef.current.length; i++) {
+          intervals.push(tickTimesRef.current[i] - tickTimesRef.current[i - 1]);
+        }
+        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        actualFrequency = avgInterval;
       }
-    };
-  }, [checkUrl, interval, checkHealth]);
+      
+      // Check for missed ticks (if interval is significantly larger than 250ms)
+      if (lastUpdateRef.current) {
+        const timeSinceLastUpdate = tickTime - lastUpdateRef.current.getTime();
+        if (timeSinceLastUpdate > 500) { // More than 2x expected frequency
+          const missedTickCount = Math.floor(timeSinceLastUpdate / 250) - 1;
+          missedTicksRef.current += Math.max(0, missedTickCount);
+        }
+      }
+      
+      // Calculate uptime percentage
+      const totalTime = now - startTimeRef.current;
+      const expectedTicks = Math.floor(totalTime / 250);
+      const actualTicks = tickTimesRef.current.length;
+      const uptimePercentage = expectedTicks > 0 ? (actualTicks / expectedTicks) * 100 : 0;
+      
+      // Calculate average latency (simplified estimation)
+      const averageLatency = actualFrequency > 0 ? Math.abs(actualFrequency - 250) : 0;
+      
+      setMetrics({
+        tickFrequency: 250,
+        actualFrequency: Math.round(actualFrequency),
+        connectionUptime: Math.min(100, Math.round(uptimePercentage)),
+        missedTicks: missedTicksRef.current,
+        isHealthy: connectionStatus === 'connected' && actualFrequency > 0 && actualFrequency < 400,
+        lastTickTime: tickTime,
+        averageLatency: Math.round(averageLatency)
+      });
+      
+      lastUpdateRef.current = lastUpdated;
+    }
+  }, [lastUpdated, connectionStatus]);
 
-  return {
-    ...health,
-    checkHealth,
-    reset
-  };
-};
+  // Reset metrics when connection changes
+  useEffect(() => {
+    if (connectionStatus === 'connecting' || connectionStatus === 'disconnected') {
+      tickTimesRef.current = [];
+      startTimeRef.current = Date.now();
+      missedTicksRef.current = 0;
+      lastUpdateRef.current = null;
+    }
+  }, [connectionStatus]);
+
+  return metrics;
+}

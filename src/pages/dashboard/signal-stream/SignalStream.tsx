@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
@@ -12,78 +12,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
-import { SignalStreamErrorBoundary } from '@/components/signals/SignalStreamErrorBoundary';
-import { SignalStreamLoading } from '@/components/signals/SignalStreamLoading';
-import { useConnectionHealth } from '@/hooks/useConnectionHealth';
-
-interface PriceData {
-  price: number;
-  timestamp?: number;
-}
+import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 
 export default function SignalStream() {
-  console.log('🚀 SignalStream - Component starting to render');
-  
-  // Connection health monitoring
-  const connectionHealth = useConnectionHealth('https://kmuoqkcxguafxulqlbmi.supabase.co/rest/v1/', 30000);
-  
-  // Debug state for tracking initialization
-  const [initStage, setInitStage] = useState<'auth' | 'contexts' | 'data' | 'complete'>('auth');
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
-  const [lastError, setLastError] = useState<string | null>(null);
-  
-  const addDebugInfo = useCallback((info: string) => {
-    console.log(`📋 SignalStream Debug: ${info}`);
-    setDebugInfo(prev => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${info}`]);
-  }, []);
-
-  // Authentication with comprehensive error handling
-  let authData;
-  try {
-    addDebugInfo('Initializing authentication context');
-    authData = useAuth();
-    console.log('✅ SignalStream - Auth context loaded:', {
-      hasUser: !!authData.user,
-      hasProfile: !!authData.profile,
-      loading: authData.loading,
-      profileLoading: authData.profileLoading
-    });
-  } catch (error) {
-    const errorMsg = `Auth context failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
-    console.error('❌ SignalStream - Auth context failed:', error);
-    addDebugInfo(errorMsg);
-    setLastError(errorMsg);
-    
-    // Return fallback component for auth failures
-    return (
-      <SignalStreamErrorBoundary>
-        <SignalStreamLoading 
-          stage="auth" 
-          message="Authentication service unavailable"
-          progress={0}
-        />
-      </SignalStreamErrorBoundary>
-    );
-  }
-
-  const { user, profile, loading: authLoading, profileLoading } = authData;
+  const {
+    user,
+    profile
+  } = useAuth();
   const navigate = useNavigate();
-
-  // Update init stage based on auth status (prevent infinite re-renders)
-  useEffect(() => {
-    if (authLoading) {
-      if (initStage !== 'auth') {
-        setInitStage('auth');
-        addDebugInfo('Waiting for authentication');
-      }
-    } else if (user && !profileLoading) {
-      if (initStage !== 'contexts') {
-        setInitStage('contexts');
-        addDebugInfo('Authentication complete, initializing contexts');
-      }
-    }
-  }, [authLoading, profileLoading, user, initStage, addDebugInfo]);
-
   const [filters, setFilters] = useState({
     search: '',
     status: '',
@@ -91,66 +27,8 @@ export default function SignalStream() {
     educator: ''
   });
 
-  // WebSocket context with comprehensive error handling
-  let webSocketData;
-  try {
-    addDebugInfo('Initializing WebSocket context');
-    webSocketData = useWebSocketPrices();
-    console.log('✅ SignalStream - WebSocket context loaded:', {
-      connectionStatus: webSocketData.connectionStatus,
-      dataSource: webSocketData.dataSource,
-      pricesCount: Object.keys(webSocketData.prices || {}).length
-    });
-  } catch (error) {
-    const errorMsg = `WebSocket context failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
-    console.error('❌ SignalStream - WebSocket context failed:', error);
-    addDebugInfo(errorMsg);
-    setLastError(errorMsg);
-    
-    // Provide fallback WebSocket data
-    webSocketData = {
-      prices: {},
-      connectionStatus: 'error' as const,
-      dataSource: 'unavailable' as const,
-      lastUpdated: null,
-      errors: {},
-      priceUpdateSources: {},
-      subscribe: () => console.warn('WebSocket unavailable - subscribe'),
-      unsubscribe: () => console.warn('WebSocket unavailable - unsubscribe'),
-      getPrice: () => null,
-      refreshPrice: () => console.warn('WebSocket unavailable - refreshPrice')
-    };
-  }
-
-  // Trading context with comprehensive error handling
-  let tradingData;
-  try {
-    addDebugInfo('Initializing trading context');
-    tradingData = useOptimizedTrading(user?.id || '', true);
-    console.log('✅ SignalStream - Trading context loaded:', {
-      alertsCount: tradingData.alerts?.length || 0,
-      isLoading: tradingData.isLoading,
-      connectionStatus: tradingData.connectionStatus,
-      hasError: !!tradingData.error
-    });
-  } catch (error) {
-    const errorMsg = `Trading context failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
-    console.error('❌ SignalStream - Trading context failed:', error);
-    addDebugInfo(errorMsg);
-    setLastError(errorMsg);
-    
-    // This is critical - return error state
-    return (
-      <SignalStreamErrorBoundary>
-        <SignalStreamLoading 
-          stage="data" 
-          message="Trading service unavailable - please refresh"
-          progress={75}
-        />
-      </SignalStreamErrorBoundary>
-    );
-  }
-
+  // Use the optimized trading hook with real-time updates for all signals
+  // Pass the actual user ID for proper authorization, even when showing all signals
   const {
     alerts: allAlerts,
     isLoading,
@@ -160,61 +38,18 @@ export default function SignalStream() {
     connectionStatus,
     lastUpdated,
     nextRetryAt
-  } = tradingData;
-
-  const {
-    prices: livePricesData,
-    connectionStatus: priceConnectionStatus,
-    dataSource: priceSource,
-    subscribe,
-    unsubscribe,
-    getPrice
-  } = webSocketData;
-
-  // Update init stage based on data loading (prevent infinite loops)
-  useEffect(() => {
-    if (initStage === 'contexts' && !isLoading) {
-      setInitStage('data');
-      addDebugInfo('Contexts initialized, loading data');
-    } else if (initStage === 'data' && allAlerts !== undefined) {
-      setInitStage('complete');
-      addDebugInfo(`Data loaded successfully: ${allAlerts.length} alerts`);
-      setLastError(null); // Clear any previous errors
-    }
-  }, [initStage, isLoading, allAlerts, addDebugInfo]);
-
-  // Show loading state during initialization
-  if (authLoading || profileLoading || initStage !== 'complete') {
-    const progress = initStage === 'auth' ? 25 : initStage === 'contexts' ? 50 : initStage === 'data' ? 75 : 100;
-    const message = lastError || debugInfo[debugInfo.length - 1] || 'Initializing...';
-    
-    return (
-      <SignalStreamErrorBoundary>
-        <SignalStreamLoading 
-          stage={initStage} 
-          message={message}
-          progress={progress}
-        />
-      </SignalStreamErrorBoundary>
-    );
-  }
+  } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
 
   // Helper functions for role checking
   const isAdmin = useMemo(() => {
-    const result = profile?.access_level === 'admin' || profile?.role === 'admin';
-    console.log('🔐 SignalStream - Admin check:', { profile, isAdmin: result });
-    return result;
+    return profile?.access_level === 'admin' || profile?.role === 'admin';
   }, [profile]);
-
   const isEducator = useMemo(() => {
-    const result = profile?.user_type === 'educator' || profile?.access_level === 'moderator' || profile?.role === 'educator';
-    console.log('🎓 SignalStream - Educator check:', { profile, isEducator: result });
-    return result;
+    return profile?.user_type === 'educator' || profile?.access_level === 'moderator' || profile?.role === 'educator';
   }, [profile]);
-
   const canCreateSignals = useMemo(() => {
     const canCreate = isAdmin || isEducator;
-    console.log('✏️ SignalStream - canCreateSignals check:', {
+    console.log('SignalStream - canCreateSignals check:', {
       profile,
       isAdmin,
       isEducator,
@@ -225,23 +60,14 @@ export default function SignalStream() {
     });
     return canCreate;
   }, [isAdmin, isEducator, profile]);
-
   const isCreator = useCallback((alertCreatorId: string) => {
-    const result = profile?.id === alertCreatorId;
-    console.log('👤 SignalStream - Creator check:', { profileId: profile?.id, alertCreatorId, isCreator: result });
-    return result;
+    return profile?.id === alertCreatorId;
   }, [profile?.id]);
 
   // Apply user filters directly to all alerts (filtering is done in SignalRealtimeContext)
   const alerts = useMemo(() => {
-    console.log('🔍 SignalStream - Processing alerts:', allAlerts?.length || 0);
-    
-    if (!allAlerts || allAlerts.length === 0) {
-      console.log('📭 SignalStream - No alerts to process');
-      return [];
-    }
-    
-    console.log('📊 SignalStream - All alerts with creators:', allAlerts.map(a => ({
+    console.log('SignalStream - Processing alerts:', allAlerts.length);
+    console.log('SignalStream - All alerts with creators:', allAlerts.map(a => ({
       id: a.id,
       asset: a.assetName,
       creator: a.creator?.display_name,
@@ -250,17 +76,12 @@ export default function SignalStream() {
       userType: a.creator?.user_type,
       accessLevel: a.creator?.access_level
     })));
-    
     let filteredAlerts = allAlerts;
 
     // Apply user filters
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      filteredAlerts = filteredAlerts.filter(alert => 
-        alert.assetName.toLowerCase().includes(searchLower) || 
-        alert.tradermadeSymbol.toLowerCase().includes(searchLower) || 
-        alert.creator?.display_name?.toLowerCase().includes(searchLower)
-      );
+      filteredAlerts = filteredAlerts.filter(alert => alert.assetName.toLowerCase().includes(searchLower) || alert.tradermadeSymbol.toLowerCase().includes(searchLower) || alert.creator?.display_name?.toLowerCase().includes(searchLower));
     }
     if (filters.status) {
       filteredAlerts = filteredAlerts.filter(alert => alert.status === filters.status);
@@ -271,11 +92,8 @@ export default function SignalStream() {
     if (filters.educator) {
       filteredAlerts = filteredAlerts.filter(alert => alert.creator?.id === filters.educator);
     }
-    
-    console.log('✅ SignalStream - Filtered alerts:', filteredAlerts.length);
     return filteredAlerts;
   }, [allAlerts, filters]);
-
   const {
     activeAlerts,
     closedAlerts,
@@ -287,7 +105,7 @@ export default function SignalStream() {
 
     // Get unique educators for filter dropdown
     const educatorsMap = new Map();
-    allAlerts?.forEach(alert => {
+    allAlerts.forEach(alert => {
       if (alert.creator && (alert.creator.user_type === 'educator' || alert.creator.access_level === 'admin' || alert.creator.role === 'admin')) {
         educatorsMap.set(alert.creator.id, {
           id: alert.creator.id,
@@ -312,11 +130,9 @@ export default function SignalStream() {
       signalCounts: counts
     };
   }, [alerts, allAlerts]);
-
   const sortedClosedAlerts = useMemo(() => {
     return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
   }, [closedAlerts]);
-
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
     activeAlerts.forEach(alert => {
@@ -324,19 +140,24 @@ export default function SignalStream() {
         symbolSet.add(alert.tradermadeSymbol.trim());
       }
     });
-    const symbolList = Array.from(symbolSet).sort();
+    const symbolList = Array.from(symbolSet).sort(); // Sort for consistent comparison
     return symbolList;
   }, [activeAlerts]);
+  const {
+    prices: livePricesData,
+    connectionStatus: priceConnectionStatus,
+    dataSource: priceSource,
+    subscribe,
+    unsubscribe,
+    getPrice
+  } = useWebSocketPrices();
 
   // Convert price data to simple number format for compatibility
   const livePrices = useMemo(() => {
     const result: Record<string, number> = {};
     Object.entries(livePricesData).forEach(([symbol, priceData]) => {
-      if (priceData && typeof priceData === 'object' && 'price' in priceData) {
-        const data = priceData as PriceData;
-        if (typeof data.price === 'number') {
-          result[symbol] = data.price;
-        }
+      if (priceData && typeof priceData.price === 'number') {
+        result[symbol] = priceData.price;
       }
     });
     return result;
@@ -347,62 +168,46 @@ export default function SignalStream() {
   const subscriptionActiveRef = useRef(false);
 
   useEffect(() => {
+    // Compute diffs to avoid full unsubscribe/subscribe churn
     const prev = symbolsRef.current;
     const added = symbols.filter(s => !prev.includes(s));
     const removed = prev.filter(s => !symbols.includes(s));
 
     if (added.length > 0) {
       console.log('🔄 SignalStream - Subscribing (diff):', added);
-      // Subscribe per-symbol to satisfy strict typings
-      added.forEach(sym => {
-        try {
-          subscribe(sym);
-        } catch (error) {
-          console.warn(`Failed to subscribe to ${sym}:`, error);
-        }
-      });
+      subscribe(added);
       subscriptionActiveRef.current = true;
     }
 
     if (removed.length > 0) {
       console.log('🔄 SignalStream - Unsubscribing (diff):', removed);
-      // Unsubscribe per-symbol to satisfy strict typings
-      removed.forEach(sym => {
-        try {
-          unsubscribe(sym);
-        } catch (error) {
-          console.warn(`Failed to unsubscribe from ${sym}:`, error);
-        }
-      });
+      unsubscribe(removed);
     }
 
+    // Update reference after applying diffs
     symbolsRef.current = [...symbols];
 
     return () => {
+      // On unmount, clean up any remaining subscriptions
       if (symbolsRef.current.length > 0) {
         console.log('🔄 SignalStream - Cleanup unsubscribe all:', symbolsRef.current);
-        symbolsRef.current.forEach(sym => {
-          try {
-            unsubscribe(sym);
-          } catch (error) {
-            console.warn(`Failed to cleanup unsubscribe ${sym}:`, error);
-          }
-        });
+        unsubscribe(symbolsRef.current);
         symbolsRef.current = [];
         subscriptionActiveRef.current = false;
       }
     };
   }, [symbols, subscribe, unsubscribe]);
-
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);
   const [justAddedIds, setJustAddedIds] = useState(new Set<string>());
   const prevAlertIdsRef = useRef(new Set<string>());
 
+  // Track newly added alerts to highlight them briefly
   useEffect(() => {
-    const currentIds = new Set<string>(alerts.map(alert => alert.id));
+    const currentIds = new Set(alerts.map(alert => alert.id));
     const previousIds = prevAlertIdsRef.current;
     
+    // Find newly added alerts
     const newlyAdded = new Set<string>();
     for (const id of currentIds) {
       if (!previousIds.has(id)) {
@@ -412,8 +217,9 @@ export default function SignalStream() {
     
     if (newlyAdded.size > 0) {
       setJustAddedIds(newlyAdded);
+      // Clear the highlight after 3 seconds
       const timeout = setTimeout(() => {
-        setJustAddedIds(new Set<string>());
+        setJustAddedIds(new Set());
       }, 3000);
       return () => clearTimeout(timeout);
     }
@@ -434,17 +240,12 @@ export default function SignalStream() {
       setReconnectIn(null);
     }
   }, [connectionStatus, nextRetryAt]);
-
   const getConnectionStatusBadge = () => {
-    // Enhanced connection status with health monitoring
-    const healthStatus = connectionHealth.status;
-    const isHealthy = healthStatus === 'healthy';
-    
     switch (connectionStatus) {
       case 'connected':
-        return <Badge className={`${isHealthy ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'}`}>
+        return <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
             <Wifi className="w-3 h-3 mr-1" />
-            {isHealthy ? 'Live Updates' : 'Degraded Connection'}
+            Live Updates
           </Badge>;
       case 'connecting':
         return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
@@ -461,12 +262,12 @@ export default function SignalStream() {
         return null;
     }
   };
-
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
     if (updateInProgress.has(alert.id)) return;
 
+    // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
-    console.log('🔄 SignalStream - handleStatusUpdate authorization check:', {
+    console.log('SignalStream - handleStatusUpdate authorization check:', {
       alertId: alert.id,
       alertCreatorId: alert.creator?.id,
       currentUserId: profile?.id,
@@ -474,9 +275,15 @@ export default function SignalStream() {
       isAdmin,
       canUpdate: alertIsCreator || isAdmin
     });
-    
     if (!alertIsCreator && !isAdmin) {
-      console.warn('❌ SignalStream - User not authorized to update this signal');
+      console.warn('SignalStream - User not authorized to update this signal:', {
+        userId: profile?.id,
+        creatorId: alert.creator?.id,
+        userRole: profile?.role,
+        userAccessLevel: profile?.access_level,
+        isCreator: alertIsCreator,
+        isAdmin
+      });
       if ((window as any).addNotification) {
         (window as any).addNotification({
           type: 'error',
@@ -486,16 +293,15 @@ export default function SignalStream() {
       }
       return;
     }
-    
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
-      console.log(`🔄 Updating alert ${alert.id} status to ${newStatus}`);
+      console.log(`Updating alert ${alert.id} status to ${newStatus}`);
       const updateDto: UpdateTradeAlertDto = {
         status: newStatus as 'pending' | 'active' | 'closed',
         closeReason: newStatus === 'closed' ? 'manual' : undefined
       };
       const result = await updateAlert(alert.id, updateDto);
-      console.log('✅ SignalStream - Update result:', result);
+      console.log('SignalStream - Update result:', result);
       if (result && newStatus === 'closed' && (window as any).addNotification) {
         (window as any).addNotification({
           type: 'trade_closed',
@@ -504,7 +310,7 @@ export default function SignalStream() {
         });
       }
     } catch (err) {
-      console.error("❌ Failed to update status:", err);
+      console.error("Failed to update status:", err);
       if ((window as any).addNotification) {
         (window as any).addNotification({
           type: 'error',
@@ -520,10 +326,10 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     if (updateInProgress.has(alert.id)) return;
 
+    // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
     if (!alertIsCreator && !isAdmin) {
       return;
@@ -576,10 +382,10 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
   const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
     if (updateInProgress.has(alert.id)) return;
 
+    // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
     if (!alertIsCreator && !isAdmin) {
       return;
@@ -624,10 +430,10 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
   const handleOrderActivation = useCallback(async (alert: any) => {
     if (updateInProgress.has(alert.id)) return;
 
+    // Check if user can edit this signal (creator or admin only)
     const alertIsCreator = isCreator(alert.creator?.id);
     if (!alertIsCreator && !isAdmin) {
       return;
@@ -658,30 +464,11 @@ export default function SignalStream() {
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
 
   return (
-    <SignalStreamErrorBoundary>
+    <StreamErrorBoundary>
       <div className="min-h-screen bg-background w-full">
         <NotificationSystem />
         
-        {/* Debug info in development */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="fixed bottom-4 right-4 z-50 max-w-xs">
-            <details className="bg-background border rounded p-2 text-xs">
-              <summary className="cursor-pointer font-semibold">Debug Info</summary>
-              <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
-                {debugInfo.map((info, i) => (
-                  <div key={i} className="text-muted-foreground">{info}</div>
-                ))}
-                <div className="mt-2 pt-2 border-t">
-                  <div>Health: {connectionHealth.status}</div>
-                  <div>Latency: {connectionHealth.latency}ms</div>
-                  <div>Failures: {connectionHealth.consecutiveFailures}</div>
-                </div>
-              </div>
-            </details>
-          </div>
-        )}
-        
-        {/* Enhanced Header with Connection Health */}
+        {/* Header - Mobile Optimized spacing */}
         <div className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="w-full px-2 sm:px-4 py-3 sm:py-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
@@ -704,17 +491,12 @@ export default function SignalStream() {
                 {lastUpdated && <span className="text-xs text-muted-foreground">
                     Last update: {lastUpdated.toLocaleTimeString()}
                   </span>}
-                {connectionHealth.latency && (
-                  <span className="text-xs text-muted-foreground">
-                    {connectionHealth.latency}ms
-                  </span>
-                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main Content with Enhanced Error Handling */}
+        {/* Main Content - Mobile Optimized grid layout with granular protection */}
         <div className="w-full px-2 sm:px-4 py-3 sm:py-6">
           <div className="max-w-none w-full">
             <div className="w-full">
@@ -725,7 +507,7 @@ export default function SignalStream() {
 
               <div className="mb-6" />
               
-              {/* Enhanced Filters */}
+              {/* Enhanced Filters - Protected from widget opening */}
               <div data-prevent-widget-open="true">
                 <SignalStreamFilters 
                   filters={filters} 
@@ -737,40 +519,7 @@ export default function SignalStream() {
                 />
               </div>
               
-              {/* Enhanced Error State with Connection Health */}
-              {(error || connectionHealth.consecutiveFailures > 3) && (
-                <div className="mb-6 p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-destructive mb-2">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="font-semibold">
-                      {connectionHealth.consecutiveFailures > 3 ? 'Network Issues Detected' : 'Connection Issue'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {error || `Connection has failed ${connectionHealth.consecutiveFailures} times. Signals may be delayed.`}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={() => refreshAlerts()} 
-                      size="sm" 
-                      variant="outline"
-                      className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                    >
-                      <RefreshCw className="w-3 h-3 mr-1" />
-                      Retry Connection
-                    </Button>
-                    <Button 
-                      onClick={() => connectionHealth.checkHealth()} 
-                      size="sm" 
-                      variant="outline"
-                    >
-                      Test Connection
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
-              {(isLoading || (connectionStatus !== 'connected' && allAlerts?.length === 0)) ? (
+              {(isLoading || (connectionStatus !== 'connected' && allAlerts.length === 0)) ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="rounded-lg border border-border bg-background p-4 animate-pulse">
@@ -880,13 +629,13 @@ export default function SignalStream() {
               )}
             </div>
 
-            {/* Economic Sidebar */}
+            {/* Economic Sidebar - Protected positioning */}
             <div data-prevent-widget-open="true">
               <EconomicSidebar />
             </div>
           </div>
         </div>
       </div>
-    </SignalStreamErrorBoundary>
+    </StreamErrorBoundary>
   );
 }

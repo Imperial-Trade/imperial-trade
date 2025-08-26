@@ -143,6 +143,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const openLightbox = useCallback((index: number) => {
+    console.log(`🔍 ImageGallery: Opening lightbox for image ${index + 1}`);
     setCurrentIndex(index);
     setLightboxOpen(true);
   }, []);
@@ -158,15 +159,31 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
     return (
       <div className="flex justify-start">
         <div 
-          className="relative overflow-hidden rounded-lg bg-muted group cursor-pointer transition-all duration-300 hover:shadow-lg w-32 h-24"
-          onClick={() => openLightbox(0)}
+          className="relative overflow-hidden rounded-lg bg-muted group cursor-pointer transition-all duration-300 hover:shadow-lg w-32 h-24 aspect-[4/3]"
+          onClick={() => {
+            console.log('🖼️ ImageGallery: Single image clicked, opening lightbox');
+            openLightbox(0);
+          }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openLightbox(0);
+            }
+          }}
         >
           <img
             src={images[0]}
             alt="Gallery image"
             className="w-full h-full object-contain"
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('🖼️ ImageGallery: Image element clicked');
+              openLightbox(0);
+            }}
           />
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
             <div className="text-white text-sm font-medium flex items-center gap-2">
               <ZoomIn className="w-4 h-4" />
               View
@@ -190,15 +207,31 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
       {images.map((image, index) => (
         <div 
           key={index} 
-          className="relative overflow-hidden rounded-lg bg-muted group cursor-pointer transition-all duration-300 hover:shadow-lg flex-shrink-0 w-32 h-24"
-          onClick={() => openLightbox(index)}
+          className="relative overflow-hidden rounded-lg bg-muted group cursor-pointer transition-all duration-300 hover:shadow-lg flex-shrink-0 w-32 h-24 aspect-[4/3]"
+          onClick={() => {
+            console.log(`🖼️ ImageGallery: Multi image ${index + 1} clicked, opening lightbox`);
+            openLightbox(index);
+          }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              openLightbox(index);
+            }
+          }}
         >
           <img
             src={image}
             alt={`Gallery image ${index + 1}`}
             className="w-full h-full object-contain"
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log(`🖼️ ImageGallery: Image element ${index + 1} clicked`);
+              openLightbox(index);
+            }}
           />
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
             <div className="text-white text-sm font-medium flex items-center gap-2">
               <ZoomIn className="w-4 h-4" />
               View

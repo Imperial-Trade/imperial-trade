@@ -67,6 +67,25 @@ export default function TradingJournal() {
     setIsLoading(false);
   }, []);
 
+  // Get current user state
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+  }, []);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    if (type === 'success') {
+      toast.success(message);
+    } else {
+      toast.error(message);
+    }
+  }, []);
+
   const handleDelete = useCallback(async (entryId: string) => {
     try {
       await TradeJournalEntry.delete(entryId);
@@ -76,127 +95,117 @@ export default function TradingJournal() {
     }
   }, [loadEntries]);
 
-  const handleSubmit = useCallback(async (data: {
-    asset_ticker: string;
-    pnl: string;
-    notes: string;
-    screenshotFile?: File;
-  }) => {
-    setIsSubmitting(true);
+  const handleSubmit = useCallback(async (entryData: any) => {
+    if (!user) return;
     
-    // Core educational data - this will always be saved
-    const pnlValue = parseFloat(data.pnl);
-    const educationalData = {
-      asset_ticker: data.asset_ticker,
-      pnl: pnlValue,
-      notes: data.notes,
-      trade_date: new Date().toISOString(),
-      screenshot_url: "",
-      ai_positive_feedback: ""
-    };
-
+    setIsSubmitting(true);
+    console.log('📝 Starting journal entry submission:', entryData);
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Please log in to save your educational entry");
-        return;
-      }
-
-      console.log("TradingJournal.handleSubmit - User authenticated:", user.id);
-
-      // Optional: Handle screenshot upload with compression
-      if (data.screenshotFile) {
-        try {
-          const validationError = validateImageFile(data.screenshotFile);
-          if (validationError) {
-            toast.error(validationError);
-            // Continue without screenshot - don't block the educational entry save
-          } else {
-            toast.info("Compressing educational image...");
-            const compressedFile = await compressImage(data.screenshotFile, {
-              maxWidth: 1920,
-              maxHeight: 1080,
-              quality: 0.9,
-              maxFileSize: 15 * 1024 * 1024 // 15MB - matching JournalFormCard
-            });
-            
-            toast.info("Uploading educational screenshot...");
-            const { file_url } = await UploadFile({ file: compressedFile });
-            educationalData.screenshot_url = file_url;
-            toast.success("Educational screenshot uploaded successfully");
-          }
-        } catch (uploadError) {
-          console.error("Educational screenshot upload failed:", uploadError);
-          toast.error("Educational screenshot upload failed, but entry will still be saved");
-          // Continue without screenshot - don't block the educational entry save
-        }
-      }
-
-      // Save the educational entry first (this should always work)
-      console.log("TradingJournal.handleSubmit - Creating journal entry with data:", educationalData);
-      const createdEntry = await TradeJournalEntry.create(educationalData, user.id);
-      console.log("TradingJournal.handleSubmit - Created journal entry:", createdEntry);
-      toast.success("Educational entry saved successfully!");
-
-      // Enhanced educational coaching analysis using coach-agent
-      try {
-        toast.info("Getting personalized educational coaching feedback...");
+      let imageUrls: string[] = [];
+      
+      // Handle image uploads if screenshots exist
+      if (entryData.screenshotFiles && entryData.screenshotFiles.length > 0) {
+        console.log('📤 Uploading screenshots:', entryData.screenshotFiles.length);
         
-        console.log("TradingJournal.handleSubmit - Invoking coach-agent with payload:", {
-          event_type: "LOG_TRADE",
-          user_id: user.id,
-          journal_entry_id: createdEntry.id
-        });
-
-        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('coach-agent', {
-          body: {
-            event_type: "LOG_TRADE",
-            user_id: user.id,
-            journal_entry_id: createdEntry.id
-          }
-        });
-
-        console.log("TradingJournal.handleSubmit - Coach-agent response:", coachResponse);
-        console.log("TradingJournal.handleSubmit - Coach-agent error:", coachError);
-
-        if (coachError) {
-          console.error("TradingJournal.handleSubmit - Coach agent error:", coachError);
-          toast.error("Educational coaching failed, but entry was saved");
-        } else if (coachResponse && coachResponse.reply) {
-          console.log("TradingJournal.handleSubmit - Coach feedback generated successfully");
+        const uploadPromises = entryData.screenshotFiles.map(async (file: File) => {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user.id}/${Date.now()}-${Math.random()}.${fileExt}`;
           
-          if (coachResponse.warning) {
-            toast.warning(coachResponse.warning);
-          } else {
-            toast.success("Personalized educational coaching feedback generated!");
+          // Compress image before upload
+          const compressedFile = await compressImage(file, {
+            maxWidth: 1920,
+            maxHeight: 1080,
+            quality: 0.8
+          });
+          
+          const { error: uploadError } = await supabase.storage
+            .from('journal-charts')
+            .upload(fileName, compressedFile);
+          
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            throw new Error(`Failed to upload image: ${uploadError.message}`);
           }
-        } else {
-          console.warn("TradingJournal.handleSubmit - Coach response does not contain expected reply field:", coachResponse);
-          toast.warning("Coaching feedback format unexpected, but entry was saved");
-        }
-      } catch (aiError) {
-        console.error("TradingJournal.handleSubmit - Educational coaching analysis failed:", aiError);
-        console.error("TradingJournal.handleSubmit - AI error details:", {
-          name: aiError.name,
-          message: aiError.message,
-          stack: aiError.stack
+          
+          return fileName;
         });
-        toast.error("Educational coaching failed, but entry was saved");
-        // Continue - don't block since the educational entry is already saved
+        
+        imageUrls = await Promise.all(uploadPromises);
+        console.log('✅ Images uploaded successfully:', imageUrls);
       }
-
-      // Reload entries to show the updated data (including AI feedback if successful)
-      console.log("TradingJournal.handleSubmit - Reloading entries...");
-      loadEntries();
-
+      
+      // Create journal entry with metadata
+      const entryToInsert = {
+        user_id: user?.id || '',
+        asset_ticker: entryData.asset_ticker,
+        pnl: parseFloat(entryData.pnl),
+        notes: entryData.notes,
+        trade_date: new Date().toISOString(),
+        screenshot_urls: imageUrls.length > 0 ? imageUrls : null,
+        created_at: new Date().toISOString(),
+      };
+      
+      console.log('💾 Inserting journal entry:', entryToInsert);
+      
+      // Optimistically add entry to local state with uploaded images
+      const optimisticEntry = {
+        ...entryToInsert,
+        id: `temp-${Date.now()}`, // Temporary ID
+        ai_positive_feedback: null,
+        ai_improvement_feedback: null
+      };
+      
+      console.log('⚡ Adding optimistic entry to state:', optimisticEntry);
+      setEntries(prev => [optimisticEntry, ...prev]);
+      
+      const { data: newEntry, error: insertError } = await supabase
+        .from('trade_journal_entries')
+        .insert(entryToInsert)
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        // Remove optimistic entry on error
+        setEntries(prev => prev.filter(entry => entry.id !== optimisticEntry.id));
+        throw new Error(`Failed to save journal entry: ${insertError.message}`);
+      }
+      
+      console.log('✅ Journal entry created:', newEntry);
+      
+      // Replace optimistic entry with real entry
+      setEntries(prev => prev.map(entry => 
+        entry.id === optimisticEntry.id ? newEntry : entry
+      ));
+      
+      // Trigger AI coaching analysis
+      if (newEntry.id) {
+        console.log('🤖 Triggering AI coaching analysis for entry:', newEntry.id);
+        
+        const { error: coachingError } = await supabase.functions.invoke('ai-coaching-analysis', {
+          body: { 
+            entryId: newEntry.id, 
+            userId: user?.id || '',
+            entryData: newEntry
+          }
+        });
+        
+        if (coachingError) {
+          console.error('AI coaching analysis error:', coachingError);
+          // Don't throw error here as the entry was saved successfully
+        } else {
+          console.log('✅ AI coaching analysis triggered successfully');
+        }
+      }
+      
+      toast.success('Journal entry saved successfully!');
+      
     } catch (error) {
-      console.error("TradingJournal.handleSubmit - Error submitting educational journal entry:", error);
-      console.error("TradingJournal.handleSubmit - Error details:", {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-      toast.error("Failed to save educational entry. Please try again.");
+      console.error('Error saving journal entry:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to save journal entry'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -211,6 +220,59 @@ export default function TradingJournal() {
       loadEntries();
     }
   }, [userProfile, loadEntries]);
+
+  // Set up realtime subscription for trade journal entries
+  useEffect(() => {
+    if (!userProfile) return;
+
+    console.log('🔄 Setting up realtime subscription for trade_journal_entries');
+    
+    const channel = supabase
+      .channel('trade-journal-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'trade_journal_entries',
+          filter: `user_id=eq.${userProfile.id}`
+        },
+        (payload) => {
+          console.log('🔔 Realtime update received:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newEntry = payload.new as any;
+            console.log('➕ New entry via realtime:', newEntry);
+            setEntries(prev => {
+              // Check if entry already exists (avoid duplicates from optimistic updates)
+              const exists = prev.some(entry => entry.id === newEntry.id);
+              if (exists) {
+                return prev.map(entry => entry.id === newEntry.id ? newEntry : entry);
+              }
+              return [newEntry, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedEntry = payload.new as any;
+            console.log('📝 Updated entry via realtime:', updatedEntry);
+            setEntries(prev => prev.map(entry => 
+              entry.id === updatedEntry.id ? updatedEntry : entry
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedEntry = payload.old as any;
+            console.log('🗑️ Deleted entry via realtime:', deletedEntry);
+            setEntries(prev => prev.filter(entry => entry.id !== deletedEntry.id));
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('🔌 Realtime subscription status:', status);
+      });
+
+    return () => {
+      console.log('🔌 Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [userProfile]);
 
   const LogTab = useMemo(() => 
     <motion.div initial={{

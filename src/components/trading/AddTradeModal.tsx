@@ -96,15 +96,34 @@ const AddTradeModal = memo<AddTradeModalProps>(({
     clearFiles
   } = useImageUpload();
 
+  const [saveButtonText, setSaveButtonText] = useState("Save Trade");
+
   const handleSave = useCallback(async (formData: TradeFormData) => {
-    const dateToUse = tradeDate ? tradeDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-    const screenshotFiles = imageFiles.map(img => img.file);
-    await onSave({
-      ...formData,
-      date: dateToUse,
-      screenshotFiles
-    });
-    handleClose();
+    console.log('🔄 AddTradeModal: Starting save process');
+    setSaveButtonText("Saving...");
+
+    try {
+      const dateToUse = tradeDate ? tradeDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      const screenshotFiles = imageFiles.map(img => img.file);
+      
+      const tradeData = {
+        ...formData,
+        date: dateToUse,
+        screenshotFiles
+      };
+
+      console.log('📤 AddTradeModal: Calling onSave with data:', tradeData);
+      await onSave(tradeData);
+      console.log('✅ AddTradeModal: Save completed successfully');
+      
+      // Only close modal on successful save
+      handleClose();
+    } catch (error) {
+      console.error('❌ AddTradeModal: Save failed:', error);
+      setSaveButtonText("Save Trade");
+      // Don't close modal on error, let user retry
+      throw error; // Re-throw to let calling component handle the error
+    }
   }, [onSave, tradeDate, imageFiles]);
 
   const {
@@ -124,8 +143,10 @@ const AddTradeModal = memo<AddTradeModalProps>(({
   } = useTradeForm(handleSave);
 
   const handleClose = useCallback(() => {
+    console.log('🚪 AddTradeModal: Closing modal');
     resetForm();
     clearFiles();
+    setSaveButtonText("Save Trade");
     onClose();
   }, [resetForm, clearFiles, onClose]);
 
@@ -333,7 +354,7 @@ const AddTradeModal = memo<AddTradeModalProps>(({
               disabled={!isValid || isSubmitting || isUploading}
             >
               <Zap className="h-4 w-4 mr-2" />
-              {isSubmitting || isUploading ? "Saving..." : "Save Trade"}
+              {isSubmitting || isUploading ? "Saving..." : saveButtonText}
             </Button>
           </div>
         </div>

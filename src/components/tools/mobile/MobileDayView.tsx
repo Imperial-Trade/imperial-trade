@@ -19,13 +19,13 @@ import {
   EyeOff
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { TradeJournalEntry } from '@/api/client/operations/TradeJournalEntry';
+import { TradeJournalEntry } from '@/contexts/TradeJournalContext';
 import { ImageGalleryWithUrls } from '@/components/tools/ImageGalleryWithUrls';
 import { formatYmdLocal } from '@/lib/date';
 
 interface MobileDayViewProps {
   date: Date;
-  entries: any[];
+  entries: TradeJournalEntry[];
   onBack: () => void;
   onDelete: (entryId: string) => void;
 }
@@ -290,14 +290,14 @@ export default function MobileDayView({
                         )}
 
                         {/* Your Trading Coach */}
-                        {(trade.ai_positive_feedback || (trade as any).coach_status === 'pending') && (
+                        {(trade.ai_positive_feedback || trade.coach_status === 'pending') && (
                           <div>
                             <div className="flex items-center gap-2 mb-2">
                               <Brain className="w-4 h-4 text-primary" />
                               <span className="text-sm font-medium">Your Trading Coach</span>
                             </div>
                             <div className="text-sm text-muted-foreground bg-primary/5 rounded-lg p-3 min-h-[64px]">
-                              {(trade as any).coach_status === 'pending' 
+                              {trade.coach_status === 'pending' 
                                 ? '👉 "Your coach is looking over your journal…"'
                                 : trade.ai_positive_feedback
                               }
@@ -306,9 +306,9 @@ export default function MobileDayView({
                         )}
 
                         {/* Screenshot */}
-                        {(trade as any).screenshot_urls && (trade as any).screenshot_urls.length > 0 ? (
+                        {trade.screenshot_urls && trade.screenshot_urls.length > 0 ? (
                           <ImageGalleryWithUrls 
-                            paths={(trade as any).screenshot_urls}
+                            paths={trade.screenshot_urls}
                             alt="Trade charts"
                           />
                         ) : trade.screenshot_url && (

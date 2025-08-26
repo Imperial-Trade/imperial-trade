@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { Trash2, Brain, MessageSquare, Trophy, Target } from "lucide-react";
-import { TradeJournalEntry } from "@/api/entities";
+import { TradeJournalEntry } from "@/contexts/TradeJournalContext";
 import { ImageGalleryWithUrls } from "@/components/tools/ImageGalleryWithUrls";
 import { useSignedUrls } from '@/hooks/useSignedUrls';
 
@@ -106,7 +106,7 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                   </div>
                 )}
 
-                {(entry.ai_positive_feedback || (entry as any).coach_status === 'pending') && (
+                {(entry.ai_positive_feedback || entry.coach_status === 'pending') && (
                   <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-4 border border-primary/20 mb-3 min-h-[64px]">
                     <div className="flex items-start gap-3">
                       <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
@@ -118,7 +118,7 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                           <span className="invisible text-xs"></span>
                         </div>
                         <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                          {(entry as any).coach_status === 'pending' 
+                          {entry.coach_status === 'pending' 
                             ? '👉 "Your coach is looking over your journal…"'
                             : entry.ai_positive_feedback
                           }
@@ -129,8 +129,8 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                 )}
 
                 {/* Screenshots Display */}
-                {(entry as any).screenshot_urls && (entry as any).screenshot_urls.length > 0 ? (
-                  <ImageGalleryWithUrls paths={(entry as any).screenshot_urls} />
+                {entry.screenshot_urls && entry.screenshot_urls.length > 0 ? (
+                  <ImageGalleryWithUrls paths={entry.screenshot_urls} />
                 ) : entry.screenshot_url ? (
                   <ImageGalleryWithUrls paths={[entry.screenshot_url]} />
                 ) : null}

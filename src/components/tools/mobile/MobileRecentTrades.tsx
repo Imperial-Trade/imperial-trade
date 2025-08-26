@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { Trash2, Brain, MessageSquare, Target, ChevronDown, ChevronUp, Eye } from 'lucide-react';
-import { TradeJournalEntry } from '@/api/entities';
+import { TradeJournalEntry } from '@/contexts/TradeJournalContext';
 import { ImageGalleryWithUrls } from '@/components/tools/ImageGalleryWithUrls';
 import { parseYmdToLocalDate } from '@/lib/date';
 
@@ -117,7 +117,7 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
                     className="space-y-3"
                   >
                     {/* Your Trading Coach */}
-                    {(entry.ai_positive_feedback || (entry as any).coach_status === 'pending') && (
+                    {(entry.ai_positive_feedback || entry.coach_status === 'pending') && (
                       <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-3 border border-primary/20 min-h-[64px]">
                         <div className="flex items-start gap-2">
                           <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
@@ -129,7 +129,7 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
                               <span className="invisible text-xs h-4 px-1"></span>
                             </div>
                             <div className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
-                              {(entry as any).coach_status === 'pending' 
+                              {entry.coach_status === 'pending' 
                                 ? '👉 "Your coach is looking over your journal…"'
                                 : entry.ai_positive_feedback
                               }
@@ -140,9 +140,9 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
                     )}
 
                     {/* Screenshot */}
-                    {(entry as any).screenshot_urls && (entry as any).screenshot_urls.length > 0 ? (
+                    {entry.screenshot_urls && entry.screenshot_urls.length > 0 ? (
                       <ImageGalleryWithUrls 
-                        paths={(entry as any).screenshot_urls}
+                        paths={entry.screenshot_urls}
                         alt="Trade charts"
                       />
                     ) : entry.screenshot_url && (

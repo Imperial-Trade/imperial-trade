@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -18,6 +19,7 @@ import {
   Wrench,
   TrendingUp,
   Bot,
+  Activity,
 } from "lucide-react";
 
 interface SidebarNavigationProps {
@@ -47,6 +49,7 @@ export function SidebarNavigation({ isCollapsed }: SidebarNavigationProps) {
     { to: "/dashboard/advanced-tools", icon: Wrench, label: "Advanced Tools" },
     { to: "/dashboard/my-progress", icon: TrendingUp, label: "My Progress" },
     { to: "/dashboard/athena", icon: Bot, label: "Athena AI" },
+    { to: "/dashboard/signal-diagnostics", icon: Activity, label: "Signal Diagnostics" },
   ];
 
   const handleNavigationClick = (e: React.MouseEvent) => {

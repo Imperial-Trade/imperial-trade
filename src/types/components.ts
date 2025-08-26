@@ -1,4 +1,3 @@
-
 // Component-specific type definitions for better UI type safety
 import { ReactNode } from 'react';
 import { LucideIcon } from 'lucide-react';
@@ -266,3 +265,6 @@ export interface FormRef extends ComponentRef {
   getValues: () => Record<string, unknown>;
   setValues: (values: Record<string, unknown>) => void;
 }
+
+// Re-export canonical TradeAlertData type for convenience in tests and components
+export type { TradeAlertData } from './TradeAlertData';

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { render } from '@testing-library/react';
-import { vi } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { TradeAlertCard } from '@/components/signals/TradeAlertCard';
 import { TradeAlertData } from '@/types/TradeAlertData';
 

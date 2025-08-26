@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
@@ -24,6 +25,36 @@ type StatusFilter = 'all' | 'pending' | 'active' | 'closed' | 'partially_profite
 type TypeFilter = 'all' | 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
 type SortBy = 'newest' | 'oldest' | 'asset';
 
+// Normalize incoming items to canonical TradeAlertData shape
+const toCanonical = (a: any): TradeAlertData => ({
+  id: a?.id,
+  user_id: a?.user_id ?? a?.userId ?? '',
+  asset_name: a?.asset_name ?? a?.assetName ?? '',
+  tradermade_symbol: a?.tradermade_symbol ?? a?.tradermadeSymbol ?? '',
+  trade_type: a?.trade_type ?? a?.tradeType,
+  entry_price: a?.entry_price ?? a?.entryPrice,
+  stop_loss: a?.stop_loss ?? a?.stopLoss,
+  status: a?.status,
+  tp1: a?.tp1 ?? a?.tp_1 ?? a?.tpOne,
+  tp2: a?.tp2 ?? a?.tp_2 ?? a?.tpTwo,
+  tp3: a?.tp3 ?? a?.tp_3 ?? a?.tpThree,
+  tp4: a?.tp4 ?? a?.tp_4 ?? a?.tpFour,
+  tp5: a?.tp5 ?? a?.tp_5 ?? a?.tpFive,
+  tp_hits: a?.tp_hits ?? a?.tpHits ?? [],
+  notes: a?.notes,
+  close_reason: a?.close_reason ?? a?.closeReason,
+  created_date: a?.created_date ?? a?.createdAt,
+  updated_date: a?.updated_date ?? a?.updatedAt,
+  creator: a?.creator
+    ? {
+        id: a.creator.id,
+        display_name: a.creator.display_name ?? a.creator.displayName,
+        role: a.creator.role,
+        avatar_url: a.creator.avatar_url ?? a.creator.avatarUrl ?? null,
+      }
+    : undefined,
+});
+
 const SignalStream: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,9 +74,11 @@ const SignalStream: React.FC = () => {
     lastUpdated
   } = useSignalRealtime(user?.id || '', showAllSignals);
 
+  const canonicalAlerts = useMemo(() => realtimeAlerts.map(toCanonical), [realtimeAlerts]);
+
   // Filter alerts based on search term, status, and trade type
   const filteredAlerts = useMemo(() => {
-    let filtered = realtimeAlerts;
+    let filtered = canonicalAlerts;
 
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -65,7 +98,7 @@ const SignalStream: React.FC = () => {
     }
 
     return filtered;
-  }, [realtimeAlerts, searchTerm, statusFilter, typeFilter]);
+  }, [canonicalAlerts, searchTerm, statusFilter, typeFilter]);
 
   // Sort alerts based on selected criteria
   const sortedAlerts = useMemo(() => {
@@ -209,10 +242,10 @@ const SignalStream: React.FC = () => {
     }));
   }, [filteredAndSortedAlerts, user?.id]);
 
-  const totalSignals = realtimeAlerts.length;
-  const activeSignals = realtimeAlerts.filter(alert => alert.status === 'active').length;
-  const pendingSignals = realtimeAlerts.filter(alert => alert.status === 'pending').length;
-  const closedSignals = realtimeAlerts.filter(alert => alert.status === 'closed').length;
+  const totalSignals = canonicalAlerts.length;
+  const activeSignals = canonicalAlerts.filter(alert => alert.status === 'active').length;
+  const pendingSignals = canonicalAlerts.filter(alert => alert.status === 'pending').length;
+  const closedSignals = canonicalAlerts.filter(alert => alert.status === 'closed').length;
 
   if (authLoading || signalsLoading) {
     return (

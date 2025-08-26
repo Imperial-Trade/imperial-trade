@@ -5,12 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { TradeStatusBadge } from './TradeStatusBadge';
+import TradeStatusBadge from './TradeStatusBadge';
 import { LivePriceWidget } from './LivePriceWidget';
-import { TradingCalculator } from './TradingCalculator';
-import { QuickCopyPanel } from './QuickCopyPanel';
+import TradingCalculator from './TradingCalculator';
+import QuickCopyPanel from './QuickCopyPanel';
 import { TrendingUp, TrendingDown, Clock, AlertTriangle } from 'lucide-react';
-import { TradeAlertCardProps } from '@/types/components';
+import { TradeAlertCardProps, LivePriceWidgetProps } from '@/types/components';
 import { formatPrice } from '@/utils/priceUtils';
 import { cn } from '@/lib/utils';
 
@@ -76,6 +76,9 @@ export const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
     return connectionStatus === 'disconnected' || connectionStatus === 'error';
   };
 
+  // Cast LivePriceWidget typing if its file lacks exported props typing
+  const LivePriceWidgetTyped = LivePriceWidget as unknown as React.FC<LivePriceWidgetProps>;
+
   return (
     <Card className={cn(
       `transition-all duration-200 hover:shadow-lg ${getBorderColor()}`,
@@ -112,7 +115,7 @@ export const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
 
           <div className="flex items-center gap-2">
             {shouldShowConnectionWarning() && (
-              <AlertTriangle className="h-4 w-4 text-amber-500" title="Connection issues" />
+              <AlertTriangle className="h-4 w-4 text-amber-500" aria-label="Connection issues" />
             )}
             <TradeStatusBadge 
               alert={alert} 
@@ -207,7 +210,7 @@ export const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
         {(alert.status === 'active' || alert.status === 'partially_profited') && (
           <>
             <Separator />
-            <LivePriceWidget
+            <LivePriceWidgetTyped
               alert={alert}
               onTakeProfitHit={onTakeProfitHit}
               onStopLossHit={onStopLossHit}

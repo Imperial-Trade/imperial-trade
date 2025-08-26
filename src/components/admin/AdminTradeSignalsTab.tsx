@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,36 @@ import { TrendingUp, Search, Filter, RefreshCw, AlertCircle } from 'lucide-react
 import { toast } from 'sonner';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { TradeAlertData } from '@/types/TradeAlertData';
+
+// Normalize any incoming alert to the canonical TradeAlertData shape
+const toCanonical = (a: any): TradeAlertData => ({
+  id: a?.id,
+  user_id: a?.user_id ?? a?.userId ?? '',
+  asset_name: a?.asset_name ?? a?.assetName ?? '',
+  tradermade_symbol: a?.tradermade_symbol ?? a?.tradermadeSymbol ?? '',
+  trade_type: a?.trade_type ?? a?.tradeType,
+  entry_price: a?.entry_price ?? a?.entryPrice,
+  stop_loss: a?.stop_loss ?? a?.stopLoss,
+  status: a?.status,
+  tp1: a?.tp1 ?? a?.tp_1 ?? a?.tpOne,
+  tp2: a?.tp2 ?? a?.tp_2 ?? a?.tpTwo,
+  tp3: a?.tp3 ?? a?.tp_3 ?? a?.tpThree,
+  tp4: a?.tp4 ?? a?.tp_4 ?? a?.tpFour,
+  tp5: a?.tp5 ?? a?.tp_5 ?? a?.tpFive,
+  tp_hits: a?.tp_hits ?? a?.tpHits ?? [],
+  notes: a?.notes,
+  close_reason: a?.close_reason ?? a?.closeReason,
+  created_date: a?.created_date ?? a?.createdAt,
+  updated_date: a?.updated_date ?? a?.updatedAt,
+  creator: a?.creator
+    ? {
+        id: a.creator.id,
+        display_name: a.creator.display_name ?? a.creator.displayName,
+        role: a.creator.role,
+        avatar_url: a.creator.avatar_url ?? a.creator.avatarUrl ?? null,
+      }
+    : undefined,
+});
 
 const AdminTradeSignalsTab: React.FC = () => {
   const { user } = useAuth();
@@ -34,9 +65,11 @@ const AdminTradeSignalsTab: React.FC = () => {
     lastUpdated
   } = useSignalRealtime(user?.id || '', true); // Show all signals for admin
 
+  const canonicalAlerts = useMemo(() => allSignals.map(toCanonical), [allSignals]);
+
   // Filtering logic
   const filteredAlerts = useMemo(() => {
-    let filtered = [...allSignals];
+    let filtered = [...canonicalAlerts];
 
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -57,7 +90,7 @@ const AdminTradeSignalsTab: React.FC = () => {
     }
 
     return filtered;
-  }, [allSignals, searchTerm, statusFilter, creatorFilter]);
+  }, [canonicalAlerts, searchTerm, statusFilter, creatorFilter]);
 
   // Sorting logic
   const sortedAlerts = useMemo(() => {
@@ -81,7 +114,7 @@ const AdminTradeSignalsTab: React.FC = () => {
 
   // Filter and sort alerts
   const filteredAndSortedAlerts = useMemo(() => {
-    let filtered = allSignals;
+    let filtered = [...canonicalAlerts];
 
     // Search filter
     if (searchTerm) {
@@ -119,7 +152,7 @@ const AdminTradeSignalsTab: React.FC = () => {
     });
 
     return filtered;
-  }, [allSignals, searchTerm, statusFilter, creatorFilter, sortBy]);
+  }, [canonicalAlerts, searchTerm, statusFilter, creatorFilter, sortBy]);
 
   // Get unique symbols for price feed
   const symbols = useMemo(() => {
@@ -139,18 +172,24 @@ const AdminTradeSignalsTab: React.FC = () => {
 
   // Get unique creators for filter dropdown
   const uniqueCreators = useMemo(() => {
-    const creators = allSignals
+    const creators = canonicalAlerts
       .map(alert => alert.creator)
-      .filter(creator => creator)
+      .filter((creator): creator is NonNullable<TradeAlertData['creator']> => Boolean(creator))
       .reduce((acc, creator) => {
-        if (creator && !acc.find(c => c.id === creator.id)) {
-          acc.push(creator);
+        const normalized = {
+          id: creator.id,
+          display_name: creator.display_name,
+          role: creator.role,
+          avatar_url: creator.avatar_url ?? '',
+        };
+        if (!acc.find(c => c.id === normalized.id)) {
+          acc.push(normalized);
         }
         return acc;
-      }, [] as NonNullable<TradeAlertData['creator']>[]);
+      }, [] as Array<{ id: string; display_name: string; role: string; avatar_url: string }>);
     
     return creators;
-  }, [allSignals]);
+  }, [canonicalAlerts]);
 
   // Event handlers
   const handleStatusUpdate = useCallback(async (alert: TradeAlertData, newStatus: string) => {
@@ -178,7 +217,7 @@ const AdminTradeSignalsTab: React.FC = () => {
       const dto: UpdateTradeAlertDto = {
         tpHits: newTPHits,
         status: shouldAutoClose ? 'closed' : 'partially_profited',
-        closeReason: shouldAutoClose && closeReason ? closeReason as any : undefined
+        closeReason: shouldAutoClose && closeReason ? (closeReason as any) : undefined
       };
 
       await updateAlert(alert.id, dto);
@@ -198,7 +237,7 @@ const AdminTradeSignalsTab: React.FC = () => {
     try {
       const dto: UpdateTradeAlertDto = {
         status: 'closed',
-        closeReason: closeReason as any
+        closeReason: (closeReason as any)
       };
 
       await updateAlert(alert.id, dto);
@@ -235,11 +274,11 @@ const AdminTradeSignalsTab: React.FC = () => {
     }));
   }, [filteredAndSortedAlerts, user?.id]);
 
-  const totalSignals = allSignals.length;
-  const pendingSignals = allSignals.filter(alert => alert.status === 'pending').length;
-  const activeSignals = allSignals.filter(alert => alert.status === 'active').length;
-  const closedSignals = allSignals.filter(alert => alert.status === 'closed').length;
-  const partialSignals = allSignals.filter(alert => alert.status === 'partially_profited').length;
+  const totalSignals = canonicalAlerts.length;
+  const pendingSignals = canonicalAlerts.filter(alert => alert.status === 'pending').length;
+  const activeSignals = canonicalAlerts.filter(alert => alert.status === 'active').length;
+  const closedSignals = canonicalAlerts.filter(alert => alert.status === 'closed').length;
+  const partialSignals = canonicalAlerts.filter(alert => alert.status === 'partially_profited').length;
 
   if (isLoading) {
     return (

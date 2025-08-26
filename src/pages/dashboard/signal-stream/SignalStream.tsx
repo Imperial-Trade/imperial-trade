@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
+import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus, RefreshCw } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
@@ -14,6 +14,11 @@ import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import { SignalStreamErrorBoundary } from '@/components/signals/SignalStreamErrorBoundary';
 import { SignalStreamLoading } from '@/components/signals/SignalStreamLoading';
+
+interface PriceData {
+  price: number;
+  timestamp?: number;
+}
 
 export default function SignalStream() {
   console.log('🚀 SignalStream - Component starting to render');
@@ -290,8 +295,11 @@ export default function SignalStream() {
   const livePrices = useMemo(() => {
     const result: Record<string, number> = {};
     Object.entries(livePricesData).forEach(([symbol, priceData]) => {
-      if (priceData && typeof priceData.price === 'number') {
-        result[symbol] = priceData.price;
+      if (priceData && typeof priceData === 'object' && 'price' in priceData) {
+        const data = priceData as PriceData;
+        if (typeof data.price === 'number') {
+          result[symbol] = data.price;
+        }
       }
     });
     return result;

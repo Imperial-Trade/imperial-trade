@@ -29,8 +29,7 @@ export class SignalStreamErrorBoundary extends Component<Props, State> {
     console.error('SignalStreamErrorBoundary - Full error details:', {
       error: error.message,
       stack: error.stack,
-      componentStack: errorInfo.componentStack,
-      errorBoundary: errorInfo.errorBoundary
+      componentStack: errorInfo.componentStack
     });
     
     this.setState({

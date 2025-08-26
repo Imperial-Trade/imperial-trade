@@ -297,7 +297,7 @@ export default function SignalStream() {
     try {
       console.log(`Updating alert ${alert.id} status to ${newStatus}`);
       const updateDto: UpdateTradeAlertDto = {
-        status: newStatus as 'pending' | 'active' | 'closed',
+        status: newStatus as 'pending' | 'active' | 'closed' | 'partially_profited',
         closeReason: newStatus === 'closed' ? 'manual' : undefined
       };
       const result = await updateAlert(alert.id, updateDto);
@@ -337,7 +337,7 @@ export default function SignalStream() {
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
       console.log(`Updating TP hits for alert ${alert.id}:`, newTPHits);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined = undefined;
+      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | undefined = undefined;
       if (shouldAutoClose && closeReason) {
         switch (closeReason) {
           case 'manual':
@@ -347,6 +347,7 @@ export default function SignalStream() {
           case 'tp3':
           case 'tp4':
           case 'tp5':
+          case 'all_tps_hit':
           case 'reversal_after_tp':
             typedCloseReason = closeReason;
             break;
@@ -393,7 +394,7 @@ export default function SignalStream() {
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
       console.log(`Stop loss hit for alert ${alert.id}, reason: ${closeReason}`);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' = 'stop_loss';
+      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' = 'stop_loss';
       switch (closeReason) {
         case 'manual':
         case 'stop_loss':
@@ -402,6 +403,7 @@ export default function SignalStream() {
         case 'tp3':
         case 'tp4':
         case 'tp5':
+        case 'all_tps_hit':
         case 'reversal_after_tp':
           typedCloseReason = closeReason;
           break;

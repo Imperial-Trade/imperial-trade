@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -95,21 +94,25 @@ export function SignalEngineDiagnostics() {
     let signalsClosed = 0;
     let ordersActivated = 0;
 
-    // Fix signals with all TPs hit
+    // Fix signals with all TPs hit - determine the highest TP hit for close_reason
     for (const signal of diagnosticData.problem_all_tps_hit) {
       try {
+        // Find the highest TP that was hit
+        const highestTp = Math.max(...signal.tp_hits);
+        const closeReason = `tp${highestTp}` as 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5';
+
         const { error } = await supabase
           .from('trade_alerts')
           .update({
             status: 'closed',
-            close_reason: 'all_tps_hit',
+            close_reason: closeReason,
             updated_at: new Date().toISOString()
           })
           .eq('id', signal.id);
 
         if (!error) {
           signalsClosed++;
-          console.log(`✅ Closed signal ${signal.asset} (all TPs hit)`);
+          console.log(`✅ Closed signal ${signal.asset} (${closeReason} hit)`);
         }
       } catch (error) {
         console.error(`❌ Failed to close signal ${signal.asset}:`, error);
@@ -123,7 +126,7 @@ export function SignalEngineDiagnostics() {
           .from('trade_alerts')
           .update({
             status: 'closed',
-            close_reason: 'tp1_hit',
+            close_reason: 'tp1',
             updated_at: new Date().toISOString()
           })
           .eq('id', signal.id);

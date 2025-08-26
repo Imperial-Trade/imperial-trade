@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -41,13 +42,6 @@ interface DiagnosticResult {
   }>;
 }
 
-interface ReconcileResult {
-  signals_fixed: number;
-  orders_activated: number;
-  timestamp?: string;
-  status: string;
-}
-
 export function SignalEngineDiagnostics() {
   const [diagnostics, setDiagnostics] = useState<DiagnosticResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -71,20 +65,20 @@ export function SignalEngineDiagnostics() {
       console.log('📊 Diagnostic results:', diagnosticResponse.data);
       setDiagnostics(diagnosticResponse.data);
 
-      // Step 2: Run database reconciliation and normalize the response
-      let parsedReconcile: ReconcileResultNormalized | null = null;
+      // Step 2: Run database reconciliation and safely parse the response
       const { data: reconcileResponse, error: reconcileError } = await supabase.rpc('reconcile_signal_consistency');
       
       if (reconcileError) {
         console.error('❌ Reconciliation failed:', reconcileError);
         toast.error('Reconciliation failed: ' + reconcileError.message);
       } else {
-        parsedReconcile = parseReconcileResult(reconcileResponse as unknown);
+        // Use the parsing utility to safely handle the RPC response
+        const parsedReconcile = parseReconcileResult(reconcileResponse as unknown);
         console.log('✅ Reconciliation completed (normalized):', parsedReconcile);
         setReconcileResult(parsedReconcile);
       }
 
-      // Step 3: Trigger enhanced alert monitor
+      // Step 3: Trigger enhanced alert monitor to process any remaining issues
       const { error: monitorError } = await supabase.functions.invoke('enhanced-alert-monitor');
       if (monitorError) {
         console.warn('⚠️ Alert monitor trigger failed:', monitorError);
@@ -94,8 +88,15 @@ export function SignalEngineDiagnostics() {
 
       setLastRun(new Date());
       
-      if (parsedReconcile) {
-        toast.success(`Fixed ${parsedReconcile.signals_fixed} signals and activated ${parsedReconcile.orders_activated} orders`);
+      if (reconcileResult) {
+        const fixedCount = reconcileResult.signals_fixed || 0;
+        const activatedCount = reconcileResult.orders_activated || 0;
+        
+        if (fixedCount > 0 || activatedCount > 0) {
+          toast.success(`Fixed ${fixedCount} signals and activated ${activatedCount} orders`);
+        } else {
+          toast.success('Diagnostic completed - no issues found to fix');
+        }
       } else {
         toast.success('Diagnostic completed successfully');
       }
@@ -110,11 +111,11 @@ export function SignalEngineDiagnostics() {
   const getTotalIssues = () => {
     if (!diagnostics) return 0;
     return (
-      diagnostics.problem_all_tps_hit?.length +
-      diagnostics.problem_single_tp_not_closed?.length +
-      diagnostics.pending_ready_to_activate?.length +
-      diagnostics.monitoring_inactive?.length
-    ) || 0;
+      (diagnostics.problem_all_tps_hit?.length || 0) +
+      (diagnostics.problem_single_tp_not_closed?.length || 0) +
+      (diagnostics.pending_ready_to_activate?.length || 0) +
+      (diagnostics.monitoring_inactive?.length || 0)
+    );
   };
 
   const getStatusColor = (count: number) => {
@@ -176,7 +177,7 @@ export function SignalEngineDiagnostics() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {diagnostics.problem_all_tps_hit?.length > 0 ? (
+              {diagnostics.problem_all_tps_hit && diagnostics.problem_all_tps_hit.length > 0 ? (
                 <div className="space-y-2">
                   {diagnostics.problem_all_tps_hit.map((signal) => (
                     <div key={signal.id} className="text-sm">
@@ -206,7 +207,7 @@ export function SignalEngineDiagnostics() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {diagnostics.problem_single_tp_not_closed?.length > 0 ? (
+              {diagnostics.problem_single_tp_not_closed && diagnostics.problem_single_tp_not_closed.length > 0 ? (
                 <div className="space-y-2">
                   {diagnostics.problem_single_tp_not_closed.map((signal) => (
                     <div key={signal.id} className="text-sm">
@@ -236,7 +237,7 @@ export function SignalEngineDiagnostics() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {diagnostics.pending_ready_to_activate?.length > 0 ? (
+              {diagnostics.pending_ready_to_activate && diagnostics.pending_ready_to_activate.length > 0 ? (
                 <div className="space-y-2">
                   {diagnostics.pending_ready_to_activate.map((order) => (
                     <div key={order.id} className="text-sm">
@@ -266,7 +267,7 @@ export function SignalEngineDiagnostics() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {diagnostics.monitoring_inactive?.length > 0 ? (
+              {diagnostics.monitoring_inactive && diagnostics.monitoring_inactive.length > 0 ? (
                 <div className="space-y-2">
                   {diagnostics.monitoring_inactive.map((monitor) => (
                     <div key={monitor.signal_id} className="text-sm">

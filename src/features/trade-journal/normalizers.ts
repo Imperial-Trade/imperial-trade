@@ -8,6 +8,29 @@ export function normalizeTradeDate(d: string | Date | null | undefined): string 
   return date.toISOString().slice(0, 10);
 }
 
+function cleanCoachFeedback(feedback: string | null | undefined): string | undefined {
+  if (!feedback) return undefined;
+  
+  // Try to parse as JSON
+  try {
+    const parsed = JSON.parse(feedback);
+    if (typeof parsed === 'object' && parsed !== null) {
+      // Check known keys in order of preference
+      const knownKeys = ['coach_response', 'feedback', 'message', 'text'];
+      for (const key of knownKeys) {
+        if (parsed[key] && typeof parsed[key] === 'string') {
+          return parsed[key];
+        }
+      }
+    }
+  } catch {
+    // Not JSON, continue with original string
+  }
+  
+  // Return original string if not JSON or no known keys found
+  return feedback;
+}
+
 export function mapDbRowToEntry(row: any): TradeJournalEntry {
   // Coerce numeric fields with toNum
   const pnl = toNum(row.pnl);
@@ -44,7 +67,7 @@ export function mapDbRowToEntry(row: any): TradeJournalEntry {
     notes: row.notes || undefined,
     screenshot_url: row.screenshot_url || undefined,
     screenshot_urls,
-    ai_positive_feedback: row.ai_positive_feedback || undefined,
+    ai_positive_feedback: cleanCoachFeedback(row.ai_positive_feedback),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

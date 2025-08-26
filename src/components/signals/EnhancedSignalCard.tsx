@@ -5,15 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, TrendingUp, TrendingDown, Target, Shield, CheckCircle2 } from 'lucide-react';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { SignalStatusBadge } from './SignalStatusBadge';
+import { PipsDisplay } from './PipsDisplay';
+import { CompactSignalCard } from './CompactSignalCard';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 
 interface EnhancedSignalCardProps {
   alert: TradeAlertWithProfile;
   onUpdate?: (id: string, updates: any) => Promise<void>;
   isOwner?: boolean;
+  compact?: boolean;
 }
 
-export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalCardProps) => {
+export const EnhancedSignalCard = ({ alert, onUpdate, isOwner, compact = false }: EnhancedSignalCardProps) => {
+  // Return compact version if requested
+  if (compact) {
+    return <CompactSignalCard alert={alert} onUpdate={onUpdate} isOwner={isOwner} />;
+  }
+
   const { prices } = useWebSocketPrices();
   const currentPrice = prices[alert.tradermadeSymbol || alert.assetName]?.price || 0;
 
@@ -82,13 +90,20 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalC
           </div>
         </div>
 
-        {/* P&L Display for Active/Partially Profited Signals */}
-        {(alert.status === 'active' || alert.status === 'partially_profited') && currentPrice && (
+        {/* Enhanced Pips Display */}
+        {currentPrice > 0 && (
           <div className="flex items-center justify-between p-2 bg-secondary/30 rounded-md">
-            <span className="text-sm text-muted-foreground">Unrealized P&L</span>
-            <span className={`font-semibold ${pnlColor}`}>
-              {unrealizedPnL >= 0 ? '+' : ''}{unrealizedPnL.toFixed(4)} pips
+            <span className="text-sm text-muted-foreground">
+              {alert.status === 'pending' ? 'Distance to Entry' : 'Current P&L'}
             </span>
+            <PipsDisplay
+              entryPrice={alert.entryPrice}
+              currentPrice={currentPrice}
+              symbol={alert.tradermadeSymbol || alert.assetName}
+              tradeType={alert.tradeType}
+              status={alert.status}
+              size="md"
+            />
           </div>
         )}
 

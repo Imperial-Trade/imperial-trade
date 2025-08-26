@@ -1,4 +1,3 @@
-
 import { apiClient } from '../client/ApiClient';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { ApiResponse } from '@/types/common';
@@ -115,6 +114,72 @@ class TradingApiService {
       return { success: true, data: alertsWithProfiles };
     } catch (error) {
       console.error('Error fetching alerts with profiles:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  }
+
+  async getAllPublicAlertsWithProfiles(): Promise<ApiResponse<TradeAlertWithProfile[]>> {
+    try {
+      const result = await apiClient.select('trade_alerts', {
+        order: { column: 'created_at', ascending: false }
+      });
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      // Get unique user IDs from alerts
+      const userIds = [...new Set((result.data || []).map(alert => alert.user_id))];
+      
+      // Fetch profiles for these users
+      const profilesResult = await apiClient.select('public_profiles', {});
+      const profilesMap = new Map();
+      
+      if (profilesResult.success && profilesResult.data) {
+        profilesResult.data.forEach(profile => {
+          profilesMap.set(profile.id, profile);
+        });
+      }
+
+      const alertsWithProfiles: TradeAlertWithProfile[] = (result.data || []).map(alert => {
+        const profile = profilesMap.get(alert.user_id);
+        
+        return {
+          id: alert.id,
+          userId: alert.user_id,
+          assetName: alert.asset_name,
+          tradermadeSymbol: alert.tradermade_symbol,
+          tradeType: alert.trade_type,
+          entryPrice: Number(alert.entry_price),
+          stopLoss: Number(alert.stop_loss),
+          status: alert.status,
+          tp1: alert.tp1 ? Number(alert.tp1) : undefined,
+          tp2: alert.tp2 ? Number(alert.tp2) : undefined,
+          tp3: alert.tp3 ? Number(alert.tp3) : undefined,
+          tp4: alert.tp4 ? Number(alert.tp4) : undefined,
+          tp5: alert.tp5 ? Number(alert.tp5) : undefined,
+          tpHits: alert.tp_hits || [],
+          notes: alert.notes,
+          closeReason: alert.close_reason,
+          createdAt: alert.created_at,
+          updatedAt: alert.updated_at,
+          creator: profile ? {
+            id: profile.id,
+            display_name: profile.display_name || 'Unknown',
+            avatar_url: profile.avatar_url,
+            role: profile.role,
+            user_type: profile.user_type,
+            access_level: profile.access_level
+          } : undefined
+        };
+      });
+
+      return { success: true, data: alertsWithProfiles };
+    } catch (error) {
+      console.error('Error fetching public alerts with profiles:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error' 

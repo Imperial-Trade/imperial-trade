@@ -381,7 +381,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
           prompt
         }
       });
-      return response.data?.analysis || "Analysis pending...";
+      return typeof response.data === 'string' ? response.data : "AI analysis temporarily unavailable.";
     } catch (error) {
       console.error("AI analysis failed:", error);
       return "AI analysis temporarily unavailable.";

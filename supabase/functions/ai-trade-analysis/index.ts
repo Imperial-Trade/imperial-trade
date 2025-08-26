@@ -127,13 +127,10 @@ serve(async (req) => {
     const { prompt, file_urls, user_id } = await req.json();
 
     if (!prompt) {
-      return new Response(
-        JSON.stringify({ error: "Missing required field: prompt" }), 
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        }
-      );
+      return new Response("Missing required field: prompt", {
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8' },
+        status: 400,
+      });
     }
 
     // Fetch user's trading history and profile for context
@@ -265,23 +262,15 @@ serve(async (req) => {
 
     console.log('Enhanced AI coaching analysis completed successfully');
 
-    return new Response(JSON.stringify({ 
-      result: coachingFeedback,
-      metrics: metrics,
-      milestones: milestones,
-      traderArchetype: traderArchetype
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    return new Response(coachingFeedback, {
+      headers: { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8' },
     });
 
   } catch (error) {
     console.error('Error in enhanced ai-trade-analysis function:', error);
-    return new Response(JSON.stringify({ 
-      error: 'Failed to generate coaching feedback',
-      details: error.message 
-    }), {
+    return new Response("Failed to generate coaching feedback", {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8' },
     });
   }
 });

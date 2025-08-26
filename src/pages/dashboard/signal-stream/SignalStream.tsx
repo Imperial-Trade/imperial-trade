@@ -564,7 +564,19 @@ export default function SignalStream() {
                               connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                               priceSource={priceSource} 
                               isRecentClosure={false} 
-                              creator={alert.creator} 
+                              creator={
+                                alert.creator
+                                  ? {
+                                      id: alert.creator.id,
+                                      display_name: alert.creator.display_name,
+                                      // Ensure role is always present (required by TradeAlertCard prop type)
+                                      role: alert.creator.role || alert.creator.user_type || alert.creator.access_level || 'member',
+                                      avatar_url: alert.creator.avatar_url,
+                                      user_type: alert.creator.user_type,
+                                      access_level: alert.creator.access_level,
+                                    }
+                                  : undefined
+                              }
                               justAdded={justAddedIds.has(alert.id)}
                             />
                           </div>
@@ -612,7 +624,19 @@ export default function SignalStream() {
                               connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                               priceSource={priceSource} 
                               isRecentClosure={true} 
-                              creator={alert.creator} 
+                              creator={
+                                alert.creator
+                                  ? {
+                                      id: alert.creator.id,
+                                      display_name: alert.creator.display_name,
+                                      // Ensure role is always present (required by TradeAlertCard prop type)
+                                      role: alert.creator.role || alert.creator.user_type || alert.creator.access_level || 'member',
+                                      avatar_url: alert.creator.avatar_url,
+                                      user_type: alert.creator.user_type,
+                                      access_level: alert.creator.access_level,
+                                    }
+                                  : undefined
+                              }
                             />
                           </div>
                         ))}

@@ -13,6 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AddTradeModal from "@/components/trading/AddTradeModal";
 import { TradeFormData } from "@/hooks/useTradeForm";
+import { ImageGalleryWithUrls } from "@/components/tools/ImageGalleryWithUrls";
+import { useTradeJournal } from '@/contexts/TradeJournalContext';
+import { formatYmdLocal, isFutureYmd, getTodayYmd } from '@/lib/date';
 
 // Enhanced Types
 interface Trade {
@@ -31,7 +34,10 @@ interface Trade {
   session?: "sydney" | "tokyo" | "london" | "newyork";
   notes?: string;
   screenshot_url?: string;
+  screenshot_urls?: string[];
   ai_feedback?: string;
+  ai_positive_feedback?: string; // Add support for AI coach feedback
+  coach_status?: 'pending' | 'ready';
   created_at: string;
   updated_at: string;
 }
@@ -181,13 +187,6 @@ const sampleTrades: Trade[] = [{
   updated_at: new Date().toISOString()
 }];
 export const TradingJournalApp: React.FC = () => {
-  // Helper function to format date consistently without timezone issues
-  const formatDateString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
   const {
     theme
   } = useTheme();
@@ -207,103 +206,44 @@ export const TradingJournalApp: React.FC = () => {
     isLoading: false,
     isDayViewActive: false
   });
-  const [trades, setTrades] = useState<Trade[]>(sampleTrades);
   const [showStats, setShowStats] = useState(true);
   const [showAddTradeModal, setShowAddTradeModal] = useState(false);
   const dayViewRef = useRef<HTMLDivElement>(null);
-
-  // Real-time database sync with Supabase
-  const setupJournalListener = useCallback(async () => {
-    if (!user) return;
-    setJournalState(prev => ({
-      ...prev,
-      isLoading: true
+  
+  // Use shared journal context
+  const { entries: journalEntries, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry } = useTradeJournal();
+  
+  // Map journal entries to Trade format for existing UI
+  const trades = useMemo(() => {
+    const mappedTrades: Trade[] = journalEntries.map(entry => ({
+      id: entry.id,
+      user_id: entry.user_id,
+      date: entry.trade_date,
+      asset: entry.asset_ticker,
+      direction: entry.trade_type?.toLowerCase() as "long" | "short" || "long",
+      outcome: entry.pnl >= 0 ? "win" : "loss",
+      pnl: entry.pnl,
+      entry_price: entry.entry_price,
+      exit_price: entry.exit_price,
+      position_size: entry.position_size,
+      strategy: undefined,
+      emotion: undefined,
+      session: undefined,
+      notes: entry.notes,
+      screenshot_url: entry.screenshot_url,
+      screenshot_urls: entry.screenshot_urls,
+      ai_feedback: entry.ai_positive_feedback,
+      ai_positive_feedback: entry.ai_positive_feedback, // Also map to ai_positive_feedback property
+      coach_status: (entry as any).coach_status,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at
     }));
-    try {
-      const {
-        data: initialTrades,
-        error
-      } = await supabase.from("trade_journal_entries").select("*").eq("user_id", user.id).order("trade_date", {
-        ascending: false
-      });
-      if (error) throw error;
-      const mappedTrades: Trade[] = initialTrades?.map(trade => ({
-        id: trade.id,
-        user_id: trade.user_id,
-        date: trade.trade_date,
-        asset: trade.asset_ticker,
-        direction: trade.trade_type?.toLowerCase() as "long" | "short" || "long",
-        outcome: trade.pnl >= 0 ? "win" : "loss",
-        pnl: trade.pnl,
-        entry_price: trade.entry_price,
-        exit_price: trade.exit_price,
-        position_size: trade.position_size,
-        strategy: undefined,
-        emotion: undefined,
-        session: undefined,
-        notes: trade.notes,
-        screenshot_url: trade.screenshot_url,
-        ai_feedback: trade.ai_positive_feedback,
-        created_at: trade.created_at,
-        updated_at: trade.updated_at
-      })) || [];
-      setTrades(mappedTrades);
-      const channel = supabase.channel("trade_journal_updates").on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "trade_journal_entries",
-        filter: `user_id=eq.${user.id}`
-      }, () => {
-        supabase.from("trade_journal_entries").select("*").eq("user_id", user.id).order("trade_date", {
-          ascending: false
-        }).then(({
-          data
-        }) => {
-          if (data) {
-            const updatedTrades: Trade[] = data.map(trade => ({
-              id: trade.id,
-              user_id: trade.user_id,
-              date: trade.trade_date,
-              asset: trade.asset_ticker,
-              direction: trade.trade_type?.toLowerCase() as "long" | "short" || "long",
-              outcome: trade.pnl >= 0 ? "win" : "loss",
-              pnl: trade.pnl,
-              entry_price: trade.entry_price,
-              exit_price: trade.exit_price,
-              position_size: trade.position_size,
-              strategy: undefined,
-              emotion: undefined,
-              session: undefined,
-              notes: trade.notes,
-              screenshot_url: trade.screenshot_url,
-              ai_feedback: trade.ai_positive_feedback,
-              created_at: trade.created_at,
-              updated_at: trade.updated_at
-            }));
-            setTrades(updatedTrades);
-          }
-        });
-      }).subscribe();
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (error) {
-      console.error("Error setting up journal listener:", error);
-      toast({
-        title: "Error",
-        description: "Failed to sync with database",
-        variant: "destructive"
-      });
-    } finally {
-      setJournalState(prev => ({
-        ...prev,
-        isLoading: false
-      }));
-    }
-  }, [user, toast]);
-  useEffect(() => {
-    setupJournalListener();
-  }, [setupJournalListener]);
+    
+    // Add sample trades if no real data exists
+    return mappedTrades.length > 0 ? mappedTrades : sampleTrades;
+  }, [journalEntries]);
+
+  // Use shared journal context instead of individual realtime subscription
 
   // Enhanced metrics calculation
   const calculateMetrics = (filteredTrades: Trade[]): DashboardMetrics => {
@@ -331,7 +271,7 @@ export const TradingJournalApp: React.FC = () => {
     const currentDate = journalState.currentDate;
     switch (journalState.currentFilter) {
       case "today":
-        const today = now.toISOString().split("T")[0];
+        const today = getTodayYmd();
         return trades.filter(t => t.date === today);
       case "week":
         const startOfWeek = new Date(currentDate);
@@ -387,17 +327,10 @@ export const TradingJournalApp: React.FC = () => {
 
   // Handle date click with smooth transition animation
   const handleDateClick = useCallback((dateStr: string, event: React.MouseEvent, openModal?: boolean) => {
-    console.log("🗓️ Date clicked:", dateStr, "Current date:", formatDateString(new Date()));
+    console.log("🗓️ Date clicked:", dateStr, "Current date:", getTodayYmd());
 
-    // Check if the date is in the future (using precise current time)
-    const clickedDate = new Date(dateStr);
-    const now = new Date();
-
-    // Set clicked date to end of day for comparison
-    clickedDate.setHours(23, 59, 59, 999);
-
-    // Don't allow future dates
-    if (clickedDate > now) {
+    // Check if the date is in the future using string comparison
+    if (isFutureYmd(dateStr)) {
       return;
     }
     const rect = (event.target as HTMLElement).getBoundingClientRect();
@@ -420,38 +353,125 @@ export const TradingJournalApp: React.FC = () => {
     }
   }, []);
 
-  // AI Analysis Function - Fixed type compatibility
-  const getAISummaryForTrade = async (tradeData: TradeFormData) => {
+  // AI Coaching Analysis Function - Using coach-agent for consistency
+  const triggerCoachingAnalysis = async (journalEntryId: string, userId: string) => {
     try {
-      const prompt = `Analyze this trading data and provide insights:
-Asset: ${tradeData.asset}
-Direction: ${tradeData.direction}
-Outcome: ${tradeData.outcome}
-P/L: $${tradeData.pnl}
-Strategy: ${tradeData.strategy || "Not specified"}
-Emotion: ${tradeData.emotion || "Not specified"}
-Session: ${tradeData.session || "Not specified"}
-Notes: ${tradeData.notes || "None"}
-
-Please provide a brief analysis focusing on what went well, what could be improved, and any patterns you notice.`;
-      const response = await supabase.functions.invoke("ai-trade-analysis", {
+      console.log('🤖 Triggering coaching analysis for journal entry:', journalEntryId);
+      
+      const { error } = await supabase.functions.invoke('coach-agent', {
         body: {
-          prompt
+          event_type: "LOG_TRADE",
+          user_id: userId,
+          journal_entry_id: journalEntryId
         }
       });
-      return response.data?.analysis || "Analysis pending...";
+      
+      if (error) {
+        console.error('Coaching analysis error:', error);
+      } else {
+        console.log('✅ Coaching analysis triggered successfully');
+      }
     } catch (error) {
-      console.error("AI analysis failed:", error);
-      return "AI analysis temporarily unavailable.";
+      console.error("Coaching analysis failed:", error);
     }
   };
 
   // Optimized save trade handler
   const handleSaveTrade = useCallback(async (tradeData: TradeFormData & {
     date: string;
+    screenshotFiles?: File[];
   }) => {
     if (!user) return;
+    
+    // Generate temporary ID for optimistic updates
+    const tempId = `temp-${Date.now()}`;
+    
+    // Create optimistic entry for immediate UI update
+    const optimisticTrade: Trade = {
+      id: tempId,
+      user_id: user.id,
+      date: tradeData.date,
+      asset: tradeData.asset,
+      direction: tradeData.direction || "long",
+      outcome: tradeData.outcome || "win",
+      pnl: tradeData.pnl || 0,
+      entry_price: tradeData.entry_price,
+      exit_price: tradeData.exit_price,
+      position_size: tradeData.position_size,
+      strategy: tradeData.strategy,
+      emotion: tradeData.emotion,
+      session: tradeData.session || undefined,
+      notes: tradeData.notes,
+      screenshot_urls: [], // Will be updated after upload
+      ai_feedback: undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    // Add optimistic entry via shared context
+    const journalEntry = {
+      id: tempId,
+      user_id: optimisticTrade.user_id,
+      asset_ticker: optimisticTrade.asset,
+      trade_type: optimisticTrade.direction === "long" ? "Long" : "Short", // Title case for consistency
+      pnl: optimisticTrade.pnl,
+      entry_price: optimisticTrade.entry_price,
+      exit_price: optimisticTrade.exit_price,
+      position_size: optimisticTrade.position_size,
+      trade_date: optimisticTrade.date,
+      notes: optimisticTrade.notes,
+      screenshot_url: optimisticTrade.screenshot_url,
+      screenshot_urls: optimisticTrade.screenshot_urls,
+      ai_positive_feedback: optimisticTrade.ai_feedback,
+      created_at: optimisticTrade.created_at,
+      updated_at: optimisticTrade.updated_at
+    };
+    addOptimisticEntry(journalEntry);
+
     try {
+      let screenshotUrls: string[] = [];
+
+      // Upload images if present
+      if (tradeData.screenshotFiles && tradeData.screenshotFiles.length > 0) {
+        const uploadPromises = tradeData.screenshotFiles.map(async (file, index) => {
+          try {
+            const timestamp = Date.now();
+            const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const filePath = `${user.id}/${tradeData.date}/${timestamp}-${index}-${sanitizedFilename}`;
+
+            const { data, error } = await supabase.storage
+              .from('journal-charts')
+              .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+              });
+
+            if (error) {
+              console.error(`Upload failed for ${file.name}:`, error);
+              return null;
+            }
+
+            return data.path;
+          } catch (error) {
+            console.error(`Upload error for ${file.name}:`, error);
+            return null;
+          }
+        });
+
+        const results = await Promise.all(uploadPromises);
+        screenshotUrls = results.filter(path => path !== null) as string[];
+
+        // Show toast if some uploads failed
+        if (screenshotUrls.length !== tradeData.screenshotFiles.length) {
+          const failedCount = tradeData.screenshotFiles.length - screenshotUrls.length;
+          toast({
+            title: "Partial Upload Success", 
+            description: `${screenshotUrls.length} images uploaded successfully. ${failedCount} failed.`,
+            variant: "default"
+          });
+        }
+      }
+
       const tradeEntry = {
         user_id: user.id,
         asset_ticker: tradeData.asset,
@@ -462,26 +482,34 @@ Please provide a brief analysis focusing on what went well, what could be improv
         exit_price: tradeData.exit_price,
         position_size: tradeData.position_size,
         notes: tradeData.notes,
-        screenshot_url: tradeData.screenshot_url
+        screenshot_url: tradeData.screenshot_url || (screenshotUrls.length > 0 ? screenshotUrls[0] : null), // Keep legacy field for backward compatibility
+        screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : []
       };
+
       const {
         data,
         error
       } = await supabase.from("trade_journal_entries").insert([tradeEntry]).select().single();
       if (error) throw error;
 
-      // Generate AI feedback asynchronously
-      getAISummaryForTrade(tradeData).then(async feedback => {
-        await supabase.from("trade_journal_entries").update({
-          ai_positive_feedback: feedback
-        }).eq("id", data.id);
-      });
+      // Reconcile optimistic entry with real DB row to avoid duplicates
+      console.log('🔄 Updating optimistic entry with real DB data:', tempId, '->', data.id);
+      updateOptimisticEntry(tempId, data);
+
+      // Trigger AI coaching analysis (coach-agent handles database updates automatically)
+      triggerCoachingAnalysis(data.id, user.id);
+
       toast({
         title: "Trade Saved",
-        description: "Your trade has been logged successfully"
+        description: `Your trade has been logged${screenshotUrls.length > 0 ? ` with ${screenshotUrls.length} image(s)` : ''}`
       });
     } catch (error) {
       console.error("Error saving trade:", error);
+      
+      // Remove optimistic entry on error
+      console.log('❌ Removing optimistic entry due to error:', tempId);
+      removeOptimisticEntry(tempId);
+      
       toast({
         title: "Error",
         description: "Failed to save trade",
@@ -489,7 +517,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
       });
       throw error;
     }
-  }, [user, toast]);
+  }, [user, toast, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry]);
 
   // Get most traded assets with currency normalization
   const getMostTradedAssets = () => {
@@ -603,7 +631,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
       for (let i = 0; i < 7; i++) {
         const date = new Date(startOfWeek);
         date.setDate(startOfWeek.getDate() + i);
-        const dateStr = formatDateString(date);
+        const dateStr = formatYmdLocal(date);
         const dayTrades = trades.filter(t => t.date === dateStr);
         const dayPnL = dayTrades.reduce((sum, t) => sum + t.pnl, 0);
         const isFuture = date > today;
@@ -658,7 +686,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
       days.push(<div key={`empty-${i}`} className="h-20" />);
     }
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = formatDateString(new Date(currentYear, currentMonth, day));
+      const dateStr = formatYmdLocal(new Date(currentYear, currentMonth, day));
       console.log("📅 Month view day", day, "dateStr:", dateStr);
       const dayTrades = trades.filter(t => t.date === dateStr);
       const dayPnL = dayTrades.reduce((sum, t) => sum + t.pnl, 0);
@@ -1327,14 +1355,35 @@ Please provide a brief analysis focusing on what went well, what could be improv
                           </div>}
                       </div>
 
-                      {trade.ai_feedback && <div className="mt-4 p-3 rounded-lg bg-muted/30 border-l-4 border-l-primary">
-                          <div className="flex items-start gap-2">
-                            <Brain className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      {/* Screenshots Display */}
+                      {(trade.screenshot_urls && trade.screenshot_urls.length > 0) ? (
+                        <ImageGalleryWithUrls paths={trade.screenshot_urls} />
+                      ) : trade.screenshot_url ? (
+                        <ImageGalleryWithUrls paths={[trade.screenshot_url]} />
+                      ) : null}
+
+                      {/* Your Trading Coach Feedback */}
+                      {(trade.ai_positive_feedback || trade.coach_status === 'pending') && (
+                        <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-4 border border-primary/20 min-h-[64px]">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                              <Brain className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-sm font-semibold text-primary">Your Trading Coach</span>
+                                <Badge variant="outline" className="text-xs">AI Analysis</Badge>
+                              </div>
+                              <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                                {trade.coach_status === 'pending' 
+                                  ? '👉 "Your coach is looking over your journal…"'
+                                  : trade.ai_positive_feedback
+                                }
+                              </div>
+                            </div>
                           </div>
-                            <p className="text-sm text-foreground leading-relaxed">
-                              {trade.ai_feedback}
-                            </p>
-                        </div>}
+                        </div>
+                      )}
                     </div>
 
                     <div className="text-right ml-6">

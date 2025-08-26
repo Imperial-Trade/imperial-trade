@@ -19,11 +19,13 @@ import {
   EyeOff
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { TradeJournalEntry } from '@/api/client/operations/TradeJournalEntry';
+import { TradeJournalEntry } from '@/contexts/TradeJournalContext';
+import { ImageGalleryWithUrls } from '@/components/tools/ImageGalleryWithUrls';
+import { formatYmdLocal } from '@/lib/date';
 
 interface MobileDayViewProps {
   date: Date;
-  entries: any[];
+  entries: TradeJournalEntry[];
   onBack: () => void;
   onDelete: (entryId: string) => void;
 }
@@ -37,13 +39,10 @@ export default function MobileDayView({
   const [expandedTrade, setExpandedTrade] = useState<string | null>(null);
   const [showScreenshots, setShowScreenshots] = useState<Record<string, boolean>>({});
 
-  // Filter entries for this specific date
+  // Filter entries for the specific date
   const dayEntries = useMemo(() => {
-    const dateKey = format(date, 'yyyy-MM-dd');
-    return entries.filter(entry => {
-      const entryDate = format(new Date(entry.trade_date), 'yyyy-MM-dd');
-      return entryDate === dateKey;
-    });
+    const targetDate = formatYmdLocal(date);
+    return entries.filter(entry => entry.trade_date === targetDate);
   }, [entries, date]);
 
   // Calculate day statistics
@@ -290,21 +289,29 @@ export default function MobileDayView({
                           </div>
                         )}
 
-                        {/* AI Feedback */}
-                        {trade.ai_positive_feedback && (
+                        {/* Your Trading Coach */}
+                        {(trade.ai_positive_feedback || trade.coach_status === 'pending') && (
                           <div>
                             <div className="flex items-center gap-2 mb-2">
                               <Brain className="w-4 h-4 text-primary" />
-                              <span className="text-sm font-medium">AI Feedback</span>
+                              <span className="text-sm font-medium">Your Trading Coach</span>
                             </div>
-                            <p className="text-sm text-muted-foreground bg-primary/5 rounded-lg p-3">
-                              {trade.ai_positive_feedback}
-                            </p>
+                            <div className="text-sm text-muted-foreground bg-primary/5 rounded-lg p-3 min-h-[64px]">
+                              {trade.coach_status === 'pending' 
+                                ? '👉 "Your coach is looking over your journal…"'
+                                : trade.ai_positive_feedback
+                              }
+                            </div>
                           </div>
                         )}
 
                         {/* Screenshot */}
-                        {trade.screenshot_url && (
+                        {trade.screenshot_urls && trade.screenshot_urls.length > 0 ? (
+                          <ImageGalleryWithUrls 
+                            paths={trade.screenshot_urls}
+                            alt="Trade charts"
+                          />
+                        ) : trade.screenshot_url && (
                           <div>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">

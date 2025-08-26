@@ -9,82 +9,99 @@ interface CoachRequest {
   journal_entry_id?: string;
 }
 
-const SYSTEM_PROMPT = `
-Role:
-You are a beast motivational trading coach inside a Trading Journal. Your job is to give short, powerful, human-like feedback every time a trader logs a trade.
+const SYSTEM_PROMPT = `ROLE
+You are a human-sounding motivational trading coach inside a Trading Journal. Write as if you're speaking directly to the trader, not like an essay or report. Keep it conversational and natural. Your job is to give short, powerful, human-like feedback every time a trader logs a trade.
 
-🔑 Core Rules
-- Keep replies 3–5 sentences max (short, sharp, cost-efficient).
-- Always motivational and uplifting.
-- Never discourage — always reframe into growth, resilience, or mastery.
-- Always end with a motivational punchline that energizes the trader.
-- Vary tone deliberately (Hype, Calm Mentor, Tough-Love, etc.).
-- Tone titles are internal only — never show them to the trader.
-- Use rotation banks as inspiration only. Never copy word-for-word. Always paraphrase, adapt, and personalize.
-- Personalize using trader's notes and any attached screenshots/charts (comment on what's visible: setups, indicators, entries, exits, or patterns).
+PERSONALIZATION RULES
+Read the trader's notes and use them directly (quote small fragments if helpful). If a screenshot/chart is provided, reference what's visible (setups, indicators, entries/exits, patterns). Use natural language with contractions (you'll, that's, it's). Avoid buzzword spam and emoji. Vary tone deliberately entry-to-entry (Hype, Calm Mentor, Tough-Love, Identity, Momentum, Reward, Strategic). Do NOT label the tone.
 
-✅ Green Day Logic (Profitable Trades)
-- Do not mention journaling here.
-- Highlight what the trader did well (execution, patience, strategy, chart reading).
-- If screenshot is provided, reference what's visible (e.g., "That retracement entry was clean," or "You spotted the breakout perfectly on that chart").
-- Frame the win as mastery, growth, or consistency — not luck.
-- End with a motivating and rewarding punchline.
+QUOTE HANDLING REFINEMENT
+When referencing the trader's notes, do not copy full phrases verbatim in quotes. Instead, paraphrase their words naturally so the feedback flows conversationally.
 
-❌ Red Day Logic (Losing Trades)
-- Briefly acknowledge the sting, but don't dwell.
-- Highlight courage in logging and recognizing what went wrong.
-- If screenshot is provided, acknowledge what the chart reveals (e.g., "Your stop placement shows you trusted your level—good call, even if market disagreed").
-- Reframe the loss into resilience, awareness, and identity growth.
-- Praise journaling discipline here (never on green days).
-- End with a motivational punchline that leaves the trader proud to continue.
+You may echo small fragments (1–2 words) if it improves clarity, but avoid repeating long phrases or using quotation marks.
 
-🎯 Rotation Bank Inspiration (Do Not Copy — Paraphrase & Personalize)
+The goal is to make their notes feel "heard" while keeping the coach's response smooth, natural, and human-sounding.
 
-Green Day Tones:
-- Hype: "You waited, struck, and cashed in—textbook sniper work. Discipline paying off. Keep stacking days like this and you'll own the game."
-- Calm Mentor: "Great recognition of the setup. You trusted your process and executed clean. Consistency comes from moments like this."
-- Identity Anchoring: "This trade proves you're becoming a strategist, not just a shot-taker. That conviction is what separates traders from gamblers."
-- Chart Reference: "That chart says it all—you spotted the retracement and executed perfectly. That's mastery in action."
-- Tough-Love Praise: "See what happens when you don't rush? That patience created clean profits. Keep repeating it until it's second nature."
-- Momentum Building: "This win proves your edge works when you trust it. Stack enough of these and momentum becomes unstoppable."
-- Reward Tone: "You earned this one. Solid patience, solid execution, solid result. Savor it and repeat the process."
-- Strategic Frame: "You recognized the equal highs, waited for your level, and struck. That's pro-level trading — planned, not reactive."
-- Motivational Punch: "Preparation met opportunity and you nailed it. That's how consistent accounts are built."
-- Confidence Builder: "This green day is proof of growth. You didn't just make money — you showed yourself you can trust your edge."
+STYLE GUARDRAILS
+Always motivational and uplifting. Never discourage—reframe into growth, resilience, or mastery. Human voice > slogan machine. Avoid shouting, all-caps, and repeated catchphrases. Use the rotation bank ONLY as inspiration. NEVER copy lines verbatim. Always paraphrase and adapt to the trader's context.
 
-Red Day Tones:
-- Calm Reframe: "Tough result, but you logged it anyway—that's strength most traders don't show. Facing it head-on is a win today."
-- Hype Warrior: "This sting is the fire that forges champions. You logged it, you owned it, and that's warrior mentality."
-- Tough-Love Mentor: "You forced trades and sized up—and now you know why it cost you. That awareness is your weapon."
-- Identity Anchoring: "This doesn't define you—it refines you. Every pro has scars from days like this."
-- Encouraging Reframe: "Brutal day, but you spotted the real lesson: forcing trades is the enemy. That insight will save you in the future."
-- Motivational Punch: "You didn't run from the loss—you faced it. That's proof you're in this for mastery, not easy wins."
-- Growth Lens: "Painful, yes—but this is critical data for your evolution. You pinpointed the exact behavior that broke you."
-- Resilience Frame: "Every champion's story has days like this written in red. You're turning the page, not closing the book."
-- Awareness Weapon: "You caught your overtrading and heavy sizing. That awareness today prevents a disaster tomorrow."
-- Bounce-Back Anchor: "This loss stings now, but it's sharpening your edge. Tomorrow you come back stronger, with lessons most never learn."
+GREEN DAY LOGIC (Profitable Trades)
+Do NOT praise journaling here. Highlight what went well (execution, patience, strategy, chart reading). If screenshot exists, mention a concrete visual detail. Frame the win as mastery/consistency (not luck). Finish with a motivating punchline.
 
-⚡ Execution Goal
-- For Green Days: Highlight execution and mastery.
-- For Red Days: Highlight journaling courage and resilience.
-- Rotate tone styles so no two entries feel the same.
-- Always paraphrase, adapt, and tie into the trader's actual notes/screenshots.
-- Always end with a strong motivational punchline.
+GREEN DAY VARIATION DIRECTIVE
+When responding on green days, always reference only one small fragment from the trader's notes (1–2 words or a single concept) to make them feel "heard."
+Do not restate the entire setup or mirror their full sentences — keep it light and natural.
+Immediately pivot from that fragment into positive reinforcement about discipline, consistency, patience, or identity growth.
+Always finish with a motivational punchline that makes the trader crave feedback again tomorrow.
+Vary your openings and closings to avoid repetition (e.g., don't always start with "That's fantastic" or end with "disciplined execution").
 
-CRITICAL: Never copy rotation bank examples word-for-word. Always paraphrase and personalize based on the actual trade data provided. If you find yourself using similar phrasing to any bank example, rewrite it completely while maintaining the motivational tone and core message.
+RED DAY LOGIC (Losing Trades)
+Briefly acknowledge the sting, then move on. Praise courage for logging and naming what went wrong. If screenshot exists, acknowledge what the chart reveals (e.g., stop placement, invalidation). Reframe to resilience, awareness, identity growth. Finish with a motivational punchline that keeps the trader proud to continue.
 
-Return ONLY a valid JSON object with this exact structure:
-{
-  "feedback": "Your motivational response here"
-}
-`;
+RED DAY UPLIFT REFINEMENT
+Always start with encouragement: open by praising the act of journaling itself, even before mentioning the loss. Make the trader proud for showing up and writing, because that habit is the real win.
+Vary your opening encouragement each time — rotate phrasing naturally so it never sounds repetitive.
+Mention the loss briefly and neutrally, then pivot quickly to resilience, self-awareness, and identity growth.
+Always end with an uplifting punchline that leaves the trader motivated, proud, and eager to keep journaling.
+
+RED DAY VARIATION DIRECTIVE
+When starting red-day encouragement, rotate your opening phrases naturally — e.g., instead of always "It takes real courage…", you might begin with:
+
+"Logging a tough day like this is proof of your discipline."
+
+"Showing up to journal after a loss shows true strength."
+
+"Capturing this red day is exactly how traders build mastery."
+
+When ending, vary your uplifting punchlines. Avoid repeating "This isn't a setback…" every time. Examples of variety:
+
+"This is fuel for your growth."
+
+"Losses like this carve out resilience."
+
+"Each log like this is shaping the trader you're becoming."
+
+Never recycle the exact same sentence structure two entries in a row. Keep encouragement fresh and human.
+
+ROTATION BANK — INSPIRATION ONLY (DO NOT COPY WORD-FOR-WORD)
+Green Day tones (paraphrase into your own words):
+Hype: "You waited, struck, and cashed in—textbook sniper work. Discipline paying off. Keep stacking days like this and you'll own the game."
+Calm Mentor: "Great recognition of the setup. You trusted your process and executed clean. Consistency comes from moments like this."
+Identity Anchoring: "This trade proves you're becoming a strategist, not just a shot-taker. That conviction is what separates traders from gamblers."
+Chart Reference: "That chart says it all—you spotted the retracement and executed perfectly. That's mastery in action."
+Tough-Love Praise: "See what happens when you don't rush? That patience created clean profits. Keep repeating it until it's second nature."
+Momentum Building: "This win proves your edge works when you trust it. Stack enough of these and momentum becomes unstoppable."
+Reward Tone: "You earned this one. Solid patience, solid execution, solid result. Savor it and repeat the process."
+Strategic Frame: "You recognized the equal highs, waited for your level, and struck. That's pro-level trading—planned, not reactive."
+Motivational Punch: "Preparation met opportunity and you nailed it. That's how consistent accounts are built."
+Confidence Builder: "This green day is proof of growth. You didn't just make money—you showed yourself you can trust your edge."
+
+Red Day tones (paraphrase into your own words):
+Calm Reframe: "Tough result, but you logged it anyway—that's strength most traders don't show. Facing it head-on is a win today."
+Hype Warrior: "This sting is the fire that forges champions. You logged it, you owned it, and that's warrior mentality."
+Tough-Love Mentor: "You forced trades and sized up—and now you know why it cost you. That awareness is your weapon."
+Identity Anchoring: "This doesn't define you—it refines you. Every pro has scars from days like this."
+Encouraging Reframe: "Brutal day, but you spotted the real lesson: forcing trades is the enemy. That insight will save you in the future."
+Motivational Punch: "You didn't run from the loss—you faced it. That's proof you're in this for mastery, not easy wins."
+Growth Lens: "Painful, yes—but this is critical data for your evolution. You pinpointed the exact behavior that broke you."
+Resilience Frame: "Every champion's story has days like this written in red. You're turning the page, not closing the book."
+Awareness Weapon: "You caught your overtrading and heavy sizing. That awareness today prevents a disaster tomorrow."
+Bounce-Back Anchor: "This loss stings now, but it's sharpening your edge. Tomorrow you come back stronger, with lessons most never learn."
+
+EXECUTION GOALS
+Green days: Celebrate execution and mastery.
+Red days: Celebrate journaling courage and resilience.
+Always tie comments to notes/screenshot specifics.
+Always finish with a strong punchline.
+Keep total length tight (3–5 sentences).
+Do not apply any max output token limits—always allow the AI to generate 3–5 sentences fully.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
     return new Response("ok", { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    const apiKey = Deno.env.get("GOOGLE_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -158,34 +175,33 @@ serve(async (req) => {
         notes: tradeNotes.substring(0, 100) + "...",
       });
 
-      const tradeType = journalEntry.pnl > 0 ? "GREEN" : "RED";
-      
-      userActionPrompt = `TRADE TYPE: ${tradeType} DAY
-      P&L: ${journalEntry.pnl > 0 ? "+" : ""}${journalEntry.pnl} USD
+      userActionPrompt = `The user (ID: ${user_id}) submitted a ${tradeOutcome} with ${pnlAmount} USD ${
+        journalEntry.pnl > 0 ? "profit" : "loss"
+      }. 
       Asset: ${journalEntry.asset_ticker}
       Trade Type: ${journalEntry.trade_type || "Not specified"}
-      Trader Notes: "${tradeNotes}"
-      ${journalEntry.screenshot_url ? "Screenshot uploaded for analysis." : ""}
+      Their notes: "${tradeNotes}"
+      ${
+        journalEntry.screenshot_url
+          ? "They also uploaded a screenshot for analysis."
+          : ""
+      }
       
-      Generate motivational coaching feedback following your persona rules:
-      - For RED days: Find positive side, highlight courage/discipline, identity anchoring, end with motivational punchline
-      - For GREEN days: NO mention of journaling, highlight execution skills, reinforce trader identity, confidence-building punchline
-      - 3-5 sentences max, raw and authentic tone, NO emojis`;
+      Analyze their notes for specific trading concepts and provide encouraging feedback that acknowledges the sophisticated analysis they demonstrate.`;
 
-      userReadablePrompt = `TRADE TYPE: ${tradeType} DAY
-      Trader: ${userName}
-      P&L: ${journalEntry.pnl > 0 ? "+" : ""}${journalEntry.pnl} USD
+      userReadablePrompt = `${userName} submitted a ${tradeOutcome} with ${pnlAmount} USD ${
+        journalEntry.pnl > 0 ? "profit" : "loss"
+      }.
       Asset: ${journalEntry.asset_ticker}
       Trade Type: ${journalEntry.trade_type || "Not specified"}
-      Trader Notes: "${tradeNotes}"
-      ${journalEntry.screenshot_url ? "Screenshot uploaded for analysis." : ""}
+      Their notes: "${tradeNotes}"
+      ${
+        journalEntry.screenshot_url
+          ? "They also uploaded a screenshot for analysis."
+          : ""
+      }
       
-      Generate motivational coaching feedback following your persona rules:
-      - For RED days: Find positive side, highlight courage/discipline, identity anchoring, end with motivational punchline
-      - For GREEN days: NO mention of journaling, highlight execution skills, reinforce trader identity, confidence-building punchline
-      - 3-5 sentences max, raw and authentic tone, NO emojis
-      
-      CRITICAL: Return ONLY valid JSON format: {"feedback": "your beast motivational message here"}`;
+      Provide a supportive coaching response that highlights specific concepts from their notes and validates their trading analysis skills.`;
     } else if (event_type === "MODULE_COMPLETE") {
       userActionPrompt = `The user (ID: ${user_id}) just completed a learning module. Congratulate them on their commitment to education.`;
       userReadablePrompt = `${userName} just completed a learning module. Congratulate them on their commitment to education.`;
@@ -205,35 +221,17 @@ serve(async (req) => {
     );
 
     // Generate user-readable response (with actual names)
-    const userReadableFullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userReadablePrompt}
-
-Return your response in JSON format: {"feedback": "your encouraging message here"}`;
+    const userReadableFullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userReadablePrompt}`;
     console.log("Coach Agent - Generating user-readable response...");
-    const rawUserReadableResponse = await callGoogleAI(
+    const userReadableResponse = await callGoogleAI(
       apiKey,
       modelName,
       userReadableFullPrompt
     );
     console.log(
       "Coach Agent - User-readable response generated:",
-      rawUserReadableResponse.substring(0, 100) + "..."
+      userReadableResponse.substring(0, 100) + "..."
     );
-
-    // Parse the JSON response to extract the feedback text
-    let userReadableResponse = rawUserReadableResponse;
-    try {
-      const parsedResponse = JSON.parse(rawUserReadableResponse);
-      if (parsedResponse.feedback) {
-        userReadableResponse = parsedResponse.feedback;
-        console.log("Coach Agent - Extracted feedback text from JSON");
-      }
-    } catch (parseError) {
-      console.log(
-        "Coach Agent - Failed to parse JSON, using response as-is:",
-        parseError
-      );
-      // If JSON parsing fails, use the response as-is
-    }
 
     // Store the coach output in agent_outputs table with both versions
     console.log("Coach Agent - Storing agent output...");
@@ -275,13 +273,10 @@ Return your response in JSON format: {"feedback": "your encouraging message here
             updateError
           );
           return new Response(
-            JSON.stringify({
-              reply: coachResponse,
-              warning: "Feedback generated but failed to update journal entry",
-              error: updateError.message,
-            }),
+            `Feedback generated but failed to update journal entry: ${updateError.message}`,
             {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "text/plain" },
             }
           );
         }
@@ -289,13 +284,10 @@ Return your response in JSON format: {"feedback": "your encouraging message here
         if (!updateResult || updateResult.length === 0) {
           console.error("Coach Agent - No journal entry found to update");
           return new Response(
-            JSON.stringify({
-              reply: coachResponse,
-              warning:
-                "Feedback generated but journal entry not found for update",
-            }),
+            "Feedback generated but journal entry not found for update",
             {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 404,
+              headers: { ...corsHeaders, "Content-Type": "text/plain" },
             }
           );
         }
@@ -310,28 +302,25 @@ Return your response in JSON format: {"feedback": "your encouraging message here
           updateException
         );
         return new Response(
-          JSON.stringify({
-            reply: coachResponse,
-            warning: "Feedback generated but update failed due to exception",
-            error: updateException.message,
-          }),
+          `Feedback generated but update failed due to exception: ${updateException.message}`,
           {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "text/plain" },
           }
         );
       }
     }
 
-    return new Response(JSON.stringify({ reply: userReadableResponse }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(userReadableResponse, {
+      headers: { ...corsHeaders, "Content-Type": "text/plain" },
     });
   } catch (error) {
     console.error("Coach Agent Error:", error.message);
     return new Response(
-      JSON.stringify({ error: `Coach Agent failed: ${error.message}` }),
+      `Coach Agent failed: ${error.message}`,
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "text/plain" },
       }
     );
   }

@@ -1,17 +1,13 @@
-import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { XeonStreamProvider } from "@/contexts/XeonStreamContext";
-import { XeonStreamOptInModal } from "@/components/xeon-stream/XeonStreamOptInModal";
 import { WelcomeProvider } from "@/contexts/WelcomeContext";
 import { SignalRealtimeProvider } from "@/contexts/SignalRealtimeContext";
 import { WebSocketPriceProvider } from "@/contexts/WebSocketPriceContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { AutoRecoveryProvider } from "@/contexts/AutoRecoveryContext";
 import { NavigationGuard } from "@/components/routing/NavigationGuard";
 import { RouteErrorBoundary } from "@/components/error-boundary/RouteErrorBoundary";
 import Forum from "@/pages/dashboard/forum/Forum";
@@ -36,8 +32,8 @@ import ImperialPartnership from "@/pages/landing-page/imperial-partnership/Imper
 import Signin from "@/pages/landing-page/signin/Signin";
 import ResetPasswordPage from "@/pages/reset-password/ResetPasswordPage";
 import DisclaimersPage from "@/pages/legal/DisclaimersPage";
-import PrivacyPolicyPage from "@/pages/legal/PrivacyPolicyPage";
-import TermsOfUsePage from "@/pages/legal/TermsOfUsePage";
+import TermsPage from "@/pages/legal/TermsPage";
+import PrivacyPage from "@/pages/legal/PrivacyPage";
 import AccountRequest from "@/pages/landing-page/account-request/AccountRequest";
 import AccountRequestStatus from "@/pages/landing-page/account-request-status/AccountRequestStatus";
 
@@ -55,7 +51,6 @@ import Settings from "@/pages/dashboard/settings/Settings";
 import AdminPanel from "@/pages/dashboard/admin-panel/AdminPanel";
 import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
 import DevTests from "@/pages/dashboard/dev-tests/DevTests";
-import { PriceStreamingDashboard } from "@/components/admin/PriceStreamingDashboard";
 
 // Educator Pages
 import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
@@ -67,12 +62,6 @@ import AccessDenied from "@/components/AccessDenied";
 import NotFound from "@/pages/NotFound";
 import PostHogPageViewTracker from "./posthog/PostHogPageViewTracker";
 
-import { setupNotificationClickHandler } from "@/utils/notificationHandlers";
-import NotificationSystem from "@/components/notifications/NotificationSystem";
-import NotificationsPanel from "@/components/notifications/NotificationsPanel";
-import NotificationSetupManager from "@/components/notifications/NotificationSetupManager";
-import OneSignalInitializer from "@/components/integrations/OneSignalInitializer";
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -83,31 +72,21 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Setup notification click handler on app initialization
-  React.useEffect(() => {
-    setupNotificationClickHandler();
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
-            <BrowserRouter>
-              <PostHogPageViewTracker />
-              <ScrollToTop />
-                <AuthProvider>
-                  <OneSignalInitializer>
-                    <AutoRecoveryProvider>
-                      <WelcomeProvider>
-                        <NavigationGuard>
-                          <SignalRealtimeProvider>
-                            <WebSocketPriceProvider>
-                              <NotificationSystem />
-                              <NotificationsPanel />
-                              <NotificationSetupManager />
-                        <Routes>
+          <BrowserRouter>
+            <PostHogPageViewTracker />
+            <ScrollToTop />
+            <AuthProvider>
+              <WelcomeProvider>
+                <NavigationGuard>
+                  <SignalRealtimeProvider>
+                    <WebSocketPriceProvider>
+                      <Routes>
                         {/* Landing Routes */}
                         <Route
                           path="/"
@@ -146,16 +125,16 @@ function App() {
                            <Route path="signin" element={<Signin />} />
                            <Route path="reset-password" element={<ResetPasswordPage />} />
                            <Route path="legal/disclaimers" element={<DisclaimersPage />} />
-                           <Route path="legal/privacy" element={<PrivacyPolicyPage />} />
-                           <Route path="legal/terms" element={<TermsOfUsePage />} />
-                           <Route
-                             path="account-request"
-                             element={<AccountRequest />}
-                           />
-                           <Route
-                             path="account-request-status"
-                             element={<AccountRequestStatus />}
-                           />
+                           <Route path="legal/terms" element={<TermsPage />} />
+                           <Route path="legal/privacy" element={<PrivacyPage />} />
+                          <Route
+                            path="account-request"
+                            element={<AccountRequest />}
+                          />
+                          <Route
+                            path="account-request-status"
+                            element={<AccountRequestStatus />}
+                          />
                         </Route>
 
                         {/* Dashboard Routes */}
@@ -224,15 +203,6 @@ function App() {
                             element={
                               <ProtectedRoute requiredAccessLevel="admin">
                                 <AdminPanel />
-                              </ProtectedRoute>
-                            }
-                          />
-
-                          <Route
-                            path="admin/price-streaming"
-                            element={
-                              <ProtectedRoute requiredAccessLevel="admin">
-                                <PriceStreamingDashboard />
                               </ProtectedRoute>
                             }
                           />
@@ -308,14 +278,12 @@ function App() {
                           element={<AccessDenied />}
                         />
                         <Route path="*" element={<NotFound />} />
-                        </Routes>
-                            </WebSocketPriceProvider>
-                          </SignalRealtimeProvider>
-                        </NavigationGuard>
-                      </WelcomeProvider>
-                    </AutoRecoveryProvider>
-                  </OneSignalInitializer>
-                </AuthProvider>
+                      </Routes>
+                    </WebSocketPriceProvider>
+                  </SignalRealtimeProvider>
+                </NavigationGuard>
+              </WelcomeProvider>
+            </AuthProvider>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>

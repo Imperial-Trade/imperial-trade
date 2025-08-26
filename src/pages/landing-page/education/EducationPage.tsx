@@ -154,11 +154,11 @@ const EducationPage: React.FC = () => {
             </div>
             
             <div className="flex items-center justify-center gap-4">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+              <Button size="lg" className="bg-blue-600 text-white px-8">
                 Begin Your Transformation
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button variant="outline" size="lg" className="border-blue-500/20 hover:bg-blue-500/5 px-8">
+              <Button variant="outline" size="lg" className="border-blue-500/20 px-8">
                 Explore Curriculum
               </Button>
             </div>
@@ -182,12 +182,11 @@ const EducationPage: React.FC = () => {
 
           <div className="space-y-8">
             {learningPathways.map((pathway, index) => (
-              <Card key={index} className="group border-border/50 hover:border-blue-500/30 transition-all duration-300 overflow-hidden">
-                <div className={`absolute inset-0 bg-gradient-to-br ${pathway.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+              <Card key={index} className="group border-border/50 transition-all duration-300 overflow-hidden">
                 <div className="relative">
                   <CardHeader className="space-y-6">
                     <div className="flex items-start gap-6">
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 group-hover:from-blue-500/20 group-hover:to-blue-500/10 transition-all duration-300">
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 transition-all duration-300">
                         <pathway.icon className="h-8 w-8 text-blue-600" />
                       </div>
                       <div className="flex-1">
@@ -201,7 +200,7 @@ const EducationPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <CardTitle className="text-3xl text-foreground group-hover:text-blue-600 transition-colors">
+                          <CardTitle className="text-3xl text-foreground transition-colors">
                             {pathway.title}
                           </CardTitle>
                           <div className="text-sm font-medium text-blue-600">
@@ -235,7 +234,7 @@ const EducationPage: React.FC = () => {
                       </p>
                     </div>
                     
-                    <Button className="w-full bg-blue-600/10 hover:bg-blue-600 hover:text-white text-blue-600 border border-blue-600/20 transition-all duration-300">
+                    <Button className="w-full bg-blue-600/10 text-blue-600 border border-blue-600/20 transition-all duration-300">
                       Start {pathway.title}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -261,7 +260,7 @@ const EducationPage: React.FC = () => {
 
           <div className="grid md:grid-cols-3 gap-8">
             {educationFeatures.map((feature, index) => (
-              <Card key={index} className="text-center border-border/50 hover:border-blue-500/30 transition-all duration-300">
+              <Card key={index} className="text-center border-border/50 transition-all duration-300">
                 <CardHeader className="space-y-4">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 mx-auto">
                     <feature.icon className="h-8 w-8 text-blue-600" />
@@ -309,7 +308,7 @@ const EducationPage: React.FC = () => {
 
           <div className="grid md:grid-cols-2 gap-8">
             {testimonials.map((testimonial, index) => (
-              <Card key={index} className="border-border/50 hover:border-blue-500/30 transition-all duration-300">
+              <Card key={index} className="border-border/50 transition-all duration-300">
                 <CardContent className="p-8">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
@@ -354,11 +353,11 @@ const EducationPage: React.FC = () => {
             </div>
             
             <div className="flex items-center justify-center gap-4">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+              <Button size="lg" className="bg-blue-600 text-white px-8">
                 Start Foundation Pathway
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button variant="outline" size="lg" className="border-blue-500/20 hover:bg-blue-500/5 px-8">
+              <Button variant="outline" size="lg" className="border-blue-500/20 px-8">
                 View Full Curriculum
               </Button>
             </div>

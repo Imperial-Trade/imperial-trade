@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { Trash2, Brain, MessageSquare, Target, ChevronDown, ChevronUp, Eye } from 'lucide-react';
-import { TradeJournalEntry } from '@/api/entities';
+import { TradeJournalEntry } from '@/contexts/TradeJournalContext';
+import { ImageGalleryWithUrls } from '@/components/tools/ImageGalleryWithUrls';
+import { parseYmdToLocalDate } from '@/lib/date';
 
 interface MobileRecentTradesProps {
   entries: TradeJournalEntry[];
@@ -62,7 +64,7 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
                     {entry.asset_ticker}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {format(new Date(entry.trade_date), "MMM dd, yyyy")}
+                    {format(parseYmdToLocalDate(entry.trade_date), "MMM dd, yyyy")}
                   </span>
                 </div>
                 
@@ -114,20 +116,23 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
                     transition={{ duration: 0.2 }}
                     className="space-y-3"
                   >
-                    {/* AI Feedback */}
-                    {entry.ai_positive_feedback && (
-                      <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-3 border border-primary/20">
+                    {/* Your Trading Coach */}
+                    {(entry.ai_positive_feedback || entry.coach_status === 'pending') && (
+                      <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-3 border border-primary/20 min-h-[64px]">
                         <div className="flex items-start gap-2">
                           <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                             <Brain className="w-3 h-3 text-primary" />
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-semibold text-primary">AI Coach</span>
-                              <Badge variant="secondary" className="text-xs h-4 px-1">AI</Badge>
+                              <span className="text-xs font-semibold text-primary">Your Trading Coach</span>
+                              <span className="invisible text-xs h-4 px-1"></span>
                             </div>
                             <div className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
-                              {entry.ai_positive_feedback}
+                              {entry.coach_status === 'pending' 
+                                ? '👉 "Your coach is looking over your journal…"'
+                                : entry.ai_positive_feedback
+                              }
                             </div>
                           </div>
                         </div>
@@ -135,7 +140,12 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
                     )}
 
                     {/* Screenshot */}
-                    {entry.screenshot_url && (
+                    {entry.screenshot_urls && entry.screenshot_urls.length > 0 ? (
+                      <ImageGalleryWithUrls 
+                        paths={entry.screenshot_urls}
+                        alt="Trade charts"
+                      />
+                    ) : entry.screenshot_url && (
                       <div className="relative group cursor-pointer rounded-lg overflow-hidden">
                         <img
                           src={entry.screenshot_url}
@@ -173,6 +183,7 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
     </div>
   );
 });
+
 
 MobileRecentTrades.displayName = 'MobileRecentTrades';
 

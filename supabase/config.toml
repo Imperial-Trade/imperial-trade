@@ -24,47 +24,11 @@ verify_jwt = false
 [functions.order-trigger-monitor]
 verify_jwt = false
 
-[functions.send-password-reset-email]
+[functions.hello]
 verify_jwt = false
 
-[functions.onesignal-upsert-user]
-verify_jwt = true
-
-[functions.onesignal-config]
+[functions.password-reset]
 verify_jwt = false
 
-[functions.account-request-notifications]
-verify_jwt = false
-
-[functions.admin-notification-active-admins]
-verify_jwt = true
-
-[functions.check-account-request-status]
-verify_jwt = false
-
-[functions.signal-notification-dispatcher]
-verify_jwt = false
-
-[functions.enhanced-signal-notification-dispatcher]
-verify_jwt = false
-
-[functions.test-notifications]
-verify_jwt = false
-
-[functions.subscription-manager]
-verify_jwt = false
-
-[functions.test-signal-notification]
-verify_jwt = false
-
-[functions.onesignal-test-notification]
-verify_jwt = false
-
-[functions.onesignal-verify-subscription]
-verify_jwt = true
-
-[functions.xeon-stream-processor]
-verify_jwt = false
-
-[functions.tradermade-fix-streaming]
+[functions.reset]
 verify_jwt = false

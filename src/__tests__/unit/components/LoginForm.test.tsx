@@ -96,7 +96,6 @@ describe('LoginForm', () => {
     expect(screen.getByText(/signing in/i)).toBeInTheDocument();
   });
 
-
   it('disables inputs when submitting', () => {
     render(<TestLoginForm isSubmitting={true} />);
     

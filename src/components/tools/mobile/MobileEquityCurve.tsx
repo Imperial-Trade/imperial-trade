@@ -11,9 +11,9 @@ const MobileEquityCurve = memo(({ entries }: MobileEquityCurveProps) => {
   const equityData = useMemo(() => {
     if (!entries.length) return [];
 
-    // Sort entries by date
+    // Sort entries by trade_date strings (YYYY-MM-DD format sorts naturally)
     const sortedEntries = [...entries].sort((a, b) => 
-      new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime()
+      a.trade_date.localeCompare(b.trade_date)
     );
 
     let cumulativePnL = 0;

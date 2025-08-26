@@ -68,35 +68,54 @@ export const useAccountStatus = ({ email }: UseAccountStatusProps = {}) => {
       
       console.log('Checking account status for:', normalizedEmail);
 
-      const { data, error: fnError } = await supabase.functions.invoke('check-account-request-status', {
-        body: { email: normalizedEmail }
-      });
+      const { data, error: dbError } = await supabase
+        .from('account_requests')
+        .select('*')
+        .eq('email', normalizedEmail)
+        .order('created_at', { ascending: false })
+        .maybeSingle();
 
-      if (fnError) {
-        console.error('Edge function error:', fnError);
+      if (dbError) {
+        console.error('Database error:', dbError);
         const errorObj = {
           type: 'system_error' as const,
           message: 'Unable to check account status. Please try again.'
         };
         setError(errorObj);
         setStatus(null);
-        statusCache.set(normalizedEmail, { data: null, timestamp: Date.now(), error: errorObj });
+        
+        // Cache the error
+        statusCache.set(normalizedEmail, {
+          data: null,
+          timestamp: Date.now(),
+          error: errorObj
+        });
         return;
       }
 
-      const result = (data as any)?.request ?? null;
-      if (!result) {
+      if (!data) {
         const errorObj = {
           type: 'not_found' as const,
           message: 'No account request found for this email address.'
         };
         setError(errorObj);
         setStatus(null);
-        statusCache.set(normalizedEmail, { data: null, timestamp: Date.now(), error: errorObj });
+        
+        // Cache the not found result
+        statusCache.set(normalizedEmail, {
+          data: null,
+          timestamp: Date.now(),
+          error: errorObj
+        });
       } else {
-        setStatus(result as AccountStatusData);
+        setStatus(data as AccountStatusData);
         setError(null);
-        statusCache.set(normalizedEmail, { data: result as AccountStatusData, timestamp: Date.now() });
+        
+        // Cache the successful result
+        statusCache.set(normalizedEmail, {
+          data: data as AccountStatusData,
+          timestamp: Date.now()
+        });
       }
     } catch (error) {
       console.error('Network error:', error);

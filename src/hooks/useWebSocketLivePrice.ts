@@ -21,8 +21,8 @@ export function useWebSocketLivePrice(symbol: string): LivePriceData {
   }, [symbol]);
 
   const optimizedData = useOptimizedLivePrice(symbol, {
-    enableSmartPausing: false, // Disabled for fastest updates
-    debounceMs: 5, // Near-instant 5ms updates
+    enableSmartPausing: false, // Disabled for business plan ultra-fast updates
+    debounceMs: 100, // Business Plan: Ultra-fast 100ms for professional trading
     pauseOnInput: false
   });
 

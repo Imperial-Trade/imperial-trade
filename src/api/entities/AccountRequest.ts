@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ApiResponse } from '@/types/common';
 import { serverRateLimitService } from '@/services/ServerRateLimitService';
-import { LEGAL_VERSION } from '@/lib/constants/legal';
 
 export interface AccountRequestData {
   id?: string;
@@ -37,26 +36,14 @@ export interface AccountRequestAudit {
 export class AccountRequest {
   static async create(data: AccountRequestData): Promise<AccountRequestData> {
     console.log('🚀 Creating account request:', data);
-
-    const normalizedEmail = data.email.toLowerCase().trim();
     
-    // Best-effort duplicate check (validation only - no rate limiting)
-    try {
-      const existingRequest = await this.getByEmail(normalizedEmail);
-      if (existingRequest) {
-        throw new Error("An account request with this email already exists. Please click the 'Check Request Status' button below to view or update your request.");
-      }
-    } catch (e) {
-      console.warn('getByEmail pre-check failed, proceeding with insert:', e);
-    }
-
-    // Check server-side rate limiting ONLY before actual submission
-    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(normalizedEmail);
+    // Check server-side rate limiting before creating
+    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(data.email);
     if (!rateLimitCheck.allowed) {
       const retryAfterHours = Math.ceil(
         (new Date(rateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60 * 60)
       );
-      throw new Error(`You've reached the limit of 3 account requests per day. Please try again in ${retryAfterHours} hours, or use 'Check Request Status' if you've already submitted a request.`);
+      throw new Error(`Too many requests for this email. Please try again in ${retryAfterHours} hours.`);
     }
 
     // Also check IP-based rate limiting
@@ -69,90 +56,57 @@ export class AccountRequest {
       throw new Error(`Too many requests from your location. Please try again in ${retryAfterMinutes} minutes.`);
     }
 
-    // Include legal acceptance fields
-    const insertPayload: any = {
-      email: normalizedEmail,
-      full_name: data.full_name,
-      phone_number: data.phone_number || null,
-      vt_market_account_number: data.vt_market_account_number || null,
-      referrer: data.referrer || null,
-      account_type: data.account_type,
-      reason: data.reason || null,
-      website: data.website || null, // Honeypot field
-      legal_accepted: true,
-      legal_accepted_at: new Date().toISOString(),
-      legal_version: LEGAL_VERSION,
-    };
+    // Check for existing request with same email
+    const existingRequest = await this.getByEmail(data.email);
+    if (existingRequest) {
+      throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
+    }
 
-    // Insert without selecting (avoids RLS SELECT issues for unauthenticated users)
-    const { error: insertError } = await supabase
+    const { data: result, error } = await supabase
       .from('account_requests')
-      .insert(insertPayload);
+      .insert({
+        email: data.email,
+        full_name: data.full_name,
+        phone_number: data.phone_number || null,
+        vt_market_account_number: data.vt_market_account_number || null,
+        referrer: data.referrer || null,
+        account_type: data.account_type,
+        reason: data.reason || null,
+        website: data.website || null, // Honeypot field
+      })
+      .select()
+      .single();
 
-    if (insertError) {
-      console.error('❌ Error creating account request:', insertError);
-      const msg = insertError.message?.toLowerCase() || '';
-      if (
-        msg.includes('account_requests_email_unique') ||
-        msg.includes('duplicate key') ||
-        (insertError as any).code === '23505'
-      ) {
-        throw new Error("An account request with this email already exists. Please click the 'Check Request Status' button below to view or update your request.");
+    if (error) {
+      console.error('❌ Error creating account request:', error);
+      // Handle unique constraint violation with friendly message
+      if (error.message?.includes('account_requests_email_unique')) {
+        throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
       }
-      throw insertError;
+      throw error;
     }
 
-    // Fetch the created record via edge function (public-safe)
-    let fetched: AccountRequestData | null = null;
-    try {
-      const response = await supabase.functions.invoke('check-account-request-status', {
-        body: { email: normalizedEmail },
-      });
-      if (!response.error) {
-        fetched = (response.data as any)?.request ?? null;
-      } else {
-        console.warn('check-account-request-status returned error:', response.error);
-      }
-    } catch (err) {
-      console.warn('Failed to fetch created account request via edge function:', err);
-    }
-
-    // Fire admin notifications (non-blocking)
-    supabase.functions.invoke('account-request-notifications', {
-      body: {
-        type: 'new_request',
-        requestId: fetched?.id,
-        userEmail: normalizedEmail,
-        userName: data.full_name,
-      },
-    }).then(({ data, error }) => {
-      console.log('Admin notification (new_request) invoked:', { data, error });
-    });
-
-    console.log('✅ Account request created successfully');
-    return (fetched || insertPayload) as AccountRequestData;
+    console.log('✅ Account request created successfully:', result);
+    return result as AccountRequestData;
   }
 
   static async getByEmail(email: string): Promise<AccountRequestData | null> {
-    console.log('🔍 Checking for existing account request via edge function:', email);
+    console.log('🔍 Checking for existing account request:', email);
+    
+    const { data, error } = await supabase
+      .from('account_requests')
+      .select('*')
+      .eq('email', email.toLowerCase().trim())
+      .order('created_at', { ascending: false })
+      .maybeSingle();
 
-    try {
-      const { data, error } = await supabase.functions.invoke('check-account-request-status', {
-        body: { email: email.toLowerCase().trim() }
-      });
-
-      if (error) {
-        console.warn('❌ Error fetching account request by email (edge fn):', error);
-        return null;
-      }
-
-      const req = (data as any)?.request ?? null;
-      console.log('✅ Account request (edge fn) found:', req);
-      return req as AccountRequestData | null;
-    } catch (err) {
-      console.warn('getByEmail failed:', err);
-      return null;
+    if (error) {
+      console.error('❌ Error fetching account request by email:', error);
+      throw error;
     }
+
+    console.log('✅ Account request found:', data);
+    return data as AccountRequestData | null;
   }
 
   static async updateRejectedRequest(id: string, updateData: Partial<AccountRequestData>): Promise<AccountRequestData> {
@@ -206,18 +160,7 @@ export class AccountRequest {
       throw error;
     }
 
-    // Fire admin notifications (non-blocking)
-    supabase.functions.invoke('account-request-notifications', {
-      body: {
-        type: 'request_resubmitted',
-        requestId: id,
-        userEmail: (result as any).email,
-        userName: (result as any).full_name,
-      },
-    }).then(({ data, error }) => {
-      console.log('Admin notification (request_resubmitted) invoked:', { data, error });
-    });
-
+    console.log('✅ Account request updated successfully:', result);
     return result as AccountRequestData;
   }
 

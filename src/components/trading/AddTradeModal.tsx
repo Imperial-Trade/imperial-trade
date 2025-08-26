@@ -1,5 +1,5 @@
 
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,9 +27,8 @@ import { Plus, Zap, CalendarIcon } from "lucide-react";
 import { useTradeForm, TradeFormData } from "@/hooks/useTradeForm";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { compressImage, validateImageFile } from "@/utils/imageCompression";
-import { UploadFile } from "@/api/integrations";
-import { toast } from "sonner";
+import { useImageUpload } from "@/hooks/useImageUpload";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 // Static data to prevent re-creation on every render
 const TRADING_STRATEGIES = [
@@ -71,7 +70,7 @@ const SESSIONS = [
 interface AddTradeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: TradeFormData & { date: string }) => Promise<void>;
+  onSave: (data: TradeFormData & { date: string; screenshotFiles?: File[] }) => Promise<void>;
   selectedDate?: string;
 }
 
@@ -83,89 +82,49 @@ const AddTradeModal = memo<AddTradeModalProps>(({
 }) => {
   const [tradeDate, setTradeDate] = useState<Date | undefined>(() => {
     if (selectedDate) {
-      return new Date(`${selectedDate}T00:00:00`);
+      return new Date(selectedDate);
     }
     return new Date();
   });
 
-  // Screenshot state
-  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
-  const [uploadedUrl, setUploadedUrl] = useState<string | undefined>(undefined);
-  const [isUploading, setIsUploading] = useState(false);
+  const {
+    imageFiles,
+    isUploading,
+    uploadErrors,
+    addFiles,
+    removeFile,
+    clearFiles
+  } = useImageUpload();
 
-  // Sync selected date when modal opens or prop changes
-  useEffect(() => {
-    if (isOpen) {
-      if (selectedDate) {
-        setTradeDate(new Date(`${selectedDate}T00:00:00`));
-      } else {
-        setTradeDate(new Date());
-      }
-    }
-  }, [selectedDate, isOpen]);
-
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const validationError = validateImageFile(file);
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      toast.info("Compressing image...");
-      const compressed = await compressImage(file, {
-        maxWidth: 1920,
-        maxHeight: 1080,
-        quality: 0.8,
-        maxFileSize: 2 * 1024 * 1024,
-      });
-
-      setScreenshotFile(compressed);
-      const previewUrl = URL.createObjectURL(compressed);
-      setScreenshotPreview(previewUrl);
-
-      toast.info("Uploading screenshot...");
-      const { file_url } = await UploadFile({ file: compressed });
-      setUploadedUrl(file_url);
-      toast.success("Screenshot uploaded");
-    } catch (error) {
-      console.error("Screenshot upload failed:", error);
-      toast.error("Failed to upload screenshot");
-      setScreenshotFile(null);
-      setScreenshotPreview(null);
-      setUploadedUrl(undefined);
-    } finally {
-      setIsUploading(false);
-    }
-  }, []);
-
-  const removeScreenshot = useCallback(() => {
-    setScreenshotFile(null);
-    if (screenshotPreview) {
-      URL.revokeObjectURL(screenshotPreview);
-    }
-    setScreenshotPreview(null);
-    setUploadedUrl(undefined);
-  }, [screenshotPreview]);
+  const [saveButtonText, setSaveButtonText] = useState("Save Trade");
 
   const handleSave = useCallback(async (formData: TradeFormData) => {
-    const d = tradeDate ?? new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const dateToUse = `${yyyy}-${mm}-${dd}`;
-    await onSave({
-      ...formData,
-      screenshot_url: uploadedUrl,
-      date: dateToUse,
-    });
-    onClose();
-  }, [onSave, onClose, tradeDate, uploadedUrl]);
+    console.log('🔄 AddTradeModal: Starting save process');
+    setSaveButtonText("Saving...");
+
+    try {
+      const dateToUse = tradeDate ? tradeDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      const screenshotFiles = imageFiles.map(img => img.file);
+      
+      const tradeData = {
+        ...formData,
+        date: dateToUse,
+        screenshotFiles
+      };
+
+      console.log('📤 AddTradeModal: Calling onSave with data:', tradeData);
+      await onSave(tradeData);
+      console.log('✅ AddTradeModal: Save completed successfully');
+      
+      // Only close modal on successful save
+      handleClose();
+    } catch (error) {
+      console.error('❌ AddTradeModal: Save failed:', error);
+      setSaveButtonText("Save Trade");
+      // Don't close modal on error, let user retry
+      throw error; // Re-throw to let calling component handle the error
+    }
+  }, [onSave, tradeDate, imageFiles]);
 
   const {
     formData,
@@ -184,9 +143,12 @@ const AddTradeModal = memo<AddTradeModalProps>(({
   } = useTradeForm(handleSave);
 
   const handleClose = useCallback(() => {
+    console.log('🚪 AddTradeModal: Closing modal');
     resetForm();
+    clearFiles();
+    setSaveButtonText("Save Trade");
     onClose();
-  }, [resetForm, onClose]);
+  }, [resetForm, clearFiles, onClose]);
 
   const handlePnLChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -195,15 +157,15 @@ const AddTradeModal = memo<AddTradeModalProps>(({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[calc(100vh-48px)] md:max-h-[85vh] p-0 flex flex-col overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
             Log New Trade
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-2 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="asset">Asset</Label>
               <Input
@@ -308,7 +270,7 @@ const AddTradeModal = memo<AddTradeModalProps>(({
           <div className="space-y-4 border-t pt-4">
             <h4 className="font-medium text-sm">AI Coach Data Points</h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="strategy">Strategy</Label>
                 <Select onValueChange={updateStrategy}>
@@ -369,46 +331,31 @@ const AddTradeModal = memo<AddTradeModalProps>(({
             />
           </div>
 
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="screenshot">Add Picture (optional)</Label>
-              <div className="mt-2 flex items-center gap-3">
-                <Input
-                  id="screenshot"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={handleFileChange}
-                  disabled={isUploading}
-                />
-              </div>
-              {screenshotPreview && (
-                <div className="mt-3 rounded-md overflow-hidden">
-                  <img
-                    src={screenshotPreview}
-                    alt="Trade screenshot preview"
-                    className="w-full h-32 object-cover"
-                  />
-                  <div className="mt-2">
-                    <Button variant="outline" size="sm" onClick={removeScreenshot}>
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div>
+            <Label htmlFor="charts" className="text-sm font-medium mb-2 block">
+              Upload Charts
+            </Label>
+            <ImageUpload
+              images={imageFiles}
+              onAddFiles={addFiles}
+              onRemoveFile={removeFile}
+              maxFiles={3}
+              disabled={isSubmitting || isUploading}
+              errors={uploadErrors}
+            />
+          </div>
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={!isValid || isSubmitting || isUploading}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                {isSubmitting ? "Saving..." : isUploading ? "Uploading..." : "Save Trade"}
-              </Button>
-            </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={handleClose} disabled={isSubmitting || isUploading}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!isValid || isSubmitting || isUploading}
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              {isSubmitting || isUploading ? "Saving..." : saveButtonText}
+            </Button>
           </div>
         </div>
       </DialogContent>

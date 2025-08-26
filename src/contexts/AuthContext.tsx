@@ -19,13 +19,6 @@ interface Profile {
   approved_by: string | null;
   created_at: string | null;
   updated_at: string | null;
-  push_subscription_active: boolean | null;
-  onesignal_player_id: string | null;
-  onesignal_subscription_status: string | null;
-  onesignal_last_verified_at: string | null;
-  xeon_stream_subscription: boolean | null;
-  xeon_stream_activated_at: string | null;
-  notification_preferences: any | null;
 }
 
 interface AuthContextType {
@@ -37,8 +30,6 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  isXeonStreamSubscribed: boolean;
-  updateXeonStreamSubscription: (subscribed: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -82,14 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           approved_at,
           approved_by,
           created_at,
-          updated_at,
-          push_subscription_active,
-          onesignal_player_id,
-          onesignal_subscription_status,
-          onesignal_last_verified_at,
-          xeon_stream_subscription,
-          xeon_stream_activated_at,
-          notification_preferences
+          updated_at
         `)
         .eq('id', userId)
         .single();
@@ -152,8 +136,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Fetch profile data in background - don't block UI
           setTimeout(() => {
             fetchProfile(session.user.id).then(setProfile);
-            // Bind user to OneSignal and check subscription status after login
-            bindToOneSignalAndCheck(session.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -162,18 +144,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Handle specific auth events
         if (event === 'SIGNED_IN') {
           console.log('User signed in successfully');
-          // Defer redirect to prevent onAuthStateChange conflicts
-          setTimeout(() => {
-            const currentPath = window.location.pathname;
-            if (currentPath === '/signin') {
-              // Get redirect destination from sessionStorage or use default
-              const savedRedirect = sessionStorage.getItem('auth_redirect_after_login');
-              const from = savedRedirect || '/dashboard/home';
-              sessionStorage.removeItem('auth_redirect_after_login'); // Clean up
-              navigate(from, { replace: true });
-            }
-          }, 0);
-          // OneSignal binding and upsert handled in bindToOneSignalAndCheck
         } else if (event === 'SIGNED_OUT') {
           // Skip cleanup if we're manually signing out to prevent race condition
           if (!isSigningOut) {
@@ -192,104 +162,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Set main loading to false immediately after getting initial session
       setLoading(false);
       
-        if (session?.user) {
-          // Load profile in background
-          setTimeout(() => {
-            fetchProfile(session.user.id).then(setProfile);
-            // Bind to OneSignal and check subscription status on initial load
-            bindToOneSignalAndCheck(session.user.id);
-          }, 0);
-        }
+      if (session?.user) {
+        // Load profile in background
+        setTimeout(() => {
+          fetchProfile(session.user.id).then(setProfile);
+        }, 0);
+      }
     });
 
     return () => subscription.unsubscribe();
-}, []);
-
-  // Ensure OneSignal user/email subscription on auth/profile changes (deduplicated)
-  useEffect(() => {
-    try {
-      const uid = user?.id;
-      if (!uid) return;
-      const email = user?.email || '';
-      const role = profile?.role || '';
-      const utype = profile?.user_type || '';
-      const key = `os_upsert_v1:${uid}:${email}:${role}:${utype}`;
-      const done = (() => { try { return localStorage.getItem(key) === '1'; } catch { return false; } })();
-      if (done) return;
-      const body: { user_id?: string; email?: string; tags?: Record<string, string> } = {};
-      body.user_id = uid;
-      body.email = email;
-      const tags: Record<string, string> = {};
-      if (role) tags.role = String(role);
-      if (utype) tags.user_type = String(utype);
-      if (Object.keys(tags).length) body.tags = tags;
-      supabase.functions.invoke('onesignal-upsert-user', { body }).then(() => {
-        try { localStorage.setItem(key, '1'); } catch {}
-      }).catch(() => {});
-    } catch {}
-  }, [user?.id, user?.email, profile?.role, profile?.user_type]);
-
-  const bindToOneSignalAndCheck = async (userId: string) => {
-    try {
-      // Check if we've already verified this session
-      const sessionKey = `onesignal_verified_${userId}_${Date.now().toString().slice(0, -5)}`;
-      if (sessionStorage.getItem(sessionKey)) {
-        return;
-      }
-
-      // Prevent duplicate login attempts for this session
-      const loginKey = `onesignal_login_${userId}`;
-      if (sessionStorage.getItem(loginKey)) {
-        console.log('[Auth] OneSignal login already attempted for this session');
-      } else {
-        // Safe login using OneSignal queue to prevent race conditions
-        console.log('[Auth] Queuing OneSignal login for user:', userId);
-        window.OneSignal = window.OneSignal || [];
-        window.OneSignal.push(() => {
-          try {
-            console.log('[Auth] Executing OneSignal login for user:', userId);
-            window.OneSignal.login(userId);
-            console.log('[Auth] OneSignal login successful');
-          } catch (error) {
-            console.warn('[Auth] OneSignal login failed:', error);
-          }
-        });
-        
-        // Mark login as attempted for this session
-        sessionStorage.setItem(loginKey, 'true');
-      }
-
-      // Verify current OneSignal subscription status (this is the source of truth)
-      const { data: verificationResult } = await supabase.functions.invoke('onesignal-verify-subscription', {
-        body: { user_id: userId }
-      });
-
-      if (verificationResult?.success) {
-        const { subscription_status } = verificationResult;
-        
-        // Update database with OneSignal's current status
-        await supabase
-          .from('profiles')
-          .update({
-            onesignal_subscription_status: subscription_status.is_subscribed ? 'subscribed' : 'unsubscribed',
-            push_subscription_active: subscription_status.is_subscribed,
-            onesignal_last_verified_at: new Date().toISOString(),
-            onesignal_player_id: subscription_status.player_id || null
-          })
-          .eq('id', userId);
-
-        // Mark this session as verified
-        sessionStorage.setItem(sessionKey, 'true');
-        console.log('[Auth] OneSignal subscription verified:', subscription_status.is_subscribed);
-        
-        // Store verification result for use by notification setup
-        sessionStorage.setItem(`onesignal_status_${userId}`, JSON.stringify(subscription_status));
-      }
-    } catch (error) {
-      console.error('[Auth] Error binding to OneSignal and checking subscription:', error);
-    }
-  };
-
+  }, []);
 
   const signOut = async () => {
     try {
@@ -322,30 +204,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const updateXeonStreamSubscription = async (subscribed: boolean) => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          xeon_stream_subscription: subscribed,
-          xeon_stream_activated_at: subscribed ? new Date().toISOString() : null
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-      
-      // Refresh profile to get updated data
-      await refreshProfile();
-    } catch (error) {
-      console.error('Error updating Xeon Stream subscription:', error);
-      throw error;
-    }
-  };
-
-  const isXeonStreamSubscribed = profile?.xeon_stream_subscription || false;
-
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -355,9 +213,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       profileLoading,
       signOut, 
       refreshSession, 
-      refreshProfile,
-      isXeonStreamSubscribed,
-      updateXeonStreamSubscription
+      refreshProfile 
     }}>
       {children}
     </AuthContext.Provider>

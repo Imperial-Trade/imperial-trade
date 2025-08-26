@@ -7,10 +7,6 @@ import LoadingSpinner from '@/components/layout/LoadingSpinner';
 import { useVoiceRecognition } from '@/components/layout/VoiceRecognition';
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from '@/components/AppSidebar';
-import { NotificationsPanel } from '@/components/notifications/NotificationsPanel';
-import NotificationSetupManager from '@/components/notifications/NotificationSetupManager';
-
-
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -103,8 +99,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPageName }) => {
             </div>
           </main>
         </div>
-        
-        <NotificationSetupManager />
       </div>
     </SidebarProvider>
   );

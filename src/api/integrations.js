@@ -48,7 +48,7 @@ export const InvokeLLM = async ({ prompt, file_urls = [], user_id = null }) => {
     }
     
     console.log('Enhanced AI coaching analysis completed successfully');
-    return data.result;
+    return data;
     
   } catch (error) {
     console.error('AI coaching analysis failed:', error);

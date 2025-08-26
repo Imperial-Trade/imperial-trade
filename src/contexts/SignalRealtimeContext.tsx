@@ -64,8 +64,8 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
       console.log('SignalRealtimeContext - Unique user IDs from alerts:', userIds);
 
       // Fetch ALL profiles for these users
-      const { data: profilesData, error: profilesError } = await (supabase as any)
-        .from('public_profiles')
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
         .select('*')
         .in('id', userIds);
 
@@ -165,11 +165,11 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
         console.log('SignalRealtimeContext - Processing INSERT for alert:', newRecord.id);
         
         // Get profile for the new signal
-        const { data: profile, error: profileError } = await (supabase as any)
-          .from('public_profiles')
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
           .select('*')
           .eq('id', newRecord.user_id)
-          .maybeSingle();
+          .single();
 
         if (profileError) {
           console.error('SignalRealtimeContext - Error fetching profile for new signal:', profileError);
@@ -371,7 +371,18 @@ export const SignalRealtimeProvider: React.FC<SignalRealtimeProviderProps> = ({ 
 export const useSignalRealtime = () => {
   const context = useContext(SignalRealtimeContext);
   if (!context) {
-    throw new Error('useSignalRealtime must be used within a SignalRealtimeProvider');
+    // Instead of throwing, return a safe fallback object
+    console.warn('useSignalRealtime used outside of SignalRealtimeProvider, returning fallback');
+    return {
+      signals: [],
+      connectionStatus: 'disconnected' as const,
+      lastUpdated: null,
+      error: 'SignalRealtimeProvider not initialized',
+      nextRetryAt: null,
+      subscribe: () => console.warn('SignalRealtimeProvider not available'),
+      unsubscribe: () => console.warn('SignalRealtimeProvider not available'),
+      refreshSignals: async () => console.warn('SignalRealtimeProvider not available')
+    };
   }
   return context;
 };

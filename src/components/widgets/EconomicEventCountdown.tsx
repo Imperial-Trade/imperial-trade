@@ -47,7 +47,7 @@ export default function EconomicEventCountdown({ className = '' }: EconomicEvent
       }
     };
 
-    const interval = setInterval(updateCountdown, 10000);
+    const interval = setInterval(updateCountdown, 1000);
     updateCountdown();
 
     return () => clearInterval(interval);

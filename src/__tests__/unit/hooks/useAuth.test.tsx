@@ -36,8 +36,6 @@ describe('useAuth Hook', () => {
       signOut: vi.fn(),
       refreshSession: vi.fn(),
       refreshProfile: vi.fn(),
-      isXeonStreamSubscribed: false,
-      updateXeonStreamSubscription: vi.fn(),
     });
 
     const { result } = renderHook(() => useAuth());
@@ -56,8 +54,6 @@ describe('useAuth Hook', () => {
       signOut: vi.fn(),
       refreshSession: vi.fn(),
       refreshProfile: vi.fn(),
-      isXeonStreamSubscribed: false,
-      updateXeonStreamSubscription: vi.fn(),
     });
 
     const { result } = renderHook(() => useAuth());

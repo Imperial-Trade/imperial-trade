@@ -17,20 +17,19 @@ export default function SigninPage() {
     message: ""
   });
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const { form, onSubmit, isSubmitting } = useLoginForm();
+  const {
+    form,
+    onSubmit,
+    isSubmitting,
+  } = useLoginForm();
   const navigate = useNavigate();
   const handleFormSubmit = async (data: any) => {
     try {
       // Login logic will be handled in the hook
       await onSubmit(data);
 
-      // Set success status and let AuthContext handle the redirect
-      setStatus({
-        type: "success",
-        message: "Login successful! Redirecting to dashboard..."
-      });
-      
-      // The AuthContext will handle the actual redirect
+      // Redirect to dashboard after successful login
+      navigate("/dashboard/home");
     } catch (error) {
       console.error("Login failed:", error);
       setStatus({
@@ -67,12 +66,12 @@ export default function SigninPage() {
                 {showForgotPassword ? (
                   <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
                 ) : (
-            <LoginForm
-              form={form}
-              onSubmit={handleFormSubmit}
-              isSubmitting={isSubmitting}
-              onForgotPassword={() => setShowForgotPassword(true)}
-            />
+                  <LoginForm 
+                    form={form} 
+                    onSubmit={handleFormSubmit} 
+                    isSubmitting={isSubmitting} 
+                    onForgotPassword={() => setShowForgotPassword(true)}
+                  />
                 )}
               </ErrorBoundary>
             )}

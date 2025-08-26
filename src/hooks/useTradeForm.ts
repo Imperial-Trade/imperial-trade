@@ -14,7 +14,9 @@ export interface TradeFormData {
   entry_price?: number;
   exit_price?: number;
   position_size?: number;
-  screenshot_url?: string;
+  screenshot_url?: string; // Legacy field
+  screenshot_urls?: string[]; // New field for multiple images
+  screenshotFiles?: File[]; // Files to upload
 }
 
 const initialFormData: TradeFormData = {

@@ -26,6 +26,7 @@ export const useLoginForm = () => {
     }
 
     try {
+      
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -40,7 +41,7 @@ export const useLoginForm = () => {
         description: "You have been logged in successfully.",
       });
 
-      // Redirect will be handled by AuthContext
+      // Redirect will be handled by the parent component
     } catch (error: any) {
       console.error("Login error:", error);
       

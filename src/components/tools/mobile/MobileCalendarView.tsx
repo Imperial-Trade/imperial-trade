@@ -1,19 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Calendar, ArrowLeft, TrendingUp, TrendingDown, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar as CalendarIcon,
-  ArrowLeft,
-  TrendingUp,
-  TrendingDown,
-  Target
-} from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns';
-import { TradeJournalEntry } from '@/api/client/operations/TradeJournalEntry';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns';
+import { formatYmdLocal, isFutureYmd, getTodayYmd } from '@/lib/date';
 
 interface MobileCalendarViewProps {
   entries: any[];
@@ -31,17 +23,19 @@ export default function MobileCalendarView({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
 
-  // Process entries by date
+  // Process entries by date using useMemo for performance
   const entriesByDate = useMemo(() => {
-    const dateMap = new Map<string, any[]>();
+    const grouped: Record<string, any[]> = {};
+    
     entries.forEach(entry => {
-      const dateKey = format(new Date(entry.trade_date), 'yyyy-MM-dd');
-      if (!dateMap.has(dateKey)) {
-        dateMap.set(dateKey, []);
+      const dateKey = entry.trade_date; // Already in YYYY-MM-DD format from DB
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
       }
-      dateMap.get(dateKey)!.push(entry);
+      grouped[dateKey].push(entry);
     });
-    return dateMap;
+    
+    return grouped;
   }, [entries]);
 
   // Calculate date range for current view
@@ -72,37 +66,49 @@ export default function MobileCalendarView({
     });
   };
 
+  // Get day data for a specific date
   const getDayData = (date: Date) => {
-    const dateKey = format(date, 'yyyy-MM-dd');
-    const dayEntries = entriesByDate.get(dateKey) || [];
+    const dateKey = formatYmdLocal(date); // Use local date formatting
+    const dayEntries = entriesByDate[dateKey] || [];
+    
+    const wins = dayEntries.filter(entry => entry.pnl >= 0).length;
+    const losses = dayEntries.filter(entry => entry.pnl < 0).length;
     const totalPnL = dayEntries.reduce((sum, entry) => sum + (entry.pnl || 0), 0);
-    const winCount = dayEntries.filter(entry => (entry.pnl || 0) > 0).length;
-    const lossCount = dayEntries.filter(entry => (entry.pnl || 0) < 0).length;
     
     return {
       entries: dayEntries,
       totalPnL,
-      winCount,
-      lossCount,
-      tradeCount: dayEntries.length
+      wins,
+      losses,
+      totalTrades: dayEntries.length
     };
   };
 
+  // Render individual day cell
   const renderDayCell = (date: Date) => {
     const dayData = getDayData(date);
-    const isSelected = selectedDate && isSameDay(date, selectedDate);
+    const dateKey = formatYmdLocal(date);
     const isCurrentDay = isToday(date);
-    
+    const isFutureDay = isFutureYmd(dateKey);
+    const isSelected = selectedDate && formatYmdLocal(selectedDate) === dateKey;
+    const hasEntries = dayData.totalTrades > 0;
+
     return (
       <motion.button
         key={date.toISOString()}
-        onClick={() => onDateSelect(date)}
+        onClick={() => {
+          if (!isFutureDay && hasEntries) {
+            onDateSelect(date);
+          }
+        }}
         whileTap={{ scale: 0.95 }}
+        disabled={isFutureDay || !hasEntries}
         className={`
           relative p-1 h-16 w-full text-left border border-border/30 transition-all
-          ${isSelected ? 'bg-primary/20 border-primary' : 'hover:bg-muted/50'}
+          ${isSelected ? 'bg-primary/20 border-primary' : ''}
           ${isCurrentDay ? 'ring-2 ring-primary/50' : ''}
-          ${dayData.tradeCount > 0 ? 'bg-card' : ''}
+          ${hasEntries ? 'hover:bg-muted/50 cursor-pointer bg-card' : 'cursor-not-allowed opacity-50'}
+          ${isFutureDay ? 'opacity-30' : ''}
         `}
       >
         <div className="flex flex-col h-full">
@@ -110,7 +116,7 @@ export default function MobileCalendarView({
             {format(date, 'd')}
           </span>
           
-          {dayData.tradeCount > 0 && (
+          {hasEntries && (
             <>
               <div className="flex items-center gap-0.5 mt-0.5">
                 {dayData.totalPnL > 0 ? (
@@ -129,10 +135,10 @@ export default function MobileCalendarView({
               </div>
               
               <div className="flex gap-0.5 mt-1">
-                {dayData.winCount > 0 && (
+                {dayData.wins > 0 && (
                   <div className="w-1 h-1 bg-emerald-500 rounded-full" />
                 )}
-                {dayData.lossCount > 0 && (
+                {dayData.losses > 0 && (
                   <div className="w-1 h-1 bg-red-500 rounded-full" />
                 )}
               </div>
@@ -192,7 +198,7 @@ export default function MobileCalendarView({
             </Button>
             
             <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-primary" />
+              <Calendar className="w-5 h-5 text-primary" />
               {format(currentDate, 'MMMM yyyy')}
             </CardTitle>
             

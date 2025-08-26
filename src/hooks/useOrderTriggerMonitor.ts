@@ -61,7 +61,12 @@ export const useOrderTriggerMonitor = (userId?: string) => {
         console.log('📡 Order trigger subscription status:', status);
       });
 
-    // Notification permission is handled centrally by NotificationsContext
+    // Request notification permission on first setup
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then((permission) => {
+        console.log('🔔 Notification permission:', permission);
+      });
+    }
 
     return () => {
       console.log('🔕 Cleaning up order trigger monitoring');

@@ -38,6 +38,7 @@ import MeccaAnalysisHub from "@/components/ai/MeccaAnalysisHub";
 import OpportunityScanner from "@/components/ai/OpportunityScanner";
 import RiskSimulator from "@/components/ai/RiskSimulator";
 import TradingJournal from "@/components/tools/TradingJournal";
+import { TradeJournalProvider } from "@/contexts/TradeJournalContext";
 
 const coreTools = [
   {
@@ -101,7 +102,7 @@ const navButtons = [
 
 export default function AdvancedTools() {
   const location = useLocation();
-  const [activeTool, setActiveTool] = useState(null);
+  const [activeTool, setActiveTool] = useState(coreTools[0]);
 
   // Memoize all tools to prevent recreation on every render
   const allTools = React.useMemo(() => [...coreTools, ...aiTools], []);
@@ -303,66 +304,26 @@ export default function AdvancedTools() {
           <div className="relative h-full">
             <Card className="bg-transparent border-transparent backdrop-blur-none shadow-none rounded-lg sm:rounded-2xl h-full overflow-y-auto">
               <div className="p-1 sm:p-2 lg:p-4 bg-transparent">
-                <div
-                  style={{
-                    display:
-                      activeTool?.name === "Educational Journal"
-                        ? "block"
-                        : "none",
-                  }}
-                >
-                  <TradingJournal />
-                </div>
-                <div
-                  style={{
-                    display:
-                      activeTool?.name === "Economic Calendar"
-                        ? "block"
-                        : "none",
-                  }}
-                >
+                {activeTool?.name === "Educational Journal" && (
+                  <TradeJournalProvider>
+                    <TradingJournal />
+                  </TradeJournalProvider>
+                )}
+                {activeTool?.name === "Economic Calendar" && (
                   <OptimizedEconomicCalendar />
-                </div>
-                <div
-                  style={{
-                    display:
-                      activeTool?.name === "Educational Calculator"
-                        ? "block"
-                        : "none",
-                  }}
-                >
+                )}
+                {activeTool?.name === "Educational Calculator" && (
                   <RiskCalculator />
-                </div>
-                <div
-                  style={{
-                    display:
-                      activeTool?.name === "MECCA"
-                        ? "block"
-                        : "none",
-                  }}
-                >
+                )}
+                {activeTool?.name === "MECCA" && (
                   <MeccaAnalysisHub />
-                </div>
-                <div
-                  style={{
-                    display:
-                      activeTool?.name === "Educational Pattern Scanner"
-                        ? "block"
-                        : "none",
-                  }}
-                >
+                )}
+                {activeTool?.name === "Educational Pattern Scanner" && (
                   <OpportunityScanner />
-                </div>
-                <div
-                  style={{
-                    display:
-                      activeTool?.name === "Educational Risk Calculator"
-                        ? "block"
-                        : "none",
-                  }}
-                >
+                )}
+                {activeTool?.name === "Educational Risk Calculator" && (
                   <RiskSimulator />
-                </div>
+                )}
               </div>
             </Card>
           </div>

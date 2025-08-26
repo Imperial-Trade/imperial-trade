@@ -1,119 +1,72 @@
 import React from "react";
-import {
-  Bell,
-  Activity,
-  Brain,
-  Target,
-  LineChart,
-  Clock,
-  ArrowRight,
-  CheckCircle,
-  TrendingUp,
-  Zap,
-  Eye,
-  BarChart3
-} from "lucide-react";
+import { Bell, Activity, Brain, Target, LineChart, Clock, ArrowRight, CheckCircle, TrendingUp, Zap, Eye, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
 const SignalsPage: React.FC = () => {
-  const signalFeatures = [
-    {
-      icon: Target,
-      title: "Precision Parameters",
-      subtitle: "The Complete Trade Blueprint",
-      description: "Every alert is a complete trade plan with exact entry prices, hard stop losses, and up to 5 Take Profit levels.",
-      detailedFeatures: [
-        "Exact Entry Price: Precise entry points down to the pip (e.g., 2342.50 for Gold)",
-        "Hard Stop Loss: Clearly defined risk parameters for every single trade",
-        "Multi-TP Strategy: Up to 5 Take Profit levels for educational setup analysis",
-        "Analyst's Commentary: Brief but potent notes explaining the 'why' behind each trade",
-        "Risk-Reward Analysis: Pre-calculated ratios for informed decision making",
-        "Trade Timeframe: Clear indication of expected trade duration and style"
-      ],
-      whatItDoes: "It provides more than just 'Buy Gold.' You get a complete professional trade plan with every parameter you need to execute like an institutional trader.",
-      gradient: "from-green-500/20 to-emerald-500/20"
-    },
-    {
-      icon: Activity,
-      title: "Live Dashboard Interface",
-      subtitle: "Real-Time Trade Management",
-      description: "A live, breathing interface that tracks your trades in real-time with automated status updates.",
-      detailedFeatures: [
-        "Live Price Integration: Pulsating live price feed directly on alert cards",
-        "Visual Proximity Indicators: See how close price is to entry/exit levels instantly",
-        "Automated Status Updates: System monitors price and updates trade progression automatically",
-        "TP Tracking: Visual updates when Take Profit levels are hit with notifications",
-        "Risk Calculator Integration: One-click position sizing with pre-filled parameters",
-        "Performance Metrics: Live tracking of signal success rates and performance"
-      ],
-      whatItDoes: "It gives you a professional trading desk experience, monitoring your positions and alerting you to important developments without you having to watch charts constantly.",
-      gradient: "from-blue-500/20 to-cyan-500/20"
-    },
-    {
-      icon: Brain,
-      title: "Market Educator Commentary",
-      subtitle: "Learn While You Analyze",
-      description: "Each signal includes expert analysis explaining the reasoning, making it a mini masterclass in professional trading.",
-      detailedFeatures: [
-        "Market Context: Understanding of current market conditions and themes",
-        "Technical Analysis: Explanation of chart patterns and technical setups",
-        "Risk Assessment: Why this particular risk-reward makes sense",
-        "Entry Timing: Optimal timing considerations for trade execution",
-        "Market Psychology: Understanding sentiment and positioning factors",
-        "Alternative Scenarios: What to watch for if the trade doesn't go as planned"
-      ],
-      whatItDoes: "It demystifies market analysis by showing you exactly how experienced market educators think and plan their analysis, turning every pattern into a learning opportunity.",
-      gradient: "from-purple-500/20 to-indigo-500/20"
-    },
-    {
-      icon: Clock,
-      title: "24/5 Market Coverage",
-      subtitle: "Global Market Monitoring",
-      description: "Market educators covering major currency pairs and instruments around the clock during market hours.",
-      detailedFeatures: [
-        "London Session Coverage: Key European market hours with GBP and EUR focus",
-        "New York Session Coverage: US market hours with major USD pairs",
-        "Asian Session Monitoring: Coverage of JPY pairs and commodity currencies",
-        "Major Event Coverage: Special analysis during high-impact news releases",
-        "Weekend Preparation: Market outlook and setup identification for the week ahead",
-        "Holiday Adjustments: Modified coverage during market holidays and low liquidity periods"
-      ],
-      whatItDoes: "It ensures you never miss high-probability opportunities regardless of your timezone, with professional oversight during all major trading sessions.",
-      gradient: "from-amber-500/20 to-orange-500/20"
-    }
-  ];
-
-  const tradingApproach = [
-    {
-      icon: Eye,
-      title: "The 'Over-the-Shoulder' Experience",
-      description: "Watch market educators work in real-time, seeing their complete thought process and decision-making methodology.",
-      benefits: ["Real-time learning", "Educational mindset", "Decision transparency"]
-    },
-    {
-      icon: BarChart3,
-      title: "Advanced Trade Management",
-      description: "Learn sophisticated position management through partial profit-taking, stop loss adjustment, and risk optimization.",
-      benefits: ["Risk management", "Educational optimization", "Learning techniques"]
-    },
-    {
-      icon: TrendingUp,
-      title: "Earn While You Learn",
-      description: "Develop analytical skills while simultaneously receiving a masterclass in market analysis and educational content.",
-      benefits: ["Educational purpose only", "Market analysis learning", "Pattern recognition development"]
-    }
-  ];
-
-  const stats = [
-    { value: "73%", label: "Hypothetical Success Rate", subtitle: "Educational Backtest" },
-    { value: "2.4:1", label: "Avg Risk/Reward", subtitle: "Educational Reference" },
-    { value: "24/5", label: "Market Coverage", subtitle: "Educational Analysis" }
-  ];
-
-  return (
-    <div className="bg-background min-h-screen font-sans">
+  const signalFeatures = [{
+    icon: Target,
+    title: "Precision Parameters",
+    subtitle: "The Complete Trade Blueprint",
+    description: "Every alert is a complete trade plan with exact entry prices, hard stop losses, and up to 5 Take Profit levels.",
+    detailedFeatures: ["Exact Entry Price: Precise entry points down to the pip (e.g., 2342.50 for Gold)", "Hard Stop Loss: Clearly defined risk parameters for every single trade", "Multi-TP Strategy: Up to 5 Take Profit levels for educational setup analysis", "Analyst's Commentary: Brief but potent notes explaining the 'why' behind each trade", "Risk-Reward Analysis: Pre-calculated ratios for informed decision making", "Trade Timeframe: Clear indication of expected trade duration and style"],
+    whatItDoes: "It provides more than just 'Buy Gold.' You get a complete professional trade plan with every parameter you need to execute like an institutional trader.",
+    gradient: "from-green-500/20 to-emerald-500/20"
+  }, {
+    icon: Activity,
+    title: "Live Dashboard Interface",
+    subtitle: "Real-Time Trade Management",
+    description: "A live, breathing interface that tracks your trades in real-time with automated status updates.",
+    detailedFeatures: ["Live Price Integration: Pulsating live price feed directly on alert cards", "Visual Proximity Indicators: See how close price is to entry/exit levels instantly", "Automated Status Updates: System monitors price and updates trade progression automatically", "TP Tracking: Visual updates when Take Profit levels are hit with notifications", "Risk Calculator Integration: One-click position sizing with pre-filled parameters", "Performance Metrics: Live tracking of signal success rates and performance"],
+    whatItDoes: "It gives you a professional trading desk experience, monitoring your positions and alerting you to important developments without you having to watch charts constantly.",
+    gradient: "from-blue-500/20 to-cyan-500/20"
+  }, {
+    icon: Brain,
+    title: "Market Educator Commentary",
+    subtitle: "Learn While You Analyze",
+    description: "Each signal includes expert analysis explaining the reasoning, making it a mini masterclass in professional trading.",
+    detailedFeatures: ["Market Context: Understanding of current market conditions and themes", "Technical Analysis: Explanation of chart patterns and technical setups", "Risk Assessment: Why this particular risk-reward makes sense", "Entry Timing: Optimal timing considerations for trade execution", "Market Psychology: Understanding sentiment and positioning factors", "Alternative Scenarios: What to watch for if the trade doesn't go as planned"],
+    whatItDoes: "It demystifies market analysis by showing you exactly how experienced market educators think and plan their analysis, turning every pattern into a learning opportunity.",
+    gradient: "from-purple-500/20 to-indigo-500/20"
+  }, {
+    icon: Clock,
+    title: "24/5 Market Coverage",
+    subtitle: "Global Market Monitoring",
+    description: "Market educators covering major currency pairs and instruments around the clock during market hours.",
+    detailedFeatures: ["London Session Coverage: Key European market hours with GBP and EUR focus", "New York Session Coverage: US market hours with major USD pairs", "Asian Session Monitoring: Coverage of JPY pairs and commodity currencies", "Major Event Coverage: Special analysis during high-impact news releases", "Weekend Preparation: Market outlook and setup identification for the week ahead", "Holiday Adjustments: Modified coverage during market holidays and low liquidity periods"],
+    whatItDoes: "It ensures you never miss high-probability opportunities regardless of your timezone, with professional oversight during all major trading sessions.",
+    gradient: "from-amber-500/20 to-orange-500/20"
+  }];
+  const tradingApproach = [{
+    icon: Eye,
+    title: "The 'Over-the-Shoulder' Experience",
+    description: "Watch market educators work in real-time, seeing their complete thought process and decision-making methodology.",
+    benefits: ["Real-time learning", "Educational mindset", "Decision transparency"]
+  }, {
+    icon: BarChart3,
+    title: "Advanced Trade Management",
+    description: "Learn sophisticated position management through partial profit-taking, stop loss adjustment, and risk optimization.",
+    benefits: ["Risk management", "Educational optimization", "Learning techniques"]
+  }, {
+    icon: TrendingUp,
+    title: "Earn While You Learn",
+    description: "Develop analytical skills while simultaneously receiving a masterclass in market analysis and educational content.",
+    benefits: ["Educational purpose only", "Market analysis learning", "Pattern recognition development"]
+  }];
+  const stats = [{
+    value: "73%",
+    label: "Hypothetical Success Rate",
+    subtitle: "Educational Backtest"
+  }, {
+    value: "2.4:1",
+    label: "Avg Risk/Reward",
+    subtitle: "Educational Reference"
+  }, {
+    value: "24/5",
+    label: "Market Coverage",
+    subtitle: "Educational Analysis"
+  }];
+  return <div className="bg-background min-h-screen font-sans">
       {/* Hero Section */}
       <section className="relative py-24 px-6 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-green-500/5" />
@@ -126,11 +79,9 @@ const SignalsPage: React.FC = () => {
                   Educational Market Analysis
                 </Badge>
                 <h1 className="text-6xl font-bold leading-tight tracking-tight">
-                  <span className="bg-gradient-to-r from-green-500 via-emerald-400 to-green-600 bg-clip-text text-transparent">
-                    Pattern Recognition
-                  </span>
+                  <span className="bg-gradient-to-r from-green-500 via-emerald-400 to-green-600 bg-clip-text text-transparent">Xeon Alerts </span>
                   <br />
-                  <span className="text-foreground">Your Learning Platform</span>
+                  <span className="text-foreground text-5xl">Your Learning Platform</span>
                 </h1>
                 <p className="text-xl text-muted-foreground leading-relaxed">
                   Educational tools designed to help you understand market patterns and develop analytical skills. 
@@ -140,21 +91,19 @@ const SignalsPage: React.FC = () => {
               
               {/* Stats */}
               <div className="grid grid-cols-3 gap-6">
-                {stats.map((stat, index) => (
-                  <div key={index} className="text-center space-y-2">
+                {stats.map((stat, index) => <div key={index} className="text-center space-y-2">
                     <div className="text-3xl font-bold text-green-600">{stat.value}</div>
                     <div className="text-sm font-medium text-foreground">{stat.label}</div>
                     <div className="text-xs text-muted-foreground">{stat.subtitle}</div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
               
               <div className="flex items-center gap-4">
-                <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8">
+                <Button size="lg" className="bg-green-600 text-white px-8">
                   Start Learning Patterns
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-                <Button variant="outline" size="lg" className="border-green-500/20 hover:bg-green-500/5 px-8">
+                <Button variant="outline" size="lg" className="border-green-500/20 px-8">
                   View Educational Results
                 </Button>
               </div>
@@ -220,18 +169,17 @@ const SignalsPage: React.FC = () => {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
-            {signalFeatures.map((feature, index) => (
-              <Card key={index} className="group border-border/50 hover:border-green-500/30 transition-all duration-300 overflow-hidden">
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+            {signalFeatures.map((feature, index) => <Card key={index} className="border-border/50 transition-all duration-300 overflow-hidden">
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 transition-opacity duration-500`} />
                 <div className="relative">
                   <CardHeader className="space-y-4">
                     <div className="flex items-start gap-6">
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 group-hover:from-green-500/20 group-hover:to-green-500/10 transition-all duration-300">
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 transition-all duration-300">
                         <feature.icon className="h-8 w-8 text-green-600" />
                       </div>
                       <div className="flex-1">
                         <div className="space-y-1">
-                          <CardTitle className="text-2xl text-foreground group-hover:text-green-600 transition-colors">
+                          <CardTitle className="text-2xl text-foreground transition-colors">
                             {feature.title}
                           </CardTitle>
                           <div className="text-sm font-medium text-green-600">
@@ -256,23 +204,18 @@ const SignalsPage: React.FC = () => {
                     <div className="space-y-3">
                       <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">Detailed Features:</h4>
                       <div className="space-y-2">
-                        {feature.detailedFeatures.slice(0, 4).map((detail, idx) => (
-                          <div key={idx} className="flex items-start gap-3 text-sm">
+                        {feature.detailedFeatures.slice(0, 4).map((detail, idx) => <div key={idx} className="flex items-start gap-3 text-sm">
                             <div className="w-1.5 h-1.5 rounded-full bg-green-600 mt-2 flex-shrink-0" />
                             <span className="text-muted-foreground leading-relaxed">{detail}</span>
-                          </div>
-                        ))}
-                        {feature.detailedFeatures.length > 4 && (
-                          <div className="text-xs text-green-600 font-medium pl-4">
+                          </div>)}
+                        {feature.detailedFeatures.length > 4 && <div className="text-xs text-green-600 font-medium pl-4">
                             +{feature.detailedFeatures.length - 4} more professional features
-                          </div>
-                        )}
+                          </div>}
                       </div>
                     </div>
                   </CardContent>
                 </div>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -290,8 +233,7 @@ const SignalsPage: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {tradingApproach.map((approach, index) => (
-              <Card key={index} className="text-center border-border/50 hover:border-green-500/30 transition-all duration-300">
+            {tradingApproach.map((approach, index) => <Card key={index} className="text-center border-border/50 transition-all duration-300">
                 <CardHeader className="space-y-4">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/10 to-green-500/5 mx-auto">
                     <approach.icon className="h-8 w-8 text-green-600" />
@@ -306,16 +248,13 @@ const SignalsPage: React.FC = () => {
                 
                 <CardContent>
                   <div className="space-y-2">
-                    {approach.benefits.map((benefit, idx) => (
-                      <div key={idx} className="flex items-center justify-center gap-2 text-sm">
+                    {approach.benefits.map((benefit, idx) => <div key={idx} className="flex items-center justify-center gap-2 text-sm">
                         <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                         <span className="text-muted-foreground">{benefit}</span>
-                      </div>
-                    ))}
+                      </div>)}
                   </div>
                 </CardContent>
-              </Card>
-            ))}
+              </Card>)}
           </div>
         </div>
       </section>
@@ -340,11 +279,11 @@ const SignalsPage: React.FC = () => {
             </div>
             
             <div className="flex items-center justify-center gap-4">
-              <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8">
+              <Button size="lg" className="bg-green-600 text-white px-8">
                 Get Educational Patterns
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button variant="outline" size="lg" className="border-green-500/20 hover:bg-green-500/5 px-8">
+              <Button variant="outline" size="lg" className="border-green-500/20 px-8">
                 View Educational Record
               </Button>
             </div>
@@ -366,8 +305,6 @@ const SignalsPage: React.FC = () => {
           </div>
         </div>
       </section>
-    </div>
-  );
+    </div>;
 };
-
 export default SignalsPage;

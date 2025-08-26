@@ -808,6 +808,8 @@ export type Database = {
           category: Database["public"]["Enums"]["post_category"]
           content: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           difficulty: string | null
           id: string
           images: string[] | null
@@ -822,6 +824,8 @@ export type Database = {
           category?: Database["public"]["Enums"]["post_category"]
           content: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           difficulty?: string | null
           id?: string
           images?: string[] | null
@@ -836,6 +840,8 @@ export type Database = {
           category?: Database["public"]["Enums"]["post_category"]
           content?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           difficulty?: string | null
           id?: string
           images?: string[] | null
@@ -847,6 +853,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      function_deprecation_hits: {
+        Row: {
+          created_at: string
+          function_name: string
+          http_method: string | null
+          id: string
+          metadata: Json | null
+          route: string | null
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          function_name: string
+          http_method?: string | null
+          id?: string
+          metadata?: Json | null
+          route?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          function_name?: string
+          http_method?: string | null
+          id?: string
+          metadata?: Json | null
+          route?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "function_deprecation_hits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       group_journal_entries: {
         Row: {
@@ -1357,6 +1404,27 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_read_receipts: {
+        Row: {
+          created_at: string
+          notification_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          notification_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          notification_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           admin_id: string
@@ -1387,6 +1455,27 @@ export type Database = {
           resubmissions?: boolean
           updated_at?: string
           weekly_report?: boolean
+        }
+        Relationships: []
+      }
+      notification_user_state: {
+        Row: {
+          created_at: string
+          last_cleared_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_cleared_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          last_cleared_at?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1551,18 +1640,16 @@ export type Database = {
           display_name: string | null
           engagement_score: number | null
           id: string
+          in_app_notifications_enabled: boolean | null
           last_device_info: Json | null
           last_login: string | null
           legal_accepted: boolean
           legal_accepted_at: string | null
           legal_version: string | null
           location: string | null
-          notification_preferences: Json | null
           notification_prompt_dismissed_at: string | null
           notification_stats: Json | null
           onesignal_last_sync_at: string | null
-          onesignal_last_verified_at: string | null
-          onesignal_player_id: string | null
           onesignal_subscription_status: string | null
           phone_number: string | null
           profile_type: string | null
@@ -1600,18 +1687,16 @@ export type Database = {
           display_name?: string | null
           engagement_score?: number | null
           id: string
+          in_app_notifications_enabled?: boolean | null
           last_device_info?: Json | null
           last_login?: string | null
           legal_accepted?: boolean
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
-          notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
-          onesignal_last_verified_at?: string | null
-          onesignal_player_id?: string | null
           onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
@@ -1649,18 +1734,16 @@ export type Database = {
           display_name?: string | null
           engagement_score?: number | null
           id?: string
+          in_app_notifications_enabled?: boolean | null
           last_device_info?: Json | null
           last_login?: string | null
           legal_accepted?: boolean
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
-          notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
-          onesignal_last_verified_at?: string | null
-          onesignal_player_id?: string | null
           onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
@@ -1947,8 +2030,11 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           likes: number
+          parent_id: string | null
           post_id: string
           updated_at: string
           user_id: string
@@ -1956,8 +2042,11 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           likes?: number
+          parent_id?: string | null
           post_id: string
           updated_at?: string
           user_id: string
@@ -1965,13 +2054,23 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           likes?: number
+          parent_id?: string | null
           post_id?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "replies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "replies_post_id_fkey"
             columns: ["post_id"]
@@ -2256,6 +2355,7 @@ export type Database = {
           pnl: number
           position_size: number | null
           screenshot_url: string | null
+          screenshot_urls: string[] | null
           trade_date: string
           trade_type: Database["public"]["Enums"]["trade_type"] | null
           updated_at: string
@@ -2272,6 +2372,7 @@ export type Database = {
           pnl: number
           position_size?: number | null
           screenshot_url?: string | null
+          screenshot_urls?: string[] | null
           trade_date: string
           trade_type?: Database["public"]["Enums"]["trade_type"] | null
           updated_at?: string
@@ -2288,6 +2389,7 @@ export type Database = {
           pnl?: number
           position_size?: number | null
           screenshot_url?: string | null
+          screenshot_urls?: string[] | null
           trade_date?: string
           trade_type?: Database["public"]["Enums"]["trade_type"] | null
           updated_at?: string
@@ -3123,6 +3225,18 @@ export type Database = {
         }
         Returns: string
       }
+      delete_comment_cascade: {
+        Args: { p_comment_id: string }
+        Returns: number
+      }
+      delete_comment_single: {
+        Args: { p_comment_id: string }
+        Returns: number
+      }
+      delete_post_cascade: {
+        Args: { p_post_id: string }
+        Returns: number
+      }
       expire_limit_orders: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -3157,11 +3271,24 @@ export type Database = {
           user_id: string
         }[]
       }
+      handle_triggered_alert: {
+        Args: {
+          p_alert_id: string
+          p_alert_type: string
+          p_signal_id: string
+          p_triggered_price: number
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_system_operation: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       process_price_alerts: {
@@ -3184,10 +3311,19 @@ export type Database = {
       }
       should_user_receive_notification: {
         Args: {
+          p_creator_id: string
           p_notification_type: string
           p_priority_level?: number
-          p_signal_author_id: string
           p_user_id: string
+        }
+        Returns: boolean
+      }
+      system_update_trade_alert: {
+        Args: {
+          p_close_reason?: string
+          p_signal_id: string
+          p_status?: string
+          p_tp_hits?: number[]
         }
         Returns: boolean
       }

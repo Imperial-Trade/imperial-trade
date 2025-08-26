@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { Trash2, Brain, MessageSquare, Trophy, Target } from "lucide-react";
-import { TradeJournalEntry } from "@/api/entities";
+import { TradeJournalEntry } from "@/contexts/TradeJournalContext";
+import { ImageGalleryWithUrls } from "@/components/tools/ImageGalleryWithUrls";
+import { useSignedUrls } from '@/hooks/useSignedUrls';
 
 interface JournalLogListProps {
   entries: TradeJournalEntry[];
@@ -79,10 +81,10 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                       <Target className="w-4 h-4 text-muted-foreground" />
                       <span
                         className={`font-bold text-lg ${
-                          entry.pnl >= 0 ? "text-emerald-600" : "text-red-500"
+                          Number(entry.pnl) >= 0 ? "text-emerald-600" : "text-red-500"
                         }`}
                       >
-                        {entry.pnl >= 0 ? "+" : ""}${entry.pnl.toFixed(2)}
+                        {Number(entry.pnl) >= 0 ? "+" : ""}${Number(entry.pnl ?? 0).toFixed(2)}
                       </span>
                     </div>
                     <Button
@@ -104,8 +106,8 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                   </div>
                 )}
 
-                {entry.ai_positive_feedback && (
-                  <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-4 border border-primary/20 mb-3">
+                {(entry.ai_positive_feedback || entry.coach_status === 'pending') && (
+                  <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-4 border border-primary/20 mb-3 min-h-[64px]">
                     <div className="flex items-start gap-3">
                       <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                         <Brain className="w-4 h-4 text-primary" />
@@ -113,32 +115,25 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm font-semibold text-primary">Your Trading Coach</span>
-                          <Badge variant="secondary" className="text-xs">AI Powered</Badge>
+                          <span className="invisible text-xs"></span>
                         </div>
                         <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                          {entry.ai_positive_feedback}
+                          {entry.coach_status === 'pending' 
+                            ? '👉 "Your coach is looking over your journal…"'
+                            : entry.ai_positive_feedback
+                          }
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {entry.screenshot_url && (
-                  <div className="mt-3">
-                    <div className="relative group cursor-pointer" onClick={() => window.open(entry.screenshot_url, "_blank")}>
-                      <img
-                        src={entry.screenshot_url}
-                        alt="Trade screenshot"
-                        className="rounded-lg max-h-32 object-cover transition-all duration-200 group-hover:opacity-80 border border-border"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg transition-all duration-200 flex items-center justify-center">
-                        <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                          Click to expand
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* Screenshots Display */}
+                {entry.screenshot_urls && entry.screenshot_urls.length > 0 ? (
+                  <ImageGalleryWithUrls paths={entry.screenshot_urls} />
+                ) : entry.screenshot_url ? (
+                  <ImageGalleryWithUrls paths={[entry.screenshot_url]} />
+                ) : null}
               </CardContent>
             </Card>
           </motion.div>

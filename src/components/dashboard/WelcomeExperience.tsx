@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { WelcomeModal } from '@/components/ui/welcome-modal';
 import { useProfessionalToast } from '@/hooks/useProfessionalToast';
-import { useWelcome } from '@/contexts/WelcomeContext';
 
 interface WelcomeExperienceProps {
   user: any;
@@ -15,7 +14,6 @@ export const WelcomeExperience: React.FC<WelcomeExperienceProps> = ({
 }) => {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const { celebrate } = useProfessionalToast();
-  const { markWelcomeAsSeen } = useWelcome();
 
   useEffect(() => {
     // Check if this is a new user's first visit
@@ -35,11 +33,7 @@ export const WelcomeExperience: React.FC<WelcomeExperienceProps> = ({
     setShowWelcomeModal(false);
     
     if (user) {
-      // Keep existing localStorage for backward compatibility
       localStorage.setItem(`welcome_shown_${user.id}`, 'true');
-      
-      // Bridge: Update WelcomeContext as well
-      markWelcomeAsSeen();
       
       // Show celebration toast after modal closes
       setTimeout(() => {

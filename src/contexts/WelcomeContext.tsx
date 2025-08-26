@@ -29,17 +29,7 @@ export const WelcomeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (storedValue === 'true') {
         setHasSeenWelcome(true);
       } else {
-        // Fallback: Check old welcome key for backward compatibility
-        const oldWelcomeKey = `welcome_shown_${user.id}`;
-        const oldStoredValue = localStorage.getItem(oldWelcomeKey);
-        
-        if (oldStoredValue === 'true') {
-          setHasSeenWelcome(true);
-          // Migrate to new key
-          localStorage.setItem(welcomeKey, 'true');
-        } else {
-          setHasSeenWelcome(false);
-        }
+        setHasSeenWelcome(false);
       }
     } else {
       setHasSeenWelcome(true); // No user, don't show welcome

@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 
 interface PriceFeedData {
@@ -16,15 +16,32 @@ export function useWebSocketPriceFeed(symbols: string[] = []): PriceFeedData {
     return symbols.filter(symbol => symbol && symbol.trim().length > 0);
   }, [symbols]);
 
-  useEffect(() => {
-    if (validSymbols.length === 0) return;
+  const prevSubscribedRef = useRef<string[]>([]);
 
-    console.log('useWebSocketPriceFeed - Subscribing to symbols:', validSymbols);
-    subscribe(validSymbols);
+  useEffect(() => {
+    // Compute diffs to avoid full resubscribe cycles
+    const prev = prevSubscribedRef.current;
+    const added = validSymbols.filter(s => !prev.includes(s));
+    const removed = prev.filter(s => !validSymbols.includes(s));
+
+    if (added.length > 0) {
+      console.log('useWebSocketPriceFeed - Subscribing (diff):', added);
+      subscribe(added);
+    }
+    if (removed.length > 0) {
+      console.log('useWebSocketPriceFeed - Unsubscribing (diff):', removed);
+      unsubscribe(removed);
+    }
+
+    // Update ref after applying diffs
+    prevSubscribedRef.current = [...validSymbols];
 
     return () => {
-      console.log('useWebSocketPriceFeed - Unsubscribing from symbols:', validSymbols);
-      unsubscribe(validSymbols);
+      // On unmount, clean up any remaining subscriptions
+      if (prevSubscribedRef.current.length > 0) {
+        unsubscribe(prevSubscribedRef.current);
+        prevSubscribedRef.current = [];
+      }
     };
   }, [validSymbols, subscribe, unsubscribe]);
 

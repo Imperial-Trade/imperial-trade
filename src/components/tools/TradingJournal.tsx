@@ -1,247 +1,280 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion } from 'framer-motion';
+import { Calendar, BarChart3, Sparkles } from 'lucide-react';
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { TradeJournalEntry } from '@/api/entities';
+import { compressImage } from '@/utils/imageUtils';
+import JournalFormCard from '@/components/trading/JournalFormCard';
+import JournalLogList from '@/components/trading/JournalLogList';
+import JournalAnalytics from '@/components/trading/JournalAnalytics';
+import { TradingJournalApp } from '@/components/tools/TradingJournalApp';
+import MobileTradingJournal from '@/components/tools/MobileTradingJournal';
+import { useTradeJournal } from '@/contexts/TradeJournalContext';
+import { parseNumStrict, isNonEmpty } from '@/lib/utils';
+import { TRADE_TYPES, coerceTradeType } from '@/constants/trading';
+import { normalizeTradeDate, mapDbRowToEntry } from '@/features/trade-journal/normalizers';
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TradeJournalEntry } from "@/api/entities";
-import { supabase } from "@/integrations/supabase/client";
-import { UploadFile } from "@/api/integrations";
-import { Calendar, BarChart3, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
-import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
-import TradingJournalApp from "./TradingJournalApp";
-import MobileTradingJournal from "./MobileTradingJournal";
-import JournalFormCard from "../trading/JournalFormCard";
-import JournalAnalytics from "../trading/JournalAnalytics";
-import JournalLogList from "../trading/JournalLogList";
-import { compressImage, validateImageFile } from "@/utils/imageCompression";
-import { toast } from "sonner";
-
-
-export default function TradingJournal() {
-  const [entries, setEntries] = useState<TradeJournalEntry[]>([]);
+const TradingJournal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState("log");
+  const [activeTab, setActiveTab] = useState('log');
+  
+  // Use shared journal context
+  const { entries, isLoading, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry } = useTradeJournal();
   
   // Mobile detection
-  const isMobile = useIsMobile();
-  const isTablet = useIsTablet();
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isTablet = useMediaQuery('(max-width: 1024px)');
+  
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const loadUserProfile = useCallback(async () => {
     try {
-      const {
-        data: {
-          user
-        }
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const {
-          data: profile
-        } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
         if (profile) {
           setUserProfile(profile);
         }
       }
     } catch (error) {
-      console.error("Error loading user profile:", error);
+      console.error('Error loading user profile:', error);
     }
-  }, []);
-
-  const loadEntries = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const {
-        data: {
-          user
-        }
-      } = await supabase.auth.getUser();
-      if (user) {
-        const fetchedEntries = await TradeJournalEntry.list(user.id);
-        setEntries(fetchedEntries);
-      } else {
-        setEntries([]);
-      }
-    } catch (error) {
-      console.error("Error loading educational journal entries:", error);
-    }
-    setIsLoading(false);
   }, []);
 
   const handleDelete = useCallback(async (entryId: string) => {
     try {
       await TradeJournalEntry.delete(entryId);
-      loadEntries();
+      toast({
+        title: 'Success',
+        description: 'Journal entry deleted successfully',
+      });
     } catch (error) {
-      console.error("Error deleting educational entry:", error);
+      console.error('Error deleting entry:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete journal entry',
+        variant: 'destructive',
+      });
     }
-  }, [loadEntries]);
+  }, [toast]);
 
-  const handleSubmit = useCallback(async (data: {
-    asset_ticker: string;
-    pnl: string;
-    notes: string;
-    screenshotFile?: File;
-  }) => {
-    setIsSubmitting(true);
+  const handleSubmit = useCallback(async (data: any) => {
+    if (!user) return;
     
-    // Core educational data - this will always be saved
-    const pnlValue = parseFloat(data.pnl);
-    const educationalData = {
-      asset_ticker: data.asset_ticker,
-      pnl: pnlValue,
-      notes: data.notes,
-      trade_date: new Date().toISOString(),
-      screenshot_url: "",
-      ai_positive_feedback: ""
-    };
-
+    setIsSubmitting(true);
+    console.log('📝 Starting journal entry submission:', data);
+    
+    // Generate temporary ID for optimistic updates
+    const tempId = `temp-${Date.now()}`;
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Please log in to save your educational entry");
+      // STRICT VALIDATION: Required P&L
+      const pnl = parseNumStrict(data.pnl);
+      if (pnl === null) {
+        toast({
+          title: 'Validation Error',
+          description: 'P&L is required and must be a valid number',
+          variant: 'destructive',
+        });
         return;
       }
 
-      console.log("TradingJournal.handleSubmit - User authenticated:", user.id);
+      // STRICT VALIDATION: Optional numeric fields (only validate if non-empty)
+      const invalidFields: string[] = [];
+      const entry_price = isNonEmpty(data.entry) ? parseNumStrict(data.entry) : null;
+      const exit_price = isNonEmpty(data.exit) ? parseNumStrict(data.exit) : null;
+      const position_size = isNonEmpty(data.size) ? parseNumStrict(data.size) : null;
 
-      // Optional: Handle screenshot upload with compression
-      if (data.screenshotFile) {
-        try {
-          const validationError = validateImageFile(data.screenshotFile);
-          if (validationError) {
-            toast.error(validationError);
-            // Continue without screenshot - don't block the educational entry save
-          } else {
-            toast.info("Compressing educational image...");
-            const compressedFile = await compressImage(data.screenshotFile, {
-              maxWidth: 1920,
-              maxHeight: 1080,
-              quality: 0.8,
-              maxFileSize: 2 * 1024 * 1024 // 2MB
-            });
-            
-            toast.info("Uploading educational screenshot...");
-            const { file_url } = await UploadFile({ file: compressedFile });
-            educationalData.screenshot_url = file_url;
-            toast.success("Educational screenshot uploaded successfully");
-          }
-        } catch (uploadError) {
-          console.error("Educational screenshot upload failed:", uploadError);
-          toast.error("Educational screenshot upload failed, but entry will still be saved");
-          // Continue without screenshot - don't block the educational entry save
-        }
+      if (isNonEmpty(data.entry) && entry_price === null) invalidFields.push('Entry Price');
+      if (isNonEmpty(data.exit) && exit_price === null) invalidFields.push('Exit Price');
+      if (isNonEmpty(data.size) && position_size === null) invalidFields.push('Position Size');
+
+      if (invalidFields.length > 0) {
+        toast({
+          title: 'Validation Error',
+          description: `Invalid numeric values: ${invalidFields.join(', ')}`,
+          variant: 'destructive',
+        });
+        return;
       }
 
-      // Save the educational entry first (this should always work)
-      console.log("TradingJournal.handleSubmit - Creating journal entry with data:", educationalData);
-      const createdEntry = await TradeJournalEntry.create(educationalData, user.id);
-      console.log("TradingJournal.handleSubmit - Created journal entry:", createdEntry);
-      toast.success("Educational entry saved successfully!");
+      // NORMALIZE trade_type and trade_date
+      const trade_type = coerceTradeType(data.tradeType) || TRADE_TYPES[0]; // Default to 'Long'
+      const trade_date = normalizeTradeDate(data.date || new Date());
 
-      // Enhanced educational coaching analysis using coach-agent
-      try {
-        toast.info("Getting personalized educational coaching feedback...");
+      let screenshotUrls: string[] = [];
+      
+      // Handle image uploads if screenshots exist
+      if (data.screenshotFiles && data.screenshotFiles.length > 0) {
+        console.log('📤 Uploading screenshots:', data.screenshotFiles.length);
         
-        console.log("TradingJournal.handleSubmit - Invoking coach-agent with payload:", {
-          event_type: "LOG_TRADE",
-          user_id: user.id,
-          journal_entry_id: createdEntry.id
+        const uploadPromises = data.screenshotFiles.map(async (file: File) => {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user.id}/${Date.now()}-${Math.random()}.${fileExt}`;
+          
+          // Compress image before upload
+          const compressedFile = await compressImage(file, {
+            maxWidth: 1920,
+            maxHeight: 1080,
+            quality: 0.8
+          });
+          
+          const { error: uploadError } = await supabase.storage
+            .from('journal-charts')
+            .upload(fileName, compressedFile);
+          
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            throw new Error(`Failed to upload image: ${uploadError.message}`);
+          }
+          
+          return fileName;
         });
+        
+        screenshotUrls = await Promise.all(uploadPromises);
+        console.log('✅ Images uploaded successfully:', screenshotUrls);
+      }
 
-        const { data: coachResponse, error: coachError } = await supabase.functions.invoke('coach-agent', {
-          body: {
+      // Create optimistic entry with validated, normalized data
+      const optimisticEntry = {
+        id: tempId,
+        user_id: user.id,
+        asset_ticker: data.asset_ticker || '',
+        trade_type,
+        pnl,
+        entry_price,
+        exit_price,
+        position_size,
+        trade_date,
+        notes: data.notes || undefined,
+        screenshot_url: undefined,
+        screenshot_urls: screenshotUrls,
+        ai_positive_feedback: undefined,
+        coach_status: 'pending' as 'pending' | 'ready',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('✨ Adding optimistic entry via shared context:', optimisticEntry);
+      addOptimisticEntry(optimisticEntry);
+
+      // Create journal entry in database with validated, normalized data
+      const entryToInsert = {
+        user_id: user.id,
+        asset_ticker: data.asset_ticker || '',
+        trade_type,
+        pnl,
+        entry_price,
+        exit_price,
+        position_size,
+        trade_date,
+        notes: data.notes || null,
+        screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : null,
+      };
+
+      console.log('💾 Inserting journal entry:', entryToInsert);
+      
+      const { data: newEntry, error: insertError } = await supabase
+        .from('trade_journal_entries')
+        .insert(entryToInsert)
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        throw new Error(`Failed to save journal entry: ${insertError.message}`);
+      }
+      
+      console.log('✅ Journal entry created:', newEntry);
+      
+      // Reconcile optimistic entry with real DB row using normalizer
+      console.log('🔄 Updating optimistic entry with real DB data:', tempId, '->', newEntry.id);
+      updateOptimisticEntry(tempId, mapDbRowToEntry(newEntry));
+      
+      // Trigger AI coaching analysis
+      if (newEntry.id) {
+        console.log('🤖 Triggering AI coaching analysis for entry:', newEntry.id);
+        
+        const { error: coachingError } = await supabase.functions.invoke('coach-agent', {
+          body: { 
             event_type: "LOG_TRADE",
             user_id: user.id,
-            journal_entry_id: createdEntry.id
+            journal_entry_id: newEntry.id
           }
         });
-
-        console.log("TradingJournal.handleSubmit - Coach-agent response:", coachResponse);
-        console.log("TradingJournal.handleSubmit - Coach-agent error:", coachError);
-
-        if (coachError) {
-          console.error("TradingJournal.handleSubmit - Coach agent error:", coachError);
-          toast.error("Educational coaching failed, but entry was saved");
-        } else if (coachResponse && coachResponse.reply) {
-          console.log("TradingJournal.handleSubmit - Coach feedback generated successfully");
-          
-          if (coachResponse.warning) {
-            toast.warning(coachResponse.warning);
-          } else {
-            toast.success("Personalized educational coaching feedback generated!");
-          }
+        
+        if (coachingError) {
+          console.error('AI coaching analysis error:', coachingError);
+          // Don't throw error here as the entry was saved successfully
         } else {
-          console.warn("TradingJournal.handleSubmit - Coach response does not contain expected reply field:", coachResponse);
-          toast.warning("Coaching feedback format unexpected, but entry was saved");
+          console.log('✅ AI coaching analysis triggered successfully');
         }
-      } catch (aiError) {
-        console.error("TradingJournal.handleSubmit - Educational coaching analysis failed:", aiError);
-        console.error("TradingJournal.handleSubmit - AI error details:", {
-          name: aiError.name,
-          message: aiError.message,
-          stack: aiError.stack
-        });
-        toast.error("Educational coaching failed, but entry was saved");
-        // Continue - don't block since the educational entry is already saved
       }
-
-      // Reload entries to show the updated data (including AI feedback if successful)
-      console.log("TradingJournal.handleSubmit - Reloading entries...");
-      loadEntries();
-
-    } catch (error) {
-      console.error("TradingJournal.handleSubmit - Error submitting educational journal entry:", error);
-      console.error("TradingJournal.handleSubmit - Error details:", {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
+      
+      toast({
+        title: 'Success',
+        description: 'Journal entry saved successfully!',
       });
-      toast.error("Failed to save educational entry. Please try again.");
+      
+    } catch (error) {
+      console.error('Error saving journal entry:', error);
+      
+      // Remove optimistic entry on error
+      console.log('❌ Removing optimistic entry due to error:', tempId);
+      removeOptimisticEntry(tempId);
+      
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to save journal entry',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
-  }, [loadEntries]);
+  }, [user, toast, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry]);
 
   useEffect(() => {
     loadUserProfile();
   }, [loadUserProfile]);
-  
-  useEffect(() => {
-    if (userProfile) {
-      loadEntries();
-    }
-  }, [userProfile, loadEntries]);
 
   const LogTab = useMemo(() => 
-    <motion.div initial={{
-      opacity: 0,
-      y: 20
-    }} animate={{
-      opacity: 1,
-      y: 0
-    }} className="space-y-6">
-      
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className="space-y-6"
+    >
       <JournalFormCard onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-      <JournalLogList entries={entries} isLoading={isLoading} onDelete={handleDelete} />
-    </motion.div>, [handleSubmit, isSubmitting, entries, isLoading, handleDelete]);
+      <JournalLogList entries={entries as any} isLoading={isLoading} onDelete={handleDelete} />
+    </motion.div>, 
+    [handleSubmit, isSubmitting, entries, isLoading, handleDelete]
+  );
   
   const AnalyticsTab = useMemo(() => 
-    <motion.div initial={{
-      opacity: 0,
-      y: 20
-    }} animate={{
-      opacity: 1,
-      y: 0
-    }} className="space-y-6">
-      
-      <JournalAnalytics entries={entries} />
-    </motion.div>, [entries]);
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className="space-y-6"
+    >
+      <JournalAnalytics entries={entries as any} />
+    </motion.div>, 
+    [entries]
+  );
 
   // Mobile/Tablet optimized view
   if (isMobile || isTablet) {
     return (
       <MobileTradingJournal
-        entries={entries}
+        entries={entries as any}
         isSubmitting={isSubmitting}
         isLoading={isLoading}
         onSubmit={handleSubmit}
@@ -252,7 +285,8 @@ export default function TradingJournal() {
   }
 
   // Desktop view
-  return <div className={`min-h-screen p-2 sm:p-4 lg:p-6 transition-all duration-700 ${activeTab === 'advanced' ? 'bg-transparent' : 'bg-gradient-to-br from-background via-background to-muted/20'}`}>
+  return (
+    <div className={`min-h-screen p-2 sm:p-4 lg:p-6 transition-all duration-700 ${activeTab === 'advanced' ? 'bg-transparent' : 'bg-gradient-to-br from-background via-background to-muted/20'}`}>
       <div className={`mx-auto transition-all duration-500 ${activeTab === 'advanced' ? 'max-w-full px-2 sm:px-4' : 'max-w-6xl'}`}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 sm:space-y-6">
           <TabsList className={`grid w-full grid-cols-3 transition-all duration-500 ${activeTab === 'advanced' ? 'bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl' : 'bg-card'}`}>
@@ -291,5 +325,8 @@ export default function TradingJournal() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>;
-}
+    </div>
+  );
+};
+
+export default TradingJournal;

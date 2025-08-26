@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { useConnectionHealth } from '@/hooks/useConnectionHealth';
+import { useWebSocketHealth } from '@/hooks/useWebSocketHealth';
 import { Wifi, WifiOff, Zap, AlertTriangle } from 'lucide-react';
 
 interface ConnectionHealthBadgeProps {
@@ -12,13 +13,12 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
   showDetails = false
 }) => {
   const {
-    tickFrequency,
-    actualFrequency,
-    connectionUptime,
-    missedTicks,
     isHealthy,
-    averageLatency
-  } = useConnectionHealth();
+    averageLatency,
+    connectionUptime,
+    missedPings,
+    actualFrequency
+  } = useWebSocketHealth();
 
   const getHealthStatus = () => {
     if (!isHealthy) {
@@ -65,7 +65,7 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
 
   if (!showDetails) {
     return (
-      <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border ${status.bgColor} ${status.borderColor} ${className} hidden`}>
+      <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border ${status.bgColor} ${status.borderColor} ${className}`}>
         <Icon className={`w-3 h-3 ${status.color}`} />
         <span className={`text-xs font-medium ${status.color}`}>
           {status.text}
@@ -80,7 +80,7 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
   }
 
   return (
-    <div className={`${status.bgColor} ${status.borderColor} border rounded-lg p-3 ${className} hidden`}>
+    <div className={`${status.bgColor} ${status.borderColor} border rounded-lg p-3 ${className}`}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Icon className={`w-4 h-4 ${status.color}`} />
@@ -96,7 +96,7 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
       <div className="grid grid-cols-2 gap-3 text-xs">
         <div>
           <div className="text-gray-400">Target Frequency</div>
-          <div className="text-white font-mono">{tickFrequency}ms</div>
+          <div className="text-white font-mono">250ms</div>
         </div>
         <div>
           <div className="text-gray-400">Actual Frequency</div>
@@ -111,9 +111,9 @@ export const ConnectionHealthBadge: React.FC<ConnectionHealthBadgeProps> = ({
           </div>
         </div>
         <div>
-          <div className="text-gray-400">Missed Ticks</div>
-          <div className={`font-mono ${missedTicks === 0 ? 'text-emerald-400' : missedTicks < 5 ? 'text-green-400' : 'text-yellow-400'}`}>
-            {missedTicks}
+          <div className="text-gray-400">Missed Pings</div>
+          <div className={`font-mono ${missedPings === 0 ? 'text-emerald-400' : missedPings < 5 ? 'text-green-400' : 'text-yellow-400'}`}>
+            {missedPings}
           </div>
         </div>
       </div>

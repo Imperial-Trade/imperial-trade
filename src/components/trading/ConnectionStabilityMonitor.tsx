@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
-import { useConnectionHealth } from '@/hooks/useConnectionHealth';
+import { useWebSocketHealth } from '@/hooks/useWebSocketHealth';
 import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
 import { Zap, Activity, Clock, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ export const ConnectionStabilityMonitor: React.FC = () => {
     unsubscribe
   } = useWebSocketPrices();
 
-  const connectionHealth = useConnectionHealth();
+  const webSocketHealth = useWebSocketHealth();
   const [isForceConnected, setIsForceConnected] = useState(false);
   const [connectionLog, setConnectionLog] = useState<Array<{
     timestamp: number;
@@ -189,24 +190,24 @@ export const ConnectionStabilityMonitor: React.FC = () => {
           <div className="grid grid-cols-2 gap-4 text-xs">
             <div>
               <div className="text-gray-400">Health Status</div>
-              <div className={connectionHealth.isHealthy ? 'text-emerald-400' : 'text-red-400'}>
-                {connectionHealth.isHealthy ? 'Healthy' : 'Unhealthy'}
+              <div className={webSocketHealth.isHealthy ? 'text-emerald-400' : 'text-red-400'}>
+                {webSocketHealth.isHealthy ? 'Healthy' : 'Unhealthy'}
               </div>
             </div>
             <div>
-              <div className="text-gray-400">Tick Frequency</div>
-              <div className="text-white">{connectionHealth.actualFrequency || 0}ms</div>
+              <div className="text-gray-400">Frequency</div>
+              <div className="text-white">{webSocketHealth.actualFrequency || 0}ms</div>
             </div>
             <div>
               <div className="text-gray-400">Connection Uptime</div>
-              <div className={connectionHealth.connectionUptime >= 95 ? 'text-emerald-400' : 'text-yellow-400'}>
-                {connectionHealth.connectionUptime}%
+              <div className={webSocketHealth.connectionUptime >= 95 ? 'text-emerald-400' : 'text-yellow-400'}>
+                {webSocketHealth.connectionUptime}%
               </div>
             </div>
             <div>
-              <div className="text-gray-400">Missed Ticks</div>
-              <div className={connectionHealth.missedTicks === 0 ? 'text-emerald-400' : 'text-yellow-400'}>
-                {connectionHealth.missedTicks}
+              <div className="text-gray-400">Missed Pings</div>
+              <div className={webSocketHealth.missedPings === 0 ? 'text-emerald-400' : 'text-yellow-400'}>
+                {webSocketHealth.missedPings}
               </div>
             </div>
           </div>

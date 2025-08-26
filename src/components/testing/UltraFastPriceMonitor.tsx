@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
-import { useConnectionHealth } from '@/hooks/useConnectionHealth';
+import { useWebSocketHealth } from '@/hooks/useWebSocketHealth';
 import { ConnectionHealthBadge } from '@/components/trading/ConnectionHealthBadge';
 import { Zap, Activity, Clock, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,7 @@ export const UltraFastPriceMonitor: React.FC = () => {
     unsubscribe
   } = useWebSocketPrices();
 
-  const connectionHealth = useConnectionHealth();
+  const webSocketHealth = useWebSocketHealth();
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [tickLog, setTickLog] = useState<Array<{
     symbol: string;
@@ -65,7 +66,7 @@ export const UltraFastPriceMonitor: React.FC = () => {
   const getConnectionStatusColor = () => {
     switch (connectionStatus) {
       case 'connected':
-        return connectionHealth.isHealthy ? 'text-emerald-400' : 'text-yellow-400';
+        return webSocketHealth.isHealthy ? 'text-emerald-400' : 'text-yellow-400';
       case 'connecting':
         return 'text-blue-400';
       case 'disconnected':
@@ -80,7 +81,7 @@ export const UltraFastPriceMonitor: React.FC = () => {
   const getStatusIcon = () => {
     switch (connectionStatus) {
       case 'connected':
-        return connectionHealth.isHealthy ? Zap : Activity;
+        return webSocketHealth.isHealthy ? Zap : Activity;
       case 'connecting':
         return Activity;
       default:
@@ -123,31 +124,31 @@ export const UltraFastPriceMonitor: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-gray-400">Actual Frequency:</span>
                 <span className={`font-mono ${
-                  connectionHealth.actualFrequency <= 300 ? 'text-emerald-400' : 
-                  connectionHealth.actualFrequency <= 500 ? 'text-green-400' : 
+                  webSocketHealth.actualFrequency <= 300 ? 'text-emerald-400' : 
+                  webSocketHealth.actualFrequency <= 500 ? 'text-green-400' : 
                   'text-yellow-400'
                 }`}>
-                  {connectionHealth.actualFrequency > 0 ? `${connectionHealth.actualFrequency}ms` : '--'}
+                  {webSocketHealth.actualFrequency > 0 ? `${webSocketHealth.actualFrequency}ms` : '--'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Connection Uptime:</span>
                 <span className={`font-mono ${
-                  connectionHealth.connectionUptime >= 95 ? 'text-emerald-400' : 
-                  connectionHealth.connectionUptime >= 90 ? 'text-green-400' : 
+                  webSocketHealth.connectionUptime >= 95 ? 'text-emerald-400' : 
+                  webSocketHealth.connectionUptime >= 90 ? 'text-green-400' : 
                   'text-yellow-400'
                 }`}>
-                  {connectionHealth.connectionUptime}%
+                  {webSocketHealth.connectionUptime}%
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Missed Ticks:</span>
+                <span className="text-gray-400">Missed Pings:</span>
                 <span className={`font-mono ${
-                  connectionHealth.missedTicks === 0 ? 'text-emerald-400' : 
-                  connectionHealth.missedTicks < 5 ? 'text-green-400' : 
+                  webSocketHealth.missedPings === 0 ? 'text-emerald-400' : 
+                  webSocketHealth.missedPings < 5 ? 'text-green-400' : 
                   'text-yellow-400'
                 }`}>
-                  {connectionHealth.missedTicks}
+                  {webSocketHealth.missedPings}
                 </span>
               </div>
             </div>

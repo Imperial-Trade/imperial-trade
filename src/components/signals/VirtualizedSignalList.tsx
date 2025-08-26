@@ -69,6 +69,7 @@ export const VirtualizedSignalList = memo(({
   return (
     <List
       height={height}
+      width="100%" // Add the required width property
       itemCount={alerts.length}
       itemSize={adjustedItemHeight}
       itemData={itemData}

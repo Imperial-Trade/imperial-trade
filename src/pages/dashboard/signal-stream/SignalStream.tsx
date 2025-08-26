@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
@@ -21,7 +20,7 @@ import { toast } from '@/hooks/use-toast';
 const CONTAINER_HEIGHT = 600; // Fixed height for virtual scrolling
 
 export const SignalStream: React.FC = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [showAllSignals, setShowAllSignals] = useState(true);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [compactMode, setCompactMode] = useState(() => {
@@ -31,7 +30,7 @@ export const SignalStream: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'profit'>('newest');
 
-  const canPostSignals = user?.access_level === 'admin' || user?.role === 'educator';
+  const canPostSignals = profile?.access_level === 'admin' || profile?.role === 'educator';
 
   const {
     alerts: rawAlerts,

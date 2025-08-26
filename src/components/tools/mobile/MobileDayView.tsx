@@ -289,16 +289,19 @@ export default function MobileDayView({
                           </div>
                         )}
 
-                        {/* AI Feedback */}
-                        {trade.ai_positive_feedback && (
+                        {/* Your Trading Coach */}
+                        {(trade.ai_positive_feedback || (trade as any).coach_status === 'pending') && (
                           <div>
                             <div className="flex items-center gap-2 mb-2">
                               <Brain className="w-4 h-4 text-primary" />
-                              <span className="text-sm font-medium">AI Feedback</span>
+                              <span className="text-sm font-medium">Your Trading Coach</span>
                             </div>
-                            <p className="text-sm text-muted-foreground bg-primary/5 rounded-lg p-3">
-                              {trade.ai_positive_feedback}
-                            </p>
+                            <div className="text-sm text-muted-foreground bg-primary/5 rounded-lg p-3 min-h-[64px]">
+                              {(trade as any).coach_status === 'pending' 
+                                ? '👉 "Your coach is looking over your journal…"'
+                                : trade.ai_positive_feedback
+                              }
+                            </div>
                           </div>
                         )}
 

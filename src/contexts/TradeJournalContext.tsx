@@ -15,6 +15,7 @@ interface TradeJournalEntry {
   screenshot_url?: string;
   screenshot_urls?: string[];
   ai_positive_feedback?: string;
+  coach_status?: 'pending' | 'ready';
   created_at: string;
   updated_at: string;
 }

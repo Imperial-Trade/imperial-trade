@@ -160,6 +160,7 @@ const TradingJournal: React.FC = () => {
         screenshot_url: undefined,
         screenshot_urls: screenshotUrls,
         ai_positive_feedback: undefined,
+        coach_status: 'pending' as 'pending' | 'ready',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };

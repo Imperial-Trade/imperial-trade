@@ -106,8 +106,8 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                   </div>
                 )}
 
-                {entry.ai_positive_feedback && (
-                  <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-4 border border-primary/20 mb-3">
+                {(entry.ai_positive_feedback || (entry as any).coach_status === 'pending') && (
+                  <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg p-4 border border-primary/20 mb-3 min-h-[64px]">
                     <div className="flex items-start gap-3">
                       <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                         <Brain className="w-4 h-4 text-primary" />
@@ -118,7 +118,10 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                           <span className="invisible text-xs"></span>
                         </div>
                         <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                          {entry.ai_positive_feedback}
+                          {(entry as any).coach_status === 'pending' 
+                            ? '👉 "Your coach is looking over your journal…"'
+                            : entry.ai_positive_feedback
+                          }
                         </div>
                       </div>
                     </div>

@@ -31,7 +31,10 @@ export const useTradeJournalEntries = () => {
         throw fetchError;
       }
 
-      setEntries((data || []).map(mapDbRowToEntry));
+      setEntries((data || []).map(entry => ({ 
+        ...mapDbRowToEntry(entry), 
+        coach_status: 'ready' as 'pending' | 'ready'
+      })));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load journal entries';
       setError(errorMessage);
@@ -54,14 +57,31 @@ export const useTradeJournalEntries = () => {
       if (exists) {
         return prev.map(e => e.id === entry.id ? entry : e);
       }
-      return [entry, ...prev];
+      
+      // Set coach_status to 'pending' if no ai_positive_feedback exists
+      const entryWithCoachStatus = {
+        ...entry,
+        coach_status: (!entry.ai_positive_feedback ? 'pending' : 'ready') as 'pending' | 'ready'
+      };
+      
+      return [entryWithCoachStatus, ...prev];
     });
   }, []);
 
   const updateOptimisticEntry = useCallback((id: string, updates: Partial<TradeJournalEntry>) => {
-    setEntries(prev => prev.map(entry => 
-      entry.id === id ? { ...entry, ...updates } : entry
-    ));
+    setEntries(prev => prev.map(entry => {
+      if (entry.id === id) {
+        const updatedEntry = { ...entry, ...updates };
+        
+        // If ai_positive_feedback is being set, update coach_status to 'ready'
+        if (updates.ai_positive_feedback && updates.ai_positive_feedback.trim()) {
+          updatedEntry.coach_status = 'ready';
+        }
+        
+        return updatedEntry;
+      }
+      return entry;
+    }));
   }, []);
 
   const removeOptimisticEntry = useCallback((id: string) => {

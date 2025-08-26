@@ -1,272 +1,292 @@
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface PriceData {
-  symbol: string;
-  bid: number;
-  ask: number;
-  mid: number;
-  timestamp: string;
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://kmuoqkcxguafxulqlbmi.supabase.co';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// TraderMade API configuration
+const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
+const CLIENT_TO_UPSTREAM: Record<string, string> = {
+  XAUUSD: 'XAUUSD',
+  BTCUSD: 'BTCUSD',
+  EURUSD: 'EURUSD',
+  USA30USD: 'US30',
+  NAS100USD: 'NAS100',
+};
+
+// Rate limiting for TraderMade API
+let globalRateLimitCount = 0;
+let lastRateLimitReset = Date.now();
+const RATE_LIMIT_PER_MINUTE = 1200;
+
+function isRateLimited(): boolean {
+  const now = Date.now();
+  if (now - lastRateLimitReset > 60000) {
+    globalRateLimitCount = 0;
+    lastRateLimitReset = now;
+  }
+  return globalRateLimitCount >= RATE_LIMIT_PER_MINUTE;
 }
 
-interface EnhancedAlertResult {
-  alert_id: string;
-  signal_id: string;
-  alert_type: string;
-  target_price: number;
-  triggered: boolean;
-  priority_order: number;
-  trade_direction: string;
-  trigger_price: number;
+function toUpstreamSymbol(clientSymbol: string): string {
+  return CLIENT_TO_UPSTREAM[clientSymbol] || clientSymbol;
 }
 
-interface AlertHandlingResult {
-  action: string;
-  reason?: string;
-  tp_level?: number;
-  total_tps_hit?: number;
-  remaining_tps?: number;
-  triggered_price: number;
+// Enhanced price fetching with pending limit activation
+async function fetchAndProcessPrices(): Promise<void> {
+  const apiKey = Deno.env.get('TRADERMADE_API_KEY');
+  
+  if (!apiKey) {
+    console.log('⚠️ TRADERMADE_API_KEY not configured');
+    return;
+  }
+
+  console.log('🔄 Starting enhanced alert monitoring cycle');
+
+  // Get all symbols that need monitoring (active alerts + pending limits)
+  const { data: symbolsToMonitor, error: symbolsError } = await supabase
+    .from('trade_alerts')
+    .select('tradermade_symbol')
+    .in('status', ['active', 'partially_profited', 'pending'])
+    .neq('tradermade_symbol', null);
+
+  if (symbolsError) {
+    console.error('❌ Error fetching symbols to monitor:', symbolsError);
+    return;
+  }
+
+  const uniqueSymbols = [...new Set(symbolsToMonitor?.map(s => s.tradermade_symbol) || [])];
+  console.log(`📊 Monitoring ${uniqueSymbols.length} symbols:`, uniqueSymbols);
+
+  // Process each symbol
+  for (const clientSymbol of uniqueSymbols) {
+    if (isRateLimited()) {
+      console.log('⏱️ Rate limit reached, pausing');
+      break;
+    }
+
+    try {
+      globalRateLimitCount++;
+      const upstream = toUpstreamSymbol(clientSymbol);
+      const url = `https://marketdata.tradermade.com/api/v1/live?currency=${upstream}&api_key=${apiKey}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Enhanced-Alert-Monitor/1.0'
+        }
+      });
+
+      if (!response.ok) {
+        console.error(`❌ TraderMade API error for ${clientSymbol}: ${response.status}`);
+        continue;
+      }
+
+      const data = await response.json();
+
+      if (data.quotes && Array.isArray(data.quotes) && data.quotes.length > 0) {
+        const quote = data.quotes[0];
+        const bid = parseFloat(quote.bid) || 0;
+        const ask = parseFloat(quote.ask) || 0;
+        const mid = (bid + ask) / 2;
+
+        if (bid > 0 && ask > 0) {
+          console.log(`💹 ${clientSymbol}: bid=${bid}, ask=${ask}, mid=${mid}`);
+
+          // Store price using enhanced function
+          const { error: storeError } = await supabase.rpc('upsert_market_price_enhanced', {
+            p_symbol: clientSymbol,
+            p_bid: bid,
+            p_ask: ask,
+            p_mid: mid,
+            p_timestamp: new Date().toISOString()
+          });
+
+          if (storeError) {
+            console.error(`❌ Error storing price for ${clientSymbol}:`, storeError);
+            continue;
+          }
+
+          // Check for pending limit order activation
+          await checkPendingLimitActivation(clientSymbol, bid, ask);
+
+          // Process alerts using enhanced function
+          const { data: alertResults, error: alertError } = await supabase.rpc('process_price_alerts_enhanced', {
+            p_symbol: clientSymbol,
+            p_current_bid: bid,
+            p_current_ask: ask
+          });
+
+          if (alertError) {
+            console.error(`❌ Alert processing error for ${clientSymbol}:`, alertError);
+            continue;
+          }
+
+          if (alertResults && Array.isArray(alertResults)) {
+            const triggeredAlerts = alertResults.filter((alert: any) => alert.triggered);
+            
+            if (triggeredAlerts.length > 0) {
+              console.log(`🔔 Found ${triggeredAlerts.length} triggered alerts for ${clientSymbol}`);
+              
+              // Handle each triggered alert using enhanced handler
+              for (const alert of triggeredAlerts) {
+                const { data: handleResult, error: handleError } = await supabase.rpc('handle_triggered_alert_enhanced', {
+                  p_alert_id: alert.alert_id,
+                  p_signal_id: alert.signal_id,
+                  p_alert_type: alert.alert_type,
+                  p_triggered_price: alert.trigger_price
+                });
+
+                if (handleError) {
+                  console.error(`❌ Error handling alert ${alert.alert_id}:`, handleError);
+                } else {
+                  console.log(`✅ Alert handled: ${alert.alert_type} for signal ${alert.signal_id} - ${JSON.stringify(handleResult)}`);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Error processing ${clientSymbol}:`, error);
+    }
+
+    // Small delay to respect rate limits
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+
+  console.log('✅ Enhanced alert monitoring cycle completed');
+}
+
+// New function to check and activate pending limit orders
+async function checkPendingLimitActivation(symbol: string, bid: number, ask: number): Promise<void> {
+  try {
+    // Get pending limit orders for this symbol
+    const { data: pendingOrders, error: pendingError } = await supabase
+      .from('trade_alerts')
+      .select('id, trade_type, entry_price, asset_name')
+      .eq('status', 'pending')
+      .eq('tradermade_symbol', symbol)
+      .in('trade_type', ['buy_limit', 'sell_limit']);
+
+    if (pendingError) {
+      console.error(`❌ Error fetching pending orders for ${symbol}:`, pendingError);
+      return;
+    }
+
+    if (!pendingOrders || pendingOrders.length === 0) {
+      return;
+    }
+
+    console.log(`⏳ Checking ${pendingOrders.length} pending limit orders for ${symbol}`);
+
+    // Check activation conditions for each pending order
+    for (const order of pendingOrders) {
+      let shouldActivate = false;
+
+      if (order.trade_type === 'buy_limit' && bid <= order.entry_price) {
+        shouldActivate = true;
+        console.log(`🟢 Buy limit activation: ${order.asset_name} - bid ${bid} <= entry ${order.entry_price}`);
+      } else if (order.trade_type === 'sell_limit' && ask >= order.entry_price) {
+        shouldActivate = true;
+        console.log(`🔴 Sell limit activation: ${order.asset_name} - ask ${ask} >= entry ${order.entry_price}`);
+      }
+
+      if (shouldActivate) {
+        // Activate the pending order
+        const { error: activateError } = await supabase
+          .from('trade_alerts')
+          .update({
+            status: 'active',
+            activated_at: new Date().toISOString(),
+            activation_price: order.entry_price,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', order.id);
+
+        if (activateError) {
+          console.error(`❌ Error activating order ${order.id}:`, activateError);
+        } else {
+          console.log(`✅ Activated pending ${order.trade_type} order: ${order.asset_name} at ${order.entry_price}`);
+          
+          // Log the activation
+          await supabase
+            .from('cron_job_logs')
+            .insert({
+              job_name: 'enhanced_alert_monitor',
+              execution_time: new Date().toISOString(),
+              records_affected: 1,
+              status: 'success',
+              error_message: `Activated ${order.trade_type} order ${order.id} (${order.asset_name}) at price ${order.entry_price}`
+            });
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`❌ Error in pending limit activation for ${symbol}:`, error);
+  }
+}
+
+// Run reconciliation function to fix existing inconsistencies
+async function runReconciliation(): Promise<void> {
+  try {
+    console.log('🔧 Running signal consistency reconciliation...');
+    
+    const { data: reconcileResult, error: reconcileError } = await supabase.rpc('reconcile_signal_consistency');
+    
+    if (reconcileError) {
+      console.error('❌ Reconciliation error:', reconcileError);
+    } else {
+      console.log('✅ Reconciliation completed:', reconcileResult);
+    }
+  } catch (error) {
+    console.error('❌ Reconciliation failed:', error);
+  }
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const tradermadeApiKey = Deno.env.get('TRADERMADE_API_KEY')!;
+    console.log('🚀 Enhanced Alert Monitor started');
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    console.log('🚀 Enhanced Alert Monitor - Starting institutional-grade monitoring...');
-
-    // Step 1: Get all active symbols from alert_monitoring
-    const { data: activeSymbols, error: symbolsError } = await supabase
-      .from('alert_monitoring')
-      .select('symbol')
-      .eq('is_active', true);
-
-    if (symbolsError) {
-      throw symbolsError;
-    }
-
-    if (!activeSymbols || activeSymbols.length === 0) {
-      console.log('ℹ️ No active alerts to monitor');
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: 'No active alerts to process',
-        processed: 0 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const uniqueSymbols = [...new Set(activeSymbols.map(a => a.symbol))];
-    console.log(`📊 Monitoring ${uniqueSymbols.length} symbols:`, uniqueSymbols);
-
-    // Step 2: Fetch precise bid/ask prices for all symbols
-    const pricePromises = uniqueSymbols.map(async (symbol): Promise<PriceData | null> => {
-      try {
-        const response = await fetch(
-          `https://marketdata.tradermade.com/api/v1/live?currency=${symbol}&api_key=${tradermadeApiKey}`
-        );
-        
-        if (!response.ok) {
-          console.error(`❌ Failed to fetch price for ${symbol}:`, response.status);
-          return null;
-        }
-        
-        const data = await response.json();
-        
-        if (data.quotes && data.quotes.length > 0) {
-          const quote = data.quotes[0];
-          return {
-            symbol,
-            bid: parseFloat(quote.bid),
-            ask: parseFloat(quote.ask),
-            mid: (parseFloat(quote.bid) + parseFloat(quote.ask)) / 2,
-            timestamp: new Date().toISOString()
-          };
-        }
-        
-        return null;
-      } catch (error) {
-        console.error(`❌ Error fetching price for ${symbol}:`, error);
-        return null;
-      }
-    });
-
-    const priceResults = await Promise.all(pricePromises);
-    const validPrices = priceResults.filter(p => p !== null) as PriceData[];
-
-    console.log(`📈 Successfully fetched ${validPrices.length} price updates`);
-
-    let totalTriggered = 0;
-    const processedAlerts: any[] = [];
-
-    // Step 3: Process each symbol with enhanced bid/ask precision
-    for (const priceData of validPrices) {
-      try {
-        // Update market prices with bid/ask precision
-        const { error: upsertError } = await supabase
-          .rpc('upsert_market_price_enhanced', {
-            p_symbol: priceData.symbol,
-            p_bid: priceData.bid,
-            p_ask: priceData.ask,
-            p_mid: priceData.mid,
-            p_timestamp: priceData.timestamp
-          });
-
-        if (upsertError) {
-          console.error(`❌ Error updating price for ${priceData.symbol}:`, upsertError);
-          continue;
-        }
-
-        // Process alerts using enhanced function with SL priority
-        const { data: triggeredAlerts, error: alertError } = await supabase
-          .rpc('process_price_alerts_enhanced', {
-            p_symbol: priceData.symbol,
-            p_current_bid: priceData.bid,
-            p_current_ask: priceData.ask
-          });
-
-        if (alertError) {
-          console.error(`❌ Error processing alerts for ${priceData.symbol}:`, alertError);
-          continue;
-        }
-
-        if (!triggeredAlerts || triggeredAlerts.length === 0) {
-          continue;
-        }
-
-        // Handle triggered alerts with proper prioritization
-        const alertsToProcess = (triggeredAlerts as EnhancedAlertResult[])
-          .filter(alert => alert.triggered)
-          .sort((a, b) => a.priority_order - b.priority_order); // SL first (priority 1), then TP (priority 2)
-
-        console.log(`🎯 Processing ${alertsToProcess.length} triggered alerts for ${priceData.symbol}`);
-
-        for (const alert of alertsToProcess) {
-          try {
-            // Handle the triggered alert using enhanced logic
-            const { data: result, error: handleError } = await supabase
-              .rpc('handle_triggered_alert_enhanced', {
-                p_alert_id: alert.alert_id,
-                p_signal_id: alert.signal_id,
-                p_alert_type: alert.alert_type,
-                p_triggered_price: alert.trigger_price
-              });
-
-            if (handleError) {
-              console.error(`❌ Error handling alert ${alert.alert_id}:`, handleError);
-              continue;
-            }
-
-            const alertResult = result as AlertHandlingResult;
-            totalTriggered++;
-
-            console.log(`✅ Alert processed: ${alert.alert_type} for ${priceData.symbol} - ${alertResult.action}`);
-
-            processedAlerts.push({
-              symbol: priceData.symbol,
-              alert_id: alert.alert_id,
-              signal_id: alert.signal_id,
-              alert_type: alert.alert_type,
-              trigger_price: alert.trigger_price,
-              action: alertResult.action,
-              reason: alertResult.reason,
-              tp_level: alertResult.tp_level,
-              total_tps_hit: alertResult.total_tps_hit,
-              remaining_tps: alertResult.remaining_tps
-            });
-
-            // Send real-time notification for critical actions
-            if (alertResult.action === 'signal_closed' || alertResult.action === 'tp_partial_hit') {
-              try {
-                const notificationPayload = {
-                  notifications: [{
-                    signal_id: alert.signal_id,
-                    notification_type: alert.alert_type,
-                    asset_name: priceData.symbol,
-                    triggered_price: alert.trigger_price,
-                    alert_type: alert.alert_type,
-                    action: alertResult.action,
-                    tp_level: alertResult.tp_level,
-                    delivery_channels: ['push', 'in_app'],
-                    include_creator: false
-                  }]
-                };
-
-                const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-                const functionUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/signal-notification-dispatcher';
-                
-                fetch(functionUrl, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${serviceRoleKey}`,
-                  },
-                  body: JSON.stringify(notificationPayload)
-                }).catch(err => {
-                  console.error('❌ Notification dispatch failed:', err.message);
-                });
-
-              } catch (notificationError) {
-                console.error('❌ Notification error:', notificationError);
-              }
-            }
-
-          } catch (error) {
-            console.error(`❌ Error processing alert ${alert.alert_id}:`, error);
-          }
-        }
-
-      } catch (error) {
-        console.error(`❌ Error processing symbol ${priceData.symbol}:`, error);
-      }
-    }
-
-    const summary = {
+    // Run reconciliation first to fix any existing issues
+    await runReconciliation();
+    
+    // Then run the enhanced monitoring cycle
+    await fetchAndProcessPrices();
+    
+    return new Response(JSON.stringify({
       success: true,
-      processed_symbols: validPrices.length,
-      total_alerts_triggered: totalTriggered,
-      processed_alerts: processedAlerts,
-      monitoring_mode: 'enhanced_institutional',
-      features: [
-        'SL_priority_over_TP',
-        'partial_profit_tracking', 
-        'bid_ask_precision',
-        'atomic_signal_closure',
-        'real_time_notifications'
-      ],
-      timestamp: new Date().toISOString()
-    };
-
-    console.log('🎉 Enhanced monitoring completed:', summary);
-
-    return new Response(JSON.stringify(summary), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      message: 'Enhanced alert monitoring completed',
+      timestamp: new Date().toISOString(),
+      dataSource: 'tradermade_enhanced'
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
-
-  } catch (error) {
-    console.error('💥 Fatal error in enhanced alert monitor:', error);
     
-    return new Response(JSON.stringify({ 
-      error: 'Enhanced monitoring failed', 
-      details: error.message,
+  } catch (error) {
+    console.error('❌ Enhanced Alert Monitor error:', error);
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });

@@ -1,4 +1,3 @@
-
 // Signal Logic Engine Health Check Utility
 // Run this to verify Phase 2 implementation status
 
@@ -18,6 +17,8 @@ export class SignalEngineHealthCheck {
     results.push(await this.checkAlertMonitoringSystem());
     results.push(await this.checkPriceProcessingFunctions());
     results.push(await this.checkSignalStatusTransitions());
+    results.push(await this.checkPendingLimitActivation());
+    results.push(await this.checkAllTPsHitButNotClosed());
     results.push(await this.checkNotificationTriggers());
     results.push(await this.checkDatabaseConsistency());
 
@@ -141,6 +142,139 @@ export class SignalEngineHealthCheck {
         component: 'Signal Status Transitions',
         status: 'error', 
         details: `Failed to check signal statuses: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  private async checkPendingLimitActivation(): Promise<HealthCheckResult> {
+    try {
+      // Get pending limit orders with current market prices
+      const { data: pendingWithPrices, error } = await supabase
+        .from('trade_alerts')
+        .select(`
+          id,
+          asset_name,
+          trade_type,
+          entry_price,
+          tradermade_symbol,
+          created_at
+        `)
+        .eq('status', 'pending')
+        .in('trade_type', ['buy_limit', 'sell_limit']);
+
+      if (error) throw error;
+
+      if (!pendingWithPrices || pendingWithPrices.length === 0) {
+        return {
+          component: 'Pending Limit Activation',
+          status: 'healthy',
+          details: 'No pending limit orders to check',
+          metrics: {
+            totalPendingLimits: 0,
+            readyForActivation: 0
+          }
+        };
+      }
+
+      // Get current market prices for these symbols
+      const symbols = [...new Set(pendingWithPrices.map(order => order.tradermade_symbol))];
+      const { data: marketPrices, error: pricesError } = await supabase
+        .from('market_prices')
+        .select('symbol, bid, ask, timestamp')
+        .in('symbol', symbols);
+
+      if (pricesError) throw pricesError;
+
+      // Check which orders should be activated
+      let readyForActivation = 0;
+      const pricesMap = new Map();
+      marketPrices?.forEach(price => {
+        pricesMap.set(price.symbol, price);
+      });
+
+      for (const order of pendingWithPrices) {
+        const marketPrice = pricesMap.get(order.tradermade_symbol);
+        if (marketPrice) {
+          const shouldActivate = (
+            (order.trade_type === 'buy_limit' && marketPrice.bid <= order.entry_price) ||
+            (order.trade_type === 'sell_limit' && marketPrice.ask >= order.entry_price)
+          );
+          if (shouldActivate) {
+            readyForActivation++;
+          }
+        }
+      }
+
+      return {
+        component: 'Pending Limit Activation',
+        status: readyForActivation > 0 ? 'warning' : 'healthy',
+        details: readyForActivation > 0 
+          ? `${readyForActivation} pending orders should be activated based on current prices`
+          : `All ${pendingWithPrices.length} pending limit orders waiting for price conditions`,
+        metrics: {
+          totalPendingLimits: pendingWithPrices.length,
+          readyForActivation,
+          symbolsMonitored: symbols.length,
+          pricesAvailable: marketPrices?.length || 0
+        }
+      };
+    } catch (error) {
+      return {
+        component: 'Pending Limit Activation',
+        status: 'error',
+        details: `Failed to check pending limit activation: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  private async checkAllTPsHitButNotClosed(): Promise<HealthCheckResult> {
+    try {
+      const { data: signals, error } = await supabase
+        .from('trade_alerts')
+        .select('id, asset_name, status, tp1, tp2, tp3, tp4, tp5, tp_hits, tradermade_symbol')
+        .in('status', ['active', 'partially_profited'])
+        .not('tp_hits', 'is', null);
+
+      if (error) throw error;
+
+      const problematicSignals = [];
+      
+      for (const signal of signals || []) {
+        // Count total TP levels
+        const totalTPs = [signal.tp1, signal.tp2, signal.tp3, signal.tp4, signal.tp5]
+          .filter(tp => tp !== null).length;
+        
+        // Check if all TPs are hit
+        const tpHits = signal.tp_hits || [];
+        if (tpHits.length >= totalTPs && totalTPs > 0) {
+          problematicSignals.push({
+            id: signal.id,
+            asset: signal.asset_name,
+            status: signal.status,
+            totalTPs,
+            tpHitsCount: tpHits.length,
+            tpHits: tpHits
+          });
+        }
+      }
+
+      return {
+        component: 'All TPs Hit Check',
+        status: problematicSignals.length > 0 ? 'error' : 'healthy',
+        details: problematicSignals.length > 0 
+          ? `${problematicSignals.length} signals have all TPs hit but are not closed: ${problematicSignals.map(s => s.asset).join(', ')}`
+          : 'All signals with TP hits are properly closed',
+        metrics: {
+          totalSignalsChecked: signals?.length || 0,
+          problematicSignals: problematicSignals.length,
+          signalDetails: problematicSignals
+        }
+      };
+    } catch (error) {
+      return {
+        component: 'All TPs Hit Check',
+        status: 'error',
+        details: `Failed to check TP completion: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }

@@ -22,6 +22,7 @@ import { format } from 'date-fns';
 import { TradeJournalEntry } from '@/api/client/operations/TradeJournalEntry';
 import { ImageGallery } from '@/components/ui/image-gallery';
 import { useSignedUrls } from '@/hooks/useSignedUrls';
+import { formatYmdLocal } from '@/lib/date';
 
 interface MobileDayViewProps {
   date: Date;
@@ -39,13 +40,10 @@ export default function MobileDayView({
   const [expandedTrade, setExpandedTrade] = useState<string | null>(null);
   const [showScreenshots, setShowScreenshots] = useState<Record<string, boolean>>({});
 
-  // Filter entries for this specific date
+  // Filter entries for the specific date
   const dayEntries = useMemo(() => {
-    const dateKey = format(date, 'yyyy-MM-dd');
-    return entries.filter(entry => {
-      const entryDate = format(new Date(entry.trade_date), 'yyyy-MM-dd');
-      return entryDate === dateKey;
-    });
+    const targetDate = formatYmdLocal(date);
+    return entries.filter(entry => entry.trade_date === targetDate);
   }, [entries, date]);
 
   // Calculate day statistics

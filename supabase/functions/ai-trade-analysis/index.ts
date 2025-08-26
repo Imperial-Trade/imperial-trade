@@ -44,17 +44,17 @@ function calculateTradingMetrics(trades: any[]) {
   const avgTradeSize = totalTrades > 0 ? Math.abs(totalPnL / totalTrades) : 0;
 
   // Calculate journaling streak (consecutive days with trades)
-  const sortedTrades = trades.sort((a, b) => new Date(b.trade_date).getTime() - new Date(a.trade_date).getTime());
+  const sortedTrades = trades.sort((a, b) => b.trade_date.localeCompare(a.trade_date));
   let journalingStreak = 0;
-  let currentDate = new Date();
+  let currentDateStr = new Date().toISOString().split('T')[0]; // Current date as YYYY-MM-DD
   
   for (const trade of sortedTrades) {
-    const tradeDate = new Date(trade.trade_date);
-    const daysDiff = Math.floor((currentDate.getTime() - tradeDate.getTime()) / (1000 * 60 * 60 * 24));
+    const tradeDateStr = trade.trade_date; // Already in YYYY-MM-DD format
+    const daysDiff = Math.floor((new Date(currentDateStr).getTime() - new Date(tradeDateStr).getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysDiff <= journalingStreak + 1) {
       journalingStreak++;
-      currentDate = tradeDate;
+      currentDateStr = tradeDateStr;
     } else {
       break;
     }

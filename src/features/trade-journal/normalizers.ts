@@ -1,11 +1,21 @@
 import { toNum } from '@/lib/utils';
 import { coerceTradeType } from '@/constants/trading';
 import { TradeJournalEntry } from '@/contexts/TradeJournalContext';
+import { formatYmdLocal, isValidYmd } from '@/lib/date';
 
 export function normalizeTradeDate(d: string | Date | null | undefined): string {
-  if (!d) return new Date().toISOString().slice(0, 10);
-  const date = typeof d === 'string' ? new Date(d) : d;
-  return date.toISOString().slice(0, 10);
+  if (!d) return formatYmdLocal(new Date());
+  if (typeof d === 'string') {
+    // If it's already a valid YYYY-MM-DD string, return it
+    if (isValidYmd(d)) return d;
+    // If it's an ISO string or other format, parse and convert to local YMD
+    const parsed = new Date(d);
+    if (!isNaN(parsed.getTime())) return formatYmdLocal(parsed);
+    // Fallback to today if invalid
+    return formatYmdLocal(new Date());
+  }
+  // If it's a Date object, convert to local YMD
+  return formatYmdLocal(d);
 }
 
 function stripWrappingQuotes(text: string): string {
@@ -75,7 +85,6 @@ export function mapDbRowToEntry(row: any): TradeJournalEntry {
     trade_date,
     notes: row.notes || undefined,
     screenshot_url: row.screenshot_url || undefined,
-    screenshot_urls,
     ai_positive_feedback: cleanCoachFeedback(row.ai_positive_feedback),
     created_at: row.created_at,
     updated_at: row.updated_at,

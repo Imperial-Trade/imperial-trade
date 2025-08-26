@@ -8,6 +8,7 @@ import { Trash2, Brain, MessageSquare, Target, ChevronDown, ChevronUp, Eye } fro
 import { TradeJournalEntry } from '@/api/entities';
 import { ImageGallery } from '@/components/ui/image-gallery';
 import { useSignedUrls } from '@/hooks/useSignedUrls';
+import { parseYmdToLocalDate } from '@/lib/date';
 
 interface MobileRecentTradesProps {
   entries: TradeJournalEntry[];
@@ -64,7 +65,7 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
                     {entry.asset_ticker}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {format(new Date(entry.trade_date), "MMM dd, yyyy")}
+                    {format(parseYmdToLocalDate(entry.trade_date), "MMM dd, yyyy")}
                   </span>
                 </div>
                 

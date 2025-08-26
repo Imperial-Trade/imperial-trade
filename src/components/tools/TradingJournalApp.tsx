@@ -15,6 +15,7 @@ import AddTradeModal from "@/components/trading/AddTradeModal";
 import { TradeFormData } from "@/hooks/useTradeForm";
 import { ImageGalleryWithUrls } from "@/components/tools/ImageGalleryWithUrls";
 import { useTradeJournal } from '@/contexts/TradeJournalContext';
+import { formatYmdLocal, isFutureYmd, getTodayYmd } from '@/lib/date';
 
 // Enhanced Types
 interface Trade {
@@ -184,13 +185,6 @@ const sampleTrades: Trade[] = [{
   updated_at: new Date().toISOString()
 }];
 export const TradingJournalApp: React.FC = () => {
-  // Helper function to format date consistently without timezone issues
-  const formatDateString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
   const {
     theme
   } = useTheme();
@@ -273,7 +267,7 @@ export const TradingJournalApp: React.FC = () => {
     const currentDate = journalState.currentDate;
     switch (journalState.currentFilter) {
       case "today":
-        const today = now.toISOString().split("T")[0];
+        const today = getTodayYmd();
         return trades.filter(t => t.date === today);
       case "week":
         const startOfWeek = new Date(currentDate);
@@ -329,17 +323,10 @@ export const TradingJournalApp: React.FC = () => {
 
   // Handle date click with smooth transition animation
   const handleDateClick = useCallback((dateStr: string, event: React.MouseEvent, openModal?: boolean) => {
-    console.log("🗓️ Date clicked:", dateStr, "Current date:", formatDateString(new Date()));
+    console.log("🗓️ Date clicked:", dateStr, "Current date:", getTodayYmd());
 
-    // Check if the date is in the future (using precise current time)
-    const clickedDate = new Date(dateStr);
-    const now = new Date();
-
-    // Set clicked date to end of day for comparison
-    clickedDate.setHours(23, 59, 59, 999);
-
-    // Don't allow future dates
-    if (clickedDate > now) {
+    // Check if the date is in the future using string comparison
+    if (isFutureYmd(dateStr)) {
       return;
     }
     const rect = (event.target as HTMLElement).getBoundingClientRect();
@@ -640,7 +627,7 @@ export const TradingJournalApp: React.FC = () => {
       for (let i = 0; i < 7; i++) {
         const date = new Date(startOfWeek);
         date.setDate(startOfWeek.getDate() + i);
-        const dateStr = formatDateString(date);
+        const dateStr = formatYmdLocal(date);
         const dayTrades = trades.filter(t => t.date === dateStr);
         const dayPnL = dayTrades.reduce((sum, t) => sum + t.pnl, 0);
         const isFuture = date > today;
@@ -695,7 +682,7 @@ export const TradingJournalApp: React.FC = () => {
       days.push(<div key={`empty-${i}`} className="h-20" />);
     }
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = formatDateString(new Date(currentYear, currentMonth, day));
+      const dateStr = formatYmdLocal(new Date(currentYear, currentMonth, day));
       console.log("📅 Month view day", day, "dateStr:", dateStr);
       const dayTrades = trades.filter(t => t.date === dateStr);
       const dayPnL = dayTrades.reduce((sum, t) => sum + t.pnl, 0);

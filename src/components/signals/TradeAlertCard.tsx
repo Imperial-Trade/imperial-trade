@@ -1,430 +1,449 @@
-
-import React, { useState, memo, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2, User, Crown, GraduationCap, Pencil } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import QuickCopyPanel from './QuickCopyPanel';
-import LivePriceWidget from './LivePriceWidget';
-import TradeStatusBadge from './TradeStatusBadge';
-import TradingCalculator from './TradingCalculator';
-import SignalSharingModal from './SignalSharingModal';
-import { TradeAlertCardProps } from '@/types/components';
-import { TradeSignal } from '@/services/SignalSharingService';
-import { Textarea } from '@/components/ui/textarea';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
-import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Clock, 
+  Target, 
+  Shield, 
+  Copy, 
+  CheckCircle, 
+  XCircle, 
+  AlertTriangle,
+  Wifi,
+  WifiOff,
+  User,
+  Crown,
+  GraduationCap
+} from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
-interface PriceRowProps {
-  label: string;
-  value?: number;
-  icon: React.ComponentType<{ className?: string }>;
-  colorClass: string;
-  isHit?: boolean;
+export interface TradeAlertData {
+  id: string;
+  asset_name: string;
+  tradermade_symbol: string;
+  trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+  entry_price: number;
+  stop_loss: number;
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
+  tp1?: number;
+  tp2?: number;
+  tp3?: number;
+  tp4?: number;
+  tp5?: number;
+  tp_hits: number[];
+  notes?: string;
+  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp';
+  created_date: string | Date;
+  updated_date: string | Date;
 }
 
-const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false }) => (
-    <div className={`flex justify-between items-center text-sm py-2 border-b border-border/50 last:border-b-0 ${isHit ? 'bg-accent-green/20' : ''}`}>
-        <div className="flex items-center space-x-2 text-muted-foreground">
-            <Icon className={`w-4 h-4 ${colorClass}`} />
-            <span>{label}</span>
-            {isHit && <Check className="w-4 h-4 text-accent-green" />}
-        </div>
-        <span className={`font-mono font-semibold text-foreground ${isHit ? 'text-accent-green' : ''}`}>
-          {value ? `$${value.toFixed(2)}` : '-'}
-        </span>
-    </div>
-);
+export interface Creator {
+  id: string;
+  display_name: string;
+  role: string;
+  avatar_url?: string;
+  user_type?: string;
+  access_level?: string;
+}
 
-const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
-  alert, 
-  onStatusUpdate, 
-  onTakeProfitHit, 
-  onStopLossHit, 
-  onOrderActivation, 
-  isAdmin, 
-  isCreator,
-  livePrice, 
-  connectionStatus, 
-  priceSource, 
-  isRecentClosure,
-  className,
-  testId,
+interface TradeAlertCardProps {
+  alert: TradeAlertData;
+  onStatusUpdate?: (alert: TradeAlertData, newStatus: string) => void;
+  onTakeProfitHit?: (alert: TradeAlertData, tpHits: number[], shouldClose?: boolean, closeReason?: string) => void;
+  onStopLossHit?: (alert: TradeAlertData, closeReason: string) => void;
+  onOrderActivation?: (alert: TradeAlertData) => void;
+  isAdmin?: boolean;
+  isCreator?: boolean;
+  livePrice?: number;
+  connectionStatus?: 'connecting' | 'connected' | 'error';
+  priceSource?: string;
+  isRecentClosure?: boolean;
+  creator?: Creator;
+  justAdded?: boolean;
+}
+
+// Helper function to format numbers with commas
+const formatNumber = (num: number): string => {
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 5,
+  });
+};
+
+export default function TradeAlertCard({
+  alert,
+  onStatusUpdate,
+  onTakeProfitHit,
+  onStopLossHit,
+  onOrderActivation,
+  isAdmin = false,
+  isCreator = false,
+  livePrice,
+  connectionStatus = 'error',
+  priceSource,
+  isRecentClosure = false,
   creator,
   justAdded = false
-}) => {
-  const [showCopyPanel, setShowCopyPanel] = useState(false);
-  const [showCalculator, setShowCalculator] = useState(false);
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [notesDraft, setNotesDraft] = useState(alert.notes || '');
-  const [localNotes, setLocalNotes] = useState(alert.notes || '');
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
+}: TradeAlertCardProps) {
+  const [copying, setCopying] = useState(false);
+  const [showAllDetails, setShowAllDetails] = useState(false);
   
-  useEffect(() => {
-    setLocalNotes(alert.notes || '');
-    setNotesDraft(alert.notes || '');
-  }, [alert.id, alert.notes]);
-  
-  // Type-safe derivations
-  const isBuy = alert.trade_type.includes('buy');
-  const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter((tp): tp is number => tp !== undefined);
-  const hitTPs = alert.tp_hits || [];
-  const isClosed = alert.status === 'closed';
+  const isActive = alert.status === 'active' || alert.status === 'partially_profited';
   const isPending = alert.status === 'pending';
-  const canCloseSignal = isCreator;
-  const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
-  const { getPrice } = useWebSocketPrices();
-
-  // Convert alert to TradeSignal format for sharing
-  const tradeSignal: TradeSignal = {
-    id: alert.id,
-    assetName: alert.asset_name,
-    tradeType: alert.trade_type,
-    entryPrice: alert.entry_price,
-    stopLoss: alert.stop_loss,
-    takeProfits: takeProfits,
-    notes: alert.notes || undefined
-  };
-
-  // Type-safe event handlers
-  const handleStatusUpdate = async (newStatus: string) => {
-    try {
-      await onStatusUpdate(alert, newStatus);
-    } catch (error) {
-      console.error('Failed to update status:', error);
+  const isClosed = alert.status === 'closed';
+  const isPartiallyProfited = alert.status === 'partially_profited';
+  
+  const isBuyOrder = alert.trade_type.includes('buy');
+  const isSellOrder = alert.trade_type.includes('sell');
+  const isLimitOrder = alert.trade_type.includes('limit');
+  
+  // Price calculations
+  const currentPrice = livePrice || alert.entry_price;
+  const pipsInProgress = useMemo(() => {
+    if (!isActive || !livePrice) return 0;
+    const diff = livePrice - alert.entry_price;
+    return isBuyOrder ? diff : -diff;
+  }, [livePrice, alert.entry_price, isBuyOrder, isActive]);
+  
+  const distanceToEntry = useMemo(() => {
+    if (!isPending || !livePrice) return 0;
+    return Math.abs(livePrice - alert.entry_price);
+  }, [livePrice, alert.entry_price, isPending]);
+  
+  // TP levels and hit status
+  const tpLevels = useMemo(() => {
+    const levels = [];
+    for (let i = 1; i <= 5; i++) {
+      const tpKey = `tp${i}` as keyof TradeAlertData;
+      const tpValue = alert[tpKey] as number;
+      if (tpValue) {
+        levels.push({
+          level: i,
+          price: tpValue,
+          isHit: alert.tp_hits.includes(i),
+          pips: isBuyOrder ? tpValue - alert.entry_price : alert.entry_price - tpValue
+        });
+      }
     }
-  };
-
-  const handleCopyPanelToggle = () => {
-    setShowCopyPanel(prev => !prev);
-  };
-
-  const handleCalculatorToggle = () => {
-    setShowCalculator(prev => !prev);
-  };
-
-  const handleNotesEditToggle = () => {
-    setIsEditingNotes(prev => !prev);
-    setNotesDraft(localNotes || '');
-  };
-
-  const handleNotesSave = async () => {
-    try {
-      setIsSavingNotes(true);
-      const { error } = await supabase
-        .from('trade_alerts')
-        .update({ notes: notesDraft })
-        .eq('id', alert.id);
-
-      if (error) throw error;
-
-      setLocalNotes(notesDraft);
-      setIsEditingNotes(false);
-      toast({ title: 'Notes updated', description: 'Everyone can now see the new notes.' });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Failed to update notes', description: e?.message || 'Please try again.' });
-    } finally {
-      setIsSavingNotes(false);
-    }
-  };
-  // Get role icon and color
-  const getRoleIcon = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        return <Crown className="w-4 h-4 text-accent-gold" />;
-      case 'educator':
-        return <GraduationCap className="w-4 h-4 text-accent-blue" />;
+    return levels;
+  }, [alert, isBuyOrder]);
+  
+  const getStatusBadge = () => {
+    switch (alert.status) {
+      case 'pending':
+        return (
+          <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+            <Clock className="w-3 h-3 mr-1" />
+            Pending
+          </Badge>
+        );
+      case 'active':
+        return (
+          <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+            <TrendingUp className="w-3 h-3 mr-1" />
+            Active
+          </Badge>
+        );
+      case 'partially_profited':
+        return (
+          <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30">
+            <TrendingUp className="w-3 h-3 mr-1" />
+            Partially Profited
+          </Badge>
+        );
+      case 'closed':
+        return (
+          <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/30">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Closed
+          </Badge>
+        );
       default:
-        return <User className="w-4 h-4 text-muted-foreground" />;
+        return null;
     }
   };
-
-  const getRoleBadgeClass = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        return 'bg-accent-gold/20 text-accent-gold border-accent-gold/30';
-      case 'educator':
-        return 'bg-accent-blue/20 text-accent-blue border-accent-blue/30';
-      default:
-        return 'bg-muted/20 text-muted-foreground border-border/30';
-    }
-  };
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+  
+  const getCreatorIcon = () => {
+    if (!creator) return <User className="w-4 h-4" />;
     
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays}d ago`;
+    if (creator.access_level === 'admin' || creator.role === 'admin') {
+      return <Crown className="w-4 h-4 text-yellow-500" />;
+    }
+    
+    if (creator.user_type === 'educator' || creator.access_level === 'moderator' || creator.role === 'educator') {
+      return <GraduationCap className="w-4 h-4 text-blue-500" />;
+    }
+    
+    return <User className="w-4 h-4" />;
   };
-
-  // Get button text (only creator can close in stream)
-  const getCloseButtonText = () => 'Close My Signal';
-
+  
+  const copyTradeDetails = useCallback(async () => {
+    setCopying(true);
+    try {
+      const details = [
+        `${alert.asset_name} ${alert.trade_type.toUpperCase()}`,
+        `Entry: ${alert.entry_price}`,
+        `Stop Loss: ${alert.stop_loss}`,
+        ...tpLevels.map(tp => `TP${tp.level}: ${tp.price}`),
+        livePrice ? `Current Price: ${livePrice}` : '',
+        creator ? `By: ${creator.display_name}` : ''
+      ].filter(Boolean).join('\n');
+      
+      await navigator.clipboard.writeText(details);
+      
+      // Show success notification if available
+      if ((window as any).addNotification) {
+        (window as any).addNotification({
+          type: 'success',
+          title: 'Copied!',
+          message: 'Trade details copied to clipboard'
+        });
+      }
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    } finally {
+      setCopying(false);
+    }
+  }, [alert, tpLevels, livePrice, creator]);
+  
+  const formatTime = (date: string | Date) => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 60) {
+      return `${diffMins}m ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    } else {
+      return `${diffDays}d ago`;
+    }
+  };
+  
+  const canInteract = (isCreator || isAdmin) && !isClosed;
+  
   return (
-    <div 
-      className={`bg-card rounded-lg border border-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50 shadow-accent-green/20' : ''} ${className || ''}`}
-      data-testid={testId}
-    >
-      {/* Glowing top indicator for closed trades */}
-      {isClosed && (
-        <div className={`h-1 w-full ${
-          alert.close_reason === 'stop_loss' 
-            ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
-            : (hitTPs.length > 0 || alert.close_reason?.startsWith('tp'))
-              ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
-              : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
-        } animate-pulse`} />
+    <Card className={cn(
+      "relative transition-all duration-300 hover:shadow-lg border-border bg-background",
+      justAdded && "ring-2 ring-accent-green/50 animate-pulse",
+      isRecentClosure && "opacity-75",
+      isClosed && "bg-muted/30"
+    )}>
+      {justAdded && (
+        <div className="absolute -top-2 -right-2 bg-accent-green text-background text-xs px-2 py-1 rounded-full animate-bounce">
+          New!
+        </div>
       )}
-
-      <div className="p-4">
-        {/* Signal Creator Attribution */}
-        {creator && (
-          <div className="flex items-start justify-between mb-3 pb-3 border-b border-border/30">
-            <div className="flex items-center gap-2">
-              {getRoleIcon(creator.role)}
-              <span className="font-semibold text-foreground">{creator.display_name}</span>
-              <Badge className={getRoleBadgeClass(creator.role)}>
-                {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
-              </Badge>
+      
+      <CardContent className="p-4 space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-3">
+            <div className={cn(
+              "p-2 rounded-full",
+              isBuyOrder ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+            )}>
+              {isBuyOrder ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             </div>
-            <div className="flex flex-col items-end gap-1">
-              <div className="text-xs text-muted-foreground">
-                {formatTimeAgo(alert.created_date)}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Currency Pair and Status */}
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold">{alert.asset_name}</h3>
-              <TradeStatusBadge 
-                alert={alert} 
-                updatedDate={alert.updated_date} 
-                isRecentClosure={isRecentClosure} 
-              />
+            <div>
+              <h3 className="font-semibold text-lg">{alert.asset_name}</h3>
+              <p className="text-sm text-muted-foreground">
+                {alert.trade_type.replace('_', ' ').toUpperCase()}
+              </p>
             </div>
           </div>
-
-          {/* Actions - moved to the right */}
-          <div className="flex items-center gap-2 flex-wrap" data-prevent-widget-open="true">
-            {/* Copy Button */}
-            <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                  onClick={handleCopyPanelToggle}
-                >
-                  <Copy className="w-4 h-4 mr-1" />
-                  {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                </Button>
-              </CollapsibleTrigger>
-            </Collapsible>
-            
-            {/* Share Button */}
-            <SignalSharingModal 
-              signal={tradeSignal}
-              trigger={
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
-                >
-                  <Share2 className="w-4 h-4 mr-1" />
-                  <ChevronDown className="w-3 h-3" />
-                </Button>
-              }
-            />
-            
-            {/* Calculator Toggle - Only for active/pending trades */}
-            {(alert.status === 'active' || alert.status === 'pending') && (
-              <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
-                <CollapsibleTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
-                    onClick={handleCalculatorToggle}
-                  >
-                    <Calculator className="w-4 h-4 mr-1" />
-                    {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  </Button>
-                </CollapsibleTrigger>
-              </Collapsible>
+          <div className="flex items-center space-x-2">
+            {getStatusBadge()}
+            {connectionStatus === 'connected' ? (
+              <Wifi className="w-4 h-4 text-green-500" />
+            ) : (
+              <WifiOff className="w-4 h-4 text-red-500" />
             )}
           </div>
         </div>
-      </div>
-
-      {/* Live Price Widget - Show for active and pending trades */}
-      {(alert.status === 'active' || alert.status === 'pending') && (
-        <div className="px-4 pb-4">
-          <LivePriceWidget 
-              alert={alert} 
-              onTakeProfitHit={onTakeProfitHit}
-              onStopLossHit={onStopLossHit}
-              onOrderActivation={onOrderActivation}
-          />
-        </div>
-      )}
-
-      <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-        <CollapsibleContent className="px-4 pb-4" data-prevent-widget-open="true">
-            <QuickCopyPanel alert={alert} />
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Trading Calculator */}
-      <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
-        <CollapsibleContent className="px-4 pb-4">
-            <TradingCalculator alert={alert} livePrice={livePrice} />
-        </CollapsibleContent>
-      </Collapsible>
-
-      <div className="px-4 pb-4 space-y-2">
-        <div className="bg-muted/50 rounded-md p-3">
-            <PriceRow 
-              label="Entry Price" 
-              value={alert.entry_price} 
-              icon={isBuy ? ArrowUp : ArrowDown} 
-              colorClass={isBuy ? "text-accent-green" : "text-accent-red"} 
-            />
-            <PriceRow 
-              label="Stop Loss" 
-              value={alert.stop_loss} 
-              icon={XOctagon} 
-              colorClass={alert.close_reason === 'stop_loss' ? "text-accent-red" : "text-accent-red"}
-              isHit={alert.close_reason === 'stop_loss'}
-            />
-            {takeProfits.map((tp, index) => {
-              const tpLevel = index + 1;
-              const isHit = hitTPs.includes(tpLevel) || alert.close_reason === `tp${tpLevel}`;
-              return (
-                <PriceRow 
-                  key={index} 
-                  label={`Take Profit ${tpLevel}`} 
-                  value={tp} 
-                  icon={Target} 
-                  colorClass={isHit ? "text-accent-green" : "text-accent-blue"}
-                  isHit={isHit}
-                />
-              );
-            })}
-        </div>
-      </div>
-      
-      <div className="px-4 pb-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-muted-foreground">Notes</span>
-          {canEditNotes && !isEditingNotes && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue" 
-              onClick={handleNotesEditToggle}
-            >
-              <Pencil className="w-3 h-3 mr-1" /> Edit
-            </Button>
-          )}
-        </div>
-        {isEditingNotes ? (
-          <div className="space-y-2">
-            <Textarea 
-              value={notesDraft}
-              onChange={(e) => setNotesDraft(e.target.value)}
-              placeholder="Add helpful context for followers..."
-              className="min-h-[80px]"
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={handleNotesEditToggle} disabled={isSavingNotes}>Cancel</Button>
-              <Button variant="default" size="sm" onClick={handleNotesSave} disabled={isSavingNotes || notesDraft === localNotes}>
-                {isSavingNotes ? 'Saving...' : 'Save'}
-              </Button>
+        
+        {/* Creator Info */}
+        {creator && (
+          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+            <Avatar className="w-6 h-6">
+              {creator.avatar_url ? (
+                <AvatarImage src={creator.avatar_url} alt={creator.display_name} />
+              ) : (
+                <AvatarFallback className="text-xs">
+                  {creator.display_name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <span className="flex items-center space-x-1">
+              {getCreatorIcon()}
+              <span>{creator.display_name}</span>
+            </span>
+          </div>
+        )}
+        
+        {/* Price Information */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Entry Price</p>
+            <p className="font-mono font-semibold">{alert.entry_price}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">
+              {isPending ? 'Distance to Entry' : 'Current Price'}
+            </p>
+            <div className="flex items-center space-x-2">
+              <p className="font-mono font-semibold">
+                {isPending ? distanceToEntry.toFixed(5) : (livePrice || alert.entry_price)}
+              </p>
+              {connectionStatus === 'connected' && livePrice && (
+                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-400 border-green-500/20">
+                  Live
+                </Badge>
+              )}
             </div>
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
-        )}
-      </div>
-      {/* Stop Loss Proximity Warning */}
-      {alert.status === 'active' && (() => {
-        const wsPrice = getPrice?.(alert.tradermade_symbol)?.price;
-        const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
-        const entryPrice = alert.entry_price;
-        const stopLoss = alert.stop_loss;
-        if (!entryPrice || !stopLoss || !currentPrice) return null;
-        const totalDistance = Math.abs(entryPrice - stopLoss);
-        if (totalDistance === 0) return null;
-        const currentDistance = Math.abs(currentPrice - stopLoss);
-        const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
-        if (proximityPercentage >= 50) {
-          return (
-            <div className="px-4 pb-4">
-              <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-3 flex items-start gap-2">
-                <span className="text-accent-gold mt-0.5 leading-none">🟡</span>
-                <div className="text-xs text-accent-gold">
-                  <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>
-                  <br />
-                  <span className="text-accent-gold/80">This trade is more than halfway to its invalidation point.</span>
-                </div>
-              </div>
-            </div>
-          );
-        }
-        return null;
-      })()}
-      
-      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && (
-        <div className="bg-muted/50 px-4 py-2 flex justify-end">
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red" 
-              onClick={() => handleStatusUpdate('closed')}
-            >
-                <Lock className="w-4 h-4 mr-2" />
-                {isPending ? 'Cancel Order' : getCloseButtonText()}
-            </Button>
         </div>
-      )}
-    </div>
+        
+        {/* Pips Progress / Distance */}
+        {isActive && (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Pips in Progress</p>
+            <div className="flex items-center space-x-2">
+              <p className={cn(
+                "font-mono font-semibold text-lg",
+                pipsInProgress >= 0 ? "text-green-400" : "text-red-400"
+              )}>
+                {pipsInProgress >= 0 ? '+' : ''}{(pipsInProgress * 10000).toFixed(1)}
+              </p>
+              <Badge variant="outline" className={cn(
+                "text-xs",
+                pipsInProgress >= 0 
+                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                  : "bg-red-500/10 text-red-400 border-red-500/20"
+              )}>
+                {pipsInProgress >= 0 ? 'Profit' : 'Loss'}
+              </Badge>
+            </div>
+          </div>
+        )}
+        
+        {/* Stop Loss */}
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Stop Loss</p>
+          <div className="flex items-center space-x-2">
+            <Shield className="w-4 h-4 text-red-400" />
+            <p className="font-mono">{alert.stop_loss}</p>
+          </div>
+        </div>
+        
+        {/* Take Profit Levels */}
+        {tpLevels.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Take Profit Levels</p>
+            <div className="grid grid-cols-1 gap-2">
+              {tpLevels.map(tp => (
+                <div key={tp.level} className={cn(
+                  "flex items-center justify-between p-2 rounded border",
+                  tp.isHit 
+                    ? "bg-green-500/20 border-green-500/30 text-green-400"
+                    : "bg-muted/50 border-border"
+                )}>
+                  <div className="flex items-center space-x-2">
+                    <Target className="w-3 h-3" />
+                    <span className="text-sm font-medium">TP{tp.level}</span>
+                    <span className="font-mono text-sm">{tp.price}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-muted-foreground">
+                      {(tp.pips * 10000).toFixed(1)} pips
+                    </span>
+                    {tp.isHit && <CheckCircle className="w-4 h-4 text-green-400" />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Notes */}
+        {alert.notes && (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Notes</p>
+            <p className="text-sm bg-muted/50 p-2 rounded border">{alert.notes}</p>
+          </div>
+        )}
+        
+        {/* Close Reason */}
+        {isClosed && alert.close_reason && (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Close Reason</p>
+            <Badge variant="outline" className="bg-muted/50">
+              {alert.close_reason.replace('_', ' ').toUpperCase()}
+            </Badge>
+          </div>
+        )}
+        
+        <Separator />
+        
+        {/* Footer */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+            <span>{formatTime(alert.created_date)}</span>
+            {priceSource && (
+              <span>via {priceSource}</span>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyTradeDetails}
+              disabled={copying}
+              className="text-xs"
+            >
+              <Copy className="w-3 h-3 mr-1" />
+              {copying ? 'Copying...' : 'Copy Details'}
+            </Button>
+            
+            {/* Action buttons for creators/admins */}
+            {canInteract && (
+              <>
+                {isPending && isLimitOrder && onOrderActivation && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => onOrderActivation(alert)}
+                    className="text-xs bg-blue-600 hover:bg-blue-700"
+                  >
+                    Activate
+                  </Button>
+                )}
+                
+                {isActive && onStatusUpdate && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => onStatusUpdate(alert, 'closed')}
+                    className="text-xs"
+                  >
+                    <XCircle className="w-3 h-3 mr-1" />
+                    Close
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
-};
-
-export default memo(TradeAlertCard, (prevProps, nextProps) => {
-  // Prevent re-renders when only livePrice changes - let LivePriceWidget handle price updates internally
-  return (
-    prevProps.alert.id === nextProps.alert.id &&
-    prevProps.alert.status === nextProps.alert.status &&
-    prevProps.alert.asset_name === nextProps.alert.asset_name &&
-    prevProps.alert.trade_type === nextProps.alert.trade_type &&
-    prevProps.alert.entry_price === nextProps.alert.entry_price &&
-    prevProps.alert.stop_loss === nextProps.alert.stop_loss &&
-    prevProps.alert.tp1 === nextProps.alert.tp1 &&
-    prevProps.alert.tp2 === nextProps.alert.tp2 &&
-    prevProps.alert.tp3 === nextProps.alert.tp3 &&
-    prevProps.alert.tp4 === nextProps.alert.tp4 &&
-    prevProps.alert.tp5 === nextProps.alert.tp5 &&
-    prevProps.alert.notes === nextProps.alert.notes &&
-    prevProps.alert.close_reason === nextProps.alert.close_reason &&
-    prevProps.alert.tp_hits === nextProps.alert.tp_hits &&
-    prevProps.isAdmin === nextProps.isAdmin &&
-    prevProps.isCreator === nextProps.isCreator &&
-    prevProps.isRecentClosure === nextProps.isRecentClosure &&
-    prevProps.className === nextProps.className &&
-    prevProps.testId === nextProps.testId &&
-    JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator)
-    // Note: livePrice is intentionally excluded to prevent card re-renders on price updates
-  );
-});
+}

@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
 import { useWebSocketPriceFeed } from '@/hooks/useWebSocketPriceFeed';
-import { TradeAlertCard } from '@/components/signals/TradeAlertCard';
+import { EnhancedSignalCard } from '@/components/signals/EnhancedSignalCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ import { ConnectionStatusIndicator } from '@/components/signals/ConnectionStatus
 import { AlertCircle, TrendingUp, TrendingDown, Clock, Filter, Search, Zap, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { TradeAlertData } from '@/types/TradeAlertData';
+import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { cn } from '@/lib/utils';
 
 // Define a type for the status filter
@@ -24,26 +25,26 @@ type StatusFilter = 'all' | 'pending' | 'active' | 'closed' | 'partially_profite
 type TypeFilter = 'all' | 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
 type SortBy = 'newest' | 'oldest' | 'asset';
 
-// Normalize incoming items to canonical TradeAlertData shape
-const toCanonical = (a: any): TradeAlertData => ({
+// Convert realtime data to TradeAlertWithProfile format for EnhancedSignalCard
+const toTradeAlertWithProfile = (a: any): TradeAlertWithProfile => ({
   id: a?.id,
-  user_id: a?.user_id ?? a?.userId ?? '',
-  asset_name: a?.asset_name ?? a?.assetName ?? '',
-  tradermade_symbol: a?.tradermade_symbol ?? a?.tradermadeSymbol ?? '',
-  trade_type: a?.trade_type ?? a?.tradeType,
-  entry_price: a?.entry_price ?? a?.entryPrice,
-  stop_loss: a?.stop_loss ?? a?.stopLoss,
+  userId: a?.user_id ?? a?.userId ?? '',
+  assetName: a?.asset_name ?? a?.assetName ?? '',
+  tradermadeSymbol: a?.tradermade_symbol ?? a?.tradermadeSymbol ?? '',
+  tradeType: a?.trade_type ?? a?.tradeType,
+  entryPrice: a?.entry_price ?? a?.entryPrice,
+  stopLoss: a?.stop_loss ?? a?.stopLoss,
   status: a?.status,
   tp1: a?.tp1 ?? a?.tp_1 ?? a?.tpOne,
   tp2: a?.tp2 ?? a?.tp_2 ?? a?.tpTwo,
   tp3: a?.tp3 ?? a?.tp_3 ?? a?.tpThree,
   tp4: a?.tp4 ?? a?.tp_4 ?? a?.tpFour,
   tp5: a?.tp5 ?? a?.tp_5 ?? a?.tpFive,
-  tp_hits: a?.tp_hits ?? a?.tpHits ?? [],
+  tpHits: a?.tp_hits ?? a?.tpHits ?? [],
   notes: a?.notes,
-  close_reason: a?.close_reason ?? a?.closeReason,
-  created_date: a?.created_date ?? a?.createdAt,
-  updated_date: a?.updated_date ?? a?.updatedAt,
+  closeReason: a?.close_reason ?? a?.closeReason,
+  createdAt: a?.created_date ?? a?.createdAt,
+  updatedAt: a?.updated_date ?? a?.updatedAt,
   creator: a?.creator
     ? {
         id: a.creator.id,
@@ -73,7 +74,7 @@ const SignalStream: React.FC = () => {
     lastUpdated
   } = useSignalRealtime(user?.id || '', showAllSignals);
 
-  const canonicalAlerts = useMemo(() => realtimeAlerts.map(toCanonical), [realtimeAlerts]);
+  const canonicalAlerts = useMemo(() => realtimeAlerts.map(toTradeAlertWithProfile), [realtimeAlerts]);
 
   // Filter alerts based on search term, status, and trade type
   const filteredAlerts = useMemo(() => {
@@ -82,8 +83,8 @@ const SignalStream: React.FC = () => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(alert =>
-        alert.asset_name.toLowerCase().includes(searchLower) ||
-        alert.tradermade_symbol.toLowerCase().includes(searchLower) ||
+        alert.assetName.toLowerCase().includes(searchLower) ||
+        alert.tradermadeSymbol.toLowerCase().includes(searchLower) ||
         alert.notes?.toLowerCase().includes(searchLower)
       );
     }
@@ -93,7 +94,7 @@ const SignalStream: React.FC = () => {
     }
 
     if (typeFilter !== 'all') {
-      filtered = filtered.filter(alert => alert.trade_type === typeFilter);
+      filtered = filtered.filter(alert => alert.tradeType === typeFilter);
     }
 
     return filtered;
@@ -106,11 +107,11 @@ const SignalStream: React.FC = () => {
     sorted.sort((a, b) => {
       switch (sortBy) {
         case 'newest':
-          return new Date(b.created_date).getTime() - new Date(a.created_date).getTime();
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         case 'oldest':
-          return new Date(a.created_date).getTime() - new Date(b.created_date).getTime();
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         case 'asset':
-          return a.asset_name.localeCompare(b.asset_name);
+          return a.assetName.localeCompare(b.assetName);
         default:
           return 0;
       }
@@ -119,18 +120,14 @@ const SignalStream: React.FC = () => {
     return sorted;
   }, [filteredAlerts, sortBy]);
 
-  const filteredAndSortedAlerts = useMemo(() => {
-    return sortedAlerts;
-  }, [sortedAlerts]);
-
   // Extract unique symbols for price feed
   const symbols = useMemo(() => {
     return Array.from(new Set(
-      filteredAndSortedAlerts
+      sortedAlerts
         .filter(alert => alert.status === 'active' || alert.status === 'partially_profited')
-        .map(alert => alert.tradermade_symbol)
+        .map(alert => alert.tradermadeSymbol)
     ));
-  }, [filteredAndSortedAlerts]);
+  }, [sortedAlerts]);
 
   // WebSocket price feed
   const { 
@@ -159,87 +156,29 @@ const SignalStream: React.FC = () => {
     setShowAllSignals(prev => !prev);
   };
 
-  const handleStatusUpdate = useCallback(async (alert: TradeAlertData, newStatus: string) => {
+  // Enhanced update handler for EnhancedSignalCard
+  const handleUpdateAlert = useCallback(async (id: string, updates: any) => {
     try {
       const dto: UpdateTradeAlertDto = {
-        status: newStatus as 'pending' | 'active' | 'closed' | 'partially_profited',
-        closeReason: newStatus === 'closed' ? 'manual' : undefined
+        status: updates.status,
+        closeReason: updates.closeReason,
+        tpHits: updates.tpHits
       };
 
-      await updateAlert(alert.id, dto);
-      toast.success(`Signal ${alert.asset_name} ${newStatus === 'closed' ? 'closed' : 'updated'} successfully`);
-    } catch (error) {
-      console.error('Failed to update signal status:', error);
-      toast.error('Failed to update signal status');
-    }
-  }, [updateAlert]);
-
-  const handleTakeProfitHit = useCallback(async (
-    alert: TradeAlertData, 
-    newTPHits: number[], 
-    shouldAutoClose?: boolean, 
-    closeReason?: string | null
-  ) => {
-    try {
-      const dto: UpdateTradeAlertDto = {
-        tpHits: newTPHits,
-        status: shouldAutoClose ? 'closed' : 'partially_profited',
-        closeReason: shouldAutoClose && closeReason ? closeReason as any : undefined
-      };
-
-      await updateAlert(alert.id, dto);
+      await updateAlert(id, dto);
       
-      if (shouldAutoClose) {
-        toast.success(`🎯 ${alert.asset_name} - All take profits hit! Signal closed.`);
+      if (updates.status === 'closed') {
+        toast.success(`Signal ${id} closed successfully`);
+      } else if (updates.tpHits) {
+        toast.success(`Take Profit updated for signal ${id}`);
       } else {
-        toast.success(`🎯 ${alert.asset_name} - Take Profit ${newTPHits[newTPHits.length - 1]} hit!`);
+        toast.success(`Signal ${id} updated successfully`);
       }
     } catch (error) {
-      console.error('Failed to update TP hits:', error);
-      toast.error('Failed to update take profit status');
+      console.error('Failed to update signal:', error);
+      toast.error('Failed to update signal');
     }
   }, [updateAlert]);
-
-  const handleStopLossHit = useCallback(async (alert: TradeAlertData, closeReason: string) => {
-    try {
-      const dto: UpdateTradeAlertDto = {
-        status: 'closed',
-        closeReason: closeReason as any
-      };
-
-      await updateAlert(alert.id, dto);
-      toast.error(`🛑 ${alert.asset_name} - Stop Loss hit. Signal closed.`);
-    } catch (error) {
-      console.error('Failed to update stop loss:', error);
-      toast.error('Failed to update stop loss status');
-    }
-  }, [updateAlert]);
-
-  const handleOrderActivation = useCallback(async (alert: TradeAlertData) => {
-    try {
-      const dto: UpdateTradeAlertDto = {
-        status: 'active'
-      };
-
-      await updateAlert(alert.id, dto);
-      toast.success(`✅ ${alert.asset_name} - Order activated!`);
-    } catch (error) {
-      console.error('Failed to activate order:', error);
-      toast.error('Failed to activate order');
-    }
-  }, [updateAlert]);
-
-  // Transform alerts to include user_id and fix creator avatar_url
-  const transformedAlerts = useMemo(() => {
-    return filteredAndSortedAlerts.map(alert => ({
-      ...alert,
-      user_id: alert.user_id || user?.id || '',
-      creator: alert.creator ? {
-        ...alert.creator,
-        avatar_url: alert.creator.avatar_url || null
-      } : undefined
-    }));
-  }, [filteredAndSortedAlerts, user?.id]);
 
   const totalSignals = canonicalAlerts.length;
   const activeSignals = canonicalAlerts.filter(alert => alert.status === 'active').length;
@@ -412,7 +351,7 @@ const SignalStream: React.FC = () => {
         </TabsList>
         
         <div className="space-y-4">
-          {transformedAlerts.length === 0 ? (
+          {sortedAlerts.length === 0 ? (
             <EmptyState
               icon={TrendingUp}
               title="No signals found"
@@ -421,20 +360,12 @@ const SignalStream: React.FC = () => {
                 : `No ${statusFilter} signals found. Try adjusting your filters.`}
             />
           ) : (
-            transformedAlerts.map((alert) => (
-              <TradeAlertCard
+            sortedAlerts.map((alert) => (
+              <EnhancedSignalCard
                 key={alert.id}
                 alert={alert}
-                onStatusUpdate={handleStatusUpdate}
-                onTakeProfitHit={handleTakeProfitHit}
-                onStopLossHit={handleStopLossHit}
-                onOrderActivation={handleOrderActivation}
-                isAdmin={user?.role === 'admin'}
-                isCreator={alert.user_id === user?.id}
-                livePrice={prices[alert.tradermade_symbol]}
-                connectionStatus={priceConnectionStatus}
-                priceSource={priceSource}
-                isRecentClosure={false}
+                onUpdate={handleUpdateAlert}
+                isOwner={alert.userId === user?.id || user?.role === 'admin'}
               />
             ))
           )}

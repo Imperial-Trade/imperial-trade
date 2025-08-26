@@ -31,10 +31,13 @@ export const useTradeJournalEntries = () => {
         throw fetchError;
       }
 
-      setEntries((data || []).map(entry => ({ 
-        ...mapDbRowToEntry(entry), 
-        coach_status: 'ready' as 'pending' | 'ready'
-      })));
+      setEntries((data || []).map(entry => {
+        const mappedEntry = mapDbRowToEntry(entry);
+        return {
+          ...mappedEntry,
+          coach_status: (mappedEntry.ai_positive_feedback ? 'ready' : 'pending') as 'pending' | 'ready'
+        };
+      }));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load journal entries';
       setError(errorMessage);
@@ -97,8 +100,6 @@ export const useTradeJournalEntries = () => {
   useEffect(() => {
     if (!user) return;
 
-    console.log('🔄 Setting up unified realtime subscription for trade_journal_entries');
-    
     const channel = supabase
       .channel('unified-trade-journal-changes')
       .on(
@@ -110,29 +111,21 @@ export const useTradeJournalEntries = () => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('🔔 Unified realtime update received:', payload);
-          
           if (payload.eventType === 'INSERT') {
             const newEntry = mapDbRowToEntry(payload.new);
-            console.log('➕ New entry via unified realtime:', newEntry);
             addOptimisticEntry(newEntry);
           } else if (payload.eventType === 'UPDATE') {
             const updatedEntry = mapDbRowToEntry(payload.new);
-            console.log('📝 Updated entry via unified realtime:', updatedEntry);
             updateOptimisticEntry(updatedEntry.id, updatedEntry);
           } else if (payload.eventType === 'DELETE') {
             const deletedEntry = payload.old as TradeJournalEntry;
-            console.log('🗑️ Deleted entry via unified realtime:', deletedEntry);
             removeOptimisticEntry(deletedEntry.id);
           }
         }
       )
-      .subscribe((status) => {
-        console.log('🔌 Unified realtime subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('🔌 Cleaning up unified realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [user, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry]);

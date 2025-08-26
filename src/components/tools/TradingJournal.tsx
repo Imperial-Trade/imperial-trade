@@ -14,6 +14,9 @@ import JournalAnalytics from '@/components/trading/JournalAnalytics';
 import { TradingJournalApp } from '@/components/tools/TradingJournalApp';
 import MobileTradingJournal from '@/components/tools/MobileTradingJournal';
 import { useTradeJournal } from '@/contexts/TradeJournalContext';
+import { parseNumStrict, isNonEmpty } from '@/lib/utils';
+import { TRADE_TYPES, coerceTradeType } from '@/constants/trading';
+import { normalizeTradeDate, mapDbRowToEntry } from '@/features/trade-journal/normalizers';
 
 const TradingJournal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,6 +78,40 @@ const TradingJournal: React.FC = () => {
     const tempId = `temp-${Date.now()}`;
     
     try {
+      // STRICT VALIDATION: Required P&L
+      const pnl = parseNumStrict(data.pnl);
+      if (pnl === null) {
+        toast({
+          title: 'Validation Error',
+          description: 'P&L is required and must be a valid number',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // STRICT VALIDATION: Optional numeric fields (only validate if non-empty)
+      const invalidFields: string[] = [];
+      const entry_price = isNonEmpty(data.entry) ? parseNumStrict(data.entry) : null;
+      const exit_price = isNonEmpty(data.exit) ? parseNumStrict(data.exit) : null;
+      const position_size = isNonEmpty(data.size) ? parseNumStrict(data.size) : null;
+
+      if (isNonEmpty(data.entry) && entry_price === null) invalidFields.push('Entry Price');
+      if (isNonEmpty(data.exit) && exit_price === null) invalidFields.push('Exit Price');
+      if (isNonEmpty(data.size) && position_size === null) invalidFields.push('Position Size');
+
+      if (invalidFields.length > 0) {
+        toast({
+          title: 'Validation Error',
+          description: `Invalid numeric values: ${invalidFields.join(', ')}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // NORMALIZE trade_type and trade_date
+      const trade_type = coerceTradeType(data.tradeType) || TRADE_TYPES[0]; // Default to 'Long'
+      const trade_date = normalizeTradeDate(data.date || new Date());
+
       let screenshotUrls: string[] = [];
       
       // Handle image uploads if screenshots exist
@@ -108,21 +145,21 @@ const TradingJournal: React.FC = () => {
         console.log('✅ Images uploaded successfully:', screenshotUrls);
       }
 
-      // Add optimistic entry for immediate UI feedback
+      // Create optimistic entry with validated, normalized data
       const optimisticEntry = {
         id: tempId,
         user_id: user.id,
-        asset_ticker: data.asset,
-        trade_type: data.tradeType?.toUpperCase() || 'LONG',
-        pnl: data.pnl || 0,
-        entry_price: data.entry || null,
-        exit_price: data.exit || null,
-        position_size: data.size || null,
-        trade_date: data.date || new Date().toISOString().split('T')[0],
-        notes: data.notes || null,
-        screenshot_url: null,
+        asset_ticker: data.asset || '',
+        trade_type,
+        pnl,
+        entry_price,
+        exit_price,
+        position_size,
+        trade_date,
+        notes: data.notes || undefined,
+        screenshot_url: undefined,
         screenshot_urls: screenshotUrls,
-        ai_positive_feedback: null,
+        ai_positive_feedback: undefined,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -130,16 +167,16 @@ const TradingJournal: React.FC = () => {
       console.log('✨ Adding optimistic entry via shared context:', optimisticEntry);
       addOptimisticEntry(optimisticEntry);
 
-      // Create journal entry in database
+      // Create journal entry in database with validated, normalized data
       const entryToInsert = {
         user_id: user.id,
-        asset_ticker: data.asset,
-        trade_type: data.tradeType?.toUpperCase() || 'LONG',
-        pnl: data.pnl || 0,
-        entry_price: data.entry || null,
-        exit_price: data.exit || null,
-        position_size: data.size || null,
-        trade_date: data.date || new Date().toISOString().split('T')[0],
+        asset_ticker: data.asset || '',
+        trade_type,
+        pnl,
+        entry_price,
+        exit_price,
+        position_size,
+        trade_date,
         notes: data.notes || null,
         screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : null,
       };
@@ -159,9 +196,9 @@ const TradingJournal: React.FC = () => {
       
       console.log('✅ Journal entry created:', newEntry);
       
-      // Reconcile optimistic entry with real DB row to avoid duplicates
+      // Reconcile optimistic entry with real DB row using normalizer
       console.log('🔄 Updating optimistic entry with real DB data:', tempId, '->', newEntry.id);
-      updateOptimisticEntry(tempId, newEntry);
+      updateOptimisticEntry(tempId, mapDbRowToEntry(newEntry));
       
       // Trigger AI coaching analysis
       if (newEntry.id) {

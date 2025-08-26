@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { TradeJournalEntry } from '@/contexts/TradeJournalContext';
+import { mapDbRowToEntry } from '@/features/trade-journal/normalizers';
 
 export const useTradeJournalEntries = () => {
   const [entries, setEntries] = useState<TradeJournalEntry[]>([]);
@@ -30,7 +31,7 @@ export const useTradeJournalEntries = () => {
         throw fetchError;
       }
 
-      setEntries(data || []);
+      setEntries((data || []).map(mapDbRowToEntry));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load journal entries';
       setError(errorMessage);
@@ -92,11 +93,11 @@ export const useTradeJournalEntries = () => {
           console.log('🔔 Unified realtime update received:', payload);
           
           if (payload.eventType === 'INSERT') {
-            const newEntry = payload.new as TradeJournalEntry;
+            const newEntry = mapDbRowToEntry(payload.new);
             console.log('➕ New entry via unified realtime:', newEntry);
             addOptimisticEntry(newEntry);
           } else if (payload.eventType === 'UPDATE') {
-            const updatedEntry = payload.new as TradeJournalEntry;
+            const updatedEntry = mapDbRowToEntry(payload.new);
             console.log('📝 Updated entry via unified realtime:', updatedEntry);
             updateOptimisticEntry(updatedEntry.id, updatedEntry);
           } else if (payload.eventType === 'DELETE') {

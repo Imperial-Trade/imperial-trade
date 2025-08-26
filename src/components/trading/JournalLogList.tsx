@@ -81,10 +81,10 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                       <Target className="w-4 h-4 text-muted-foreground" />
                       <span
                         className={`font-bold text-lg ${
-                          entry.pnl >= 0 ? "text-emerald-600" : "text-red-500"
+                          Number(entry.pnl) >= 0 ? "text-emerald-600" : "text-red-500"
                         }`}
                       >
-                        {entry.pnl >= 0 ? "+" : ""}${entry.pnl.toFixed(2)}
+                        {Number(entry.pnl) >= 0 ? "+" : ""}${Number(entry.pnl ?? 0).toFixed(2)}
                       </span>
                     </div>
                     <Button

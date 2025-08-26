@@ -57,6 +57,18 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner, compact = false }
 
   const nextTP = getNextTPTarget();
 
+  // Derive a valid label from the allowed closeReason values
+  const closeReasonLabel =
+    alert.closeReason === 'stop_loss'
+      ? 'Closed - Stop Loss Hit'
+      : alert.closeReason === 'manual'
+      ? 'Manually Closed'
+      : alert.closeReason === 'reversal_after_tp'
+      ? 'Closed - Reversal After TP'
+      : alert.closeReason && alert.closeReason.startsWith('tp')
+      ? `Closed - TP${alert.closeReason.replace('tp', '')} Hit`
+      : undefined;
+
   return (
     <Card className="bg-card border-border hover:border-primary/20 transition-colors">
       <CardHeader className="pb-3">
@@ -151,13 +163,11 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner, compact = false }
         </div>
 
         {/* Close Reason for Closed Signals */}
-        {alert.status === 'closed' && alert.closeReason && (
+        {alert.status === 'closed' && closeReasonLabel && (
           <div className="flex items-center gap-2 p-2 bg-secondary/30 rounded-md">
             <CheckCircle2 className="h-4 w-4 text-green-500" />
             <span className="text-sm font-medium">
-              {alert.closeReason === 'stop_loss' && 'Closed - Stop Loss Hit'}
-              {alert.closeReason === 'all_tps_hit' && 'Closed - All Take Profits Hit'}
-              {alert.closeReason === 'manual' && 'Manually Closed'}
+              {closeReasonLabel}
             </span>
           </div>
         )}

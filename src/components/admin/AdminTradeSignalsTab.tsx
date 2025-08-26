@@ -339,6 +339,8 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                       key={alert.id}
                       alert={{
                         ...alert,
+                        // Normalize status for components expecting only 'pending' | 'active' | 'closed'
+                        status: alert.status === 'partially_profited' ? 'active' : alert.status,
                         asset_name: alert.assetName,
                         tradermade_symbol: alert.tradermadeSymbol,
                         trade_type: alert.tradeType,
@@ -381,6 +383,8 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     key={alert.id}
                     alert={{
                       ...alert,
+                      // Normalize status for components expecting only 'pending' | 'active' | 'closed'
+                      status: alert.status === 'partially_profited' ? 'active' : alert.status,
                       asset_name: alert.assetName,
                        tradermade_symbol: alert.tradermadeSymbol,
                       trade_type: alert.tradeType,
@@ -412,6 +416,8 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
                     key={alert.id}
                     alert={{
                       ...alert,
+                      // Normalize status for components expecting only 'pending' | 'active' | 'closed'
+                      status: alert.status === 'partially_profited' ? 'active' : alert.status,
                       asset_name: alert.assetName,
                       tradermade_symbol: alert.tradermadeSymbol,
                       trade_type: alert.tradeType,

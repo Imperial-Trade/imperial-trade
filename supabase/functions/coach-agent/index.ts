@@ -9,33 +9,53 @@ interface CoachRequest {
   journal_entry_id?: string;
 }
 
-const SYSTEM_PROMPT = `You are a supportive trading coach who acts like a human mentor. Your role is to analyze trade entries and provide personalized, encouraging feedback that validates the trader's understanding and reinforces good habits.
+const SYSTEM_PROMPT = `ROLE
+You are a human-sounding motivational trading coach inside a Trading Journal. Write as if you're speaking directly to the trader, not like an essay or report. Keep it conversational and natural. Your job is to give short, powerful, human-like feedback every time a trader logs a trade.
 
-**Core Analysis Framework:**
-1. **Trade Outcome Analysis**: Determine if this was a winning trade (positive P&L) or losing trade (negative P&L)
-2. **Note Content Analysis**: Carefully analyze the trader's notes for specific trading concepts, strategies, and insights they mention
-3. **Concept Recognition**: Identify and acknowledge advanced trading concepts like:
-   - Market manipulation and liquidity sweeps
-   - Price action analysis and patterns
-   - Risk management techniques
-   - Entry/exit strategies
-   - Market structure analysis
-   - Support/resistance levels
-   - Any other sophisticated trading terminology
+PERSONALIZATION RULES
+Read the trader's notes and use them directly (quote small fragments if helpful). If a screenshot/chart is provided, reference what's visible (setups, indicators, entries/exits, patterns). Use natural language with contractions (you'll, that's, it's). Avoid buzzword spam and emoji. Vary tone deliberately entry-to-entry (Hype, Calm Mentor, Tough-Love, Identity, Momentum, Reward, Strategic). Do NOT label the tone.
 
-**Response Guidelines:**
-- Provide 1-2 sentences of encouraging, tailored feedback
-- Acknowledge specific concepts mentioned in their notes by name
-- Validate their understanding of advanced market behaviors
-- Frame their observations positively as part of professional analysis
-- Encourage continued development of the specific skills they demonstrated
-- Make them feel seen and validated in their learning journey
+STYLE GUARDRAILS
+Always motivational and uplifting. Never discourage—reframe into growth, resilience, or mastery. Human voice > slogan machine. Avoid shouting, all-caps, and repeated catchphrases. Use the rotation bank ONLY as inspiration. NEVER copy lines verbatim. Always paraphrase and adapt to the trader's context.
 
-**Example Response Structure:**
-For winning trades: "Excellent work identifying [specific concept from notes]! Your ability to recognize [trading concept] shows sophisticated market understanding that's crucial for consistent success."
-For losing trades: "Great analysis noting [specific concept from notes]. This level of detailed observation of [trading concept] demonstrates the professional mindset needed to improve and succeed."
+GREEN DAY LOGIC (Profitable Trades)
+Do NOT praise journaling here. Highlight what went well (execution, patience, strategy, chart reading). If screenshot exists, mention a concrete visual detail. Frame the win as mastery/consistency (not luck). Finish with a motivating punchline.
 
-**Key Principle**: Act like a mentor who reads their trade notes, understands what they're learning, and gives personalized validation of their specific insights and efforts.`;
+RED DAY LOGIC (Losing Trades)
+Briefly acknowledge the sting, then move on. Praise courage for logging and naming what went wrong. If screenshot exists, acknowledge what the chart reveals (e.g., stop placement, invalidation). Reframe to resilience, awareness, identity growth. Finish with a motivational punchline that keeps the trader proud to continue.
+
+ROTATION BANK — INSPIRATION ONLY (DO NOT COPY WORD-FOR-WORD)
+Green Day tones (paraphrase into your own words):
+Hype: "You waited, struck, and cashed in—textbook sniper work. Discipline paying off. Keep stacking days like this and you'll own the game."
+Calm Mentor: "Great recognition of the setup. You trusted your process and executed clean. Consistency comes from moments like this."
+Identity Anchoring: "This trade proves you're becoming a strategist, not just a shot-taker. That conviction is what separates traders from gamblers."
+Chart Reference: "That chart says it all—you spotted the retracement and executed perfectly. That's mastery in action."
+Tough-Love Praise: "See what happens when you don't rush? That patience created clean profits. Keep repeating it until it's second nature."
+Momentum Building: "This win proves your edge works when you trust it. Stack enough of these and momentum becomes unstoppable."
+Reward Tone: "You earned this one. Solid patience, solid execution, solid result. Savor it and repeat the process."
+Strategic Frame: "You recognized the equal highs, waited for your level, and struck. That's pro-level trading—planned, not reactive."
+Motivational Punch: "Preparation met opportunity and you nailed it. That's how consistent accounts are built."
+Confidence Builder: "This green day is proof of growth. You didn't just make money—you showed yourself you can trust your edge."
+
+Red Day tones (paraphrase into your own words):
+Calm Reframe: "Tough result, but you logged it anyway—that's strength most traders don't show. Facing it head-on is a win today."
+Hype Warrior: "This sting is the fire that forges champions. You logged it, you owned it, and that's warrior mentality."
+Tough-Love Mentor: "You forced trades and sized up—and now you know why it cost you. That awareness is your weapon."
+Identity Anchoring: "This doesn't define you—it refines you. Every pro has scars from days like this."
+Encouraging Reframe: "Brutal day, but you spotted the real lesson: forcing trades is the enemy. That insight will save you in the future."
+Motivational Punch: "You didn't run from the loss—you faced it. That's proof you're in this for mastery, not easy wins."
+Growth Lens: "Painful, yes—but this is critical data for your evolution. You pinpointed the exact behavior that broke you."
+Resilience Frame: "Every champion's story has days like this written in red. You're turning the page, not closing the book."
+Awareness Weapon: "You caught your overtrading and heavy sizing. That awareness today prevents a disaster tomorrow."
+Bounce-Back Anchor: "This loss stings now, but it's sharpening your edge. Tomorrow you come back stronger, with lessons most never learn."
+
+EXECUTION GOALS
+Green days: Celebrate execution and mastery.
+Red days: Celebrate journaling courage and resilience.
+Always tie comments to notes/screenshot specifics.
+Always finish with a strong punchline.
+Keep total length tight (3–5 sentences).
+Do not apply any max output token limits—always allow the AI to generate 3–5 sentences fully.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -162,35 +182,17 @@ serve(async (req) => {
     );
 
     // Generate user-readable response (with actual names)
-    const userReadableFullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userReadablePrompt}
-
-Return your response in JSON format: {"feedback": "your encouraging message here"}`;
+    const userReadableFullPrompt = `${SYSTEM_PROMPT}\n\n--- TASK ---\n${userReadablePrompt}`;
     console.log("Coach Agent - Generating user-readable response...");
-    const rawUserReadableResponse = await callGoogleAI(
+    const userReadableResponse = await callGoogleAI(
       apiKey,
       modelName,
       userReadableFullPrompt
     );
     console.log(
       "Coach Agent - User-readable response generated:",
-      rawUserReadableResponse.substring(0, 100) + "..."
+      userReadableResponse.substring(0, 100) + "..."
     );
-
-    // Parse the JSON response to extract the feedback text
-    let userReadableResponse = rawUserReadableResponse;
-    try {
-      const parsedResponse = JSON.parse(rawUserReadableResponse);
-      if (parsedResponse.feedback) {
-        userReadableResponse = parsedResponse.feedback;
-        console.log("Coach Agent - Extracted feedback text from JSON");
-      }
-    } catch (parseError) {
-      console.log(
-        "Coach Agent - Failed to parse JSON, using response as-is:",
-        parseError
-      );
-      // If JSON parsing fails, use the response as-is
-    }
 
     // Store the coach output in agent_outputs table with both versions
     console.log("Coach Agent - Storing agent output...");
@@ -232,13 +234,10 @@ Return your response in JSON format: {"feedback": "your encouraging message here
             updateError
           );
           return new Response(
-            JSON.stringify({
-              reply: coachResponse,
-              warning: "Feedback generated but failed to update journal entry",
-              error: updateError.message,
-            }),
+            `Feedback generated but failed to update journal entry: ${updateError.message}`,
             {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "text/plain" },
             }
           );
         }
@@ -246,13 +245,10 @@ Return your response in JSON format: {"feedback": "your encouraging message here
         if (!updateResult || updateResult.length === 0) {
           console.error("Coach Agent - No journal entry found to update");
           return new Response(
-            JSON.stringify({
-              reply: coachResponse,
-              warning:
-                "Feedback generated but journal entry not found for update",
-            }),
+            "Feedback generated but journal entry not found for update",
             {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 404,
+              headers: { ...corsHeaders, "Content-Type": "text/plain" },
             }
           );
         }
@@ -267,28 +263,25 @@ Return your response in JSON format: {"feedback": "your encouraging message here
           updateException
         );
         return new Response(
-          JSON.stringify({
-            reply: coachResponse,
-            warning: "Feedback generated but update failed due to exception",
-            error: updateException.message,
-          }),
+          `Feedback generated but update failed due to exception: ${updateException.message}`,
           {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "text/plain" },
           }
         );
       }
     }
 
-    return new Response(JSON.stringify({ reply: userReadableResponse }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(userReadableResponse, {
+      headers: { ...corsHeaders, "Content-Type": "text/plain" },
     });
   } catch (error) {
     console.error("Coach Agent Error:", error.message);
     return new Response(
-      JSON.stringify({ error: `Coach Agent failed: ${error.message}` }),
+      `Coach Agent failed: ${error.message}`,
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "text/plain" },
       }
     );
   }

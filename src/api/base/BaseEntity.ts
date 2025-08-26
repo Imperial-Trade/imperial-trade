@@ -123,6 +123,18 @@ export class TradeJournalEntry {
     
     if (error) throw error;
   }
+
+  static async update(entryId: string, entryData: any) {
+    const { data, error } = await supabase
+      .from('trade_journal_entries')
+      .update(entryData)
+      .eq('id', entryId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
 }
 
 export class TradingStrategy {

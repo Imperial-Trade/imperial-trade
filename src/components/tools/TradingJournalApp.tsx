@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import AddTradeModal from "@/components/trading/AddTradeModal";
 import { TradeFormData } from "@/hooks/useTradeForm";
 import { ImageGalleryWithUrls } from "@/components/tools/ImageGalleryWithUrls";
+import { useTradeJournal } from '@/contexts/TradeJournalContext';
 
 // Enhanced Types
 interface Trade {
@@ -209,105 +210,42 @@ export const TradingJournalApp: React.FC = () => {
     isLoading: false,
     isDayViewActive: false
   });
-  const [trades, setTrades] = useState<Trade[]>(sampleTrades);
   const [showStats, setShowStats] = useState(true);
   const [showAddTradeModal, setShowAddTradeModal] = useState(false);
   const dayViewRef = useRef<HTMLDivElement>(null);
-
-  // Real-time database sync with Supabase
-  const setupJournalListener = useCallback(async () => {
-    if (!user) return;
-    setJournalState(prev => ({
-      ...prev,
-      isLoading: true
+  
+  // Use shared journal context
+  const { entries: journalEntries, addOptimisticEntry } = useTradeJournal();
+  
+  // Map journal entries to Trade format for existing UI
+  const trades = useMemo(() => {
+    const mappedTrades: Trade[] = journalEntries.map(entry => ({
+      id: entry.id,
+      user_id: entry.user_id,
+      date: entry.trade_date,
+      asset: entry.asset_ticker,
+      direction: entry.trade_type?.toLowerCase() as "long" | "short" || "long",
+      outcome: entry.pnl >= 0 ? "win" : "loss",
+      pnl: entry.pnl,
+      entry_price: entry.entry_price,
+      exit_price: entry.exit_price,
+      position_size: entry.position_size,
+      strategy: undefined,
+      emotion: undefined,
+      session: undefined,
+      notes: entry.notes,
+      screenshot_url: entry.screenshot_url,
+      screenshot_urls: entry.screenshot_urls,
+      ai_feedback: entry.ai_positive_feedback,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at
     }));
-    try {
-      const {
-        data: initialTrades,
-        error
-      } = await supabase.from("trade_journal_entries").select("*").eq("user_id", user.id).order("trade_date", {
-        ascending: false
-      });
-      if (error) throw error;
-      const mappedTrades: Trade[] = initialTrades?.map(trade => ({
-        id: trade.id,
-        user_id: trade.user_id,
-        date: trade.trade_date,
-        asset: trade.asset_ticker,
-        direction: trade.trade_type?.toLowerCase() as "long" | "short" || "long",
-        outcome: trade.pnl >= 0 ? "win" : "loss",
-        pnl: trade.pnl,
-        entry_price: trade.entry_price,
-        exit_price: trade.exit_price,
-        position_size: trade.position_size,
-        strategy: undefined,
-        emotion: undefined,
-        session: undefined,
-        notes: trade.notes,
-        screenshot_url: trade.screenshot_url,
-        screenshot_urls: trade.screenshot_urls,
-        ai_feedback: trade.ai_positive_feedback,
-        created_at: trade.created_at,
-        updated_at: trade.updated_at
-      })) || [];
-      setTrades(mappedTrades);
-      const channel = supabase.channel("trade_journal_updates").on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "trade_journal_entries",
-        filter: `user_id=eq.${user.id}`
-      }, () => {
-        supabase.from("trade_journal_entries").select("*").eq("user_id", user.id).order("trade_date", {
-          ascending: false
-        }).then(({
-          data
-        }) => {
-          if (data) {
-            const updatedTrades: Trade[] = data.map(trade => ({
-              id: trade.id,
-              user_id: trade.user_id,
-              date: trade.trade_date,
-              asset: trade.asset_ticker,
-              direction: trade.trade_type?.toLowerCase() as "long" | "short" || "long",
-              outcome: trade.pnl >= 0 ? "win" : "loss",
-              pnl: trade.pnl,
-              entry_price: trade.entry_price,
-              exit_price: trade.exit_price,
-              position_size: trade.position_size,
-              strategy: undefined,
-              emotion: undefined,
-              session: undefined,
-              notes: trade.notes,
-              screenshot_url: trade.screenshot_url,
-              screenshot_urls: trade.screenshot_urls,
-              ai_feedback: trade.ai_positive_feedback,
-              created_at: trade.created_at,
-              updated_at: trade.updated_at
-            }));
-            setTrades(updatedTrades);
-          }
-        });
-      }).subscribe();
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (error) {
-      console.error("Error setting up journal listener:", error);
-      toast({
-        title: "Error",
-        description: "Failed to sync with database",
-        variant: "destructive"
-      });
-    } finally {
-      setJournalState(prev => ({
-        ...prev,
-        isLoading: false
-      }));
-    }
-  }, [user, toast]);
-  useEffect(() => {
-    setupJournalListener();
-  }, [setupJournalListener]);
+    
+    // Add sample trades if no real data exists
+    return mappedTrades.length > 0 ? mappedTrades : sampleTrades;
+  }, [journalEntries]);
+
+  // Use shared journal context instead of individual realtime subscription
 
   // Enhanced metrics calculation
   const calculateMetrics = (filteredTrades: Trade[]): DashboardMetrics => {
@@ -479,8 +417,25 @@ Please provide a brief analysis focusing on what went well, what could be improv
       updated_at: new Date().toISOString()
     };
 
-    // Add optimistic entry immediately
-    setTrades(prev => [optimisticTrade, ...prev]);
+    // Add optimistic entry via shared context
+    const journalEntry = {
+      id: optimisticTrade.id,
+      user_id: optimisticTrade.user_id,
+      asset_ticker: optimisticTrade.asset,
+      trade_type: optimisticTrade.direction.toUpperCase(),
+      pnl: optimisticTrade.pnl,
+      entry_price: optimisticTrade.entry_price,
+      exit_price: optimisticTrade.exit_price,
+      position_size: optimisticTrade.position_size,
+      trade_date: optimisticTrade.date,
+      notes: optimisticTrade.notes,
+      screenshot_url: optimisticTrade.screenshot_url,
+      screenshot_urls: optimisticTrade.screenshot_urls,
+      ai_positive_feedback: optimisticTrade.ai_feedback,
+      created_at: optimisticTrade.created_at,
+      updated_at: optimisticTrade.updated_at
+    };
+    addOptimisticEntry(journalEntry);
 
     try {
       let screenshotUrls: string[] = [];

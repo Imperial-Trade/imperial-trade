@@ -49,6 +49,19 @@ export const TradeJournalProvider: React.FC<TradeJournalProviderProps> = ({ chil
 export const useTradeJournal = (): TradeJournalContextType => {
   const context = useContext(TradeJournalContext);
   if (context === undefined) {
+    // Optional temporary soft-fail feature flag for staged rollouts
+    if (import.meta.env.VITE_TJ_SOFT_CONTEXT === 'true') {
+      console.error('useTradeJournal called outside TradeJournalProvider');
+      return {
+        entries: [],
+        isLoading: false,
+        error: null,
+        refreshEntries: async () => {},
+        addOptimisticEntry: () => {},
+        updateOptimisticEntry: () => {},
+        removeOptimisticEntry: () => {},
+      };
+    }
     throw new Error('useTradeJournal must be used within a TradeJournalProvider');
   }
   return context;

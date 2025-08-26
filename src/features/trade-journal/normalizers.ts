@@ -8,6 +8,15 @@ export function normalizeTradeDate(d: string | Date | null | undefined): string 
   return date.toISOString().slice(0, 10);
 }
 
+function stripWrappingQuotes(text: string): string {
+  const trimmed = text.trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || 
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
 function cleanCoachFeedback(feedback: string | null | undefined): string | undefined {
   if (!feedback) return undefined;
   
@@ -19,7 +28,7 @@ function cleanCoachFeedback(feedback: string | null | undefined): string | undef
       const knownKeys = ['coach_response', 'feedback', 'message', 'text'];
       for (const key of knownKeys) {
         if (parsed[key] && typeof parsed[key] === 'string') {
-          return parsed[key];
+          return stripWrappingQuotes(parsed[key]);
         }
       }
     }
@@ -27,8 +36,8 @@ function cleanCoachFeedback(feedback: string | null | undefined): string | undef
     // Not JSON, continue with original string
   }
   
-  // Return original string if not JSON or no known keys found
-  return feedback;
+  // Return original string if not JSON or no known keys found, stripped of quotes
+  return stripWrappingQuotes(feedback);
 }
 
 export function mapDbRowToEntry(row: any): TradeJournalEntry {

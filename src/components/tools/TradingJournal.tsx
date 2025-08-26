@@ -149,7 +149,7 @@ const TradingJournal: React.FC = () => {
       const optimisticEntry = {
         id: tempId,
         user_id: user.id,
-        asset_ticker: data.asset || '',
+        asset_ticker: data.asset_ticker || '',
         trade_type,
         pnl,
         entry_price,
@@ -170,7 +170,7 @@ const TradingJournal: React.FC = () => {
       // Create journal entry in database with validated, normalized data
       const entryToInsert = {
         user_id: user.id,
-        asset_ticker: data.asset || '',
+        asset_ticker: data.asset_ticker || '',
         trade_type,
         pnl,
         entry_price,

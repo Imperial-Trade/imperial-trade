@@ -115,7 +115,7 @@ const JournalLogList = memo(({ entries, isLoading, onDelete }: JournalLogListPro
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm font-semibold text-primary">Your Trading Coach</span>
-                          <Badge variant="secondary" className="text-xs">AI Powered</Badge>
+                          <span className="invisible text-xs"></span>
                         </div>
                         <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                           {entry.ai_positive_feedback}

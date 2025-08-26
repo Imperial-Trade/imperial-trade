@@ -126,7 +126,7 @@ const MobileRecentTrades = memo(({ entries, onDelete, showAll = false }: MobileR
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs font-semibold text-primary">AI Coach</span>
-                              <Badge variant="secondary" className="text-xs h-4 px-1">AI</Badge>
+                              <span className="invisible text-xs h-4 px-1"></span>
                             </div>
                             <div className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
                               {entry.ai_positive_feedback}

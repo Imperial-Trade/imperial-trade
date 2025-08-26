@@ -21,7 +21,7 @@ const TradingJournal: React.FC = () => {
   const [activeTab, setActiveTab] = useState('log');
   
   // Use shared journal context
-  const { entries, isLoading, addOptimisticEntry } = useTradeJournal();
+  const { entries, isLoading, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry } = useTradeJournal();
   
   // Mobile detection
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -71,6 +71,9 @@ const TradingJournal: React.FC = () => {
     setIsSubmitting(true);
     console.log('📝 Starting journal entry submission:', data);
     
+    // Generate temporary ID for optimistic updates
+    const tempId = `temp-${Date.now()}`;
+    
     try {
       let screenshotUrls: string[] = [];
       
@@ -107,7 +110,7 @@ const TradingJournal: React.FC = () => {
 
       // Add optimistic entry for immediate UI feedback
       const optimisticEntry = {
-        id: `temp-${Date.now()}`,
+        id: tempId,
         user_id: user.id,
         asset_ticker: data.asset,
         trade_type: data.tradeType?.toUpperCase() || 'LONG',
@@ -156,6 +159,10 @@ const TradingJournal: React.FC = () => {
       
       console.log('✅ Journal entry created:', newEntry);
       
+      // Reconcile optimistic entry with real DB row to avoid duplicates
+      console.log('🔄 Updating optimistic entry with real DB data:', tempId, '->', newEntry.id);
+      updateOptimisticEntry(tempId, newEntry);
+      
       // Trigger AI coaching analysis
       if (newEntry.id) {
         console.log('🤖 Triggering AI coaching analysis for entry:', newEntry.id);
@@ -183,6 +190,11 @@ const TradingJournal: React.FC = () => {
       
     } catch (error) {
       console.error('Error saving journal entry:', error);
+      
+      // Remove optimistic entry on error
+      console.log('❌ Removing optimistic entry due to error:', tempId);
+      removeOptimisticEntry(tempId);
+      
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to save journal entry',
@@ -191,7 +203,7 @@ const TradingJournal: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [user, toast, addOptimisticEntry]);
+  }, [user, toast, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry]);
 
   useEffect(() => {
     loadUserProfile();

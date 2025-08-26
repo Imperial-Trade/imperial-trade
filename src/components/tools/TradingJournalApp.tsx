@@ -215,7 +215,7 @@ export const TradingJournalApp: React.FC = () => {
   const dayViewRef = useRef<HTMLDivElement>(null);
   
   // Use shared journal context
-  const { entries: journalEntries, addOptimisticEntry } = useTradeJournal();
+  const { entries: journalEntries, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry } = useTradeJournal();
   
   // Map journal entries to Trade format for existing UI
   const trades = useMemo(() => {
@@ -395,9 +395,12 @@ Please provide a brief analysis focusing on what went well, what could be improv
   }) => {
     if (!user) return;
     
+    // Generate temporary ID for optimistic updates
+    const tempId = `temp-${Date.now()}`;
+    
     // Create optimistic entry for immediate UI update
     const optimisticTrade: Trade = {
-      id: `optimistic-${Date.now()}`,
+      id: tempId,
       user_id: user.id,
       date: tradeData.date,
       asset: tradeData.asset,
@@ -419,7 +422,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
 
     // Add optimistic entry via shared context
     const journalEntry = {
-      id: optimisticTrade.id,
+      id: tempId,
       user_id: optimisticTrade.user_id,
       asset_ticker: optimisticTrade.asset,
       trade_type: optimisticTrade.direction.toUpperCase(),
@@ -501,8 +504,9 @@ Please provide a brief analysis focusing on what went well, what could be improv
       } = await supabase.from("trade_journal_entries").insert([tradeEntry]).select().single();
       if (error) throw error;
 
-      // Optimistically update local state - let realtime channel handle the updates
-      // Don't manually update state here to avoid type conflicts
+      // Reconcile optimistic entry with real DB row to avoid duplicates
+      console.log('🔄 Updating optimistic entry with real DB data:', tempId, '->', data.id);
+      updateOptimisticEntry(tempId, data);
 
       // Generate AI feedback asynchronously
       getAISummaryForTrade(tradeData).then(async feedback => {
@@ -517,6 +521,11 @@ Please provide a brief analysis focusing on what went well, what could be improv
       });
     } catch (error) {
       console.error("Error saving trade:", error);
+      
+      // Remove optimistic entry on error
+      console.log('❌ Removing optimistic entry due to error:', tempId);
+      removeOptimisticEntry(tempId);
+      
       toast({
         title: "Error",
         description: "Failed to save trade",
@@ -524,7 +533,7 @@ Please provide a brief analysis focusing on what went well, what could be improv
       });
       throw error;
     }
-  }, [user, toast]);
+  }, [user, toast, addOptimisticEntry, updateOptimisticEntry, removeOptimisticEntry]);
 
   // Get most traded assets with currency normalization
   const getMostTradedAssets = () => {

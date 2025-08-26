@@ -15,6 +15,8 @@ interface EnhancedSignalCardProps {
 }
 
 export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalCardProps) => {
+  console.log('🎯 Rendering EnhancedSignalCard for:', alert.id, alert.assetName);
+  
   const { prices } = useWebSocketPrices();
   const currentPrice = prices[alert.tradermadeSymbol || alert.assetName]?.price || 0;
 
@@ -73,6 +75,16 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalC
   };
 
   const showLivePrice = alert.status === 'active' || alert.status === 'partially_profited';
+  
+  console.log('📊 Signal card render data:', {
+    id: alert.id,
+    assetName: alert.assetName,
+    tradermadeSymbol: alert.tradermadeSymbol,
+    status: alert.status,
+    showLivePrice,
+    currentPrice,
+    creator: alert.creator?.display_name
+  });
 
   return (
     <div className="space-y-4">
@@ -99,7 +111,7 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalC
           </div>
           
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>by {alert.creator?.display_name}</span>
+            <span>by {alert.creator?.display_name || 'Unknown'}</span>
             <span>{new Date(alert.createdAt).toLocaleDateString()}</span>
           </div>
         </CardHeader>

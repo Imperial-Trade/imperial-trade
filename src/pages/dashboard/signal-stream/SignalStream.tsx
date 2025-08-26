@@ -26,34 +26,44 @@ type TypeFilter = 'all' | 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
 type SortBy = 'newest' | 'oldest' | 'asset';
 
 // Convert realtime data to TradeAlertWithProfile format for EnhancedSignalCard
-const toTradeAlertWithProfile = (a: any): TradeAlertWithProfile => ({
-  id: a?.id,
-  userId: a?.user_id ?? a?.userId ?? '',
-  assetName: a?.asset_name ?? a?.assetName ?? '',
-  tradermadeSymbol: a?.tradermade_symbol ?? a?.tradermadeSymbol ?? '',
-  tradeType: a?.trade_type ?? a?.tradeType,
-  entryPrice: a?.entry_price ?? a?.entryPrice,
-  stopLoss: a?.stop_loss ?? a?.stopLoss,
-  status: a?.status,
-  tp1: a?.tp1 ?? a?.tp_1 ?? a?.tpOne,
-  tp2: a?.tp2 ?? a?.tp_2 ?? a?.tpTwo,
-  tp3: a?.tp3 ?? a?.tp_3 ?? a?.tpThree,
-  tp4: a?.tp4 ?? a?.tp_4 ?? a?.tpFour,
-  tp5: a?.tp5 ?? a?.tp_5 ?? a?.tpFive,
-  tpHits: a?.tp_hits ?? a?.tpHits ?? [],
-  notes: a?.notes,
-  closeReason: a?.close_reason ?? a?.closeReason,
-  createdAt: a?.created_date ?? a?.createdAt,
-  updatedAt: a?.updated_date ?? a?.updatedAt,
-  creator: a?.creator
-    ? {
-        id: a.creator.id,
-        display_name: a.creator.display_name ?? a.creator.displayName,
-        role: a.creator.role,
-        avatar_url: a.creator.avatar_url ?? a.creator.avatarUrl ?? null,
-      }
-    : undefined,
-});
+const toTradeAlertWithProfile = (a: any): TradeAlertWithProfile => {
+  console.log('🔄 Converting signal data:', a);
+  
+  const result: TradeAlertWithProfile = {
+    id: a?.id || '',
+    userId: a?.user_id ?? a?.userId ?? '',
+    assetName: a?.asset_name ?? a?.assetName ?? '',
+    tradermadeSymbol: a?.tradermade_symbol ?? a?.tradermadeSymbol ?? '',
+    tradeType: a?.trade_type ?? a?.tradeType ?? 'buy',
+    entryPrice: Number(a?.entry_price ?? a?.entryPrice ?? 0),
+    stopLoss: Number(a?.stop_loss ?? a?.stopLoss ?? 0),
+    status: a?.status ?? 'pending',
+    tp1: a?.tp1 ? Number(a.tp1) : undefined,
+    tp2: a?.tp2 ? Number(a.tp2) : undefined,
+    tp3: a?.tp3 ? Number(a.tp3) : undefined,
+    tp4: a?.tp4 ? Number(a.tp4) : undefined,
+    tp5: a?.tp5 ? Number(a.tp5) : undefined,
+    tpHits: a?.tp_hits ?? a?.tpHits ?? [],
+    notes: a?.notes ?? undefined,
+    closeReason: a?.close_reason ?? a?.closeReason ?? undefined,
+    createdAt: a?.created_at ?? a?.createdAt ?? new Date().toISOString(),
+    updatedAt: a?.updated_at ?? a?.updatedAt ?? new Date().toISOString(),
+    creator: a?.creator ? {
+      id: a.creator.id,
+      display_name: a.creator.display_name ?? a.creator.displayName ?? 'Unknown',
+      role: a.creator.role ?? 'user',
+      avatar_url: a.creator.avatar_url ?? a.creator.avatarUrl ?? null,
+    } : {
+      id: a?.user_id ?? '',
+      display_name: 'Unknown User',
+      role: 'user',
+      avatar_url: null,
+    },
+  };
+
+  console.log('✅ Converted signal:', result);
+  return result;
+};
 
 const SignalStream: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -62,6 +72,8 @@ const SignalStream: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('newest');
   const [showAllSignals, setShowAllSignals] = useState(true);
+
+  console.log('📊 SignalStream render - User:', user?.id, 'Auth loading:', authLoading);
 
   // Real-time signal data
   const {
@@ -74,10 +86,23 @@ const SignalStream: React.FC = () => {
     lastUpdated
   } = useSignalRealtime(user?.id || '', showAllSignals);
 
-  const canonicalAlerts = useMemo(() => realtimeAlerts.map(toTradeAlertWithProfile), [realtimeAlerts]);
+  console.log('📡 SignalStream - Realtime alerts:', {
+    count: realtimeAlerts.length,
+    loading: signalsLoading,
+    error: signalsError,
+    connectionStatus: signalConnectionStatus
+  });
+
+  const canonicalAlerts = useMemo(() => {
+    console.log('🔄 Converting alerts to canonical format, count:', realtimeAlerts.length);
+    const converted = realtimeAlerts.map(toTradeAlertWithProfile);
+    console.log('✅ Converted alerts:', converted.length);
+    return converted;
+  }, [realtimeAlerts]);
 
   // Filter alerts based on search term, status, and trade type
   const filteredAlerts = useMemo(() => {
+    console.log('🔍 Filtering alerts - Input count:', canonicalAlerts.length);
     let filtered = canonicalAlerts;
 
     if (searchTerm) {
@@ -97,11 +122,13 @@ const SignalStream: React.FC = () => {
       filtered = filtered.filter(alert => alert.tradeType === typeFilter);
     }
 
+    console.log('✅ Filtered alerts:', filtered.length, 'Status filter:', statusFilter);
     return filtered;
   }, [canonicalAlerts, searchTerm, statusFilter, typeFilter]);
 
   // Sort alerts based on selected criteria
   const sortedAlerts = useMemo(() => {
+    console.log('📋 Sorting alerts - Input count:', filteredAlerts.length);
     const sorted = [...filteredAlerts];
 
     sorted.sort((a, b) => {
@@ -117,6 +144,7 @@ const SignalStream: React.FC = () => {
       }
     });
 
+    console.log('✅ Sorted alerts:', sorted.length);
     return sorted;
   }, [filteredAlerts, sortBy]);
 
@@ -135,26 +163,6 @@ const SignalStream: React.FC = () => {
     connectionStatus: priceConnectionStatus, 
     priceSource 
   } = useWebSocketPriceFeed(symbols);
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleStatusFilterChange = (value: StatusFilter) => {
-    setStatusFilter(value);
-  };
-
-  const handleTypeFilterChange = (value: TypeFilter) => {
-    setTypeFilter(value);
-  };
-
-  const handleSortByChange = (value: SortBy) => {
-    setSortBy(value);
-  };
-
-  const handleToggleShowAllSignals = () => {
-    setShowAllSignals(prev => !prev);
-  };
 
   // Enhanced update handler for EnhancedSignalCard
   const handleUpdateAlert = useCallback(async (id: string, updates: any) => {
@@ -185,7 +193,19 @@ const SignalStream: React.FC = () => {
   const pendingSignals = canonicalAlerts.filter(alert => alert.status === 'pending').length;
   const closedSignals = canonicalAlerts.filter(alert => alert.status === 'closed').length;
 
-  if (authLoading || signalsLoading) {
+  console.log('📈 Signal counts:', { totalSignals, activeSignals, pendingSignals, closedSignals });
+
+  if (authLoading) {
+    console.log('🔄 Auth loading...');
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (signalsLoading && canonicalAlerts.length === 0) {
+    console.log('🔄 Signals loading...');
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner size="lg" />
@@ -194,6 +214,7 @@ const SignalStream: React.FC = () => {
   }
 
   if (signalsError) {
+    console.error('❌ Signals error:', signalsError);
     return (
       <Card className="border-red-200">
         <CardContent className="pt-6">
@@ -210,6 +231,8 @@ const SignalStream: React.FC = () => {
       </Card>
     );
   }
+
+  console.log('🎯 Final render - Sorted alerts to display:', sortedAlerts.length);
 
   return (
     <div className="space-y-6">
@@ -243,6 +266,22 @@ const SignalStream: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Debug Info */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="pt-4">
+            <div className="text-sm">
+              <div>Raw signals: {realtimeAlerts.length}</div>
+              <div>Canonical alerts: {canonicalAlerts.length}</div>
+              <div>Filtered alerts: {filteredAlerts.length}</div>
+              <div>Sorted alerts: {sortedAlerts.length}</div>
+              <div>Status filter: {statusFilter}</div>
+              <div>Connection: {signalConnectionStatus}</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -296,11 +335,11 @@ const SignalStream: React.FC = () => {
               type="text"
               placeholder="Search signals..."
               value={searchTerm}
-              onChange={handleSearchChange}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="col-span-1"
             />
 
-            <Select onValueChange={handleStatusFilterChange}>
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
               <SelectTrigger className="col-span-1">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -313,7 +352,7 @@ const SignalStream: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select onValueChange={handleTypeFilterChange}>
+            <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as TypeFilter)}>
               <SelectTrigger className="col-span-1">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
@@ -326,7 +365,7 @@ const SignalStream: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select onValueChange={handleSortByChange}>
+            <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
               <SelectTrigger className="col-span-1">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -340,37 +379,30 @@ const SignalStream: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Signal Tabs */}
-      <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="partially_profited">Partial</TabsTrigger>
-          <TabsTrigger value="closed">Closed</TabsTrigger>
-        </TabsList>
-        
-        <div className="space-y-4">
-          {sortedAlerts.length === 0 ? (
-            <EmptyState
-              icon={TrendingUp}
-              title="No signals found"
-              description={statusFilter === 'all' 
-                ? "No trading signals available at the moment."
-                : `No ${statusFilter} signals found. Try adjusting your filters.`}
-            />
-          ) : (
-            sortedAlerts.map((alert) => (
+      {/* Signal Display */}
+      <div className="space-y-4">
+        {sortedAlerts.length === 0 ? (
+          <EmptyState
+            icon={TrendingUp}
+            title="No signals found"
+            description={statusFilter === 'all' 
+              ? "No trading signals available at the moment."
+              : `No ${statusFilter} signals found. Try adjusting your filters.`}
+          />
+        ) : (
+          sortedAlerts.map((alert) => {
+            console.log('🎯 Rendering signal card:', alert.id, alert.assetName);
+            return (
               <EnhancedSignalCard
                 key={alert.id}
                 alert={alert}
                 onUpdate={handleUpdateAlert}
                 isOwner={alert.userId === user?.id || user?.role === 'admin'}
               />
-            ))
-          )}
-        </div>
-      </Tabs>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 };

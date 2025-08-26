@@ -19,6 +19,8 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
   const [localLoading, setLocalLoading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   
+  console.log('🔗 useSignalRealtime hook called with:', { userId, showAllSignals });
+  
   // Get real-time context with safe fallback
   const context = useSignalRealtimeContext();
   const {
@@ -32,6 +34,13 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     refreshSignals: contextRefreshSignals
   } = context;
 
+  console.log('📡 useSignalRealtime context data:', {
+    signalsCount: allSignals.length,
+    connectionStatus,
+    error: contextError,
+    lastUpdated
+  });
+
   // Combine loading and error states
   const isLoading = localLoading;
   const error = localError || contextError;
@@ -39,7 +48,7 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
   // Since RLS policies now handle filtering, we can return all signals from the context
   // The database will only return educator/admin signals due to the RLS policy
   const filteredAlerts = useMemo(() => {
-    console.log('useSignalRealtime - RLS-filtered signals from context:', {
+    console.log('🔍 useSignalRealtime - Processing signals from context:', {
       totalSignals: allSignals.length,
       showAllSignals,
       userId: userId || 'empty'
@@ -47,23 +56,37 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
 
     // RLS policies handle filtering automatically, so we can return all signals
     // These are already filtered to only show educator/admin signals
-    console.log('useSignalRealtime - Returning RLS-filtered signals:', allSignals.length);
+    console.log('✅ useSignalRealtime - Returning RLS-filtered signals:', allSignals.length);
+    
+    // Log each signal for debugging
+    allSignals.forEach((signal, index) => {
+      console.log(`📊 Signal ${index + 1}:`, {
+        id: signal.id,
+        assetName: signal.assetName,
+        status: signal.status,
+        creator: signal.creator?.display_name
+      });
+    });
+    
     return allSignals;
   }, [allSignals, showAllSignals, userId]);
 
   // Subscribe to realtime updates - always subscribe since RLS handles filtering
   useEffect(() => {
-    console.log('useSignalRealtime - Subscribing to RLS-filtered real-time updates');
+    console.log('🔌 useSignalRealtime - Subscribing to RLS-filtered real-time updates');
     subscribe();
     
     return () => {
-      console.log('useSignalRealtime - Unsubscribing from real-time updates');
+      console.log('🔌 useSignalRealtime - Unsubscribing from real-time updates');
       unsubscribe();
     };
   }, [subscribe, unsubscribe]);
 
   // Sync realtime error with local error state
   useEffect(() => {
+    if (contextError) {
+      console.error('❌ useSignalRealtime - Context error:', contextError);
+    }
     setLocalError(contextError);
   }, [contextError]);
 
@@ -75,18 +98,20 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
 
     try {
       setLocalLoading(true);
+      console.log('📝 useSignalRealtime - Updating alert:', id, dto);
       const result = await tradingApiService.updateAlert(id, dto, userId);
       
       if (result.success && result.data) {
+        console.log('✅ useSignalRealtime - Alert updated successfully:', result.data);
         // The realtime context will handle the update automatically
         return result.data;
       } else {
-        console.error('useSignalRealtime - Failed to update alert:', result.error);
+        console.error('❌ useSignalRealtime - Failed to update alert:', result.error);
         setLocalError(result.error || 'Failed to update alert');
         return null;
       }
     } catch (error) {
-      console.error('useSignalRealtime - Error updating alert:', error);
+      console.error('❌ useSignalRealtime - Error updating alert:', error);
       setLocalError(error instanceof Error ? error.message : 'Unknown error');
       return null;
     } finally {
@@ -98,16 +123,23 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     try {
       setLocalLoading(true);
       setLocalError(null);
-      console.log('useSignalRealtime - Manually refreshing RLS-filtered alerts');
+      console.log('🔄 useSignalRealtime - Manually refreshing RLS-filtered alerts');
       await contextRefreshSignals();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh alerts';
       setLocalError(errorMessage);
-      console.error('useSignalRealtime - Failed to refresh alerts:', errorMessage);
+      console.error('❌ useSignalRealtime - Failed to refresh alerts:', errorMessage);
     } finally {
       setLocalLoading(false);
     }
   }, [contextRefreshSignals]);
+
+  console.log('📤 useSignalRealtime - Returning data:', {
+    alertsCount: filteredAlerts.length,
+    isLoading,
+    error,
+    connectionStatus
+  });
 
   return {
     alerts: filteredAlerts,

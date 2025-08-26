@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { parseReconcileResult, ReconcileResultNormalized } from '@/utils/signalEngineSchemas';
 
 interface DiagnosticResult {
   problem_all_tps_hit: Array<{
@@ -51,7 +52,7 @@ export function SignalEngineDiagnostics() {
   const [diagnostics, setDiagnostics] = useState<DiagnosticResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [lastRun, setLastRun] = useState<Date | null>(null);
-  const [reconcileResult, setReconcileResult] = useState<ReconcileResult | null>(null);
+  const [reconcileResult, setReconcileResult] = useState<ReconcileResultNormalized | null>(null);
 
   const runFullDiagnostic = async () => {
     setIsRunning(true);
@@ -70,15 +71,17 @@ export function SignalEngineDiagnostics() {
       console.log('📊 Diagnostic results:', diagnosticResponse.data);
       setDiagnostics(diagnosticResponse.data);
 
-      // Step 2: Run database reconciliation using the properly created function
+      // Step 2: Run database reconciliation and normalize the response
+      let parsedReconcile: ReconcileResultNormalized | null = null;
       const { data: reconcileResponse, error: reconcileError } = await supabase.rpc('reconcile_signal_consistency');
       
       if (reconcileError) {
         console.error('❌ Reconciliation failed:', reconcileError);
         toast.error('Reconciliation failed: ' + reconcileError.message);
       } else {
-        console.log('✅ Reconciliation completed:', reconcileResponse);
-        setReconcileResult(reconcileResponse as ReconcileResult);
+        parsedReconcile = parseReconcileResult(reconcileResponse as unknown);
+        console.log('✅ Reconciliation completed (normalized):', parsedReconcile);
+        setReconcileResult(parsedReconcile);
       }
 
       // Step 3: Trigger enhanced alert monitor
@@ -91,8 +94,8 @@ export function SignalEngineDiagnostics() {
 
       setLastRun(new Date());
       
-      if (reconcileResponse) {
-        toast.success(`Fixed ${reconcileResponse.signals_fixed} signals and activated ${reconcileResponse.orders_activated} orders`);
+      if (parsedReconcile) {
+        toast.success(`Fixed ${parsedReconcile.signals_fixed} signals and activated ${parsedReconcile.orders_activated} orders`);
       } else {
         toast.success('Diagnostic completed successfully');
       }

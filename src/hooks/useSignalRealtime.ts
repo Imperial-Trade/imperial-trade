@@ -1,5 +1,5 @@
 
-import { useCallback, useState, useEffect, useMemo, useContext } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import { useSignalRealtime as useSignalRealtimeContext } from '@/contexts/SignalRealtimeContext';
 import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -23,6 +23,21 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
   
   // Get real-time context with safe fallback
   const context = useSignalRealtimeContext();
+  
+  if (!context) {
+    console.error('❌ SignalRealtimeContext not found - ensure component is wrapped in SignalRealtimeProvider');
+    return {
+      alerts: [],
+      isLoading: false,
+      error: 'SignalRealtimeContext not available',
+      connectionStatus: 'error',
+      nextRetryAt: null,
+      updateAlert: async () => null,
+      refreshAlerts: async () => {},
+      lastUpdated: null
+    };
+  }
+
   const {
     signals: allSignals,
     connectionStatus,
@@ -38,15 +53,15 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     signalsCount: allSignals.length,
     connectionStatus,
     error: contextError,
-    lastUpdated
+    lastUpdated,
+    hasValidSignals: allSignals.filter(s => s && s.id).length
   });
 
   // Combine loading and error states
   const isLoading = localLoading;
   const error = localError || contextError;
 
-  // Since RLS policies now handle filtering, we can return all signals from the context
-  // The database will only return educator/admin signals due to the RLS policy
+  // Validate and filter signals
   const filteredAlerts = useMemo(() => {
     console.log('🔍 useSignalRealtime - Processing signals from context:', {
       totalSignals: allSignals.length,
@@ -54,26 +69,34 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
       userId: userId || 'empty'
     });
 
-    // RLS policies handle filtering automatically, so we can return all signals
-    // These are already filtered to only show educator/admin signals
-    console.log('✅ useSignalRealtime - Returning RLS-filtered signals:', allSignals.length);
+    // Filter out invalid signals and log them
+    const validSignals = allSignals.filter(signal => {
+      if (!signal || !signal.id) {
+        console.warn('⚠️ Invalid signal detected:', signal);
+        return false;
+      }
+      return true;
+    });
+
+    console.log('✅ useSignalRealtime - Valid signals after filtering:', validSignals.length);
     
-    // Log each signal for debugging
-    allSignals.forEach((signal, index) => {
-      console.log(`📊 Signal ${index + 1}:`, {
+    // Log each valid signal for debugging
+    validSignals.forEach((signal, index) => {
+      console.log(`📊 Valid Signal ${index + 1}:`, {
         id: signal.id,
         assetName: signal.assetName,
         status: signal.status,
-        creator: signal.creator?.display_name
+        creator: signal.creator?.display_name,
+        hasRequiredFields: !!(signal.assetName && signal.entryPrice && signal.stopLoss)
       });
     });
     
-    return allSignals;
+    return validSignals;
   }, [allSignals, showAllSignals, userId]);
 
-  // Subscribe to realtime updates - always subscribe since RLS handles filtering
+  // Subscribe to realtime updates
   useEffect(() => {
-    console.log('🔌 useSignalRealtime - Subscribing to RLS-filtered real-time updates');
+    console.log('🔌 useSignalRealtime - Subscribing to real-time updates');
     subscribe();
     
     return () => {
@@ -93,26 +116,36 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
   const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
     if (!userId || !userId.trim()) {
       console.warn('useSignalRealtime - Cannot update alert: invalid userId');
+      setLocalError('User not authenticated');
+      return null;
+    }
+
+    if (!id || !id.trim()) {
+      console.warn('useSignalRealtime - Cannot update alert: invalid alert ID');
+      setLocalError('Invalid alert ID');
       return null;
     }
 
     try {
       setLocalLoading(true);
+      setLocalError(null);
       console.log('📝 useSignalRealtime - Updating alert:', id, dto);
+      
       const result = await tradingApiService.updateAlert(id, dto, userId);
       
       if (result.success && result.data) {
         console.log('✅ useSignalRealtime - Alert updated successfully:', result.data);
-        // The realtime context will handle the update automatically
         return result.data;
       } else {
-        console.error('❌ useSignalRealtime - Failed to update alert:', result.error);
-        setLocalError(result.error || 'Failed to update alert');
+        const errorMsg = result.error || 'Failed to update alert';
+        console.error('❌ useSignalRealtime - Failed to update alert:', errorMsg);
+        setLocalError(errorMsg);
         return null;
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error updating alert';
       console.error('❌ useSignalRealtime - Error updating alert:', error);
-      setLocalError(error instanceof Error ? error.message : 'Unknown error');
+      setLocalError(errorMsg);
       return null;
     } finally {
       setLocalLoading(false);
@@ -123,8 +156,9 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     try {
       setLocalLoading(true);
       setLocalError(null);
-      console.log('🔄 useSignalRealtime - Manually refreshing RLS-filtered alerts');
+      console.log('🔄 useSignalRealtime - Manually refreshing alerts');
       await contextRefreshSignals();
+      console.log('✅ useSignalRealtime - Alerts refreshed successfully');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh alerts';
       setLocalError(errorMessage);
@@ -138,7 +172,8 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
     alertsCount: filteredAlerts.length,
     isLoading,
     error,
-    connectionStatus
+    connectionStatus,
+    validAlerts: filteredAlerts.filter(a => a.assetName && a.entryPrice).length
   });
 
   return {

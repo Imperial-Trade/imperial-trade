@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
@@ -29,39 +28,53 @@ type SortBy = 'newest' | 'oldest' | 'asset';
 const toTradeAlertWithProfile = (a: any): TradeAlertWithProfile => {
   console.log('🔄 Converting signal data:', a);
   
+  // Ensure we have valid data
+  if (!a || !a.id) {
+    console.warn('⚠️ Invalid signal data:', a);
+    return null as any; // This will be filtered out
+  }
+  
   const result: TradeAlertWithProfile = {
-    id: a?.id || '',
-    userId: a?.user_id ?? a?.userId ?? '',
-    assetName: a?.asset_name ?? a?.assetName ?? '',
-    tradermadeSymbol: a?.tradermade_symbol ?? a?.tradermadeSymbol ?? '',
-    tradeType: a?.trade_type ?? a?.tradeType ?? 'buy',
-    entryPrice: Number(a?.entry_price ?? a?.entryPrice ?? 0),
-    stopLoss: Number(a?.stop_loss ?? a?.stopLoss ?? 0),
-    status: a?.status ?? 'pending',
-    tp1: a?.tp1 ? Number(a.tp1) : undefined,
-    tp2: a?.tp2 ? Number(a.tp2) : undefined,
-    tp3: a?.tp3 ? Number(a.tp3) : undefined,
-    tp4: a?.tp4 ? Number(a.tp4) : undefined,
-    tp5: a?.tp5 ? Number(a.tp5) : undefined,
-    tpHits: a?.tp_hits ?? a?.tpHits ?? [],
-    notes: a?.notes ?? undefined,
-    closeReason: a?.close_reason ?? a?.closeReason ?? undefined,
-    createdAt: a?.created_at ?? a?.createdAt ?? new Date().toISOString(),
-    updatedAt: a?.updated_at ?? a?.updatedAt ?? new Date().toISOString(),
-    creator: a?.creator ? {
-      id: a.creator.id,
-      display_name: a.creator.display_name ?? a.creator.displayName ?? 'Unknown',
-      role: a.creator.role ?? 'user',
-      avatar_url: a.creator.avatar_url ?? a.creator.avatarUrl ?? null,
+    id: a.id,
+    userId: a.user_id || a.userId || '',
+    assetName: a.asset_name || a.assetName || '',
+    tradermadeSymbol: a.tradermade_symbol || a.tradermadeSymbol || a.asset_name || a.assetName || '',
+    tradeType: a.trade_type || a.tradeType || 'buy',
+    entryPrice: Number(a.entry_price || a.entryPrice || 0),
+    stopLoss: Number(a.stop_loss || a.stopLoss || 0),
+    status: a.status || 'pending',
+    tp1: a.tp1 ? Number(a.tp1) : undefined,
+    tp2: a.tp2 ? Number(a.tp2) : undefined,
+    tp3: a.tp3 ? Number(a.tp3) : undefined,
+    tp4: a.tp4 ? Number(a.tp4) : undefined,
+    tp5: a.tp5 ? Number(a.tp5) : undefined,
+    tpHits: Array.isArray(a.tp_hits) ? a.tp_hits : Array.isArray(a.tpHits) ? a.tpHits : [],
+    notes: a.notes || undefined,
+    closeReason: a.close_reason || a.closeReason || undefined,
+    createdAt: a.created_at || a.createdAt || new Date().toISOString(),
+    updatedAt: a.updated_at || a.updatedAt || new Date().toISOString(),
+    creator: a.creator ? {
+      id: a.creator.id || a.creator.user_id || '',
+      display_name: a.creator.display_name || a.creator.displayName || 'Unknown',
+      role: a.creator.role || 'user',
+      avatar_url: a.creator.avatar_url || a.creator.avatarUrl || null,
     } : {
-      id: a?.user_id ?? '',
+      id: a.user_id || a.userId || '',
       display_name: 'Unknown User',
       role: 'user',
       avatar_url: null,
     },
   };
 
-  console.log('✅ Converted signal:', result);
+  console.log('✅ Converted signal:', {
+    id: result.id,
+    assetName: result.assetName,
+    tradermadeSymbol: result.tradermadeSymbol,
+    status: result.status,
+    entryPrice: result.entryPrice,
+    creator: result.creator?.display_name
+  });
+  
   return result;
 };
 
@@ -95,7 +108,9 @@ const SignalStream: React.FC = () => {
 
   const canonicalAlerts = useMemo(() => {
     console.log('🔄 Converting alerts to canonical format, count:', realtimeAlerts.length);
-    const converted = realtimeAlerts.map(toTradeAlertWithProfile);
+    const converted = realtimeAlerts
+      .map(toTradeAlertWithProfile)
+      .filter(alert => alert && alert.id); // Filter out invalid conversions
     console.log('✅ Converted alerts:', converted.length);
     return converted;
   }, [realtimeAlerts]);
@@ -150,11 +165,13 @@ const SignalStream: React.FC = () => {
 
   // Extract unique symbols for price feed
   const symbols = useMemo(() => {
-    return Array.from(new Set(
-      sortedAlerts
-        .filter(alert => alert.status === 'active' || alert.status === 'partially_profited')
-        .map(alert => alert.tradermadeSymbol)
-    ));
+    const activeSymbols = sortedAlerts
+      .filter(alert => alert.status === 'active' || alert.status === 'partially_profited')
+      .map(alert => alert.tradermadeSymbol)
+      .filter(symbol => symbol && symbol.trim().length > 0);
+    
+    console.log('📊 Active symbols for price feed:', activeSymbols);
+    return Array.from(new Set(activeSymbols));
   }, [sortedAlerts]);
 
   // WebSocket price feed
@@ -233,6 +250,33 @@ const SignalStream: React.FC = () => {
   }
 
   console.log('🎯 Final render - Sorted alerts to display:', sortedAlerts.length);
+
+  // Add error boundary for signal card rendering
+  const renderSignalCard = (alert: TradeAlertWithProfile) => {
+    try {
+      console.log('🎯 Rendering signal card:', alert.id, alert.assetName);
+      return (
+        <EnhancedSignalCard
+          key={alert.id}
+          alert={alert}
+          onUpdate={handleUpdateAlert}
+          isOwner={alert.userId === user?.id || user?.role === 'admin'}
+        />
+      );
+    } catch (error) {
+      console.error('❌ Error rendering signal card:', alert.id, error);
+      return (
+        <Card key={alert.id} className="border-red-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              <span>Error rendering signal: {alert.assetName}</span>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -390,17 +434,7 @@ const SignalStream: React.FC = () => {
               : `No ${statusFilter} signals found. Try adjusting your filters.`}
           />
         ) : (
-          sortedAlerts.map((alert) => {
-            console.log('🎯 Rendering signal card:', alert.id, alert.assetName);
-            return (
-              <EnhancedSignalCard
-                key={alert.id}
-                alert={alert}
-                onUpdate={handleUpdateAlert}
-                isOwner={alert.userId === user?.id || user?.role === 'admin'}
-              />
-            );
-          })
+          sortedAlerts.map(renderSignalCard)
         )}
       </div>
     </div>

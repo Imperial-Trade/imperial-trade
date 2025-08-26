@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, TrendingUp, TrendingDown, Target, Shield, CheckCircle2 } from 'lucide-react';
 import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { SignalStatusBadge } from './SignalStatusBadge';
-import { LivePriceHeader } from './LivePriceHeader';
+import { LivePriceWidget } from './LivePriceWidget';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 
 interface EnhancedSignalCardProps {
@@ -86,13 +86,48 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalC
     creator: alert.creator?.display_name
   });
 
+  // Convert alert to format expected by LivePriceWidget
+  const alertForWidget = {
+    id: alert.id,
+    asset_name: alert.assetName,
+    tradermade_symbol: alert.tradermadeSymbol,
+    trade_type: alert.tradeType,
+    entry_price: alert.entryPrice,
+    stop_loss: alert.stopLoss,
+    status: alert.status,
+    tp1: alert.tp1,
+    tp2: alert.tp2,
+    tp3: alert.tp3,
+    tp4: alert.tp4,
+    tp5: alert.tp5,
+    tp_hits: alert.tpHits || []
+  };
+
   return (
     <div className="space-y-4">
-      {/* Live Price Header for Active/Partially Profited Signals */}
+      {/* Live Price Widget for Active/Partially Profited Signals */}
       {showLivePrice && (
-        <LivePriceHeader 
-          symbol={alert.assetName} 
-          tradermadeSymbol={alert.tradermadeSymbol} 
+        <LivePriceWidget 
+          alert={alertForWidget}
+          onTakeProfitHit={async (alert, updatedHits, shouldAutoClose, autoCloseReason) => {
+            if (onUpdate) {
+              const updates = {
+                tpHits: updatedHits,
+                ...(shouldAutoClose && { status: 'closed', closeReason: autoCloseReason })
+              };
+              await onUpdate(alert.id, updates);
+            }
+          }}
+          onStopLossHit={async (alert, closeReason) => {
+            if (onUpdate) {
+              await onUpdate(alert.id, { status: 'closed', closeReason });
+            }
+          }}
+          onOrderActivation={async (alert) => {
+            if (onUpdate) {
+              await onUpdate(alert.id, { status: 'active' });
+            }
+          }}
         />
       )}
       

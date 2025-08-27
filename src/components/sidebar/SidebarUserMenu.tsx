@@ -24,11 +24,24 @@ interface SidebarUserMenuProps {
 }
 
 export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
   };
+
+  // Get display name with fallback logic
+  const displayName = profile?.display_name || profile?.real_name || user?.email?.split('@')[0] || 'User';
+  
+  // Get user role/type display
+  const getRoleDisplay = () => {
+    if (profile?.access_level === 'admin') return 'Admin';
+    if (profile?.access_level === 'moderator') return 'Moderator';
+    if (profile?.user_type === 'educator') return 'Educator';
+    return 'Member';
+  };
+
+  const userInitials = displayName[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
 
   return (
     <div className="mt-auto border-t border-sidebar-border pt-4">
@@ -47,17 +60,17 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
               >
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
-                    {user?.email?.[0]?.toUpperCase() || "J"}
+                    {userInitials}
                   </AvatarFallback>
                 </Avatar>
                 {!isCollapsed && (
                   <>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold text-sidebar-foreground">
-                        John Mark Bodegas
+                        {displayName}
                       </span>
                       <span className="truncate text-xs text-muted-foreground">
-                        Member
+                        {getRoleDisplay()}
                       </span>
                     </div>
                     <ChevronsUpDown className="ml-auto size-4" />
@@ -75,15 +88,15 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarFallback className="rounded-lg bg-primary text-primary-foreground">
-                      {user?.email?.[0]?.toUpperCase() || "J"}
+                      {userInitials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold text-popover-foreground">
-                      John Mark Bodegas
+                      {displayName}
                     </span>
                     <span className="truncate text-xs text-muted-foreground">
-                      Member
+                      {getRoleDisplay()}
                     </span>
                   </div>
                 </div>

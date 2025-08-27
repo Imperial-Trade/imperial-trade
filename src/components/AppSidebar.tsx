@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { SidebarNavigation } from "./sidebar/SidebarNavigation";
 import { SidebarAdminSection } from "./sidebar/SidebarAdminSection";
-import { SidebarFooterContent } from "./sidebar/SidebarFooterContent";
+import { SidebarUserMenu } from "./sidebar/SidebarUserMenu";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -71,9 +71,8 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarFooterContent 
-          isCollapsed={isCollapsed} 
-          displayName={profile?.display_name} 
+        <SidebarUserMenu 
+          isCollapsed={isCollapsed}
         />
       </SidebarFooter>
     </Sidebar>

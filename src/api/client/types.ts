@@ -11,6 +11,8 @@ export interface RequestConfig {
   retries?: number;
   retryDelay?: number;
   abortSignal?: AbortSignal;
+  // Allow callers to bypass cache for critical real-time paths
+  bypassCache?: boolean;
 }
 
 export interface RetryConfig {

@@ -1,5 +1,7 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,14 +79,7 @@ interface SubscriptionMessage {
   symbols: string[];
 }
 
-interface ErrorMessage {
-  type: 'error';
-  message: string;
-  timestamp: string;
-}
-
-// ========== TRADERMADE BUSINESS PLAN INFRASTRUCTURE ==========
-// Ultra-fast cache configuration with tiered TTL based on asset volatility
+// Enhanced cache configuration with tiered TTL based on asset volatility
 const priceCache = new Map<string, TradermadePriceData>();
 const CACHE_TTL_CRYPTO = 100; // 100ms for crypto (highest volatility)
 const CACHE_TTL_GOLD = 200; // 200ms for gold (high volatility)
@@ -102,6 +97,11 @@ const HEARTBEAT_INTERVAL_MS = 30000; // Extended 30s heartbeat for connection st
 const WEBSOCKET_TIMEOUT_MS = 10000; // Increased to 10s for better stability
 const RECONNECT_BASE_DELAY = 2000; // Base delay for exponential backoff
 const MAX_RECONNECT_DELAY = 60000; // Maximum reconnection delay
+
+// Initialize Supabase client for database operations
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://kmuoqkcxguafxulqlbmi.supabase.co';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Validate and normalize symbols
 function validateSymbol(symbol: string): string | null {
@@ -168,7 +168,7 @@ function isRateLimited(): boolean {
   return globalRateLimitCount >= RATE_LIMIT_PER_MINUTE;
 }
 
-// Optimized HTTP API fetching with better error handling
+// Enhanced HTTP API fetching with alert processing
 async function fetchTradermadePrice(clientSymbol: string): Promise<TradermadePriceData | null> {
   const normalized = normalizeClientSymbol(clientSymbol);
   if (!normalized) return null;
@@ -180,6 +180,7 @@ async function fetchTradermadePrice(clientSymbol: string): Promise<TradermadePri
   const apiKey = Deno.env.get('TRADERMADE_API_KEY');
   
   if (!apiKey) {
+    console.log('⚠️ TRADERMADE_API_KEY not configured, using cached data only');
     return getCachedPrice(normalized) || {
       symbol: normalized,
       price: 0,
@@ -212,6 +213,7 @@ async function fetchTradermadePrice(clientSymbol: string): Promise<TradermadePri
     clearTimeout(abortTimer);
 
     if (!response.ok) {
+      console.log(`❌ TraderMade API error: ${response.status}`);
       return getCachedPrice(normalized);
     }
 
@@ -234,12 +236,60 @@ async function fetchTradermadePrice(clientSymbol: string): Promise<TradermadePri
         };
 
         setCachedPrice(normalized, priceData);
+        
+        // Store price in database using enhanced function
+        try {
+          await supabase.rpc('upsert_market_price_enhanced', {
+            p_symbol: normalized,
+            p_bid: quote.bid || price,
+            p_ask: quote.ask || price,
+            p_mid: price,
+            p_timestamp: new Date().toISOString()
+          });
+          
+          console.log(`💾 Stored price for ${normalized}: bid=${quote.bid}, ask=${quote.ask}, mid=${price}`);
+          
+          // Process alerts using enhanced function
+          const { data: alertResults, error: alertError } = await supabase.rpc('process_price_alerts_enhanced', {
+            p_symbol: normalized,
+            p_current_bid: quote.bid || price,
+            p_current_ask: quote.ask || price
+          });
+          
+          if (alertError) {
+            console.error(`❌ Alert processing error for ${normalized}:`, alertError);
+          } else if (alertResults && Array.isArray(alertResults)) {
+            const triggeredAlerts = alertResults.filter(alert => alert.triggered);
+            console.log(`🔔 Found ${triggeredAlerts.length} triggered alerts for ${normalized}`);
+            
+            // Handle each triggered alert using enhanced handler
+            for (const alert of triggeredAlerts) {
+              const { data: handleResult, error: handleError } = await supabase.rpc('handle_triggered_alert_enhanced', {
+                p_alert_id: alert.alert_id,
+                p_signal_id: alert.signal_id,
+                p_alert_type: alert.alert_type,
+                p_triggered_price: alert.trigger_price
+              });
+              
+              if (handleError) {
+                console.error(`❌ Error handling alert ${alert.alert_id}:`, handleError);
+              } else {
+                console.log(`✅ Handled alert ${alert.alert_id}: ${JSON.stringify(handleResult)}`);
+              }
+            }
+          }
+          
+        } catch (dbError) {
+          console.error(`❌ Database operation failed for ${normalized}:`, dbError);
+        }
+        
         return priceData;
       }
     }
 
     return getCachedPrice(normalized);
-  } catch (_error) {
+  } catch (error) {
+    console.error(`❌ TraderMade fetch error for ${normalized}:`, error);
     return getCachedPrice(normalized);
   }
 }
@@ -283,12 +333,13 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         prices,
-        dataSource: 'tradermade_http',
+        dataSource: 'tradermade_enhanced',
         timestamp: new Date().toISOString()
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     } catch (error) {
+      console.error('❌ HTTP request error:', error);
       return new Response(JSON.stringify({
         success: false,
         error: 'Internal server error'
@@ -320,15 +371,16 @@ serve(async (req) => {
   let reconnectAttempts = 0;
   const maxReconnectAttempts = 10;
 
-  // Optimized connection to Tradermade WebSocket
-  async function connectToTradermade() {
+  // Enhanced connection to TraderMade WebSocket
+  async function connectToTraderMade() {
     const apiKey = Deno.env.get('TRADERMADE_API_KEY');
     
     if (!apiKey) {
+      console.log('⚠️ TRADERMADE_API_KEY not configured, using HTTP fallback');
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({
           type: 'error',
-          message: 'Tradermade API key not configured',
+          message: 'TraderMade API key not configured',
           timestamp: new Date().toISOString()
         }));
       }
@@ -354,6 +406,8 @@ serve(async (req) => {
         connectionHealthy = true;
         reconnectAttempts = 0;
         
+        console.log('✅ Connected to TraderMade WebSocket');
+        
         // Authenticate
         if (tradermadeSocket) {
           const upstreamList = TRADERMADE_SYMBOLS.map(toUpstreamSymbol).join(',');
@@ -363,7 +417,7 @@ serve(async (req) => {
           }));
         }
 
-        // Optimized batching with reduced frequency
+        // Enhanced batching with reduced frequency
         if (heartbeatInterval) clearInterval(heartbeatInterval);
         let lastPing = 0;
         heartbeatInterval = setInterval(() => {
@@ -377,7 +431,7 @@ serve(async (req) => {
             lastPing = now;
           }
 
-          // Optimized batch sending
+          // Enhanced batch sending
           if (socket.readyState === WebSocket.OPEN && clientSubscriptions.size > 0) {
             const items: TradermadePriceData[] = [];
             for (const symbol of clientSubscriptions) {
@@ -390,7 +444,8 @@ serve(async (req) => {
                 items,
                 tick_timestamp: now,
                 update_frequency: `${BATCH_SEND_INTERVAL_MS}ms`,
-                is_ultra_fast_batch: true // Business Plan: Ultra-fast hint for client optimization
+                is_ultra_fast_batch: true,
+                data_source: 'tradermade_enhanced'
               }));
             }
           }
@@ -401,18 +456,18 @@ serve(async (req) => {
           socket.send(JSON.stringify({
             type: 'connection_status',
             status: 'connected',
-            dataSource: 'tradermade',
+            dataSource: 'tradermade_enhanced',
             timestamp: new Date().toISOString()
           }));
         }
       };
 
-      tradermadeSocket.onmessage = (event) => {
+      tradermadeSocket.onmessage = async (event) => {
         try {
           // Handle text messages (like "Connected") without parsing as JSON
           if (typeof event.data === 'string' && !event.data.startsWith('{')) {
             if (event.data.toLowerCase().includes('connected')) {
-              console.log('✅ Tradermade authentication successful');
+              console.log('✅ TraderMade authentication successful');
             }
             return;
           }
@@ -461,9 +516,52 @@ serve(async (req) => {
           };
 
           setCachedPrice(clientSymbol, priceUpdate);
+
+          // Store in database and process alerts
+          try {
+            await supabase.rpc('upsert_market_price_enhanced', {
+              p_symbol: clientSymbol,
+              p_bid: priceUpdate.bid,
+              p_ask: priceUpdate.ask,
+              p_mid: price,
+              p_timestamp: priceUpdate.timestamp
+            });
+
+            // Process alerts using enhanced function
+            const { data: alertResults, error: alertError } = await supabase.rpc('process_price_alerts_enhanced', {
+              p_symbol: clientSymbol,
+              p_current_bid: priceUpdate.bid,
+              p_current_ask: priceUpdate.ask
+            });
+
+            if (!alertError && alertResults && Array.isArray(alertResults)) {
+              const triggeredAlerts = alertResults.filter(alert => alert.triggered);
+              
+              if (triggeredAlerts.length > 0) {
+                console.log(`🔔 Processing ${triggeredAlerts.length} alerts for ${clientSymbol}`);
+                
+                // Handle each triggered alert
+                for (const alert of triggeredAlerts) {
+                  const { data: handleResult, error: handleError } = await supabase.rpc('handle_triggered_alert_enhanced', {
+                    p_alert_id: alert.alert_id,
+                    p_signal_id: alert.signal_id,
+                    p_alert_type: alert.alert_type,
+                    p_triggered_price: alert.trigger_price
+                  });
+                  
+                  if (!handleError) {
+                    console.log(`✅ Alert handled: ${alert.alert_type} for signal ${alert.signal_id}`);
+                  }
+                }
+              }
+            }
+          } catch (dbError) {
+            console.error(`❌ Database error for ${clientSymbol}:`, dbError);
+          }
+
         } catch (error) {
           if (typeof event.data === 'string' && event.data.startsWith('{')) {
-            console.error('❌ Error parsing Tradermade message:', error);
+            console.error('❌ Error parsing TraderMade message:', error);
           }
         }
       };
@@ -476,7 +574,9 @@ serve(async (req) => {
           heartbeatInterval = null;
         }
 
-        // Improved exponential backoff reconnection
+        console.log(`⚠️ TraderMade WebSocket closed: ${event.code} ${event.reason}`);
+
+        // Enhanced exponential backoff reconnection
         if (!reconnectTimeout && reconnectAttempts < maxReconnectAttempts) {
           const baseDelay = 1000; // 1s base
           const maxDelay = 30000; // 30s cap
@@ -487,7 +587,7 @@ serve(async (req) => {
             reconnectTimeout = null;
             if (socket.readyState === WebSocket.OPEN) {
               reconnectAttempts++;
-              connectToTradermade();
+              connectToTraderMade();
             }
           }, delay);
         }
@@ -505,12 +605,13 @@ serve(async (req) => {
 
       tradermadeSocket.onerror = (error) => {
         connectionHealthy = false;
+        console.error('❌ TraderMade WebSocket error:', error);
         
         // Notify client of error
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({
             type: 'error',
-            message: 'Tradermade WebSocket connection error',
+            message: 'TraderMade WebSocket connection error',
             timestamp: new Date().toISOString()
           }));
         }
@@ -518,6 +619,7 @@ serve(async (req) => {
 
     } catch (error) {
       connectionHealthy = false;
+      console.error('❌ Failed to connect to TraderMade:', error);
       
       // Fallback to HTTP for all symbols
       const symbolsToFetch = clientSubscriptions.size > 0 ? Array.from(clientSubscriptions) : TRADERMADE_SYMBOLS;
@@ -539,7 +641,8 @@ serve(async (req) => {
 
   // Client WebSocket handlers
   socket.onopen = () => {
-    connectToTradermade();
+    console.log('📱 Client WebSocket connected');
+    connectToTraderMade();
   };
 
   socket.onmessage = (event) => {
@@ -580,6 +683,7 @@ serve(async (req) => {
   };
 
   socket.onclose = () => {
+    console.log('📱 Client WebSocket disconnected');
     // Cleanup resources
     if (reconnectTimeout) {
       clearTimeout(reconnectTimeout);

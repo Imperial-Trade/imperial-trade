@@ -1,20 +1,22 @@
-
-import { DatabaseTable, TableRow, TableInsert, TableUpdate, RequestConfig } from './types';
-import { DatabaseOperations } from './operations/DatabaseOperations';
+import { EnhancedDatabaseOperations } from './operations/EnhancedDatabaseOperations';
 import { AuthOperations } from './operations/AuthOperations';
 import { RequestQueue } from './RequestQueue';
 import { ApiResponse } from '@/types/common';
+import { DatabaseTable, TableRow, TableInsert, TableUpdate, RequestConfig } from './types';
+import { enhancedPerformanceMonitor } from '@/services/EnhancedPerformanceMonitor';
 
 export class EnhancedApiClient {
   private static instance: EnhancedApiClient;
-  private databaseOps: DatabaseOperations;
+  private databaseOps: EnhancedDatabaseOperations;
   private authOps: AuthOperations;
   private requestQueue: RequestQueue;
 
   private constructor() {
-    this.databaseOps = new DatabaseOperations();
+    this.databaseOps = new EnhancedDatabaseOperations();
     this.authOps = new AuthOperations();
     this.requestQueue = new RequestQueue();
+    
+    console.log('🚀 Enhanced API Client initialized with Redis caching and connection pooling');
   }
 
   static getInstance(): EnhancedApiClient {
@@ -24,6 +26,7 @@ export class EnhancedApiClient {
     return EnhancedApiClient.instance;
   }
 
+  // Enhanced select with intelligent caching
   async select<T extends DatabaseTable>(
     table: T,
     options?: {
@@ -36,7 +39,8 @@ export class EnhancedApiClient {
   ): Promise<ApiResponse<TableRow<T>[]>> {
     const cacheKey = this.requestQueue.getCacheKey('select', { table, options });
     
-    if (this.requestQueue.hasRequest(cacheKey)) {
+    // Check if request is already in progress (deduplication)
+    if (this.requestQueue.hasRequest(cacheKey) && !config.bypassCache) {
       return this.requestQueue.getRequest(cacheKey);
     }
 
@@ -51,6 +55,19 @@ export class EnhancedApiClient {
       this.requestQueue.removeRequest(cacheKey);
       throw error;
     }
+  }
+
+  // High-performance trading-specific methods
+  async getActiveSignals(userId?: string): Promise<ApiResponse<TableRow<'trade_alerts'>[]>> {
+    return enhancedPerformanceMonitor.trackSignalDelivery(async () => {
+      return this.databaseOps.getActiveSignals(userId);
+    }, 'active_signals');
+  }
+
+  async getRecentPrices(symbols: string[]): Promise<ApiResponse<TableRow<'market_prices'>[]>> {
+    return enhancedPerformanceMonitor.trackPriceUpdate(async () => {
+      return this.databaseOps.getRecentPrices(symbols);
+    }, symbols.join(','));
   }
 
   async insert<T extends DatabaseTable>(
@@ -89,6 +106,16 @@ export class EnhancedApiClient {
   getPendingRequestCount(): number {
     return this.requestQueue.getPendingRequestCount();
   }
+
+  // Performance monitoring integration
+  getPerformanceStats() {
+    return enhancedPerformanceMonitor.getCurrentSnapshot();
+  }
+
+  isPerformanceOptimal(): boolean {
+    return enhancedPerformanceMonitor.isPerformanceOptimal();
+  }
 }
 
+// Export enhanced instance
 export const enhancedApiClient = EnhancedApiClient.getInstance();

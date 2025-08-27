@@ -31,7 +31,7 @@ export function SidebarUserMenu({ isCollapsed }: SidebarUserMenuProps) {
   };
 
   // Get display name with fallback logic
-  const displayName = profile?.display_name || profile?.real_name || user?.email?.split('@')[0] || 'User';
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User';
   
   // Get user role/type display
   const getRoleDisplay = () => {

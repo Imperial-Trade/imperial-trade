@@ -10,28 +10,28 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Settings, Activity } from "lucide-react";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
 interface SidebarAdminSectionProps {
   isCollapsed: boolean;
-  userAccessLevel?: string;
 }
 
-export function SidebarAdminSection({
+export const SidebarAdminSection: React.FC<SidebarAdminSectionProps> = ({
   isCollapsed,
-  userAccessLevel,
-}: SidebarAdminSectionProps) {
+}) => {
   const location = useLocation();
+  const { isAdmin, loading } = useAuthorization();
 
-  const isActive = (url: string) => {
-    return location.pathname === url;
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
 
   const handleNavigationClick = (e: React.MouseEvent) => {
-    // Prevent the sidebar click handler from being triggered
-    e.stopPropagation();
+    // Allow default navigation behavior
   };
 
-  if (userAccessLevel !== "admin") {
+  // Don't show admin section if not admin or still loading
+  if (loading || !isAdmin) {
     return null;
   }
 
@@ -43,7 +43,7 @@ export function SidebarAdminSection({
   return (
     <SidebarGroup>
       <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
-        Administration
+        Admin
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
@@ -76,4 +76,4 @@ export function SidebarAdminSection({
       </SidebarGroupContent>
     </SidebarGroup>
   );
-}
+};

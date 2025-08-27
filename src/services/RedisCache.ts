@@ -1,228 +1,50 @@
 
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-  ttl: number;
-}
+// Mock Redis cache service for development
+// In production, this would connect to actual Redis
+export class RedisCache {
+  private cache = new Map<string, { data: any; expiry: number }>();
 
-interface CacheConfig {
-  defaultTTL: number;
-  maxSize: number;
-  enableCompression: boolean;
-}
-
-/**
- * High-Performance In-Memory Cache with Redis-like functionality
- * Optimized for sub-100ms signal delivery in Forex trading
- */
-class RedisCache {
-  private static instance: RedisCache;
-  private cache: Map<string, CacheEntry<any>> = new Map();
-  private config: CacheConfig;
-  private cleanupInterval: NodeJS.Timeout;
-  private hitCount = 0;
-  private missCount = 0;
-
-  private constructor(config: Partial<CacheConfig> = {}) {
-    this.config = {
-      defaultTTL: 30000, // 30 seconds for active signals
-      maxSize: 10000, // Max 10k cached entries
-      enableCompression: false, // Disabled for speed
-      ...config
-    };
-
-    // Cleanup expired entries every 10 seconds
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup();
-    }, 10000);
-
-    console.log('🚀 RedisCache initialized for high-frequency trading');
-  }
-
-  static getInstance(config?: Partial<CacheConfig>): RedisCache {
-    if (!RedisCache.instance) {
-      RedisCache.instance = new RedisCache(config);
+  read<T>(key: string): T | null {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    
+    if (Date.now() > item.expiry) {
+      this.cache.delete(key);
+      return null;
     }
-    return RedisCache.instance;
+    
+    return item.data;
   }
 
-  // High-speed signal caching (30s TTL)
-  setSignal(key: string, data: any, ttl = 30000): void {
-    this.set(`signal:${key}`, data, ttl);
-  }
-
-  getSignal(key: string): any | null {
-    return this.get(`signal:${key}`);
-  }
-
-  // Ultra-fast price caching (5s TTL)
-  setPrice(symbol: string, price: number, ttl = 5000): void {
-    this.set(`price:${symbol}`, { price, timestamp: Date.now() }, ttl);
-  }
-
-  getPrice(symbol: string): { price: number; timestamp: number } | null {
-    return this.get(`price:${symbol}`);
-  }
-
-  // User subscription caching (5min TTL)
-  setUserSubscriptions(userId: string, subscriptions: string[], ttl = 300000): void {
-    this.set(`subs:${userId}`, subscriptions, ttl);
-  }
-
-  getUserSubscriptions(userId: string): string[] | null {
-    return this.get(`subs:${userId}`);
-  }
-
-  // API response caching (1min TTL)
-  setApiResponse(endpoint: string, params: string, data: any, ttl = 60000): void {
-    const key = `api:${endpoint}:${this.hashParams(params)}`;
-    this.set(key, data, ttl);
-  }
-
-  getApiResponse(endpoint: string, params: string): any | null {
-    const key = `api:${endpoint}:${this.hashParams(params)}`;
-    return this.get(key);
-  }
-
-  // PUBLIC generic cache helpers (wrap private get/set)
-  // These provide a safe, typed way to use the cache from other modules.
-  public write<T>(key: string, data: T, ttl = this.config.defaultTTL): void {
-    this.set(key, data, ttl);
-  }
-
-  public read<T>(key: string): T | null {
-    return this.get<T>(key);
-  }
-
-  // Core cache operations
-  private set<T>(key: string, data: T, ttl = this.config.defaultTTL): void {
-    // Evict oldest entries if at capacity
-    if (this.cache.size >= this.config.maxSize) {
-      const oldestKey = this.cache.keys().next().value;
-      this.cache.delete(oldestKey);
-    }
-
+  write<T>(key: string, data: T, ttlMs: number): void {
     this.cache.set(key, {
       data,
-      timestamp: Date.now(),
-      ttl
+      expiry: Date.now() + ttlMs
     });
   }
 
-  private get<T>(key: string): T | null {
-    const entry = this.cache.get(key);
-    
-    if (!entry) {
-      this.missCount++;
-      return null;
-    }
-
-    // Check if expired
-    if (Date.now() - entry.timestamp > entry.ttl) {
-      this.cache.delete(key);
-      this.missCount++;
-      return null;
-    }
-
-    this.hitCount++;
-    return entry.data;
-  }
-
-  // Batch operations for performance
-  multiGet(keys: string[]): Record<string, any> {
-    const result: Record<string, any> = {};
-    for (const key of keys) {
-      const value = this.get(key);
-      if (value !== null) {
-        result[key] = value;
-      }
-    }
-    return result;
-  }
-
-  multiSet(entries: Record<string, { data: any; ttl?: number }>): void {
-    for (const [key, { data, ttl }] of Object.entries(entries)) {
-      this.set(key, data, ttl);
-    }
-  }
-
-  // Cache invalidation patterns
-  invalidatePattern(pattern: string): number {
-    let deleted = 0;
+  invalidatePattern(pattern: string): void {
+    const keys = Array.from(this.cache.keys());
     const regex = new RegExp(pattern.replace('*', '.*'));
     
-    for (const key of this.cache.keys()) {
+    keys.forEach(key => {
       if (regex.test(key)) {
         this.cache.delete(key);
-        deleted++;
       }
-    }
-    
-    return deleted;
+    });
   }
 
-  invalidateUser(userId: string): void {
-    this.invalidatePattern(`subs:${userId}*`);
-    this.invalidatePattern(`api:*user=${userId}*`);
+  getSignal(key: string): any | null {
+    return this.read(key);
   }
 
-  invalidateSignal(signalId: string): void {
-    this.invalidatePattern(`signal:${signalId}*`);
-    this.invalidatePattern(`api:*signal=${signalId}*`);
+  setSignal(key: string, data: any, ttlMs: number): void {
+    this.write(key, data, ttlMs);
   }
 
-  // Performance monitoring
-  getStats() {
-    const total = this.hitCount + this.missCount;
-    return {
-      size: this.cache.size,
-      hitRate: total > 0 ? (this.hitCount / total * 100).toFixed(2) : '0',
-      hits: this.hitCount,
-      misses: this.missCount,
-      maxSize: this.config.maxSize
-    };
-  }
-
-  // Cleanup expired entries
-  private cleanup(): void {
-    const now = Date.now();
-    let cleaned = 0;
-
-    for (const [key, entry] of this.cache.entries()) {
-      if (now - entry.timestamp > entry.ttl) {
-        this.cache.delete(key);
-        cleaned++;
-      }
-    }
-
-    if (cleaned > 0) {
-      console.log(`🧹 Cache cleanup: removed ${cleaned} expired entries`);
-    }
-  }
-
-  private hashParams(params: string): string {
-    // Simple hash for cache key generation
-    let hash = 0;
-    for (let i = 0; i < params.length; i++) {
-      const char = params.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return hash.toString(36);
-  }
-
-  // Graceful shutdown
-  destroy(): void {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-    }
-    this.cache.clear();
-    console.log('💾 RedisCache destroyed');
+  setPrice(symbol: string, price: number, ttlMs: number): void {
+    this.write(`price:${symbol}`, price, ttlMs);
   }
 }
 
-export const redisCache = RedisCache.getInstance({
-  defaultTTL: 30000, // 30s for trading signals
-  maxSize: 15000, // Higher capacity for Forex data
-  enableCompression: false // Speed over space for trading
-});
+export const redisCache = new RedisCache();

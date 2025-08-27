@@ -2134,6 +2134,48 @@ export type Database = {
         }
         Relationships: []
       }
+      role_change_audit: {
+        Row: {
+          change_reason: string | null
+          changed_by: string | null
+          created_at: string | null
+          id: string
+          new_access_level: string | null
+          new_role: string | null
+          new_user_type: string | null
+          old_access_level: string | null
+          old_role: string | null
+          old_user_type: string | null
+          user_id: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          new_access_level?: string | null
+          new_role?: string | null
+          new_user_type?: string | null
+          old_access_level?: string | null
+          old_role?: string | null
+          old_user_type?: string | null
+          user_id: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          new_access_level?: string | null
+          new_role?: string | null
+          new_user_type?: string | null
+          old_access_level?: string | null
+          old_role?: string | null
+          old_user_type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       screenshot_analysis_history: {
         Row: {
           analysis_session_id: string | null
@@ -3262,6 +3304,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_user_access_level: {
+        Args: { user_id_param?: string }
+        Returns: string
+      }
       get_user_active_devices: {
         Args: { p_user_id: string }
         Returns: {
@@ -3270,6 +3316,14 @@ export type Database = {
           last_seen_at: string
           onesignal_player_id: string
         }[]
+      }
+      get_user_role: {
+        Args: { user_id_param?: string }
+        Returns: string
+      }
+      get_user_type: {
+        Args: { user_id_param?: string }
+        Returns: string
       }
       get_xeon_stream_subscribers: {
         Args: Record<PropertyKey, never>
@@ -3303,6 +3357,18 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_admin: {
+        Args: { user_id_param?: string }
+        Returns: boolean
+      }
+      is_educator_or_admin: {
+        Args: { user_id_param?: string }
+        Returns: boolean
+      }
+      is_moderator_or_admin: {
+        Args: { user_id_param?: string }
         Returns: boolean
       }
       is_system_operation: {

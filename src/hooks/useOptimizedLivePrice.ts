@@ -201,7 +201,7 @@ export function useOptimizedLivePrice(
           setLastUpdated(fallbackPrice.timestamp);
           setLastNonZeroPrice(fallbackPrice.price);
           lastProcessedPriceRef.current = fallbackPrice.price;
-          storePrice(normalizedSymbol, fallbackPrice.price, timestamp);
+          storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp); // Fix: Use fallbackPrice.timestamp
         }
       }, 2000);
       return;

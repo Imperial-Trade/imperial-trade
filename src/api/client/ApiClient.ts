@@ -1,13 +1,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
+// Removed Database generic to prevent TS2589 "excessively deep" errors
+// import type { Database } from './types';
 import { ApiResponse } from '@/types/common';
 import { isValidUUID } from '@/types/guards';
 
-export type DatabaseTable = keyof Database['public']['Tables'];
-export type TableRow<T extends DatabaseTable> = Database['public']['Tables'][T]['Row'];
-export type TableInsert<T extends DatabaseTable> = Database['public']['Tables'][T]['Insert'];
-export type TableUpdate<T extends DatabaseTable> = Database['public']['Tables'][T]['Update'];
+// Lightweight type definitions to avoid deep type instantiation
+export type DatabaseTable = string;
+export type TableRow<T extends DatabaseTable> = Record<string, unknown>;
+export type TableInsert<T extends DatabaseTable> = Record<string, unknown>;
+export type TableUpdate<T extends DatabaseTable> = Record<string, unknown>;
 
 export class ApiClient {
   private static instance: ApiClient;

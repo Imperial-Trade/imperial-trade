@@ -48,7 +48,9 @@ export class TradingRepository implements ITradingRepository {
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
-    console.log(`🔧 Repository: Creating ${dto.tradeType} order - database trigger will set correct status`);
+    // FIXED: Determine correct status based on trade type with explicit typing
+    const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
+    const correctStatus: 'pending' | 'active' | 'closed' | 'partially_profited' = isLimitOrder ? 'pending' : 'active';
     
     const insertData = {
       asset_name: dto.assetName,
@@ -62,19 +64,17 @@ export class TradingRepository implements ITradingRepository {
       tp4: dto.tp4,
       tp5: dto.tp5,
       notes: dto.notes,
-      user_id: userId
-      // Removed status - the database trigger will set it correctly
+      user_id: userId,
+      status: correctStatus
     };
 
-    console.log('📤 Repository insert data:', insertData);
+    console.log('Repository creating alert with status:', correctStatus, 'for trade type:', dto.tradeType);
 
     const result = await apiClient.insert('trade_alerts', insertData);
     
     if (!result.success || !result.data) {
       throw new Error(result.error || 'Failed to create alert');
     }
-    
-    console.log('✅ Repository: Alert created with status:', result.data.status);
     
     return TradingMapper.toDomain(result.data);
   }

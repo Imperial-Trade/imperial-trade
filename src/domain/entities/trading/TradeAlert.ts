@@ -16,23 +16,42 @@ export class TradeAlert {
     public readonly tp5?: number,
     public readonly tpHits: number[] = [],
     public readonly notes?: string,
-    public readonly closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit',
+    public readonly closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp',
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date()
   ) {}
 
-  public canBeEditedBy(userId: string): boolean {
+  canBeEditedBy(userId: string): boolean {
     return this.userId === userId;
   }
 
-  public isActive(): boolean {
-    return this.status === 'active' || this.status === 'partially_profited';
+  isActive(): boolean {
+    return this.status === 'active';
   }
 
-  public getRiskRewardRatio(): number | null {
-    if (!this.tp1) return null;
-    const risk = Math.abs(this.entryPrice - this.stopLoss);
-    const reward = Math.abs(this.tp1 - this.entryPrice);
-    return reward / risk;
+  isClosed(): boolean {
+    return this.status === 'closed';
+  }
+
+  hasPartialProfits(): boolean {
+    return this.status === 'partially_profited' && this.tpHits.length > 0;
+  }
+
+  // Critical: Check if all available TPs have been hit
+  hasAllTpsHit(): boolean {
+    const availableTPs = [this.tp1, this.tp2, this.tp3, this.tp4, this.tp5]
+      .map((tp, index) => tp ? index + 1 : null)
+      .filter(Boolean) as number[];
+    
+    if (availableTPs.length === 0) return false;
+    
+    // Clean duplicate hits and check if all available TPs are covered
+    const uniqueHits = [...new Set(this.tpHits)];
+    return availableTPs.every(tpLevel => uniqueHits.includes(tpLevel));
+  }
+
+  // Get cleaned TP hits without duplicates
+  getCleanedTpHits(): number[] {
+    return [...new Set(this.tpHits)].sort((a, b) => a - b);
   }
 }

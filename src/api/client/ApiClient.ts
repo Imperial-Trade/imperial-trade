@@ -34,7 +34,7 @@ export class ApiClient {
       let query = supabase.from(table).select(options?.select || '*');
 
       if (options?.eq) {
-        query = query.eq(options.eq.column as any, options.eq.value);
+        query = query.eq(options.eq.column as any, options.eq.value as any);
       }
 
       if (options?.order) {

@@ -16,8 +16,7 @@ export class TradingRepository implements ITradingRepository {
       throw new Error(result.error || 'Failed to fetch alerts');
     }
     
-    const rows = result.data as any[];
-    return rows.map((row) => TradingMapper.toDomain(row));
+    return result.data.map(TradingMapper.toDomain);
   }
 
   async findAlertById(id: string): Promise<TradeAlert | null> {
@@ -30,7 +29,7 @@ export class TradingRepository implements ITradingRepository {
       return null;
     }
     
-    return TradingMapper.toDomain(result.data[0] as any);
+    return TradingMapper.toDomain(result.data[0]);
   }
 
   async findAlertsByStatus(status: 'pending' | 'active' | 'closed' | 'partially_profited', userId: string): Promise<TradeAlert[]> {
@@ -43,15 +42,13 @@ export class TradingRepository implements ITradingRepository {
       throw new Error(result.error || 'Failed to fetch alerts');
     }
     
-    return (result.data as any[])
-      .filter((alert: any) => alert.status === status)
-      .map((row: any) => TradingMapper.toDomain(row));
+    return result.data
+      .filter(alert => alert.status === status)
+      .map(TradingMapper.toDomain);
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
-    // FIXED: Determine correct status based on trade type with explicit typing
-    const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
-    const correctStatus: 'pending' | 'active' | 'closed' | 'partially_profited' = isLimitOrder ? 'pending' : 'active';
+    console.log(`🔧 Repository: Creating ${dto.tradeType} order - database trigger will set correct status`);
     
     const insertData = {
       asset_name: dto.assetName,
@@ -65,11 +62,11 @@ export class TradingRepository implements ITradingRepository {
       tp4: dto.tp4,
       tp5: dto.tp5,
       notes: dto.notes,
-      user_id: userId,
-      status: correctStatus
+      user_id: userId
+      // Removed status - the database trigger will set it correctly
     };
 
-    console.log('Repository creating alert with status:', correctStatus, 'for trade type:', dto.tradeType);
+    console.log('📤 Repository insert data:', insertData);
 
     const result = await apiClient.insert('trade_alerts', insertData);
     
@@ -77,7 +74,9 @@ export class TradingRepository implements ITradingRepository {
       throw new Error(result.error || 'Failed to create alert');
     }
     
-    return TradingMapper.toDomain(result.data as any);
+    console.log('✅ Repository: Alert created with status:', result.data.status);
+    
+    return TradingMapper.toDomain(result.data);
   }
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto): Promise<TradeAlert> {
@@ -96,7 +95,7 @@ export class TradingRepository implements ITradingRepository {
       throw new Error(result.error || 'Failed to update alert');
     }
     
-    return TradingMapper.toDomain(result.data as any);
+    return TradingMapper.toDomain(result.data);
   }
 
   async deleteAlert(id: string): Promise<void> {

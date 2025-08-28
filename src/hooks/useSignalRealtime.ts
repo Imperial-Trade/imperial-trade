@@ -1,6 +1,7 @@
+
 import { useCallback, useState, useEffect, useMemo, useContext } from 'react';
 import { useSignalRealtime as useSignalRealtimeContext } from '@/contexts/SignalRealtimeContext';
-import { TradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
+import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
 interface UseSignalRealtimeReturn {
@@ -74,7 +75,7 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean = fals
 
     try {
       setLocalLoading(true);
-      const result = await TradingApiService.updateAlert(id, dto);
+      const result = await tradingApiService.updateAlert(id, dto, userId);
       
       if (result.success && result.data) {
         // The realtime context will handle the update automatically

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
@@ -14,6 +15,7 @@ const NewSignalPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Removed live price preloading for a simpler, seamless form experience
+
 
   // Get user ID
   useEffect(() => {
@@ -54,9 +56,9 @@ const NewSignalPage: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      console.log('Creating trade alert with data:', data);
+      console.log('Creating trade alert:', data);
       
-      // FIXED: Pass through the status from the form data instead of hardcoding
+      // Convert form data to CreateTradeAlertDto
       const createDto: CreateTradeAlertDto = {
         assetName: data.asset_name,
         tradermadeSymbol: data.tradermade_symbol,
@@ -69,21 +71,14 @@ const NewSignalPage: React.FC = () => {
         tp4: data.tp4,
         tp5: data.tp5,
         notes: data.notes
-        // NOTE: Status is determined by the repository based on trade type
       };
-
-      console.log('Converted DTO:', createDto);
 
       const result = await createAlert(createDto);
       
       if (result) {
-        // FIXED: Show different success messages based on trade type
-        const isLimitOrder = data.trade_type === 'buy_limit' || data.trade_type === 'sell_limit';
-        const statusMessage = isLimitOrder ? 'pending activation' : 'active';
-        
         toast({
           title: "🚀 Educational Pattern Created!",
-          description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis is now ${statusMessage}.`,
+          description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`,
         });
         
         // Navigate to pattern stream page to show the new pattern

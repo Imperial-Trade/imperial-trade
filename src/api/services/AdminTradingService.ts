@@ -1,3 +1,4 @@
+
 import { apiClient } from '../client/ApiClient';
 import { TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { ApiResponse } from '@/types/common';
@@ -31,9 +32,9 @@ export class AdminTradingService {
         };
       }
 
-      const responseDtos: TradeAlertResponseDto[] = (result.data as any[])
+      const responseDtos: TradeAlertResponseDto[] = result.data
         .filter(isTradeAlert)
-        .map((alert: any) => ({
+        .map(alert => ({
           id: alert.id,
           userId: alert.user_id,
           assetName: alert.asset_name,
@@ -49,7 +50,7 @@ export class AdminTradingService {
           tp5: alert.tp5 ? Number(alert.tp5) : undefined,
           tpHits: alert.tp_hits || [],
           notes: alert.notes,
-          closeReason: (alert.close_reason as unknown as TradeAlertResponseDto['closeReason']), // Narrow to union
+          closeReason: alert.close_reason,
           createdAt: alert.created_at,
           updatedAt: alert.updated_at
         }));

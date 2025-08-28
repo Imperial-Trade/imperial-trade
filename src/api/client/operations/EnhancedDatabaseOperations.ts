@@ -1,17 +1,17 @@
-
 import { DatabaseOperations } from './DatabaseOperations';
 import { redisCache } from '@/services/RedisCache';
 import { connectionPool } from '@/services/ConnectionPoolManager';
 import { enhancedPerformanceMonitor } from '@/services/EnhancedPerformanceMonitor';
+import { securityAuditService } from '@/services/SecurityAuditService';
 import { DatabaseTable, TableRow, TableInsert, TableUpdate, RequestConfig } from '../types';
 import { ApiResponse } from '@/types/common';
 
 /**
- * Enhanced Database Operations with Redis Caching and Connection Pooling
+ * Enhanced Database Operations with Redis Caching, Connection Pooling, and Security Auditing
  * Optimized for sub-100ms signal delivery in high-frequency trading
  */
 export class EnhancedDatabaseOperations extends DatabaseOperations {
-  // Cache-optimized select with intelligent caching strategies
+  // Cache-optimized select with intelligent caching strategies and security logging
   async select<T extends DatabaseTable>(
     table: T,
     options?: {
@@ -22,6 +22,16 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
     },
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>[]>> {
+    // Log access to sensitive tables
+    if (this.isSensitiveTable(table)) {
+      await securityAuditService.logSuspiciousActivity(
+        `access_${table}`,
+        undefined,
+        undefined,
+        { query_options: options }
+      );
+    }
+
     // Generate cache key for this query
     const cacheKey = this.generateCacheKey(table, options);
     
@@ -53,12 +63,22 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
     }, `${table}_select`);
   }
 
-  // High-priority insert with cache invalidation
+  // High-priority insert with cache invalidation and security logging
   async insert<T extends DatabaseTable>(
     table: T,
     data: TableInsert<T>,
     config: RequestConfig = {}
   ): Promise<ApiResponse<TableRow<T>>> {
+    // Log sensitive table insertions
+    if (this.isSensitiveTable(table)) {
+      await securityAuditService.logSuspiciousActivity(
+        `insert_${table}`,
+        undefined,
+        undefined,
+        { data_keys: Object.keys(data as any) }
+      );
+    }
+
     return enhancedPerformanceMonitor.trackSignalDelivery(async () => {
       return connectionPool.execute(async () => {
         const result = await super.insert(table, data, config);
@@ -169,6 +189,19 @@ export class EnhancedDatabaseOperations extends DatabaseOperations {
     }
     
     return result;
+  }
+
+  // Helper method to identify sensitive tables
+  private isSensitiveTable<T extends DatabaseTable>(table: T): boolean {
+    const sensitiveTables: DatabaseTable[] = [
+      'profiles',
+      'user_roles',
+      'audit_logs',
+      'role_change_audit',
+      'account_requests',
+      'admin_notification_events'
+    ];
+    return sensitiveTables.includes(table);
   }
 
   // Cache key generation

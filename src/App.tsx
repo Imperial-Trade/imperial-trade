@@ -51,6 +51,7 @@ import Settings from "@/pages/dashboard/settings/Settings";
 import AdminPanel from "@/pages/dashboard/admin-panel/AdminPanel";
 import AthenaTest from "@/pages/dashboard/athena/AthenaTest";
 import DevTests from "@/pages/dashboard/dev-tests/DevTests";
+import SignalEngineDiagnosticsPage from "@/pages/SignalEngineDiagnosticsPage";
 
 // Educator Pages
 import EducatorSignalManagement from "@/pages/dashboard/educator/EducatorSignalManagement";
@@ -110,7 +111,7 @@ function App() {
                             path="community-forum"
                             element={<CommunityForumPage />}
                           />
-<Route
+                          <Route
                             path="ib-partnership"
                             element={<ImperialPartnership />}
                           />
@@ -122,11 +123,11 @@ function App() {
                             path="imperial-partnership"
                             element={<ImperialPartnership />}
                           />
-                           <Route path="signin" element={<Signin />} />
-                           <Route path="reset-password" element={<ResetPasswordPage />} />
-                           <Route path="legal/disclaimers" element={<DisclaimersPage />} />
-                           <Route path="legal/terms" element={<TermsPage />} />
-                           <Route path="legal/privacy" element={<PrivacyPage />} />
+                          <Route path="signin" element={<Signin />} />
+                          <Route path="reset-password" element={<ResetPasswordPage />} />
+                          <Route path="legal/disclaimers" element={<DisclaimersPage />} />
+                          <Route path="legal/terms" element={<TermsPage />} />
+                          <Route path="legal/privacy" element={<PrivacyPage />} />
                           <Route
                             path="account-request"
                             element={<AccountRequest />}
@@ -188,6 +189,14 @@ function App() {
                           <Route path="settings" element={<Settings />} />
                           <Route path="athena" element={<AthenaTest />} />
                           <Route path="dev-tests" element={<DevTests />} />
+                          <Route
+                            path="signal-diagnostics"
+                            element={
+                              <ProtectedRoute requiredAccessLevel="admin">
+                                <SignalEngineDiagnosticsPage />
+                              </ProtectedRoute>
+                            }
+                          />
 
                           <Route
                             path="administration"

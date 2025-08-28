@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { createTpUpdateDto, AlertForAutoClosure } from '@/utils/tradingUtils';
-import { TradeAlertData } from '@/components/signals/TradeAlertData';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
@@ -17,7 +15,10 @@ import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
 
 export default function SignalStream() {
-  const { user, profile } = useAuth();
+  const {
+    user,
+    profile
+  } = useAuth();
   const navigate = useNavigate();
   const [filters, setFilters] = useState({
     search: '',
@@ -26,6 +27,8 @@ export default function SignalStream() {
     educator: ''
   });
 
+  // Use the optimized trading hook with real-time updates for all signals
+  // Pass the actual user ID for proper authorization, even when showing all signals
   const {
     alerts: allAlerts,
     isLoading,
@@ -35,7 +38,7 @@ export default function SignalStream() {
     connectionStatus,
     lastUpdated,
     nextRetryAt
-  } = useOptimizedTrading(user?.id || '', true);
+  } = useOptimizedTrading(user?.id || '', true); // Pass user ID instead of empty string
 
   // Helper functions for role checking
   const isAdmin = useMemo(() => {
@@ -91,7 +94,6 @@ export default function SignalStream() {
     }
     return filteredAlerts;
   }, [allAlerts, filters]);
-
   const {
     activeAlerts,
     closedAlerts,
@@ -128,7 +130,6 @@ export default function SignalStream() {
       signalCounts: counts
     };
   }, [alerts, allAlerts]);
-
   const sortedClosedAlerts = useMemo(() => {
     return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
   }, [closedAlerts]);
@@ -162,6 +163,7 @@ export default function SignalStream() {
     return result;
   }, [livePricesData]);
 
+  // Stable symbol subscription to prevent thrashing
   const symbolsRef = useRef<string[]>([]);
   const subscriptionActiveRef = useRef(false);
 
@@ -195,12 +197,12 @@ export default function SignalStream() {
       }
     };
   }, [symbols, subscribe, unsubscribe]);
-
   const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
   const [reconnectIn, setReconnectIn] = useState<number | null>(null);
   const [justAddedIds, setJustAddedIds] = useState(new Set<string>());
   const prevAlertIdsRef = useRef(new Set<string>());
 
+  // Track newly added alerts to highlight them briefly
   useEffect(() => {
     const currentIds = new Set(alerts.map(alert => alert.id));
     const previousIds = prevAlertIdsRef.current;
@@ -238,7 +240,6 @@ export default function SignalStream() {
       setReconnectIn(null);
     }
   }, [connectionStatus, nextRetryAt]);
-
   const getConnectionStatusBadge = () => {
     switch (connectionStatus) {
       case 'connected':
@@ -261,7 +262,6 @@ export default function SignalStream() {
         return null;
     }
   };
-
   const handleStatusUpdate = useCallback(async (alert: any, newStatus: string) => {
     if (updateInProgress.has(alert.id)) return;
 
@@ -297,7 +297,7 @@ export default function SignalStream() {
     try {
       console.log(`Updating alert ${alert.id} status to ${newStatus}`);
       const updateDto: UpdateTradeAlertDto = {
-        status: newStatus as 'pending' | 'active' | 'closed',
+        status: newStatus as 'pending' | 'active' | 'closed' | 'partially_profited',
         closeReason: newStatus === 'closed' ? 'manual' : undefined
       };
       const result = await updateAlert(alert.id, updateDto);
@@ -306,7 +306,7 @@ export default function SignalStream() {
         (window as any).addNotification({
           type: 'trade_closed',
           title: `🔒 Signal Closed`,
-          message: `${alert.assetName || alert.asset_name} signal has been closed`
+          message: `${alert.assetName} signal has been closed`
         });
       }
     } catch (err) {
@@ -326,8 +326,6 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
-  // CRITICAL: Enhanced TP hit handler with auto-closure logic
   const handleTakeProfitHit = useCallback(async (alert: any, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
     if (updateInProgress.has(alert.id)) return;
 
@@ -338,60 +336,45 @@ export default function SignalStream() {
     }
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
-      console.log(`🎯 Processing TP hits for alert ${alert.id}:`, newTPHits);
-      
-      // Convert to AlertForAutoClosure interface
-      const alertForClosure: AlertForAutoClosure = {
-        id: alert.id,
-        assetName: alert.asset_name || alert.assetName,
-        tp1: alert.tp1,
-        tp2: alert.tp2,
-        tp3: alert.tp3,
-        tp4: alert.tp4,
-        tp5: alert.tp5,
-        tpHits: alert.tp_hits || alert.tpHits || [],
-        status: alert.status
+      console.log(`Updating TP hits for alert ${alert.id}:`, newTPHits);
+      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | undefined = undefined;
+      if (shouldAutoClose && closeReason) {
+        switch (closeReason) {
+          case 'manual':
+          case 'stop_loss':
+          case 'tp1':
+          case 'tp2':
+          case 'tp3':
+          case 'tp4':
+          case 'tp5':
+          case 'all_tps_hit':
+          case 'reversal_after_tp':
+            typedCloseReason = closeReason;
+            break;
+          default:
+            typedCloseReason = 'manual';
+        }
+      }
+      const updateDto: UpdateTradeAlertDto = {
+        tpHits: newTPHits,
+        ...(shouldAutoClose && {
+          status: 'closed',
+          closeReason: typedCloseReason
+        })
       };
-
-      // Use the auto-closure utility
-      const updateDto = createTpUpdateDto(
-        alertForClosure, 
-        newTPHits, 
-        shouldAutoClose, 
-        closeReason
-      );
-
-      console.log('🚀 CRITICAL TP Update:', {
-        alertId: alert.id,
-        assetName: alertForClosure.assetName,
-        newTPHits,
-        updateDto,
-        willAutoClose: updateDto.status === 'closed'
-      });
-
       const result = await updateAlert(alert.id, updateDto);
-      
       if (result && (window as any).addNotification) {
         const highestTP = newTPHits.length > 0 ? Math.max(...newTPHits) : null;
-        
-        if (updateDto.status === 'closed' && updateDto.closeReason === 'all_tps_hit') {
-          // All TPs hit - auto-closed
-          (window as any).addNotification({
-            type: 'trade_closed',
-            title: `🎉 All TPs Hit!`,
-            message: `${alertForClosure.assetName} - All take profits achieved! Signal auto-closed.`
-          });
-        } else if (highestTP !== null) {
-          // Individual TP hit
+        if (highestTP !== null) {
           (window as any).addNotification({
             type: 'tp_hit',
             title: `🎯 TP${highestTP} Hit!`,
-            message: `${alertForClosure.assetName} reached Take Profit ${highestTP}`
+            message: `${alert.assetName} reached Take Profit ${highestTP}`
           });
         }
       }
     } catch (err) {
-      console.error("❌ Failed to update TP hits:", err);
+      console.error("Failed to update TP hits:", err);
     } finally {
       setUpdateInProgress(prev => {
         const newSet = new Set(prev);
@@ -400,7 +383,6 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
   const handleStopLossHit = useCallback(async (alert: any, closeReason: string) => {
     if (updateInProgress.has(alert.id)) return;
 
@@ -437,7 +419,7 @@ export default function SignalStream() {
         (window as any).addNotification({
           type: 'stop_loss',
           title: `🚨 Stop Loss Hit!`,
-          message: `${alert.assetName || alert.asset_name} trade closed at stop loss`
+          message: `${alert.assetName} trade closed at stop loss`
         });
       }
     } catch (err) {
@@ -450,7 +432,6 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
   const handleOrderActivation = useCallback(async (alert: any) => {
     if (updateInProgress.has(alert.id)) return;
 
@@ -470,7 +451,7 @@ export default function SignalStream() {
         (window as any).addNotification({
           type: 'trade_activated',
           title: `🚀 Order Activated!`,
-          message: `${alert.assetName || alert.asset_name} ${alert.tradeType || alert.trade_type} is now active`
+          message: `${alert.assetName} ${alert.tradeType} is now active`
         });
       }
     } catch (err) {
@@ -483,28 +464,6 @@ export default function SignalStream() {
       });
     }
   }, [updateInProgress, updateAlert, profile, isAdmin, isCreator]);
-
-  // Convert alert data to TradeAlertData format
-  const convertToTradeAlertData = (alert: any): TradeAlertData => ({
-    id: alert.id,
-    asset_name: alert.assetName,
-    tradermade_symbol: alert.tradermadeSymbol,
-    trade_type: alert.tradeType,
-    entry_price: alert.entryPrice,
-    stop_loss: alert.stopLoss,
-    status: alert.status,
-    tp1: alert.tp1,
-    tp2: alert.tp2,
-    tp3: alert.tp3,
-    tp4: alert.tp4,
-    tp5: alert.tp5,
-    tp_hits: alert.tpHits,
-    close_reason: alert.closeReason,
-    notes: alert.notes,
-    created_date: alert.createdAt,
-    updated_date: alert.updatedAt,
-    creator: alert.creator
-  });
 
   return (
     <StreamErrorBoundary>
@@ -583,7 +542,18 @@ export default function SignalStream() {
                         {activeAlerts.map(alert => (
                           <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard 
-                              alert={convertToTradeAlertData(alert)}
+                              alert={{
+                                ...alert,
+                                asset_name: alert.assetName,
+                                tradermade_symbol: alert.tradermadeSymbol,
+                                trade_type: alert.tradeType,
+                                entry_price: alert.entryPrice,
+                                stop_loss: alert.stopLoss,
+                                tp_hits: alert.tpHits,
+                                close_reason: alert.closeReason,
+                                created_date: alert.createdAt,
+                                updated_date: alert.updatedAt
+                              }} 
                               onStatusUpdate={handleStatusUpdate} 
                               onTakeProfitHit={handleTakeProfitHit} 
                               onStopLossHit={handleStopLossHit} 
@@ -594,7 +564,19 @@ export default function SignalStream() {
                               connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                               priceSource={priceSource} 
                               isRecentClosure={false} 
-                              creator={alert.creator} 
+                              creator={
+                                alert.creator
+                                  ? {
+                                      id: alert.creator.id,
+                                      display_name: alert.creator.display_name,
+                                      // Ensure role is always present (required by TradeAlertCard prop type)
+                                      role: alert.creator.role || alert.creator.user_type || alert.creator.access_level || 'member',
+                                      avatar_url: alert.creator.avatar_url,
+                                      user_type: alert.creator.user_type,
+                                      access_level: alert.creator.access_level,
+                                    }
+                                  : undefined
+                              }
                               justAdded={justAddedIds.has(alert.id)}
                             />
                           </div>
@@ -620,7 +602,18 @@ export default function SignalStream() {
                         {sortedClosedAlerts.map(alert => (
                           <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard 
-                              alert={convertToTradeAlertData(alert)}
+                              alert={{
+                                ...alert,
+                                asset_name: alert.assetName,
+                                tradermade_symbol: alert.tradermadeSymbol,
+                                trade_type: alert.tradeType,
+                                entry_price: alert.entryPrice,
+                                stop_loss: alert.stopLoss,
+                                tp_hits: alert.tpHits,
+                                close_reason: alert.closeReason,
+                                created_date: alert.createdAt,
+                                updated_date: alert.updatedAt
+                              }} 
                               onStatusUpdate={handleStatusUpdate} 
                               onTakeProfitHit={handleTakeProfitHit} 
                               onStopLossHit={handleStopLossHit} 
@@ -631,7 +624,19 @@ export default function SignalStream() {
                               connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                               priceSource={priceSource} 
                               isRecentClosure={true} 
-                              creator={alert.creator} 
+                              creator={
+                                alert.creator
+                                  ? {
+                                      id: alert.creator.id,
+                                      display_name: alert.creator.display_name,
+                                      // Ensure role is always present (required by TradeAlertCard prop type)
+                                      role: alert.creator.role || alert.creator.user_type || alert.creator.access_level || 'member',
+                                      avatar_url: alert.creator.avatar_url,
+                                      user_type: alert.creator.user_type,
+                                      access_level: alert.creator.access_level,
+                                    }
+                                  : undefined
+                              }
                             />
                           </div>
                         ))}

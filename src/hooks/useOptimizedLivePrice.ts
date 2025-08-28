@@ -12,8 +12,7 @@ interface OptimizedLivePriceData {
   error: string | null;
   lastUpdated: Date | null;
   connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'error';
-  // Relax to string to align with context dataSource ("WebSocket")
-  dataSource: string;
+  dataSource: 'tradermade' | 'unavailable';
   priceUpdateSource: 'websocket' | 'websocket_institutional' | 'http' | 'unknown';
   refreshPrice: () => void;
 }
@@ -201,7 +200,7 @@ export function useOptimizedLivePrice(
           setLastUpdated(fallbackPrice.timestamp);
           setLastNonZeroPrice(fallbackPrice.price);
           lastProcessedPriceRef.current = fallbackPrice.price;
-          storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp); // Fix: Use fallbackPrice.timestamp
+          storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
         }
       }, 2000);
       return;

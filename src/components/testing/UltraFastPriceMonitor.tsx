@@ -51,7 +51,7 @@ export const UltraFastPriceMonitor: React.FC = () => {
         symbol,
         price: priceData.price,
         timestamp: Date.now(),
-        frequency: String(priceData.update_frequency ?? 'unknown'), // Fix: Coerce to string
+        frequency: priceData.update_frequency || 'unknown',
         isUltraFast: priceData.is_ultra_fast_tick || false
       }));
 

@@ -24,7 +24,9 @@ export const mapTradeAlertDataToProfile = (data: TradeAlertData): TradeAlertWith
     notes: data.notes,
     closeReason: data.close_reason,
     createdAt: data.created_date,
-    updatedAt: data.updated_date || data.created_date
+    updatedAt: data.updated_date || data.created_date,
+    activatedAt: data.activated_at,
+    activationPrice: data.activation_price
   };
 };
 
@@ -49,6 +51,8 @@ export const mapTradeAlertProfileToData = (profile: TradeAlertWithProfile): Trad
     notes: profile.notes,
     close_reason: profile.closeReason,
     created_date: profile.createdAt,
-    updated_date: profile.updatedAt
+    updated_date: profile.updatedAt,
+    activated_at: profile.activatedAt,
+    activation_price: profile.activationPrice
   };
 };

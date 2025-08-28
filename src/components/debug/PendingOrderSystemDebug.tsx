@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SystemHealthCheck {
   pending_orders_count: number;
@@ -25,6 +26,7 @@ interface PendingOrder {
 }
 
 const PendingOrderSystemDebug: React.FC = () => {
+  const { user } = useAuth();
   const [healthCheck, setHealthCheck] = useState<SystemHealthCheck | null>(null);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,8 +93,8 @@ const PendingOrderSystemDebug: React.FC = () => {
         pending_orders_count: pendingData?.length || 0,
         alert_monitoring_count: monitoringData?.length || 0,
         recent_activations: activationsData?.length || 0,
-        trigger_function_exists: true, // We just created it
-        constraint_exists: true // We just created it
+        trigger_function_exists: true,
+        constraint_exists: true
       });
 
       setPendingOrders(formattedOrders);
@@ -106,10 +108,14 @@ const PendingOrderSystemDebug: React.FC = () => {
   };
 
   const testOrderCreation = async () => {
+    if (!user?.id) {
+      console.error('❌ No user logged in to create test order');
+      return;
+    }
+
     try {
       console.log('🧪 Testing limit order creation...');
       
-      // This should automatically be created as 'pending' due to our trigger
       const testOrder = {
         asset_name: 'TEST_EURUSD',
         tradermade_symbol: 'EURUSD',
@@ -117,12 +123,13 @@ const PendingOrderSystemDebug: React.FC = () => {
         entry_price: 1.0500,
         stop_loss: 1.0450,
         tp1: 1.0550,
-        notes: 'Test order for pending system validation'
+        notes: 'Test order for pending system validation',
+        user_id: user.id
       };
 
       const { data, error } = await supabase
         .from('trade_alerts')
-        .insert([testOrder])
+        .insert(testOrder)
         .select('*')
         .single();
 
@@ -134,7 +141,6 @@ const PendingOrderSystemDebug: React.FC = () => {
       console.log('✅ Test order created:', data);
       console.log(`📊 Status: ${data.status} (should be 'pending')`);
       
-      // Refresh the health check
       setTimeout(fetchSystemHealth, 1000);
       
     } catch (error) {
@@ -224,11 +230,14 @@ const PendingOrderSystemDebug: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
-            <Button onClick={testOrderCreation} variant="outline">
+            <Button onClick={testOrderCreation} variant="outline" disabled={!user?.id}>
               Create Test Limit Order
             </Button>
             <p className="text-sm text-muted-foreground flex items-center">
-              This will create a test buy_limit order that should automatically be set to 'pending' status
+              {user?.id ? 
+                'This will create a test buy_limit order that should automatically be set to pending status' :
+                'Please log in to create test orders'
+              }
             </p>
           </div>
         </CardContent>

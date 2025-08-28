@@ -18,6 +18,8 @@ export interface TradeAlertWithProfile {
   closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit';
   createdAt: string;
   updatedAt: string;
+  activatedAt?: string;
+  activationPrice?: number;
   creator?: {
     id: string;
     display_name: string;

@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TradingApiService } from '@/api/services/TradingApiService';
-import { TradeAlertCard } from '@/components/signals/TradeAlertCard';
+import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -60,55 +59,6 @@ export const SignalStream = () => {
   };
 
   const statusCounts = getStatusCounts();
-
-  const mapToTradeAlertData = (signal: any): TradeAlertData => ({
-    id: signal.id,
-    asset_name: signal.assetName,
-    tradermade_symbol: signal.tradermadeSymbol,
-    trade_type: signal.tradeType,
-    entry_price: signal.entryPrice,
-    stop_loss: signal.stopLoss,
-    status: signal.status,
-    tp1: signal.tp1,
-    tp2: signal.tp2,
-    tp3: signal.tp3,
-    tp4: signal.tp4,
-    tp5: signal.tp5,
-    tp_hits: signal.tpHits,
-    notes: signal.notes,
-    close_reason: signal.closeReason,
-    created_date: signal.createdAt,
-    updated_date: signal.updatedAt,
-    creator: signal.creator
-  });
-
-  const renderSignalGroup = (title: string, signals: any[], emptyMessage: string) => {
-    if (signals.length === 0 && statusFilter === 'all') return null;
-    
-    return (
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <Badge variant="secondary">{signals.length}</Badge>
-        </div>
-        {signals.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {signals.map(signal => (
-              <TradeAlertCard
-                key={signal.id}
-                signal={mapToTradeAlertData(signal)}
-                onRefresh={refetch}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            {emptyMessage}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   if (isLoading) {
     return (
@@ -190,6 +140,57 @@ export const SignalStream = () => {
       />
     </div>
   );
+
+  function mapToTradeAlertData(signal: any): TradeAlertData {
+    return {
+      id: signal.id,
+      asset_name: signal.assetName,
+      tradermade_symbol: signal.tradermadeSymbol,
+      trade_type: signal.tradeType,
+      entry_price: signal.entryPrice,
+      stop_loss: signal.stopLoss,
+      status: signal.status,
+      tp1: signal.tp1,
+      tp2: signal.tp2,
+      tp3: signal.tp3,
+      tp4: signal.tp4,
+      tp5: signal.tp5,
+      tp_hits: signal.tpHits,
+      notes: signal.notes,
+      close_reason: signal.closeReason,
+      created_date: signal.createdAt,
+      updated_date: signal.updatedAt,
+      creator: signal.creator
+    };
+  }
+
+  function renderSignalGroup(title: string, signals: any[], emptyMessage: string) {
+    if (signals.length === 0 && statusFilter === 'all') return null;
+    
+    return (
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <h3 className="text-lg font-semibold">{title}</h3>
+          <Badge variant="secondary">{signals.length}</Badge>
+        </div>
+        {signals.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {signals.map(signal => (
+              <TradeAlertCard
+                key={signal.id}
+                signal={mapToTradeAlertData(signal)}
+                onRefresh={refetch}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            {emptyMessage}
+          </div>
+        )}
+      </div>
+    );
+  }
 };
 
 export default SignalStream;

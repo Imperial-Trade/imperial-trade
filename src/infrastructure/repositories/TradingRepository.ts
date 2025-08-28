@@ -1,4 +1,3 @@
-
 import { ITradingRepository } from '@/domain/interfaces/repositories/ITradingRepository';
 import { TradeAlert } from '@/domain/entities/trading/TradeAlert';
 import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';

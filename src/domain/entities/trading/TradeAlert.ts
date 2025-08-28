@@ -16,23 +16,24 @@ export class TradeAlert {
     public readonly tp5?: number,
     public readonly tpHits: number[] = [],
     public readonly notes?: string,
-    public readonly closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit',
+    public readonly closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp',
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date()
   ) {}
 
-  public canBeEditedBy(userId: string): boolean {
+  canBeEditedBy(userId: string): boolean {
     return this.userId === userId;
   }
 
-  public isActive(): boolean {
-    return this.status === 'active' || this.status === 'partially_profited';
+  isActive(): boolean {
+    return this.status === 'active';
   }
 
-  public getRiskRewardRatio(): number | null {
-    if (!this.tp1) return null;
-    const risk = Math.abs(this.entryPrice - this.stopLoss);
-    const reward = Math.abs(this.tp1 - this.entryPrice);
-    return reward / risk;
+  isClosed(): boolean {
+    return this.status === 'closed';
+  }
+
+  hasPartialProfits(): boolean {
+    return this.status === 'partially_profited' && this.tpHits.length > 0;
   }
 }

@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
-import { useToast } from '@/components/ui/use-toast';
+import NewAlertForm from '@/components/signals/NewAlertForm';
+import { useToast } from '@/hooks/use-toast';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { supabase } from '@/integrations/supabase/client';
-import type { TradeAlertSubmissionData } from '@/hooks/useOptimizedTradeAlertForm';
+import type { TradeAlertSubmissionData } from '@/types/trading';
 import { CreateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
 const NewSignalPage: React.FC = () => {
@@ -13,11 +13,7 @@ const NewSignalPage: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Removed live price preloading for a simpler, seamless form experience
 
-
-  // Get user ID
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -58,7 +54,6 @@ const NewSignalPage: React.FC = () => {
     try {
       console.log('Creating trade alert:', data);
       
-      // Convert form data to CreateTradeAlertDto
       const createDto: CreateTradeAlertDto = {
         assetName: data.asset_name,
         tradermadeSymbol: data.tradermade_symbol,
@@ -81,7 +76,6 @@ const NewSignalPage: React.FC = () => {
           description: `${data.asset_name} ${data.trade_type.replace('_', ' ').toUpperCase()} educational analysis has been posted.`,
         });
         
-        // Navigate to pattern stream page to show the new pattern
         navigate('/dashboard/signal-stream');
       } else {
         throw new Error('Failed to create educational pattern');
@@ -120,7 +114,7 @@ const NewSignalPage: React.FC = () => {
         </div>
         
         <div className="bg-card rounded-lg border border-border p-6">
-          <OptimizedNewAlertForm 
+          <NewAlertForm 
             onSubmit={handleSubmit}
             onCancel={handleCancel}
           />

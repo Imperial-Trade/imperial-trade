@@ -1,360 +1,459 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Filter, BarChart3, Users, TrendingUp, AlertTriangle } from 'lucide-react';
-import { TradeAlertData } from '@/components/signals/TradeAlertData';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { 
+  TrendingUp, 
+  Plus, 
+  BarChart3, 
+  Users, 
+  Clock,
+  CheckCircle,
+  XCircle,
+  Activity
+} from 'lucide-react';
+import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
-import { useAuth } from '@/contexts/AuthContext';
-import { createTpUpdateDto, AlertForAutoClosure } from '@/utils/tradingUtils';
-import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import { useOptimizedTradingRealtime } from '@/hooks/useOptimizedTradingRealtime';
+import { tradingApiService } from '@/api/services/TradingApiService';
+import { adminAuditService } from '@/api/services/AdminAuditService';
 
-export default function AdminTradeSignalsTab() {
-  const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [updateInProgress, setUpdateInProgress] = useState(new Set<string>());
+interface AdminTradeSignalsTabProps {
+  currentUser: any;
+}
 
-  // Get all alerts (admin can see all)
-  const {
-    alerts: allAlerts,
-    isLoading,
-    error,
-    updateAlert,
-    refreshAlerts
-  } = useOptimizedTrading(user?.id || '', true);
+export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps) {
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [signalStats, setSignalStats] = useState({
+    totalSignals: 0,
+    activeSignals: 0,
+    closedSignals: 0,
+    successRate: 0
+  });
 
-  const filteredAlerts = allAlerts.filter(alert => {
-    const matchesSearch = alert.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         alert.tradermadeSymbol.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || alert.status === statusFilter;
-    const matchesType = typeFilter === 'all' || alert.tradeType.includes(typeFilter.toLowerCase());
+  const { 
+    alerts, 
+    isLoading, 
+    error, 
+    refreshAlerts 
+  } = useOptimizedTrading(currentUser?.id || '', true);
+
+  // Enable real-time updates
+  useOptimizedTradingRealtime(currentUser?.id || '', true);
+
+  useEffect(() => {
+    if (alerts.length > 0) {
+      calculateStats();
+    }
+  }, [alerts]);
+
+  const calculateStats = () => {
+    const total = alerts.length;
+    const active = alerts.filter(alert => alert.status === 'active').length;
+    const closed = alerts.filter(alert => alert.status === 'closed').length;
+    const successful = alerts.filter(alert => 
+      alert.status === 'closed' && alert.tpHits && alert.tpHits.length > 0
+    ).length;
     
-    return matchesSearch && matchesStatus && matchesType;
-  });
+    setSignalStats({
+      totalSignals: total,
+      activeSignals: active,
+      closedSignals: closed,
+      successRate: closed > 0 ? Math.round((successful / closed) * 100) : 0
+    });
+  };
 
-  const activeAlerts = filteredAlerts.filter(alert => alert.status === 'active' || alert.status === 'pending');
-  const closedAlerts = filteredAlerts.filter(alert => alert.status === 'closed');
-
-  const totalAlerts = allAlerts.length;
-  const activeCount = allAlerts.filter(a => a.status === 'active').length;
-  const closedCount = allAlerts.filter(a => a.status === 'closed').length;
-  const pendingCount = allAlerts.filter(a => a.status === 'pending').length;
-
-  // Convert alert data to TradeAlertData format
-  const convertToTradeAlertData = (alert: any): TradeAlertData => ({
-    id: alert.id,
-    asset_name: alert.assetName,
-    tradermade_symbol: alert.tradermadeSymbol,
-    trade_type: alert.tradeType,
-    entry_price: alert.entryPrice,
-    stop_loss: alert.stopLoss,
-    status: alert.status,
-    tp1: alert.tp1,
-    tp2: alert.tp2,
-    tp3: alert.tp3,
-    tp4: alert.tp4,
-    tp5: alert.tp5,
-    tp_hits: alert.tpHits || [],
-    close_reason: alert.closeReason,
-    notes: alert.notes,
-    created_date: alert.createdAt,
-    updated_date: alert.updatedAt,
-    creator: alert.creator
-  });
-
-  // Enhanced TP hit handler with auto-closure logic
-  const handleTakeProfitHit = async (alert: TradeAlertData, newTPHits: number[], shouldAutoClose = false, closeReason: string | null = null) => {
-    if (updateInProgress.has(alert.id)) return;
-
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+  const handleNewSignalSubmit = async (signalData: any) => {
     try {
-      console.log(`🎯 Admin processing TP hits for alert ${alert.id}:`, newTPHits);
+      console.log('Creating new signal:', signalData);
       
-      // Convert to AlertForAutoClosure interface
-      const alertForClosure: AlertForAutoClosure = {
-        id: alert.id,
-        assetName: alert.asset_name,
-        tp1: alert.tp1,
-        tp2: alert.tp2,
-        tp3: alert.tp3,
-        tp4: alert.tp4,
-        tp5: alert.tp5,
-        tpHits: alert.tp_hits || [],
-        status: alert.status
-      };
+      // Create the signal using the trading API service
+      const result = await tradingApiService.createAlert({
+        assetName: signalData.assetName,
+        tradermadeSymbol: signalData.tradermadeSymbol,
+        tradeType: signalData.tradeType,
+        entryPrice: signalData.entryPrice,
+        stopLoss: signalData.stopLoss,
+        tp1: signalData.tp1,
+        tp2: signalData.tp2,
+        tp3: signalData.tp3,
+        tp4: signalData.tp4,
+        tp5: signalData.tp5,
+        notes: signalData.notes
+      }, currentUser?.id || '');
 
-      // Use the auto-closure utility
-      const updateDto = createTpUpdateDto(
-        alertForClosure, 
-        newTPHits, 
-        shouldAutoClose, 
-        closeReason
+      if (result.success) {
+        console.log('Signal created successfully:', result.data);
+        
+        // Log admin action
+        if (currentUser) {
+          await adminAuditService.logAdminAction(
+            'create_trade_signal',
+            currentUser.email || 'unknown',
+            'trade_alert',
+            result.data?.id || '',
+            {
+              assetName: signalData.assetName,
+              tradeType: signalData.tradeType,
+              entryPrice: signalData.entryPrice
+            }
+          );
+        }
+
+        // Refresh the trade alerts list
+        await refreshAlerts();
+        
+        // Close the dialog
+        setShowCreateDialog(false);
+      } else {
+        console.error('Failed to create signal:', result.error);
+      }
+    } catch (error) {
+      console.error('Error creating signal:', error);
+    }
+  };
+
+  const handleSignalStatusUpdate = async (alert: any, newStatus: string): Promise<void> => {
+    try {
+      const result = await tradingApiService.updateAlert(
+        alert.id, 
+        { status: newStatus as 'pending' | 'active' | 'closed' }, 
+        currentUser?.id || ''
       );
-
-      console.log('🚀 ADMIN CRITICAL TP Update:', {
-        alertId: alert.id,
-        assetName: alert.asset_name,
-        newTPHits,
-        updateDto,
-        willAutoClose: updateDto.status === 'closed'
-      });
-
-      await updateAlert(alert.id, updateDto);
       
-    } catch (err) {
-      console.error("❌ Admin failed to update TP hits:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
+      if (result.success && currentUser) {
+        // Log admin action
+        await adminAuditService.logAdminAction(
+          'update_trade_signal',
+          currentUser.email || 'unknown',
+          'trade_alert',
+          alert.id,
+          { status: newStatus }
+        );
+        
+        // Refresh the list
+        await refreshAlerts();
+      }
+    } catch (error) {
+      console.error('Error updating signal:', error);
     }
   };
 
-  const handleStatusUpdate = async (alert: TradeAlertData, newStatus: string) => {
-    if (updateInProgress.has(alert.id)) return;
-
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
-    try {
-      const updateDto: UpdateTradeAlertDto = {
-        status: newStatus as any,
-        closeReason: newStatus === 'closed' ? 'manual' : undefined
-      };
-      await updateAlert(alert.id, updateDto);
-    } catch (err) {
-      console.error("Admin failed to update status:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
+  const handleTakeProfitHit = async (alert: any, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string): Promise<void> => {
+    try {      
+      const result = await tradingApiService.updateAlert(
+        alert.id,
+        { 
+          tpHits: newTPHits,
+          closeReason: closeReason as any,
+          status: shouldAutoClose ? 'closed' as const : alert.status
+        },
+        currentUser?.id || ''
+      );
+      
+      if (result.success && currentUser) {
+        await adminAuditService.logAdminAction(
+          'tp_hit',
+          currentUser.email || 'unknown',
+          'trade_alert',
+          alert.id,
+          { newTPHits, closeReason }
+        );
+        
+        await refreshAlerts();
+      }
+    } catch (error) {
+      console.error('Error handling TP hit:', error);
     }
   };
 
-  const handleStopLossHit = async (alert: TradeAlertData, closeReason: string) => {
-    if (updateInProgress.has(alert.id)) return;
-
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+  const handleStopLossHit = async (alert: any, closeReason: string): Promise<void> => {
     try {
-      const updateDto: UpdateTradeAlertDto = {
-        status: 'closed',
-        closeReason: closeReason as any
-      };
-      await updateAlert(alert.id, updateDto);
-    } catch (err) {
-      console.error("Admin failed to update stop loss:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
+      const result = await tradingApiService.updateAlert(
+        alert.id,
+        { 
+          closeReason: closeReason as any,
+          status: 'closed' as const
+        },
+        currentUser?.id || ''
+      );
+      
+      if (result.success && currentUser) {
+        await adminAuditService.logAdminAction(
+          'stop_loss_hit',
+          currentUser.email || 'unknown',
+          'trade_alert',
+          alert.id,
+          { reason: closeReason }
+        );
+        
+        await refreshAlerts();
+      }
+    } catch (error) {
+      console.error('Error handling stop loss:', error);
     }
   };
 
-  const handleOrderActivation = async (alert: TradeAlertData) => {
-    if (updateInProgress.has(alert.id)) return;
-
-    setUpdateInProgress(prev => new Set(prev).add(alert.id));
+  const handleOrderActivation = async (alert: any): Promise<void> => {
     try {
-      const updateDto: UpdateTradeAlertDto = {
-        status: 'active'
-      };
-      await updateAlert(alert.id, updateDto);
-    } catch (err) {
-      console.error("Admin failed to activate order:", err);
-    } finally {
-      setUpdateInProgress(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(alert.id);
-        return newSet;
-      });
+      const result = await tradingApiService.updateAlert(
+        alert.id,
+        { status: 'active' as const },
+        currentUser?.id || ''
+      );
+      
+      if (result.success && currentUser) {
+        await adminAuditService.logAdminAction(
+          'order_activated',
+          currentUser.email || 'unknown',
+          'trade_alert',
+          alert.id,
+          { previousStatus: alert.status }
+        );
+        
+        await refreshAlerts();
+      }
+    } catch (error) {
+      console.error('Error activating order:', error);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center text-red-500 p-8">
-        <AlertTriangle className="h-12 w-12 mx-auto mb-4" />
-        <h3 className="text-lg font-medium mb-2">Error Loading Signals</h3>
-        <p className="text-sm">{error}</p>
-        <Button onClick={refreshAlerts} className="mt-4">Retry</Button>
-      </div>
+      <Card className="glass-effect border-default">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-green"></div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Signals</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalAlerts}</div>
+    <div className="w-full space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="glass-effect border-default">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-secondary text-sm">Total Signals</p>
+                <p className="text-2xl font-bold text-primary">{signalStats.totalSignals}</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-blue-400" />
+            </div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeCount}</div>
+
+        <Card className="glass-effect border-default">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-secondary text-sm">Active Signals</p>
+                <p className="text-2xl font-bold text-primary">{signalStats.activeSignals}</p>
+              </div>
+              <Activity className="w-8 h-8 text-green-400" />
+            </div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{pendingCount}</div>
+
+        <Card className="glass-effect border-default">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-secondary text-sm">Closed Signals</p>
+                <p className="text-2xl font-bold text-primary">{signalStats.closedSignals}</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-orange-400" />
+            </div>
           </CardContent>
         </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Closed</CardTitle>
-            <Users className="h-4 w-4 text-gray-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{closedCount}</div>
+
+        <Card className="glass-effect border-default">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-secondary text-sm">Success Rate</p>
+                <p className="text-2xl font-bold text-primary">{signalStats.successRate}%</p>
+              </div>
+              <BarChart3 className="w-8 h-8 text-purple-400" />
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search by asset name or symbol..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+      {/* Main Content */}
+      <Card className="glass-effect border-default">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-primary flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Trade Signals Management
+              <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 ml-2">
+                Admin
+              </Badge>
+            </CardTitle>
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-accent-green hover:bg-accent-green/90 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Signal
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Tabs defaultValue="all" className="w-full">
+            <div className="px-6 pt-6">
+              <TabsList className="grid w-full grid-cols-3 bg-surface">
+                <TabsTrigger value="all" className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  All Signals
+                </TabsTrigger>
+                <TabsTrigger value="active" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Active
+                </TabsTrigger>
+                <TabsTrigger value="closed" className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  Closed
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="all" className="p-6">
+              <div className="grid gap-4">
+                {alerts.length > 0 ? (
+                  alerts.map((alert) => (
+                    <TradeAlertCard
+                      key={alert.id}
+                      alert={{
+                        ...alert,
+                        asset_name: alert.assetName,
+                        tradermade_symbol: alert.tradermadeSymbol,
+                        trade_type: alert.tradeType,
+                        entry_price: alert.entryPrice,
+                        stop_loss: alert.stopLoss,
+                        tp_hits: alert.tpHits,
+                        close_reason: alert.closeReason,
+                        created_date: alert.createdAt,
+                        updated_date: alert.updatedAt
+                      }}
+                      onStatusUpdate={handleSignalStatusUpdate}
+                      onTakeProfitHit={handleTakeProfitHit}
+                      onStopLossHit={handleStopLossHit}
+                      onOrderActivation={handleOrderActivation}
+                      isAdmin={true}
+                      isCreator={true}
+                      connectionStatus="connected"
+                      priceSource="admin"
+                      isRecentClosure={false}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <TrendingUp className="w-16 h-16 text-secondary/50 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-primary mb-2">
+                      No Trade Signals
+                    </h3>
+                    <p className="text-secondary">
+                      Create your first trade signal to get started.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="active" className="p-6">
+              <div className="grid gap-4">
+                {alerts.filter(alert => alert.status === 'active').map((alert) => (
+                  <TradeAlertCard
+                    key={alert.id}
+                    alert={{
+                      ...alert,
+                      asset_name: alert.assetName,
+                       tradermade_symbol: alert.tradermadeSymbol,
+                      trade_type: alert.tradeType,
+                      entry_price: alert.entryPrice,
+                      stop_loss: alert.stopLoss,
+                      tp_hits: alert.tpHits,
+                      close_reason: alert.closeReason,
+                      created_date: alert.createdAt,
+                      updated_date: alert.updatedAt
+                    }}
+                    onStatusUpdate={handleSignalStatusUpdate}
+                    onTakeProfitHit={handleTakeProfitHit}
+                    onStopLossHit={handleStopLossHit}
+                    onOrderActivation={handleOrderActivation}
+                    isAdmin={true}
+                    isCreator={true}
+                    connectionStatus="connected"
+                    priceSource="admin"
+                    isRecentClosure={false}
+                  />
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="closed" className="p-6">
+              <div className="grid gap-4">
+                {alerts.filter(alert => alert.status === 'closed').map((alert) => (
+                  <TradeAlertCard
+                    key={alert.id}
+                    alert={{
+                      ...alert,
+                      asset_name: alert.assetName,
+                      tradermade_symbol: alert.tradermadeSymbol,
+                      trade_type: alert.tradeType,
+                      entry_price: alert.entryPrice,
+                      stop_loss: alert.stopLoss,
+                      tp_hits: alert.tpHits,
+                      close_reason: alert.closeReason,
+                      created_date: alert.createdAt,
+                      updated_date: alert.updatedAt
+                    }}
+                    onStatusUpdate={handleSignalStatusUpdate}
+                    onTakeProfitHit={handleTakeProfitHit}
+                    onStopLossHit={handleStopLossHit}
+                    onOrderActivation={handleOrderActivation}
+                    isAdmin={true}
+                    isCreator={true}
+                    connectionStatus="connected"
+                    priceSource="admin"
+                    isRecentClosure={false}
+                  />
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Create Signal Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-primary flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              Create New Trade Signal
+            </DialogTitle>
+          </DialogHeader>
+          <OptimizedNewAlertForm
+            onSubmit={handleNewSignalSubmit}
+            onCancel={() => setShowCreateDialog(false)}
           />
-        </div>
-        
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="partially_profited">Partially Profited</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
-          </SelectContent>
-        </Select>
-        
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="buy">Buy Orders</SelectItem>
-            <SelectItem value="sell">Sell Orders</SelectItem>
-            <SelectItem value="limit">Limit Orders</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Signals Tabs */}
-      <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="active">
-            Active Signals ({activeAlerts.length})
-          </TabsTrigger>
-          <TabsTrigger value="closed">
-            Closed Signals ({closedAlerts.length})
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="active" className="space-y-4">
-          {activeAlerts.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              {activeAlerts.map(alert => (
-                <TradeAlertCard
-                  key={alert.id}
-                  alert={convertToTradeAlertData(alert)}
-                  onStatusUpdate={handleStatusUpdate}
-                  onTakeProfitHit={handleTakeProfitHit}
-                  onStopLossHit={handleStopLossHit}
-                  onOrderActivation={handleOrderActivation}
-                  isAdmin={true}
-                  isCreator={true}
-                  creator={alert.creator}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-muted-foreground mb-2">No Active Signals</h3>
-              <p className="text-sm text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' || typeFilter !== 'all' 
-                  ? 'No signals match your current filters.' 
-                  : 'No active signals at the moment.'}
-              </p>
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="closed" className="space-y-4">
-          {closedAlerts.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              {closedAlerts.map(alert => (
-                <TradeAlertCard
-                  key={alert.id}
-                  alert={convertToTradeAlertData(alert)}
-                  onStatusUpdate={handleStatusUpdate}
-                  onTakeProfitHit={handleTakeProfitHit}
-                  onStopLossHit={handleStopLossHit}
-                  onOrderActivation={handleOrderActivation}
-                  isAdmin={true}
-                  isCreator={true}
-                  creator={alert.creator}
-                  isRecentClosure={true}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-muted-foreground mb-2">No Closed Signals</h3>
-              <p className="text-sm text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' || typeFilter !== 'all' 
-                  ? 'No signals match your current filters.' 
-                  : 'No closed signals yet.'}
-              </p>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

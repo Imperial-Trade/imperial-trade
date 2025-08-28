@@ -1,6 +1,6 @@
 
 import { useState, useCallback, useRef } from 'react';
-import { TradeAlertWithProfile, TradingApiService } from '@/api/services/TradingApiService';
+import { TradeAlertWithProfile, tradingApiService } from '@/api/services/TradingApiService';
 
 interface UseTradingFallbackOptions {
   userId: string;
@@ -63,11 +63,30 @@ export const useTradingFallback = ({
     setLastFetch(now);
 
     try {
-      const result = await TradingApiService.getAllAlerts(showAllSignals);
+      let result;
       
-      setFallbackAlerts(result);
-      setCachedAlerts(cacheKey, result);
-      setFallbackError(null);
+      if (showAllSignals) {
+        result = await tradingApiService.getAllPublicAlertsWithProfiles();
+      } else {
+        const userAlertsResult = await tradingApiService.getAllAlerts(userId);
+        if (userAlertsResult.success && userAlertsResult.data) {
+          result = {
+            success: true,
+            data: userAlertsResult.data.map(alert => ({ ...alert, creator: undefined })),
+            error: undefined
+          };
+        } else {
+          result = userAlertsResult;
+        }
+      }
+      
+      if (result.success && result.data) {
+        setFallbackAlerts(result.data);
+        setCachedAlerts(cacheKey, result.data);
+        setFallbackError(null);
+      } else {
+        setFallbackError(result.error || 'Failed to fetch alerts');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setFallbackError(errorMessage);

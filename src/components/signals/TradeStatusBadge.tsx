@@ -1,92 +1,102 @@
 
+import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Check, X, Target, TrendingUp, Hourglass } from 'lucide-react';
 
 interface TradeStatusBadgeProps {
   alert: {
-    status: 'pending' | 'active' | 'closed' | 'partially_profited' | 'cancelled';
+    status: 'pending' | 'active' | 'closed';
     trade_type?: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+    tp_hits?: number[];
     close_reason?: string;
   };
-  updatedDate: string;
+  updatedDate?: string;
   isRecentClosure?: boolean;
-  className?: string;
 }
 
-export const TradeStatusBadge = ({ alert, updatedDate, isRecentClosure, className }: TradeStatusBadgeProps) => {
-  const getStatusConfig = () => {
-    const isSellOrder = alert.trade_type === 'sell' || alert.trade_type === 'sell_limit';
-    
-    switch (alert.status) {
-      case 'pending':
-        return {
-          label: 'Pending Order',
-          variant: 'secondary' as const,
-          className: 'bg-accent-gold/20 text-accent-gold border-accent-gold/30 animate-pulse'
-        };
-      case 'active':
-        return {
-          label: 'Live Signal',
-          variant: 'default' as const,
-          className: isSellOrder 
-            ? 'bg-accent-red/20 text-accent-red border-accent-red/30 animate-pulse'
-            : 'bg-accent-green/20 text-accent-green border-accent-green/30 animate-pulse'
-        };
-      case 'partially_profited':
-        return {
-          label: 'Partial Profit',
-          variant: 'default' as const,
-          className: 'bg-accent-blue/20 text-accent-blue border-accent-blue/30'
-        };
-      case 'closed':
-        const closeReason = alert.close_reason;
-        let label = 'Closed';
-        let colorClass = 'bg-muted/20 text-muted-foreground border-border/30';
-        
-        if (closeReason === 'stop_loss') {
-          label = 'Stop Loss Hit';
-          colorClass = 'bg-accent-red/20 text-accent-red border-accent-red/30';
-        } else if (closeReason?.startsWith('tp') || closeReason === 'all_tps_hit') {
-          label = 'Take Profit Hit';
-          colorClass = 'bg-accent-green/20 text-accent-green border-accent-green/30';
-        } else if (closeReason === 'manual') {
-          label = 'Manually Closed';
-        }
-        
-        return {
-          label,
-          variant: 'outline' as const,
-          className: colorClass
-        };
-      case 'cancelled':
-        return {
-          label: 'Cancelled',
-          variant: 'destructive' as const,
-          className: 'bg-accent-red/20 text-accent-red border-accent-red/30'
-        };
-      default:
-        return {
-          label: 'Unknown',
-          variant: 'outline' as const,
-          className: 'bg-muted/20 text-muted-foreground border-border/30'
-        };
+export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }: TradeStatusBadgeProps) {
+    const hitTPs = alert.tp_hits || [];
+    const isActive = alert.status === 'active';
+    const isPending = alert.status === 'pending';
+    const closeReason = alert.close_reason;
+    const isClosed = alert.status === 'closed';
+    const tradeType = alert.trade_type;
+    const friendlyType =
+      tradeType === 'buy_limit' ? 'Buy Limit' :
+      tradeType === 'sell_limit' ? 'Sell Limit' :
+      tradeType === 'buy' ? 'Buy' :
+      tradeType === 'sell' ? 'Sell' : undefined;
+    const isLimitType = tradeType === 'buy_limit' || tradeType === 'sell_limit';
+
+    if (isPending) {
+        const pendingText = isLimitType && friendlyType ? `Pending ${friendlyType}` : 'Pending';
+        return (
+            <Badge className="bg-gold-light/20 text-gold-warm border border-gold-warm/30 uppercase">
+                <Hourglass className="w-3 h-3 mr-1 animate-spin" /> {pendingText}
+            </Badge>
+        );
     }
-  };
 
-  const config = getStatusConfig();
+    if (isActive && hitTPs.length > 0) {
+        const highestTP = Math.max(...hitTPs);
+        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
+        return (
+            <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-emerald-400 border-emerald-400 animate-pulse whitespace-nowrap uppercase">
+                    <Target className="w-3 h-3 mr-1" /> TP{highestTP} HIT
+                </Badge>
+                <Badge variant="outline" className="text-emerald-400 border-emerald-400 uppercase whitespace-nowrap">
+                    {activeText}
+                </Badge>
+            </div>
+        );
+    }
 
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <Badge 
-        variant={config.variant}
-        className={`${config.className} ${className || ''} transition-all duration-300`}
-      >
-        {config.label}
-      </Badge>
-      <div className="text-xs text-muted-foreground">
-        {new Date(updatedDate).toLocaleDateString()}
-      </div>
-    </div>
-  );
-};
+    if (isActive) {
+        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
+        return (
+            <Badge variant="outline" className="text-emerald-400 border-emerald-400">
+                {activeText}
+            </Badge>
+        );
+    }
 
-export default TradeStatusBadge;
+    if (isClosed) {
+        if (closeReason === 'stop_loss') {
+            return (
+                <Badge className="bg-red-500/30 text-red-200 border-red-400 shadow-lg shadow-red-500/50 border-2">
+                    <X className="w-4 h-4 mr-1" /> STOP LOSS HIT
+                </Badge>
+            );
+        }
+
+        if (closeReason && closeReason.startsWith('tp')) {
+            const tpNumber = closeReason.replace('tp', '');
+            return (
+                <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400 shadow-lg shadow-emerald-500/50 border-2">
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    TP{tpNumber} REACHED
+                </Badge>
+            );
+        }
+
+        if (hitTPs.length > 0) {
+            const highestTP = Math.max(...hitTPs);
+            return (
+                <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400 shadow-lg shadow-emerald-500/50 border-2">
+                    <Check className="w-4 h-4 mr-1" />
+                    TP{highestTP} HIT
+                </Badge>
+            );
+        }
+
+        return (
+            <Badge className="bg-gray-600/30 text-gray-300 border-gray-500 shadow-lg shadow-gray-500/30 border-2">
+                <X className="w-4 h-4 mr-1" />
+                MANUALLY CLOSED
+            </Badge>
+        );
+    }
+
+    return null;
+}

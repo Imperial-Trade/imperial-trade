@@ -65,12 +65,10 @@ export const useOptimizedTradeAlertForm = ({
         status: data.status
       });
       
-      // FIXED: Proper status logic with explicit typing - limit orders start as 'pending', market orders as 'active'
+      // Normalize status: limit orders start as 'pending' until activated
       const tradeType = data.trade_type;
-      const correctStatus: 'pending' | 'active' = (tradeType === 'buy_limit' || tradeType === 'sell_limit') ? 'pending' : 'active';
-      const normalizedData: TradeAlertSubmissionData = { ...data, status: correctStatus };
-      
-      console.log('Normalized data with correct status:', normalizedData);
+      const adjustedStatus = (tradeType === 'buy_limit' || tradeType === 'sell_limit') ? 'pending' : (data.status ?? 'active');
+      const normalizedData = { ...data, status: adjustedStatus };
       
       try {
         setIsSubmitting(true);

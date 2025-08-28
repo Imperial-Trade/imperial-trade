@@ -1,4 +1,3 @@
-
 import { ITradingRepository } from '@/domain/interfaces/repositories/ITradingRepository';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
@@ -29,7 +28,7 @@ export class TradingService {
     }));
   }
 
-  async getAlertsByStatus(status: 'pending' | 'active' | 'closed' | 'partially_profited', userId: string): Promise<TradeAlertResponseDto[]> {
+  async getAlertsByStatus(status: 'pending' | 'active' | 'closed', userId: string): Promise<TradeAlertResponseDto[]> {
     const alerts = await this.tradingRepository.findAlertsByStatus(status, userId);
     return alerts.map(alert => ({
       id: alert.id,

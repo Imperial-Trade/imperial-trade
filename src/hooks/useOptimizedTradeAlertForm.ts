@@ -65,9 +65,9 @@ export const useOptimizedTradeAlertForm = ({
         status: data.status
       });
       
-      // CRITICAL FIX: Properly determine status based on trade type
+      // CRITICAL FIX: Properly determine status based on trade type with correct typing
       const tradeType = data.trade_type;
-      const correctStatus = (tradeType === 'buy_limit' || tradeType === 'sell_limit') ? 'pending' : 'active';
+      const correctStatus: "pending" | "active" = (tradeType === 'buy_limit' || tradeType === 'sell_limit') ? 'pending' : 'active';
       const normalizedData = { ...data, status: correctStatus };
       
       console.log(`🔧 Status Logic: ${tradeType} → ${correctStatus}`);

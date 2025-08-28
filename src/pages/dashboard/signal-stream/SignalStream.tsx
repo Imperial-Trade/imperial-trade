@@ -230,7 +230,9 @@ export default function SignalStream() {
   useEffect(() => {
     if (connectionStatus === 'connecting' && nextRetryAt) {
       const update = () => {
-        const ms = nextRetryAt - Date.now();
+        // Fix the arithmetic error by ensuring nextRetryAt is treated as a number
+        const retryTime = typeof nextRetryAt === 'number' ? nextRetryAt : 0;
+        const ms = retryTime - Date.now();
         setReconnectIn(ms > 0 ? Math.ceil(ms / 1000) : 0);
       };
       update();
@@ -240,6 +242,7 @@ export default function SignalStream() {
       setReconnectIn(null);
     }
   }, [connectionStatus, nextRetryAt]);
+
   const getConnectionStatusBadge = () => {
     switch (connectionStatus) {
       case 'connected':

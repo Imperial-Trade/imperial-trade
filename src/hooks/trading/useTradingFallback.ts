@@ -68,16 +68,7 @@ export const useTradingFallback = ({
       if (showAllSignals) {
         result = await tradingApiService.getAllPublicAlertsWithProfiles();
       } else {
-        const userAlertsResult = await tradingApiService.getAllAlerts(userId);
-        if (userAlertsResult.success && userAlertsResult.data) {
-          result = {
-            success: true,
-            data: userAlertsResult.data.map(alert => ({ ...alert, creator: undefined })),
-            error: undefined
-          };
-        } else {
-          result = userAlertsResult;
-        }
+        result = await tradingApiService.getAllAlerts(userId);
       }
       
       if (result.success && result.data) {

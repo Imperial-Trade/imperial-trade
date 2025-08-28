@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -22,7 +21,7 @@ export type TradeAlertWithProfile = {
   tp5?: number;
   tpHits: number[];
   notes?: string;
-  closeReason?: string;
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit';
   createdAt: string;
   updatedAt: string;
   creator?: {
@@ -43,6 +42,32 @@ export interface ApiResponse<T> {
 }
 
 // Private function to convert snake_case DB row to camelCase DTO
+function normalizeCloseReason(value?: string):
+  | 'manual'
+  | 'stop_loss'
+  | 'tp1'
+  | 'tp2'
+  | 'tp3'
+  | 'tp4'
+  | 'tp5'
+  | 'reversal_after_tp'
+  | 'all_tps_hit'
+  | undefined {
+  if (!value) return undefined;
+  const allowed = new Set([
+    'manual',
+    'stop_loss',
+    'tp1',
+    'tp2',
+    'tp3',
+    'tp4',
+    'tp5',
+    'reversal_after_tp',
+    'all_tps_hit',
+  ]);
+  return allowed.has(value) ? (value as any) : undefined;
+}
+
 function mapToTradeAlertWithProfile(row: TradeAlertRow, profile?: any): TradeAlertWithProfile {
   return {
     id: row.id,
@@ -60,7 +85,7 @@ function mapToTradeAlertWithProfile(row: TradeAlertRow, profile?: any): TradeAle
     tp5: row.tp5 ? Number(row.tp5) : undefined,
     tpHits: row.tp_hits || [],
     notes: row.notes || undefined,
-    closeReason: row.close_reason || undefined,
+    closeReason: normalizeCloseReason(row.close_reason || undefined),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     creator: profile ? {
@@ -78,7 +103,6 @@ export class TradingApiService {
   // Get all alerts for a specific user with profiles
   async getAllAlerts(userId: string): Promise<ApiResponse<TradeAlertWithProfile[]>> {
     try {
-      // Fetch trade alerts for the user
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
         .select('*')
@@ -94,7 +118,6 @@ export class TradingApiService {
         return { success: true, data: [] };
       }
 
-      // Fetch profile for the user
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -105,7 +128,6 @@ export class TradingApiService {
         console.error('Error fetching user profile:', profileError);
       }
 
-      // Map to camelCase format
       const mappedAlerts = alertsData.map(alert => mapToTradeAlertWithProfile(alert, profileData));
 
       return { success: true, data: mappedAlerts };
@@ -118,7 +140,6 @@ export class TradingApiService {
   // Get all public alerts from educators/admins with profiles
   async getAllPublicAlertsWithProfiles(): Promise<ApiResponse<TradeAlertWithProfile[]>> {
     try {
-      // Fetch ALL trade alerts - RLS will filter to show only educator/admin signals
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
         .select('*')
@@ -133,10 +154,8 @@ export class TradingApiService {
         return { success: true, data: [] };
       }
 
-      // Get unique user IDs from alerts
       const userIds = [...new Set(alertsData.map(alert => alert.user_id))];
 
-      // Fetch profiles for all users
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -146,7 +165,6 @@ export class TradingApiService {
         console.error('Error fetching profiles:', profilesError);
       }
 
-      // Create profile map for quick lookup
       const profilesMap = new Map();
       if (profilesData) {
         profilesData.forEach(profile => {
@@ -154,7 +172,6 @@ export class TradingApiService {
         });
       }
 
-      // Map to camelCase format with profiles
       const mappedAlerts = alertsData.map(alert => {
         const profile = profilesMap.get(alert.user_id);
         return mapToTradeAlertWithProfile(alert, profile);
@@ -170,7 +187,6 @@ export class TradingApiService {
   // Get alerts by status
   async getAlertsByStatus(status: 'pending' | 'active' | 'closed' | 'partially_profited', userId: string): Promise<ApiResponse<TradeAlertWithProfile[]>> {
     try {
-      // Fetch trade alerts for the user with specific status
       const { data: alertsData, error: alertsError } = await supabase
         .from('trade_alerts')
         .select('*')
@@ -187,7 +203,6 @@ export class TradingApiService {
         return { success: true, data: [] };
       }
 
-      // Fetch profile for the user
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -198,7 +213,6 @@ export class TradingApiService {
         console.error('Error fetching user profile:', profileError);
       }
 
-      // Map to camelCase format
       const mappedAlerts = alertsData.map(alert => mapToTradeAlertWithProfile(alert, profileData));
 
       return { success: true, data: mappedAlerts };
@@ -238,7 +252,6 @@ export class TradingApiService {
         return { success: false, error: error.message };
       }
 
-      // Convert to TradeAlertResponseDto (camelCase)
       const responseDto: TradeAlertResponseDto = {
         id: data.id,
         userId: data.user_id,
@@ -254,8 +267,8 @@ export class TradingApiService {
         tp4: data.tp4 ? Number(data.tp4) : undefined,
         tp5: data.tp5 ? Number(data.tp5) : undefined,
         tpHits: data.tp_hits || [],
-        notes: data.notes,
-        closeReason: data.close_reason,
+        notes: data.notes || undefined,
+        closeReason: normalizeCloseReason(data.close_reason || undefined),
         createdAt: data.created_at,
         updatedAt: data.updated_at
       };
@@ -282,7 +295,7 @@ export class TradingApiService {
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
-        .eq('user_id', userId) // Ensure user can only update their own alerts
+        .eq('user_id', userId)
         .select('*')
         .single();
 
@@ -291,7 +304,6 @@ export class TradingApiService {
         return { success: false, error: error.message };
       }
 
-      // Convert to TradeAlertResponseDto (camelCase)
       const responseDto: TradeAlertResponseDto = {
         id: data.id,
         userId: data.user_id,
@@ -307,8 +319,8 @@ export class TradingApiService {
         tp4: data.tp4 ? Number(data.tp4) : undefined,
         tp5: data.tp5 ? Number(data.tp5) : undefined,
         tpHits: data.tp_hits || [],
-        notes: data.notes,
-        closeReason: data.close_reason,
+        notes: data.notes || undefined,
+        closeReason: normalizeCloseReason(data.close_reason || undefined),
         createdAt: data.created_at,
         updatedAt: data.updated_at
       };
@@ -328,7 +340,7 @@ export class TradingApiService {
         .from('trade_alerts')
         .delete()
         .eq('id', id)
-        .eq('user_id', userId); // Ensure user can only delete their own alerts
+        .eq('user_id', userId);
 
       if (error) {
         console.error(`Error deleting trade alert with id ${id}:`, error);

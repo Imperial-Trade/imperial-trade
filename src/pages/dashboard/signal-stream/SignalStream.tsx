@@ -553,7 +553,17 @@ export default function SignalStream() {
                                 entry_price: alert.entryPrice,
                                 stop_loss: alert.stopLoss,
                                 tp_hits: alert.tpHits,
-                                close_reason: alert.closeReason,
+                                close_reason: (alert.closeReason as
+                                  | 'manual'
+                                  | 'stop_loss'
+                                  | 'tp1'
+                                  | 'tp2'
+                                  | 'tp3'
+                                  | 'tp4'
+                                  | 'tp5'
+                                  | 'reversal_after_tp'
+                                  | 'all_tps_hit'
+                                  | undefined),
                                 created_date: alert.createdAt,
                                 updated_date: alert.updatedAt
                               }} 
@@ -613,7 +623,17 @@ export default function SignalStream() {
                                 entry_price: alert.entryPrice,
                                 stop_loss: alert.stopLoss,
                                 tp_hits: alert.tpHits,
-                                close_reason: alert.closeReason,
+                                close_reason: (alert.closeReason as
+                                  | 'manual'
+                                  | 'stop_loss'
+                                  | 'tp1'
+                                  | 'tp2'
+                                  | 'tp3'
+                                  | 'tp4'
+                                  | 'tp5'
+                                  | 'reversal_after_tp'
+                                  | 'all_tps_hit'
+                                  | undefined),
                                 created_date: alert.createdAt,
                                 updated_date: alert.updatedAt
                               }} 

@@ -3,6 +3,55 @@ import { tradingApiService } from '../services/TradingApiService';
 import { adminTradingService } from '../services/AdminTradingService';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { apiClient } from '../client/ApiClient';
+import { TradeAlertWithProfile } from '../services/TradingApiService';
+
+// Helper to narrow/normalize closeReason into the strict union
+const normalizeCloseReason = (value?: string):
+  | 'manual'
+  | 'stop_loss'
+  | 'tp1'
+  | 'tp2'
+  | 'tp3'
+  | 'tp4'
+  | 'tp5'
+  | 'reversal_after_tp'
+  | 'all_tps_hit'
+  | undefined => {
+  if (!value) return undefined;
+  const allowed = new Set([
+    'manual',
+    'stop_loss',
+    'tp1',
+    'tp2',
+    'tp3',
+    'tp4',
+    'tp5',
+    'reversal_after_tp',
+    'all_tps_hit',
+  ]);
+  return allowed.has(value) ? (value as any) : undefined;
+};
+
+const toResponseDto = (alert: TradeAlertWithProfile): TradeAlertResponseDto => ({
+  id: alert.id,
+  userId: alert.userId,
+  assetName: alert.assetName,
+  tradermadeSymbol: alert.tradermadeSymbol,
+  tradeType: alert.tradeType,
+  entryPrice: alert.entryPrice,
+  stopLoss: alert.stopLoss,
+  status: alert.status,
+  tp1: alert.tp1,
+  tp2: alert.tp2,
+  tp3: alert.tp3,
+  tp4: alert.tp4,
+  tp5: alert.tp5,
+  tpHits: alert.tpHits,
+  notes: alert.notes,
+  closeReason: normalizeCloseReason(alert.closeReason),
+  createdAt: alert.createdAt,
+  updatedAt: alert.updatedAt,
+});
 
 // Legacy wrapper for backward compatibility
 export class TradeAlert {
@@ -11,7 +60,8 @@ export class TradeAlert {
     if (!result.success) {
       throw new Error(result.error || 'Failed to fetch alerts by status');
     }
-    return result.data || [];
+    const data = result.data || [];
+    return data.map(toResponseDto);
   }
 
   static async list(userId: string): Promise<TradeAlertResponseDto[]> {
@@ -19,7 +69,8 @@ export class TradeAlert {
     if (!result.success) {
       throw new Error(result.error || 'Failed to fetch alerts');
     }
-    return result.data || [];
+    const data = result.data || [];
+    return data.map(toResponseDto);
   }
 
   // Admin-specific method to get all alerts
@@ -58,7 +109,7 @@ export class TradeAlert {
         tp5: alert.tp5 ? Number(alert.tp5) : undefined,
         tpHits: alert.tp_hits || [],
         notes: alert.notes,
-        closeReason: alert.close_reason,
+        closeReason: normalizeCloseReason(alert.close_reason),
         createdAt: alert.created_at,
         updatedAt: alert.updated_at
       };
@@ -94,3 +145,4 @@ export class TradeAlert {
 
 // Keep other classes as simple wrappers for now
 export { TradeJournalEntry, TradingStrategy, TradingGroup, GroupJournalEntry, VerifiedTrader, TradeHistory } from '../base/BaseEntity';
+

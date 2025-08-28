@@ -1,4 +1,3 @@
-
 import React, { useState, memo, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
 import TradeStatusBadge from './TradeStatusBadge';
-import TradingCalculator from './TradingCalculator';
+import { TradingCalculator } from './TradingCalculator';
 import SignalSharingModal from './SignalSharingModal';
 import { TradeAlertCardProps } from '@/types/components';
 import { TradeSignal } from '@/services/SignalSharingService';

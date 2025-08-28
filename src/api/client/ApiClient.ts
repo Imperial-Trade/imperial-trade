@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { ApiResponse } from '@/types/common';
@@ -33,11 +34,11 @@ export class ApiClient {
       let query = supabase.from(table).select(options?.select || '*');
 
       if (options?.eq) {
-        query = query.eq(options.eq.column, options.eq.value);
+        query = query.eq(options.eq.column as any, options.eq.value);
       }
 
       if (options?.order) {
-        query = query.order(options.order.column, { 
+        query = query.order(options.order.column as any, { 
           ascending: options.order.ascending ?? true 
         });
       }
@@ -125,7 +126,7 @@ export class ApiClient {
       const { data: result, error } = await supabase
         .from(table)
         .update(data as any)
-        .eq('id' as any, id)
+        .eq('id' as any, id as any)
         .select()
         .single();
 
@@ -169,7 +170,7 @@ export class ApiClient {
       const { error } = await supabase
         .from(table)
         .delete()
-        .eq('id' as any, id);
+        .eq('id' as any, id as any);
 
       if (error) {
         console.error(`Database error in ${table} delete:`, error);

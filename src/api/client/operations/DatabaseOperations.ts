@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ApiResponse } from '@/types/common';
 import { isValidUUID } from '@/types/guards';
@@ -27,11 +28,11 @@ export class DatabaseOperations {
           let query = supabase.from(table).select(options?.select || '*');
 
           if (options?.eq) {
-            query = query.eq(options.eq.column, options.eq.value);
+            query = query.eq(options.eq.column as any, options.eq.value);
           }
 
           if (options?.order) {
-            query = query.order(options.order.column, { 
+            query = query.order(options.order.column as any, { 
               ascending: options.order.ascending ?? true 
             });
           }
@@ -137,7 +138,7 @@ export class DatabaseOperations {
     try {
       return await withRetry(async () => {
         const executeQuery = async () => {
-          return supabase.from(table).update(data as any).eq('id' as any, id).select().maybeSingle();
+          return supabase.from(table).update(data as any).eq('id' as any, id as any).select().maybeSingle();
         };
         
         const response = await withTimeout(
@@ -183,7 +184,7 @@ export class DatabaseOperations {
     try {
       return await withRetry(async () => {
         const executeQuery = async () => {
-          return supabase.from(table).delete().eq('id' as any, id);
+          return supabase.from(table).delete().eq('id' as any, id as any);
         };
         
         const response = await withTimeout(

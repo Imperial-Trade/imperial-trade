@@ -25,7 +25,7 @@ export class MarketAlert {
     const { data, error } = await supabase
       .from('market_alerts')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -49,7 +49,7 @@ export class OpportunitySignal {
     const { data, error } = await supabase
       .from('opportunity_signals')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -73,7 +73,7 @@ export class RiskSimulation {
     const { data, error } = await supabase
       .from('risk_simulations')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -97,7 +97,7 @@ export class TradeJournalEntry {
     const { data, error } = await supabase
       .from('trade_journal_entries')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -119,7 +119,7 @@ export class TradeJournalEntry {
     const { error } = await supabase
       .from('trade_journal_entries')
       .delete()
-      .eq('id', entryId);
+      .eq('id', entryId as any);
     
     if (error) throw error;
   }
@@ -128,7 +128,7 @@ export class TradeJournalEntry {
     const { data, error } = await supabase
       .from('trade_journal_entries')
       .update(entryData)
-      .eq('id', entryId)
+      .eq('id', entryId as any)
       .select()
       .single();
     
@@ -142,7 +142,7 @@ export class TradingStrategy {
     const { data, error } = await supabase
       .from('trading_strategies')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -166,7 +166,7 @@ export class TradingGroup {
     const { data, error } = await supabase
       .from('trading_groups')
       .select('*')
-      .eq('created_by', userId)
+      .eq('created_by', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -190,7 +190,7 @@ export class GroupJournalEntry {
     const { data, error } = await supabase
       .from('group_journal_entries')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -237,7 +237,7 @@ export class TradeHistory {
     const { data, error } = await supabase
       .from('trade_history')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -272,7 +272,7 @@ export class Quiz {
     const { data, error } = await supabase
       .from('quizzes')
       .select('*')
-      .eq('id', id)
+      .eq('id', id as any)
       .single();
     
     if (error) throw error;
@@ -285,7 +285,7 @@ export class QuizAttempt {
     const { data, error } = await supabase
       .from('quiz_attempts')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -309,7 +309,7 @@ export class UserProgress {
     const { data, error } = await supabase
       .from('user_progress')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -343,7 +343,7 @@ export class LearningPathway {
     const { data, error } = await supabase
       .from('learning_pathways')
       .select('*')
-      .eq('id', id)
+      .eq('id', id as any)
       .single();
     
     if (error) throw error;
@@ -356,7 +356,7 @@ export class UserPathwayProgress {
     const { data, error } = await supabase
       .from('user_pathway_progress')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId as any)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -390,7 +390,7 @@ export class Course {
     const { data, error } = await supabase
       .from('courses')
       .select('*')
-      .eq('id', id)
+      .eq('id', id as any)
       .single();
     
     if (error) throw error;

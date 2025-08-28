@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -35,14 +34,15 @@ export const TradingCalculator: React.FC<TradingCalculatorProps> = ({ alert: pas
   useEffect(() => {
     if (passedAlert) {
       setAsset({
-        name: passedAlert.asset_name,
-        symbol: passedAlert.tradermade_symbol
+        name: passedAlert.assetName,
+        symbol: passedAlert.tradermadeSymbol,
+        category: 'forex' // Default category, could be determined from symbol
       });
-      setTradeType(passedAlert.trade_type.includes('buy') ? 'buy' : 'sell');
-      setEntryPrice(passedAlert.entry_price);
+      setTradeType(passedAlert.tradeType.includes('buy') ? 'buy' : 'sell');
+      setEntryPrice(passedAlert.entryPrice);
       
       // Calculate stop loss in pips
-      const stopLossDistance = Math.abs(passedAlert.entry_price - passedAlert.stop_loss);
+      const stopLossDistance = Math.abs(passedAlert.entryPrice - passedAlert.stopLoss);
       const pips = stopLossDistance * 10000; // Assuming 4 decimal places
       setStopLossPips(pips);
       

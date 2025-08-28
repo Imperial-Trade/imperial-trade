@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { mapTradeAlertDataToProfile } from '@/utils/tradeAlertMapper';
 
 interface PriceRowProps {
   label: string;
@@ -75,6 +76,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
   const { getPrice } = useWebSocketPrices();
 
+  // Convert to TradeAlertWithProfile for TradingCalculator
+  const mappedAlert = mapTradeAlertDataToProfile(alert);
+
   // Convert alert to TradeSignal format for sharing
   const tradeSignal: TradeSignal = {
     id: alert.id,
@@ -127,6 +131,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       setIsSavingNotes(false);
     }
   };
+
   // Get role icon and color
   const getRoleIcon = (role: string) => {
     switch (role.toLowerCase()) {
@@ -287,7 +292,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       {/* Trading Calculator */}
       <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
         <CollapsibleContent className="px-4 pb-4">
-            <TradingCalculator alert={alert} livePrice={livePrice} />
+            <TradingCalculator alert={mappedAlert} livePrice={livePrice} />
         </CollapsibleContent>
       </Collapsible>
 
@@ -356,6 +361,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
         )}
       </div>
+
       {/* Stop Loss Proximity Warning */}
       {alert.status === 'active' && (() => {
         const wsPrice = getPrice?.(alert.tradermade_symbol)?.price;

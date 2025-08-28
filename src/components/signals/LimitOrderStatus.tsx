@@ -85,7 +85,7 @@ export const LimitOrderStatus: React.FC<LimitOrderStatusProps> = ({ signal, curr
           {text}
         </Badge>
         
-        {signal.status === 'active' && signal.activated_at && (
+        {signal.status === 'active' && signal.activatedAt && (
           <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/20">
             <Zap className="h-3 w-3 mr-1" />
             Activated
@@ -107,9 +107,9 @@ export const LimitOrderStatus: React.FC<LimitOrderStatusProps> = ({ signal, curr
           </div>
         )}
         
-        {signal.activated_at && (
+        {signal.activatedAt && (
           <div className="text-green-600">
-            Activated: {new Date(signal.activated_at).toLocaleString()}
+            Activated: {new Date(signal.activatedAt).toLocaleString()}
           </div>
         )}
       </div>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSignalRealtime } from './useSignalRealtime';
 import { TradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
@@ -56,7 +57,28 @@ export const useOptimizedTradingRealtime = (
       const result = await TradingApiService.createAlert(dto, userId);
       if (result.success && result.data) {
         // Real-time context will automatically update the alerts list
-        return result.data;
+        // Convert to expected DTO format
+        const responseDto: TradeAlertResponseDto = {
+          id: result.data.id,
+          userId: result.data.userId,
+          assetName: result.data.assetName,
+          tradermadeSymbol: result.data.tradermadeSymbol,
+          tradeType: result.data.tradeType,
+          entryPrice: result.data.entryPrice,
+          stopLoss: result.data.stopLoss,
+          status: result.data.status,
+          tp1: result.data.tp1,
+          tp2: result.data.tp2,
+          tp3: result.data.tp3,
+          tp4: result.data.tp4,
+          tp5: result.data.tp5,
+          tpHits: result.data.tpHits,
+          notes: result.data.notes,
+          closeReason: result.data.closeReason,
+          createdAt: result.data.createdAt,
+          updatedAt: result.data.updatedAt
+        };
+        return responseDto;
       } else {
         setLocalError(result.error || 'Failed to create alert');
         console.error('Failed to create alert:', result.error);
@@ -93,7 +115,7 @@ export const useOptimizedTradingRealtime = (
       setLocalLoading(true);
       setLocalError(null);
       
-      const result = await TradingApiService.deleteAlert(id, userId);
+      const result = await TradingApiService.deleteAlert(id);
       if (result.success) {
         // Real-time context will automatically update the alerts list
         return true;

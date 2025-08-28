@@ -1,4 +1,3 @@
-
 import React, { useState, memo, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,7 +36,7 @@ const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClas
     </div>
 );
 
-const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
+const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name?: string; role?: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
   alert, 
   onStatusUpdate, 
   onTakeProfitHit, 
@@ -90,7 +89,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
   // Type-safe event handlers
   const handleStatusUpdate = async (newStatus: string) => {
     try {
-      await onStatusUpdate(alert, newStatus);
+      if (onStatusUpdate) {
+        await onStatusUpdate(alert, newStatus);
+      }
     } catch (error) {
       console.error('Failed to update status:', error);
     }
@@ -128,8 +129,11 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       setIsSavingNotes(false);
     }
   };
+  
   // Get role icon and color
-  const getRoleIcon = (role: string) => {
+  const getRoleIcon = (role?: string) => {
+    if (!role) return <User className="w-4 h-4 text-muted-foreground" />;
+    
     switch (role.toLowerCase()) {
       case 'admin':
         return <Crown className="w-4 h-4 text-accent-gold" />;
@@ -140,7 +144,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     }
   };
 
-  const getRoleBadgeClass = (role: string) => {
+  const getRoleBadgeClass = (role?: string) => {
+    if (!role) return 'bg-muted/20 text-muted-foreground border-border/30';
+    
     switch (role.toLowerCase()) {
       case 'admin':
         return 'bg-accent-gold/20 text-accent-gold border-accent-gold/30';
@@ -189,9 +195,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           <div className="flex items-start justify-between mb-3 pb-3 border-b border-border/30">
             <div className="flex items-center gap-2">
               {getRoleIcon(creator.role)}
-              <span className="font-semibold text-foreground">{creator.display_name}</span>
+              <span className="font-semibold text-foreground">{creator.display_name || 'Anonymous User'}</span>
               <Badge className={getRoleBadgeClass(creator.role)}>
-                {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
+                {creator.role ? creator.role.charAt(0).toUpperCase() + creator.role.slice(1) : 'User'}
               </Badge>
             </div>
             <div className="flex flex-col items-end gap-1">
@@ -357,6 +363,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
         )}
       </div>
+      
       {/* Stop Loss Proximity Warning */}
       {alert.status === 'active' && (() => {
         const wsPrice = getPrice?.(alert.tradermade_symbol)?.price;

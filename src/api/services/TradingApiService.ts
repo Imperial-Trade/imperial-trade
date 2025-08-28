@@ -30,10 +30,17 @@ export interface TradeAlertWithProfile {
   };
 }
 
+// Response wrapper for consistent API responses
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 export class TradingApiService {
   constructor() {}
 
-  static async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlertWithProfile> {
+  static async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertWithProfile>> {
     try {
       console.log('TradingApiService - Creating alert:', dto);
 
@@ -58,7 +65,7 @@ export class TradingApiService {
 
       if (alertError) {
         console.error('TradingApiService - Error creating alert:', alertError);
-        throw alertError;
+        return { success: false, error: alertError.message };
       }
 
       console.log('TradingApiService - Alert created:', alertData);
@@ -95,8 +102,8 @@ export class TradingApiService {
         updatedAt: alertData.updated_at,
         creator: profileData ? {
           id: profileData.id,
-          display_name: profileData.display_name || 'Anonymous User',
-          role: profileData.role || 'user',
+          display_name: profileData.display_name,
+          role: profileData.role,
           user_type: profileData.user_type,
           access_level: profileData.access_level,
           avatar_url: profileData.avatar_url
@@ -110,14 +117,14 @@ export class TradingApiService {
         }
       };
 
-      return alertWithProfile;
+      return { success: true, data: alertWithProfile };
     } catch (error) {
       console.error('TradingApiService - Failed to create alert:', error);
-      throw error;
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
-  static async updateAlert(id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertWithProfile> {
+  static async updateAlert(id: string, dto: UpdateTradeAlertDto): Promise<ApiResponse<TradeAlertWithProfile>> {
     try {
       console.log(`TradingApiService - Updating alert ${id} with:`, dto);
 
@@ -130,7 +137,7 @@ export class TradingApiService {
 
       if (alertError) {
         console.error(`TradingApiService - Error updating alert ${id}:`, alertError);
-        throw alertError;
+        return { success: false, error: alertError.message };
       }
 
       console.log(`TradingApiService - Alert ${id} updated:`, alertData);
@@ -167,8 +174,8 @@ export class TradingApiService {
         updatedAt: alertData.updated_at,
         creator: profileData ? {
           id: profileData.id,
-          display_name: profileData.display_name || 'Anonymous User',
-          role: profileData.role || 'user',
+          display_name: profileData.display_name,
+          role: profileData.role,
           user_type: profileData.user_type,
           access_level: profileData.access_level,
           avatar_url: profileData.avatar_url
@@ -182,14 +189,14 @@ export class TradingApiService {
         }
       };
 
-      return alertWithProfile;
+      return { success: true, data: alertWithProfile };
     } catch (error) {
       console.error(`TradingApiService - Failed to update alert ${id}:`, error);
-      throw error;
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
-  static async deleteAlert(id: string): Promise<void> {
+  static async deleteAlert(id: string): Promise<ApiResponse<void>> {
     try {
       console.log(`TradingApiService - Deleting alert: ${id}`);
 
@@ -200,13 +207,14 @@ export class TradingApiService {
 
       if (deleteError) {
         console.error(`TradingApiService - Error deleting alert ${id}:`, deleteError);
-        throw deleteError;
+        return { success: false, error: deleteError.message };
       }
 
       console.log(`TradingApiService - Alert ${id} deleted successfully`);
+      return { success: true };
     } catch (error) {
       console.error(`TradingApiService - Failed to delete alert ${id}:`, error);
-      throw error;
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 
@@ -276,8 +284,8 @@ export class TradingApiService {
         updatedAt: alert.updated_at,
         creator: profilesMap.get(alert.user_id) ? {
           id: profilesMap.get(alert.user_id).id,
-          display_name: profilesMap.get(alert.user_id).display_name || 'Anonymous User',
-          role: profilesMap.get(alert.user_id).role || 'user',
+          display_name: profilesMap.get(alert.user_id).display_name,
+          role: profilesMap.get(alert.user_id).role,
           user_type: profilesMap.get(alert.user_id).user_type,
           access_level: profilesMap.get(alert.user_id).access_level,
           avatar_url: profilesMap.get(alert.user_id).avatar_url

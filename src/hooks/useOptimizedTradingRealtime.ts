@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { TradingApiService } from '@/api/services/TradingApiService';
+import { tradingApiService } from '@/api/services/TradingApiService';
 import { TradeAlertWithProfile } from '@/types/trading';
 
 interface UseOptimizedTradingRealtimeProps {
@@ -25,7 +26,7 @@ export const useOptimizedTradingRealtime = ({ userId, showAllSignals, initialFet
     setError(null);
 
     try {
-      const fetchedAlerts = await TradingApiService.getTradeAlertsByUserId(userId);
+      const fetchedAlerts = await tradingApiService.getTradeAlertsByUserId(userId);
       if (isMounted.current) {
         setAlerts(fetchedAlerts as TradeAlertWithProfile[]);
       }

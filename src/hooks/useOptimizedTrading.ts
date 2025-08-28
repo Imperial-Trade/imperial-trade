@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,14 +15,16 @@ interface UseTradingResult {
   refreshAlerts: () => Promise<void>;
 }
 
-export const useOptimizedTrading = (userId: string): UseTradingResult => {
+export const useOptimizedTrading = (userId?: string): UseTradingResult => {
   const [alerts, setAlerts] = useState<TradeAlertWithProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
+  const effectiveUserId = userId || user?.id || '';
+
   const fetchAlerts = useCallback(async () => {
-    if (!userId) return;
+    if (!effectiveUserId) return;
     setLoading(true);
     setError(null);
 
@@ -29,7 +32,7 @@ export const useOptimizedTrading = (userId: string): UseTradingResult => {
       const { data, error } = await supabase
         .from('trade_alerts')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', effectiveUserId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -101,11 +104,11 @@ export const useOptimizedTrading = (userId: string): UseTradingResult => {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [effectiveUserId]);
 
   useEffect(() => {
     fetchAlerts();
-  }, [fetchAlerts, userId]);
+  }, [fetchAlerts, effectiveUserId]);
 
   const createAlert = useCallback(
     async (data: CreateTradeAlertDto): Promise<TradeAlertWithProfile | null> => {

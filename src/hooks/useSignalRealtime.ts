@@ -1,13 +1,15 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { useSignalRealtime as useSignalRealtimeContext } from '@/contexts/SignalRealtimeContext';
-import { TradingApiService, tradingApiService } from '@/api/services/TradingApiService';
+import { tradingApiService } from '@/api/services/TradingApiService';
 import { TradeAlertWithProfile } from '@/types/trading';
+import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
 interface UseSignalRealtimeReturn {
   alerts: TradeAlertWithProfile[];
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   error: string | null;
-  updateAlert: (id: string, data: { status: string }) => Promise<TradeAlertWithProfile | null>;
+  updateAlert: (id: string, data: UpdateTradeAlertDto) => Promise<TradeAlertWithProfile | null>;
   refreshAlerts: () => Promise<void>;
 }
 
@@ -17,10 +19,10 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean): UseS
   const [updateError, setUpdateError] = useState<string | null>(null);
 
   useEffect(() => {
-    subscribe(); // Subscribe on mount
+    subscribe();
 
     return () => {
-      unsubscribe(); // Unsubscribe on unmount
+      unsubscribe();
     };
   }, [subscribe, unsubscribe]);
 
@@ -33,7 +35,7 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean): UseS
     }
   }, [signals, userId, showAllSignals]);
 
-  const updateAlert = useCallback(async (id: string, data: { status: string }) => {
+  const updateAlert = useCallback(async (id: string, data: UpdateTradeAlertDto) => {
     if (!userId) {
       console.warn('Cannot update alert: missing userId');
       return null;
@@ -48,7 +50,7 @@ export const useSignalRealtime = (userId: string, showAllSignals: boolean): UseS
         return null;
       }
 
-      return result;
+      return result as TradeAlertWithProfile;
     } catch (err: any) {
       console.error('Error updating trade alert:', err);
       setUpdateError(err.message || 'Failed to update trade alert');

@@ -1,16 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-
-export interface TradeAlertWithProfile extends TradeAlertResponseDto {
-  creator?: {
-    id: string;
-    display_name: string;
-    role: string;
-    avatar_url?: string | null;
-    user_type?: string | null;
-    access_level?: string | null;
-  };
-}
 
 export class TradingApiService {
   async getTradeAlertsByUserId(userId: string): Promise<TradeAlertResponseDto[]> {
@@ -43,9 +33,8 @@ export class TradingApiService {
         .single();
 
       if (error) {
-        // If no data is found, the error will be "No rows found"
         if (error.message.includes("No rows found")) {
-          return null; // Return null when no trade alert is found
+          return null;
         }
         console.error('❌ Database error fetching trade alert by ID:', error);
         throw new Error(`Failed to fetch trade alert by ID: ${error.message}`);

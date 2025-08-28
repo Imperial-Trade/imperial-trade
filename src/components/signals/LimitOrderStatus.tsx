@@ -1,3 +1,4 @@
+
 import React, { memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -42,7 +43,7 @@ export const LimitOrderStatus = memo(({ signal }: LimitOrderStatusProps) => {
         {isProfited && (
           <>
             <TrendingUp className="h-5 w-5 text-blue-500" />
-            <Badge variant="success">Partially Profited</Badge>
+            <Badge variant="outline">Partially Profited</Badge>
           </>
         )}
       </CardContent>

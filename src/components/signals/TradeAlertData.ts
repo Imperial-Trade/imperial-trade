@@ -7,7 +7,7 @@ export interface TradeAlertData {
   trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entry_price: number;
   stop_loss: number;
-  status: 'pending' | 'active' | 'closed' | 'partially_profited';
+  status: 'pending' | 'active' | 'closed' | 'partially_profited' | 'cancelled';
   tp1?: number;
   tp2?: number;
   tp3?: number;
@@ -15,7 +15,7 @@ export interface TradeAlertData {
   tp5?: number;
   tp_hits: number[];
   notes?: string;
-  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp';
+  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
   created_date: string;
   updated_date: string;
   creator?: {

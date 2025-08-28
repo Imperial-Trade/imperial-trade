@@ -20,7 +20,7 @@ export const SignalCreateDialog = ({ isOpen, onClose, onSuccess }: SignalCreateD
   const [formData, setFormData] = useState({
     assetName: '',
     tradermadeSymbol: '',
-    tradeType: 'buy_limit' as 'buy_limit' | 'sell_limit' | 'long' | 'short',
+    tradeType: 'buy_limit' as 'buy_limit' | 'sell_limit' | 'buy' | 'sell',
     entryPrice: '',
     stopLoss: '',
     tp1: '',
@@ -36,48 +36,43 @@ export const SignalCreateDialog = ({ isOpen, onClose, onSuccess }: SignalCreateD
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/trade-alerts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          assetName: formData.assetName,
-          tradermadeSymbol: formData.tradermadeSymbol,
-          tradeType: formData.tradeType,
-          entryPrice: parseFloat(formData.entryPrice),
-          stopLoss: parseFloat(formData.stopLoss),
-          tp1: formData.tp1 ? parseFloat(formData.tp1) : undefined,
-          tp2: formData.tp2 ? parseFloat(formData.tp2) : undefined,
-          tp3: formData.tp3 ? parseFloat(formData.tp3) : undefined,
-          tp4: formData.tp4 ? parseFloat(formData.tp4) : undefined,
-          tp5: formData.tp5 ? parseFloat(formData.tp5) : undefined,
-          notes: formData.notes || undefined
-        })
+      // Use TradingApiService.createAlert() instead of direct API call
+      const result = await TradingApiService.createAlert({
+        assetName: formData.assetName,
+        tradermadeSymbol: formData.tradermadeSymbol,
+        tradeType: formData.tradeType,
+        entryPrice: parseFloat(formData.entryPrice),
+        stopLoss: parseFloat(formData.stopLoss),
+        tp1: formData.tp1 ? parseFloat(formData.tp1) : undefined,
+        tp2: formData.tp2 ? parseFloat(formData.tp2) : undefined,
+        tp3: formData.tp3 ? parseFloat(formData.tp3) : undefined,
+        tp4: formData.tp4 ? parseFloat(formData.tp4) : undefined,
+        tp5: formData.tp5 ? parseFloat(formData.tp5) : undefined,
+        notes: formData.notes || undefined
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create signal');
+      if (result.success) {
+        toast.success('Signal created successfully', { duration: 5000 });
+        onSuccess();
+        setFormData({
+          assetName: '',
+          tradermadeSymbol: '',
+          tradeType: 'buy_limit',
+          entryPrice: '',
+          stopLoss: '',
+          tp1: '',
+          tp2: '',
+          tp3: '',
+          tp4: '',
+          tp5: '',
+          notes: ''
+        });
+      } else {
+        toast.error(result.error || 'Failed to create signal', { duration: 5000 });
       }
-
-      toast.success('Signal created successfully');
-      onSuccess();
-      setFormData({
-        assetName: '',
-        tradermadeSymbol: '',
-        tradeType: 'buy_limit',
-        entryPrice: '',
-        stopLoss: '',
-        tp1: '',
-        tp2: '',
-        tp3: '',
-        tp4: '',
-        tp5: '',
-        notes: ''
-      });
     } catch (error) {
       console.error('Error creating signal:', error);
-      toast.error('Failed to create signal');
+      toast.error('Failed to create signal', { duration: 5000 });
     } finally {
       setIsLoading(false);
     }
@@ -123,8 +118,8 @@ export const SignalCreateDialog = ({ isOpen, onClose, onSuccess }: SignalCreateD
               <SelectContent>
                 <SelectItem value="buy_limit">Buy Limit</SelectItem>
                 <SelectItem value="sell_limit">Sell Limit</SelectItem>
-                <SelectItem value="long">Long (Market)</SelectItem>
-                <SelectItem value="short">Short (Market)</SelectItem>
+                <SelectItem value="buy">Buy (Market)</SelectItem>
+                <SelectItem value="sell">Sell (Market)</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -18,10 +18,10 @@ export const useSignalActions = ({ updateAlert, deleteAlert }: UseSignalActionsP
         status: 'closed',
         closeReason: reason
       });
-      toast.success('Signal closed successfully');
+      toast.success('Signal closed successfully', { duration: 5000 });
     } catch (error) {
       console.error('Error closing signal:', error);
-      toast.error('Failed to close signal');
+      toast.error('Failed to close signal', { duration: 5000 });
     } finally {
       setIsProcessing(false);
     }
@@ -31,12 +31,12 @@ export const useSignalActions = ({ updateAlert, deleteAlert }: UseSignalActionsP
     setIsProcessing(true);
     try {
       await updateAlert(id, {
-        status: 'cancelled' as 'pending' | 'active' | 'closed' | 'partially_profited'
+        status: 'cancelled'
       });
-      toast.success('Signal cancelled successfully');
+      toast.success('Signal cancelled successfully', { duration: 5000 });
     } catch (error) {
       console.error('Error cancelling signal:', error);
-      toast.error('Failed to cancel signal');
+      toast.error('Failed to cancel signal', { duration: 5000 });
     } finally {
       setIsProcessing(false);
     }
@@ -47,13 +47,13 @@ export const useSignalActions = ({ updateAlert, deleteAlert }: UseSignalActionsP
     try {
       const success = await deleteAlert(id);
       if (success) {
-        toast.success('Signal deleted successfully');
+        toast.success('Signal deleted successfully', { duration: 5000 });
       } else {
-        toast.error('Failed to delete signal');
+        toast.error('Failed to delete signal', { duration: 5000 });
       }
     } catch (error) {
       console.error('Error deleting signal:', error);
-      toast.error('Failed to delete signal');
+      toast.error('Failed to delete signal', { duration: 5000 });
     } finally {
       setIsProcessing(false);
     }
@@ -66,10 +66,10 @@ export const useSignalActions = ({ updateAlert, deleteAlert }: UseSignalActionsP
       await updateAlert(id, {
         tpHits: newTpHits
       });
-      toast.success(`TP${tpLevel} hit recorded`);
+      toast.success(`TP${tpLevel} hit recorded`, { duration: 5000 });
     } catch (error) {
       console.error('Error recording TP hit:', error);
-      toast.error('Failed to record TP hit');
+      toast.error('Failed to record TP hit', { duration: 5000 });
     } finally {
       setIsProcessing(false);
     }

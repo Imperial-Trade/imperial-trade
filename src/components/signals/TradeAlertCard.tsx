@@ -170,8 +170,25 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
     return `${diffInDays}d ago`;
   };
 
-  // Get button text (only creator can close in stream)
-  const getCloseButtonText = () => 'Close My Signal';
+  // Get button text and action based on status
+  const getActionButtonConfig = () => {
+    if (alert.status === 'pending') {
+      return {
+        text: 'Cancel Order',
+        action: () => handleStatusUpdate('cancelled'),
+        className: 'text-accent-red hover:bg-accent-red/20 hover:text-accent-red'
+      };
+    } else if (alert.status === 'active' || alert.status === 'partially_profited') {
+      return {
+        text: 'Close Signal',
+        action: () => handleStatusUpdate('closed'),
+        className: 'text-accent-red hover:bg-accent-red/20 hover:text-accent-red'
+      };
+    }
+    return null;
+  };
+
+  const actionConfig = getActionButtonConfig();
 
   return (
     <div 
@@ -392,16 +409,16 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         return null;
       })()}
       
-      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && (
+      {canCloseSignal && actionConfig && (
         <div className="bg-muted/50 px-4 py-2 flex justify-end">
             <Button 
               size="sm" 
               variant="ghost" 
-              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red" 
-              onClick={() => handleStatusUpdate('closed')}
+              className={actionConfig.className}
+              onClick={actionConfig.action}
             >
                 <Lock className="w-4 h-4 mr-2" />
-                {isPending ? 'Cancel Order' : getCloseButtonText()}
+                {actionConfig.text}
             </Button>
         </div>
       )}

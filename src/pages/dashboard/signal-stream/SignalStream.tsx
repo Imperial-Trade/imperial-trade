@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Filter, Plus } from 'lucide-react';
 import { TradeAlertData } from '@/components/signals/TradeAlertData';
 import { SignalCreateDialog } from '@/components/signals/SignalCreateDialog';
+import { createTpUpdateDto } from '@/utils/tradingUtils';
+import { toast } from 'sonner';
 
 // Define the complete status filter type including 'cancelled'
 type StatusFilter = 'all' | 'active' | 'pending' | 'closed' | 'partially_profited' | 'cancelled';
@@ -73,6 +75,94 @@ export const SignalStream = () => {
       closed: sigAny.filter(s => s.status === 'closed').length,
       cancelled: sigAny.filter(s => s.status === 'cancelled').length,
     };
+  };
+
+  // Handler for order activation (pending -> active)
+  const handleOrderActivation = async (alert: TradeAlertData, activationPrice: number) => {
+    try {
+      await TradingApiService.updateAlert(alert.id, {
+        status: 'active',
+        // Add activation_price if needed in DTO
+      });
+      toast.success(`${alert.asset_name} order activated at ${activationPrice}`, { duration: 5000 });
+      refetch();
+    } catch (error) {
+      console.error('Error activating order:', error);
+      toast.error('Failed to activate order', { duration: 5000 });
+    }
+  };
+
+  // Handler for take profit hits
+  const handleTakeProfitHit = async (alert: TradeAlertData, tpLevel: number) => {
+    try {
+      const alertForUtils = {
+        id: alert.id,
+        assetName: alert.asset_name,
+        tp1: alert.tp1,
+        tp2: alert.tp2,
+        tp3: alert.tp3,
+        tp4: alert.tp4,
+        tp5: alert.tp5,
+        tpHits: alert.tp_hits,
+        status: alert.status as 'pending' | 'active' | 'closed' | 'partially_profited'
+      };
+
+      const updateDto = createTpUpdateDto(alertForUtils, [tpLevel]);
+      
+      await TradingApiService.updateAlert(alert.id, updateDto);
+      
+      if (updateDto.status === 'closed') {
+        toast.success(`${alert.asset_name} closed - All TPs hit!`, { duration: 5000 });
+      } else {
+        toast.success(`${alert.asset_name} TP${tpLevel} hit`, { duration: 5000 });
+      }
+      
+      refetch();
+    } catch (error) {
+      console.error('Error recording TP hit:', error);
+      toast.error('Failed to record TP hit', { duration: 5000 });
+    }
+  };
+
+  // Handler for stop loss hits
+  const handleStopLossHit = async (alert: TradeAlertData) => {
+    try {
+      await TradingApiService.updateAlert(alert.id, {
+        status: 'closed',
+        closeReason: 'stop_loss'
+      });
+      toast.error(`${alert.asset_name} stopped out`, { duration: 5000 });
+      refetch();
+    } catch (error) {
+      console.error('Error recording stop loss:', error);
+      toast.error('Failed to record stop loss', { duration: 5000 });
+    }
+  };
+
+  // Handler for manual status updates
+  const handleStatusUpdate = async (alert: TradeAlertData, newStatus: string) => {
+    try {
+      const updateData: any = { status: newStatus };
+      
+      if (newStatus === 'closed') {
+        updateData.closeReason = 'manual';
+      } else if (newStatus === 'cancelled') {
+        updateData.closeReason = 'manual';
+      }
+
+      await TradingApiService.updateAlert(alert.id, updateData);
+      
+      if (newStatus === 'cancelled') {
+        toast.success(`${alert.asset_name} order cancelled`, { duration: 5000 });
+      } else if (newStatus === 'closed') {
+        toast.success(`${alert.asset_name} signal closed`, { duration: 5000 });
+      }
+      
+      refetch();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update signal', { duration: 5000 });
+    }
   };
 
   const statusCounts = getStatusCounts();
@@ -166,7 +256,8 @@ export const SignalStream = () => {
       trade_type: signal.tradeType,
       entry_price: signal.entryPrice,
       stop_loss: signal.stopLoss,
-      status: (signal.status as TradeAlertData['status']),
+      // Map cancelled to closed for display compatibility, but preserve in close_reason
+      status: (signal.status === 'cancelled' ? 'closed' : signal.status) as TradeAlertData['status'],
       tp1: signal.tp1,
       tp2: signal.tp2,
       tp3: signal.tp3,
@@ -174,7 +265,7 @@ export const SignalStream = () => {
       tp5: signal.tp5,
       tp_hits: signal.tpHits,
       notes: signal.notes,
-      close_reason: signal.closeReason,
+      close_reason: signal.status === 'cancelled' ? 'manual' : signal.closeReason,
       created_date: signal.createdAt,
       updated_date: signal.updatedAt,
       creator: signal.creator
@@ -196,6 +287,10 @@ export const SignalStream = () => {
               <TradeAlertCard
                 key={signal.id}
                 alert={mapToTradeAlertData(signal)}
+                onOrderActivation={handleOrderActivation}
+                onTakeProfitHit={handleTakeProfitHit}
+                onStopLossHit={handleStopLossHit}
+                onStatusUpdate={handleStatusUpdate}
               />
             ))}
           </div>

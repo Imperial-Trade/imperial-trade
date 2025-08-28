@@ -20,8 +20,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     params: {
       eventsPerSecond: 10,
     },
-    // Force secure WebSocket connections for realtime
-    transport: 'websocket',
+    // Remove problematic transport setting that was causing WebSocket constructor errors
     timeout: 20000,
   },
   global: {

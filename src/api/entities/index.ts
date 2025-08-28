@@ -43,15 +43,6 @@ export {
 // Admin entities
 export { AccountRequest, AuditLog } from './admin';
 
-// Base entity exports from BaseEntity
-export {
-  MarketAlert as BaseMarketAlert,
-  OpportunitySignal as BaseOpportunitySignal,
-  RiskSimulation as BaseRiskSimulation,
-  TradeJournalEntry as BaseTradeJournalEntry,
-  TradingStrategy as BaseTradingStrategy,
-  TradingGroup as BaseTradingGroup,
-  GroupJournalEntry as BaseGroupJournalEntry,
-  VerifiedTrader as BaseVerifiedTrader,
-  TradeHistory as BaseTradeHistory
-} from '../base/BaseEntity';
+// Removed incorrect re-exports from ../base/BaseEntity that caused runtime errors:
+// Indirectly exported binding names were not found there, so we avoid re-exporting them here.
+

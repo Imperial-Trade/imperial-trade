@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { TradeAlertWithProfile } from '@/types/trading';
+import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useInstantAlerts } from '@/hooks/useInstantAlerts';
 

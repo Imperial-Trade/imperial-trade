@@ -1,56 +1,61 @@
 
-import { TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+import { TradeAlert } from '@/domain/entities/trading/TradeAlert';
 import { TradingApiService } from '../services/TradingApiService';
 
-export class TradingEntity {
-  private tradingApiService: TradingApiService;
+// Export the TradeAlert class that actually exists
+export { TradeAlert };
 
-  constructor() {
-    this.tradingApiService = new TradingApiService();
-  }
-
-  async getAllTradeAlerts(userId: string): Promise<TradeAlertResponseDto[]> {
-    return this.tradingApiService.getTradeAlertsByUserId(userId);
-  }
-}
-
-// Export placeholder entities to satisfy index.ts
+// Create placeholder exports for entities that are referenced but don't exist yet
 export class TradeJournalEntry {
-  constructor(public id: string, public content: string) {}
-}
-
-export class TradeAlert {
-  constructor(public id: string, public assetName: string) {}
-  
-  canBeEditedBy(userId: string): boolean {
-    return true;
-  }
-  
-  get isActive(): boolean {
-    return true;
-  }
-  
-  getRiskRewardRatio(): number {
-    return 1;
-  }
+  constructor(
+    public readonly id: string,
+    public readonly userId: string,
+    public readonly content: string,
+    public readonly createdAt: Date = new Date()
+  ) {}
 }
 
 export class TradingStrategy {
-  constructor(public id: string, public name: string) {}
+  constructor(
+    public readonly id: string,
+    public readonly name: string,
+    public readonly description: string,
+    public readonly userId: string
+  ) {}
 }
 
 export class TradingGroup {
-  constructor(public id: string, public name: string) {}
+  constructor(
+    public readonly id: string,
+    public readonly name: string,
+    public readonly description: string,
+    public readonly ownerId: string
+  ) {}
 }
 
 export class GroupJournalEntry {
-  constructor(public id: string, public content: string) {}
+  constructor(
+    public readonly id: string,
+    public readonly groupId: string,
+    public readonly userId: string,
+    public readonly content: string
+  ) {}
 }
 
 export class VerifiedTrader {
-  constructor(public id: string, public name: string) {}
+  constructor(
+    public readonly id: string,
+    public readonly userId: string,
+    public readonly verificationDate: Date,
+    public readonly performance: number
+  ) {}
 }
 
 export class TradeHistory {
-  constructor(public id: string, public tradeId: string) {}
+  constructor(
+    public readonly id: string,
+    public readonly userId: string,
+    public readonly tradeData: any,
+    public readonly timestamp: Date
+  ) {}
 }

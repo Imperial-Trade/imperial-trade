@@ -55,22 +55,17 @@ export function useTradeAlertForm(options: UseTradeAlertFormOptions = {}) {
     mode: validateOnChange ? 'onChange' : (validateOnBlur ? 'onBlur' : 'onSubmit'),
   });
 
-  // Optimized submission handler with proper status logic
+  // Optimized submission handler
   const handleSubmit = useCallback(async (data: TradeAlertFormData) => {
     if (!onSubmit) return;
 
     try {
-      // CRITICAL FIX: Determine status based on trade type
+      // Determine status based on trade type
       const isLimitOrder = data.trade_type === 'buy_limit' || data.trade_type === 'sell_limit';
-      const correctStatus = isLimitOrder ? 'pending' : 'active';
-      
       const submissionData: TradeAlertSubmissionData = {
         ...data,
-        status: correctStatus
+        status: isLimitOrder ? 'pending' : 'active'
       };
-
-      console.log(`🔧 Legacy Form Status Logic: ${data.trade_type} → ${correctStatus}`);
-      console.log('📤 Legacy Form Final submission data:', submissionData);
 
       // Validate submission data
       const validatedData = tradeAlertSubmissionSchema.parse(submissionData);

@@ -1,14 +1,24 @@
 
 import { useState, useEffect } from 'react';
 
-export type ConnectionStatus = 'online' | 'offline' | 'checking';
+interface ConnectionStatusHook {
+  status: 'online' | 'offline' | 'checking';
+  isOnline: boolean;
+  lastOnline: Date | null;
+}
 
-export function useConnectionStatus() {
-  const [status, setStatus] = useState<ConnectionStatus>('checking');
+export function useConnectionStatus(): ConnectionStatusHook {
+  const [status, setStatus] = useState<'online' | 'offline' | 'checking'>('checking');
   const [lastOnline, setLastOnline] = useState<Date | null>(null);
 
   useEffect(() => {
-    const updateOnlineStatus = () => {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+      setStatus('offline');
+      return;
+    }
+
+    const updateStatus = () => {
       const isOnline = navigator.onLine;
       setStatus(isOnline ? 'online' : 'offline');
       
@@ -18,44 +28,33 @@ export function useConnectionStatus() {
     };
 
     // Initial check
-    updateOnlineStatus();
+    updateStatus();
 
-    // Listen for network changes
-    window.addEventListener('online', updateOnlineStatus);
-    window.addEventListener('offline', updateOnlineStatus);
+    // Listen for online/offline events
+    const handleOnline = () => {
+      console.log('🌐 Connection restored');
+      setStatus('online');
+      setLastOnline(new Date());
+    };
 
-    // Periodic connectivity test
-    const interval = setInterval(async () => {
-      if (navigator.onLine) {
-        try {
-          const response = await fetch('/favicon.ico', { 
-            method: 'HEAD',
-            cache: 'no-cache'
-          });
-          
-          if (response.ok) {
-            setStatus('online');
-            setLastOnline(new Date());
-          } else {
-            setStatus('offline');
-          }
-        } catch {
-          setStatus('offline');
-        }
-      }
-    }, 30000); // Check every 30 seconds
+    const handleOffline = () => {
+      console.log('❌ Connection lost');
+      setStatus('offline');
+    };
 
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Cleanup
     return () => {
-      window.removeEventListener('online', updateOnlineStatus);
-      window.removeEventListener('offline', updateOnlineStatus);
-      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
   return {
     status,
     isOnline: status === 'online',
-    isOffline: status === 'offline',
     lastOnline
   };
 }

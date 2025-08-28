@@ -1,4 +1,3 @@
-
 import { apiClient } from '../client/ApiClient';
 import { ApiResponse } from '@/types/common';
 
@@ -79,9 +78,12 @@ export class AdminAuditService {
         };
       }
 
+      // Cast via unknown first to satisfy TS when using lightweight rows
+      const entries = result.data as unknown as AuditLogEntry[];
+
       return {
         success: true,
-        data: result.data as AuditLogEntry[],
+        data: entries,
         error: undefined
       };
     } catch (error) {

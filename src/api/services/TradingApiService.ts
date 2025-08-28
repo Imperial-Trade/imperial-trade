@@ -49,11 +49,17 @@ export class TradingApiService {
   }
 
   async createTradeAlert(data: CreateTradeAlertDto, userId: string): Promise<TradeAlertResponseDto> {
+    // Determine correct status based on order type
+    const isLimitOrder = data.tradeType === 'buy_limit' || data.tradeType === 'sell_limit';
+    const correctStatus = isLimitOrder ? 'pending' : 'active';
+
     console.log('🚀 TradingApiService.createTradeAlert:', {
       assetName: data.assetName,
       tradeType: data.tradeType,
       entryPrice: data.entryPrice,
       userId: userId,
+      isLimitOrder,
+      correctStatus
     });
 
     try {
@@ -72,6 +78,7 @@ export class TradingApiService {
           tp4: data.tp4,
           tp5: data.tp5,
           notes: data.notes,
+          status: correctStatus  // Explicitly set status
         })
         .select('*')
         .single();
@@ -81,7 +88,11 @@ export class TradingApiService {
         throw new Error(`Failed to create trade alert: ${error.message}`);
       }
 
-      console.log('✅ Trade alert created successfully:', result);
+      const finalStatus = result.status;
+      console.log('✅ Trade alert created successfully');
+      console.log(`📊 Final status: '${finalStatus}' (Expected: '${correctStatus}')`);
+      console.log(`🎯 ${isLimitOrder ? 'Limit order created as pending - ready for activation monitoring' : 'Market order created as active - immediately available'}`);
+      
       return this.mapToResponseDto(result);
     } catch (error) {
       console.error('❌ TradingApiService.createTradeAlert error:', error);

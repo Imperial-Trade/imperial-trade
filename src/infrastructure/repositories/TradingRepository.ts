@@ -48,9 +48,9 @@ export class TradingRepository implements ITradingRepository {
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
-    // CRITICAL FIX: Let the database determine the correct status
-    // The handle_trade_alert_lifecycle trigger will force limit orders to 'pending'
-    // and market orders will be 'active' by default
+    // FIXED: Determine correct status based on trade type with explicit typing
+    const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
+    const correctStatus: 'pending' | 'active' | 'closed' | 'partially_profited' = isLimitOrder ? 'pending' : 'active';
     
     const insertData = {
       asset_name: dto.assetName,
@@ -65,10 +65,10 @@ export class TradingRepository implements ITradingRepository {
       tp5: dto.tp5,
       notes: dto.notes,
       user_id: userId,
-      // Remove explicit status - let the database trigger handle it
+      status: correctStatus
     };
 
-    console.log('Repository creating alert - letting database determine status for trade type:', dto.tradeType);
+    console.log('Repository creating alert with status:', correctStatus, 'for trade type:', dto.tradeType);
 
     const result = await apiClient.insert('trade_alerts', insertData);
     

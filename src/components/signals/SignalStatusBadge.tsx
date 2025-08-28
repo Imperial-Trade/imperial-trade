@@ -9,7 +9,10 @@ interface SignalStatusBadgeProps {
 
 export const SignalStatusBadge = ({ status, tradeType }: SignalStatusBadgeProps) => {
   const getStatusConfig = () => {
-    switch (status) {
+    // Handle cancelled status safely
+    const normalizedStatus = status === 'cancelled' as any ? 'cancelled' : status;
+    
+    switch (normalizedStatus) {
       case 'pending':
         return {
           icon: Clock,

@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Clock, Target, Shield, User, Calendar } from "lucide-react";
@@ -139,3 +138,6 @@ export const TradeAlertCard = ({ alert, showCreator = true }: TradeAlertCardProp
     </Card>
   );
 };
+
+// Add default export
+export default TradeAlertCard;

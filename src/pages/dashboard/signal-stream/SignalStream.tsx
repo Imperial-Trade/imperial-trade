@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { TradeAlertCard } from '@/components/signals/TradeAlertCard';
@@ -8,6 +7,29 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Wifi, WifiOff, Search, BookOpen, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { TradeAlertData } from '@/components/signals/TradeAlertData';
+
+// Helper function to convert TradeAlertWithProfile to TradeAlertData
+const mapToTradeAlertData = (alert: any): TradeAlertData => ({
+  id: alert.id,
+  asset_name: alert.assetName,
+  tradermade_symbol: alert.tradermadeSymbol,
+  trade_type: alert.tradeType,
+  entry_price: alert.entryPrice,
+  stop_loss: alert.stopLoss,
+  status: alert.status,
+  tp1: alert.tp1,
+  tp2: alert.tp2,
+  tp3: alert.tp3,
+  tp4: alert.tp4,
+  tp5: alert.tp5,
+  tp_hits: alert.tpHits || [],
+  notes: alert.notes,
+  close_reason: alert.closeReason,
+  created_date: alert.createdAt,
+  updated_date: alert.updatedAt,
+  creator: alert.creator
+});
 
 export const SignalStream = () => {
   const { user } = useAuth();
@@ -20,8 +42,11 @@ export const SignalStream = () => {
 
   // Filter and organize signals
   const { activeSignals, closedSignals, educators, filteredActiveSignals, filteredClosedSignals } = useMemo(() => {
-    // Filter out cancelled signals completely
-    const validSignals = alerts.filter(signal => signal.status !== 'cancelled');
+    // Filter out cancelled signals completely - handle type safely
+    const validSignals = alerts.filter(signal => 
+      signal.status !== 'cancelled' as any && 
+      signal.status !== 'canceled' as any
+    );
     
     const active = validSignals.filter(signal => 
       signal.status === 'active' || 
@@ -31,7 +56,7 @@ export const SignalStream = () => {
     
     const closed = validSignals
       .filter(signal => signal.status === 'closed')
-      .sort((a, b) => new Date(b.updated_date).getTime() - new Date(a.updated_date).getTime())
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .slice(0, 12); // Limit to 12 most recent
 
     // Get unique educators
@@ -43,8 +68,8 @@ export const SignalStream = () => {
     const applyFilters = (signals: typeof validSignals) => {
       return signals.filter(signal => {
         // Search filter
-        if (searchTerm && !signal.asset_name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-            !signal.tradermade_symbol?.toLowerCase().includes(searchTerm.toLowerCase())) {
+        if (searchTerm && !signal.assetName.toLowerCase().includes(searchTerm.toLowerCase()) &&
+            !signal.tradermadeSymbol?.toLowerCase().includes(searchTerm.toLowerCase())) {
           return false;
         }
 
@@ -55,10 +80,10 @@ export const SignalStream = () => {
 
         // Type filter
         if (typeFilter !== 'all') {
-          if (typeFilter === 'buy' && !signal.trade_type.includes('buy')) return false;
-          if (typeFilter === 'sell' && !signal.trade_type.includes('sell')) return false;
-          if (typeFilter === 'limit' && !signal.trade_type.includes('limit')) return false;
-          if (typeFilter === 'market' && signal.trade_type.includes('limit')) return false;
+          if (typeFilter === 'buy' && !signal.tradeType.includes('buy')) return false;
+          if (typeFilter === 'sell' && !signal.tradeType.includes('sell')) return false;
+          if (typeFilter === 'limit' && !signal.tradeType.includes('limit')) return false;
+          if (typeFilter === 'market' && signal.tradeType.includes('limit')) return false;
         }
 
         // Educator filter
@@ -79,15 +104,6 @@ export const SignalStream = () => {
     };
   }, [alerts, searchTerm, statusFilter, typeFilter, educatorFilter]);
 
-  const connectionIcon = connectionStatus === 'connected' ? (
-    <Wifi className="w-4 h-4 text-green-500" />
-  ) : (
-    <WifiOff className="w-4 h-4 text-red-500" />
-  );
-
-  const connectionText = connectionStatus === 'connected' ? 'Connected' : 'Disconnected';
-  const connectionColor = connectionStatus === 'connected' ? 'text-green-600' : 'text-red-600';
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -98,6 +114,15 @@ export const SignalStream = () => {
       </div>
     );
   }
+
+  const connectionIcon = connectionStatus === 'connected' ? (
+    <Wifi className="w-4 h-4 text-green-500" />
+  ) : (
+    <WifiOff className="w-4 h-4 text-red-500" />
+  );
+
+  const connectionText = connectionStatus === 'connected' ? 'Connected' : 'Disconnected';
+  const connectionColor = connectionStatus === 'connected' ? 'text-green-600' : 'text-red-600';
 
   return (
     <div className="space-y-6">
@@ -182,7 +207,7 @@ export const SignalStream = () => {
         {filteredActiveSignals.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredActiveSignals.map((alert) => (
-              <TradeAlertCard key={alert.id} alert={alert} showCreator={true} />
+              <TradeAlertCard key={alert.id} alert={mapToTradeAlertData(alert)} showCreator={true} />
             ))}
           </div>
         ) : (
@@ -201,7 +226,7 @@ export const SignalStream = () => {
         {filteredClosedSignals.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredClosedSignals.map((alert) => (
-              <TradeAlertCard key={alert.id} alert={alert} showCreator={true} />
+              <TradeAlertCard key={alert.id} alert={mapToTradeAlertData(alert)} showCreator={true} />
             ))}
           </div>
         ) : (
@@ -214,3 +239,5 @@ export const SignalStream = () => {
     </div>
   );
 };
+
+export default SignalStream;

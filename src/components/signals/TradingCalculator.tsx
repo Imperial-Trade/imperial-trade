@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,10 @@ interface TradingCalculatorProps {
 }
 
 const TradingCalculator: React.FC<TradingCalculatorProps> = ({ alert, livePrice }) => {
+  // Convert status for LimitOrderStatus component which expects a narrower type
+  const limitOrderStatus: 'pending' | 'active' | 'closed' = 
+    alert.status === 'partially_profited' ? 'active' : alert.status;
+
   return (
     <div className="space-y-4">
       {(alert.trade_type === 'buy_limit' || alert.trade_type === 'sell_limit') && (
@@ -31,7 +36,7 @@ const TradingCalculator: React.FC<TradingCalculatorProps> = ({ alert, livePrice 
           tradeType={alert.trade_type}
           entryPrice={alert.entry_price}
           currentPrice={livePrice}
-          status={alert.status}
+          status={limitOrderStatus}
         />
       )}
       <Card>

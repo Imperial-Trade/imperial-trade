@@ -65,7 +65,7 @@ describe('useSignalRealtime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseSignalRealtimeContext.mockReturnValue(mockContextValue);
-    (tradingApiService.updateAlert as any) = vi.fn();
+    (tradingApiService.updateTradeAlert as any) = vi.fn();
   });
 
   it('filters signals by userId when showAllSignals is false', () => {
@@ -145,22 +145,21 @@ describe('useSignalRealtime', () => {
 
   it('updates alert successfully', async () => {
     const mockUpdateResult = {
-      success: true,
-      data: {
-        id: '1',
-        assetName: 'AAPL',
-        tradermadeSymbol: 'AAPL',
-        tradeType: 'buy' as const,
-        entryPrice: 150.00,
-        stopLoss: 145.00,
-        status: 'closed' as const,
-        tpHits: [1],
-        createdAt: '2023-01-01T00:00:00Z',
-        updatedAt: '2023-01-01T00:00:00Z'
-      }
+      id: '1',
+      userId: 'user-123',
+      assetName: 'AAPL',
+      tradermadeSymbol: 'AAPL',
+      tradeType: 'buy' as const,
+      entryPrice: 150.00,
+      stopLoss: 145.00,
+      status: 'closed' as const,
+      tpHits: [1],
+      notes: '',
+      createdAt: '2023-01-01T00:00:00Z',
+      updatedAt: '2023-01-01T00:00:00Z'
     };
 
-    (tradingApiService.updateAlert as any).mockResolvedValue(mockUpdateResult);
+    (tradingApiService.updateTradeAlert as any).mockResolvedValue(mockUpdateResult);
 
     const { result } = renderHook(
       () => useSignalRealtime('user-123', false),
@@ -169,19 +168,14 @@ describe('useSignalRealtime', () => {
 
     await act(async () => {
       const updateResult = await result.current.updateAlert('1', { status: 'closed' });
-      expect(updateResult).toEqual(mockUpdateResult.data);
+      expect(updateResult).toEqual(mockUpdateResult);
     });
 
-    expect(tradingApiService.updateAlert).toHaveBeenCalledWith('1', { status: 'closed' }, 'user-123');
+    expect(tradingApiService.updateTradeAlert).toHaveBeenCalledWith('1', { status: 'closed' });
   });
 
   it('handles update alert failure', async () => {
-    const mockUpdateResult = {
-      success: false,
-      error: 'Update failed'
-    };
-
-    (tradingApiService.updateAlert as any).mockResolvedValue(mockUpdateResult);
+    (tradingApiService.updateTradeAlert as any).mockResolvedValue(null);
 
     const { result } = renderHook(
       () => useSignalRealtime('user-123', false),
@@ -193,7 +187,7 @@ describe('useSignalRealtime', () => {
       expect(updateResult).toBeNull();
     });
 
-    expect(result.current.error).toBe('Update failed');
+    expect(result.current.error).toBe('Failed to update alert');
   });
 
   it('refreshes alerts successfully', async () => {
@@ -236,6 +230,23 @@ describe('useSignalRealtime', () => {
       expect(updateResult).toBeNull();
     });
 
-    expect(tradingApiService.updateAlert).not.toHaveBeenCalled();
+    expect(tradingApiService.updateTradeAlert).not.toHaveBeenCalled();
+  });
+
+  it('handles update alert exception', async () => {
+    const updateError = new Error('Update failed');
+    (tradingApiService.updateTradeAlert as any).mockRejectedValue(updateError);
+
+    const { result } = renderHook(
+      () => useSignalRealtime('user-123', false),
+      { wrapper: TestWrapper }
+    );
+
+    await act(async () => {
+      const updateResult = await result.current.updateAlert('1', { status: 'closed' });
+      expect(updateResult).toBeNull();
+    });
+
+    expect(result.current.error).toBe('Update failed');
   });
 });

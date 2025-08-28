@@ -1,5 +1,7 @@
 
-// Export the correct TradeAlertData from the signals module
+import type { TradeAlertData } from '@/components/signals/TradeAlertData';
+
+// Re-export for external consumers if needed
 export type { TradeAlertData } from '@/components/signals/TradeAlertData';
 
 // Complete TradeAlertCardProps interface with ALL required properties
@@ -8,11 +10,18 @@ export interface TradeAlertCardProps {
   onUpdate?: (id: string, updates: any) => void;
   onDelete?: (id: string) => void;
   showActions?: boolean;
-  // Add all missing properties that TradeAlertCard actually uses
+
+  // Match actual handler usage across AdminTradeSignalsTab and SignalStream
   onStatusUpdate?: (alert: TradeAlertData, newStatus: string) => Promise<void>;
-  onTakeProfitHit?: (alert: TradeAlertData, tpLevel: number) => Promise<void>;
-  onStopLossHit?: (alert: TradeAlertData) => Promise<void>;
+  onTakeProfitHit?: (
+    alert: TradeAlertData, 
+    newTPHits: number[], 
+    shouldAutoClose?: boolean, 
+    closeReason?: string
+  ) => Promise<void>;
+  onStopLossHit?: (alert: TradeAlertData, closeReason: string) => Promise<void>;
   onOrderActivation?: (alert: TradeAlertData) => Promise<void>;
+
   isAdmin?: boolean;
   isCreator?: boolean;
   livePrice?: number;
@@ -22,3 +31,4 @@ export interface TradeAlertCardProps {
   className?: string;
   testId?: string;
 }
+

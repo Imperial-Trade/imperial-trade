@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
-import { createTpUpdateDto } from '@/utils/tradingUtils';
+import { createTpUpdateDto, AlertForAutoClosure } from '@/utils/tradingUtils';
 import { TradeAlertData } from '@/components/signals/TradeAlertData';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
@@ -306,7 +306,7 @@ export default function SignalStream() {
         (window as any).addNotification({
           type: 'trade_closed',
           title: `🔒 Signal Closed`,
-          message: `${alert.assetName} signal has been closed`
+          message: `${alert.assetName || alert.asset_name} signal has been closed`
         });
       }
     } catch (err) {
@@ -340,31 +340,22 @@ export default function SignalStream() {
     try {
       console.log(`🎯 Processing TP hits for alert ${alert.id}:`, newTPHits);
       
-      // Convert to domain entity for auto-closure logic
-      const alertEntity = {
+      // Convert to AlertForAutoClosure interface
+      const alertForClosure: AlertForAutoClosure = {
         id: alert.id,
-        assetName: alert.asset_name,
-        tradermadeSymbol: alert.tradermade_symbol,
-        tradeType: alert.trade_type,
-        entryPrice: alert.entry_price,
-        stopLoss: alert.stop_loss,
-        userId: alert.creator?.id || '',
-        status: alert.status,
+        assetName: alert.asset_name || alert.assetName,
         tp1: alert.tp1,
         tp2: alert.tp2,
         tp3: alert.tp3,
         tp4: alert.tp4,
         tp5: alert.tp5,
-        tpHits: alert.tp_hits || [],
-        notes: alert.notes,
-        closeReason: alert.close_reason,
-        createdAt: new Date(alert.created_date),
-        updatedAt: new Date(alert.updated_date)
+        tpHits: alert.tp_hits || alert.tpHits || [],
+        status: alert.status
       };
 
       // Use the auto-closure utility
       const updateDto = createTpUpdateDto(
-        alertEntity, 
+        alertForClosure, 
         newTPHits, 
         shouldAutoClose, 
         closeReason
@@ -372,7 +363,7 @@ export default function SignalStream() {
 
       console.log('🚀 CRITICAL TP Update:', {
         alertId: alert.id,
-        assetName: alert.asset_name,
+        assetName: alertForClosure.assetName,
         newTPHits,
         updateDto,
         willAutoClose: updateDto.status === 'closed'
@@ -388,14 +379,14 @@ export default function SignalStream() {
           (window as any).addNotification({
             type: 'trade_closed',
             title: `🎉 All TPs Hit!`,
-            message: `${alert.asset_name} - All take profits achieved! Signal auto-closed.`
+            message: `${alertForClosure.assetName} - All take profits achieved! Signal auto-closed.`
           });
         } else if (highestTP !== null) {
           // Individual TP hit
           (window as any).addNotification({
             type: 'tp_hit',
             title: `🎯 TP${highestTP} Hit!`,
-            message: `${alert.asset_name} reached Take Profit ${highestTP}`
+            message: `${alertForClosure.assetName} reached Take Profit ${highestTP}`
           });
         }
       }
@@ -446,7 +437,7 @@ export default function SignalStream() {
         (window as any).addNotification({
           type: 'stop_loss',
           title: `🚨 Stop Loss Hit!`,
-          message: `${alert.assetName} trade closed at stop loss`
+          message: `${alert.assetName || alert.asset_name} trade closed at stop loss`
         });
       }
     } catch (err) {
@@ -479,7 +470,7 @@ export default function SignalStream() {
         (window as any).addNotification({
           type: 'trade_activated',
           title: `🚀 Order Activated!`,
-          message: `${alert.assetName} ${alert.tradeType} is now active`
+          message: `${alert.assetName || alert.asset_name} ${alert.tradeType || alert.trade_type} is now active`
         });
       }
     } catch (err) {

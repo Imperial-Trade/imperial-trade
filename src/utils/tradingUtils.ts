@@ -1,6 +1,5 @@
 
-import { TradeAlert } from '@/domain/entities/trading/TradeAlert';
-import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
+// Updated to work with plain alert objects instead of TradeAlert class instances
 
 export interface AutoClosureResult {
   shouldClose: boolean;
@@ -9,10 +8,22 @@ export interface AutoClosureResult {
   status?: 'closed';
 }
 
+export interface AlertForAutoClosure {
+  id: string;
+  assetName: string;
+  tp1?: number;
+  tp2?: number;
+  tp3?: number;
+  tp4?: number;
+  tp5?: number;
+  tpHits: number[];
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
+}
+
 /**
  * Critical utility to determine if a trade should auto-close when all TPs are hit
  */
-export function checkAutoClosureCondition(alert: TradeAlert, newTpHits: number[]): AutoClosureResult {
+export function checkAutoClosureCondition(alert: AlertForAutoClosure, newTpHits: number[]): AutoClosureResult {
   // Clean duplicates from both existing and new TP hits
   const existingHits = [...new Set(alert.tpHits)];
   const combinedHits = [...new Set([...existingHits, ...newTpHits])];
@@ -47,11 +58,15 @@ export function checkAutoClosureCondition(alert: TradeAlert, newTpHits: number[]
  * Create update DTO with auto-closure logic
  */
 export function createTpUpdateDto(
-  alert: TradeAlert, 
+  alert: AlertForAutoClosure, 
   newTpHits: number[], 
   manualClose?: boolean,
   manualCloseReason?: string
-): UpdateTradeAlertDto {
+): { 
+  tpHits: number[]; 
+  status?: 'pending' | 'active' | 'closed' | 'partially_profited';
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp';
+} {
   const autoClosureResult = checkAutoClosureCondition(alert, newTpHits);
   
   // Manual close takes precedence

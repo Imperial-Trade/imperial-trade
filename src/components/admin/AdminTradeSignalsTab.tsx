@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import { TradeAlertData } from '@/components/signals/TradeAlertData';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { useAuth } from '@/contexts/AuthContext';
-import { createTpUpdateDto } from '@/utils/tradingUtils';
+import { createTpUpdateDto, AlertForAutoClosure } from '@/utils/tradingUtils';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
 export default function AdminTradeSignalsTab() {
@@ -60,7 +61,7 @@ export default function AdminTradeSignalsTab() {
     tp3: alert.tp3,
     tp4: alert.tp4,
     tp5: alert.tp5,
-    tp_hits: alert.tpHits,
+    tp_hits: alert.tpHits || [],
     close_reason: alert.closeReason,
     notes: alert.notes,
     created_date: alert.createdAt,
@@ -76,31 +77,22 @@ export default function AdminTradeSignalsTab() {
     try {
       console.log(`🎯 Admin processing TP hits for alert ${alert.id}:`, newTPHits);
       
-      // Convert to domain entity for auto-closure logic
-      const alertEntity = {
+      // Convert to AlertForAutoClosure interface
+      const alertForClosure: AlertForAutoClosure = {
         id: alert.id,
         assetName: alert.asset_name,
-        tradermadeSymbol: alert.tradermade_symbol,
-        tradeType: alert.trade_type,
-        entryPrice: alert.entry_price,
-        stopLoss: alert.stop_loss,
-        userId: alert.creator?.id || '',
-        status: alert.status,
         tp1: alert.tp1,
         tp2: alert.tp2,
         tp3: alert.tp3,
         tp4: alert.tp4,
         tp5: alert.tp5,
         tpHits: alert.tp_hits || [],
-        notes: alert.notes,
-        closeReason: alert.close_reason,
-        createdAt: new Date(alert.created_date),
-        updatedAt: new Date(alert.updated_date)
+        status: alert.status
       };
 
       // Use the auto-closure utility
       const updateDto = createTpUpdateDto(
-        alertEntity, 
+        alertForClosure, 
         newTPHits, 
         shouldAutoClose, 
         closeReason

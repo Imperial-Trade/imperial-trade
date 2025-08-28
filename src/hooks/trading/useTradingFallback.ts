@@ -1,6 +1,6 @@
-
-import { useState, useCallback, useRef } from 'react';
-import { TradeAlertWithProfile, tradingApiService } from '@/api/services/TradingApiService';
+import { useState, useCallback } from 'react';
+import { TradingApiService } from '@/api/services/TradingApiService';
+import { TradeAlertWithProfile } from '@/types/trading';
 
 interface UseTradingFallbackOptions {
   userId: string;

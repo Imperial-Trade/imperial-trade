@@ -1,77 +1,39 @@
+import { useState, useCallback } from 'react';
+import { TradingApiService } from '@/api/services/TradingApiService';
+import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
-import { useCallback } from 'react';
-import { tradingApiService } from '@/api/services/TradingApiService';
-import { useToast } from '@/hooks/use-toast';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+interface UseOrderManagementResult {
+  updateOrderStatus: (id: string, status: UpdateTradeAlertDto) => Promise<boolean>;
+  loading: boolean;
+  error: string | null;
+}
 
-export const useOrderManagement = () => {
-  const { toast } = useToast();
-  const { userId } = useCurrentUser();
+export const useOrderManagement = (): UseOrderManagementResult => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const ensureAuthAndOwnershipContext = () => {
-    if (!userId) {
-      const err = new Error('You must be signed in to manage orders.');
-      toast({
-        title: 'Not signed in',
-        description: 'Please sign in to modify or cancel orders.',
-        variant: 'destructive',
-      });
-      throw err;
+  const updateOrderStatus = useCallback(async (id: string, updates: UpdateTradeAlertDto): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await TradingApiService.prototype.updateTradeAlert(id, updates);
+      if (!result) {
+        setError('Failed to update order status');
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      setError(err.message || 'Failed to update order status');
+      return false;
+    } finally {
+      setLoading(false);
     }
-    return userId;
-  };
-
-  const cancelOrder = useCallback(async (orderId: string): Promise<void> => {
-    const currentUserId = ensureAuthAndOwnershipContext();
-
-    // Update order to closed status with cancellation reason
-    const response = await tradingApiService.updateAlert(
-      orderId,
-      {
-        status: 'closed',
-        closeReason: 'manual',
-      },
-      currentUserId
-    );
-
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to cancel order');
-    }
-
-    console.log('✅ Order cancelled successfully:', orderId);
-  }, [toast, userId]);
-
-  const modifyOrderPrice = useCallback(async (orderId: string, newPrice: number): Promise<void> => {
-    // For now, this is a placeholder - modifying entry price requires backend support
-    console.warn('⚠️ Order modification not yet implemented in backend');
-    throw new Error('Order modification feature coming soon');
   }, []);
 
-  const convertToMarketOrder = useCallback(async (orderId: string): Promise<void> => {
-    const currentUserId = ensureAuthAndOwnershipContext();
-
-    // Convert pending limit order to active market order
-    const response = await tradingApiService.updateAlert(
-      orderId,
-      { status: 'active' },
-      currentUserId
-    );
-
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to convert order');
-    }
-
-    toast({
-      title: 'Order Converted',
-      description: 'Limit order converted to market order',
-    });
-
-    console.log('✅ Order converted to market order:', orderId);
-  }, [toast, userId]);
-
   return {
-    cancelOrder,
-    modifyOrderPrice,
-    convertToMarketOrder,
+    updateOrderStatus,
+    loading,
+    error,
   };
 };

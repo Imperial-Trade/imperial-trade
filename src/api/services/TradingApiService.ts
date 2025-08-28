@@ -1,6 +1,17 @@
 import { supabase } from '@/integrations/supabase/client';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
+export interface TradeAlertWithProfile extends TradeAlertResponseDto {
+  creator?: {
+    id: string;
+    display_name: string;
+    role: string;
+    avatar_url?: string | null;
+    user_type?: string | null;
+    access_level?: string | null;
+  };
+}
+
 export class TradingApiService {
   async getTradeAlertsByUserId(userId: string): Promise<TradeAlertResponseDto[]> {
     try {
@@ -48,18 +59,19 @@ export class TradingApiService {
     }
   }
 
-  async createTradeAlert(data: CreateTradeAlertDto): Promise<TradeAlertResponseDto> {
+  async createTradeAlert(data: CreateTradeAlertDto, userId: string): Promise<TradeAlertResponseDto> {
     console.log('🚀 TradingApiService.createTradeAlert:', {
       assetName: data.assetName,
       tradeType: data.tradeType,
       entryPrice: data.entryPrice,
-      // Note: status is now handled by database trigger
+      userId: userId,
     });
 
     try {
       const { data: result, error } = await supabase
         .from('trade_alerts')
         .insert({
+          user_id: userId,
           asset_name: data.assetName,
           tradermade_symbol: data.tradermadeSymbol,
           trade_type: data.tradeType,
@@ -71,8 +83,6 @@ export class TradingApiService {
           tp4: data.tp4,
           tp5: data.tp5,
           notes: data.notes,
-          // Remove status - now handled by database trigger
-          // Status will be automatically set to 'pending' for limit orders or 'active' for market orders
         })
         .select('*')
         .single();
@@ -164,3 +174,6 @@ export class TradingApiService {
     };
   }
 }
+
+// Export singleton instance
+export const tradingApiService = new TradingApiService();

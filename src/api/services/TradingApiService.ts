@@ -118,6 +118,11 @@ export class TradingApiService {
     }
   }
 
+  // Add alias method for backward compatibility
+  async updateAlert(id: string, data: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> {
+    return this.updateTradeAlert(id, data);
+  }
+
   async deleteTradeAlert(id: string): Promise<boolean> {
     console.log(`🗑️ TradingApiService.deleteTradeAlert (ID: ${id})`);
 

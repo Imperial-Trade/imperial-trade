@@ -8,17 +8,23 @@ import { TradeAlertWithProfile } from '@/types/trading';
 interface UseTradingResult {
   alerts: TradeAlertWithProfile[];
   loading: boolean;
+  isLoading: boolean; // Alias for loading
   error: string | null;
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  lastUpdated: Date | null;
+  nextRetryAt: number | null;
   createAlert: (data: CreateTradeAlertDto) => Promise<TradeAlertWithProfile | null>;
   updateAlert: (id: string, data: UpdateTradeAlertDto) => Promise<TradeAlertWithProfile | null>;
   deleteAlert: (id: string) => Promise<boolean>;
   refreshAlerts: () => Promise<void>;
 }
 
-export const useOptimizedTrading = (userId?: string): UseTradingResult => {
+export const useOptimizedTrading = (userId?: string, showAllSignals?: boolean): UseTradingResult => {
   const [alerts, setAlerts] = useState<TradeAlertWithProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { user } = useAuth();
 
   const effectiveUserId = userId || user?.id || '';
@@ -308,12 +314,17 @@ export const useOptimizedTrading = (userId?: string): UseTradingResult => {
 
   const refreshAlerts = useCallback(async () => {
     await fetchAlerts();
+    setLastUpdated(new Date());
   }, [fetchAlerts]);
 
   return {
     alerts,
     loading,
+    isLoading: loading, // Provide alias
     error,
+    connectionStatus,
+    lastUpdated,
+    nextRetryAt: null, // Not used in this implementation
     createAlert,
     updateAlert,
     deleteAlert,

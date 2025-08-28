@@ -25,40 +25,53 @@ export const SignalStream = () => {
 
   // Group signals by status for better organization
   const groupedSignals = useMemo(() => {
-    const filtered = signals.filter(signal => {
-      const matchesSearch = signal.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          signal.tradermadeSymbol.toLowerCase().includes(searchTerm.toLowerCase());
+    // Locally widen the type so we can safely use 'cancelled' in filters without changing shared types
+    const sigAny = signals as Array<{
+      id: string;
+      assetName: string;
+      tradermadeSymbol: string;
+      status: 'active' | 'pending' | 'closed' | 'partially_profited' | 'cancelled';
+      createdAt: string;
+      updatedAt: string;
+      [key: string]: any;
+    }>;
+
+    const filtered = sigAny.filter(signal => {
+      const matchesSearch =
+        signal.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        signal.tradermadeSymbol.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || signal.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
 
     return {
-      active: filtered.filter(s => s.status === 'active').sort((a, b) => 
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      ),
-      pending: filtered.filter(s => s.status === 'pending').sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-      partially_profited: filtered.filter(s => s.status === 'partially_profited').sort((a, b) => 
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      ),
-      closed: filtered.filter(s => s.status === 'closed').sort((a, b) => 
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      ),
-      cancelled: filtered.filter(s => s.status === 'cancelled').sort((a, b) => 
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      )
+      active: filtered
+        .filter(s => s.status === 'active')
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+      pending: filtered
+        .filter(s => s.status === 'pending')
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      partially_profited: filtered
+        .filter(s => s.status === 'partially_profited')
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+      closed: filtered
+        .filter(s => s.status === 'closed')
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+      cancelled: filtered
+        .filter(s => s.status === 'cancelled')
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
     };
   }, [signals, searchTerm, statusFilter]);
 
   const getStatusCounts = () => {
+    const sigAny = signals as Array<{ status: 'active' | 'pending' | 'closed' | 'partially_profited' | 'cancelled' }>;
     return {
-      all: signals.length,
-      active: signals.filter(s => s.status === 'active').length,
-      pending: signals.filter(s => s.status === 'pending').length,
-      partially_profited: signals.filter(s => s.status === 'partially_profited').length,
-      closed: signals.filter(s => s.status === 'closed').length,
-      cancelled: signals.filter(s => s.status === 'cancelled').length
+      all: sigAny.length,
+      active: sigAny.filter(s => s.status === 'active').length,
+      pending: sigAny.filter(s => s.status === 'pending').length,
+      partially_profited: sigAny.filter(s => s.status === 'partially_profited').length,
+      closed: sigAny.filter(s => s.status === 'closed').length,
+      cancelled: sigAny.filter(s => s.status === 'cancelled').length,
     };
   };
 
@@ -105,9 +118,9 @@ export const SignalStream = () => {
               onClick={() => setStatusFilter(status)}
               className="capitalize"
             >
-              {status === 'all' ? 'All' : 
-               status === 'partially_profited' ? 'Partial Profit' : 
-               status.replace('_', ' ')} ({statusCounts[status] || 0})
+              {status === 'all' ? 'All' :
+                status === 'partially_profited' ? 'Partial Profit' :
+                status.replace('_', ' ')} ({statusCounts[status] || 0})
             </Button>
           ))}
         </div>
@@ -125,8 +138,8 @@ export const SignalStream = () => {
           </>
         ) : (
           renderSignalGroup(
-            statusFilter === 'partially_profited' ? 'Partial Profit Signals' : 
-            `${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Signals`,
+            statusFilter === 'partially_profited' ? 'Partial Profit Signals' :
+              `${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Signals`,
             groupedSignals[statusFilter],
             `No ${statusFilter} signals found`
           )
@@ -153,7 +166,7 @@ export const SignalStream = () => {
       trade_type: signal.tradeType,
       entry_price: signal.entryPrice,
       stop_loss: signal.stopLoss,
-      status: signal.status,
+      status: (signal.status as TradeAlertData['status']),
       tp1: signal.tp1,
       tp2: signal.tp2,
       tp3: signal.tp3,
@@ -170,7 +183,7 @@ export const SignalStream = () => {
 
   function renderSignalGroup(title: string, signals: any[], emptyMessage: string) {
     if (signals.length === 0 && statusFilter === 'all') return null;
-    
+
     return (
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
@@ -183,7 +196,6 @@ export const SignalStream = () => {
               <TradeAlertCard
                 key={signal.id}
                 alert={mapToTradeAlertData(signal)}
-                onRefresh={refetch}
               />
             ))}
           </div>

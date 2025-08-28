@@ -7,7 +7,7 @@ export interface TradeAlertData {
   trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entry_price: number;
   stop_loss: number;
-  status: 'pending' | 'active' | 'closed' | 'partially_profited' | 'cancelled';
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
   tp1?: number;
   tp2?: number;
   tp3?: number;

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { TradingApiService } from '@/api/services/TradingApiService';
@@ -9,9 +10,12 @@ import { Search, Filter, Plus } from 'lucide-react';
 import { TradeAlertData } from '@/components/signals/TradeAlertData';
 import { SignalCreateDialog } from '@/components/signals/SignalCreateDialog';
 
+// Define the complete status filter type including 'cancelled'
+type StatusFilter = 'all' | 'active' | 'pending' | 'closed' | 'partially_profited' | 'cancelled';
+
 export const SignalStream = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'pending' | 'closed' | 'partially_profited' | 'cancelled'>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const { data: signals = [], isLoading, refetch } = useQuery({
@@ -178,7 +182,7 @@ export const SignalStream = () => {
             {signals.map(signal => (
               <TradeAlertCard
                 key={signal.id}
-                signal={mapToTradeAlertData(signal)}
+                alert={mapToTradeAlertData(signal)}
                 onRefresh={refetch}
               />
             ))}

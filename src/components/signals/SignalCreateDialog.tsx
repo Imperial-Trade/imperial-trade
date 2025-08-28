@@ -36,19 +36,29 @@ export const SignalCreateDialog = ({ isOpen, onClose, onSuccess }: SignalCreateD
     setIsLoading(true);
 
     try {
-      await TradingApiService.createAlert({
-        assetName: formData.assetName,
-        tradermadeSymbol: formData.tradermadeSymbol,
-        tradeType: formData.tradeType,
-        entryPrice: parseFloat(formData.entryPrice),
-        stopLoss: parseFloat(formData.stopLoss),
-        tp1: formData.tp1 ? parseFloat(formData.tp1) : undefined,
-        tp2: formData.tp2 ? parseFloat(formData.tp2) : undefined,
-        tp3: formData.tp3 ? parseFloat(formData.tp3) : undefined,
-        tp4: formData.tp4 ? parseFloat(formData.tp4) : undefined,
-        tp5: formData.tp5 ? parseFloat(formData.tp5) : undefined,
-        notes: formData.notes || undefined
+      const response = await fetch('/api/trade-alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          assetName: formData.assetName,
+          tradermadeSymbol: formData.tradermadeSymbol,
+          tradeType: formData.tradeType,
+          entryPrice: parseFloat(formData.entryPrice),
+          stopLoss: parseFloat(formData.stopLoss),
+          tp1: formData.tp1 ? parseFloat(formData.tp1) : undefined,
+          tp2: formData.tp2 ? parseFloat(formData.tp2) : undefined,
+          tp3: formData.tp3 ? parseFloat(formData.tp3) : undefined,
+          tp4: formData.tp4 ? parseFloat(formData.tp4) : undefined,
+          tp5: formData.tp5 ? parseFloat(formData.tp5) : undefined,
+          notes: formData.notes || undefined
+        })
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to create signal');
+      }
 
       toast.success('Signal created successfully');
       onSuccess();

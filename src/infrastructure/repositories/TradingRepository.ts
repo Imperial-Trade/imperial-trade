@@ -1,4 +1,3 @@
-
 import { ITradingRepository } from '@/domain/interfaces/repositories/ITradingRepository';
 import { TradeAlert } from '@/domain/entities/trading/TradeAlert';
 import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -48,9 +47,9 @@ export class TradingRepository implements ITradingRepository {
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
-    // Determine correct status based on order type
+    // Determine correct status based on order type with proper typing
     const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
-    const correctStatus = isLimitOrder ? 'pending' : 'active';
+    const correctStatus: 'pending' | 'active' = isLimitOrder ? 'pending' : 'active';
     
     console.log(`🔧 Repository: Creating ${dto.tradeType} order`);
     console.log(`📋 Repository: Setting status to '${correctStatus}' for ${isLimitOrder ? 'limit' : 'market'} order`);
@@ -68,7 +67,7 @@ export class TradingRepository implements ITradingRepository {
       tp5: dto.tp5,
       notes: dto.notes,
       user_id: userId,
-      status: correctStatus  // Explicitly set status (database trigger will also enforce this)
+      status: correctStatus  // Now properly typed
     };
 
     console.log('📤 Repository insert data:', {

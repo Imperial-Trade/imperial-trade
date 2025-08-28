@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
@@ -49,9 +48,9 @@ export class TradingApiService {
   }
 
   async createTradeAlert(data: CreateTradeAlertDto, userId: string): Promise<TradeAlertResponseDto> {
-    // Determine correct status based on order type
+    // Determine correct status based on order type with proper typing
     const isLimitOrder = data.tradeType === 'buy_limit' || data.tradeType === 'sell_limit';
-    const correctStatus = isLimitOrder ? 'pending' : 'active';
+    const correctStatus: 'pending' | 'active' = isLimitOrder ? 'pending' : 'active';
 
     console.log('🚀 TradingApiService.createTradeAlert:', {
       assetName: data.assetName,
@@ -78,7 +77,7 @@ export class TradingApiService {
           tp4: data.tp4,
           tp5: data.tp5,
           notes: data.notes,
-          status: correctStatus  // Explicitly set status
+          status: correctStatus  // Now properly typed
         })
         .select('*')
         .single();
@@ -129,7 +128,6 @@ export class TradingApiService {
     }
   }
 
-  // Add alias method for backward compatibility
   async updateAlert(id: string, data: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> {
     return this.updateTradeAlert(id, data);
   }
@@ -180,5 +178,4 @@ export class TradingApiService {
   }
 }
 
-// Export singleton instance
 export const tradingApiService = new TradingApiService();

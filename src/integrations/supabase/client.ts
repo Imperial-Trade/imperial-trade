@@ -15,5 +15,18 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+    // Force secure WebSocket connections for realtime
+    transport: 'websocket',
+    timeout: 20000,
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'imperial-trading-platform'
+    }
   }
 });

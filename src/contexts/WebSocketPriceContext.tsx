@@ -73,7 +73,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const STALE_DATA_THRESHOLD = 10000; // 10 seconds stale threshold
   // Enhanced health check mechanism for connection stability
   const healthCheckRef = useRef<NodeJS.Timeout | null>(null);
-  
+
+  // NEW: Safe capability detection to avoid SecurityError in restricted environments (e.g., lovable preview)
+  const canUseWebSocket = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    const protocolOk = window.isSecureContext === true && window.location?.protocol === 'https:';
+    const hasCtor = typeof window.WebSocket === 'function';
+    // Lovable preview environments may block direct WS from iframes; short-circuit there
+    const host = window.location?.hostname || '';
+    const isLovablePreview = host.includes('lovable.app');
+    return protocolOk && hasCtor && !isLovablePreview;
+  }, []);
+
   const startHealthCheck = useCallback(() => {
     if (healthCheckRef.current) {
       clearInterval(healthCheckRef.current);
@@ -173,6 +184,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   const connect = useCallback(() => {
+    // NEW: Guard against constructing WebSocket in restricted environments
+    if (!canUseWebSocket()) {
+      console.warn('⚠️ WebSocket disabled in this environment; falling back to unavailable data source.');
+      setConnectionStatus('error');
+      setDataSource('unavailable');
+      setErrors(prev => ({ ...prev, global: 'Real-time streaming is unavailable in this environment' }));
+      return;
+    }
+
     if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
       console.log('🔄 WebSocket already connected or connecting, skipping duplicate connection');
       return;
@@ -363,9 +383,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       setConnectionStatus('error');
       setDataSource('unavailable');
     }
-  }, [getReconnectDelay]);
+  }, [canUseWebSocket, getReconnectDelay]);
 
   const subscribe = useCallback((symbols: string[]) => {
+    // NEW: Respect environment guard
+    if (!canUseWebSocket()) {
+      console.warn('⚠️ Skipping subscribe: WebSocket unavailable in this environment.');
+      return;
+    }
+
     console.log('📡 Subscribing request received for symbols:', symbols);
 
     // Normalize and validate symbols FIRST
@@ -403,7 +429,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         flushPendingSubscriptions();
       }, 10); // Business Plan: Ultra-fast 10ms batching
     }
-  }, [connect, flushPendingSubscriptions]);
+  }, [connect, flushPendingSubscriptions, canUseWebSocket]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     // Normalize like subscribe
@@ -459,8 +485,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return prices[norm] || null;
   }, [prices, normalizeSymbol]);
 
-  // Auto-connect on mount and add connection health monitoring
+  // Auto-connect on mount with environment guard
   useEffect(() => {
+    if (!canUseWebSocket()) {
+      console.warn('⚠️ WebSocket disabled on mount; skipping auto-connect.');
+      setConnectionStatus('error');
+      setDataSource('unavailable');
+      setErrors(prev => ({ ...prev, global: 'Real-time streaming is unavailable in this environment' }));
+      return () => {
+        // No-op cleanup
+      };
+    }
+
     connect();
     
     // Health monitoring - check connection every 30 seconds and reconnect if needed
@@ -491,7 +527,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         socketRef.current.close();
       }
     };
-  }, [connect]);
+  }, [connect, canUseWebSocket]);
 
   const value: WebSocketContextType = {
     prices,

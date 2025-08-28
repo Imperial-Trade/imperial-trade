@@ -5,11 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ApiResponse } from '@/types/common';
 import { isValidUUID } from '@/types/guards';
 
-// Lightweight type definitions to avoid deep type instantiation
-export type DatabaseTable = string;
-export type TableRow<T extends DatabaseTable> = Record<string, unknown>;
-export type TableInsert<T extends DatabaseTable> = Record<string, unknown>;
-export type TableUpdate<T extends DatabaseTable> = Record<string, unknown>;
+// Note: We intentionally avoid deep, table-specific generics here to prevent TS2589 errors.
 
 export class ApiClient {
   private static instance: ApiClient;
@@ -23,15 +19,16 @@ export class ApiClient {
     return ApiClient.instance;
   }
 
-  async select<T extends DatabaseTable>(
-    table: T,
+  // Simplified types to avoid deep instantiation
+  async select(
+    table: string,
     options?: {
       select?: string;
       eq?: { column: string; value: any };
       order?: { column: string; ascending?: boolean };
       limit?: number;
     }
-  ): Promise<ApiResponse<TableRow<T>[]>> {
+  ): Promise<ApiResponse<any[]>> {
     try {
       let query = supabase.from(table).select(options?.select || '*');
 
@@ -62,7 +59,7 @@ export class ApiClient {
 
       return {
         success: true,
-        data: data as unknown as TableRow<T>[],
+        data: data as any[],
         error: undefined
       };
     } catch (error) {
@@ -75,10 +72,10 @@ export class ApiClient {
     }
   }
 
-  async insert<T extends DatabaseTable>(
-    table: T,
-    data: TableInsert<T>
-  ): Promise<ApiResponse<TableRow<T>>> {
+  async insert(
+    table: string,
+    data: any
+  ): Promise<ApiResponse<any>> {
     try {
       console.log(`📝 Inserting into ${table}:`, data);
       const { data: result, error } = await supabase
@@ -98,7 +95,7 @@ export class ApiClient {
 
       return {
         success: true,
-        data: result as unknown as TableRow<T>,
+        data: result as any,
         error: undefined
       };
     } catch (error) {
@@ -111,11 +108,11 @@ export class ApiClient {
     }
   }
 
-  async update<T extends DatabaseTable>(
-    table: T,
+  async update(
+    table: string,
     id: string,
-    data: TableUpdate<T>
-  ): Promise<ApiResponse<TableRow<T>>> {
+    data: any
+  ): Promise<ApiResponse<any>> {
     try {
       if (!isValidUUID(id)) {
         return {
@@ -143,7 +140,7 @@ export class ApiClient {
 
       return {
         success: true,
-        data: result as unknown as TableRow<T>,
+        data: result as any,
         error: undefined
       };
     } catch (error) {
@@ -156,8 +153,8 @@ export class ApiClient {
     }
   }
 
-  async delete<T extends DatabaseTable>(
-    table: T,
+  async delete(
+    table: string,
     id: string
   ): Promise<ApiResponse<void>> {
     try {

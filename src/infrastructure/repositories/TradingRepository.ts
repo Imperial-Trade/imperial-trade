@@ -1,3 +1,4 @@
+
 import { ITradingRepository } from '@/domain/interfaces/repositories/ITradingRepository';
 import { TradeAlert } from '@/domain/entities/trading/TradeAlert';
 import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -47,12 +48,7 @@ export class TradingRepository implements ITradingRepository {
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
-    // Determine correct status based on order type with proper typing
-    const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
-    const correctStatus: 'pending' | 'active' = isLimitOrder ? 'pending' : 'active';
-    
-    console.log(`🔧 Repository: Creating ${dto.tradeType} order`);
-    console.log(`📋 Repository: Setting status to '${correctStatus}' for ${isLimitOrder ? 'limit' : 'market'} order`);
+    console.log(`🔧 Repository: Creating ${dto.tradeType} order - database trigger will set correct status`);
     
     const insertData = {
       asset_name: dto.assetName,
@@ -66,28 +62,19 @@ export class TradingRepository implements ITradingRepository {
       tp4: dto.tp4,
       tp5: dto.tp5,
       notes: dto.notes,
-      user_id: userId,
-      status: correctStatus  // Now properly typed
+      user_id: userId
+      // Removed status - the database trigger will set it correctly
     };
 
-    console.log('📤 Repository insert data:', {
-      ...insertData,
-      status: correctStatus,
-      tradeType: dto.tradeType,
-      isLimitOrder
-    });
+    console.log('📤 Repository insert data:', insertData);
 
     const result = await apiClient.insert('trade_alerts', insertData);
     
     if (!result.success || !result.data) {
-      console.error('❌ Repository: Alert creation failed:', result.error);
       throw new Error(result.error || 'Failed to create alert');
     }
     
-    const finalStatus = result.data.status;
-    console.log(`✅ Repository: Alert created successfully`);
-    console.log(`📊 Repository: Final status: '${finalStatus}' (Expected: '${correctStatus}')`);
-    console.log(`🎯 Repository: ${isLimitOrder ? 'Limit order should be pending for activation monitoring' : 'Market order should be active for immediate processing'}`);
+    console.log('✅ Repository: Alert created with status:', result.data.status);
     
     return TradingMapper.toDomain(result.data);
   }
@@ -102,30 +89,20 @@ export class TradingRepository implements ITradingRepository {
     if (dto.closeReason) updateData.close_reason = dto.closeReason;
     if (dto.notes) updateData.notes = dto.notes;
 
-    console.log(`🔄 Repository: Updating alert ${id}:`, updateData);
-
     const result = await apiClient.update('trade_alerts', id, updateData);
     
     if (!result.success || !result.data) {
-      console.error('❌ Repository: Alert update failed:', result.error);
       throw new Error(result.error || 'Failed to update alert');
     }
-    
-    console.log(`✅ Repository: Alert ${id} updated successfully to status:`, result.data.status);
     
     return TradingMapper.toDomain(result.data);
   }
 
   async deleteAlert(id: string): Promise<void> {
-    console.log(`🗑️ Repository: Deleting alert ${id}`);
-
     const result = await apiClient.delete('trade_alerts', id);
     
     if (!result.success) {
-      console.error('❌ Repository: Alert deletion failed:', result.error);
       throw new Error(result.error || 'Failed to delete alert');
     }
-
-    console.log(`✅ Repository: Alert ${id} deleted successfully`);
   }
 }

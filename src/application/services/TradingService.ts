@@ -68,14 +68,9 @@ export class TradingService {
       throw new Error('Stop loss must be positive');
     }
 
-    const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
-    
-    console.log(`🔧 Service: Creating ${dto.tradeType} order`);
-    console.log(`📋 Service: ${isLimitOrder ? 'Limit order will be created as pending for activation monitoring' : 'Market order will be created as active for immediate processing'}`);
+    console.log(`🔧 Service: Creating ${dto.tradeType} order - status will be determined by database trigger`);
 
     const alert = await this.tradingRepository.createAlert(dto, userId);
-    
-    console.log(`✅ Service: Alert created with final status: '${alert.status}'`);
     
     return {
       id: alert.id,

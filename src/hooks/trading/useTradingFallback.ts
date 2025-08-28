@@ -1,7 +1,6 @@
 
-import { useState, useCallback } from 'react';
-import { tradingApiService } from '@/api/services/TradingApiService';
-import { TradeAlertWithProfile } from '@/types/trading';
+import { useState, useCallback, useRef } from 'react';
+import { TradeAlertWithProfile, tradingApiService } from '@/api/services/TradingApiService';
 
 interface UseTradingFallbackOptions {
   userId: string;
@@ -16,6 +15,7 @@ interface UseTradingFallbackReturn {
   fetchAlertsFallback: (force?: boolean) => Promise<void>;
 }
 
+// Cache for storing alerts data (fallback for when realtime fails)
 const alertsCache = new Map<string, { data: TradeAlertWithProfile[], timestamp: number }>();
 const CACHE_DURATION = 10000; // 10 seconds cache
 
@@ -32,6 +32,7 @@ export const useTradingFallback = ({
   const shouldFetchAlerts = showAllSignals || Boolean(userId && userId.trim() !== '');
   const cacheKey = showAllSignals ? 'all_signals' : userId;
 
+  // Cache management for fallback
   const getCachedAlerts = useCallback((key: string): TradeAlertWithProfile[] | null => {
     const cached = alertsCache.get(key);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -44,6 +45,7 @@ export const useTradingFallback = ({
     alertsCache.set(key, { data, timestamp: Date.now() });
   }, []);
 
+  // HTTP fallback fetch function
   const fetchAlertsFallback = useCallback(async (force = false) => {
     if (!shouldFetchAlerts || !shouldUseFallback) return;
 
@@ -64,16 +66,27 @@ export const useTradingFallback = ({
       let result;
       
       if (showAllSignals) {
-        // Fallback to basic fetch for all alerts
-        result = await tradingApiService.getTradeAlertsByUserId('');
+        result = await tradingApiService.getAllPublicAlertsWithProfiles();
       } else {
-        result = await tradingApiService.getTradeAlertsByUserId(userId);
+        const userAlertsResult = await tradingApiService.getAllAlerts(userId);
+        if (userAlertsResult.success && userAlertsResult.data) {
+          result = {
+            success: true,
+            data: userAlertsResult.data.map(alert => ({ ...alert, creator: undefined })),
+            error: undefined
+          };
+        } else {
+          result = userAlertsResult;
+        }
       }
       
-      const mappedResult = result.map(alert => ({ ...alert, creator: undefined }));
-      setFallbackAlerts(mappedResult as TradeAlertWithProfile[]);
-      setCachedAlerts(cacheKey, mappedResult as TradeAlertWithProfile[]);
-      setFallbackError(null);
+      if (result.success && result.data) {
+        setFallbackAlerts(result.data);
+        setCachedAlerts(cacheKey, result.data);
+        setFallbackError(null);
+      } else {
+        setFallbackError(result.error || 'Failed to fetch alerts');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setFallbackError(errorMessage);

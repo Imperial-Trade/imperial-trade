@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import EnhancedNewAlertForm from '@/components/signals/EnhancedNewAlertForm';
+import OptimizedNewAlertForm from '@/components/signals/OptimizedNewAlertForm';
 import { useToast } from '@/components/ui/use-toast';
 import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,9 @@ const NewSignalPage: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Removed live price preloading for a simpler, seamless form experience
+
 
   // Get user ID
   useEffect(() => {
@@ -108,18 +111,20 @@ const NewSignalPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">New Educational Pattern</h1>
           <p className="text-muted-foreground mt-2">
-            Create a new educational market analysis pattern with live price data and advanced features
+            Create a new educational market analysis pattern with reference price data
           </p>
         </div>
         
-        <EnhancedNewAlertForm 
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-        />
+        <div className="bg-card rounded-lg border border-border p-6">
+          <OptimizedNewAlertForm 
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+          />
+        </div>
       </div>
     </div>
   );

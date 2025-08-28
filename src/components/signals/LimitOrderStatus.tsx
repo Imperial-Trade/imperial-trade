@@ -1,118 +1,266 @@
-
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle, AlertCircle, Zap } from 'lucide-react';
-import { TradeAlertWithProfile } from '@/types/trading';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { Clock, CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { TradeAlertWithProfile } from '@/api/services/TradingApiService';
+import { useOrderManagement } from '@/hooks/useOrderManagement';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
-export interface LimitOrderStatusProps {
-  signal: TradeAlertWithProfile;
-  currentPrice?: number;
+interface LimitOrderStatusProps {
+  alert: TradeAlertWithProfile;
+  onCancel?: (id: string) => Promise<void>;
+  onModify?: (id: string, newPrice: number) => Promise<void>;
 }
 
-export const LimitOrderStatus: React.FC<LimitOrderStatusProps> = ({ signal, currentPrice }) => {
-  const isLimitOrder = signal.tradeType === 'buy_limit' || signal.tradeType === 'sell_limit';
+export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatusProps) => {
+  const { toast } = useToast();
+  const { prices } = useWebSocketPrices();
+  const { cancelOrder, modifyOrderPrice } = useOrderManagement();
+  const { userId } = useCurrentUser();
+  const [isModifying, setIsModifying] = useState(false);
+  const [newPrice, setNewPrice] = useState(alert.entryPrice);
+
+  const isOwner = !!userId && alert.userId === userId;
+
+  const symbol = alert.tradermadeSymbol || alert.assetName;
+  const currentPrice = prices[symbol]?.price || 0;
+  const entryPrice = alert.entryPrice;
+  const isLimitOrder = alert.tradeType.includes('limit');
+  const isPending = alert.status === 'pending';
+  const isBuyLimit = alert.tradeType === 'buy_limit';
+  const isSellLimit = alert.tradeType === 'sell_limit';
+
+  // Calculate distance to activation
+  const distanceToActivation = Math.abs(currentPrice - entryPrice);
+  const distancePercentage = currentPrice > 0 ? (distanceToActivation / currentPrice) * 100 : 0;
   
-  if (!isLimitOrder) {
-    return null;
-  }
-
-  const getOrderStatus = () => {
-    if (signal.status === 'active') {
-      return {
-        icon: CheckCircle,
-        text: 'Order Activated',
-        variant: 'default' as const,
-        className: 'bg-green-500/10 text-green-600 border-green-500/20'
-      };
-    }
-
-    if (signal.status === 'pending') {
-      return {
-        icon: Clock,
-        text: 'Awaiting Trigger',
-        variant: 'outline' as const,
-        className: 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-      };
-    }
-
-    if (signal.status === 'closed') {
-      return {
-        icon: AlertCircle,
-        text: 'Order Closed',
-        variant: 'outline' as const,
-        className: 'bg-gray-500/10 text-gray-600 border-gray-500/20'
-      };
-    }
-
-    return {
-      icon: AlertCircle,
-      text: signal.status,
-      variant: 'outline' as const,
-      className: 'bg-gray-500/10 text-gray-600 border-gray-500/20'
-    };
+  // Calculate proximity for color coding
+  const getProximityColor = () => {
+    if (distancePercentage < 0.1) return 'text-green-600 dark:text-green-400'; // Very close
+    if (distancePercentage < 0.5) return 'text-yellow-600 dark:text-yellow-400'; // Close
+    return 'text-red-600 dark:text-red-400'; // Far
   };
 
-  const { icon: Icon, text, variant, className } = getOrderStatus();
-
-  const getTriggerInfo = () => {
-    if (!currentPrice || signal.status !== 'pending') return null;
-
-    const entryPrice = signal.entryPrice;
-    const isBuyLimit = signal.tradeType === 'buy_limit';
+  // Check if order should trigger (client-side validation)
+  const shouldTrigger = () => {
+    if (!isPending || currentPrice === 0) return false;
     
-    // Calculate distance to trigger
-    const distance = isBuyLimit 
-      ? ((currentPrice - entryPrice) / entryPrice * 100)
-      : ((entryPrice - currentPrice) / entryPrice * 100);
-    
-    const triggerDirection = isBuyLimit ? 'drop to' : 'rise to';
-    const isClose = Math.abs(distance) < 1; // Within 1%
-
-    return {
-      distance: Math.abs(distance),
-      triggerDirection,
-      isClose
-    };
+    if (isBuyLimit) {
+      return currentPrice <= entryPrice;
+    }
+    if (isSellLimit) {
+      return currentPrice >= entryPrice;
+    }
+    return false;
   };
 
-  const triggerInfo = getTriggerInfo();
+  // Progress calculation for activation bar
+  const getActivationProgress = () => {
+    if (!isPending || currentPrice === 0) return 0;
+    
+    const range = Math.abs(entryPrice - currentPrice);
+    const progress = Math.max(0, Math.min(100, ((range - distanceToActivation) / range) * 100));
+    
+    return progress;
+  };
+
+  const handleCancel = async () => {
+    try {
+      if (!isOwner) {
+        toast({
+          title: 'Action not allowed',
+          description: 'Only the educator who posted this signal can cancel it.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (onCancel) {
+        await onCancel(alert.id);
+      } else {
+        await cancelOrder(alert.id);
+      }
+      toast({
+        title: "Order Cancelled",
+        description: `${alert.assetName} limit order has been cancelled`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to cancel order",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleModify = async () => {
+    if (!isOwner) {
+      toast({
+        title: 'Action not allowed',
+        description: 'Only the educator who posted this signal can modify it.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (newPrice === entryPrice) {
+      setIsModifying(false);
+      return;
+    }
+    
+    try {
+      if (onModify) {
+        await onModify(alert.id, newPrice);
+      } else {
+        await modifyOrderPrice(alert.id, newPrice);
+      }
+      setIsModifying(false);
+      toast({
+        title: "Order Modified",
+        description: `Entry price updated to ${newPrice}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to modify order",
+        variant: "destructive",
+      });
+      setNewPrice(entryPrice);
+      setIsModifying(false);
+    }
+  };
+
+  // Show activation alert when very close
+  useEffect(() => {
+    if (shouldTrigger() && isPending) {
+      toast({
+        title: "🎯 Order Ready to Trigger!",
+        description: `${alert.assetName} ${alert.tradeType} at $${entryPrice}`,
+        duration: 3000,
+      });
+    }
+  }, [shouldTrigger(), isPending]);
+
+  if (!isLimitOrder) return null;
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <Badge variant={variant} className={className}>
-          <Icon className="h-3 w-3 mr-1" />
-          {text}
-        </Badge>
-        
-        {signal.status === 'active' && signal.activatedAt && (
-          <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/20">
-            <Zap className="h-3 w-3 mr-1" />
-            Activated
-          </Badge>
+    <div className="space-y-3 p-4 border border-border rounded-lg bg-card">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {isPending ? (
+            <>
+              <Clock className="h-4 w-4 text-yellow-500" />
+              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+                🟡 Pending Activation
+              </Badge>
+            </>
+          ) : alert.status === 'active' ? (
+            <>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400">
+                🟢 Active Order
+              </Badge>
+            </>
+          ) : (
+            <>
+              <XCircle className="h-4 w-4 text-gray-500" />
+              <Badge variant="outline" className="bg-gray-500/10">
+                ⚫ {alert.status}
+              </Badge>
+            </>
+          )}
+        </div>
+
+        {isPending && isOwner && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsModifying(!isModifying)}
+            >
+              Modify
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancel}
+              className="text-red-600 hover:text-red-700"
+            >
+              Cancel
+            </Button>
+          </div>
         )}
       </div>
 
-      <div className="text-xs text-muted-foreground space-y-1">
-        <div>Entry Target: ${signal.entryPrice.toFixed(4)}</div>
-        
-        {currentPrice && (
-          <div>Current: ${currentPrice.toFixed(4)}</div>
-        )}
-        
-        {triggerInfo && (
-          <div className={`${triggerInfo.isClose ? 'text-orange-600 font-medium' : ''}`}>
-            Needs to {triggerInfo.triggerDirection} ${signal.entryPrice.toFixed(4)}
-            {triggerInfo.isClose && ' (Close!)'}
+      {isPending && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Distance to Activation:</span>
+            <span className={`font-medium ${getProximityColor()}`}>
+              {isBuyLimit && <TrendingDown className="inline h-3 w-3 mr-1" />}
+              {isSellLimit && <TrendingUp className="inline h-3 w-3 mr-1" />}
+              ${distanceToActivation.toFixed(4)} ({distancePercentage.toFixed(2)}%)
+            </span>
           </div>
-        )}
-        
-        {signal.activatedAt && (
-          <div className="text-green-600">
-            Activated: {new Date(signal.activatedAt).toLocaleString()}
+
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Current: ${currentPrice.toFixed(4)}</span>
+              <span>Target: ${entryPrice.toFixed(4)}</span>
+            </div>
+            <Progress 
+              value={getActivationProgress()} 
+              className="h-2"
+            />
           </div>
-        )}
-      </div>
+
+          {shouldTrigger() && (
+            <div className="text-center p-2 bg-green-500/10 border border-green-500/20 rounded-md">
+              <span className="text-green-600 dark:text-green-400 font-medium">
+                🎯 Ready to trigger! Price condition met.
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {alert.status === 'active' && (alert as any).activatedAt && (
+        <div className="text-sm text-muted-foreground">
+          <span>Activated: {new Date((alert as any).activatedAt).toLocaleString()}</span>
+          {(alert as any).activationPrice && (
+            <span className="ml-2">at ${(alert as any).activationPrice.toFixed(4)}</span>
+          )}
+        </div>
+      )}
+
+      {isModifying && isPending && isOwner && (
+        <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-md">
+          <input
+            type="number"
+            step="0.0001"
+            value={newPrice}
+            onChange={(e) => setNewPrice(parseFloat(e.target.value))}
+            className="flex-1 px-2 py-1 text-sm border border-border rounded"
+            placeholder="New entry price"
+          />
+          <Button size="sm" onClick={handleModify}>
+            Update
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => {
+              setIsModifying(false);
+              setNewPrice(entryPrice);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

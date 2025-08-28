@@ -22,7 +22,7 @@ export interface FormState<T extends Record<string, unknown>> {
   isValid: boolean;
 }
 
-// Trading Alert Component Types - Updated with missing fields
+// Trading Alert Component Types
 export interface TradeAlertData {
   id: string;
   asset_name: string;
@@ -41,8 +41,6 @@ export interface TradeAlertData {
   notes?: string;
   created_date: string;
   updated_date?: string;
-  activated_at?: string;  // Added missing field
-  activation_price?: number;  // Added missing field
 }
 
 export interface TradeAlertCardProps extends BaseComponentProps {

@@ -1,67 +1,128 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { tradingApiService } from '@/api/services/TradingApiService';
-import { TradeAlertWithProfile } from '@/types/trading';
+import { useSignalRealtime } from './useSignalRealtime';
+import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
+import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
-interface UseOptimizedTradingRealtimeProps {
-  userId: string;
-  showAllSignals: boolean;
-  initialFetch?: boolean;
+interface UseOptimizedTradingRealtimeReturn {
+  alerts: TradeAlertWithProfile[];
+  isLoading: boolean;
+  error: string | null;
+  createAlert: (dto: CreateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
+  updateAlert: (id: string, dto: UpdateTradeAlertDto) => Promise<TradeAlertResponseDto | null>;
+  deleteAlert: (id: string) => Promise<boolean>;
+  refreshAlerts: () => Promise<void>;
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  lastUpdated: Date | null;
+  nextRetryAt: number | null;
 }
 
-export const useOptimizedTradingRealtime = ({ userId, showAllSignals, initialFetch = true }: UseOptimizedTradingRealtimeProps) => {
-  const [alerts, setAlerts] = useState<TradeAlertWithProfile[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const isMounted = useRef(false);
+// This hook provides backward compatibility with the existing useOptimizedTrading interface
+// while adding real-time functionality
+export const useOptimizedTradingRealtime = (
+  userId: string, 
+  showAllSignals: boolean = false
+): UseOptimizedTradingRealtimeReturn => {
+  const [localLoading, setLocalLoading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  
+  // Use the new real-time hook
+  const {
+    alerts,
+    isLoading: realtimeLoading,
+    error: realtimeError,
+    connectionStatus,
+    updateAlert: realtimeUpdateAlert,
+    refreshAlerts,
+    lastUpdated,
+    nextRetryAt
+  } = useSignalRealtime(userId, showAllSignals);
 
-  const fetchAlerts = useCallback(async () => {
-    if (!userId) {
-      setAlerts([]);
-      return;
+  // Combine loading states
+  const isLoading = localLoading || realtimeLoading;
+  
+  // Combine error states
+  const error = localError || realtimeError;
+
+  const createAlert = useCallback(async (dto: CreateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
+    if (!userId || !userId.trim()) {
+      console.warn('Cannot create alert: invalid userId');
+      return null;
     }
 
-    setLoading(true);
-    setError(null);
-
     try {
-      const fetchedAlerts = await tradingApiService.getTradeAlertsByUserId(userId);
-      if (isMounted.current) {
-        setAlerts(fetchedAlerts as TradeAlertWithProfile[]);
+      setLocalLoading(true);
+      setLocalError(null);
+      
+      const result = await tradingApiService.createAlert(dto, userId);
+      if (result.success && result.data) {
+        // Real-time context will automatically update the alerts list
+        return result.data;
+      } else {
+        setLocalError(result.error || 'Failed to create alert');
+        console.error('Failed to create alert:', result.error);
+        return null;
       }
-    } catch (err) {
-      if (isMounted.current) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch alerts');
-      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setLocalError(errorMessage);
+      console.error('Error creating alert:', error);
+      return null;
     } finally {
-      if (isMounted.current) {
-        setLoading(false);
-      }
+      setLocalLoading(false);
     }
   }, [userId]);
 
-  useEffect(() => {
-    isMounted.current = true;
-    if (initialFetch) {
-      fetchAlerts();
+  const updateAlert = useCallback(async (id: string, dto: UpdateTradeAlertDto): Promise<TradeAlertResponseDto | null> => {
+    try {
+      setLocalError(null);
+      return await realtimeUpdateAlert(id, dto);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setLocalError(errorMessage);
+      return null;
+    }
+  }, [realtimeUpdateAlert]);
+
+  const deleteAlert = useCallback(async (id: string): Promise<boolean> => {
+    if (!userId || !userId.trim()) {
+      console.warn('Cannot delete alert: invalid userId');
+      return false;
     }
 
-    return () => {
-      isMounted.current = false;
-    };
-  }, [fetchAlerts, initialFetch]);
-
-  useEffect(() => {
-    if (showAllSignals) {
-      fetchAlerts();
+    try {
+      setLocalLoading(true);
+      setLocalError(null);
+      
+      const result = await tradingApiService.deleteAlert(id, userId);
+      if (result.success) {
+        // Real-time context will automatically update the alerts list
+        return true;
+      } else {
+        setLocalError(result.error || 'Failed to delete alert');
+        console.error('Failed to delete alert:', result.error);
+        return false;
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setLocalError(errorMessage);
+      console.error('Error deleting alert:', error);
+      return false;
+    } finally {
+      setLocalLoading(false);
     }
-  }, [showAllSignals, fetchAlerts]);
+  }, [userId]);
 
   return {
     alerts,
-    loading,
+    isLoading,
     error,
-    refreshAlerts: fetchAlerts
+    createAlert,
+    updateAlert,
+    deleteAlert,
+    refreshAlerts,
+    connectionStatus,
+    lastUpdated,
+    nextRetryAt
   };
 };

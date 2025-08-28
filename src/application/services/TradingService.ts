@@ -68,10 +68,7 @@ export class TradingService {
       throw new Error('Stop loss must be positive');
     }
 
-    console.log(`🔧 Service: Creating ${dto.tradeType} order - status will be determined by database trigger`);
-
     const alert = await this.tradingRepository.createAlert(dto, userId);
-    
     return {
       id: alert.id,
       userId: alert.userId,

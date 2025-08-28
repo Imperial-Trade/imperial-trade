@@ -1,3 +1,4 @@
+
 // Component-specific type definitions for better UI type safety
 import { ReactNode } from 'react';
 import { LucideIcon } from 'lucide-react';
@@ -35,9 +36,9 @@ export interface TradeAlertData {
   tp3?: number;
   tp4?: number;
   tp5?: number;
-  status: 'pending' | 'active' | 'closed' | 'partially_profited';
+  status: 'pending' | 'active' | 'closed';
   tp_hits?: number[];
-  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit';
+  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp';
   notes?: string;
   created_date: string;
   updated_date?: string;
@@ -55,14 +56,6 @@ export interface TradeAlertCardProps extends BaseComponentProps {
   connectionStatus: 'connecting' | 'connected' | 'error';
   priceSource: string;
   isRecentClosure: boolean;
-  creator?: {
-    id: string;
-    display_name: string;
-    role?: string;
-    avatar_url?: string;
-    user_type?: string;
-    access_level?: string;
-  };
 }
 
 // Live Price Widget Types

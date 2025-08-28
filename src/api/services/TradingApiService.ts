@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
@@ -44,6 +45,11 @@ export class TradingApiService {
     try {
       console.log('TradingApiService - Creating alert:', dto);
 
+      // Enforce correct status at insert time to avoid DB defaults overriding it
+      const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
+      const correctStatus: 'pending' | 'active' = isLimitOrder ? 'pending' : 'active';
+      console.log('TradingApiService - Computed correct status:', correctStatus, 'for type:', dto.tradeType);
+
       const { data: alertData, error: alertError } = await supabase
         .from('trade_alerts')
         .insert({
@@ -58,7 +64,8 @@ export class TradingApiService {
           tp3: dto.tp3,
           tp4: dto.tp4,
           tp5: dto.tp5,
-          notes: dto.notes
+          notes: dto.notes,
+          status: correctStatus, // ensure limit orders start as 'pending'
         })
         .select('*')
         .single();
@@ -68,7 +75,31 @@ export class TradingApiService {
         return { success: false, error: alertError.message };
       }
 
-      console.log('TradingApiService - Alert created:', alertData);
+      let finalAlert = alertData;
+      if (finalAlert.status !== correctStatus) {
+        console.warn(
+          'TradingApiService - DB returned unexpected status:',
+          finalAlert.status,
+          'expected:',
+          correctStatus,
+          'Applying one-time correction.'
+        );
+        const { data: correctedData, error: correctionError } = await supabase
+          .from('trade_alerts')
+          .update({ status: correctStatus })
+          .eq('id', finalAlert.id)
+          .select('*')
+          .single();
+
+        if (correctionError) {
+          console.error('TradingApiService - Status correction failed:', correctionError);
+        } else if (correctedData) {
+          finalAlert = correctedData;
+          console.log('TradingApiService - Status corrected to:', finalAlert.status);
+        }
+      }
+
+      console.log('TradingApiService - Alert created (final status):', finalAlert.status);
 
       // Fetch the profile of the user who created the alert
       const { data: profileData, error: profileError } = await supabase
@@ -82,24 +113,24 @@ export class TradingApiService {
       }
 
       const alertWithProfile: TradeAlertWithProfile = {
-        id: alertData.id,
-        userId: alertData.user_id,
-        assetName: alertData.asset_name,
-        tradermadeSymbol: alertData.tradermade_symbol,
-        tradeType: alertData.trade_type,
-        entryPrice: alertData.entry_price,
-        stopLoss: alertData.stop_loss,
-        status: alertData.status,
-        tp1: alertData.tp1,
-        tp2: alertData.tp2,
-        tp3: alertData.tp3,
-        tp4: alertData.tp4,
-        tp5: alertData.tp5,
-        tpHits: alertData.tp_hits || [],
-        notes: alertData.notes,
-        closeReason: alertData.close_reason,
-        createdAt: alertData.created_at,
-        updatedAt: alertData.updated_at,
+        id: finalAlert.id,
+        userId: finalAlert.user_id,
+        assetName: finalAlert.asset_name,
+        tradermadeSymbol: finalAlert.tradermade_symbol,
+        tradeType: finalAlert.trade_type,
+        entryPrice: finalAlert.entry_price,
+        stopLoss: finalAlert.stop_loss,
+        status: finalAlert.status,
+        tp1: finalAlert.tp1,
+        tp2: finalAlert.tp2,
+        tp3: finalAlert.tp3,
+        tp4: finalAlert.tp4,
+        tp5: finalAlert.tp5,
+        tpHits: finalAlert.tp_hits || [],
+        notes: finalAlert.notes,
+        closeReason: finalAlert.close_reason,
+        createdAt: finalAlert.created_at,
+        updatedAt: finalAlert.updated_at,
         creator: profileData ? {
           id: profileData.id,
           display_name: profileData.display_name,
@@ -308,3 +339,4 @@ export class TradingApiService {
     }
   }
 }
+

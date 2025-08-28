@@ -1,3 +1,4 @@
+
 import { ITradingRepository } from '@/domain/interfaces/repositories/ITradingRepository';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
@@ -67,15 +68,7 @@ export class TradingService {
       throw new Error('Stop loss must be positive');
     }
 
-    // CRITICAL FIX: Validate status for limit orders
-    const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
-    const expectedStatus = isLimitOrder ? 'pending' : 'active';
-    
-    if (dto.status && dto.status !== expectedStatus) {
-      console.warn(`⚠️ Service: ${dto.tradeType} order has status ${dto.status}, expected ${expectedStatus}`);
-    }
-
-    console.log(`🔧 Service Status Logic: Trade type ${dto.tradeType} → Expected ${expectedStatus}, Received ${dto.status}`);
+    console.log(`🔧 Service: Creating ${dto.tradeType} order - status will be determined by database trigger`);
 
     const alert = await this.tradingRepository.createAlert(dto, userId);
     

@@ -1,3 +1,4 @@
+
 export interface CreateTradeAlertDto {
   assetName: string;
   tradermadeSymbol: string;
@@ -10,13 +11,13 @@ export interface CreateTradeAlertDto {
   tp4?: number;
   tp5?: number;
   notes?: string;
-  status?: 'pending' | 'active'; // Add status field for proper limit order handling
+  // Removed status - now handled by database trigger
 }
 
 export interface UpdateTradeAlertDto {
   status?: 'pending' | 'active' | 'closed' | 'partially_profited';
   tpHits?: number[];
-  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp';
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit';
   notes?: string;
 }
 
@@ -36,7 +37,7 @@ export interface TradeAlertResponseDto {
   tp5?: number;
   tpHits: number[];
   notes?: string;
-  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp';
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit';
   createdAt: string;
   updatedAt: string;
 }

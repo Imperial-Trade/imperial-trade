@@ -1,97 +1,70 @@
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useCallback } from 'react';
-import { tradeAlertSubmissionSchema, type TradeAlertSubmissionData } from '@/lib/validations/tradeAlertSchema';
+import { useState } from 'react';
+import { useToast } from '@/components/ui/use-toast';
 
-interface UseOptimizedTradeAlertFormProps {
-  onSubmit: (data: TradeAlertSubmissionData) => Promise<void> | void;
-  enableSmartValidation?: boolean;
-  initialData?: Partial<TradeAlertSubmissionData>;
+export interface TradeAlertSubmissionData {
+  asset_name: string;
+  tradermade_symbol: string;
+  trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
+  entry_price: number;
+  stop_loss: number;
+  tp1?: number;
+  tp2?: number;
+  tp3?: number;
+  tp4?: number;
+  tp5?: number;
+  notes?: string;
+  // Remove status from interface since it's now determined by the database trigger
 }
 
-interface UseOptimizedTradeAlertFormReturn {
-  form: ReturnType<typeof useForm<TradeAlertSubmissionData>>;
-  handleSubmit: (e: React.FormEvent) => void;
-  isSubmitting: boolean;
-  hasErrors: boolean;
-}
-
-export const useOptimizedTradeAlertForm = ({
-  onSubmit,
-  enableSmartValidation = true,
-  initialData
-}: UseOptimizedTradeAlertFormProps): UseOptimizedTradeAlertFormReturn => {
+export const useOptimizedTradeAlertForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
-  const defaultValues = {
-    asset_name: '',
-    tradermade_symbol: '',
-    trade_type: 'buy' as const,
-    entry_price: 0,
-    stop_loss: 0,
-    tp1: undefined,
-    tp2: undefined,
-    tp3: undefined,
-    tp4: undefined,
-    tp5: undefined,
-    notes: '',
-    status: 'active' as const
-  };
+  const handleSubmit = async (
+    data: TradeAlertSubmissionData,
+    onSubmit: (data: TradeAlertSubmissionData) => Promise<void>
+  ) => {
+    if (isSubmitting) return;
 
-  const form = useForm<TradeAlertSubmissionData>({
-    resolver: zodResolver(tradeAlertSubmissionSchema),
-    defaultValues: initialData ? { ...defaultValues, ...initialData } : defaultValues,
-    mode: enableSmartValidation ? 'onChange' : 'onSubmit'
-  });
-
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    
-    form.handleSubmit(async (data) => {
-      console.log('Form submitting with data:', data);
-      console.log('Form validation status:', form.formState.isValid);
-      console.log('Form errors:', form.formState.errors);
+    try {
+      setIsSubmitting(true);
       
-      // Add debugging for each field
-      console.log('Field values:', {
+      // Log the trade type for debugging
+      console.log(`🔧 Form Submission: ${data.trade_type} order for ${data.asset_name}`);
+      console.log('📋 Form Data:', {
         asset_name: data.asset_name,
-        tradermade_symbol: data.tradermade_symbol,
         trade_type: data.trade_type,
         entry_price: data.entry_price,
         stop_loss: data.stop_loss,
-        tp1: data.tp1,
-        notes: data.notes,
-        status: data.status
+        // Note: Status will be determined by database trigger
       });
       
-      // CRITICAL FIX: Properly determine status based on trade type with correct typing
-      const tradeType = data.trade_type;
-      const correctStatus: "pending" | "active" = (tradeType === 'buy_limit' || tradeType === 'sell_limit') ? 'pending' : 'active';
-      const normalizedData = { ...data, status: correctStatus };
+      // No longer need to set status here - the database trigger handles it
+      // The trigger will force limit orders to 'pending' and allow market orders as 'active'
       
-      console.log(`🔧 Status Logic: ${tradeType} → ${correctStatus}`);
-      console.log('📤 Final submission data:', normalizedData);
+      await onSubmit(data);
       
-      try {
-        setIsSubmitting(true);
-        await onSubmit(normalizedData);
-      } catch (error) {
-        console.error('Form submission error:', error);
-      } finally {
-        setIsSubmitting(false);
-      }
-    })(e);
-  }, [form, onSubmit]);
-
-  const hasErrors = Object.keys(form.formState.errors).length > 0;
+      const orderTypeText = data.trade_type.replace('_', ' ').toUpperCase();
+      toast({
+        title: "Educational Pattern Created!",
+        description: `${data.asset_name} ${orderTypeText} pattern has been created successfully.`,
+      });
+      
+    } catch (error: any) {
+      console.error('Form submission error:', error);
+      toast({
+        title: "Submission Failed",
+        description: error.message || "Failed to create educational pattern. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return {
-    form,
     handleSubmit,
-    isSubmitting,
-    hasErrors
+    isSubmitting
   };
 };
-
-export type { TradeAlertSubmissionData };

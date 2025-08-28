@@ -1,6 +1,6 @@
 
 import { useCallback } from 'react';
-import { tradingApiService } from '@/api/services/TradingApiService';
+import { TradingApiService } from '@/api/services/TradingApiService';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
@@ -25,18 +25,10 @@ export const useOrderManagement = () => {
     const currentUserId = ensureAuthAndOwnershipContext();
 
     // Update order to closed status with cancellation reason
-    const response = await tradingApiService.updateAlert(
-      orderId,
-      {
-        status: 'closed',
-        closeReason: 'manual',
-      },
-      currentUserId
-    );
-
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to cancel order');
-    }
+    const response = await TradingApiService.updateAlert(orderId, {
+      status: 'closed',
+      closeReason: 'manual',
+    });
 
     console.log('✅ Order cancelled successfully:', orderId);
   }, [toast, userId]);
@@ -51,15 +43,7 @@ export const useOrderManagement = () => {
     const currentUserId = ensureAuthAndOwnershipContext();
 
     // Convert pending limit order to active market order
-    const response = await tradingApiService.updateAlert(
-      orderId,
-      { status: 'active' },
-      currentUserId
-    );
-
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to convert order');
-    }
+    const response = await TradingApiService.updateAlert(orderId, { status: 'active' });
 
     toast({
       title: 'Order Converted',

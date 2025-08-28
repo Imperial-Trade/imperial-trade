@@ -1,9 +1,8 @@
-
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useSignalRealtime } from '@/hooks/useSignalRealtime';
 import { useSignalRealtime as useSignalRealtimeContext } from '@/contexts/SignalRealtimeContext';
-import { tradingApiService } from '@/api/services/TradingApiService';
+import { TradingApiService } from '@/api/services/TradingApiService';
 import { TestWrapper } from '@/test/utils/test-helpers';
 
 // Mock dependencies
@@ -65,7 +64,7 @@ describe('useSignalRealtime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseSignalRealtimeContext.mockReturnValue(mockContextValue);
-    (tradingApiService.updateAlert as any) = vi.fn();
+    (TradingApiService.updateAlert as any) = vi.fn();
   });
 
   it('filters signals by userId when showAllSignals is false', () => {
@@ -160,7 +159,7 @@ describe('useSignalRealtime', () => {
       }
     };
 
-    (tradingApiService.updateAlert as any).mockResolvedValue(mockUpdateResult);
+    (TradingApiService.updateAlert as any).mockResolvedValue(mockUpdateResult);
 
     const { result } = renderHook(
       () => useSignalRealtime('user-123', false),
@@ -172,7 +171,7 @@ describe('useSignalRealtime', () => {
       expect(updateResult).toEqual(mockUpdateResult.data);
     });
 
-    expect(tradingApiService.updateAlert).toHaveBeenCalledWith('1', { status: 'closed' }, 'user-123');
+    expect(TradingApiService.updateAlert).toHaveBeenCalledWith('1', { status: 'closed' }, 'user-123');
   });
 
   it('handles update alert failure', async () => {
@@ -181,7 +180,7 @@ describe('useSignalRealtime', () => {
       error: 'Update failed'
     };
 
-    (tradingApiService.updateAlert as any).mockResolvedValue(mockUpdateResult);
+    (TradingApiService.updateAlert as any).mockResolvedValue(mockUpdateResult);
 
     const { result } = renderHook(
       () => useSignalRealtime('user-123', false),
@@ -236,6 +235,6 @@ describe('useSignalRealtime', () => {
       expect(updateResult).toBeNull();
     });
 
-    expect(tradingApiService.updateAlert).not.toHaveBeenCalled();
+    expect(TradingApiService.updateAlert).not.toHaveBeenCalled();
   });
 });

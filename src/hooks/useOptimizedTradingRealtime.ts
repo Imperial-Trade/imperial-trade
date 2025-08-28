@@ -1,7 +1,6 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSignalRealtime } from './useSignalRealtime';
-import { tradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
+import { TradingApiService, TradeAlertWithProfile } from '@/api/services/TradingApiService';
 import { CreateTradeAlertDto, UpdateTradeAlertDto, TradeAlertResponseDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 
 interface UseOptimizedTradingRealtimeReturn {
@@ -54,7 +53,7 @@ export const useOptimizedTradingRealtime = (
       setLocalLoading(true);
       setLocalError(null);
       
-      const result = await tradingApiService.createAlert(dto, userId);
+      const result = await TradingApiService.createAlert(dto, userId);
       if (result.success && result.data) {
         // Real-time context will automatically update the alerts list
         return result.data;
@@ -94,7 +93,7 @@ export const useOptimizedTradingRealtime = (
       setLocalLoading(true);
       setLocalError(null);
       
-      const result = await tradingApiService.deleteAlert(id, userId);
+      const result = await TradingApiService.deleteAlert(id, userId);
       if (result.success) {
         // Real-time context will automatically update the alerts list
         return true;

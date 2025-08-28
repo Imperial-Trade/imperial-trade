@@ -1,54 +1,42 @@
 
-import React, { memo } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Clock, TrendingUp, TrendingDown } from 'lucide-react';
-import { TradeAlertWithProfile } from '@/types/trading';
+import React from 'react';
+import { Badge } from "@/components/ui/badge";
+import { Clock, Target } from "lucide-react";
 
-interface LimitOrderStatusProps {
-  signal: TradeAlertWithProfile;
+export interface LimitOrderStatusProps {
+  tradeType: 'buy_limit' | 'sell_limit';
+  entryPrice: number;
+  currentPrice?: number;
+  status: 'pending' | 'active' | 'closed';
 }
 
-export const LimitOrderStatus = memo(({ signal }: LimitOrderStatusProps) => {
-  const isLimitOrder = signal.tradeType === 'buy_limit' || signal.tradeType === 'sell_limit';
-  const isPending = signal.status === 'pending';
-  const isActive = signal.status === 'active';
-  const isClosed = signal.status === 'closed';
-  const isProfited = signal.status === 'partially_profited';
+const LimitOrderStatus: React.FC<LimitOrderStatusProps> = ({ 
+  tradeType, 
+  entryPrice, 
+  currentPrice, 
+  status 
+}) => {
+  if (status !== 'pending') return null;
+
+  const isPriceNearEntry = currentPrice && Math.abs(currentPrice - entryPrice) / entryPrice < 0.001; // Within 0.1%
 
   return (
-    <Card className="w-full">
-      <CardContent className="flex items-center space-x-4 p-3">
-        {isLimitOrder && isPending && (
-          <>
-            <Clock className="h-5 w-5 text-yellow-500" />
-            <Badge variant="secondary">Limit Order Pending</Badge>
-          </>
-        )}
-
-        {isActive && (
-          <>
-            <TrendingUp className="h-5 w-5 text-green-500" />
-            <Badge variant="outline">Active</Badge>
-          </>
-        )}
-
-        {isClosed && (
-          <>
-            <TrendingDown className="h-5 w-5 text-red-500" />
-            <Badge variant="destructive">Closed</Badge>
-          </>
-        )}
-
-        {isProfited && (
-          <>
-            <TrendingUp className="h-5 w-5 text-blue-500" />
-            <Badge variant="outline">Partially Profited</Badge>
-          </>
-        )}
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+      <Clock className="h-4 w-4 text-muted-foreground" />
+      <div className="flex-1">
+        <div className="text-sm font-medium">
+          {tradeType === 'buy_limit' ? 'Buy Limit Order' : 'Sell Limit Order'} Pending
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Waiting for price to reach {entryPrice.toFixed(5)}
+        </div>
+      </div>
+      <Badge variant={isPriceNearEntry ? "default" : "secondary"}>
+        <Target className="h-3 w-3 mr-1" />
+        {isPriceNearEntry ? 'Near Entry' : 'Waiting'}
+      </Badge>
+    </div>
   );
-});
+};
 
-LimitOrderStatus.displayName = 'LimitOrderStatus';
+export default LimitOrderStatus;

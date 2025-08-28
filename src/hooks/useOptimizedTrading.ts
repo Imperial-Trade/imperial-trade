@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,17 +7,22 @@ import { TradeAlertWithProfile } from '@/types/trading';
 interface UseTradingResult {
   alerts: TradeAlertWithProfile[];
   loading: boolean;
+  isLoading: boolean;
   error: string | null;
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  lastUpdated: Date | null;
+  nextRetryAt: Date | null;
   createAlert: (data: CreateTradeAlertDto) => Promise<TradeAlertWithProfile | null>;
   updateAlert: (id: string, data: UpdateTradeAlertDto) => Promise<TradeAlertWithProfile | null>;
   deleteAlert: (id: string) => Promise<boolean>;
   refreshAlerts: () => Promise<void>;
 }
 
-export const useOptimizedTrading = (userId?: string): UseTradingResult => {
+export const useOptimizedTrading = (userId?: string, showAllSignals: boolean = false): UseTradingResult => {
   const [alerts, setAlerts] = useState<TradeAlertWithProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { user } = useAuth();
 
   const effectiveUserId = userId || user?.id || '';
@@ -41,7 +45,6 @@ export const useOptimizedTrading = (userId?: string): UseTradingResult => {
         return;
       }
 
-      // Fetch profiles for each alert
       const profiles = await Promise.all(
         data.map(async (alert) => {
           const { data: profile, error: profileError } = await supabase
@@ -98,6 +101,7 @@ export const useOptimizedTrading = (userId?: string): UseTradingResult => {
       }));
 
       setAlerts(alertsWithProfiles);
+      setLastUpdated(new Date());
     } catch (err) {
       console.error('Error fetching alerts:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch alerts');
@@ -313,7 +317,11 @@ export const useOptimizedTrading = (userId?: string): UseTradingResult => {
   return {
     alerts,
     loading,
+    isLoading: loading,
     error,
+    connectionStatus: error ? 'error' : 'connected',
+    lastUpdated,
+    nextRetryAt: null,
     createAlert,
     updateAlert,
     deleteAlert,

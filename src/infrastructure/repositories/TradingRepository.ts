@@ -1,3 +1,4 @@
+
 import { ITradingRepository } from '@/domain/interfaces/repositories/ITradingRepository';
 import { TradeAlert } from '@/domain/entities/trading/TradeAlert';
 import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -47,9 +48,9 @@ export class TradingRepository implements ITradingRepository {
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
-    // FIXED: Determine correct status based on trade type instead of hardcoding 'active'
+    // FIXED: Determine correct status based on trade type with explicit typing
     const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
-    const correctStatus = isLimitOrder ? 'pending' : 'active';
+    const correctStatus: 'pending' | 'active' | 'closed' | 'partially_profited' = isLimitOrder ? 'pending' : 'active';
     
     const insertData = {
       asset_name: dto.assetName,

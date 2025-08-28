@@ -6,7 +6,13 @@ interface PriceData {
   change: number;
   changePercent: number;
   timestamp: Date;
+  // Optional fields used by consumers (e.g., UltraFastPriceMonitor, TradingCalculator, useOptimizedLivePrice)
+  is_ultra_fast_tick?: boolean;
+  is_institutional_tick?: boolean;
+  update_frequency?: number;
 }
+
+type PriceUpdateSource = 'websocket' | 'websocket_institutional' | 'http' | 'unknown';
 
 interface WebSocketPriceContextType {
   prices: Record<string, PriceData>;
@@ -18,6 +24,8 @@ interface WebSocketPriceContextType {
   lastUpdated: Date | null;
   dataSource: string;
   errors: Record<string, string>;
+  // Added to align with hooks and components consuming this context
+  priceUpdateSources: Record<string, PriceUpdateSource>;
 }
 
 const WebSocketPriceContext = createContext<WebSocketPriceContextType | null>(null);
@@ -31,6 +39,7 @@ export const WebSocketPriceProvider: React.FC<WebSocketPriceProviderProps> = ({ 
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [priceUpdateSources, setPriceUpdateSources] = useState<Record<string, PriceUpdateSource>>({});
   
   const wsRef = useRef<WebSocket | null>(null);
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
@@ -88,6 +97,7 @@ export const WebSocketPriceProvider: React.FC<WebSocketPriceProviderProps> = ({ 
           
           if (data.type === 'price_update' && data.data) {
             const updates: Record<string, PriceData> = {};
+            const sourceUpdates: Record<string, PriceUpdateSource> = {};
             
             data.data.forEach((update: any) => {
               if (update.symbol && update.price !== undefined) {
@@ -95,13 +105,19 @@ export const WebSocketPriceProvider: React.FC<WebSocketPriceProviderProps> = ({ 
                   price: update.price,
                   change: update.change || 0,
                   changePercent: update.changePercent || 0,
-                  timestamp: new Date(update.timestamp || Date.now())
+                  timestamp: new Date(update.timestamp || Date.now()),
+                  is_ultra_fast_tick: update.is_ultra_fast_tick ?? false,
+                  is_institutional_tick: update.is_institutional_tick ?? false,
+                  update_frequency: update.update_frequency
                 };
+
+                sourceUpdates[update.symbol] = update.is_institutional_tick ? 'websocket_institutional' : 'websocket';
               }
             });
 
             if (Object.keys(updates).length > 0) {
               setPrices(prev => ({ ...prev, ...updates }));
+              setPriceUpdateSources(prev => ({ ...prev, ...sourceUpdates }));
               setLastUpdated(new Date());
             }
           }
@@ -224,7 +240,8 @@ export const WebSocketPriceProvider: React.FC<WebSocketPriceProviderProps> = ({ 
     refreshPrice,
     lastUpdated,
     dataSource: 'WebSocket',
-    errors
+    errors,
+    priceUpdateSources
   };
 
   return (

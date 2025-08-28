@@ -231,6 +231,16 @@ class TradingApiService {
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<ApiResponse<TradeAlertResponseDto>> {
     try {
+      // CRITICAL FIX: Use the status from DTO instead of hardcoding to 'active'
+      const determinedStatus = dto.status || 'active';
+      
+      console.log(`🔧 API Service Status Logic: Trade type ${dto.tradeType} → Status ${determinedStatus}`);
+      
+      // Add validation: limit orders should not be created as 'active' unless explicitly intended
+      if ((dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit') && determinedStatus === 'active') {
+        console.warn(`⚠️ Creating ${dto.tradeType} as 'active' - this may bypass pending activation logic`);
+      }
+
       const insertData = {
         asset_name: dto.assetName,
         tradermade_symbol: dto.tradermadeSymbol,
@@ -244,14 +254,18 @@ class TradingApiService {
         tp5: dto.tp5,
         notes: dto.notes,
         user_id: userId,
-        status: 'active' as const
+        status: determinedStatus // Use the determined status instead of hardcoded 'active'
       };
+
+      console.log('📤 API Service Final insert data:', insertData);
 
       const result = await apiClient.insert('trade_alerts', insertData);
 
       if (!result.success || !result.data) {
         return { success: false, error: result.error || 'Failed to create alert' };
       }
+
+      console.log('✅ API Service Created alert with status:', result.data.status);
 
       const responseDto: TradeAlertResponseDto = {
         id: result.data.id,

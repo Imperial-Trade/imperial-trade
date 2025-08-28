@@ -115,7 +115,7 @@ async function fetchAndProcessPrices(): Promise<void> {
             continue;
           }
 
-          // Check for pending limit order activation
+          // ENHANCED: Check for pending limit order activation with better logging
           await checkPendingLimitActivation(clientSymbol, bid, ask);
 
           // Process alerts using enhanced function
@@ -166,13 +166,13 @@ async function fetchAndProcessPrices(): Promise<void> {
   console.log('✅ Enhanced alert monitoring cycle completed');
 }
 
-// New function to check and activate pending limit orders
+// ENHANCED: New function to check and activate pending limit orders with better logging
 async function checkPendingLimitActivation(symbol: string, bid: number, ask: number): Promise<void> {
   try {
     // Get pending limit orders for this symbol
     const { data: pendingOrders, error: pendingError } = await supabase
       .from('trade_alerts')
-      .select('id, trade_type, entry_price, asset_name')
+      .select('id, trade_type, entry_price, asset_name, created_at')
       .eq('status', 'pending')
       .eq('tradermade_symbol', symbol)
       .in('trade_type', ['buy_limit', 'sell_limit']);
@@ -191,23 +191,35 @@ async function checkPendingLimitActivation(symbol: string, bid: number, ask: num
     // Check activation conditions for each pending order
     for (const order of pendingOrders) {
       let shouldActivate = false;
+      let activationPrice = 0;
+      let activationReason = '';
 
-      if (order.trade_type === 'buy_limit' && bid <= order.entry_price) {
-        shouldActivate = true;
-        console.log(`🟢 Buy limit activation: ${order.asset_name} - bid ${bid} <= entry ${order.entry_price}`);
-      } else if (order.trade_type === 'sell_limit' && ask >= order.entry_price) {
-        shouldActivate = true;
-        console.log(`🔴 Sell limit activation: ${order.asset_name} - ask ${ask} >= entry ${order.entry_price}`);
+      if (order.trade_type === 'buy_limit') {
+        // Buy limit activates when bid price drops to or below entry price
+        if (bid <= order.entry_price) {
+          shouldActivate = true;
+          activationPrice = order.entry_price;
+          activationReason = `Buy limit triggered: bid ${bid} <= entry ${order.entry_price}`;
+        }
+      } else if (order.trade_type === 'sell_limit') {
+        // Sell limit activates when ask price rises to or above entry price  
+        if (ask >= order.entry_price) {
+          shouldActivate = true;
+          activationPrice = order.entry_price;
+          activationReason = `Sell limit triggered: ask ${ask} >= entry ${order.entry_price}`;
+        }
       }
 
       if (shouldActivate) {
-        // Activate the pending order
+        console.log(`🟢 ACTIVATION: ${activationReason} for ${order.asset_name} (ID: ${order.id})`);
+        
+        // Activate the pending order with enhanced logging
         const { error: activateError } = await supabase
           .from('trade_alerts')
           .update({
             status: 'active',
             activated_at: new Date().toISOString(),
-            activation_price: order.entry_price,
+            activation_price: activationPrice,
             updated_at: new Date().toISOString()
           })
           .eq('id', order.id);
@@ -215,9 +227,9 @@ async function checkPendingLimitActivation(symbol: string, bid: number, ask: num
         if (activateError) {
           console.error(`❌ Error activating order ${order.id}:`, activateError);
         } else {
-          console.log(`✅ Activated pending ${order.trade_type} order: ${order.asset_name} at ${order.entry_price}`);
+          console.log(`✅ Successfully activated ${order.trade_type} order: ${order.asset_name} at ${activationPrice}`);
           
-          // Log the activation
+          // Enhanced logging for activation tracking
           await supabase
             .from('cron_job_logs')
             .insert({
@@ -225,8 +237,15 @@ async function checkPendingLimitActivation(symbol: string, bid: number, ask: num
               execution_time: new Date().toISOString(),
               records_affected: 1,
               status: 'success',
-              error_message: `Activated ${order.trade_type} order ${order.id} (${order.asset_name}) at price ${order.entry_price}`
+              error_message: `ACTIVATED: ${order.trade_type} order ${order.id} (${order.asset_name}) - ${activationReason}. Order was pending since ${order.created_at}`
             });
+        }
+      } else {
+        // Log why order is not activating (for debugging)
+        if (order.trade_type === 'buy_limit') {
+          console.log(`⏸️  Buy limit ${order.asset_name} waiting: bid ${bid} > entry ${order.entry_price}`);
+        } else {
+          console.log(`⏸️  Sell limit ${order.asset_name} waiting: ask ${ask} < entry ${order.entry_price}`);
         }
       }
     }

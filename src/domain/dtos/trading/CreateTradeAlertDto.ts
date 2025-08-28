@@ -1,4 +1,3 @@
-
 export interface CreateTradeAlertDto {
   assetName: string;
   tradermadeSymbol: string;
@@ -11,6 +10,7 @@ export interface CreateTradeAlertDto {
   tp4?: number;
   tp5?: number;
   notes?: string;
+  status?: 'pending' | 'active'; // Add status field for proper limit order handling
 }
 
 export interface UpdateTradeAlertDto {

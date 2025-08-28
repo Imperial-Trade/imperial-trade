@@ -1,4 +1,3 @@
-
 import { ITradingRepository } from '@/domain/interfaces/repositories/ITradingRepository';
 import { TradeAlert } from '@/domain/entities/trading/TradeAlert';
 import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -48,6 +47,15 @@ export class TradingRepository implements ITradingRepository {
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
+    const determinedStatus = dto.status || 'active';
+    
+    console.log(`🔧 Repository Status Logic: Trade type ${dto.tradeType} → Status ${determinedStatus}`);
+    
+    // Add validation: limit orders should not be created as 'active' unless explicitly intended
+    if ((dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit') && determinedStatus === 'active') {
+      console.warn(`⚠️ Repository creating ${dto.tradeType} as 'active' - this may bypass pending activation logic`);
+    }
+
     const insertData = {
       asset_name: dto.assetName,
       tradermade_symbol: dto.tradermadeSymbol,
@@ -61,14 +69,18 @@ export class TradingRepository implements ITradingRepository {
       tp5: dto.tp5,
       notes: dto.notes,
       user_id: userId,
-      status: 'active' as const
+      status: determinedStatus
     };
+
+    console.log('📤 Repository Final insert data:', insertData);
 
     const result = await apiClient.insert('trade_alerts', insertData);
     
     if (!result.success || !result.data) {
       throw new Error(result.error || 'Failed to create alert');
     }
+    
+    console.log('✅ Repository Created alert with status:', result.data.status);
     
     return TradingMapper.toDomain(result.data);
   }

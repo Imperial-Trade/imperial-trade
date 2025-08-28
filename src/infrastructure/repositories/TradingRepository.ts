@@ -47,6 +47,10 @@ export class TradingRepository implements ITradingRepository {
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
+    // FIXED: Determine correct status based on trade type instead of hardcoding 'active'
+    const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
+    const correctStatus = isLimitOrder ? 'pending' : 'active';
+    
     const insertData = {
       asset_name: dto.assetName,
       tradermade_symbol: dto.tradermadeSymbol,
@@ -60,8 +64,10 @@ export class TradingRepository implements ITradingRepository {
       tp5: dto.tp5,
       notes: dto.notes,
       user_id: userId,
-      status: 'active' as const
+      status: correctStatus
     };
+
+    console.log('Repository creating alert with status:', correctStatus, 'for trade type:', dto.tradeType);
 
     const result = await apiClient.insert('trade_alerts', insertData);
     

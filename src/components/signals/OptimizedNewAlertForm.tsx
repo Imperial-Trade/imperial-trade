@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -371,29 +370,37 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
       }
     }
 
-    // Live market dependent checks (only when we have a fresh price)
+    // FIXED: Live market dependent checks - separate logic for market vs limit orders
     if (selectedAsset && currentPrice > 0 && !isNaN(entryPrice)) {
       const pipSize = getPipSize(selectedAsset.symbol);
-      const minDistance = pipSize * 5; // minimum distance from market for pending orders (5 pips default)
-      const slippage = pipSize * 2;    // allowed slippage for market orders (±2 pips default)
-
+      
       if (formData.trade_type === 'buy_limit') {
         if (entryPrice >= currentPrice) {
           newErrors.entry_price = 'Buy Limit must be BELOW current market price';
-        } else if ((currentPrice - entryPrice) < minDistance) {
-          newErrors.entry_price = `Buy Limit too close to market (min ${formatPips(minDistance / pipSize)} pips)`;
+        } else {
+          // Reduced minimum distance for limit orders (2 pips instead of 5)
+          const minDistance = pipSize * 2;
+          if ((currentPrice - entryPrice) < minDistance) {
+            newErrors.entry_price = `Buy Limit too close to market (min ${formatPips(minDistance / pipSize)} pips)`;
+          }
         }
       }
 
       if (formData.trade_type === 'sell_limit') {
         if (entryPrice <= currentPrice) {
           newErrors.entry_price = 'Sell Limit must be ABOVE current market price';
-        } else if ((entryPrice - currentPrice) < minDistance) {
-          newErrors.entry_price = `Sell Limit too close to market (min ${formatPips(minDistance / pipSize)} pips)`;
+        } else {
+          // Reduced minimum distance for limit orders (2 pips instead of 5)
+          const minDistance = pipSize * 2;
+          if ((entryPrice - currentPrice) < minDistance) {
+            newErrors.entry_price = `Sell Limit too close to market (min ${formatPips(minDistance / pipSize)} pips)`;
+          }
         }
       }
 
+      // FIXED: Only apply slippage validation to market orders, NOT limit orders
       if (formData.trade_type === 'buy' || formData.trade_type === 'sell') {
+        const slippage = pipSize * 2; // allowed slippage for market orders (±2 pips default)
         const diff = Math.abs(entryPrice - currentPrice);
         if (diff > slippage) {
           const allowedPips = slippage / pipSize;
@@ -422,6 +429,7 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
     setIsSubmitting(true);
 
     try {
+      // FIXED: Don't hardcode status - let the hook determine it based on trade type
       const submissionData: TradeAlertSubmissionData = {
         asset_name: formData.asset_name,
         tradermade_symbol: formData.tradermade_symbol,
@@ -434,10 +442,11 @@ const OptimizedNewAlertForm: React.FC<OptimizedNewAlertFormProps> = ({
         tp4: takeProfits[3] && takeProfits[3].trim() ? parseFloat(takeProfits[3]) : undefined,
         tp5: takeProfits[4] && takeProfits[4].trim() ? parseFloat(takeProfits[4]) : undefined,
         notes: formData.notes || undefined,
-        status: 'active'
+        // REMOVED: status hardcoding - let the hook determine based on trade type
+        status: (formData.trade_type === 'buy_limit' || formData.trade_type === 'sell_limit') ? 'pending' : 'active'
       };
 
-      console.log('📋 Submission Data:', submissionData);
+      console.log('📋 Form Submission Data:', submissionData);
       console.log('✅ Validation passed - submitting to API');
 
       await onSubmit(submissionData);

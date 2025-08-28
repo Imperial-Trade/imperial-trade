@@ -1,16 +1,10 @@
 
-/**
- * Lightweight API client types to avoid deep type instantiation from Supabase types.
- * These are used by the EnhancedApiClient and related operations.
- */
+import { Database } from '@/integrations/supabase/types';
 
-// Removed heavy Database import to prevent TS2589 issues
-// import { Database } from '@/integrations/supabase/types';
-
-export type DatabaseTable = string;
-export type TableRow<T extends DatabaseTable = string> = Record<string, any>;
-export type TableInsert<T extends DatabaseTable = string> = Record<string, any>;
-export type TableUpdate<T extends DatabaseTable = string> = Record<string, any>;
+export type DatabaseTable = keyof Database['public']['Tables'];
+export type TableRow<T extends DatabaseTable> = Database['public']['Tables'][T]['Row'];
+export type TableInsert<T extends DatabaseTable> = Database['public']['Tables'][T]['Insert'];
+export type TableUpdate<T extends DatabaseTable> = Database['public']['Tables'][T]['Update'];
 
 export interface RequestConfig {
   timeout?: number;

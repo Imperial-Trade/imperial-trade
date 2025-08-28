@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Profile {
@@ -60,17 +59,13 @@ export class TradeJournalEntry {
         entry_price: data.entry_price,
         exit_price: data.exit_price,
         position_size: data.position_size
-      } as any])
+      }])
       .select()
       .single();
 
     if (error) {
       console.error("Error creating trade journal entry:", error);
       throw new Error(`Failed to create trade journal entry: ${error.message}`);
-    }
-
-    if (!result) {
-      throw new Error("No data returned from insert operation");
     }
 
     return new TradeJournalEntry(
@@ -128,7 +123,7 @@ export class TradeJournalEntry {
       const { data: existingEntry, error: fetchError } = await supabase
         .from("trade_journal_entries")
         .select("id, user_id")
-        .eq("id" as any, id as any)
+        .eq("id", id)
         .single();
 
       if (fetchError) {
@@ -151,9 +146,9 @@ export class TradeJournalEntry {
       // Perform the update
       const { data: result, error } = await supabase
         .from("trade_journal_entries")
-        .update(data as any)
-        .eq("id" as any, id as any)
-        .eq("user_id" as any, user.id as any) // Extra security check
+        .update(data)
+        .eq("id", id)
+        .eq("user_id", user.id) // Extra security check
         .select()
         .single();
 
@@ -201,16 +196,12 @@ export class TradeJournalEntry {
     const { data, error } = await supabase
       .from("trade_journal_entries")
       .select("*")
-      .eq("user_id" as any, user_id as any)
+      .eq("user_id", user_id)
       .order("trade_date", { ascending: false });
 
     if (error) {
       console.error("Error fetching trade journal entries:", error);
       throw new Error(`Failed to fetch trade journal entries: ${error.message}`);
-    }
-
-    if (!data) {
-      return [];
     }
 
     return data.map(
@@ -238,7 +229,7 @@ export class TradeJournalEntry {
     const { error } = await supabase
       .from("trade_journal_entries")
       .delete()
-      .eq("id" as any, id as any);
+      .eq("id", id);
 
     if (error) {
       console.error("Error deleting trade journal entry:", error);
@@ -261,7 +252,7 @@ export class User {
     const { data: profile } = await supabase
       .from("profiles")
       .select("real_name")
-      .eq("id" as any, user.id as any)
+      .eq("id", user.id)
       .single();
     
     return new User(user.id, user.email || '', profile?.real_name);
@@ -290,10 +281,6 @@ export class AccountRequest {
 
     if (error) {
       throw new Error(`Failed to fetch account requests: ${error.message}`);
-    }
-
-    if (!data) {
-      return [];
     }
 
     return data.map(req => new AccountRequest(
@@ -331,16 +318,12 @@ export class AuditLog {
   }): Promise<AuditLog> {
     const { data: result, error } = await supabase
       .from("audit_logs")
-      .insert([data as any])
+      .insert([data])
       .select()
       .single();
 
     if (error) {
       throw new Error(`Failed to create audit log: ${error.message}`);
-    }
-
-    if (!result) {
-      throw new Error("No data returned from audit log creation");
     }
 
     return new AuditLog(
@@ -382,16 +365,12 @@ export class AthenaInteraction {
       .insert([{
         ...data,
         interaction_time: new Date().toISOString()
-      } as any])
+      }])
       .select()
       .single();
 
     if (error) {
       throw new Error(`Failed to create Athena interaction: ${error.message}`);
-    }
-
-    if (!result) {
-      throw new Error("No data returned from Athena interaction creation");
     }
 
     return new AthenaInteraction(

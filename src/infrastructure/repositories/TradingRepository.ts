@@ -16,8 +16,7 @@ export class TradingRepository implements ITradingRepository {
       throw new Error(result.error || 'Failed to fetch alerts');
     }
     
-    const rows = result.data as any[];
-    return rows.map((row) => TradingMapper.toDomain(row));
+    return result.data.map(TradingMapper.toDomain);
   }
 
   async findAlertById(id: string): Promise<TradeAlert | null> {
@@ -30,7 +29,7 @@ export class TradingRepository implements ITradingRepository {
       return null;
     }
     
-    return TradingMapper.toDomain(result.data[0] as any);
+    return TradingMapper.toDomain(result.data[0]);
   }
 
   async findAlertsByStatus(status: 'pending' | 'active' | 'closed' | 'partially_profited', userId: string): Promise<TradeAlert[]> {
@@ -43,9 +42,9 @@ export class TradingRepository implements ITradingRepository {
       throw new Error(result.error || 'Failed to fetch alerts');
     }
     
-    return (result.data as any[])
-      .filter((alert: any) => alert.status === status)
-      .map((row: any) => TradingMapper.toDomain(row));
+    return result.data
+      .filter(alert => alert.status === status)
+      .map(TradingMapper.toDomain);
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
@@ -77,7 +76,7 @@ export class TradingRepository implements ITradingRepository {
       throw new Error(result.error || 'Failed to create alert');
     }
     
-    return TradingMapper.toDomain(result.data as any);
+    return TradingMapper.toDomain(result.data);
   }
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto): Promise<TradeAlert> {
@@ -96,7 +95,7 @@ export class TradingRepository implements ITradingRepository {
       throw new Error(result.error || 'Failed to update alert');
     }
     
-    return TradingMapper.toDomain(result.data as any);
+    return TradingMapper.toDomain(result.data);
   }
 
   async deleteAlert(id: string): Promise<void> {

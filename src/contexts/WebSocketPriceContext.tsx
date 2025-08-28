@@ -172,6 +172,18 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     return delay;
   }, []);
 
+  const getSecureWebSocketUrl = useCallback(() => {
+    // Always use secure WebSocket (wss://) for HTTPS pages
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const baseUrl = 'kmuoqkcxguafxulqlbmi.supabase.co';
+    const path = '/functions/v1/tradermade-streaming';
+    
+    // Force wss:// for security in production
+    const secureUrl = `wss://${baseUrl}${path}`;
+    console.log('🔐 Using secure WebSocket URL:', secureUrl);
+    return secureUrl;
+  }, []);
+
   const connect = useCallback(() => {
     if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
       console.log('🔄 WebSocket already connected or connecting, skipping duplicate connection');
@@ -181,10 +193,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     setConnectionStatus('connecting');
     
     try {
-      // Connect to Tradermade streaming WebSocket
-      const wsUrl = `wss://kmuoqkcxguafxulqlbmi.supabase.co/functions/v1/tradermade-streaming`;
+      // Get secure WebSocket URL
+      const wsUrl = getSecureWebSocketUrl();
       console.log('🔌 Connecting to Tradermade WebSocket:', wsUrl);
       console.log('🔍 WebSocket readyState before connection:', socketRef.current?.readyState);
+      
+      // Clear any existing errors
+      setErrors(prev => {
+        const { global, ...rest } = prev;
+        return rest;
+      });
       
       socketRef.current = new WebSocket(wsUrl);
       console.log('🆕 Created new WebSocket instance');
@@ -340,6 +358,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         setConnectionStatus('disconnected');
         websocketHealthRef.current.isHealthy = false;
         
+        // Don't reconnect if it was a security error (code 1006)
+        if (event.code === 1006 && event.reason.includes('insecure')) {
+          console.error('🚨 WebSocket blocked due to security policy - not reconnecting');
+          setErrors(prev => ({
+            ...prev,
+            global: 'WebSocket connection blocked by browser security policy'
+          }));
+          return;
+        }
+        
         // Implement exponential backoff for reconnection
         const delay = getReconnectDelay();
         reconnectAttemptsRef.current++;
@@ -357,13 +385,32 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         setConnectionStatus('error');
         websocketHealthRef.current.isHealthy = false;
         reconnectAttemptsRef.current++;
+        
+        // Set specific error for security issues
+        setErrors(prev => ({
+          ...prev,
+          global: 'WebSocket connection failed - check network connectivity'
+        }));
       };
     } catch (error) {
       console.error('❌ Failed to create WebSocket connection:', error);
       setConnectionStatus('error');
       setDataSource('unavailable');
+      
+      // Handle security errors specifically
+      if (error instanceof Error && error.name === 'SecurityError') {
+        setErrors(prev => ({
+          ...prev,
+          global: 'WebSocket blocked by browser security policy. Please use HTTPS.'
+        }));
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          global: 'Failed to create WebSocket connection'
+        }));
+      }
     }
-  }, [getReconnectDelay]);
+  }, [getReconnectDelay, getSecureWebSocketUrl, normalizeSymbol]);
 
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribing request received for symbols:', symbols);
@@ -403,7 +450,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         flushPendingSubscriptions();
       }, 10); // Business Plan: Ultra-fast 10ms batching
     }
-  }, [connect, flushPendingSubscriptions]);
+  }, [connect, flushPendingSubscriptions, normalizeSymbol]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     // Normalize like subscribe
@@ -440,7 +487,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify({ action: 'unsubscribe', symbols: toUnsubscribe }));
     }
-  }, []);
+  }, [normalizeSymbol]);
 
   const refreshPrice = useCallback((symbol: string) => {
     const norm = normalizeSymbol(symbol);

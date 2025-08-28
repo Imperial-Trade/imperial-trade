@@ -1,9 +1,8 @@
 
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Clock, XCircle, TrendingUp } from 'lucide-react';
 
 interface SignalStatusBadgeProps {
-  status: 'pending' | 'active' | 'closed' | 'partially_profited';
+  status: 'pending' | 'active' | 'closed' | 'partially_profited' | 'cancelled';
   className?: string;
 }
 
@@ -12,48 +11,51 @@ export const SignalStatusBadge = ({ status, className }: SignalStatusBadgeProps)
     switch (status) {
       case 'pending':
         return {
-          icon: Clock,
-          text: 'Pending',
-          variant: 'outline' as const,
-          className: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20'
+          label: 'Pending',
+          variant: 'secondary' as const,
+          className: 'bg-orange-100 text-orange-800 border-orange-200'
         };
       case 'active':
         return {
-          icon: TrendingUp,
-          text: 'Active',
-          variant: 'outline' as const,
-          className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+          label: 'Active',
+          variant: 'default' as const,
+          className: 'bg-green-100 text-green-800 border-green-200'
         };
       case 'partially_profited':
         return {
-          icon: TrendingUp,
-          text: 'Partially Profited',
-          variant: 'outline' as const,
-          className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
+          label: 'Partial Profit',
+          variant: 'default' as const,
+          className: 'bg-blue-100 text-blue-800 border-blue-200'
         };
       case 'closed':
         return {
-          icon: CheckCircle,
-          text: 'Closed',
+          label: 'Closed',
           variant: 'outline' as const,
-          className: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20'
+          className: 'bg-gray-100 text-gray-800 border-gray-200'
+        };
+      case 'cancelled':
+        return {
+          label: 'Cancelled',
+          variant: 'destructive' as const,
+          className: 'bg-red-100 text-red-800 border-red-200'
         };
       default:
         return {
-          icon: XCircle,
-          text: status,
+          label: 'Unknown',
           variant: 'outline' as const,
-          className: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20'
+          className: 'bg-gray-100 text-gray-800 border-gray-200'
         };
     }
   };
 
-  const { icon: Icon, text, variant, className: statusClassName } = getStatusConfig();
+  const config = getStatusConfig();
 
   return (
-    <Badge variant={variant} className={`${statusClassName} ${className}`}>
-      <Icon className="h-3 w-3 mr-1" />
-      {text}
+    <Badge 
+      variant={config.variant}
+      className={`${config.className} ${className}`}
+    >
+      {config.label}
     </Badge>
   );
 };

@@ -1,4 +1,3 @@
-
 import { ITradingRepository } from '@/domain/interfaces/repositories/ITradingRepository';
 import { TradeAlert } from '@/domain/entities/trading/TradeAlert';
 import { CreateTradeAlertDto, UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
@@ -48,10 +47,8 @@ export class TradingRepository implements ITradingRepository {
   }
 
   async createAlert(dto: CreateTradeAlertDto, userId: string): Promise<TradeAlert> {
-    // FIXED: Determine correct status based on trade type with explicit typing
-    const isLimitOrder = dto.tradeType === 'buy_limit' || dto.tradeType === 'sell_limit';
-    const correctStatus: 'pending' | 'active' | 'closed' | 'partially_profited' = isLimitOrder ? 'pending' : 'active';
-    
+    // CRITICAL: Let the database trigger handle status assignment
+    // The handle_trade_alert_lifecycle function will force limit orders to 'pending'
     const insertData = {
       asset_name: dto.assetName,
       tradermade_symbol: dto.tradermadeSymbol,
@@ -64,17 +61,19 @@ export class TradingRepository implements ITradingRepository {
       tp4: dto.tp4,
       tp5: dto.tp5,
       notes: dto.notes,
-      user_id: userId,
-      status: correctStatus
+      user_id: userId
+      // Note: No status field - let the database trigger handle it
     };
 
-    console.log('Repository creating alert with status:', correctStatus, 'for trade type:', dto.tradeType);
+    console.log('Repository creating alert - letting database trigger handle status assignment');
 
     const result = await apiClient.insert('trade_alerts', insertData);
     
     if (!result.success || !result.data) {
       throw new Error(result.error || 'Failed to create alert');
     }
+    
+    console.log('Repository created alert with final status:', result.data.status);
     
     return TradingMapper.toDomain(result.data);
   }

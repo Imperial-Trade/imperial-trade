@@ -143,6 +143,7 @@ export const EnhancedSignalCard = ({ alert, onUpdate, isOwner }: EnhancedSignalC
               {alert.closeReason === 'stop_loss' && 'Closed - Stop Loss Hit'}
               {alert.closeReason === 'all_tps_hit' && 'Closed - All Take Profits Hit'}
               {alert.closeReason === 'manual' && 'Manually Closed'}
+              {alert.closeReason?.startsWith('tp') && !alert.closeReason.includes('all') && `Closed - ${alert.closeReason.toUpperCase()} Hit`}
             </span>
           </div>
         )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,12 @@ import { TradeAlertWithProfile } from '@/types/trading';
 
 const RISK_PERCENTAGES = [0.5, 1, 1.5, 2, 2.5, 3];
 
-export const TradingCalculator: React.FC = () => {
+interface TradingCalculatorProps {
+  alert?: TradeAlertWithProfile;
+  livePrice?: number;
+}
+
+export const TradingCalculator: React.FC<TradingCalculatorProps> = ({ alert: passedAlert, livePrice: passedLivePrice }) => {
   const [asset, setAsset] = useState<AssetOption | null>(null);
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [accountSize, setAccountSize] = useState(1000);
@@ -24,6 +30,32 @@ export const TradingCalculator: React.FC = () => {
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
 
   const { toast } = useToast();
+
+  // Initialize with passed alert data if available
+  useEffect(() => {
+    if (passedAlert) {
+      setAsset({
+        name: passedAlert.asset_name,
+        symbol: passedAlert.tradermade_symbol
+      });
+      setTradeType(passedAlert.trade_type.includes('buy') ? 'buy' : 'sell');
+      setEntryPrice(passedAlert.entry_price);
+      
+      // Calculate stop loss in pips
+      const stopLossDistance = Math.abs(passedAlert.entry_price - passedAlert.stop_loss);
+      const pips = stopLossDistance * 10000; // Assuming 4 decimal places
+      setStopLossPips(pips);
+      
+      setAlert(passedAlert);
+    }
+  }, [passedAlert]);
+
+  // Update current price when passed
+  useEffect(() => {
+    if (typeof passedLivePrice === 'number') {
+      setCurrentPrice(passedLivePrice);
+    }
+  }, [passedLivePrice]);
 
   const calculatePositionSize = useCallback(() => {
     if (!accountSize || !riskPercentage || !stopLossPips || !entryPrice) {
@@ -158,6 +190,7 @@ export const TradingCalculator: React.FC = () => {
               type="number"
               id="entry-price"
               placeholder="Enter entry price"
+              value={entryPrice?.toString() || ''}
               onChange={handleEntryPriceChange}
             />
           </div>
@@ -168,6 +201,7 @@ export const TradingCalculator: React.FC = () => {
               type="number"
               id="stop-loss-pips"
               placeholder="Enter stop loss in pips"
+              value={stopLossPips?.toString() || ''}
               onChange={handleStopLossPipsChange}
             />
           </div>
@@ -179,7 +213,9 @@ export const TradingCalculator: React.FC = () => {
             </div>
           </div>
 
-          <Button onClick={handleSimulateAlert}>Simulate Limit Order</Button>
+          {!passedAlert && (
+            <Button onClick={handleSimulateAlert}>Simulate Limit Order</Button>
+          )}
         </CardContent>
       </Card>
       

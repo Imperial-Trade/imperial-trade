@@ -52,7 +52,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { authorization: authHeader } }
+      global: { headers: { Authorization: authHeader } }
     });
 
     // Verify user and check role

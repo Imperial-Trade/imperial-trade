@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useOrderTriggerMonitor } from './useOrderTriggerMonitor';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseThrottledOrderMonitorOptions {
   enabled: boolean;
@@ -34,6 +35,19 @@ export const useThrottledOrderMonitor = ({
   }, []);
 
   const runMonitor = useCallback(async () => {
+    // Skip if no authenticated user or session
+    if (!user) {
+      console.log('⏸️ No authenticated user - skipping monitor');
+      return;
+    }
+
+    // Check for valid session with access token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      console.log('⏸️ No valid session or access token - skipping monitor');
+      return;
+    }
+
     // Throttle: ensure minimum interval between calls
     const now = Date.now();
     if (now - lastCallRef.current < intervalMs) {

@@ -82,17 +82,27 @@ export const useOrderTriggerMonitor = (userId?: string) => {
       // Get current session for auth header
       const { data: { session } } = await supabase.auth.getSession();
       
+      // Skip if no session or access token (not authenticated)
+      if (!session?.access_token) {
+        console.log('⏸️ No session or access token - skipping monitor call');
+        return false;
+      }
+      
       const { data, error } = await supabase.functions.invoke('order-trigger-monitor', {
-        headers: session?.access_token ? {
+        headers: {
           'Authorization': `Bearer ${session.access_token}`
-        } : undefined
+        }
       });
       
       if (error) {
         console.error('❌ Error triggering order monitor:', error);
         
-        // Only show toast for non-auth errors (5xx server errors)
-        if (error.message && !error.message.includes('401') && !error.message.includes('403') && !error.message.includes('Unauthorized')) {
+        // Only show toast for server errors (5xx), suppress auth errors (4xx)
+        const errorMessage = error.message || '';
+        const isAuthError = errorMessage.includes('400') || errorMessage.includes('401') || 
+                           errorMessage.includes('403') || errorMessage.includes('Unauthorized');
+        
+        if (!isAuthError) {
           toast({
             title: "Monitor Error",
             description: "Failed to run order monitor",
@@ -115,9 +125,12 @@ export const useOrderTriggerMonitor = (userId?: string) => {
     } catch (error) {
       console.error('💥 Fatal error calling order monitor:', error);
       
-      // Only show toast for non-auth exceptions
+      // Only show toast for server errors (5xx), suppress auth errors (4xx)
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (!errorMessage.includes('401') && !errorMessage.includes('403') && !errorMessage.includes('Unauthorized')) {
+      const isAuthError = errorMessage.includes('400') || errorMessage.includes('401') || 
+                         errorMessage.includes('403') || errorMessage.includes('Unauthorized');
+      
+      if (!isAuthError) {
         toast({
           title: "Monitor Error",
           description: "Failed to run order monitor",

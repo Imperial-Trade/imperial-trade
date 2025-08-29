@@ -8,7 +8,7 @@ export class TradeAlert {
     public readonly entryPrice: number,
     public readonly stopLoss: number,
     public readonly userId: string,
-    public readonly status: 'pending' | 'active' | 'closed',
+    public readonly status: 'pending' | 'active' | 'closed' | 'partially_profited',
     public readonly tp1?: number,
     public readonly tp2?: number,
     public readonly tp3?: number,
@@ -16,7 +16,7 @@ export class TradeAlert {
     public readonly tp5?: number,
     public readonly tpHits: number[] = [],
     public readonly notes?: string,
-    public readonly closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp',
+    public readonly closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired',
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date()
   ) {}

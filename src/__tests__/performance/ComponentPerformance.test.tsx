@@ -41,7 +41,6 @@ describe('Component Performance Tests', () => {
         onOrderActivation: vi.fn(),
         isAdmin: false,
         isCreator: false,
-        livePrice: 1.0525,
         connectionStatus: 'connected' as const,
         priceSource: 'WebSocket',
         isRecentClosure: false
@@ -73,7 +72,6 @@ describe('Component Performance Tests', () => {
         onOrderActivation: vi.fn(),
         isAdmin: false,
         isCreator: false,
-        livePrice: 1.0500,
         connectionStatus: 'connected' as const,
         priceSource: 'WebSocket',
         isRecentClosure: false
@@ -92,8 +90,7 @@ describe('Component Performance Tests', () => {
         rerender(
           <TestWrapper>
             <TradeAlertCard 
-              {...mockProps} 
-              livePrice={1.0500 + (i * 0.0001)} 
+              {...mockProps}
             />
           </TestWrapper>
         );

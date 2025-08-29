@@ -558,12 +558,9 @@ export default function SignalStream() {
                               onOrderActivation={handleOrderActivation} 
                               isAdmin={isAdmin} 
                               isCreator={isCreator(alert.creator?.id)} 
-                              livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
                               connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                               priceSource={priceSource} 
-                              isRecentClosure={false} 
-                              creator={alert.creator} 
-                              justAdded={justAddedIds.has(alert.id)}
+                              isRecentClosure={false}
                             />
                           </div>
                         ))}
@@ -606,11 +603,9 @@ export default function SignalStream() {
                               onOrderActivation={handleOrderActivation} 
                               isAdmin={isAdmin} 
                               isCreator={isCreator(alert.creator?.id)} 
-                              livePrice={undefined} 
                               connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                               priceSource={priceSource} 
-                              isRecentClosure={true} 
-                              creator={alert.creator} 
+                              isRecentClosure={true}
                             />
                           </div>
                         ))}

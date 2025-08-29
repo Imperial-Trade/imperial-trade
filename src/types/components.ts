@@ -36,12 +36,12 @@ export interface TradeAlertData {
   tp3?: number;
   tp4?: number;
   tp5?: number;
-  status: 'pending' | 'active' | 'closed';
-  tp_hits?: number[];
-  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp';
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
+  tp_hits: number[];
+  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'expired' | 'reversal_after_tp';
   notes?: string;
   created_date: string;
-  updated_date?: string;
+  updated_date: string;
 }
 
 export interface TradeAlertCardProps extends BaseComponentProps {

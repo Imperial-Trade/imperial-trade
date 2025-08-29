@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import TradeStatusBadge from './TradeStatusBadge';
-import { useWebSocketPrice } from '@/hooks/useWebSocketPrice';
+import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 import { TradeAlertCloseReason } from '@/types/trading';
 
 interface TradeAlertCardProps {
@@ -54,6 +54,7 @@ interface TradeAlertCardProps {
       avatar_url?: string;
     };
   };
+  livePrice?: number;
   onStatusUpdate?: (alert: any, newStatus: string) => Promise<void>;
   onTakeProfitHit?: (alert: any, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
   onStopLossHit?: (alert: any, closeReason: string) => Promise<void>;
@@ -243,29 +244,20 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
     }
   };
 
-  const { price, loading, error } = useWebSocketPrice(tradermadeSymbol, priceSource);
+  const { prices } = useWebSocketPrices();
 
   React.useEffect(() => {
-    if (loading) {
-      setPriceLoading(true);
-    } else {
+    const priceData = prices[tradermadeSymbol];
+    if (priceData !== undefined) {
+      // Handle both number and PriceData object
+      const priceValue = typeof priceData === 'number' ? priceData : priceData.price;
+      setCurrentPrice(priceValue);
       setPriceLoading(false);
-    }
-  }, [loading]);
-
-  React.useEffect(() => {
-    if (error) {
-      setPriceError(error);
-    } else {
       setPriceError(null);
+    } else {
+      setPriceLoading(true);
     }
-  }, [error]);
-
-  React.useEffect(() => {
-    if (price !== null) {
-      setCurrentPrice(price);
-    }
-  }, [price]);
+  }, [prices, tradermadeSymbol]);
 
   return (
     <Card className="glass-effect border-default">

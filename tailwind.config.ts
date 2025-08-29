@@ -8,19 +8,6 @@ export default {
 		"./app/**/*.{ts,tsx}",
 		"./src/**/*.{ts,tsx}",
 	],
-	safelist: [
-		// Trading status badge classes - explicitly safelist for dynamic usage
-		'bg-gold-light/20', 'text-gold-warm', 'border-gold-warm/30',
-		'bg-emerald-500/20', 'text-emerald-300', 'border-emerald-500/30',
-		'bg-emerald-500/30', 'text-emerald-200', 'border-emerald-400',
-		'bg-amber-500/20', 'text-amber-300', 'border-amber-500/30',
-		'bg-red-500/30', 'text-red-200', 'border-red-400',
-		'bg-gray-600/30', 'text-gray-300', 'border-gray-500',
-		'bg-orange-500/30', 'text-orange-200', 'border-orange-400',
-		'bg-muted/30', 'text-muted-foreground', 'border-border',
-		'shadow-lg', 'shadow-red-500/50', 'shadow-emerald-500/50', 'shadow-gray-500/30',
-		'border-2', 'animate-pulse'
-	],
 	prefix: "",
 	theme: {
 		container: {

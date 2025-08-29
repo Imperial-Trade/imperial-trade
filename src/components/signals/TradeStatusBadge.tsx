@@ -1,16 +1,14 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, Target, TrendingUp, Hourglass, Clock } from 'lucide-react';
-import { mapStatusToVariant, getTpHitVariant } from '@/utils/trading-ui';
-import { TradeAlertStatus, TradeAlertCloseReason } from '@/types/trading';
+import { Check, X, Target, TrendingUp, Hourglass } from 'lucide-react';
 
 interface TradeStatusBadgeProps {
   alert: {
-    status: TradeAlertStatus;
-    trade_type?: string;
+    status: 'pending' | 'active' | 'closed';
+    trade_type?: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
     tp_hits?: number[];
-    close_reason?: TradeAlertCloseReason | string | null;
+    close_reason?: string;
   };
   updatedDate?: string;
   isRecentClosure?: boolean;
@@ -18,105 +16,87 @@ interface TradeStatusBadgeProps {
 
 export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }: TradeStatusBadgeProps) {
     const hitTPs = alert.tp_hits || [];
+    const isActive = alert.status === 'active';
+    const isPending = alert.status === 'pending';
+    const closeReason = alert.close_reason;
+    const isClosed = alert.status === 'closed';
     const tradeType = alert.trade_type;
+    const friendlyType =
+      tradeType === 'buy_limit' ? 'Buy Limit' :
+      tradeType === 'sell_limit' ? 'Sell Limit' :
+      tradeType === 'buy' ? 'Buy' :
+      tradeType === 'sell' ? 'Sell' : undefined;
     const isLimitType = tradeType === 'buy_limit' || tradeType === 'sell_limit';
-    
-    // Get friendly type for limit orders
-    const getFriendlyType = () => {
-        if (tradeType === 'buy_limit') return 'Buy Limit';
-        if (tradeType === 'sell_limit') return 'Sell Limit';
-        if (tradeType === 'buy') return 'Buy';
-        if (tradeType === 'sell') return 'Sell';
-        return undefined;
-    };
 
-    // Icon mapping to React components
-    const iconMap = {
-        hourglass: Hourglass,
-        target: Target,
-        'trending-up': TrendingUp,
-        check: Check,
-        x: X,
-        clock: Clock
-    };
-
-    // Handle partially_profited with dual badges
-    if (alert.status === 'partially_profited') {
-        const partialVariant = mapStatusToVariant(alert.status, alert.close_reason, hitTPs);
-        const highestTP = hitTPs.length > 0 ? Math.max(...hitTPs) : 1;
-        const tpVariant = getTpHitVariant(highestTP, 'partial');
-        
-        const PartialIcon = iconMap[partialVariant.iconKey];
-        const TpIcon = iconMap[tpVariant.iconKey];
-
+    if (isPending) {
+        const pendingText = isLimitType && friendlyType ? `Pending ${friendlyType}` : 'Pending';
         return (
-            <div className="flex items-center gap-2">
-                <Badge className={`${partialVariant.className} whitespace-nowrap uppercase`}>
-                    <PartialIcon className="w-3 h-3 mr-1" /> {partialVariant.label}
-                </Badge>
-                <Badge className={`${tpVariant.className} uppercase whitespace-nowrap`}>
-                    TP{highestTP} HIT
-                </Badge>
-            </div>
+            <Badge className="bg-gold-light/20 text-gold-warm border border-gold-warm/30 uppercase">
+                <Hourglass className="w-3 h-3 mr-1 animate-spin" /> {pendingText}
+            </Badge>
         );
     }
 
-    // Handle active with TP hits (dual badges)
-    if (alert.status === 'active' && hitTPs.length > 0) {
+    if (isActive && hitTPs.length > 0) {
         const highestTP = Math.max(...hitTPs);
-        const tpVariant = getTpHitVariant(highestTP, 'active');
-        const activeVariant = mapStatusToVariant(alert.status, alert.close_reason, hitTPs);
-        
-        const TpIcon = iconMap[tpVariant.iconKey];
-        const ActiveIcon = iconMap[activeVariant.iconKey];
-        
-        const friendlyType = getFriendlyType();
         const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
-
         return (
             <div className="flex items-center gap-2">
-                <Badge className={`${tpVariant.className} animate-pulse whitespace-nowrap uppercase`}>
-                    <TpIcon className="w-3 h-3 mr-1" /> TP{highestTP} HIT
+                <Badge variant="outline" className="text-emerald-400 border-emerald-400 animate-pulse whitespace-nowrap uppercase">
+                    <Target className="w-3 h-3 mr-1" /> TP{highestTP} HIT
                 </Badge>
-                <Badge className={`${activeVariant.className} uppercase whitespace-nowrap`}>
+                <Badge variant="outline" className="text-emerald-400 border-emerald-400 uppercase whitespace-nowrap">
                     {activeText}
                 </Badge>
             </div>
         );
     }
 
-    // Single badge for all other states
-    const variant = mapStatusToVariant(alert.status, alert.close_reason, hitTPs);
-    const Icon = iconMap[variant.iconKey];
-    
-    // Handle pending with trade type
-    if (alert.status === 'pending') {
-        const friendlyType = getFriendlyType();
-        const pendingText = isLimitType && friendlyType ? `Pending ${friendlyType}` : variant.label;
-        
+    if (isActive) {
+        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
         return (
-            <Badge className={`${variant.className} uppercase`}>
-                <Icon className="w-3 h-3 mr-1 animate-spin" /> {pendingText}
+            <Badge variant="outline" className="text-emerald-400 border-emerald-400">
+                {activeText}
             </Badge>
         );
     }
 
-    // Handle active without TP hits
-    if (alert.status === 'active') {
-        const friendlyType = getFriendlyType();
-        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : variant.label;
-        
+    if (isClosed) {
+        if (closeReason === 'stop_loss') {
+            return (
+                <Badge className="bg-red-500/30 text-red-200 border-red-400 shadow-lg shadow-red-500/50 border-2">
+                    <X className="w-4 h-4 mr-1" /> STOP LOSS HIT
+                </Badge>
+            );
+        }
+
+        if (closeReason && closeReason.startsWith('tp')) {
+            const tpNumber = closeReason.replace('tp', '');
+            return (
+                <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400 shadow-lg shadow-emerald-500/50 border-2">
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    TP{tpNumber} REACHED
+                </Badge>
+            );
+        }
+
+        if (hitTPs.length > 0) {
+            const highestTP = Math.max(...hitTPs);
+            return (
+                <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400 shadow-lg shadow-emerald-500/50 border-2">
+                    <Check className="w-4 h-4 mr-1" />
+                    TP{highestTP} HIT
+                </Badge>
+            );
+        }
+
         return (
-            <Badge className={variant.className}>
-                <Icon className="w-3 h-3 mr-1" /> {activeText}
+            <Badge className="bg-gray-600/30 text-gray-300 border-gray-500 shadow-lg shadow-gray-500/30 border-2">
+                <X className="w-4 h-4 mr-1" />
+                MANUALLY CLOSED
             </Badge>
         );
     }
 
-    // Handle closed states
-    return (
-        <Badge className={variant.className}>
-            <Icon className="w-4 h-4 mr-1" /> {variant.label}
-        </Badge>
-    );
+    return null;
 }

@@ -4,7 +4,6 @@ import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
-import { toCardAlert } from '@/utils/trading-normalizers';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
@@ -541,16 +540,30 @@ export default function SignalStream() {
                         {activeAlerts.map(alert => (
                           <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard 
-                              alert={alert}
+                              alert={{
+                                ...alert,
+                                asset_name: alert.assetName,
+                                tradermade_symbol: alert.tradermadeSymbol,
+                                trade_type: alert.tradeType,
+                                entry_price: alert.entryPrice,
+                                stop_loss: alert.stopLoss,
+                                tp_hits: alert.tpHits,
+                                close_reason: alert.closeReason,
+                                created_date: alert.createdAt,
+                                updated_date: alert.updatedAt
+                              }} 
                               onStatusUpdate={handleStatusUpdate} 
                               onTakeProfitHit={handleTakeProfitHit} 
                               onStopLossHit={handleStopLossHit} 
                               onOrderActivation={handleOrderActivation} 
                               isAdmin={isAdmin} 
                               isCreator={isCreator(alert.creator?.id)} 
+                              livePrice={livePrices[alert.tradermadeSymbol] || livePrices[alert.assetName.toUpperCase()]} 
                               connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                               priceSource={priceSource} 
-                              isRecentClosure={false}
+                              isRecentClosure={false} 
+                              creator={alert.creator} 
+                              justAdded={justAddedIds.has(alert.id)}
                             />
                           </div>
                         ))}
@@ -575,16 +588,29 @@ export default function SignalStream() {
                         {sortedClosedAlerts.map(alert => (
                           <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard 
-                              alert={alert}
+                              alert={{
+                                ...alert,
+                                asset_name: alert.assetName,
+                                tradermade_symbol: alert.tradermadeSymbol,
+                                trade_type: alert.tradeType,
+                                entry_price: alert.entryPrice,
+                                stop_loss: alert.stopLoss,
+                                tp_hits: alert.tpHits,
+                                close_reason: alert.closeReason,
+                                created_date: alert.createdAt,
+                                updated_date: alert.updatedAt
+                              }} 
                               onStatusUpdate={handleStatusUpdate} 
                               onTakeProfitHit={handleTakeProfitHit} 
                               onStopLossHit={handleStopLossHit} 
                               onOrderActivation={handleOrderActivation} 
                               isAdmin={isAdmin} 
                               isCreator={isCreator(alert.creator?.id)} 
+                              livePrice={undefined} 
                               connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                               priceSource={priceSource} 
-                              isRecentClosure={true}
+                              isRecentClosure={true} 
+                              creator={alert.creator} 
                             />
                           </div>
                         ))}

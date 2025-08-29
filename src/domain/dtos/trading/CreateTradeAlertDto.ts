@@ -1,10 +1,8 @@
 
-import { TradeAlertStatus, TradeAlertCloseReason, TradeType } from '@/types/trading';
-
 export interface CreateTradeAlertDto {
   assetName: string;
   tradermadeSymbol: string;
-  tradeType: TradeType;
+  tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entryPrice: number;
   stopLoss: number;
   tp1?: number;
@@ -16,9 +14,9 @@ export interface CreateTradeAlertDto {
 }
 
 export interface UpdateTradeAlertDto {
-  status?: TradeAlertStatus;
+  status?: 'pending' | 'active' | 'closed' | 'partially_profited';
   tpHits?: number[];
-  closeReason?: TradeAlertCloseReason;
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
   notes?: string;
 }
 
@@ -27,10 +25,10 @@ export interface TradeAlertResponseDto {
   userId: string;
   assetName: string;
   tradermadeSymbol: string;
-  tradeType: TradeType;
+  tradeType: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
   entryPrice: number;
   stopLoss: number;
-  status: TradeAlertStatus;
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
   tp1?: number;
   tp2?: number;
   tp3?: number;
@@ -38,7 +36,7 @@ export interface TradeAlertResponseDto {
   tp5?: number;
   tpHits: number[];
   notes?: string;
-  closeReason?: TradeAlertCloseReason;
+  closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired';
   createdAt: string;
   updatedAt: string;
 }

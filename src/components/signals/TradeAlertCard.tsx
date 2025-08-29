@@ -1,489 +1,430 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+
+import React, { useState, memo, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Clock, 
-  Target,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  User,
-  Calendar,
-  Activity,
-  MoreVertical,
-  Edit,
-  Trash2,
-  Copy,
-  Share2,
-  Calculator
-} from 'lucide-react';
-import { formatDistance } from 'date-fns';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import TradeStatusBadge from './TradeStatusBadge';
+import { ArrowUp, ArrowDown, Target, XOctagon, Lock, Copy, ChevronDown, ChevronUp, Check, Calculator, Share2, User, Crown, GraduationCap, Pencil } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import QuickCopyPanel from './QuickCopyPanel';
 import LivePriceWidget from './LivePriceWidget';
+import TradeStatusBadge from './TradeStatusBadge';
+import TradingCalculator from './TradingCalculator';
+import SignalSharingModal from './SignalSharingModal';
+import { TradeAlertCardProps } from '@/types/components';
+import { TradeSignal } from '@/services/SignalSharingService';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
-import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
-import { TradeAlertCloseReason } from '@/types/trading';
-import { toCardAlert, validateTradingAlert } from '@/utils/trading-normalizers';
-import { getCardAccentClasses } from '@/utils/trading-ui';
-import { useToast } from '@/hooks/use-toast';
 
-interface TradeAlertCardProps {
-  alert: any; // Raw alert data that will be normalized
-  livePrice?: number; // Optional live price override
-  onStatusUpdate?: (alert: any, newStatus: string) => Promise<void>;
-  onTakeProfitHit?: (alert: any, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
-  onStopLossHit?: (alert: any, closeReason: string) => Promise<void>;
-  onOrderActivation?: (alert: any) => Promise<void>;
-  onEdit?: (alert: any) => void;
-  onDelete?: (alert: any) => void;
-  isAdmin?: boolean;
-  isCreator?: boolean;
-  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
-  priceSource?: string;
-  isRecentClosure?: boolean;
+interface PriceRowProps {
+  label: string;
+  value?: number;
+  icon: React.ComponentType<{ className?: string }>;
+  colorClass: string;
+  isHit?: boolean;
 }
 
-const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
-  alert: rawAlert,
-  livePrice,
-  onStatusUpdate,
-  onTakeProfitHit,
-  onStopLossHit,
-  onOrderActivation,
-  onEdit,
-  onDelete,
-  isAdmin = false,
-  isCreator = false,
-  connectionStatus,
-  priceSource = 'tradermade',
-  isRecentClosure = false
+const PriceRow: React.FC<PriceRowProps> = ({ label, value, icon: Icon, colorClass, isHit = false }) => (
+    <div className={`flex justify-between items-center text-sm py-2 border-b border-border/50 last:border-b-0 ${isHit ? 'bg-accent-green/20' : ''}`}>
+        <div className="flex items-center space-x-2 text-muted-foreground">
+            <Icon className={`w-4 h-4 ${colorClass}`} />
+            <span>{label}</span>
+            {isHit && <Check className="w-4 h-4 text-accent-green" />}
+        </div>
+        <span className={`font-mono font-semibold text-foreground ${isHit ? 'text-accent-green' : ''}`}>
+          {value ? `$${value.toFixed(2)}` : '-'}
+        </span>
+    </div>
+);
+
+const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; display_name: string; role: string; avatar_url?: string }; justAdded?: boolean }> = ({ 
+  alert, 
+  onStatusUpdate, 
+  onTakeProfitHit, 
+  onStopLossHit, 
+  onOrderActivation, 
+  isAdmin, 
+  isCreator,
+  livePrice, 
+  connectionStatus, 
+  priceSource, 
+  isRecentClosure,
+  className,
+  testId,
+  creator,
+  justAdded = false
 }) => {
-  const { toast } = useToast();
+  const [showCopyPanel, setShowCopyPanel] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState(alert.notes || '');
+  const [localNotes, setLocalNotes] = useState(alert.notes || '');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
   
-  // Normalize alert data with live price
-  const alert = useMemo(() => toCardAlert(rawAlert, livePrice), [rawAlert, livePrice]);
+  useEffect(() => {
+    setLocalNotes(alert.notes || '');
+    setNotesDraft(alert.notes || '');
+  }, [alert.id, alert.notes]);
+  
+  // Type-safe derivations
+  const isBuy = alert.trade_type.includes('buy');
+  const takeProfits = [alert.tp1, alert.tp2, alert.tp3, alert.tp4, alert.tp5].filter((tp): tp is number => tp !== undefined);
+  const hitTPs = alert.tp_hits || [];
+  const isClosed = alert.status === 'closed';
+  const isPending = alert.status === 'pending';
+  const canCloseSignal = isCreator;
+  const canEditNotes = isCreator && (alert.status === 'active' || alert.status === 'pending');
+  const { getPrice } = useWebSocketPrices();
 
-  // Validation
-  if (!validateTradingAlert(alert)) {
-    console.warn('Invalid trading alert data:', alert);
-    return null;
-  }
+  // Convert alert to TradeSignal format for sharing
+  const tradeSignal: TradeSignal = {
+    id: alert.id,
+    assetName: alert.asset_name,
+    tradeType: alert.trade_type,
+    entryPrice: alert.entry_price,
+    stopLoss: alert.stop_loss,
+    takeProfits: takeProfits,
+    notes: alert.notes || undefined
+  };
 
-  // State management
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isActivating, setIsActivating] = useState(false);
-  const [isTakingProfit, setIsTakingProfit] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-  const [selectedTP, setSelectedTP] = useState<number | null>(null);
-
-  const {
-    id: alertId,
-    asset_name: assetName,
-    tradermade_symbol: tradermadeSymbol,
-    trade_type: tradeType,
-    entry_price: entryPrice,
-    stop_loss: stopLoss,
-    status,
-    tp1,
-    tp2,
-    tp3,
-    tp4,
-    tp5,
-    tp_hits: tpHits,
-    notes,
-    close_reason: closeReason,
-    created_date: createdDate,
-    updated_date: updatedDate,
-    creator: profiles
-  } = alert;
-
-  const fullName = profiles?.display_name || profiles?.full_name || 'Unknown User';
-  const avatarUrl = profiles?.avatar_url || '/avatars/avatar-1.png';
-
-  const friendlyType =
-    tradeType === 'buy_limit' ? 'Buy Limit' :
-    tradeType === 'sell_limit' ? 'Sell Limit' :
-    tradeType === 'buy' ? 'Buy' :
-    tradeType === 'sell' ? 'Sell' : undefined;
-
-  const isLimitType = tradeType === 'buy_limit' || tradeType === 'sell_limit';
-  const isActive = status === 'active';
-  const isPending = status === 'pending';
-  const isClosed = status === 'closed';
-
-  const tpLevels = useMemo(() => {
-    const levels = [];
-    if (tp1) levels.push({ tp: tp1, level: 1 });
-    if (tp2) levels.push({ tp: tp2, level: 2 });
-    if (tp3) levels.push({ tp: tp3, level: 3 });
-    if (tp4) levels.push({ tp: tp4, level: 4 });
-    if (tp5) levels.push({ tp: tp5, level: 5 });
-    return levels;
-  }, [tp1, tp2, tp3, tp4, tp5]);
-
-  const unhitTpLevels = useMemo(() => {
-    return tpLevels.filter(tp => !tpHits.includes(tp.level));
-  }, [tpLevels, tpHits]);
-
-  const hasUnhitTPs = unhitTpLevels.length > 0;
-
-  const riskRewardRatio = useMemo(() => {
-    if (!tp1) return null;
-    const risk = Math.abs(entryPrice - stopLoss);
-    const reward = Math.abs(tp1 - entryPrice);
-    return (reward / risk).toFixed(2);
-  }, [entryPrice, stopLoss, tp1]);
-
-  const timeAgo = useMemo(() => {
-    try {
-      return formatDistance(new Date(createdDate), new Date(), {
-        addSuffix: true,
-      });
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return 'N/A';
-    }
-  }, [createdDate]);
-
-  const updatedAgo = useMemo(() => {
-    try {
-      return formatDistance(new Date(updatedDate), new Date(), {
-        addSuffix: true,
-      });
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return 'N/A';
-    }
-  }, [updatedDate]);
-
+  // Type-safe event handlers
   const handleStatusUpdate = async (newStatus: string) => {
-    if (onStatusUpdate) {
-      try {
-        await onStatusUpdate(alert, newStatus);
-      } catch (error) {
-        console.error('Failed to update status:', error);
-      }
-    }
-  };
-
-  const handleTakeProfit = async () => {
-    if (selectedTP === null) {
-      console.warn('No TP selected');
-      return;
-    }
-
-    if (onTakeProfitHit) {
-      try {
-        setIsTakingProfit(true);
-        const newTPHits = [...tpHits, selectedTP];
-        const shouldClose = newTPHits.length === tpLevels.length;
-        const closeReason = shouldClose ? 'all_tps_hit' : `tp${selectedTP}`;
-        await onTakeProfitHit(alert, newTPHits, shouldClose, closeReason);
-      } catch (error) {
-        console.error('Failed to handle take profit:', error);
-      } finally {
-        setIsTakingProfit(false);
-        setSelectedTP(null);
-      }
-    }
-  };
-
-  const handleStopLoss = async () => {
-    if (onStopLossHit) {
-      try {
-        setIsClosing(true);
-        await onStopLossHit(alert, 'stop_loss');
-      } catch (error) {
-        console.error('Failed to handle stop loss:', error);
-      } finally {
-        setIsClosing(false);
-      }
-    }
-  };
-
-  const handleActivation = async () => {
-    if (onOrderActivation) {
-      try {
-        setIsActivating(true);
-        await onOrderActivation(alert);
-      } catch (error) {
-        console.error('Failed to activate order:', error);
-      } finally {
-        setIsActivating(false);
-      }
-    }
-  };
-
-  const handleDelete = async () => {
-    if (onDelete) {
-      try {
-        setIsDeleting(true);
-        await onDelete(alert);
-      } catch (error) {
-        console.error('Failed to delete alert:', error);
-      } finally {
-        setIsDeleting(false);
-      }
-    }
-  };
-
-  // Action handlers for dropdown menu
-  const handleCopySignal = async () => {
     try {
-      const signalText = `🔔 TRADE SIGNAL
-${assetName} (${tradermadeSymbol})
-📈 Type: ${friendlyType || tradeType}
-💰 Entry: ${entryPrice}
-🛑 Stop Loss: ${stopLoss}
-🎯 Take Profits: ${tpLevels.map(tp => tp.tp).join(', ')}`;
-      
-      await navigator.clipboard.writeText(signalText);
-      toast({
-        title: "Signal copied!",
-        description: "Trade signal details copied to clipboard.",
-      });
+      await onStatusUpdate(alert, newStatus);
     } catch (error) {
-      toast({
-        title: "Copy failed",
-        description: "Could not copy signal details.",
-        variant: "destructive",
-      });
+      console.error('Failed to update status:', error);
     }
   };
 
-  const handleShareSignal = () => {
-    toast({
-      title: "Share Signal",
-      description: "Share functionality would open here.",
-    });
+  const handleCopyPanelToggle = () => {
+    setShowCopyPanel(prev => !prev);
   };
 
-  const handleOpenCalculator = () => {
-    toast({
-      title: "Risk Calculator",
-      description: "Risk calculator would open here.",
-    });
+  const handleCalculatorToggle = () => {
+    setShowCalculator(prev => !prev);
   };
 
-  // Get card accent classes
-  const cardAccentClasses = getCardAccentClasses(alert.status, alert.close_reason, alert.tp_hits);
+  const handleNotesEditToggle = () => {
+    setIsEditingNotes(prev => !prev);
+    setNotesDraft(localNotes || '');
+  };
+
+  const handleNotesSave = async () => {
+    try {
+      setIsSavingNotes(true);
+      const { error } = await supabase
+        .from('trade_alerts')
+        .update({ notes: notesDraft })
+        .eq('id', alert.id);
+
+      if (error) throw error;
+
+      setLocalNotes(notesDraft);
+      setIsEditingNotes(false);
+      toast({ title: 'Notes updated', description: 'Everyone can now see the new notes.' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Failed to update notes', description: e?.message || 'Please try again.' });
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+  // Get role icon and color
+  const getRoleIcon = (role: string) => {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return <Crown className="w-4 h-4 text-accent-gold" />;
+      case 'educator':
+        return <GraduationCap className="w-4 h-4 text-accent-blue" />;
+      default:
+        return <User className="w-4 h-4 text-muted-foreground" />;
+    }
+  };
+
+  const getRoleBadgeClass = (role: string) => {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return 'bg-accent-gold/20 text-accent-gold border-accent-gold/30';
+      case 'educator':
+        return 'bg-accent-blue/20 text-accent-blue border-accent-blue/30';
+      default:
+        return 'bg-muted/20 text-muted-foreground border-border/30';
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d ago`;
+  };
+
+  // Get button text (only creator can close in stream)
+  const getCloseButtonText = () => 'Close My Signal';
 
   return (
-    <Card className={`p-4 border border-border hover:border-border/60 transition-colors ${cardAccentClasses}`}>
-      <CardContent className="p-0">
-        {isRecentClosure && (
-          <Badge className="absolute top-2 right-2 bg-green-500/20 text-green-400 border-green-500/30">
-            Recently Closed
-          </Badge>
-        )}
-        
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
+    <div 
+      className={`bg-card rounded-lg border border-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-accent-green/10 ${isClosed ? 'opacity-50' : ''} ${isPending ? 'border-accent-gold/50 hover:border-accent-gold' : 'hover:border-accent-green/50'} ${isClosed && (alert.close_reason === 'stop_loss' ? 'ring-2 ring-accent-red/30' : hitTPs.length > 0 || alert.close_reason?.startsWith('tp') ? 'ring-2 ring-accent-green/30' : 'ring-2 ring-border/30')} ${justAdded ? 'ring-2 ring-accent-green/50 shadow-accent-green/20' : ''} ${className || ''}`}
+      data-testid={testId}
+    >
+      {/* Glowing top indicator for closed trades */}
+      {isClosed && (
+        <div className={`h-1 w-full ${
+          alert.close_reason === 'stop_loss' 
+            ? 'bg-gradient-to-r from-accent-red/50 via-accent-red/70 to-accent-red/50 shadow-lg shadow-accent-red/30' 
+            : (hitTPs.length > 0 || alert.close_reason?.startsWith('tp'))
+              ? 'bg-gradient-to-r from-accent-green/50 via-accent-green/70 to-accent-green/50 shadow-lg shadow-accent-green/30'
+              : 'bg-gradient-to-r from-muted-foreground/50 via-muted-foreground/70 to-muted-foreground/50 shadow-lg shadow-muted-foreground/30'
+        } animate-pulse`} />
+      )}
+
+      <div className="p-4">
+        {/* Signal Creator Attribution */}
+        {creator && (
+          <div className="flex items-start justify-between mb-3 pb-3 border-b border-border/30">
             <div className="flex items-center gap-2">
-              <h3 className="text-xl font-semibold text-primary">{assetName}</h3>
-              {isAdmin && (
-                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                  Admin Signal
-                </Badge>
-              )}
+              {getRoleIcon(creator.role)}
+              <span className="font-semibold text-foreground">{creator.display_name}</span>
+              <Badge className={getRoleBadgeClass(creator.role)}>
+                {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
+              </Badge>
             </div>
-            <p className="text-secondary">
-              <span className="font-bold">{tradermadeSymbol}</span> - {friendlyType || tradeType}
-            </p>
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleCopySignal}>
-                <Copy className="mr-2 h-4 w-4" /> Copy Details
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleShareSignal}>
-                <Share2 className="mr-2 h-4 w-4" /> Share Signal
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleOpenCalculator}>
-                <Calculator className="mr-2 h-4 w-4" /> Risk Calculator
-              </DropdownMenuItem>
-              {(onEdit || onDelete) && <DropdownMenuSeparator />}
-              {onEdit && (
-                <DropdownMenuItem onClick={() => onEdit(alert)}>
-                  <Edit className="mr-2 h-4 w-4" /> Edit
-                </DropdownMenuItem>
-              )}
-              {onDelete && (
-                <DropdownMenuItem onClick={handleDelete} disabled={isDeleting} className="text-red-500 focus:bg-red-500/10">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div>
-            <p className="text-secondary text-sm">Entry Price</p>
-            <p className="text-primary font-bold">{entryPrice}</p>
-          </div>
-          <div>
-            <p className="text-secondary text-sm">Stop Loss</p>
-            <p className="text-primary font-bold">{stopLoss}</p>
-          </div>
-          {riskRewardRatio && (
-            <div>
-              <p className="text-secondary text-sm">Risk/Reward Ratio (TP1)</p>
-              <p className="text-primary font-bold">{riskRewardRatio}</p>
+            <div className="flex flex-col items-end gap-1">
+              <div className="text-xs text-muted-foreground">
+                {formatTimeAgo(alert.created_date)}
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        <div className="mt-4">
-          <p className="text-secondary text-sm">Take Profit Levels</p>
-          <div className="flex items-center gap-2">
-            {tpLevels.length > 0 ? (
-              tpLevels.map((tp) => (
-                <Badge
-                  key={tp.level}
-                  variant={tpHits.includes(tp.level) ? 'default' : 'outline'}
-                  className={tpHits.includes(tp.level)
-                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                    : 'text-primary border-default'}
+        {/* Currency Pair and Status */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold">{alert.asset_name}</h3>
+              <TradeStatusBadge 
+                alert={alert} 
+                updatedDate={alert.updated_date} 
+                isRecentClosure={isRecentClosure} 
+              />
+            </div>
+          </div>
+
+          {/* Actions - moved to the right */}
+          <div className="flex items-center gap-2 flex-wrap" data-prevent-widget-open="true">
+            {/* Copy Button */}
+            <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                  onClick={handleCopyPanelToggle}
                 >
-                  TP{tp.level}: {tp.tp}
-                </Badge>
-              ))
-            ) : (
-              <p className="text-secondary">No take profit levels set.</p>
+                  <Copy className="w-4 h-4 mr-1" />
+                  {showCopyPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </Button>
+              </CollapsibleTrigger>
+            </Collapsible>
+            
+            {/* Share Button */}
+            <SignalSharingModal 
+              signal={tradeSignal}
+              trigger={
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue"
+                >
+                  <Share2 className="w-4 h-4 mr-1" />
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              }
+            />
+            
+            {/* Calculator Toggle - Only for active/pending trades */}
+            {(alert.status === 'active' || alert.status === 'pending') && (
+              <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-accent-green hover:bg-accent-green/20 hover:text-accent-green"
+                    onClick={handleCalculatorToggle}
+                  >
+                    <Calculator className="w-4 h-4 mr-1" />
+                    {showCalculator ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </Button>
+                </CollapsibleTrigger>
+              </Collapsible>
             )}
           </div>
         </div>
+      </div>
 
-        {notes && (
-          <div className="mt-4">
-            <p className="text-secondary text-sm">Notes</p>
-            <p className="text-primary">{notes}</p>
-          </div>
-        )}
-
-        {/* Live Price Widget - Only show for non-closed trades */}
-        {tradermadeSymbol && alert.status !== 'closed' && (
-          <div className="mt-6">
-            <LivePriceWidget
-              alert={alert}
+      {/* Live Price Widget - Show for active and pending trades */}
+      {(alert.status === 'active' || alert.status === 'pending') && (
+        <div className="px-4 pb-4">
+          <LivePriceWidget 
+              alert={alert} 
               onTakeProfitHit={onTakeProfitHit}
               onStopLossHit={onStopLossHit}
               onOrderActivation={onOrderActivation}
+          />
+        </div>
+      )}
+
+      <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
+        <CollapsibleContent className="px-4 pb-4" data-prevent-widget-open="true">
+            <QuickCopyPanel alert={alert} />
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Trading Calculator */}
+      <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
+        <CollapsibleContent className="px-4 pb-4">
+            <TradingCalculator alert={alert} livePrice={livePrice} />
+        </CollapsibleContent>
+      </Collapsible>
+
+      <div className="px-4 pb-4 space-y-2">
+        <div className="bg-muted/50 rounded-md p-3">
+            <PriceRow 
+              label="Entry Price" 
+              value={alert.entry_price} 
+              icon={isBuy ? ArrowUp : ArrowDown} 
+              colorClass={isBuy ? "text-accent-green" : "text-accent-red"} 
             />
-          </div>
-        )}
-
-        <div className="mt-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TradeStatusBadge alert={alert} updatedDate={updatedDate} isRecentClosure={isRecentClosure} />
-            </div>
-            <div className="text-right text-secondary">
-              <p className="text-sm">Created {timeAgo}</p>
-              <p className="text-sm">Updated {updatedAgo}</p>
-            </div>
-          </div>
+            <PriceRow 
+              label="Stop Loss" 
+              value={alert.stop_loss} 
+              icon={XOctagon} 
+              colorClass={alert.close_reason === 'stop_loss' ? "text-accent-red" : "text-accent-red"}
+              isHit={alert.close_reason === 'stop_loss'}
+            />
+            {takeProfits.map((tp, index) => {
+              const tpLevel = index + 1;
+              const isHit = hitTPs.includes(tpLevel) || alert.close_reason === `tp${tpLevel}`;
+              return (
+                <PriceRow 
+                  key={index} 
+                  label={`Take Profit ${tpLevel}`} 
+                  value={tp} 
+                  icon={Target} 
+                  colorClass={isHit ? "text-accent-green" : "text-accent-blue"}
+                  isHit={isHit}
+                />
+              );
+            })}
         </div>
-
-        <div className="mt-6 flex flex-wrap gap-2 justify-end">
-          {isPending && isAdmin && (
-            <Button
-              variant="outline"
-              className="bg-accent-green hover:bg-accent-green/90 text-white"
-              onClick={handleActivation}
-              disabled={isActivating}
+      </div>
+      
+      <div className="px-4 pb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-muted-foreground">Notes</span>
+          {canEditNotes && !isEditingNotes && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue" 
+              onClick={handleNotesEditToggle}
             >
-              {isActivating ? (
-                <>
-                  <Clock className="mr-2 h-4 w-4 animate-spin" />
-                  Activating...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Activate Order
-                </>
-              )}
+              <Pencil className="w-3 h-3 mr-1" /> Edit
             </Button>
           )}
-
-          {isActive && isAdmin && hasUnhitTPs && (
-            <>
-              <select
-                value={selectedTP || ''}
-                onChange={(e) => setSelectedTP(Number(e.target.value))}
-                className="bg-background text-primary border-default rounded px-3 py-2"
-              >
-                <option value="">Select TP to Hit</option>
-                {unhitTpLevels.map((tp) => (
-                  <option key={tp.level} value={tp.level}>
-                    TP{tp.level}: {tp.tp}
-                  </option>
-                ))}
-              </select>
-              <Button
-                className="bg-accent-green hover:bg-accent-green/90 text-white"
-                onClick={handleTakeProfit}
-                disabled={isTakingProfit || selectedTP === null}
-              >
-                {isTakingProfit ? (
-                  <>
-                    <Clock className="mr-2 h-4 w-4 animate-spin" />
-                    Taking Profit...
-                  </>
-                ) : (
-                  <>
-                    <Target className="mr-2 h-4 w-4" />
-                    Take Profit
-                  </>
-                )}
+        </div>
+        {isEditingNotes ? (
+          <div className="space-y-2">
+            <Textarea 
+              value={notesDraft}
+              onChange={(e) => setNotesDraft(e.target.value)}
+              placeholder="Add helpful context for followers..."
+              className="min-h-[80px]"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={handleNotesEditToggle} disabled={isSavingNotes}>Cancel</Button>
+              <Button variant="default" size="sm" onClick={handleNotesSave} disabled={isSavingNotes || notesDraft === localNotes}>
+                {isSavingNotes ? 'Saving...' : 'Save'}
               </Button>
-            </>
-          )}
-
-          {isActive && isAdmin && (
-            <Button
-              variant="destructive"
-              onClick={handleStopLoss}
-              disabled={isClosing}
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
+        )}
+      </div>
+      {/* Stop Loss Proximity Warning */}
+      {alert.status === 'active' && (() => {
+        const wsPrice = getPrice?.(alert.tradermade_symbol)?.price;
+        const currentPrice = typeof livePrice === 'number' ? livePrice : (typeof wsPrice === 'number' ? wsPrice : null);
+        const entryPrice = alert.entry_price;
+        const stopLoss = alert.stop_loss;
+        if (!entryPrice || !stopLoss || !currentPrice) return null;
+        const totalDistance = Math.abs(entryPrice - stopLoss);
+        if (totalDistance === 0) return null;
+        const currentDistance = Math.abs(currentPrice - stopLoss);
+        const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
+        if (proximityPercentage >= 50) {
+          return (
+            <div className="px-4 pb-4">
+              <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-3 flex items-start gap-2">
+                <span className="text-accent-gold mt-0.5 leading-none">🟡</span>
+                <div className="text-xs text-accent-gold">
+                  <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>
+                  <br />
+                  <span className="text-accent-gold/80">This trade is more than halfway to its invalidation point.</span>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+      
+      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && (
+        <div className="bg-muted/50 px-4 py-2 flex justify-end">
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red" 
+              onClick={() => handleStatusUpdate('closed')}
             >
-              {isClosing ? (
-                <>
-                  <Clock className="mr-2 h-4 w-4 animate-spin" />
-                  Closing...
-                </>
-              ) : (
-                <>
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Stop Loss
-                </>
-              )}
+                <Lock className="w-4 h-4 mr-2" />
+                {isPending ? 'Cancel Order' : getCloseButtonText()}
             </Button>
-          )}
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 };
 
-export default TradeAlertCard;
+export default memo(TradeAlertCard, (prevProps, nextProps) => {
+  // Prevent re-renders when only livePrice changes - let LivePriceWidget handle price updates internally
+  return (
+    prevProps.alert.id === nextProps.alert.id &&
+    prevProps.alert.status === nextProps.alert.status &&
+    prevProps.alert.asset_name === nextProps.alert.asset_name &&
+    prevProps.alert.trade_type === nextProps.alert.trade_type &&
+    prevProps.alert.entry_price === nextProps.alert.entry_price &&
+    prevProps.alert.stop_loss === nextProps.alert.stop_loss &&
+    prevProps.alert.tp1 === nextProps.alert.tp1 &&
+    prevProps.alert.tp2 === nextProps.alert.tp2 &&
+    prevProps.alert.tp3 === nextProps.alert.tp3 &&
+    prevProps.alert.tp4 === nextProps.alert.tp4 &&
+    prevProps.alert.tp5 === nextProps.alert.tp5 &&
+    prevProps.alert.notes === nextProps.alert.notes &&
+    prevProps.alert.close_reason === nextProps.alert.close_reason &&
+    prevProps.alert.tp_hits === nextProps.alert.tp_hits &&
+    prevProps.isAdmin === nextProps.isAdmin &&
+    prevProps.isCreator === nextProps.isCreator &&
+    prevProps.isRecentClosure === nextProps.isRecentClosure &&
+    prevProps.className === nextProps.className &&
+    prevProps.testId === nextProps.testId &&
+    JSON.stringify(prevProps.creator) === JSON.stringify(nextProps.creator)
+    // Note: livePrice is intentionally excluded to prevent card re-renders on price updates
+  );
+});

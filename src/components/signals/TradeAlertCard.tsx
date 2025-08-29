@@ -16,7 +16,10 @@ import {
   Activity,
   MoreVertical,
   Edit,
-  Trash2
+  Trash2,
+  Copy,
+  Share2,
+  Calculator
 } from 'lucide-react';
 import { formatDistance } from 'date-fns';
 import { 
@@ -32,6 +35,8 @@ import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
 import { TradeAlertCloseReason } from '@/types/trading';
 import { toCardAlert, validateTradingAlert } from '@/utils/trading-normalizers';
+import { getCardAccentClasses } from '@/utils/trading-ui';
+import { useToast } from '@/hooks/use-toast';
 
 interface TradeAlertCardProps {
   alert: any; // Raw alert data that will be normalized
@@ -64,39 +69,23 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
   priceSource = 'tradermade',
   isRecentClosure = false
 }) => {
-  // Normalize the alert data for consistent structure
+  const { toast } = useToast();
+  
+  // Normalize alert data with live price
   const alert = useMemo(() => toCardAlert(rawAlert, livePrice), [rawAlert, livePrice]);
 
-  const [isClosing, setIsClosing] = useState(false);
+  // Validation
+  if (!validateTradingAlert(alert)) {
+    console.warn('Invalid trading alert data:', alert);
+    return null;
+  }
+
+  // State management
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
   const [isTakingProfit, setIsTakingProfit] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [selectedTP, setSelectedTP] = useState<number | null>(null);
-  const [autoClose, setAutoClose] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
-  const [priceLoading, setPriceLoading] = useState(true);
-  const [priceError, setPriceError] = useState<string | null>(null);
-
-  // Use WebSocket live price - only fetch if we don't have livePrice passed and have a symbol
-  const shouldUseWebSocket = !livePrice && !!alert.tradermade_symbol;
-  const { 
-    price: wsPrice, 
-    isLoading: wsLoading,
-    connectionStatus: priceConnectionStatus
-  } = useWebSocketLivePrice(shouldUseWebSocket ? (alert.tradermade_symbol || '') : '');
-
-  // Update current price from WebSocket or prop
-  useEffect(() => {
-    if (typeof livePrice === 'number' && livePrice > 0) {
-      setCurrentPrice(livePrice);
-      setPriceLoading(false);
-    } else if (typeof wsPrice === 'number' && wsPrice > 0) {
-      setCurrentPrice(wsPrice);
-      setPriceLoading(wsLoading);
-    } else {
-      setPriceLoading(wsLoading);
-    }
-  }, [wsPrice, livePrice, wsLoading]);
 
   const {
     id: alertId,
@@ -198,7 +187,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
       try {
         setIsTakingProfit(true);
         const newTPHits = [...tpHits, selectedTP];
-        const shouldClose = autoClose || newTPHits.length === tpLevels.length;
+        const shouldClose = newTPHits.length === tpLevels.length;
         const closeReason = shouldClose ? 'all_tps_hit' : `tp${selectedTP}`;
         await onTakeProfitHit(alert, newTPHits, shouldClose, closeReason);
       } catch (error) {
@@ -206,7 +195,6 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
       } finally {
         setIsTakingProfit(false);
         setSelectedTP(null);
-        setAutoClose(false);
       }
     }
   };
@@ -250,32 +238,56 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
     }
   };
 
-  const { prices } = useWebSocketPrices();
-
-  React.useEffect(() => {
-    // Skip WebSocket subscription if we already have current price from props/hook
-    if (currentPrice !== null || !tradermadeSymbol) return;
-
-    const priceData = prices[tradermadeSymbol];
-    if (priceData !== undefined) {
-      // Handle both number and PriceData object
-      const priceValue = typeof priceData === 'number' ? priceData : priceData.price;
-      setCurrentPrice(priceValue);
-      setPriceLoading(false);
-      setPriceError(null);
-    } else {
-      setPriceLoading(true);
+  // Action handlers for dropdown menu
+  const handleCopySignal = async () => {
+    try {
+      const signalText = `🔔 TRADE SIGNAL
+${assetName} (${tradermadeSymbol})
+📈 Type: ${friendlyType || tradeType}
+💰 Entry: ${entryPrice}
+🛑 Stop Loss: ${stopLoss}
+🎯 Take Profits: ${tpLevels.map(tp => tp.tp).join(', ')}`;
+      
+      await navigator.clipboard.writeText(signalText);
+      toast({
+        title: "Signal copied!",
+        description: "Trade signal details copied to clipboard.",
+      });
+    } catch (error) {
+      toast({
+        title: "Copy failed",
+        description: "Could not copy signal details.",
+        variant: "destructive",
+      });
     }
-  }, [prices, tradermadeSymbol, currentPrice]);
+  };
+
+  const handleShareSignal = () => {
+    toast({
+      title: "Share Signal",
+      description: "Share functionality would open here.",
+    });
+  };
+
+  const handleOpenCalculator = () => {
+    toast({
+      title: "Risk Calculator",
+      description: "Risk calculator would open here.",
+    });
+  };
+
+  // Get card accent classes
+  const cardAccentClasses = getCardAccentClasses(alert.status, alert.close_reason, alert.tp_hits);
 
   return (
-    <Card className="glass-effect border-default">
-      <CardContent className="relative p-6">
+    <Card className={`p-4 border border-border hover:border-border/60 transition-colors ${cardAccentClasses}`}>
+      <CardContent className="p-0">
         {isRecentClosure && (
           <Badge className="absolute top-2 right-2 bg-green-500/20 text-green-400 border-green-500/30">
             Recently Closed
           </Badge>
         )}
+        
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -299,19 +311,26 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleCopySignal}>
+                <Copy className="mr-2 h-4 w-4" /> Copy Details
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShareSignal}>
+                <Share2 className="mr-2 h-4 w-4" /> Share Signal
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleOpenCalculator}>
+                <Calculator className="mr-2 h-4 w-4" /> Risk Calculator
+              </DropdownMenuItem>
+              {(onEdit || onDelete) && <DropdownMenuSeparator />}
               {onEdit && (
                 <DropdownMenuItem onClick={() => onEdit(alert)}>
                   <Edit className="mr-2 h-4 w-4" /> Edit
                 </DropdownMenuItem>
               )}
               {onDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleDelete} disabled={isDeleting} className="text-red-500 focus:bg-red-500/10">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    {isDeleting ? 'Deleting...' : 'Delete'}
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem onClick={handleDelete} disabled={isDeleting} className="text-red-500 focus:bg-red-500/10">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -362,8 +381,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
           </div>
         )}
 
-        {/* Live Price Widget */}
-        {tradermadeSymbol && (
+        {/* Live Price Widget - Only show for non-closed trades */}
+        {tradermadeSymbol && alert.status !== 'closed' && (
           <div className="mt-6">
             <LivePriceWidget
               alert={alert}

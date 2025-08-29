@@ -495,6 +495,9 @@ const LivePriceWidgetComponent = ({
     };
   }, [priceChange, alert.trade_type]);
 
+  // Don't render for closed trades
+  if (alert.status === 'closed') return null;
+  
   if (!alert.tradermade_symbol) return null;
 
   // Pending order state

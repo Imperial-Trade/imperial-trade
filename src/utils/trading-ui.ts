@@ -150,3 +150,31 @@ export function getTpHitVariant(tpNumber: number, tone: 'active' | 'partial' = '
     tone
   };
 }
+
+/**
+ * Get card accent classes based on trade alert status
+ * Provides visual context with subtle borders and backgrounds
+ */
+export function getCardAccentClasses(
+  status: TradeAlertStatus, 
+  closeReason?: TradeAlertCloseReason | string | null,
+  tpHits: number[] = []
+): string {
+  const variant = mapStatusToVariant(status, closeReason, tpHits);
+  
+  switch (variant.tone) {
+    case 'pending':
+      return 'border-l-4 border-l-yellow-500/50 bg-yellow-500/5';
+    case 'active':
+      return 'border-l-4 border-l-emerald-500/50 bg-emerald-500/5';
+    case 'partial':
+      return 'border-l-4 border-l-amber-500/50 bg-amber-500/5';
+    case 'success':
+      return 'border-l-4 border-l-emerald-500/50 bg-emerald-500/5';
+    case 'error':
+      return 'border-l-4 border-l-red-500/50 bg-red-500/5';
+    case 'neutral':
+    default:
+      return 'border-l-4 border-l-gray-500/50 bg-gray-500/5';
+  }
+}

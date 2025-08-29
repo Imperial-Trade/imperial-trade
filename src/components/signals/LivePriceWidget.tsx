@@ -105,13 +105,13 @@ const LivePriceWidgetComponent = ({
         setDataAge('Stale');
       }
 
-      // Stale-guard: Force refresh if no updates for 2+ seconds
-      if (diffSeconds >= 2) {
+      // Stale-guard: Force refresh if no updates for 10+ seconds (reduced sensitivity)
+      if (diffSeconds >= 10) {
         if (staleGuardRef.current) clearTimeout(staleGuardRef.current);
         staleGuardRef.current = setTimeout(() => {
           console.log(`🔄 Stale-guard triggered for ${alert.tradermade_symbol}`);
           refreshPrice();
-        }, 500);
+        }, 2000); // Increased delay to reduce aggressive refreshing
       }
     };
 

@@ -34,10 +34,11 @@ export const useThrottledOrderMonitor = ({
   }, []);
 
   const runMonitor = useCallback(async () => {
-    // Throttle: ensure minimum 15s between calls
+    // Throttle: ensure minimum interval between calls
     const now = Date.now();
     if (now - lastCallRef.current < intervalMs) {
-      console.log(`⏸️ Monitor throttled: ${Math.ceil((intervalMs - (now - lastCallRef.current)) / 1000)}s remaining`);
+      const remainingMs = intervalMs - (now - lastCallRef.current);
+      console.log(`⏸️ Monitor throttled: ${Math.ceil(remainingMs / 1000)}s remaining`);
       return;
     }
 

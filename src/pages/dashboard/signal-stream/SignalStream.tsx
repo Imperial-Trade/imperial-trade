@@ -143,9 +143,9 @@ export default function SignalStream() {
     );
   }, [activeAlerts]);
 
-  // Throttled Order Monitor - only run when mounted on /signal-stream with pending limits
+  // Throttled Order Monitor - only run for admin/educator users with pending limits
   const { isRunning: isMonitorRunning } = useThrottledOrderMonitor({
-    enabled: true, // Only enabled when SignalStream is mounted
+    enabled: canCreateSignals, // Only enabled for admin/educator users
     hasPendingLimits: hasPendingLimitOrders,
     intervalMs: 15000 // 15 seconds
   });

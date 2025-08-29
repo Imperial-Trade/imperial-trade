@@ -36,9 +36,9 @@ export interface TradeAlertData {
   tp3?: number;
   tp4?: number;
   tp5?: number;
-  status: 'pending' | 'active' | 'closed';
+  status: 'pending' | 'active' | 'closed' | 'partially_profited';
   tp_hits?: number[];
-  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp';
+  close_reason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit' | 'expired';
   notes?: string;
   created_date: string;
   updated_date?: string;
@@ -93,7 +93,7 @@ export interface QuickCopyPanelProps extends BaseComponentProps {
 // Trade Status Badge Types
 export interface TradeStatusBadgeProps extends BaseComponentProps {
   alert: {
-    status: string;
+    status: 'pending' | 'active' | 'closed' | 'partially_profited';
     tp_hits?: number[];
     close_reason?: string;
   };

@@ -100,7 +100,7 @@ export default function SignalStream() {
     educatorOptions,
     signalCounts
   } = useMemo(() => {
-    const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
+    const active = alerts.filter(a => a.status === 'active' || a.status === 'pending' || a.status === 'partially_profited');
     const closed = alerts.filter(a => a.status === 'closed');
 
     // Get unique educators for filter dropdown

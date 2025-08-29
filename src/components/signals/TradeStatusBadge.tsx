@@ -5,7 +5,7 @@ import { Check, X, Target, TrendingUp, Hourglass } from 'lucide-react';
 
 interface TradeStatusBadgeProps {
   alert: {
-    status: 'pending' | 'active' | 'closed';
+    status: 'pending' | 'active' | 'closed' | 'partially_profited';
     trade_type?: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
     tp_hits?: number[];
     close_reason?: string;
@@ -16,7 +16,7 @@ interface TradeStatusBadgeProps {
 
 export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }: TradeStatusBadgeProps) {
     const hitTPs = alert.tp_hits || [];
-    const isActive = alert.status === 'active';
+    const isActive = alert.status === 'active' || alert.status === 'partially_profited';
     const isPending = alert.status === 'pending';
     const closeReason = alert.close_reason;
     const isClosed = alert.status === 'closed';

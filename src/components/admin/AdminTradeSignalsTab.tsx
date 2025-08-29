@@ -58,7 +58,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
   const calculateStats = () => {
     const total = alerts.length;
-    const active = alerts.filter(alert => alert.status === 'active').length;
+    const active = alerts.filter(alert => alert.status === 'active' || alert.status === 'partially_profited').length;
     const closed = alerts.filter(alert => alert.status === 'closed').length;
     const successful = alerts.filter(alert => 
       alert.status === 'closed' && alert.tpHits && alert.tpHits.length > 0
@@ -126,7 +126,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
     try {
       const result = await tradingApiService.updateAlert(
         alert.id, 
-        { status: newStatus as 'pending' | 'active' | 'closed' }, 
+        { status: newStatus as 'pending' | 'active' | 'closed' | 'partially_profited' }, 
         currentUser?.id || ''
       );
       
@@ -376,7 +376,7 @@ export function AdminTradeSignalsTab({ currentUser }: AdminTradeSignalsTabProps)
 
             <TabsContent value="active" className="p-6">
               <div className="grid gap-4">
-                {alerts.filter(alert => alert.status === 'active').map((alert) => (
+                {alerts.filter(alert => alert.status === 'active' || alert.status === 'partially_profited').map((alert) => (
                   <TradeAlertCard
                     key={alert.id}
                     alert={{

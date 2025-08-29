@@ -384,7 +384,7 @@ export class TradingApiService {
     }
   }
 
-  async getAlertsByStatus(status: 'pending' | 'active' | 'closed', userId: string): Promise<ApiResponse<TradeAlertResponseDto[]>> {
+  async getAlertsByStatus(status: 'pending' | 'active' | 'closed' | 'partially_profited', userId: string): Promise<ApiResponse<TradeAlertResponseDto[]>> {
     try {
       const result = await apiClient.select('trade_alerts', {
         eq: { column: 'user_id', value: userId },

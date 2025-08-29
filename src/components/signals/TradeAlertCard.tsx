@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import TradeStatusBadge from './TradeStatusBadge';
+import LivePriceWidget from './LivePriceWidget';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
 import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
 import { TradeAlertCloseReason } from '@/types/trading';
@@ -361,21 +362,22 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
           </div>
         )}
 
+        {/* Live Price Widget */}
+        {tradermadeSymbol && (
+          <div className="mt-6">
+            <LivePriceWidget
+              alert={alert}
+              onTakeProfitHit={onTakeProfitHit}
+              onStopLossHit={onStopLossHit}
+              onOrderActivation={onOrderActivation}
+            />
+          </div>
+        )}
+
         <div className="mt-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <TradeStatusBadge alert={alert} updatedDate={updatedDate} isRecentClosure={isRecentClosure} />
-              {isAdmin && (
-                <Badge className="text-secondary border-default">
-                  {connectionStatus === 'connected' ? (
-                    <>
-                      Price: {priceLoading ? 'Loading...' : (priceError ? 'Error' : currentPrice)}
-                    </>
-                  ) : (
-                    connectionStatus
-                  )}
-                </Badge>
-              )}
             </div>
             <div className="text-right text-secondary">
               <p className="text-sm">Created {timeAgo}</p>

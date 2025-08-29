@@ -103,11 +103,7 @@ serve(async (req) => {
     // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const tradermadeApiKey = Deno.env.get('TRADERMADE_API_KEY')!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Step 1: Fetch all pending limit orders
     console.log('📋 Fetching pending limit orders...');

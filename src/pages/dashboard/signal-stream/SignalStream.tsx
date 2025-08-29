@@ -530,13 +530,13 @@ export default function SignalStream() {
                   ))}
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div>
-                    <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
+                    <h2 className="text-lg font-semibold text-accent-green mb-3 border-b border-accent-green/20 pb-1.5">
                       Educational Market Patterns ({activeAlerts.length})
                     </h2>
                     {activeAlerts.length > 0 ? (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {activeAlerts.map(alert => (
                           <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard 
@@ -580,11 +580,11 @@ export default function SignalStream() {
                   </div>
                   
                   <div>
-                    <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
+                    <h2 className="text-lg font-semibold text-muted-foreground mb-3 border-b border-border pb-1.5">
                       Recent Educational Analysis ({closedAlerts.length})
                     </h2>
                     {sortedClosedAlerts.length > 0 ? (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {sortedClosedAlerts.map(alert => (
                           <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard 

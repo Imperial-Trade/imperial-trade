@@ -183,18 +183,18 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         } animate-pulse`} />
       )}
 
-      <div className="p-4">
+      <div className="p-3">
         {/* Signal Creator Attribution */}
         {creator && (
-          <div className="flex items-start justify-between mb-3 pb-3 border-b border-border/30">
-            <div className="flex items-center gap-2">
+          <div className="flex items-start justify-between mb-2 pb-2 border-b border-border/30">
+            <div className="flex items-center gap-1.5">
               {getRoleIcon(creator.role)}
-              <span className="font-semibold text-foreground">{creator.display_name}</span>
-              <Badge className={getRoleBadgeClass(creator.role)}>
+              <span className="text-sm font-semibold text-foreground">{creator.display_name}</span>
+              <Badge className={`text-xs ${getRoleBadgeClass(creator.role)}`}>
                 {creator.role.charAt(0).toUpperCase() + creator.role.slice(1)}
               </Badge>
             </div>
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-col items-end gap-0.5">
               <div className="text-xs text-muted-foreground">
                 {formatTimeAgo(alert.created_date)}
               </div>
@@ -203,10 +203,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         )}
 
         {/* Currency Pair and Status */}
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold">{alert.asset_name}</h3>
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-base font-bold">{alert.asset_name}</h3>
               <TradeStatusBadge 
                 alert={alert} 
                 updatedDate={alert.updated_date} 
@@ -216,7 +216,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           </div>
 
           {/* Actions - moved to the right */}
-          <div className="flex items-center gap-2 flex-wrap" data-prevent-widget-open="true">
+          <div className="flex items-center gap-1.5 flex-wrap" data-prevent-widget-open="true">
             {/* Copy Button */}
             <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
               <CollapsibleTrigger asChild>
@@ -269,7 +269,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
 
       {/* Live Price Widget - Show for active and pending trades */}
       {(alert.status === 'active' || alert.status === 'pending') && (
-        <div className="px-4 pb-4">
+        <div className="px-3 pb-3">
           <LivePriceWidget 
               alert={alert} 
               onTakeProfitHit={onTakeProfitHit}
@@ -280,20 +280,20 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       )}
 
       <Collapsible open={showCopyPanel} onOpenChange={setShowCopyPanel}>
-        <CollapsibleContent className="px-4 pb-4" data-prevent-widget-open="true">
+        <CollapsibleContent className="px-3 pb-3" data-prevent-widget-open="true">
             <QuickCopyPanel alert={alert} />
         </CollapsibleContent>
       </Collapsible>
 
       {/* Trading Calculator */}
       <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
-        <CollapsibleContent className="px-4 pb-4">
+        <CollapsibleContent className="px-3 pb-3">
             <TradingCalculator alert={alert} livePrice={livePrice} />
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="px-4 pb-4 space-y-2">
-        <div className="bg-muted/50 rounded-md p-3">
+      <div className="px-3 pb-3 space-y-1.5">
+        <div className="bg-muted/50 rounded-md p-2.5">
             <PriceRow 
               label="Entry Price" 
               value={alert.entry_price} 
@@ -324,14 +324,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </div>
       </div>
       
-      <div className="px-4 pb-4">
-        <div className="flex items-center justify-between mb-2">
+      <div className="px-3 pb-3">
+        <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-semibold text-muted-foreground">Notes</span>
           {canEditNotes && !isEditingNotes && (
             <Button 
               variant="ghost" 
               size="sm" 
-              className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue" 
+              className="text-accent-blue hover:bg-accent-blue/20 hover:text-accent-blue h-6 px-2" 
               onClick={handleNotesEditToggle}
             >
               <Pencil className="w-3 h-3 mr-1" /> Edit
@@ -339,22 +339,22 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
           )}
         </div>
         {isEditingNotes ? (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Textarea 
               value={notesDraft}
               onChange={(e) => setNotesDraft(e.target.value)}
               placeholder="Add helpful context for followers..."
-              className="min-h-[80px]"
+              className="min-h-[60px] text-sm"
             />
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={handleNotesEditToggle} disabled={isSavingNotes}>Cancel</Button>
-              <Button variant="default" size="sm" onClick={handleNotesSave} disabled={isSavingNotes || notesDraft === localNotes}>
+            <div className="flex justify-end gap-1.5">
+              <Button variant="ghost" size="sm" onClick={handleNotesEditToggle} disabled={isSavingNotes} className="h-6 px-2 text-xs">Cancel</Button>
+              <Button variant="default" size="sm" onClick={handleNotesSave} disabled={isSavingNotes || notesDraft === localNotes} className="h-6 px-2 text-xs">
                 {isSavingNotes ? 'Saving...' : 'Save'}
               </Button>
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
+          <p className="text-xs text-muted-foreground italic bg-muted/50 p-1.5 rounded-md">{localNotes ? `"${localNotes}"` : '—'}</p>
         )}
       </div>
       {/* Stop Loss Proximity Warning */}
@@ -370,9 +370,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         const proximityPercentage = ((totalDistance - currentDistance) / totalDistance) * 100;
         if (proximityPercentage >= 50) {
           return (
-            <div className="px-4 pb-4">
-              <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-3 flex items-start gap-2">
-                <span className="text-accent-gold mt-0.5 leading-none">🟡</span>
+            <div className="px-3 pb-3">
+              <div className="bg-accent-gold/10 border border-accent-gold/30 rounded-md p-2 flex items-start gap-1.5">
+                <span className="text-accent-gold mt-0.5 leading-none text-sm">🟡</span>
                 <div className="text-xs text-accent-gold">
                   <span className="font-semibold">Stop-Loss Proximity: {Math.round(proximityPercentage)}%</span>
                   <br />
@@ -386,14 +386,14 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
       })()}
       
       {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && (
-        <div className="bg-muted/50 px-4 py-2 flex justify-end">
+        <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
             <Button 
               size="sm" 
               variant="ghost" 
-              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red" 
+              className="text-accent-red hover:bg-accent-red/20 hover:text-accent-red h-7 px-2 text-xs" 
               onClick={() => handleStatusUpdate('closed')}
             >
-                <Lock className="w-4 h-4 mr-2" />
+                <Lock className="w-3 h-3 mr-1.5" />
                 {isPending ? 'Cancel Order' : getCloseButtonText()}
             </Button>
         </div>

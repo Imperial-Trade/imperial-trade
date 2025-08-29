@@ -503,10 +503,10 @@ const LivePriceWidgetComponent = ({
     const isSellLimit = alert.trade_type === 'sell_limit';
     
     return (
-      <div className="bg-card/50 border border-border rounded-lg p-4 backdrop-blur-sm transition-all duration-300 border-amber-500/30 shadow-amber-500/10 shadow-lg">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="text-white font-medium">
+      <div className="bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-all duration-300 border-amber-500/30 shadow-amber-500/10 shadow-lg">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <div className="text-white text-sm font-medium">
               Live Price for {alert.asset_name}
             </div>
             <div className="flex items-center gap-1 text-xs text-amber-400">
@@ -536,9 +536,9 @@ const LivePriceWidgetComponent = ({
           </Button>
         </div>
 
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-              <div className="font-mono text-xl font-bold px-2 py-1 rounded">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+              <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
                 <span className={`transition-colors duration-200 ${
                   getPriceAnimationClass(alert.tradermade_symbol)
                 }`}>
@@ -563,12 +563,12 @@ const LivePriceWidgetComponent = ({
           )}
         </div>
 
-        <div className="text-center text-sm text-gray-300 border-t border-amber-700 pt-2">
-          <span className="text-amber-400 font-bold">
+        <div className="text-center text-sm text-gray-300 border-t border-amber-700 pt-1.5">
+          <span className="text-amber-400 font-bold text-xs">
             {isBuyLimit ? 'Waiting for price to drop to' : isSellLimit ? 'Waiting for price to rise to' : 'Entry at'}
           </span>
           <br />
-          <span className="font-bold text-white">${alert.entry_price.toFixed(2)}</span>
+          <span className="font-bold text-white text-sm">${alert.entry_price.toFixed(2)}</span>
         </div>
 
 {/* Hidden meta section (Source/Symbol/Price) per request */}
@@ -577,15 +577,15 @@ const LivePriceWidgetComponent = ({
   }
 
   return (
-    <div className={`bg-card/50 border border-border rounded-lg p-4 backdrop-blur-sm transition-all duration-300 ${
+    <div className={`bg-card/50 border border-border rounded-lg p-3 backdrop-blur-sm transition-all duration-300 ${
       connectionStatus === 'connected' ? 'border-green-500/30 shadow-green-500/10 shadow-lg' : 
       connectionStatus === 'error' ? 'border-red-500/30 shadow-red-500/10 shadow-lg' : 
       'border-border'
     }`}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="text-white font-medium">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <div className="text-white text-sm font-medium">
             Live Price for {alert.asset_name}
           </div>
           <div className={`flex items-center gap-1 text-xs ${connectionStatusInfo.color}`}>
@@ -650,10 +650,10 @@ const LivePriceWidgetComponent = ({
 
       {/* Price Display */}
       {(currentPrice > 0 || !isLoading) && (
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
             {currentPrice > 0 ? (
-              <div className="font-mono text-xl font-bold px-2 py-1 rounded">
+              <div className="font-mono text-lg font-bold px-1.5 py-0.5 rounded">
                 <span className={`transition-colors duration-200 ${
                   getPriceAnimationClass(alert.tradermade_symbol)
                 }`}>
@@ -661,15 +661,15 @@ const LivePriceWidgetComponent = ({
                 </span>
               </div>
             ) : (
-              <div className="text-gray-500 font-mono text-xl">---.--</div>
+              <div className="text-gray-500 font-mono text-lg">---.--</div>
             )}
           </div>
           
           {!error && currentPrice > 0 && (
-            <div className={`flex items-center gap-1 ${priceChangeColor}`}>
-              {React.createElement(priceChangeIcon, { className: "w-4 h-4" })}
+            <div className={`flex items-center gap-0.5 ${priceChangeColor}`}>
+              {React.createElement(priceChangeIcon, { className: "w-3 h-3" })}
               <div className="text-right">
-                <div className="text-sm font-medium">
+                <div className="text-xs font-medium">
                   {change >= 0 ? '+' : ''}{change.toFixed(4)}
                 </div>
                 <div className="text-xs">
@@ -683,7 +683,7 @@ const LivePriceWidgetComponent = ({
 
       {/* Market Status Banner - Only show when market is closed */}
       {marketStatus.isClosed && (
-        <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+        <div className="mb-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Timer className="w-4 h-4 text-amber-400" />
@@ -706,10 +706,10 @@ const LivePriceWidgetComponent = ({
 
       {/* P&L from Entry Display */}
       {priceChange && profitLossDisplay && (
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            {profitLossDisplay.isProfit ? <TrendingUp className="w-4 h-4 text-emerald-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}
-            <span className="text-sm text-gray-300">P/L from Entry</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-1.5">
+            {profitLossDisplay.isProfit ? <TrendingUp className="w-3 h-3 text-emerald-400" /> : <TrendingDown className="w-3 h-3 text-red-400" />}
+            <span className="text-xs text-gray-300">P/L from Entry</span>
           </div>
           <div className="text-right space-y-1">
             <Badge className={profitLossDisplay.bgColor}>

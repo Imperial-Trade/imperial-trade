@@ -498,7 +498,7 @@ export default function SignalStream() {
                     <span className="truncate">Educational Contributors</span>
                   </Badge>
                 </div>
-                <p className="text-sm sm:text-base text-muted-foreground">
+                <p className="text-sm sm:text-base text-muted-foreground hidden">
                   Educational market analysis patterns with reference pricing from verified educational contributors
                 </p>
               </div>

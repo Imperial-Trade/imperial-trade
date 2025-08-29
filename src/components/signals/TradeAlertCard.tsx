@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,33 +28,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import TradeStatusBadge from './TradeStatusBadge';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
+import { useWebSocketLivePrice } from '@/hooks/useWebSocketLivePrice';
 import { TradeAlertCloseReason } from '@/types/trading';
+import { toCardAlert, validateTradingAlert } from '@/utils/trading-normalizers';
 
 interface TradeAlertCardProps {
-  alert: {
-    id: string;
-    asset_name: string;
-    tradermade_symbol: string;
-    trade_type: 'buy' | 'sell' | 'buy_limit' | 'sell_limit';
-    entry_price: number;
-    stop_loss: number;
-    status: 'pending' | 'active' | 'closed' | 'partially_profited';
-    tp1?: number;
-    tp2?: number;
-    tp3?: number;
-    tp4?: number;
-    tp5?: number;
-    tp_hits: number[];
-    notes?: string;
-    close_reason?: TradeAlertCloseReason;
-    created_date: string;
-    updated_date: string;
-    profiles?: {
-      full_name?: string;
-      avatar_url?: string;
-    };
-  };
-  livePrice?: number;
+  alert: any; // Raw alert data that will be normalized
+  livePrice?: number; // Optional live price override
   onStatusUpdate?: (alert: any, newStatus: string) => Promise<void>;
   onTakeProfitHit?: (alert: any, newTPHits: number[], shouldAutoClose?: boolean, closeReason?: string) => Promise<void>;
   onStopLossHit?: (alert: any, closeReason: string) => Promise<void>;
@@ -69,7 +49,8 @@ interface TradeAlertCardProps {
 }
 
 const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
-  alert,
+  alert: rawAlert,
+  livePrice,
   onStatusUpdate,
   onTakeProfitHit,
   onStopLossHit,
@@ -82,6 +63,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
   priceSource = 'tradermade',
   isRecentClosure = false
 }) => {
+  // Normalize the alert data for consistent structure
+  const alert = useMemo(() => toCardAlert(rawAlert, livePrice), [rawAlert, livePrice]);
+
   const [isClosing, setIsClosing] = useState(false);
   const [isActivating, setIsActivating] = useState(false);
   const [isTakingProfit, setIsTakingProfit] = useState(false);
@@ -91,6 +75,27 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [priceLoading, setPriceLoading] = useState(true);
   const [priceError, setPriceError] = useState<string | null>(null);
+
+  // Use WebSocket live price - only fetch if we don't have livePrice passed and have a symbol
+  const shouldUseWebSocket = !livePrice && !!alert.tradermade_symbol;
+  const { 
+    price: wsPrice, 
+    isLoading: wsLoading,
+    connectionStatus: priceConnectionStatus
+  } = useWebSocketLivePrice(shouldUseWebSocket ? (alert.tradermade_symbol || '') : '');
+
+  // Update current price from WebSocket or prop
+  useEffect(() => {
+    if (typeof livePrice === 'number' && livePrice > 0) {
+      setCurrentPrice(livePrice);
+      setPriceLoading(false);
+    } else if (typeof wsPrice === 'number' && wsPrice > 0) {
+      setCurrentPrice(wsPrice);
+      setPriceLoading(wsLoading);
+    } else {
+      setPriceLoading(wsLoading);
+    }
+  }, [wsPrice, livePrice, wsLoading]);
 
   const {
     id: alertId,
@@ -110,10 +115,10 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
     close_reason: closeReason,
     created_date: createdDate,
     updated_date: updatedDate,
-    profiles
+    creator: profiles
   } = alert;
 
-  const fullName = profiles?.full_name || 'Unknown User';
+  const fullName = profiles?.display_name || profiles?.full_name || 'Unknown User';
   const avatarUrl = profiles?.avatar_url || '/avatars/avatar-1.png';
 
   const friendlyType =
@@ -247,6 +252,9 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
   const { prices } = useWebSocketPrices();
 
   React.useEffect(() => {
+    // Skip WebSocket subscription if we already have current price from props/hook
+    if (currentPrice !== null || !tradermadeSymbol) return;
+
     const priceData = prices[tradermadeSymbol];
     if (priceData !== undefined) {
       // Handle both number and PriceData object
@@ -257,7 +265,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps> = ({
     } else {
       setPriceLoading(true);
     }
-  }, [prices, tradermadeSymbol]);
+  }, [prices, tradermadeSymbol, currentPrice]);
 
   return (
     <Card className="glass-effect border-default">

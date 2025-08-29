@@ -4,6 +4,7 @@ import { useOptimizedTrading } from '@/hooks/useOptimizedTrading';
 import { UpdateTradeAlertDto } from '@/domain/dtos/trading/CreateTradeAlertDto';
 import { Loader2, AlertTriangle, Wifi, WifiOff, Shield, Plus } from 'lucide-react';
 import TradeAlertCard from '@/components/signals/TradeAlertCard';
+import { toCardAlert } from '@/utils/trading-normalizers';
 import NotificationSystem from '@/components/notifications/NotificationSystem';
 import EconomicSidebar from '@/components/widgets/EconomicSidebar';
 import { useWebSocketPrices } from '@/contexts/WebSocketPriceContext';
@@ -540,18 +541,7 @@ export default function SignalStream() {
                         {activeAlerts.map(alert => (
                           <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard 
-                              alert={{
-                                ...alert,
-                                asset_name: alert.assetName,
-                                tradermade_symbol: alert.tradermadeSymbol,
-                                trade_type: alert.tradeType,
-                                entry_price: alert.entryPrice,
-                                stop_loss: alert.stopLoss,
-                                tp_hits: alert.tpHits,
-                                close_reason: alert.closeReason,
-                                created_date: alert.createdAt,
-                                updated_date: alert.updatedAt
-                              }} 
+                              alert={alert}
                               onStatusUpdate={handleStatusUpdate} 
                               onTakeProfitHit={handleTakeProfitHit} 
                               onStopLossHit={handleStopLossHit} 
@@ -585,18 +575,7 @@ export default function SignalStream() {
                         {sortedClosedAlerts.map(alert => (
                           <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard 
-                              alert={{
-                                ...alert,
-                                asset_name: alert.assetName,
-                                tradermade_symbol: alert.tradermadeSymbol,
-                                trade_type: alert.tradeType,
-                                entry_price: alert.entryPrice,
-                                stop_loss: alert.stopLoss,
-                                tp_hits: alert.tpHits,
-                                close_reason: alert.closeReason,
-                                created_date: alert.createdAt,
-                                updated_date: alert.updatedAt
-                              }} 
+                              alert={alert}
                               onStatusUpdate={handleStatusUpdate} 
                               onTakeProfitHit={handleTakeProfitHit} 
                               onStopLossHit={handleStopLossHit} 

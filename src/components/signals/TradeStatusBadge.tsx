@@ -27,6 +27,11 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
       tradeType === 'buy' ? 'Buy' :
       tradeType === 'sell' ? 'Sell' : undefined;
     const isLimitType = tradeType === 'buy_limit' || tradeType === 'sell_limit';
+    
+    // Determine if it's a sell type for color coding
+    const isSellType = tradeType === 'sell' || tradeType === 'sell_limit';
+    const typeLabel = tradeType === 'buy' ? 'Buy' : tradeType === 'sell' ? 'Sell' : 
+                     tradeType === 'buy_limit' ? 'Buy' : tradeType === 'sell_limit' ? 'Sell' : 'Trade';
 
     if (isPending) {
         const pendingText = isLimitType && friendlyType ? `Pending ${friendlyType}` : 'Pending';
@@ -39,13 +44,14 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
 
     if (isActive && hitTPs.length > 0) {
         const highestTP = Math.max(...hitTPs);
-        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
+        const activeText = `ACTIVE ${typeLabel.toUpperCase()}`;
+        const badgeColors = isSellType ? 'text-red-400 border-red-400' : 'text-emerald-400 border-emerald-400';
         return (
             <div className="flex items-center gap-1.5">
-                <Badge variant="outline" className="text-emerald-400 border-emerald-400 animate-pulse whitespace-nowrap uppercase text-xs px-1.5 py-0.5">
+                <Badge variant="outline" className={`${badgeColors} animate-pulse whitespace-nowrap uppercase text-xs px-1.5 py-0.5`}>
                     <Target className="w-2.5 h-2.5 mr-0.5" /> TP{highestTP} HIT
                 </Badge>
-                <Badge variant="outline" className="text-emerald-400 border-emerald-400 uppercase whitespace-nowrap text-xs px-1.5 py-0.5">
+                <Badge variant="outline" className={`${badgeColors} uppercase whitespace-nowrap text-xs px-1.5 py-0.5`}>
                     {activeText}
                 </Badge>
             </div>
@@ -53,9 +59,10 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     }
 
     if (isActive) {
-        const activeText = isLimitType && friendlyType ? `Active ${friendlyType}` : 'Active';
+        const activeText = `Active ${typeLabel}`;
+        const badgeColors = isSellType ? 'text-red-400 border-red-400' : 'text-emerald-400 border-emerald-400';
         return (
-            <Badge variant="outline" className="text-emerald-400 border-emerald-400 text-xs px-1.5 py-0.5">
+            <Badge variant="outline" className={`${badgeColors} text-xs px-1.5 py-0.5`}>
                 {activeText}
             </Badge>
         );

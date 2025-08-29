@@ -247,8 +247,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
               }
             />
             
-            {/* Calculator Toggle - Only for active/pending trades */}
-            {(alert.status === 'active' || alert.status === 'pending') && (
+            {/* Calculator Toggle - Only for active/pending/partially_profited trades */}
+            {(alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
               <Collapsible open={showCalculator} onOpenChange={setShowCalculator}>
                 <CollapsibleTrigger asChild>
                   <Button 
@@ -267,8 +267,8 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         </div>
       </div>
 
-      {/* Live Price Widget - Show for active and pending trades */}
-      {(alert.status === 'active' || alert.status === 'pending') && (
+      {/* Live Price Widget - Show for active, pending, and partially_profited trades */}
+      {(alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
         <div className="px-3 pb-3">
           <LivePriceWidget 
               alert={alert} 
@@ -385,7 +385,7 @@ const TradeAlertCard: React.FC<TradeAlertCardProps & { creator?: { id: string; d
         return null;
       })()}
       
-      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending') && (
+      {canCloseSignal && (alert.status === 'active' || alert.status === 'pending' || alert.status === 'partially_profited') && (
         <div className="bg-muted/50 px-3 py-1.5 flex justify-end">
             <Button 
               size="sm" 

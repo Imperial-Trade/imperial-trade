@@ -215,7 +215,7 @@ const LivePriceWidgetComponent = ({
       }
       return;
     }
-    if (alert.status !== 'active') {
+    if (alert.status !== 'active' && alert.status !== 'partially_profited') {
       return;
     }
     const isBuy = alert.trade_type.includes('buy');

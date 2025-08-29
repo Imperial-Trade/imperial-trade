@@ -59,7 +59,9 @@ export default function TradeStatusBadge({ alert, updatedDate, isRecentClosure }
     }
 
     if (isActive) {
-        const activeText = `ACTIVE ${typeLabel.toUpperCase()}`;
+        const activeText = isLimitType ? 
+            `ACTIVE ${friendlyType?.toUpperCase() || typeLabel.toUpperCase()}` : 
+            `ACTIVE ${typeLabel.toUpperCase()}`;
         const badgeColors = isSellType ? 'text-red-400 border-red-400' : 'text-emerald-400 border-emerald-400';
         return (
             <Badge variant="outline" className={`${badgeColors} text-xs px-1.5 py-0.5`}>

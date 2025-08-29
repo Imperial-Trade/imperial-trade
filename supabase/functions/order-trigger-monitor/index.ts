@@ -33,6 +33,76 @@ serve(async (req) => {
   try {
     console.log('🚀 Starting order trigger monitor...');
     
+    // Get authorization header
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      console.error('❌ Missing authorization header');
+      return new Response(JSON.stringify({ 
+        error: 'Unauthorized', 
+        message: 'Authorization header required' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Create client with user context for role checking
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { authorization: authHeader } }
+    });
+
+    // Verify user and check role
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser();
+    if (authError || !user) {
+      console.error('❌ Invalid authorization:', authError);
+      return new Response(JSON.stringify({ 
+        error: 'Unauthorized', 
+        message: 'Invalid authorization token' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check user role
+    const { data: profile, error: profileError } = await userSupabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('❌ Could not fetch user profile:', profileError);
+      return new Response(JSON.stringify({ 
+        error: 'Forbidden', 
+        message: 'Could not verify user permissions' 
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const allowedRoles = ['admin', 'educator', 'moderator'];
+    if (!allowedRoles.includes(profile.role)) {
+      console.error('❌ Insufficient permissions. User role:', profile.role);
+      return new Response(JSON.stringify({ 
+        error: 'Forbidden', 
+        message: 'Insufficient permissions to run order monitor' 
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`✅ Authorized user ${user.id} with role ${profile.role}`);
+    
+    // Use service role client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const tradermadeApiKey = Deno.env.get('TRADERMADE_API_KEY')!;

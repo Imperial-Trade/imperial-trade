@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
+import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
 
 export default function SignalStream() {
   const {
@@ -133,6 +134,21 @@ export default function SignalStream() {
   const sortedClosedAlerts = useMemo(() => {
     return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
   }, [closedAlerts]);
+
+  // Check if we have pending limit orders for the monitor
+  const hasPendingLimitOrders = useMemo(() => {
+    return activeAlerts.some(alert => 
+      alert.status === 'pending' && 
+      (alert.tradeType === 'buy_limit' || alert.tradeType === 'sell_limit')
+    );
+  }, [activeAlerts]);
+
+  // Throttled Order Monitor - only run when mounted on /signal-stream with pending limits
+  const { isRunning: isMonitorRunning } = useThrottledOrderMonitor({
+    enabled: true, // Only enabled when SignalStream is mounted
+    hasPendingLimits: hasPendingLimitOrders,
+    intervalMs: 15000 // 15 seconds
+  });
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
     activeAlerts.forEach(alert => {

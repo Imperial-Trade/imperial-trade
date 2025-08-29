@@ -502,7 +502,7 @@ export default function SignalStream() {
                   Educational market analysis patterns with reference pricing from verified educational contributors
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 hidden">
                 {getConnectionStatusBadge()}
                 {lastUpdated && <span className="text-xs text-muted-foreground">
                     Last update: {lastUpdated.toLocaleTimeString()}

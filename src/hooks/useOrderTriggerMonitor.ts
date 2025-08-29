@@ -79,15 +79,26 @@ export const useOrderTriggerMonitor = (userId?: string) => {
     try {
       console.log('🚀 Manually triggering order monitor...');
       
-      const { data, error } = await supabase.functions.invoke('order-trigger-monitor');
+      // Get current session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke('order-trigger-monitor', {
+        headers: session?.access_token ? {
+          'Authorization': `Bearer ${session.access_token}`
+        } : undefined
+      });
       
       if (error) {
         console.error('❌ Error triggering order monitor:', error);
-        toast({
-          title: "Monitor Error",
-          description: "Failed to run order monitor",
-          variant: "destructive",
-        });
+        
+        // Only show toast for non-auth errors (5xx server errors)
+        if (error.message && !error.message.includes('401') && !error.message.includes('403') && !error.message.includes('Unauthorized')) {
+          toast({
+            title: "Monitor Error",
+            description: "Failed to run order monitor",
+            variant: "destructive",
+          });
+        }
         return false;
       }
 
@@ -103,11 +114,16 @@ export const useOrderTriggerMonitor = (userId?: string) => {
       return true;
     } catch (error) {
       console.error('💥 Fatal error calling order monitor:', error);
-      toast({
-        title: "Monitor Error",
-        description: "Failed to run order monitor",
-        variant: "destructive",
-      });
+      
+      // Only show toast for non-auth exceptions
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (!errorMessage.includes('401') && !errorMessage.includes('403') && !errorMessage.includes('Unauthorized')) {
+        toast({
+          title: "Monitor Error",
+          description: "Failed to run order monitor",
+          variant: "destructive",
+        });
+      }
       return false;
     }
   }, [toast]);

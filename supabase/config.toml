@@ -22,7 +22,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.order-trigger-monitor]
-verify_jwt = false
+verify_jwt = true
 
 [functions.hello]
 verify_jwt = false

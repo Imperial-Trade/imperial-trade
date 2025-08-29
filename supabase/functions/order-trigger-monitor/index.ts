@@ -36,7 +36,7 @@ serve(async (req) => {
     // Get authorization header
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
-      console.error('❌ Missing authorization header');
+      console.log('❌ Missing Authorization header - this function requires authentication');
       return new Response(JSON.stringify({ 
         error: 'Unauthorized', 
         message: 'Authorization header required' 

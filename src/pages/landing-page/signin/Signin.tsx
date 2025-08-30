@@ -1,8 +1,7 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, UserPlus } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useLoginForm } from "@/hooks/useLoginForm";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
@@ -12,7 +11,6 @@ import { LoginForm } from "@/components/login/LoginForm";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { PageStyles } from "@/components/account-request/PageStyles";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
-
 export default function SigninPage() {
   const [status, setStatus] = useState({
     type: "",
@@ -25,10 +23,12 @@ export default function SigninPage() {
     isSubmitting,
   } = useLoginForm();
   const navigate = useNavigate();
-
   const handleFormSubmit = async (data: any) => {
     try {
+      // Login logic will be handled in the hook
       await onSubmit(data);
+
+      // Redirect to dashboard after successful login
       navigate("/dashboard/home");
     } catch (error) {
       console.error("Login failed:", error);
@@ -38,9 +38,7 @@ export default function SigninPage() {
       });
     }
   };
-
-  return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+  return <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
       <ErrorBoundary componentName="Video Background">
         <VideoBackground />
       </ErrorBoundary>
@@ -79,24 +77,13 @@ export default function SigninPage() {
             )}
 
             <div className="pt-4 space-y-3">
-              <Link to="/signup">
-                <Button 
-                  variant="outline" 
-                  className="w-full min-h-[48px] border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95 touch-manipulation"
-                  aria-label="Create new account"
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Don't have an account? Sign Up
-                </Button>
-              </Link>
-
               <Link to="/account-request">
                 <Button 
                   variant="outline" 
                   className="w-full min-h-[48px] border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95 touch-manipulation"
                   aria-label="Request new account access"
                 >
-                  Need Special Access? Request Account
+                  Need an Account? Request Access
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
@@ -119,6 +106,5 @@ export default function SigninPage() {
       <ErrorBoundary componentName="Page Styles">
         <PageStyles />
       </ErrorBoundary>
-    </div>
-  );
+    </div>;
 }

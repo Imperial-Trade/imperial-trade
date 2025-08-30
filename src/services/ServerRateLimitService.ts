@@ -6,6 +6,7 @@ interface ServerRateLimitCheck {
   limitType: 'ip' | 'email';
   maxAttempts: number;
   windowMs: number;
+  consume?: boolean;
 }
 
 interface ServerRateLimitResult {
@@ -27,7 +28,7 @@ class ServerRateLimitService {
 
   async checkRateLimit(params: ServerRateLimitCheck): Promise<ServerRateLimitResult> {
     try {
-      console.log('Checking server-side rate limit:', params);
+      console.log(`${params.consume ? 'Consuming' : 'Checking'} server-side rate limit:`, params);
       
       const { data, error } = await supabase.functions.invoke(
         'account-request-rate-limit',
@@ -58,21 +59,23 @@ class ServerRateLimitService {
     }
   }
 
-  async checkEmailRateLimit(email: string): Promise<ServerRateLimitResult> {
+  async checkEmailRateLimit(email: string, consume: boolean = false): Promise<ServerRateLimitResult> {
     return this.checkRateLimit({
       identifier: email.toLowerCase(),
       limitType: 'email',
-      maxAttempts: 1, // 1 request per email per day
+      maxAttempts: 2, // Temporarily increased to 2 for hotfix
       windowMs: 24 * 60 * 60 * 1000, // 24 hours
+      consume,
     });
   }
 
-  async checkIPRateLimit(ip: string): Promise<ServerRateLimitResult> {
+  async checkIPRateLimit(ip: string, consume: boolean = false): Promise<ServerRateLimitResult> {
     return this.checkRateLimit({
       identifier: ip,
       limitType: 'ip',
       maxAttempts: 10, // 10 requests per IP per hour
       windowMs: 60 * 60 * 1000, // 1 hour
+      consume,
     });
   }
 

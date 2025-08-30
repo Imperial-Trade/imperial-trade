@@ -11,6 +11,7 @@ interface RateLimitCheck {
   limitType: 'ip' | 'email';
   maxAttempts: number;
   windowMs: number;
+  consume?: boolean; // If true, increment attempt count; if false, just check
 }
 
 interface RateLimitResult {
@@ -32,12 +33,20 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { identifier, limitType, maxAttempts, windowMs }: RateLimitCheck = await req.json();
+    const { identifier, limitType, maxAttempts, windowMs, consume = false }: RateLimitCheck = await req.json();
     
-    console.log(`Rate limit check for ${limitType}: ${identifier}`);
+    // Use server-side limits instead of client-provided values for security
+    const serverLimits = {
+      email: { maxAttempts: 1, windowMs: 24 * 60 * 60 * 1000 }, // 1/day
+      ip: { maxAttempts: 10, windowMs: 60 * 60 * 1000 } // 10/hour
+    };
+    
+    const actualLimits = serverLimits[limitType] || { maxAttempts, windowMs };
+    
+    console.log(`Rate limit ${consume ? 'consume' : 'check'} for ${limitType}: ${identifier}`);
     
     const now = new Date();
-    const windowStart = new Date(now.getTime() - windowMs);
+    const windowStart = new Date(now.getTime() - actualLimits.windowMs);
 
     // Get existing rate limit record
     const { data: existingRecord, error: fetchError } = await supabase
@@ -54,23 +63,25 @@ Deno.serve(async (req) => {
     let result: RateLimitResult;
 
     if (!existingRecord) {
-      // First attempt - create new record
-      const { error: insertError } = await supabase
-        .from('rate_limits')
-        .insert({
-          identifier,
-          limit_type: limitType,
-          attempt_count: 1,
-          window_start: now.toISOString(),
-          last_attempt: now.toISOString(),
-        });
+      if (consume) {
+        // First attempt - create new record
+        const { error: insertError } = await supabase
+          .from('rate_limits')
+          .insert({
+            identifier,
+            limit_type: limitType,
+            attempt_count: 1,
+            window_start: now.toISOString(),
+            last_attempt: now.toISOString(),
+          });
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+      }
 
       result = {
         allowed: true,
-        attemptsRemaining: maxAttempts - 1,
-        resetTime: new Date(now.getTime() + windowMs).toISOString(),
+        attemptsRemaining: actualLimits.maxAttempts - (consume ? 1 : 0),
+        resetTime: new Date(now.getTime() + actualLimits.windowMs).toISOString(),
       };
     } else {
       const recordWindowStart = new Date(existingRecord.window_start);
@@ -87,27 +98,29 @@ Deno.serve(async (req) => {
       }
       // Check if window has expired - reset counter
       else if (recordWindowStart < windowStart) {
-        const { error: updateError } = await supabase
-          .from('rate_limits')
-          .update({
-            attempt_count: 1,
-            window_start: now.toISOString(),
-            last_attempt: now.toISOString(),
-            blocked_until: null,
-          })
-          .eq('id', existingRecord.id);
+        if (consume) {
+          const { error: updateError } = await supabase
+            .from('rate_limits')
+            .update({
+              attempt_count: 1,
+              window_start: now.toISOString(),
+              last_attempt: now.toISOString(),
+              blocked_until: null,
+            })
+            .eq('id', existingRecord.id);
 
-        if (updateError) throw updateError;
+          if (updateError) throw updateError;
+        }
 
         result = {
           allowed: true,
-          attemptsRemaining: maxAttempts - 1,
-          resetTime: new Date(now.getTime() + windowMs).toISOString(),
+          attemptsRemaining: actualLimits.maxAttempts - (consume ? 1 : 0),
+          resetTime: new Date(now.getTime() + actualLimits.windowMs).toISOString(),
         };
       }
       // Within window - check if limit exceeded
-      else if (existingRecord.attempt_count >= maxAttempts) {
-        const resetTime = new Date(recordWindowStart.getTime() + windowMs);
+      else if (existingRecord.attempt_count >= actualLimits.maxAttempts) {
+        const resetTime = new Date(recordWindowStart.getTime() + actualLimits.windowMs);
         
         result = {
           allowed: false,
@@ -115,27 +128,30 @@ Deno.serve(async (req) => {
           resetTime: resetTime.toISOString(),
         };
       }
-      // Within window and under limit - increment
+      // Within window and under limit
       else {
-        const newCount = existingRecord.attempt_count + 1;
-        const shouldBlock = newCount >= maxAttempts;
-        const blockUntil = shouldBlock ? new Date(now.getTime() + windowMs) : null;
+        const currentCount = existingRecord.attempt_count;
+        const newCount = consume ? currentCount + 1 : currentCount;
+        const shouldBlock = newCount >= actualLimits.maxAttempts;
+        const blockUntil = shouldBlock ? new Date(now.getTime() + actualLimits.windowMs) : null;
 
-        const { error: updateError } = await supabase
-          .from('rate_limits')
-          .update({
-            attempt_count: newCount,
-            last_attempt: now.toISOString(),
-            blocked_until: blockUntil?.toISOString() || null,
-          })
-          .eq('id', existingRecord.id);
+        if (consume) {
+          const { error: updateError } = await supabase
+            .from('rate_limits')
+            .update({
+              attempt_count: newCount,
+              last_attempt: now.toISOString(),
+              blocked_until: blockUntil?.toISOString() || null,
+            })
+            .eq('id', existingRecord.id);
 
-        if (updateError) throw updateError;
+          if (updateError) throw updateError;
+        }
 
         result = {
           allowed: !shouldBlock,
-          attemptsRemaining: Math.max(0, maxAttempts - newCount),
-          resetTime: new Date(recordWindowStart.getTime() + windowMs).toISOString(),
+          attemptsRemaining: Math.max(0, actualLimits.maxAttempts - newCount),
+          resetTime: new Date(recordWindowStart.getTime() + actualLimits.windowMs).toISOString(),
           blockedUntil: blockUntil?.toISOString(),
         };
       }

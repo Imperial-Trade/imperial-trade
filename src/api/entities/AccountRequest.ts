@@ -37,8 +37,8 @@ export class AccountRequest {
   static async create(data: AccountRequestData): Promise<AccountRequestData> {
     console.log('🚀 Creating account request:', data);
     
-    // Check server-side rate limiting before creating
-    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(data.email);
+    // Step 1: Check rate limits without consuming (just checking)
+    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(data.email, false);
     if (!rateLimitCheck.allowed) {
       const retryAfterHours = Math.ceil(
         (new Date(rateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60 * 60)
@@ -48,7 +48,7 @@ export class AccountRequest {
 
     // Also check IP-based rate limiting
     const clientIP = serverRateLimitService.getClientIP();
-    const ipRateLimitCheck = await serverRateLimitService.checkIPRateLimit(clientIP);
+    const ipRateLimitCheck = await serverRateLimitService.checkIPRateLimit(clientIP, false);
     if (!ipRateLimitCheck.allowed) {
       const retryAfterMinutes = Math.ceil(
         (new Date(ipRateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60)
@@ -61,6 +61,10 @@ export class AccountRequest {
     if (existingRequest) {
       throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
     }
+
+    // Step 2: Consume rate limit attempts now that we're actually creating the request
+    await serverRateLimitService.checkEmailRateLimit(data.email, true);
+    await serverRateLimitService.checkIPRateLimit(clientIP, true);
 
     const { data: result, error } = await supabase
       .from('account_requests')
@@ -128,8 +132,8 @@ export class AccountRequest {
       throw new Error('Only rejected requests can be updated');
     }
 
-    // Check rate limiting for resubmissions
-    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(existing.email);
+    // Check rate limiting for resubmissions (consume on actual resubmission)
+    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(existing.email, true);
     if (!rateLimitCheck.allowed) {
       const retryAfterHours = Math.ceil(
         (new Date(rateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60 * 60)

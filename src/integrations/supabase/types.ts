@@ -2005,6 +2005,39 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_settings: {
+        Row: {
+          allowlist_cidrs: string[]
+          created_at: string
+          email_max_attempts: number
+          email_window_seconds: number
+          id: number
+          ip_max_attempts: number
+          ip_window_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          allowlist_cidrs?: string[]
+          created_at?: string
+          email_max_attempts?: number
+          email_window_seconds?: number
+          id?: number
+          ip_max_attempts?: number
+          ip_window_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          allowlist_cidrs?: string[]
+          created_at?: string
+          email_max_attempts?: number
+          email_window_seconds?: number
+          id?: number
+          ip_max_attempts?: number
+          ip_window_seconds?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       rate_limits: {
         Row: {
           attempt_count: number

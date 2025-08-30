@@ -24,15 +24,15 @@ const DashboardHome = lazy(() => import("@/pages/dashboard/home/Home").catch(() 
   default: () => <div className="p-8 text-white">Dashboard Home - Coming Soon</div>
 })));
 
-const SignalsPage = lazy(() => import("@/pages/dashboard/signals/SignalsPage").catch(() => ({
+const SignalsPage = lazy(() => import("@/pages/landing-page/signals/SignalsPage").catch(() => ({
   default: () => <div className="p-8 text-white">Signals Page - Coming Soon</div>
 })));
 
-const EducationPage = lazy(() => import("@/pages/dashboard/education/EducationPage").catch(() => ({
+const EducationPage = lazy(() => Promise.resolve({
   default: () => <div className="p-8 text-white">Education Page - Coming Soon</div>
-})));
+}));
 
-const AdminPage = lazy(() => import("@/pages/dashboard/admin/AdminPage").catch(() => ({
+const AdminPage = lazy(() => import("@/pages/dashboard/admin-panel/AdminPanel").catch(() => ({
   default: () => <div className="p-8 text-white">Admin Page - Coming Soon</div>
 })));
 

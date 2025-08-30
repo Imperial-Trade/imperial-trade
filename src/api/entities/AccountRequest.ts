@@ -9,7 +9,7 @@ export interface AccountRequestData {
   phone_number?: string | null;
   vt_market_account_number: string;
   referrer?: string | null;
-  account_type: 'user' | 'educator';
+  account_type: 'user' | 'educator' | 'admin'; // Added 'admin' to match response interface
   reason?: string | null;
   website?: string; // Honeypot field
   status?: 'pending' | 'approved' | 'rejected';
@@ -27,18 +27,26 @@ export interface AccountRequestResponse {
   email: string;
   full_name: string;
   phone_number: string | null;
-  vt_market_account_number: string;
+  vt_market_account_number: string | null;
   referrer: string | null;
-  account_type: 'user' | 'educator';
+  account_type: 'user' | 'educator' | 'admin';
   reason: string | null;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   updated_at: string;
-  approved_at: string | null;
+  approved_at?: string | null; // Optional since it may not be present in all responses
   approved_by: string | null;
   rejection_reason: string | null;
-  resubmission_count?: number;
+  resubmission_count?: number | null;
   original_rejection_reason?: string | null;
+  username?: string | null;
+  social_provider?: string | null;
+  social_id?: string | null;
+  legal_accepted?: boolean;
+  legal_accepted_at?: string | null;
+  legal_version?: string | null;
+  website?: string | null;
+  last_resubmitted_at?: string | null;
 }
 
 export interface AccountRequestAudit {

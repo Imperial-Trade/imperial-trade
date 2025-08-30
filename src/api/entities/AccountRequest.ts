@@ -1,206 +1,201 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { ApiResponse } from '@/types/common';
 import { serverRateLimitService } from '@/services/ServerRateLimitService';
 
 export interface AccountRequestData {
-  id?: string;
   email: string;
   full_name: string;
   phone_number?: string;
-  vt_market_account_number?: string;
+  vt_market_account_number: string;
   referrer?: string;
-  account_type: 'user' | 'educator' | 'admin'; // Include admin to match database
+  account_type: 'user' | 'educator';
   reason?: string;
-  status?: 'pending' | 'approved' | 'rejected';
-  rejection_reason?: string;
-  original_rejection_reason?: string;
-  resubmission_count?: number;
-  last_resubmitted_at?: string;
-  created_at?: string;
-  updated_at?: string;
   website?: string; // Honeypot field
 }
 
-export interface AccountRequestAudit {
+export interface AccountRequestResponse {
   id: string;
-  account_request_id: string;
-  changed_fields?: any;
-  old_values?: any;
-  new_values?: any;
-  changed_by: string;
-  change_type: string; // Use string instead of strict union to match database
-  notes?: string;
+  email: string;
+  full_name: string;
+  phone_number: string | null;
+  vt_market_account_number: string;
+  referrer: string | null;
+  account_type: 'user' | 'educator';
+  reason: string | null;
+  status: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  updated_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  rejection_reason: string | null;
 }
 
 export class AccountRequest {
-  static async create(data: AccountRequestData): Promise<AccountRequestData> {
-    console.log('🚀 Creating account request:', data);
-    
-    // Check server-side rate limiting before creating
-    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(data.email);
-    if (!rateLimitCheck.allowed) {
-      const retryAfterHours = Math.ceil(
-        (new Date(rateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60 * 60)
-      );
-      throw new Error(`Too many requests for this email. Please try again in ${retryAfterHours} hours.`);
-    }
+  static async create(data: AccountRequestData): Promise<AccountRequestResponse> {
+    console.log('🚀 Starting account request creation process');
+    console.log('📧 Email:', data.email);
+    console.log('👤 Account type:', data.account_type);
 
-    // Also check IP-based rate limiting
-    const clientIP = serverRateLimitService.getClientIP();
-    const ipRateLimitCheck = await serverRateLimitService.checkIPRateLimit(clientIP);
-    if (!ipRateLimitCheck.allowed) {
-      const retryAfterMinutes = Math.ceil(
-        (new Date(ipRateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60)
-      );
-      throw new Error(`Too many requests from your location. Please try again in ${retryAfterMinutes} minutes.`);
-    }
+    try {
+      // STEP 1: Check if request already exists (most user-friendly first)
+      console.log('🔍 Step 1: Checking for existing request...');
+      const { data: existingRequest, error: existingError } = await supabase
+        .from('account_requests')
+        .select('id, status, email, created_at, updated_at')
+        .eq('email', data.email.toLowerCase().trim())
+        .single();
 
-    // Check for existing request with same email
-    const existingRequest = await this.getByEmail(data.email);
-    if (existingRequest) {
-      throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
-    }
-
-    const { data: result, error } = await supabase
-      .from('account_requests')
-      .insert({
-        email: data.email,
-        full_name: data.full_name,
-        phone_number: data.phone_number || null,
-        vt_market_account_number: data.vt_market_account_number || null,
-        referrer: data.referrer || null,
-        account_type: data.account_type,
-        reason: data.reason || null,
-        website: data.website || null, // Honeypot field
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Error creating account request:', error);
-      // Handle unique constraint violation with friendly message
-      if (error.message?.includes('account_requests_email_unique')) {
-        throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
+      if (existingRequest && !existingError) {
+        console.log('⚠️ Existing request found:', existingRequest);
+        
+        const timeSinceCreation = Date.now() - new Date(existingRequest.created_at).getTime();
+        const hoursSinceCreation = Math.floor(timeSinceCreation / (1000 * 60 * 60));
+        
+        // If request exists and is recent, provide helpful guidance
+        if (existingRequest.status === 'pending') {
+          throw new Error(`You already have a pending account request submitted ${hoursSinceCreation > 0 ? hoursSinceCreation + ' hours' : 'recently'} ago. Please check the status page for updates or wait for admin review.`);
+        } else if (existingRequest.status === 'approved') {
+          throw new Error('Your account request has already been approved. Please check your email for login instructions or contact support.');
+        } else if (existingRequest.status === 'rejected') {
+          // Allow resubmission for rejected requests older than 24 hours
+          const timeSinceRejection = Date.now() - new Date(existingRequest.updated_at).getTime();
+          if (timeSinceRejection < 24 * 60 * 60 * 1000) {
+            throw new Error('Your previous request was rejected. You can resubmit after 24 hours or contact support for assistance.');
+          }
+          console.log('✅ Rejected request is old enough, allowing resubmission');
+        }
       }
-      throw error;
-    }
 
-    console.log('✅ Account request created successfully:', result);
-    return result as AccountRequestData;
+      // STEP 2: IP-based rate limiting (more permissive)
+      console.log('🔍 Step 2: Checking IP rate limits...');
+      const clientIP = serverRateLimitService.getClientIP();
+      const ipRateLimit = await serverRateLimitService.checkIPRateLimit(clientIP);
+      
+      if (!ipRateLimit.allowed) {
+        const resetTime = new Date(ipRateLimit.resetTime);
+        const minutesUntilReset = Math.ceil((resetTime.getTime() - Date.now()) / (1000 * 60));
+        throw new Error(`Too many account requests from your location. Please try again in ${minutesUntilReset} minutes.`);
+      }
+      
+      console.log('✅ IP rate limit check passed, attempts remaining:', ipRateLimit.attemptsRemaining);
+
+      // STEP 3: Email-based rate limiting (most restrictive, but now more permissive)
+      console.log('🔍 Step 3: Checking email rate limits...');
+      const emailRateLimit = await serverRateLimitService.checkEmailRateLimit(data.email);
+      
+      if (!emailRateLimit.allowed) {
+        const resetTime = new Date(emailRateLimit.resetTime);
+        const hoursUntilReset = Math.ceil((resetTime.getTime() - Date.now()) / (1000 * 60 * 60));
+        throw new Error(`You've reached the maximum number of account requests (3 per day). Please try again in ${hoursUntilReset} hours or contact support if you need assistance.`);
+      }
+      
+      console.log('✅ Email rate limit check passed, attempts remaining:', emailRateLimit.attemptsRemaining);
+
+      // STEP 4: Create the new request
+      console.log('🔄 Step 4: Creating new account request...');
+      
+      const requestPayload = {
+        email: data.email.toLowerCase().trim(),
+        full_name: data.full_name.trim(),
+        phone_number: data.phone_number?.trim() || null,
+        vt_market_account_number: data.vt_market_account_number.trim(),
+        referrer: data.referrer?.trim() || null,
+        account_type: data.account_type,
+        reason: data.reason?.trim() || null,
+        status: 'pending' as const,
+      };
+
+      console.log('📤 Submitting payload:', requestPayload);
+
+      const { data: newRequest, error: createError } = await supabase
+        .from('account_requests')
+        .insert([requestPayload])
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('❌ Database error:', createError);
+        
+        // Handle specific database errors
+        if (createError.code === '23505') { // Unique constraint violation
+          throw new Error('An account request with this email already exists. Please check the status page.');
+        } else if (createError.message?.includes('account_type')) {
+          throw new Error('Invalid account type selected. Please refresh the page and try again.');
+        } else {
+          throw new Error('Failed to submit account request. Please check all fields and try again.');
+        }
+      }
+
+      if (!newRequest) {
+        throw new Error('Failed to create account request. Please try again.');
+      }
+
+      console.log('🎉 Account request created successfully:', newRequest.id);
+      return newRequest as AccountRequestResponse;
+
+    } catch (error) {
+      console.error('💥 Account request creation failed:', error);
+      
+      // Re-throw with context if it's our custom error
+      if (error instanceof Error) {
+        throw error;
+      }
+      
+      // Generic fallback error
+      throw new Error('An unexpected error occurred while processing your request. Please try again later.');
+    }
   }
 
-  static async getByEmail(email: string): Promise<AccountRequestData | null> {
-    console.log('🔍 Checking for existing account request:', email);
-    
-    const { data, error } = await supabase
-      .from('account_requests')
-      .select('*')
-      .eq('email', email.toLowerCase().trim())
-      .order('created_at', { ascending: false })
-      .maybeSingle();
+  static async getByEmail(email: string): Promise<AccountRequestResponse | null> {
+    try {
+      const { data, error } = await supabase
+        .from('account_requests')
+        .select('*')
+        .eq('email', email.toLowerCase().trim())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-    if (error) {
-      console.error('❌ Error fetching account request by email:', error);
-      throw error;
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      return data as AccountRequestResponse | null;
+    } catch (error) {
+      console.error('Error fetching account request:', error);
+      return null;
     }
-
-    console.log('✅ Account request found:', data);
-    return data as AccountRequestData | null;
   }
 
-  static async updateRejectedRequest(id: string, updateData: Partial<AccountRequestData>): Promise<AccountRequestData> {
-    console.log('🔄 Updating rejected request:', id, updateData);
-    
-    // First, verify the request can be updated (must be rejected)
-    const { data: existing, error: fetchError } = await supabase
-      .from('account_requests')
-      .select('status, rejection_reason, resubmission_count, email')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) {
-      console.error('❌ Error fetching request for update:', fetchError);
-      throw fetchError;
-    }
-
-    if (existing.status !== 'rejected') {
-      throw new Error('Only rejected requests can be updated');
-    }
-
-    // Check rate limiting for resubmissions
-    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(existing.email);
-    if (!rateLimitCheck.allowed) {
-      const retryAfterHours = Math.ceil(
-        (new Date(rateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60 * 60)
-      );
-      throw new Error(`Too many resubmission attempts. Please try again in ${retryAfterHours} hours.`);
-    }
-
-    // Prepare update data
-    const updatePayload = {
-      ...updateData,
-      status: 'pending' as const,
-      resubmission_count: (existing.resubmission_count || 0) + 1,
-      last_resubmitted_at: new Date().toISOString(),
-      original_rejection_reason: existing.rejection_reason,
-      rejection_reason: null, // Clear current rejection reason
+  static async updateStatus(
+    id: string, 
+    status: 'approved' | 'rejected', 
+    approvedBy?: string,
+    rejectionReason?: string
+  ): Promise<AccountRequestResponse> {
+    const updateData: any = {
+      status,
       updated_at: new Date().toISOString(),
     };
 
-    const { data: result, error } = await supabase
+    if (status === 'approved') {
+      updateData.approved_at = new Date().toISOString();
+      updateData.approved_by = approvedBy;
+    } else if (status === 'rejected') {
+      updateData.rejection_reason = rejectionReason;
+    }
+
+    const { data, error } = await supabase
       .from('account_requests')
-      .update(updatePayload)
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
 
     if (error) {
-      console.error('❌ Error updating account request:', error);
       throw error;
     }
 
-    console.log('✅ Account request updated successfully:', result);
-    return result as AccountRequestData;
-  }
-
-  static async canBeUpdated(id: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('account_requests')
-      .select('status')
-      .eq('id', id)
-      .single();
-
-    if (error || !data) return false;
-    return data.status === 'rejected';
-  }
-
-  static async getAuditHistory(accountRequestId: string): Promise<AccountRequestAudit[]> {
-    const { data, error } = await supabase
-      .from('account_request_audit')
-      .select('*')
-      .eq('account_request_id', accountRequestId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('❌ Error fetching audit history:', error);
-      throw error;
-    }
-
-    return (data || []) as AccountRequestAudit[];
-  }
-
-  static async list(): Promise<AccountRequestData[]> {
-    const { data, error } = await supabase
-      .from('account_requests')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('❌ Error listing account requests:', error);
-      throw error;
-    }
-
-    return (data || []) as AccountRequestData[];
+    return data as AccountRequestResponse;
   }
 }

@@ -52,10 +52,10 @@ export const RequestHistoryTimeline: React.FC<RequestHistoryTimelineProps> = ({
   const timelineEvents = [
     {
       id: 'current',
-      date: request.updated_at || request.created_at || new Date().toISOString(),
-      type: request.status || 'pending',
-      changeType: request.status || 'pending',
-      message: getStatusMessage(request.status || 'pending', request.status),
+      date: request.updated_at!,
+      type: request.status,
+      changeType: request.status,
+      message: getStatusMessage(request.status, request.status),
       details: request.status === 'rejected' ? request.rejection_reason : undefined,
       isLatest: true
     },
@@ -121,7 +121,7 @@ export const RequestHistoryTimeline: React.FC<RequestHistoryTimelineProps> = ({
           <div className="text-xs text-gray-400 space-y-1">
             <div>Email: {request.email}</div>
             <div>Account Type: {request.account_type === 'user' ? 'Standard Member' : 'Educator'}</div>
-            <div>Created: {request.created_at ? formatDate(request.created_at) : 'Unknown'}</div>
+            <div>Created: {formatDate(request.created_at)}</div>
           </div>
         </div>
       </CardContent>

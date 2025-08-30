@@ -62,7 +62,7 @@ class ServerRateLimitService {
     return this.checkRateLimit({
       identifier: email.toLowerCase(),
       limitType: 'email',
-      maxAttempts: 3, // Increased from 1 to 3 attempts per day
+      maxAttempts: 1, // 1 request per email per day
       windowMs: 24 * 60 * 60 * 1000, // 24 hours
     });
   }
@@ -71,7 +71,7 @@ class ServerRateLimitService {
     return this.checkRateLimit({
       identifier: ip,
       limitType: 'ip',
-      maxAttempts: 15, // Increased from 10 to 15 requests per IP per hour
+      maxAttempts: 10, // 10 requests per IP per hour
       windowMs: 60 * 60 * 1000, // 1 hour
     });
   }

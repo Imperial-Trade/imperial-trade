@@ -43,12 +43,12 @@ export const ResubmissionConfirmation: React.FC<ResubmissionConfirmationProps> =
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">Resubmission Count:</span>
-            <span className="text-white">{updatedRequest.resubmission_count || 0}</span>
+            <span className="text-white">{updatedRequest.resubmission_count}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">Last Updated:</span>
             <span className="text-white">
-              {updatedRequest.updated_at ? new Date(updatedRequest.updated_at).toLocaleDateString() : 'Just now'}
+              {new Date(updatedRequest.updated_at!).toLocaleDateString()}
             </span>
           </div>
           {updatedRequest.original_rejection_reason && (

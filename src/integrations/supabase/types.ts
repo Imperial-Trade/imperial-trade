@@ -3298,20 +3298,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
-      get_anonymized_rate_limits: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          attempt_count: number
-          blocked_until: string
-          created_at: string
-          id: string
-          identifier_hash: string
-          last_attempt: string
-          limit_type: string
-          updated_at: string
-          window_start: string
-        }[]
-      }
       get_community_tier_info: {
         Args: { tier_level: number }
         Returns: Json

@@ -20,7 +20,7 @@ export default function SignupPage() {
   const { form, onSubmit, isLoading } = useSignupForm();
   const navigate = useNavigate();
 
-  const handleFormSubmit = async (data: any) => {
+  const handleFormSubmit = async (data: any): Promise<{ success: boolean; error?: string }> => {
     try {
       setStatus({ type: "", message: "" });
       
@@ -36,18 +36,25 @@ export default function SignupPage() {
         setTimeout(() => {
           navigate("/signin");
         }, 3000);
+        
+        return { success: true };
       } else {
         setStatus({
           type: "error",
           message: result.error || "Failed to create account. Please try again."
         });
+        
+        return { success: false, error: result.error };
       }
     } catch (error) {
       console.error("Signup failed:", error);
+      const errorMessage = "An unexpected error occurred. Please try again.";
       setStatus({
         type: "error",
-        message: "An unexpected error occurred. Please try again."
+        message: errorMessage
       });
+      
+      return { success: false, error: errorMessage };
     }
   };
 

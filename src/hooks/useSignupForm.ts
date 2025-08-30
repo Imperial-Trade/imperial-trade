@@ -99,7 +99,7 @@ export const useSignupForm = () => {
 
   return {
     form,
-    onSubmit: form.handleSubmit(onSubmit),
+    onSubmit,
     isLoading,
   };
 };

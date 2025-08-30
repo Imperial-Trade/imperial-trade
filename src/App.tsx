@@ -19,10 +19,22 @@ import SignupPage from "@/pages/auth/Signup";
 import { lazy, Suspense } from "react";
 import LoadingSpinner from "@/components/layout/LoadingSpinner";
 
-const DashboardHome = lazy(() => import("@/pages/dashboard/home/DashboardHome"));
-const SignalsPage = lazy(() => import("@/pages/dashboard/signals/SignalsPage"));
-const EducationPage = lazy(() => import("@/pages/dashboard/education/EducationPage"));
-const AdminPage = lazy(() => import("@/pages/dashboard/admin/AdminPage"));
+// Create placeholder dashboard components for now
+const DashboardHome = lazy(() => import("@/pages/dashboard/home/Home").catch(() => ({
+  default: () => <div className="p-8 text-white">Dashboard Home - Coming Soon</div>
+})));
+
+const SignalsPage = lazy(() => import("@/pages/dashboard/signals/SignalsPage").catch(() => ({
+  default: () => <div className="p-8 text-white">Signals Page - Coming Soon</div>
+})));
+
+const EducationPage = lazy(() => import("@/pages/dashboard/education/EducationPage").catch(() => ({
+  default: () => <div className="p-8 text-white">Education Page - Coming Soon</div>
+})));
+
+const AdminPage = lazy(() => import("@/pages/dashboard/admin/AdminPage").catch(() => ({
+  default: () => <div className="p-8 text-white">Admin Page - Coming Soon</div>
+})));
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -67,14 +68,14 @@ export const ExistingRequestNotice: React.FC<ExistingRequestNoticeProps> = ({
     <Card className="glass-effect border-default">
       <CardHeader>
         <CardTitle className="text-white flex items-center gap-3">
-          {getStatusIcon(request.status!)}
+          {getStatusIcon(request.status || 'unknown')}
           Existing Account Request Found
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between">
           <span className="text-gray-300">Status:</span>
-          {getStatusBadge(request.status!)}
+          {getStatusBadge(request.status || 'unknown')}
         </div>
 
         <div className="bg-surface/20 rounded-lg p-4 space-y-2">
@@ -95,7 +96,7 @@ export const ExistingRequestNotice: React.FC<ExistingRequestNoticeProps> = ({
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">Submitted:</span>
             <span className="text-white">
-              {new Date(request.created_at!).toLocaleDateString()}
+              {request.created_at ? new Date(request.created_at).toLocaleDateString() : 'Unknown'}
             </span>
           </div>
           {request.resubmission_count && request.resubmission_count > 0 && (
@@ -115,7 +116,7 @@ export const ExistingRequestNotice: React.FC<ExistingRequestNoticeProps> = ({
 
         <div className="pt-2">
           <p className="text-gray-300 text-sm mb-4">
-            {getActionMessage(request.status!)}
+            {getActionMessage(request.status || 'unknown')}
           </p>
 
           <div className="flex flex-col gap-3">

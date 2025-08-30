@@ -3,14 +3,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { serverRateLimitService } from '@/services/ServerRateLimitService';
 
 export interface AccountRequestData {
+  id?: string;
   email: string;
   full_name: string;
-  phone_number?: string;
+  phone_number?: string | null;
   vt_market_account_number: string;
-  referrer?: string;
+  referrer?: string | null;
   account_type: 'user' | 'educator';
-  reason?: string;
+  reason?: string | null;
   website?: string; // Honeypot field
+  status?: 'pending' | 'approved' | 'rejected';
+  created_at?: string;
+  updated_at?: string;
+  approved_at?: string | null;
+  approved_by?: string | null;
+  rejection_reason?: string | null;
+  resubmission_count?: number;
+  original_rejection_reason?: string | null;
 }
 
 export interface AccountRequestResponse {
@@ -28,6 +37,19 @@ export interface AccountRequestResponse {
   approved_at: string | null;
   approved_by: string | null;
   rejection_reason: string | null;
+  resubmission_count?: number;
+  original_rejection_reason?: string | null;
+}
+
+export interface AccountRequestAudit {
+  id: string;
+  request_id: string;
+  change_type: string;
+  old_values: Record<string, any>;
+  new_values: Record<string, any>;
+  notes: string | null;
+  created_at: string;
+  created_by: string;
 }
 
 export class AccountRequest {
@@ -188,6 +210,32 @@ export class AccountRequest {
     const { data, error } = await supabase
       .from('account_requests')
       .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data as AccountRequestResponse;
+  }
+
+  static async updateRejectedRequest(id: string, updateData: Partial<AccountRequestData>): Promise<AccountRequestResponse> {
+    const payload = {
+      full_name: updateData.full_name?.trim(),
+      phone_number: updateData.phone_number?.trim() || null,
+      vt_market_account_number: updateData.vt_market_account_number?.trim(),
+      referrer: updateData.referrer?.trim() || null,
+      account_type: updateData.account_type,
+      reason: updateData.reason?.trim() || null,
+      status: 'pending' as const,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from('account_requests')
+      .update(payload)
       .eq('id', id)
       .select()
       .single();

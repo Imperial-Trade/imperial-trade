@@ -47,8 +47,7 @@ export class AccountRequest {
     }
 
     // Also check IP-based rate limiting
-    const clientIP = serverRateLimitService.getClientIP();
-    const ipRateLimitCheck = await serverRateLimitService.checkIPRateLimit(clientIP, false);
+    const ipRateLimitCheck = await serverRateLimitService.checkIPRateLimit(false);
     if (!ipRateLimitCheck.allowed) {
       const retryAfterMinutes = Math.ceil(
         (new Date(ipRateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60)
@@ -64,7 +63,7 @@ export class AccountRequest {
 
     // Step 2: Consume rate limit attempts now that we're actually creating the request
     await serverRateLimitService.checkEmailRateLimit(data.email, true);
-    await serverRateLimitService.checkIPRateLimit(clientIP, true);
+    await serverRateLimitService.checkIPRateLimit(true);
 
     const { data: result, error } = await supabase
       .from('account_requests')

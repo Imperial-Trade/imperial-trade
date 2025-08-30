@@ -4,8 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 interface ServerRateLimitCheck {
   identifier: string;
   limitType: 'ip' | 'email';
-  maxAttempts: number;
-  windowMs: number;
   consume?: boolean;
 }
 
@@ -28,12 +26,22 @@ class ServerRateLimitService {
 
   async checkRateLimit(params: ServerRateLimitCheck): Promise<ServerRateLimitResult> {
     try {
-      console.log(`${params.consume ? 'Consuming' : 'Checking'} server-side rate limit:`, params);
+      console.log(`${params.consume ? 'Consuming' : 'Checking'} server-side rate limit:`, {
+        limitType: params.limitType,
+        consume: params.consume
+      });
       
       const { data, error } = await supabase.functions.invoke(
         'account-request-rate-limit',
         {
-          body: params,
+          body: {
+            identifier: params.identifier,
+            limitType: params.limitType,
+            consume: params.consume || false,
+            // Note: maxAttempts and windowMs are now server-controlled
+            maxAttempts: 0, // Ignored by edge function
+            windowMs: 0     // Ignored by edge function
+          },
         }
       );
 
@@ -43,7 +51,7 @@ class ServerRateLimitService {
         return {
           allowed: true,
           attemptsRemaining: 1,
-          resetTime: new Date(Date.now() + params.windowMs).toISOString(),
+          resetTime: new Date(Date.now() + 3600000).toISOString(),
         };
       }
 
@@ -54,7 +62,7 @@ class ServerRateLimitService {
       return {
         allowed: true,
         attemptsRemaining: 1,
-        resetTime: new Date(Date.now() + params.windowMs).toISOString(),
+        resetTime: new Date(Date.now() + 3600000).toISOString(),
       };
     }
   }
@@ -63,36 +71,22 @@ class ServerRateLimitService {
     return this.checkRateLimit({
       identifier: email.toLowerCase(),
       limitType: 'email',
-      maxAttempts: 2, // Temporarily increased to 2 for hotfix
-      windowMs: 24 * 60 * 60 * 1000, // 24 hours
       consume,
     });
   }
 
-  async checkIPRateLimit(ip: string, consume: boolean = false): Promise<ServerRateLimitResult> {
+  async checkIPRateLimit(consume: boolean = false): Promise<ServerRateLimitResult> {
+    // IP detection now handled server-side in the edge function
     return this.checkRateLimit({
-      identifier: ip,
+      identifier: 'auto-detected', // Placeholder - real IP extracted server-side
       limitType: 'ip',
-      maxAttempts: 10, // 10 requests per IP per hour
-      windowMs: 60 * 60 * 1000, // 1 hour
       consume,
     });
   }
 
-  // Get client IP (simplified approach)
+  // Deprecated - IP detection now handled server-side
   getClientIP(): string {
-    try {
-      // Try to get real IP from the request
-      const userAgent = navigator.userAgent;
-      const timestamp = Date.now();
-      
-      // Create a deterministic but unique identifier for this session
-      const sessionId = btoa(`${userAgent}-${Math.floor(timestamp / (1000 * 60 * 60))}`).substring(0, 12);
-      
-      return `session-${sessionId}`;
-    } catch {
-      return 'fallback-client';
-    }
+    return 'auto-detected';
   }
 }
 

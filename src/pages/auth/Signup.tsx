@@ -2,39 +2,45 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, UserPlus } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useLoginForm } from "@/hooks/useLoginForm";
+import { useSignupForm } from "@/hooks/useSignupForm";
 import { BrandHeader } from "@/components/account-request/BrandHeader";
 import { VideoBackground } from "@/components/account-request/VideoBackground";
 import { StatusMessage } from "@/components/account-request/StatusMessage";
-import { LoginForm } from "@/components/login/LoginForm";
-import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
+import { SignupForm } from "@/components/auth/SignupForm";
 import { PageStyles } from "@/components/account-request/PageStyles";
 import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 
-export default function SigninPage() {
+export default function SignupPage() {
   const [status, setStatus] = useState({
     type: "",
     message: ""
   });
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const {
     form,
     onSubmit,
     isSubmitting,
-  } = useLoginForm();
+  } = useSignupForm();
   const navigate = useNavigate();
 
   const handleFormSubmit = async (data: any) => {
     try {
       await onSubmit(data);
-      navigate("/dashboard/home");
+      setStatus({
+        type: "success",
+        message: "Registration successful! Please check your email to verify your account."
+      });
+      
+      // Redirect to signin after successful registration
+      setTimeout(() => {
+        navigate("/signin");
+      }, 3000);
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error("Signup failed:", error);
       setStatus({
         type: "error",
-        message: "Login failed. Please check your credentials and try again."
+        message: "Registration failed. Please try again."
       });
     }
   };
@@ -53,40 +59,36 @@ export default function SigninPage() {
         <Card className="glass-effect border-default shadow-2xl">
           <CardHeader className="px-4 sm:px-6">
             <CardTitle className="text-xl sm:text-2xl font-bold text-center text-lime-200">
-              Welcome Back
+              Create Your Account
             </CardTitle>
             <p className="text-center text-slate-50 text-sm sm:text-base">
-              Sign in to access your Imperial Trading account
+              Join the Imperial Trading community
             </p>
           </CardHeader>
           <CardContent className="px-4 sm:px-6">
             <ErrorBoundary componentName="Status Message">
               <StatusMessage type={status.type as "success" | "error" | ""} message={status.message} />
             </ErrorBoundary>
+            
             {status.type !== "success" && (
-              <ErrorBoundary componentName="Auth Form">
-                {showForgotPassword ? (
-                  <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
-                ) : (
-                  <LoginForm 
-                    form={form} 
-                    onSubmit={handleFormSubmit} 
-                    isSubmitting={isSubmitting} 
-                    onForgotPassword={() => setShowForgotPassword(true)}
-                  />
-                )}
+              <ErrorBoundary componentName="Signup Form">
+                <SignupForm 
+                  form={form} 
+                  onSubmit={handleFormSubmit} 
+                  isSubmitting={isSubmitting} 
+                />
               </ErrorBoundary>
             )}
 
             <div className="pt-4 space-y-3">
-              <Link to="/signup">
+              <Link to="/signin">
                 <Button 
                   variant="outline" 
                   className="w-full min-h-[48px] border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95 touch-manipulation"
-                  aria-label="Create new account"
+                  aria-label="Already have an account? Sign in"
                 >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Don't have an account? Sign Up
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Already have an account? Sign In
                 </Button>
               </Link>
 
@@ -94,20 +96,9 @@ export default function SigninPage() {
                 <Button 
                   variant="outline" 
                   className="w-full min-h-[48px] border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95 touch-manipulation"
-                  aria-label="Request new account access"
+                  aria-label="Need special access? Request account"
                 >
                   Need Special Access? Request Account
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-
-              <Link to="/account-request-status">
-                <Button 
-                  variant="outline" 
-                  className="w-full min-h-[48px] border-white/20 text-white bg-black/20 hover:bg-white/20 active:bg-white/30 transition-all duration-200 active:scale-95 touch-manipulation"
-                  aria-label="Check your request status"
-                >
-                  Check Request Status
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>

@@ -2,6 +2,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Hash function for PII sanitization in logs
+function hashIdentifier(identifier: string): string {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(identifier);
+  const hashBuffer = crypto.subtle.digestSync('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 8);
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -30,12 +39,14 @@ serve(async (req) => {
     // Get the current user to track who approved the request
     const authHeader = req.headers.get('Authorization')
     let approvedBy = 'admin'
+    let approverHash = 'admin'
     
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '')
       const { data: { user } } = await supabaseClient.auth.getUser(token)
       if (user) {
         approvedBy = user.email || 'admin'
+        approverHash = hashIdentifier(user.email || 'admin')
       }
     }
 
@@ -57,7 +68,9 @@ serve(async (req) => {
       throw updateError
     }
 
-    console.log(`Account request ${status}: ${request.email} by ${approvedBy}`)
+    // Sanitized logging with hashed identifiers only
+    const requestHash = hashIdentifier(request.email)
+    console.log(`Account request ${status}: email_hash=${requestHash} by approver_hash=${approverHash} request_id=${requestId}`)
 
     return new Response(
       JSON.stringify({ success: true, data: request }),

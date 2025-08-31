@@ -1,11 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts"
+import { isEmailEnabled, hashId, sanitizeError } from "../_shared/notify.ts"
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
 
 const ONESIGNAL_API_KEY = (Deno.env.get('ONESIGNAL_API_KEY') || '').trim()
 const ONESIGNAL_APP_ID = (Deno.env.get('ONESIGNAL_APP_ID') || '').trim()
@@ -16,6 +13,21 @@ serve(async (req) => {
   }
 
   try {
+    const { type, requestId, userEmail, userName, adminEmail, reason } =
+      await req.json();
+
+    // Early suppression check with sanitized logging (except password resets)
+    if (type !== "password_reset" && !isEmailEnabled()) {
+      const hashedEmail = await hashId(userEmail || 'unknown');
+      console.log(`event=EMAIL_SUPPRESSED hashed_email=${hashedEmail} type=${type} reason=EMAIL_DISABLED`);
+      return new Response(
+        JSON.stringify({ suppressed: true, reason: 'Email notifications disabled' }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    }
+
+    console.log(`event=EMAIL_PROCESSING type=${type} hashed_email=${await hashId(userEmail || 'unknown')}`);
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -25,11 +37,6 @@ serve(async (req) => {
     if (!ONESIGNAL_API_KEY || !ONESIGNAL_APP_ID) {
       throw new Error('Missing OneSignal credentials')
     }
-
-    const { type, requestId, userEmail, userName, adminEmail, reason } =
-      await req.json();
-
-    console.log("Processing notification:", { type, requestId, userEmail });
 
     switch (type) {
       case "new_request":
@@ -65,11 +72,13 @@ serve(async (req) => {
         throw new Error(`Unknown notification type: ${type}`);
     }
   } catch (error) {
-    console.error("Notification error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const hashedEmail = await hashId(requestId || userEmail || 'unknown');
+    const sanitizedError = sanitizeError(error);
+    console.error(`event=EMAIL_ERROR hashed_identifier=${hashedEmail} error=${sanitizedError}`);
+    return new Response(
+      JSON.stringify({ error: "Failed to send notification" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
 

@@ -16,7 +16,7 @@ export class TradeAlert {
     public readonly tp5?: number,
     public readonly tpHits: number[] = [],
     public readonly notes?: string,
-    public readonly closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | 'all_tps_hit',
+    public readonly closeReason?: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | 'expired',
     public readonly createdAt: Date = new Date(),
     public readonly updatedAt: Date = new Date()
   ) {}
@@ -26,7 +26,7 @@ export class TradeAlert {
   }
 
   public isActive(): boolean {
-    return this.status === 'active' || this.status === 'partially_profited';
+    return this.status === 'active';
   }
 
   public getRiskRewardRatio(): number | null {

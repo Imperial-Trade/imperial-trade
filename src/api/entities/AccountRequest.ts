@@ -37,8 +37,12 @@ export class AccountRequest {
   static async create(data: AccountRequestData): Promise<AccountRequestData> {
     console.log('🚀 Creating account request:', data);
     
-    // Check server-side rate limiting before creating
-    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(data.email);
+    // Generate client UUID for traceability
+    const clientId = crypto.randomUUID();
+    console.log('📍 Client trace ID:', clientId);
+    
+    // Step 1: Check rate limits without consuming (just checking)
+    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(data.email, false);
     if (!rateLimitCheck.allowed) {
       const retryAfterHours = Math.ceil(
         (new Date(rateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60 * 60)
@@ -47,8 +51,7 @@ export class AccountRequest {
     }
 
     // Also check IP-based rate limiting
-    const clientIP = serverRateLimitService.getClientIP();
-    const ipRateLimitCheck = await serverRateLimitService.checkIPRateLimit(clientIP);
+    const ipRateLimitCheck = await serverRateLimitService.checkIPRateLimit(false);
     if (!ipRateLimitCheck.allowed) {
       const retryAfterMinutes = Math.ceil(
         (new Date(ipRateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60)
@@ -56,13 +59,9 @@ export class AccountRequest {
       throw new Error(`Too many requests from your location. Please try again in ${retryAfterMinutes} minutes.`);
     }
 
-    // Check for existing request with same email
-    const existingRequest = await this.getByEmail(data.email);
-    if (existingRequest) {
-      throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
-    }
-
-    const { data: result, error } = await supabase
+    // Step 2: Attempt INSERT directly - rely on unique constraint for duplicate detection
+    // This avoids the RLS SELECT issue for anonymous users
+    const { error } = await supabase
       .from('account_requests')
       .insert({
         email: data.email,
@@ -73,21 +72,33 @@ export class AccountRequest {
         account_type: data.account_type,
         reason: data.reason || null,
         website: data.website || null, // Honeypot field
-      })
-      .select()
-      .single();
+      });
 
     if (error) {
       console.error('❌ Error creating account request:', error);
+      console.error('📍 Failed for client trace ID:', clientId);
+      
       // Handle unique constraint violation with friendly message
-      if (error.message?.includes('account_requests_email_unique')) {
+      if (error.message?.includes('account_requests_email_unique') || 
+          error.code === '23505') {
         throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
       }
       throw error;
     }
 
-    console.log('✅ Account request created successfully:', result);
-    return result as AccountRequestData;
+    // Step 3: Only consume rate limits after successful INSERT
+    await serverRateLimitService.checkEmailRateLimit(data.email, true);
+    await serverRateLimitService.checkIPRateLimit(true);
+
+    console.log('✅ Account request created successfully for client trace ID:', clientId);
+    
+    // Return the data that was inserted (we know it succeeded)
+    return {
+      ...data,
+      status: 'pending' as const,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as AccountRequestData;
   }
 
   static async getByEmail(email: string): Promise<AccountRequestData | null> {
@@ -128,8 +139,8 @@ export class AccountRequest {
       throw new Error('Only rejected requests can be updated');
     }
 
-    // Check rate limiting for resubmissions
-    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(existing.email);
+    // Check rate limiting for resubmissions (consume on actual resubmission)
+    const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(existing.email, true);
     if (!rateLimitCheck.allowed) {
       const retryAfterHours = Math.ceil(
         (new Date(rateLimitCheck.resetTime).getTime() - Date.now()) / (1000 * 60 * 60)

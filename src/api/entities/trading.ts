@@ -6,7 +6,7 @@ import { apiClient } from '../client/ApiClient';
 
 // Legacy wrapper for backward compatibility
 export class TradeAlert {
-  static async getByStatus(status: 'pending' | 'active' | 'closed', userId: string): Promise<TradeAlertResponseDto[]> {
+  static async getByStatus(status: 'pending' | 'active' | 'closed' | 'partially_profited', userId: string): Promise<TradeAlertResponseDto[]> {
     const result = await tradingApiService.getAlertsByStatus(status, userId);
     if (!result.success) {
       throw new Error(result.error || 'Failed to fetch alerts by status');

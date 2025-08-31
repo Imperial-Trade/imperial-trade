@@ -1,10 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeaders } from "../_shared/cors.ts"
+import { isEmailEnabled, hashId, sanitizeError } from "../_shared/notify.ts"
 
 const ONESIGNAL_API_KEY = (Deno.env.get('ONESIGNAL_API_KEY') || '').trim()
 const ONESIGNAL_APP_ID = (Deno.env.get('ONESIGNAL_APP_ID') || '').trim()
@@ -15,12 +12,22 @@ serve(async (req) => {
   }
 
   try {
+    const { email, name } = await req.json()
+
+    // Early suppression check with sanitized logging
+    if (!isEmailEnabled()) {
+      const hashedEmail = await hashId(email);
+      console.log(`event=EMAIL_SUPPRESSED hashed_email=${hashedEmail} reason=EMAIL_DISABLED`);
+      return new Response(
+        JSON.stringify({ suppressed: true, reason: 'Email notifications disabled' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Validate OneSignal credentials
     if (!ONESIGNAL_API_KEY || !ONESIGNAL_APP_ID) {
       throw new Error('Missing OneSignal credentials')
     }
-    
-    const { email, name } = await req.json()
 
     if (!email || !name) {
       return new Response(
@@ -114,10 +121,13 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(`OneSignal API error: ${response.status} ${errorText}`)
+      const sanitizedError = sanitizeError(`OneSignal API error: ${response.status} ${errorText}`);
+      throw new Error(sanitizedError)
     }
 
     const data = await response.json()
+    const hashedEmail = await hashId(email);
+    console.log(`event=EMAIL_SUCCESS hashed_email=${hashedEmail} provider=OneSignal`);
 
     return new Response(
       JSON.stringify({ success: true, data }),
@@ -125,9 +135,11 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error sending welcome email:', error)
+    const hashedEmail = await hashId(email || 'unknown');
+    const sanitizedError = sanitizeError(error);
+    console.error(`event=EMAIL_ERROR hashed_email=${hashedEmail} error=${sanitizedError}`);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Failed to send welcome email' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

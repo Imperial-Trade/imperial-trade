@@ -89,7 +89,7 @@ export function AdminSignalManagement() {
         if (profileError) throw profileError;
 
         const totalSignals = signalStats?.length || 0;
-        const activeSignals = signalStats?.filter(s => s.status === 'active').length || 0;
+        const activeSignals = signalStats?.filter(s => s.status === 'active' || s.status === 'partially_profited').length || 0;
         const closedSignals = signalStats?.filter(s => s.status === 'closed').length || 0;
         const successfulSignals = signalStats?.filter(s => s.status === 'closed' && s.tp_hits?.length > 0).length || 0;
         const successRate = closedSignals > 0 ? (successfulSignals / closedSignals) : 0;
@@ -482,7 +482,7 @@ export function AdminSignalManagement() {
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
           <TabsTrigger value="all">My Signals ({filteredAlerts.length})</TabsTrigger>
-          <TabsTrigger value="active">Active ({filteredAlerts.filter(a => a.status === 'active').length})</TabsTrigger>
+          <TabsTrigger value="active">Active ({filteredAlerts.filter(a => a.status === 'active' || a.status === 'partially_profited').length})</TabsTrigger>
           <TabsTrigger value="closed">Closed ({filteredAlerts.filter(a => a.status === 'closed').length})</TabsTrigger>
         </TabsList>
 
@@ -515,10 +515,10 @@ export function AdminSignalManagement() {
 
         <TabsContent value="active" className="space-y-4">
           <AnimatePresence>
-            {filteredAlerts.filter(alert => alert.status === 'active').map((alert, index) => renderSignalCard(alert, index))}
+            {filteredAlerts.filter(alert => alert.status === 'active' || alert.status === 'partially_profited').map((alert, index) => renderSignalCard(alert, index))}
           </AnimatePresence>
 
-          {filteredAlerts.filter(alert => alert.status === 'active').length === 0 && (
+          {filteredAlerts.filter(alert => alert.status === 'active' || alert.status === 'partially_profited').length === 0 && (
             <Card>
               <CardContent className="p-8 text-center">
                 <Clock className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />

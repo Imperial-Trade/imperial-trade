@@ -168,9 +168,9 @@ class TraderMadeStreamer {
       this.processingBatch = true;
       this.lastPriceUpdate[priceData.symbol] = priceData.price;
 
-      // Update market prices efficiently
+      // Update market prices efficiently with enhanced function
       const { error: upsertError } = await this.supabase
-        .rpc('upsert_market_price', {
+        .rpc('upsert_market_price_enhanced', {
           p_symbol: priceData.symbol,
           p_bid: priceData.bid,
           p_ask: priceData.ask,
@@ -182,11 +182,12 @@ class TraderMadeStreamer {
         console.error('❌ Market price update error:', upsertError.message);
       }
 
-      // Process alerts efficiently
+      // Process alerts efficiently with enhanced bid/ask precision
       const { data: triggeredAlerts, error: alertError } = await this.supabase
-        .rpc('process_price_alerts', {
+        .rpc('process_price_alerts_enhanced', {
           p_symbol: priceData.symbol,
-          p_current_price: priceData.price
+          p_current_bid: priceData.bid,
+          p_current_ask: priceData.ask
         });
 
       if (alertError) {
@@ -202,11 +203,11 @@ class TraderMadeStreamer {
         for (const alert of triggeredAlerts) {
           if (alert.triggered) {
             const { data: result, error: handleError } = await this.supabase
-              .rpc('handle_triggered_alert', {
+              .rpc('handle_triggered_alert_enhanced', {
                 p_alert_id: alert.alert_id,
                 p_signal_id: alert.signal_id,
                 p_alert_type: alert.alert_type,
-                p_triggered_price: priceData.price
+                p_triggered_price: alert.trigger_price
               });
 
             if (!handleError && result) {
@@ -215,7 +216,7 @@ class TraderMadeStreamer {
                 signal_id: alert.signal_id,
                 alert_type: alert.alert_type,
                 action: result.action,
-                price: priceData.price,
+                price: alert.trigger_price,
                 tp_level: result.tp_level,
                 reason: result.reason
               });

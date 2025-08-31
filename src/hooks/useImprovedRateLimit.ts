@@ -5,8 +5,6 @@ import { serverRateLimitService } from '@/services/ServerRateLimitService';
 interface ImprovedRateLimitConfig {
   identifier: string;
   email?: string;
-  maxAttempts?: number;
-  windowMs?: number;
 }
 
 interface RateLimitState {
@@ -27,27 +25,15 @@ export const useImprovedRateLimit = (config: ImprovedRateLimitConfig) => {
     message: '',
   });
 
-  // Generate a session-based identifier instead of using localStorage
-  const getSessionIdentifier = useCallback(() => {
-    let sessionId = sessionStorage.getItem('session_id');
-    if (!sessionId) {
-      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      sessionStorage.setItem('session_id', sessionId);
-    }
-    return `${config.identifier}_${sessionId}`;
-  }, [config.identifier]);
-
   const checkRateLimit = useCallback(async () => {
     if (!config.email) return;
     
     try {
       setState(prev => ({ ...prev, isLoading: true }));
       
-      // Check server-side rate limits
-      const emailCheck = await serverRateLimitService.checkEmailRateLimit(config.email);
-      const ipCheck = await serverRateLimitService.checkIPRateLimit(
-        serverRateLimitService.getClientIP()
-      );
+      // Check server-side rate limits (check without consuming)
+      const emailCheck = await serverRateLimitService.checkEmailRateLimit(config.email, false);
+      const ipCheck = await serverRateLimitService.checkIPRateLimit(false);
 
       const canSubmit = emailCheck.allowed && ipCheck.allowed;
       const attemptsLeft = Math.min(emailCheck.attemptsRemaining, ipCheck.attemptsRemaining);
@@ -57,10 +43,10 @@ export const useImprovedRateLimit = (config: ImprovedRateLimitConfig) => {
 
       if (!canSubmit) {
         if (!emailCheck.allowed) {
-          message = 'This email has already been used today. Please try again tomorrow.';
+          message = 'This email has reached the daily limit. Please try again tomorrow.';
           nextAttemptDelay = new Date(emailCheck.resetTime).getTime() - Date.now();
         } else if (!ipCheck.allowed) {
-          message = 'Too many requests from this location. Please try again in an hour.';
+          message = 'Too many requests from this location. Please try again later.';
           nextAttemptDelay = new Date(ipCheck.resetTime).getTime() - Date.now();
         }
       } else if (attemptsLeft < 5) {
@@ -90,7 +76,7 @@ export const useImprovedRateLimit = (config: ImprovedRateLimitConfig) => {
   }, [config.email]);
 
   const recordAttempt = useCallback(async () => {
-    // The server-side rate limiting will be handled by the submission endpoint
+    // Rate limiting consumption is now handled by the submission endpoint
     await checkRateLimit();
   }, [checkRateLimit]);
 

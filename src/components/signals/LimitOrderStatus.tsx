@@ -208,7 +208,9 @@ export const LimitOrderStatus = ({ alert, onCancel, onModify }: LimitOrderStatus
 
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Current: ${currentPrice.toFixed(4)}</span>
+              <span>
+                {isBuyLimit ? 'Current ASK' : isSellLimit ? 'Current BID' : 'Current'}: ${currentPrice.toFixed(4)}
+              </span>
               <span>Target: ${entryPrice.toFixed(4)}</span>
             </div>
             <Progress 

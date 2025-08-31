@@ -1,10 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
+import { corsHeaders } from "../_shared/cors.ts"
+import { isPushEnabled, hashId, sanitizeError } from "../_shared/notify.ts"
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 interface NotificationPayload {
   signal_id: string;
@@ -149,13 +147,21 @@ async function sendTelegramNotification(payload: NotificationPayload): Promise<b
 
 async function sendPushNotification(payload: NotificationPayload): Promise<boolean> {
   try {
+    // Check if push notifications are enabled
+    if (!isPushEnabled()) {
+      const hashedSignalId = await hashId(payload.signal_id);
+      console.log(`event=PUSH_SUPPRESSED hashed_signal_id=${hashedSignalId} alert_type=${payload.alert_type} reason=PUSH_DISABLED`);
+      return false; // Don't count as successful delivery
+    }
+
     // Placeholder for push notification service (e.g., Firebase, OneSignal)
     console.log(`📱 Push notification would be sent for ${payload.alert_type}`);
     
     // For now, just return true as this requires additional setup
     return true;
   } catch (error) {
-    console.error('❌ Push notification exception:', error);
+    const sanitizedError = sanitizeError(error);
+    console.error(`❌ Push notification exception: ${sanitizedError}`);
     return false;
   }
 }
@@ -255,6 +261,11 @@ serve(async (req) => {
     const successfulDeliveries = results.reduce((sum, r) => 
       sum + Object.values(r.delivery_results).filter(Boolean).length, 0
     );
+    const suppressedDeliveries = results.reduce((sum, r) => 
+      sum + Object.values(r.delivery_results).filter(success => success === false).length, 0
+    );
+
+    console.log(`event=NOTIFICATION_SUMMARY processed=${notifications.length} successful=${successfulDeliveries} suppressed=${suppressedDeliveries}`);
 
     return new Response(
       JSON.stringify({
@@ -271,11 +282,12 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Notification dispatcher error:', error);
+    const sanitizedError = sanitizeError(error);
+    console.error(`❌ Notification dispatcher error: ${sanitizedError}`);
     return new Response(
       JSON.stringify({ 
         error: 'Failed to process notifications',
-        details: error.message 
+        details: 'Internal server error'
       }),
       { 
         status: 500,

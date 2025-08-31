@@ -74,14 +74,13 @@ export class TradingRepository implements ITradingRepository {
   }
 
   async updateAlert(id: string, dto: UpdateTradeAlertDto): Promise<TradeAlert> {
-    const updateData: any = {
+    const updateData = {
+      ...(dto.status && { status: dto.status }),
+      ...(dto.tpHits && { tp_hits: dto.tpHits }),
+      ...(dto.closeReason && { close_reason: dto.closeReason }),
+      ...(dto.notes && { notes: dto.notes }),
       updated_at: new Date().toISOString()
     };
-
-    if (dto.status) updateData.status = dto.status;
-    if (dto.tpHits) updateData.tp_hits = dto.tpHits;
-    if (dto.closeReason) updateData.close_reason = dto.closeReason;
-    if (dto.notes) updateData.notes = dto.notes;
 
     const result = await apiClient.update('trade_alerts', id, updateData);
     

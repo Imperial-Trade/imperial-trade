@@ -79,15 +79,36 @@ export const useOrderTriggerMonitor = (userId?: string) => {
     try {
       console.log('🚀 Manually triggering order monitor...');
       
-      const { data, error } = await supabase.functions.invoke('order-trigger-monitor');
+      // Get current session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Skip if no session or access token (not authenticated)
+      if (!session?.access_token) {
+        console.log('⏸️ No session or access token - skipping monitor call');
+        return false;
+      }
+      
+      const { data, error } = await supabase.functions.invoke('order-trigger-monitor', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
       
       if (error) {
         console.error('❌ Error triggering order monitor:', error);
-        toast({
-          title: "Monitor Error",
-          description: "Failed to run order monitor",
-          variant: "destructive",
-        });
+        
+        // Only show toast for server errors (5xx), suppress auth errors (4xx)
+        const errorMessage = error.message || '';
+        const isAuthError = errorMessage.includes('400') || errorMessage.includes('401') || 
+                           errorMessage.includes('403') || errorMessage.includes('Unauthorized');
+        
+        if (!isAuthError) {
+          toast({
+            title: "Monitor Error",
+            description: "Failed to run order monitor",
+            variant: "destructive",
+          });
+        }
         return false;
       }
 
@@ -103,11 +124,19 @@ export const useOrderTriggerMonitor = (userId?: string) => {
       return true;
     } catch (error) {
       console.error('💥 Fatal error calling order monitor:', error);
-      toast({
-        title: "Monitor Error",
-        description: "Failed to run order monitor",
-        variant: "destructive",
-      });
+      
+      // Only show toast for server errors (5xx), suppress auth errors (4xx)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isAuthError = errorMessage.includes('400') || errorMessage.includes('401') || 
+                         errorMessage.includes('403') || errorMessage.includes('Unauthorized');
+      
+      if (!isAuthError) {
+        toast({
+          title: "Monitor Error",
+          description: "Failed to run order monitor",
+          variant: "destructive",
+        });
+      }
       return false;
     }
   }, [toast]);

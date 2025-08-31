@@ -1,0 +1,69 @@
+{
+  "parity_check": {
+    "timestamp": "2025-08-31T01:45:30.123Z",
+    "staging_vs_production": {
+      "database_schema": {
+        "status": "MATCH",
+        "details": {
+          "rate_limits_table": "✅ RLS enabled",
+          "unique_constraints": "✅ UNIQUE(identifier,limit_type) active",  
+          "rate_limit_settings": "✅ id=1 record present"
+        }
+      },
+      "environment_variables": {
+        "status": "STAGING_READY_PROD_READY",
+        "staging": {
+          "EMAIL_ENABLED": "true",
+          "PUSH_ENABLED": "false", 
+          "ONESIGNAL_API_KEY": "configured",
+          "ONESIGNAL_APP_ID": "configured"
+        },
+        "production": {
+          "EMAIL_ENABLED": "false", 
+          "PUSH_ENABLED": "false",
+          "ONESIGNAL_API_KEY": "not_required",
+          "ONESIGNAL_APP_ID": "not_required"
+        }
+      },
+      "rate_limit_settings": {
+        "status": "MATCH",
+        "current_caps": {
+          "email_max_attempts": 1,
+          "email_window_seconds": 86400,
+          "ip_max_attempts": 10, 
+          "ip_window_seconds": 3600
+        },
+        "upgrade_path": {
+          "email_daily": "1 → 3 (SQL update only)",
+          "ip_hourly": "10 → 30 (SQL update only)"
+        }
+      },
+      "security_guardrails": {
+        "status": "ALL_ACTIVE",
+        "checks": {
+          "rls_policies": "✅ Active on rate_limits",
+          "unique_index": "✅ Prevents duplicates", 
+          "ip_precedence": "✅ Real-IP > X-Forwarded-For",
+          "pii_logging": "✅ No sensitive data in logs",
+          "approval_function": "✅ Status updates only",
+          "legacy_cleanup": "✅ Old function deprecated"
+        }
+      }
+    }
+  },
+  "rollback_readiness": {
+    "estimated_time": "5-10 minutes",
+    "steps_verified": [
+      "RLS toggle (30 seconds)",
+      "Settings rollback (60 seconds)", 
+      "Index recreation (2-3 minutes)",
+      "Function deployment (2-3 minutes)",
+      "Verification (1-2 minutes)"
+    ]
+  },
+  "monitoring_queries": {
+    "error_rate_threshold": "< 5% (edge function 4xx/5xx)",
+    "block_rate_threshold": "< 10% (rate limit blocks)",
+    "volume_threshold": "> 50 requests/hour normal traffic"
+  }
+}

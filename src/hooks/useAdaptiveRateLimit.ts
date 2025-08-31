@@ -66,9 +66,7 @@ export const useAdaptiveRateLimit = (config: AdaptiveRateLimitConfig) => {
 
       // Check server-side limits
       const emailCheck = await serverRateLimitService.checkEmailRateLimit(config.email);
-      const ipCheck = await serverRateLimitService.checkIPRateLimit(
-        serverRateLimitService.getClientIP()
-      );
+      const ipCheck = await serverRateLimitService.checkIPRateLimit();
 
       // Determine final state
       const canSubmit = emailCheck.allowed && ipCheck.allowed && 
@@ -172,7 +170,7 @@ export const useAdaptiveRateLimit = (config: AdaptiveRateLimitConfig) => {
     ...state,
     recordSubmissionResult,
     getStatusMessage,
-    getSecurityInsights: getStatusMessage, // Simplified
+    getSecurityInsights, // Simplified
     refresh: calculateAdaptiveLimits,
   };
 };

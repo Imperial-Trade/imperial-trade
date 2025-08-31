@@ -33,11 +33,77 @@ serve(async (req) => {
   try {
     console.log('🚀 Starting order trigger monitor...');
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    // Get authorization header
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      console.log('❌ Missing Authorization header - this function requires authentication');
+      return new Response(JSON.stringify({ 
+        error: 'Unauthorized', 
+        message: 'Authorization header required' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Create client with user context for role checking
+    const supabaseUrl = 'https://kmuoqkcxguafxulqlbmi.supabase.co';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttdW9xa2N4Z3VhZnh1bHFsYm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4NjkyNTAsImV4cCI6MjA2NzQ0NTI1MH0.gvBGgPvvOYwMI9g8H5Cm9rKFB02G6z4tHIHEepKf7MI';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const tradermadeApiKey = Deno.env.get('TRADERMADE_API_KEY')!;
     
+    const userSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify user and check role
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser();
+    if (authError || !user) {
+      console.error('❌ Invalid authorization:', authError);
+      return new Response(JSON.stringify({ 
+        error: 'Unauthorized', 
+        message: 'Invalid authorization token' 
+      }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check user role
+    const { data: profile, error: profileError } = await userSupabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('❌ Could not fetch user profile:', profileError);
+      return new Response(JSON.stringify({ 
+        error: 'Forbidden', 
+        message: 'Could not verify user permissions' 
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const allowedRoles = ['admin', 'educator', 'moderator'];
+    if (!allowedRoles.includes(profile.role)) {
+      console.error('❌ Insufficient permissions. User role:', profile.role);
+      return new Response(JSON.stringify({ 
+        error: 'Forbidden', 
+        message: 'Insufficient permissions to run order monitor' 
+      }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`✅ Authorized user ${user.id} with role ${profile.role}`);
+    
+    // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const tradermadeApiKey = Deno.env.get('TRADERMADE_API_KEY')!;
 
     // Step 1: Fetch all pending limit orders
     console.log('📋 Fetching pending limit orders...');

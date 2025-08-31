@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { SignalStreamFilters } from '@/components/signals/SignalStreamFilters';
 import { SignalStreamStatus } from '@/components/signals/SignalStreamStatus';
 import StreamErrorBoundary from '@/components/signals/StreamErrorBoundary';
+import { useThrottledOrderMonitor } from '@/hooks/useThrottledOrderMonitor';
 
 export default function SignalStream() {
   const {
@@ -100,7 +101,7 @@ export default function SignalStream() {
     educatorOptions,
     signalCounts
   } = useMemo(() => {
-    const active = alerts.filter(a => a.status === 'active' || a.status === 'pending');
+    const active = alerts.filter(a => a.status === 'active' || a.status === 'pending' || a.status === 'partially_profited');
     const closed = alerts.filter(a => a.status === 'closed');
 
     // Get unique educators for filter dropdown
@@ -133,6 +134,21 @@ export default function SignalStream() {
   const sortedClosedAlerts = useMemo(() => {
     return [...closedAlerts].sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()).slice(0, 12);
   }, [closedAlerts]);
+
+  // Check if we have pending limit orders for the monitor
+  const hasPendingLimitOrders = useMemo(() => {
+    return activeAlerts.some(alert => 
+      alert.status === 'pending' && 
+      (alert.tradeType === 'buy_limit' || alert.tradeType === 'sell_limit')
+    );
+  }, [activeAlerts]);
+
+  // Throttled Order Monitor - only run for admin/educator users with pending limits
+  const { isRunning: isMonitorRunning } = useThrottledOrderMonitor({
+    enabled: canCreateSignals, // Only enabled for admin/educator users
+    hasPendingLimits: hasPendingLimitOrders,
+    intervalMs: 15000 // 15 seconds
+  });
   const symbols = useMemo(() => {
     const symbolSet = new Set<string>();
     activeAlerts.forEach(alert => {
@@ -297,7 +313,7 @@ export default function SignalStream() {
     try {
       console.log(`Updating alert ${alert.id} status to ${newStatus}`);
       const updateDto: UpdateTradeAlertDto = {
-        status: newStatus as 'pending' | 'active' | 'closed' | 'partially_profited',
+        status: newStatus as 'pending' | 'active' | 'closed',
         closeReason: newStatus === 'closed' ? 'manual' : undefined
       };
       const result = await updateAlert(alert.id, updateDto);
@@ -337,7 +353,7 @@ export default function SignalStream() {
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
       console.log(`Updating TP hits for alert ${alert.id}:`, newTPHits);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' | undefined = undefined;
+      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' | undefined = undefined;
       if (shouldAutoClose && closeReason) {
         switch (closeReason) {
           case 'manual':
@@ -347,7 +363,6 @@ export default function SignalStream() {
           case 'tp3':
           case 'tp4':
           case 'tp5':
-          case 'all_tps_hit':
           case 'reversal_after_tp':
             typedCloseReason = closeReason;
             break;
@@ -394,7 +409,7 @@ export default function SignalStream() {
     setUpdateInProgress(prev => new Set(prev).add(alert.id));
     try {
       console.log(`Stop loss hit for alert ${alert.id}, reason: ${closeReason}`);
-      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'all_tps_hit' | 'reversal_after_tp' = 'stop_loss';
+      let typedCloseReason: 'manual' | 'stop_loss' | 'tp1' | 'tp2' | 'tp3' | 'tp4' | 'tp5' | 'reversal_after_tp' = 'stop_loss';
       switch (closeReason) {
         case 'manual':
         case 'stop_loss':
@@ -403,7 +418,6 @@ export default function SignalStream() {
         case 'tp3':
         case 'tp4':
         case 'tp5':
-        case 'all_tps_hit':
         case 'reversal_after_tp':
           typedCloseReason = closeReason;
           break;
@@ -484,11 +498,11 @@ export default function SignalStream() {
                     <span className="truncate">Educational Contributors</span>
                   </Badge>
                 </div>
-                <p className="text-sm sm:text-base text-muted-foreground">
+                <p className="text-sm sm:text-base text-muted-foreground hidden">
                   Educational market analysis patterns with reference pricing from verified educational contributors
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 hidden">
                 {getConnectionStatusBadge()}
                 {lastUpdated && <span className="text-xs text-muted-foreground">
                     Last update: {lastUpdated.toLocaleTimeString()}
@@ -532,13 +546,13 @@ export default function SignalStream() {
                   ))}
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div>
-                    <h2 className="text-xl font-semibold text-accent-green mb-4 border-b border-accent-green/20 pb-2">
+                    <h2 className="text-lg font-semibold text-accent-green mb-3 border-b border-accent-green/20 pb-1.5">
                       Educational Market Patterns ({activeAlerts.length})
                     </h2>
                     {activeAlerts.length > 0 ? (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {activeAlerts.map(alert => (
                           <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard 
@@ -564,19 +578,7 @@ export default function SignalStream() {
                               connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                               priceSource={priceSource} 
                               isRecentClosure={false} 
-                              creator={
-                                alert.creator
-                                  ? {
-                                      id: alert.creator.id,
-                                      display_name: alert.creator.display_name,
-                                      // Ensure role is always present (required by TradeAlertCard prop type)
-                                      role: alert.creator.role || alert.creator.user_type || alert.creator.access_level || 'member',
-                                      avatar_url: alert.creator.avatar_url,
-                                      user_type: alert.creator.user_type,
-                                      access_level: alert.creator.access_level,
-                                    }
-                                  : undefined
-                              }
+                              creator={alert.creator} 
                               justAdded={justAddedIds.has(alert.id)}
                             />
                           </div>
@@ -594,11 +596,11 @@ export default function SignalStream() {
                   </div>
                   
                   <div>
-                    <h2 className="text-xl font-semibold text-muted-foreground mb-4 border-b border-border pb-2">
+                    <h2 className="text-lg font-semibold text-muted-foreground mb-3 border-b border-border pb-1.5">
                       Recent Educational Analysis ({closedAlerts.length})
                     </h2>
                     {sortedClosedAlerts.length > 0 ? (
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         {sortedClosedAlerts.map(alert => (
                           <div key={alert.id} data-prevent-widget-open="true">
                             <TradeAlertCard 
@@ -624,19 +626,7 @@ export default function SignalStream() {
                               connectionStatus={priceConnectionStatus as 'connecting' | 'connected' | 'error'} 
                               priceSource={priceSource} 
                               isRecentClosure={true} 
-                              creator={
-                                alert.creator
-                                  ? {
-                                      id: alert.creator.id,
-                                      display_name: alert.creator.display_name,
-                                      // Ensure role is always present (required by TradeAlertCard prop type)
-                                      role: alert.creator.role || alert.creator.user_type || alert.creator.access_level || 'member',
-                                      avatar_url: alert.creator.avatar_url,
-                                      user_type: alert.creator.user_type,
-                                      access_level: alert.creator.access_level,
-                                    }
-                                  : undefined
-                              }
+                              creator={alert.creator} 
                             />
                           </div>
                         ))}

@@ -1656,9 +1656,11 @@ export type Database = {
           legal_accepted_at: string | null
           legal_version: string | null
           location: string | null
+          notification_preferences: Json | null
           notification_prompt_dismissed_at: string | null
           notification_stats: Json | null
           onesignal_last_sync_at: string | null
+          onesignal_player_id: string | null
           onesignal_subscription_status: string | null
           phone_number: string | null
           profile_type: string | null
@@ -1703,9 +1705,11 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
+          onesignal_player_id?: string | null
           onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
@@ -1750,9 +1754,11 @@ export type Database = {
           legal_accepted_at?: string | null
           legal_version?: string | null
           location?: string | null
+          notification_preferences?: Json | null
           notification_prompt_dismissed_at?: string | null
           notification_stats?: Json | null
           onesignal_last_sync_at?: string | null
+          onesignal_player_id?: string | null
           onesignal_subscription_status?: string | null
           phone_number?: string | null
           profile_type?: string | null
@@ -1996,6 +2002,39 @@ export type Database = {
           title?: string
           updated_at?: string
           video_id?: string
+        }
+        Relationships: []
+      }
+      rate_limit_settings: {
+        Row: {
+          allowlist_cidrs: string[]
+          created_at: string
+          email_max_attempts: number
+          email_window_seconds: number
+          id: number
+          ip_max_attempts: number
+          ip_window_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          allowlist_cidrs?: string[]
+          created_at?: string
+          email_max_attempts?: number
+          email_window_seconds?: number
+          id?: number
+          ip_max_attempts?: number
+          ip_window_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          allowlist_cidrs?: string[]
+          created_at?: string
+          email_max_attempts?: number
+          email_window_seconds?: number
+          id?: number
+          ip_max_attempts?: number
+          ip_window_seconds?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -3292,6 +3331,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      get_anonymized_rate_limits: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          attempt_count: number
+          blocked_until: string
+          created_at: string
+          id: string
+          identifier_hash: string
+          last_attempt: string
+          limit_type: string
+          updated_at: string
+          window_start: string
+        }[]
+      }
       get_community_tier_info: {
         Args: { tier_level: number }
         Returns: Json
@@ -3479,6 +3532,7 @@ export type Database = {
         | "tp5"
         | "reversal_after_tp"
         | "all_tps_hit"
+        | "expired"
       course_difficulty: "Beginner" | "Intermediate" | "Advanced"
       difficulty_level: "beginner" | "intermediate" | "advanced"
       impact_level: "High" | "Medium" | "Low"
@@ -3662,6 +3716,7 @@ export const Constants = {
         "tp5",
         "reversal_after_tp",
         "all_tps_hit",
+        "expired",
       ],
       course_difficulty: ["Beginner", "Intermediate", "Advanced"],
       difficulty_level: ["beginner", "intermediate", "advanced"],

@@ -37,6 +37,10 @@ export class AccountRequest {
   static async create(data: AccountRequestData): Promise<AccountRequestData> {
     console.log('🚀 Creating account request:', data);
     
+    // Generate client UUID for traceability
+    const clientId = crypto.randomUUID();
+    console.log('📍 Client trace ID:', clientId);
+    
     // Step 1: Check rate limits without consuming (just checking)
     const rateLimitCheck = await serverRateLimitService.checkEmailRateLimit(data.email, false);
     if (!rateLimitCheck.allowed) {
@@ -55,17 +59,9 @@ export class AccountRequest {
       throw new Error(`Too many requests from your location. Please try again in ${retryAfterMinutes} minutes.`);
     }
 
-    // Check for existing request with same email
-    const existingRequest = await this.getByEmail(data.email);
-    if (existingRequest) {
-      throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
-    }
-
-    // Step 2: Consume rate limit attempts now that we're actually creating the request
-    await serverRateLimitService.checkEmailRateLimit(data.email, true);
-    await serverRateLimitService.checkIPRateLimit(true);
-
-    const { data: result, error } = await supabase
+    // Step 2: Attempt INSERT directly - rely on unique constraint for duplicate detection
+    // This avoids the RLS SELECT issue for anonymous users
+    const { error } = await supabase
       .from('account_requests')
       .insert({
         email: data.email,
@@ -76,21 +72,33 @@ export class AccountRequest {
         account_type: data.account_type,
         reason: data.reason || null,
         website: data.website || null, // Honeypot field
-      })
-      .select()
-      .single();
+      });
 
     if (error) {
       console.error('❌ Error creating account request:', error);
+      console.error('📍 Failed for client trace ID:', clientId);
+      
       // Handle unique constraint violation with friendly message
-      if (error.message?.includes('account_requests_email_unique')) {
+      if (error.message?.includes('account_requests_email_unique') || 
+          error.code === '23505') {
         throw new Error('An account request with this email already exists. Please use the status checker to view or update your existing request.');
       }
       throw error;
     }
 
-    console.log('✅ Account request created successfully:', result);
-    return result as AccountRequestData;
+    // Step 3: Only consume rate limits after successful INSERT
+    await serverRateLimitService.checkEmailRateLimit(data.email, true);
+    await serverRateLimitService.checkIPRateLimit(true);
+
+    console.log('✅ Account request created successfully for client trace ID:', clientId);
+    
+    // Return the data that was inserted (we know it succeeded)
+    return {
+      ...data,
+      status: 'pending' as const,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as AccountRequestData;
   }
 
   static async getByEmail(email: string): Promise<AccountRequestData | null> {

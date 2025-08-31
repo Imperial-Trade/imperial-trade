@@ -4,6 +4,25 @@ import { test, expect } from '@playwright/test';
 test.describe('Account Request Rate Limits', () => {
   const testEmail = `test-${Date.now()}@example.com`;
   
+  test('should allow anonymous users to submit account requests', async ({ page }) => {
+    await page.goto('/account-request');
+    
+    // Ensure we're not logged in (should be anonymous)
+    await expect(page.locator('body')).not.toContainText(/dashboard|logout|profile/i);
+    
+    // Fill out the form
+    await page.fill('input[name="full_name"]', 'Anonymous Test User');
+    await page.fill('input[name="email"]', `anonymous-${Date.now()}@example.com`);
+    await page.selectOption('select[name="account_type"]', 'user');
+    await page.fill('textarea[name="reason"]', 'Testing anonymous account request submission');
+    
+    // Submit the form
+    await page.click('button[type="submit"]');
+    
+    // Should see success message (not permission denied)
+    await expect(page.locator('.toast, .alert')).toContainText(/submitted successfully|redirecting/i);
+  });
+  
   test('should allow first account request submission', async ({ page }) => {
     await page.goto('/account-request');
     
@@ -35,34 +54,32 @@ test.describe('Account Request Rate Limits', () => {
     await expect(page.locator('.toast, .alert, .error')).toContainText(/already exists|duplicate/i);
   });
 
-  test('should enforce rate limits after multiple attempts', async ({ page }) => {
-    const uniqueEmails = [
-      `rate-test-1-${Date.now()}@example.com`,
-      `rate-test-2-${Date.now()}@example.com`,
-      `rate-test-3-${Date.now()}@example.com`,
-    ];
+  test('should enforce IP rate limits after 11 requests with unique emails', async ({ page }) => {
+    const uniqueEmails = Array.from({ length: 11 }, (_, i) => 
+      `ip-rate-test-${i + 1}-${Date.now()}@example.com`
+    );
 
-    // Make multiple requests quickly
+    // Make 11 requests quickly from same IP with different emails
     for (let i = 0; i < uniqueEmails.length; i++) {
       await page.goto('/account-request');
       
-      await page.fill('input[name="full_name"]', `Rate Test User ${i + 1}`);
+      await page.fill('input[name="full_name"]', `IP Rate Test User ${i + 1}`);
       await page.fill('input[name="email"]', uniqueEmails[i]);
       await page.selectOption('select[name="account_type"]', 'user');
-      await page.fill('textarea[name="reason"]', `Rate limit test ${i + 1}`);
+      await page.fill('textarea[name="reason"]', `IP rate limit test ${i + 1}`);
       
       await page.click('button[type="submit"]');
       
-      if (i < 2) {
-        // First few should succeed
+      if (i < 10) {
+        // First 10 should succeed (IP limit is 10/hour)
         await expect(page.locator('.toast, .alert')).toContainText(/submitted|success/i);
       } else {
-        // Later ones should be rate limited
-        await expect(page.locator('.toast, .alert, .error')).toContainText(/rate limit|too many|wait/i);
+        // 11th should be IP rate limited
+        await expect(page.locator('.toast, .alert, .error')).toContainText(/too many requests from your location|rate limit/i);
       }
       
       // Small delay between attempts
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(500);
     }
   });
 });

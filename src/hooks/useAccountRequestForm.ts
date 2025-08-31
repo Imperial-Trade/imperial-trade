@@ -12,13 +12,26 @@ const getErrorMessage = (error: any): string => {
   console.log("🔍 Full error object:", error);
   
   // Check for unique constraint violation (email already exists)
-  if (error?.message?.includes('already exists') || error?.message?.includes('account_requests_email_unique')) {
+  if (error?.message?.includes('already exists') || 
+      error?.message?.includes('account_requests_email_unique') ||
+      error?.code === '23505') {
     return "An account request with this email already exists. Please use the status checker to view or update your existing request.";
   }
   
   // Check for rate limiting errors
   if (error?.message?.includes('Too many requests') || error?.message?.includes('rate limit')) {
     return error.message; // Pass through the detailed rate limit message
+  }
+  
+  // Check for RLS/Permission errors (PostgREST errors)
+  if (error?.code === 'PGRST116' || error?.message?.includes('permission denied') ||
+      error?.message?.includes('row-level security') || error?.message?.includes('insufficient privilege')) {
+    return "Unable to process your request due to security restrictions. Please try again or contact support if the issue persists.";
+  }
+  
+  // Check for PostgREST JSON/parsing errors
+  if (error?.code === 'PGRST301' || error?.message?.includes('JSON')) {
+    return "There was an issue processing your request. Please verify all required fields are filled correctly.";
   }
   
   // Check for specific database constraint errors
@@ -40,10 +53,6 @@ const getErrorMessage = (error: any): string => {
   
   if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
     return "Network error. Please check your internet connection and try again.";
-  }
-  
-  if (error?.code === 'PGRST301') {
-    return "Database error: Please verify all required fields are filled correctly.";
   }
   
   // Default error message

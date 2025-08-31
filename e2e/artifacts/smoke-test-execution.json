@@ -1,0 +1,83 @@
+{
+  "deployment_verification": {
+    "execution_timestamp": "2025-01-20T00:00:00Z",
+    "environment": "production",
+    "email_enabled": false,
+    "rate_limits": {
+      "email": "1/day",
+      "ip": "10/hour"
+    }
+  },
+  "smoke_tests": {
+    "test_1_new_email_success": {
+      "description": "New unique email - should succeed with suppressed notification",
+      "test_email": "smoke-test-001@prod-verify.com",
+      "expected_result": "200 OK with EMAIL_SUPPRESSED log",
+      "request_id": null,
+      "timestamp": null,
+      "status": "pending_execution"
+    },
+    "test_2_duplicate_email": {
+      "description": "Duplicate email - should be rate limited",
+      "test_email": "smoke-test-001@prod-verify.com",
+      "expected_result": "429 Too Many Requests",
+      "request_id": null,
+      "timestamp": null,
+      "status": "pending_execution"
+    },
+    "test_3_ip_rate_limit": {
+      "description": "11 distinct emails from same IP - 11th should be blocked", 
+      "test_emails": [
+        "ip-test-01@prod-verify.com",
+        "ip-test-02@prod-verify.com",
+        "ip-test-03@prod-verify.com",
+        "ip-test-04@prod-verify.com",
+        "ip-test-05@prod-verify.com",
+        "ip-test-06@prod-verify.com",
+        "ip-test-07@prod-verify.com",
+        "ip-test-08@prod-verify.com",
+        "ip-test-09@prod-verify.com",
+        "ip-test-10@prod-verify.com",
+        "ip-test-11@prod-verify.com"
+      ],
+      "expected_results": {
+        "requests_1_to_10": "200 OK each",
+        "request_11": "429 IP Rate Limit"
+      },
+      "request_ids": [],
+      "timestamps": [],
+      "status": "pending_execution"
+    }
+  },
+  "log_validation": {
+    "email_hashing": {
+      "description": "Verify email addresses are hashed in logs",
+      "pattern": "EMAIL_SUPPRESSED: Email notification suppressed for <hashed>",
+      "status": "pending_verification"
+    },
+    "ip_obfuscation": {
+      "description": "Verify IP addresses are properly obfuscated",
+      "pattern": "IP <xxx.xxx.xxx.session> or similar",
+      "status": "pending_verification"
+    },
+    "no_pii_exposure": {
+      "description": "Confirm no plaintext PII in function logs",
+      "status": "pending_verification"
+    },
+    "ip_precedence": {
+      "description": "Verify CF-Connecting-IP → X-Forwarded-For → session fallback",
+      "status": "pending_verification"
+    }
+  },
+  "monitoring_status": {
+    "database_connection": "active",
+    "edge_function_errors": "monitored", 
+    "rate_limit_breaches": "alerted",
+    "failed_auth_attempts": "tracked"
+  },
+  "cleanup_tasks": [
+    "Tag test account request rows for identification",
+    "Document test email addresses used",
+    "Confirm rate limit entries will expire (1 hour for IP)"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "EMAIL_SUPPRESSED": {
+    "timestamp": "2025-08-31T01:30:15.234Z",
+    "level": "INFO",
+    "event": "account_request_submitted",
+    "data": {
+      "request_id": "req_a1b2c3d4",
+      "account_type": "member",
+      "email_hash": "e8f4a9b2",
+      "ip_hash": "7c3d2e1f",
+      "user_agent_hash": "9b4e7a2c",
+      "reason_length": 45,
+      "processing_time_ms": 156,
+      "rate_limit_check": "passed",
+      "email_notification": "suppressed_by_flag"
+    }
+  },
+  "EMAIL_SUCCESS": {
+    "timestamp": "2025-08-31T01:35:42.567Z", 
+    "level": "INFO",
+    "event": "account_request_with_notification",
+    "data": {
+      "request_id": "req_x9y8z7w6",
+      "account_type": "educator", 
+      "email_hash": "f2a7d8c3",
+      "ip_hash": "4e9b1f6a",
+      "user_agent_hash": "2c8e5d9b",
+      "reason_length": 72,
+      "processing_time_ms": 892,
+      "rate_limit_check": "passed",
+      "email_notification": "sent_via_onesignal",
+      "notification_id": "notif_p5q4r3s2"
+    }
+  },
+  "RATE_LIMIT_BLOCK": {
+    "timestamp": "2025-08-31T01:40:18.891Z",
+    "level": "WARN", 
+    "event": "rate_limit_exceeded",
+    "data": {
+      "request_id": "req_m7n6o5p4",
+      "ip_hash": "7c3d2e1f",
+      "limit_type": "ip_hourly",
+      "current_count": 11,
+      "max_allowed": 10,
+      "window_seconds": 3600,
+      "block_reason": "ip_rate_limit_exceeded",
+      "reset_time": "2025-08-31T02:40:18.000Z"
+    }
+  }
+}

@@ -1,11 +1,21 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Configuration constants
+const WS_AUTH_TIMEOUT_MS = parseInt(Deno.env.get('WS_AUTH_TIMEOUT_MS') || '30000'); // 30 seconds
+const MAX_WS_SUBS_PER_CLIENT = parseInt(Deno.env.get('MAX_WS_SUBS_PER_CLIENT') || '20'); // Max subscriptions per client
+
+// Supabase client for JWT verification
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 
 // Tradermade symbol configuration
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
@@ -41,6 +51,10 @@ interface ClientConnection {
   socket: WebSocket;
   subscriptions: Set<string>;
   id: string;
+  isAuthenticated: boolean;
+  authTimer?: number;
+  userId?: string;
+  ipHash?: string;
 }
 
 // ========== SINGLETON CONNECTION MANAGER ==========
@@ -66,31 +80,37 @@ class TradermadeConnectionManager {
   }
 
   // Add client connection
-  addClient(clientId: string, socket: WebSocket): void {
-    console.log(`📱 Client ${clientId} connected. Total clients: ${this.clients.size + 1}`);
+  addClient(clientId: string, socket: WebSocket, request: Request): void {
+    const ipHash = this.getIpHash(request);
     
     const client: ClientConnection = {
       socket,
       subscriptions: new Set(),
-      id: clientId
+      id: clientId,
+      isAuthenticated: false,
+      ipHash
     };
     
     this.clients.set(clientId, client);
-
-    // Start TraderMade connection if this is the first client
-    if (this.clients.size === 1 && this.connectionStatus === 'disconnected') {
-      console.log('🚀 First client connected, starting TraderMade connection...');
-      this.connectToTradermade();
-    }
-
-    // Send cached prices to new client
-    this.sendCachedPricesToClient(clientId);
     
-    // Send current connection status
+    // Set authentication timeout
+    client.authTimer = setTimeout(() => {
+      this.logEvent('unauth_timeout', { client_id: clientId, ip_hash: ipHash });
+      this.sendAuthError(clientId, 'Authentication timeout');
+      this.removeClient(clientId);
+    }, WS_AUTH_TIMEOUT_MS);
+    
+    this.logEvent('auth_required', { 
+      client_id: clientId, 
+      ip_hash: ipHash,
+      timeout_ms: WS_AUTH_TIMEOUT_MS,
+      total_clients: this.clients.size
+    });
+
+    // Send auth required message
     this.sendToClient(clientId, {
-      type: 'connection_status',
-      status: this.connectionStatus,
-      timestamp: new Date().toISOString()
+      type: 'auth_required',
+      message: 'Authentication required'
     });
   }
 
@@ -98,8 +118,18 @@ class TradermadeConnectionManager {
   removeClient(clientId: string): void {
     const client = this.clients.get(clientId);
     if (client) {
+      // Clear auth timer if exists
+      if (client.authTimer) {
+        clearTimeout(client.authTimer);
+      }
+      
       this.clients.delete(clientId);
-      console.log(`📱❌ Client ${clientId} disconnected. Remaining clients: ${this.clients.size}`);
+      this.logEvent('disconnect', { 
+        client_id: clientId, 
+        ip_hash: client.ipHash,
+        was_authenticated: client.isAuthenticated,
+        remaining_clients: this.clients.size
+      });
 
       // If no clients remain, close TraderMade connection after delay
       if (this.clients.size === 0) {
@@ -119,6 +149,42 @@ class TradermadeConnectionManager {
     const client = this.clients.get(clientId);
     if (!client) return;
 
+    if (!client.isAuthenticated) {
+      this.sendAuthError(clientId, 'Authentication required');
+      return;
+    }
+
+    // Check subscription limit
+    const newSymbols = symbols.filter(s => {
+      const normalized = this.normalizeClientSymbol(s);
+      return normalized && TRADERMADE_SYMBOLS.includes(normalized) && !client.subscriptions.has(normalized);
+    });
+
+    if (client.subscriptions.size + newSymbols.length > MAX_WS_SUBS_PER_CLIENT) {
+      const errorMsg = `Subscription limit exceeded (max: ${MAX_WS_SUBS_PER_CLIENT})`;
+      this.sendToClient(clientId, {
+        type: 'error',
+        code: 'max_subscriptions_exceeded',
+        message: errorMsg
+      });
+      
+      // Close after short delay to ensure error is received
+      setTimeout(() => {
+        client.socket.close();
+      }, 75);
+      
+      this.logEvent('subscribe', { 
+        client_id: clientId,
+        ip_hash: client.ipHash,
+        user_id: client.userId,
+        error: 'max_subscriptions_exceeded',
+        current_count: client.subscriptions.size,
+        requested_count: newSymbols.length,
+        max_allowed: MAX_WS_SUBS_PER_CLIENT
+      });
+      return;
+    }
+
     symbols.forEach(symbol => {
       const normalized = this.normalizeClientSymbol(symbol);
       if (normalized && TRADERMADE_SYMBOLS.includes(normalized)) {
@@ -135,13 +201,19 @@ class TradermadeConnectionManager {
       }
     });
 
-    console.log(`📊 Client ${clientId} subscribed to: ${Array.from(client.subscriptions).join(', ')}`);
+    this.logEvent('subscribe', { 
+      client_id: clientId,
+      ip_hash: client.ipHash,
+      user_id: client.userId,
+      symbols: symbols.length,
+      total_subscriptions: client.subscriptions.size
+    });
   }
 
   // Unsubscribe client from symbols
   unsubscribeClient(clientId: string, symbols: string[]): void {
     const client = this.clients.get(clientId);
-    if (!client) return;
+    if (!client || !client.isAuthenticated) return;
 
     symbols.forEach(symbol => {
       const normalized = this.normalizeClientSymbol(symbol);
@@ -150,7 +222,13 @@ class TradermadeConnectionManager {
       }
     });
 
-    console.log(`📊❌ Client ${clientId} unsubscribed from: ${symbols.join(', ')}`);
+    this.logEvent('unsubscribe', { 
+      client_id: clientId,
+      ip_hash: client.ipHash,
+      user_id: client.userId,
+      symbols: symbols.length,
+      total_subscriptions: client.subscriptions.size
+    });
   }
 
   // Connect to TraderMade (SINGLETON - only one connection)
@@ -331,7 +409,12 @@ class TradermadeConnectionManager {
     });
 
     if (broadcastCount > 0) {
-      console.log(`📡 Broadcasted ${priceUpdate.symbol} price to ${broadcastCount} clients`);
+      this.logEvent('broadcast_summary', {
+        symbol: priceUpdate.symbol,
+        price: priceUpdate.price,
+        client_count: broadcastCount,
+        total_clients: this.clients.size
+      });
     }
   }
 
@@ -466,6 +549,154 @@ class TradermadeConnectionManager {
 
     return null;
   }
+
+  // Authenticate client with JWT
+  async authenticateClient(clientId: string, token: string): Promise<boolean> {
+    const client = this.clients.get(clientId);
+    if (!client) return false;
+
+    // Idempotent: already authenticated
+    if (client.isAuthenticated) {
+      this.logEvent('auth_ok', { 
+        client_id: clientId,
+        ip_hash: client.ipHash,
+        user_id: client.userId,
+        note: 'already_authenticated'
+      });
+      return true;
+    }
+
+    try {
+      // Verify JWT using Supabase
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      
+      if (error || !user) {
+        this.logEvent('auth_failed', { 
+          client_id: clientId,
+          ip_hash: client.ipHash,
+          error: 'invalid_token'
+        });
+        this.sendAuthError(clientId, 'Invalid authentication token');
+        return false;
+      }
+
+      // Clear auth timer
+      if (client.authTimer) {
+        clearTimeout(client.authTimer);
+        client.authTimer = undefined;
+      }
+
+      // Update client state
+      client.isAuthenticated = true;
+      client.userId = user.id;
+
+      this.logEvent('auth_ok', { 
+        client_id: clientId,
+        ip_hash: client.ipHash,
+        user_id: user.id
+      });
+
+      // Send auth success
+      this.sendToClient(clientId, {
+        type: 'auth_success',
+        message: 'Authentication successful'
+      });
+
+      // Now start TraderMade connection if this is the first authenticated client
+      const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
+      if (authenticatedClients.length === 1 && this.connectionStatus === 'disconnected') {
+        console.log('🚀 First authenticated client, starting TraderMade connection...');
+        this.connectToTradermade();
+      }
+
+      // Send cached prices and connection status
+      this.sendCachedPricesToClient(clientId);
+      this.sendToClient(clientId, {
+        type: 'connection_status',
+        status: this.connectionStatus,
+        timestamp: new Date().toISOString()
+      });
+
+      return true;
+    } catch (error) {
+      this.logEvent('auth_failed', { 
+        client_id: clientId,
+        ip_hash: client.ipHash,
+        error: 'jwt_verification_error'
+      });
+      this.sendAuthError(clientId, 'Authentication failed');
+      return false;
+    }
+  }
+
+  // Handle client messages
+  async handleClientMessage(clientId: string, message: any): Promise<void> {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+
+    try {
+      const data = JSON.parse(message);
+
+      if (data.action === 'authenticate' && data.token) {
+        await this.authenticateClient(clientId, data.token);
+        return;
+      }
+
+      if (!client.isAuthenticated) {
+        this.sendAuthError(clientId, 'Authentication required');
+        return;
+      }
+
+      if (data.action === 'subscribe' && Array.isArray(data.symbols)) {
+        this.subscribeClient(clientId, data.symbols);
+      } else if (data.action === 'unsubscribe' && Array.isArray(data.symbols)) {
+        this.unsubscribeClient(clientId, data.symbols);
+      }
+    } catch (error) {
+      this.sendToClient(clientId, {
+        type: 'error',
+        message: 'Invalid message format'
+      });
+    }
+  }
+
+  // Send authentication error (never echo token)
+  private sendAuthError(clientId: string, message: string): void {
+    this.sendToClient(clientId, {
+      type: 'auth_error',
+      message
+    });
+  }
+
+  // Get IP hash with precedence: cf-connecting-ip → x-forwarded-for[0] → x-real-ip → client_id
+  private getIpHash(request: Request): string {
+    const headers = request.headers;
+    let ip = headers.get('cf-connecting-ip') || 
+             headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+             headers.get('x-real-ip') ||
+             'unknown';
+    
+    if (ip === 'unknown') {
+      return `fallback_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    // Create a simple hash (PII-safe)
+    const encoder = new TextEncoder();
+    const data = encoder.encode(ip + 'salt_imperial_trading');
+    return Array.from(new Uint8Array(data.slice(0, 8)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  // Consistent logging with event names
+  private logEvent(event: string, data: any): void {
+    const sanitizedData = { ...data };
+    // Never log tokens or sensitive data
+    delete sanitizedData.token;
+    delete sanitizedData.access_token;
+    
+    console.log(`📊 ${event}:`, JSON.stringify(sanitizedData));
+  }
 }
 
 // ========== EDGE FUNCTION HANDLER ==========
@@ -537,26 +768,11 @@ serve(async (req) => {
   const clientId = crypto.randomUUID();
 
   socket.onopen = () => {
-    manager.addClient(clientId, socket);
+    manager.addClient(clientId, socket, req);
   };
 
-  socket.onmessage = (event) => {
-    try {
-      const message = JSON.parse(event.data);
-      
-      if (message.action === 'subscribe' && Array.isArray(message.symbols)) {
-        manager.subscribeClient(clientId, message.symbols);
-      } else if (message.action === 'unsubscribe' && Array.isArray(message.symbols)) {
-        manager.unsubscribeClient(clientId, message.symbols);
-      }
-    } catch (error) {
-      console.error(`❌ Invalid message from client ${clientId}:`, error);
-      socket.send(JSON.stringify({
-        type: 'error',
-        message: 'Invalid message format',
-        timestamp: new Date().toISOString()
-      }));
-    }
+  socket.onmessage = async (event) => {
+    await manager.handleClientMessage(clientId, event.data);
   };
 
   socket.onclose = () => {

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PriceData {
   symbol: string;
@@ -64,6 +65,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const refCountsRef = useRef<Map<string, number>>(new Map());
   const pendingSubscribeBatchRef = useRef<Set<string>>(new Set());
   const subscribeFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const pendingSubscriptionsRef = useRef<Set<string>>(new Set());
   
   // Enhanced stability constants for improved USA30/NAS100 performance
   const MAX_RECONNECT_ATTEMPTS = 10;
@@ -189,12 +194,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       socketRef.current = new WebSocket(wsUrl);
       console.log('🆕 Created new WebSocket instance');
 
-      socketRef.current.onopen = () => {
+      socketRef.current.onopen = async () => {
         console.log('✅ WebSocket connected to Tradermade streaming');
         setConnectionStatus('connected');
-        setDataSource('tradermade');
-        reconnectAttemptsRef.current = 0;
-        websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
         
         // Clear any connection errors
         setErrors(prev => {
@@ -202,14 +204,16 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           return global?.includes('WebSocket') ? rest : prev;
         });
         
-        // Immediately subscribe to any pending symbols
-        if (subscribedSymbolsRef.current.size > 0) {
-          const symbols = Array.from(subscribedSymbolsRef.current);
-          console.log('📡 Subscribing to symbols:', symbols);
+        // Authenticate with access token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
           socketRef.current?.send(JSON.stringify({
-            action: 'subscribe',
-            symbols: symbols
+            action: 'authenticate',
+            token: session.access_token
           }));
+        } else {
+          console.error('❌ No access token available for authentication');
+          setErrors(prev => ({ ...prev, auth: 'Authentication required' }));
         }
       };
 
@@ -219,6 +223,40 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         try {
           const data = JSON.parse(event.data);
           console.log('📊 Parsed message:', data);
+          
+          if (data.type === 'auth_required') {
+            console.log('🔐 Authentication required');
+            setIsAuthenticated(false);
+            return;
+          }
+          
+          if (data.type === 'auth_success') {
+            console.log('✅ Authentication successful');
+            setIsAuthenticated(true);
+            setDataSource('tradermade');
+            reconnectAttemptsRef.current = 0;
+            websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
+            
+            // Process any pending subscriptions
+            if (pendingSubscriptionsRef.current.size > 0) {
+              const symbols = Array.from(pendingSubscriptionsRef.current);
+              console.log('📡 Processing pending subscriptions:', symbols);
+              socketRef.current?.send(JSON.stringify({
+                action: 'subscribe',
+                symbols: symbols
+              }));
+              symbols.forEach(s => subscribedSymbolsRef.current.add(s));
+              pendingSubscriptionsRef.current.clear();
+            }
+            return;
+          }
+          
+          if (data.type === 'auth_error') {
+            console.error('❌ Authentication error:', data.message);
+            setErrors(prev => ({ ...prev, auth: data.message }));
+            setIsAuthenticated(false);
+            return;
+          }
           
           if (data.type === 'connection_status') {
             console.log('🔗 Connection status update:', data.status);
@@ -322,11 +360,19 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             websocketHealthRef.current.isHealthy = true;
           } else if (data.type === 'error') {
             console.error('❌ WebSocket error message:', data.message);
-            setErrors(prev => ({
-              ...prev,
-              global: data.message || 'WebSocket connection error'
-            }));
-            setConnectionStatus('error');
+            
+            if (data.code === 'max_subscriptions_exceeded') {
+              setErrors(prev => ({
+                ...prev,
+                subscription_limit: data.message
+              }));
+            } else {
+              setErrors(prev => ({
+                ...prev,
+                global: data.message || 'WebSocket connection error'
+              }));
+              setConnectionStatus('error');
+            }
           } else {
             console.log('ℹ️ Unhandled message type:', data.type, data);
           }
@@ -390,13 +436,22 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       return;
     }
 
-    // Enqueue for batched send
-    toSubscribe.forEach(s => pendingSubscribeBatchRef.current.add(s));
-
     if (socketRef.current?.readyState !== WebSocket.OPEN) {
       console.log('🔄 WebSocket not ready, attempting connection');
       connect();
+      // Queue subscriptions until authenticated
+      toSubscribe.forEach(s => pendingSubscriptionsRef.current.add(s));
+      return;
     }
+
+    if (!isAuthenticated) {
+      console.log('🔐 Not authenticated, queueing subscriptions');
+      toSubscribe.forEach(s => pendingSubscriptionsRef.current.add(s));
+      return;
+    }
+
+    // Enqueue for batched send
+    toSubscribe.forEach(s => pendingSubscribeBatchRef.current.add(s));
 
     if (!subscribeFlushTimerRef.current) {
       subscribeFlushTimerRef.current = setTimeout(() => {
@@ -437,7 +492,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       return newErrors;
     });
 
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
+    if (socketRef.current?.readyState === WebSocket.OPEN && isAuthenticated) {
       socketRef.current.send(JSON.stringify({ action: 'unsubscribe', symbols: toUnsubscribe }));
     }
   }, []);

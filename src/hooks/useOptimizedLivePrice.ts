@@ -64,13 +64,23 @@ export function useOptimizedLivePrice(
   const httpFallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountTimeRef = useRef<Date>(new Date());
 
-  // localStorage utilities for price persistence
+  // localStorage utilities for price persistence with 10-minute TTL
   const getStoredPrice = useCallback((sym: string) => {
     try {
       const stored = localStorage.getItem(`lastPrice:${sym}`);
       if (stored) {
         const { price, timestamp } = JSON.parse(stored);
-        return { price: Number(price), timestamp: new Date(timestamp) };
+        const storedTime = new Date(timestamp);
+        const now = new Date();
+        const ageMinutes = (now.getTime() - storedTime.getTime()) / (1000 * 60);
+        
+        // Only use stored price if less than 10 minutes old
+        if (ageMinutes < 10) {
+          return { price: Number(price), timestamp: storedTime };
+        } else {
+          // Remove stale price
+          localStorage.removeItem(`lastPrice:${sym}`);
+        }
       }
     } catch (e) {
       console.warn('Failed to read stored price:', e);
@@ -89,28 +99,41 @@ export function useOptimizedLivePrice(
     }
   }, []);
 
-  // HTTP fallback for reliable price fetching
+  // HTTP fallback for reliable price fetching - prioritize get-market-data
   const fetchLastPriceHTTP = useCallback(async (sym: string): Promise<{ price: number; timestamp: Date } | null> => {
     try {
-      console.log(`🔄 [${sym}] HTTP fallback - fetching last price...`);
-      const { data, error } = await supabase.functions.invoke('tradermade-streaming', {
+      console.log(`🔄 [${sym}] HTTP fallback - fetching last price via get-market-data...`);
+      
+      // First try get-market-data (anon, faster)
+      const { data, error } = await supabase.functions.invoke('get-market-data', {
         body: { symbols: [sym] }
       });
       
-      if (error) {
-        console.error(`❌ [${sym}] HTTP fallback error:`, error);
-        return null;
-      }
-
-      // Fix: Edge function returns { success, prices: { [symbol]: priceData } }
-      const priceData = data?.prices?.[sym] || data?.prices?.[sym.toUpperCase()];
-      if (priceData && priceData.price > 0) {
-        console.log(`✅ [${sym}] HTTP fallback success:`, priceData.price);
+      if (!error && data?.prices?.[sym]?.price > 0) {
+        console.log(`✅ [${sym}] get-market-data success:`, data.prices[sym].price);
         setLocalPriceSource('http');
         return {
-          price: priceData.price,
-          timestamp: new Date(priceData.timestamp || Date.now())
+          price: data.prices[sym].price,
+          timestamp: new Date(data.prices[sym].timestamp || Date.now())
         };
+      }
+      
+      // Fallback to tradermade-streaming if get-market-data fails
+      console.log(`🔄 [${sym}] get-market-data failed, trying tradermade-streaming...`);
+      const fallbackResponse = await supabase.functions.invoke('tradermade-streaming', {
+        body: { symbols: [sym] }
+      });
+      
+      if (!fallbackResponse.error) {
+        const priceData = fallbackResponse.data?.prices?.[sym] || fallbackResponse.data?.prices?.[sym.toUpperCase()];
+        if (priceData && priceData.price > 0) {
+          console.log(`✅ [${sym}] tradermade-streaming fallback success:`, priceData.price);
+          setLocalPriceSource('http');
+          return {
+            price: priceData.price,
+            timestamp: new Date(priceData.timestamp || Date.now())
+          };
+        }
       }
     } catch (error) {
       console.error(`❌ [${sym}] HTTP fallback failed:`, error);
@@ -140,24 +163,31 @@ export function useOptimizedLivePrice(
 
     subscribe([normalizedSymbol]);
 
-    // HTTP fallback if no price after 1.5s
-    httpFallbackTimeoutRef.current = setTimeout(async () => {
-      if (lastProcessedPriceRef.current === 0) {
-        console.log(`⏱️ [${normalizedSymbol}] No price after 1.5s, trying HTTP fallback...`);
-        const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
-        if (fallbackPrice && lastProcessedPriceRef.current === 0) {
-          setDebouncedPrice({
-            price: fallbackPrice.price,
-            change: 0,
-            changePercent: 0
-          });
-          setLastUpdated(fallbackPrice.timestamp);
-          setLastNonZeroPrice(fallbackPrice.price);
-          lastProcessedPriceRef.current = fallbackPrice.price;
-          storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
+    // Check if user has session for fallback timing
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const fallbackDelay = session ? 700 : 0; // 0ms if no session, 700ms if authenticated
+      
+      httpFallbackTimeoutRef.current = setTimeout(async () => {
+        if (lastProcessedPriceRef.current === 0) {
+          console.log(`⏱️ [${normalizedSymbol}] No price after ${fallbackDelay}ms, trying HTTP fallback...`);
+          const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
+          if (fallbackPrice && lastProcessedPriceRef.current === 0) {
+            setDebouncedPrice({
+              price: fallbackPrice.price,
+              change: 0,
+              changePercent: 0
+            });
+            setLastUpdated(fallbackPrice.timestamp);
+            setLastNonZeroPrice(fallbackPrice.price);
+            lastProcessedPriceRef.current = fallbackPrice.price;
+            storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
+          }
         }
-      }
-    }, 1500);
+      }, fallbackDelay);
+    };
+    
+    checkSession();
 
     return () => {
       unsubscribe([normalizedSymbol]);
@@ -184,7 +214,7 @@ export function useOptimizedLivePrice(
     }
     
     if (!currentPrice || currentPrice.price === 0) {
-      // Start stale-guard if no updates for 2+ seconds
+      // Start stale-guard if no updates for 1.2+ seconds (reduced for faster recovery)
       if (staleGuardTimeoutRef.current) {
         clearTimeout(staleGuardTimeoutRef.current);
       }
@@ -202,7 +232,7 @@ export function useOptimizedLivePrice(
           lastProcessedPriceRef.current = fallbackPrice.price;
           storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
         }
-      }, 2000);
+      }, 1200); // Reduced from 2000ms to 1200ms
       return;
     }
 

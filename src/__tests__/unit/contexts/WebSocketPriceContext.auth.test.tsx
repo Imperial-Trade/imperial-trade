@@ -145,10 +145,10 @@ describe('WebSocketPriceContext Authentication', () => {
       expect(ws.sentMessages).toHaveLength(1);
     });
 
-    // Simulate successful auth
+    // Simulate successful auth (using auth_ok)
     act(() => {
       ws.simulateMessage({
-        type: 'auth_success',
+        type: 'auth_ok',
         message: 'Authentication successful'
       });
     });
@@ -201,10 +201,10 @@ describe('WebSocketPriceContext Authentication', () => {
 
     const ws = MockWebSocket.instances[0];
 
-    // Authenticate first
+    // Authenticate first (using auth_ok)
     act(() => {
       ws.simulateMessage({
-        type: 'auth_success',
+        type: 'auth_ok',
         message: 'Authentication successful'
       });
     });
@@ -268,10 +268,10 @@ describe('WebSocketPriceContext Authentication', () => {
 
     const ws = MockWebSocket.instances[0];
 
-    // Simulate successful auth
+    // Simulate successful auth (using auth_ok) 
     act(() => {
       ws.simulateMessage({
-        type: 'auth_success',
+        type: 'auth_ok',
         message: 'Authentication successful'
       });
     });

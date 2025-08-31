@@ -196,7 +196,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
       socketRef.current.onopen = async () => {
         console.log('✅ WebSocket connected to Tradermade streaming');
-        setConnectionStatus('connected');
+        // Only set to connecting here, wait for auth_ok for full connection
+        setConnectionStatus('connecting');
         
         // Clear any connection errors
         setErrors(prev => {
@@ -230,9 +231,10 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
             return;
           }
           
-          if (data.type === 'auth_success') {
+          if (data.type === 'auth_ok' || data.type === 'auth_success') {
             console.log('✅ Authentication successful');
             setIsAuthenticated(true);
+            setConnectionStatus('connected'); // Only now mark as fully connected
             setDataSource('tradermade');
             reconnectAttemptsRef.current = 0;
             websocketHealthRef.current = { lastSuccessfulMessage: Date.now(), isHealthy: true };
@@ -518,6 +520,27 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   useEffect(() => {
     connect();
     
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state change:', event);
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Re-authenticate WebSocket if it's connected but not authenticated
+        if (socketRef.current?.readyState === WebSocket.OPEN && !isAuthenticated && session?.access_token) {
+          console.log('🔄 Re-authenticating WebSocket after sign-in...');
+          socketRef.current.send(JSON.stringify({
+            action: 'authenticate',
+            token: session.access_token
+          }));
+        }
+      } else if (event === 'SIGNED_OUT') {
+        console.log('👋 User signed out, resetting auth state but keeping pending subscriptions');
+        setIsAuthenticated(false);
+        setConnectionStatus('connecting');
+        // Keep pending subscriptions for when user signs back in
+      }
+    });
+    
     // Health monitoring - check connection every 30 seconds and reconnect if needed
     const healthCheckInterval = setInterval(() => {
       const now = Date.now();
@@ -535,6 +558,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
     return () => {
       clearInterval(healthCheckInterval);
+      authListener?.subscription?.unsubscribe();
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -546,7 +570,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
         socketRef.current.close();
       }
     };
-  }, [connect]);
+  }, [connect, isAuthenticated]);
 
   const value: WebSocketContextType = {
     prices,

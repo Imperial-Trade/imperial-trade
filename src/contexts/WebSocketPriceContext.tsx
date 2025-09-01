@@ -33,6 +33,9 @@ interface WebSocketContextType {
   unsubscribe: (symbols: string[]) => void;
   getPrice: (symbol: string) => PriceData | null;
   refreshPrice: (symbol: string) => void;
+  // Enhanced price consistency methods
+  subscribeToPriceUpdates: (callback: (symbol: string, priceData: PriceData) => void) => () => void;
+  validatePriceConsistency: (symbol: string, reportedPrice: number) => { isConsistent: boolean; deviation?: number };
 }
 
 const WebSocketPriceContext = createContext<WebSocketContextType | null>(null);
@@ -62,9 +65,11 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   const httpPollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isPollingRef = useRef(false);
   
-  // Price consistency state - single source of truth
+  // Enhanced price consistency state - single source of truth
   const masterPricesRef = useRef<Record<string, PriceData>>({});
   const lastPriceBroadcastRef = useRef<Record<string, number>>({});
+  const priceUpdateCallbacksRef = useRef<Set<(symbol: string, priceData: PriceData) => void>>(new Set());
+  const priceDeviationLogRef = useRef<Record<string, { reportedPrice: number; actualPrice: number; timestamp: number }[]>>({});
 
   const normalizeSymbol = useCallback((s: string) => {
     const up = (s || '').toUpperCase().trim();
@@ -165,6 +170,17 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           setLastUpdated(new Date());
           setConnectionStatus('connected');
           setDataSource('tradermade');
+          
+          // Broadcast price updates to all subscribers for consistency
+          Object.entries(newPrices).forEach(([symbol, priceData]) => {
+            priceUpdateCallbacksRef.current.forEach(callback => {
+              try {
+                callback(symbol, priceData);
+              } catch (error) {
+                console.warn('Error in price update callback:', error);
+              }
+            });
+          });
           
           // Clear any errors
           setErrors(prev => {
@@ -296,6 +312,58 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     pollPricesHTTP([normalized]);
   }, [normalizeSymbol, pollPricesHTTP]);
 
+  // Enhanced price consistency methods
+  const subscribeToPriceUpdates = useCallback((callback: (symbol: string, priceData: PriceData) => void) => {
+    priceUpdateCallbacksRef.current.add(callback);
+    console.log('📡 Price update subscriber added, total subscribers:', priceUpdateCallbacksRef.current.size);
+    
+    // Return unsubscribe function
+    return () => {
+      priceUpdateCallbacksRef.current.delete(callback);
+      console.log('📡 Price update subscriber removed, total subscribers:', priceUpdateCallbacksRef.current.size);
+    };
+  }, []);
+
+  const validatePriceConsistency = useCallback((symbol: string, reportedPrice: number) => {
+    const normalized = normalizeSymbol(symbol);
+    const actualPrice = masterPricesRef.current[normalized]?.price || prices[normalized]?.price;
+    
+    if (!actualPrice || actualPrice === 0) {
+      return { isConsistent: true }; // No baseline to compare against
+    }
+    
+    const deviation = Math.abs((reportedPrice - actualPrice) / actualPrice) * 100;
+    const isConsistent = deviation <= 0.1; // 0.1% tolerance for price consistency
+    
+    if (!isConsistent) {
+      // Log deviation for monitoring
+      if (!priceDeviationLogRef.current[normalized]) {
+        priceDeviationLogRef.current[normalized] = [];
+      }
+      
+      const deviationEntry = {
+        reportedPrice,
+        actualPrice,
+        timestamp: Date.now()
+      };
+      
+      priceDeviationLogRef.current[normalized].push(deviationEntry);
+      
+      // Keep only last 10 deviations per symbol
+      if (priceDeviationLogRef.current[normalized].length > 10) {
+        priceDeviationLogRef.current[normalized] = priceDeviationLogRef.current[normalized].slice(-10);
+      }
+      
+      console.warn(`💸 Price deviation detected for ${normalized}:`, {
+        reported: reportedPrice,
+        actual: actualPrice,
+        deviation: `${deviation.toFixed(3)}%`
+      });
+    }
+    
+    return { isConsistent, deviation: isConsistent ? undefined : deviation };
+  }, [normalizeSymbol, prices]);
+
   // Initialize connection on mount
   useEffect(() => {
     connect();
@@ -323,6 +391,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     unsubscribe,
     getPrice,
     refreshPrice,
+    subscribeToPriceUpdates,
+    validatePriceConsistency,
   };
 
   return (

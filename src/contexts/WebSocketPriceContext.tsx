@@ -113,7 +113,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }
   }, []);
 
-  // Enhanced HTTP polling with price validation and staleness detection
+  // HTTP fallback for initial data and refreshes
   const pollPricesHTTP = useCallback(async (symbols: string[]) => {
     if (symbols.length === 0) return;
 
@@ -159,8 +159,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
               ask: priceInfo.ask || priceInfo.price,
               tick_timestamp: currentTime,
               is_institutional_tick: false,
-              is_ultra_fast_tick: true, // Mark as ultra-fast for 1-second polling
-              update_frequency: '1s'
+              is_ultra_fast_tick: true,
+              update_frequency: 'http_fallback'
             };
             
             // Price consistency check - only update if price actually changed
@@ -173,7 +173,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
               // Update master prices for consistency
               masterPricesRef.current[normalizedSymbol] = newPriceData;
               
-              console.log(`💰 Price consistency update: ${normalizedSymbol} = $${newPriceData.price} (served_from: ${priceInfo.served_from || 'cache'})`);
+              console.log(`💰 HTTP price update: ${normalizedSymbol} = $${newPriceData.price}`);
             }
           }
         });
@@ -183,8 +183,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
           setPrices(prev => ({ ...prev, ...newPrices }));
           setPriceUpdateSources(prev => ({ ...prev, ...updateSources }));
           setLastUpdated(new Date());
-          setConnectionStatus('connected');
-          setDataSource('tradermade');
           
           // Broadcast price updates to all subscribers for consistency
           Object.entries(newPrices).forEach(([symbol, priceData]) => {
@@ -210,11 +208,9 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
       } else {
         console.warn('❌ HTTP polling failed or returned invalid data');
-        setConnectionStatus('error');
       }
     } catch (error) {
       console.error('❌ HTTP polling error:', error);
-      setConnectionStatus('error');
       setErrors(prev => ({ ...prev, global: 'Price polling failed' }));
     }
   }, [normalizeSymbol]);
@@ -392,15 +388,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }
   }, [normalizeSymbol, cleanupRealtimeChannel]);
 
-  // Initialize connection on mount
-  useEffect(() => {
-    connect();
-    
-    return () => {
-      cleanupRealtimeChannel();
-    };
-  }, [connect, cleanupRealtimeChannel]);
-
   const getPrice = useCallback((symbol: string): PriceData | null => {
     const normalized = normalizeSymbol(symbol);
     return masterPricesRef.current[normalized] || prices[normalized] || null;
@@ -498,6 +485,15 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       stalePrices
     };
   }, [connectionStatus, lastUpdated, prices]);
+
+  // Initialize connection on mount
+  useEffect(() => {
+    connect();
+    
+    return () => {
+      cleanupRealtimeChannel();
+    };
+  }, [connect, cleanupRealtimeChannel]);
 
   // Sync master prices with state
   useEffect(() => {

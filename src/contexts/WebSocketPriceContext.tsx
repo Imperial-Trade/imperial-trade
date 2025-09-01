@@ -69,6 +69,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pendingSubscriptionsRef = useRef<Set<string>>(new Set());
+  const authStateListenerRef = useRef<(() => void) | null>(null);
+  const tokenRefreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Enhanced stability constants for improved USA30/NAS100 performance
   const MAX_RECONNECT_ATTEMPTS = 10;
@@ -524,14 +526,31 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔐 Auth state change:', event);
       
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Re-authenticate WebSocket if it's connected but not authenticated
-        if (socketRef.current?.readyState === WebSocket.OPEN && !isAuthenticated && session?.access_token) {
-          console.log('🔄 Re-authenticating WebSocket after sign-in...');
-          socketRef.current.send(JSON.stringify({
-            action: 'authenticate',
-            token: session.access_token
-          }));
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Debounce TOKEN_REFRESHED events to avoid bursts
+        if (event === 'TOKEN_REFRESHED') {
+          if (tokenRefreshTimerRef.current) {
+            clearTimeout(tokenRefreshTimerRef.current);
+          }
+          
+          tokenRefreshTimerRef.current = setTimeout(() => {
+            if (socketRef.current?.readyState === WebSocket.OPEN && !isAuthenticated && session?.access_token) {
+              console.log('🔄 Debounced re-authentication after TOKEN_REFRESHED...');
+              socketRef.current.send(JSON.stringify({
+                action: 'authenticate',
+                token: session.access_token
+              }));
+            }
+          }, 250); // 250ms debounce
+        } else {
+          // SIGNED_IN - immediate authentication
+          if (socketRef.current?.readyState === WebSocket.OPEN && !isAuthenticated && session?.access_token) {
+            console.log('🔄 Re-authenticating WebSocket after sign-in...');
+            socketRef.current.send(JSON.stringify({
+              action: 'authenticate',
+              token: session.access_token
+            }));
+          }
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('👋 User signed out, resetting auth state but keeping pending subscriptions');
@@ -541,7 +560,8 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }
     });
     
-    // Health monitoring - check connection every 30 seconds and reconnect if needed
+    // Store auth listener ref for cleanup
+    authStateListenerRef.current = authListener?.subscription?.unsubscribe;
     const healthCheckInterval = setInterval(() => {
       const now = Date.now();
       const timeSinceLastMessage = now - websocketHealthRef.current.lastSuccessfulMessage;
@@ -558,7 +578,19 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
 
     return () => {
       clearInterval(healthCheckInterval);
-      authListener?.subscription?.unsubscribe();
+      
+      // Properly unsubscribe auth state listener
+      if (authStateListenerRef.current) {
+        authStateListenerRef.current();
+        authStateListenerRef.current = null;
+      }
+      
+      // Clear debounce timer
+      if (tokenRefreshTimerRef.current) {
+        clearTimeout(tokenRefreshTimerRef.current);
+        tokenRefreshTimerRef.current = null;
+      }
+      
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }

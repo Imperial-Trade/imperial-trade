@@ -63,6 +63,7 @@ export function useOptimizedLivePrice(
   const staleGuardTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const httpFallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountTimeRef = useRef<Date>(new Date());
+  const fallbackTriggeredRef = useRef<{ lastTrigger: string; timestamp: number } | null>(null);
 
   // localStorage utilities for price persistence with 10-minute TTL
   const getStoredPrice = useCallback((sym: string) => {
@@ -200,6 +201,54 @@ export function useOptimizedLivePrice(
     };
   }, [normalizedSymbol, subscribe, unsubscribe, fetchLastPriceHTTP, storePrice]);
 
+  // One-shot HTTP fallback trigger with state-based suppression
+  useEffect(() => {
+    const dataAge = lastUpdated ? (Date.now() - lastUpdated.getTime()) / 1000 : Infinity;
+    const isStale = dataAge > 15;
+    const isDisconnected = connectionStatus === 'disconnected' || connectionStatus === 'error';
+    
+    // Create trigger state identifier
+    const triggerState = `${connectionStatus}-${isStale}`;
+    
+    // Check if we should trigger fallback
+    const shouldTrigger = (isStale || isDisconnected) && 
+                         (!fallbackTriggeredRef.current || 
+                          fallbackTriggeredRef.current.lastTrigger !== triggerState ||
+                          Date.now() - fallbackTriggeredRef.current.timestamp > 30000); // Reset after 30s
+    
+    if (shouldTrigger) {
+      console.log(`🔄 [${normalizedSymbol}] One-shot HTTP fallback triggered:`, {
+        connectionStatus,
+        dataAge: dataAge.toFixed(1) + 's',
+        triggerState
+      });
+      
+      // Mark as triggered to suppress repeats
+      fallbackTriggeredRef.current = {
+        lastTrigger: triggerState,
+        timestamp: Date.now()
+      };
+      
+      // Trigger fallback
+      const triggerFallback = async () => {
+        const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
+        if (fallbackPrice) {
+          setDebouncedPrice({
+            price: fallbackPrice.price,
+            change: 0,
+            changePercent: 0
+          });
+          setLastUpdated(fallbackPrice.timestamp);
+          setLastNonZeroPrice(fallbackPrice.price);
+          lastProcessedPriceRef.current = fallbackPrice.price;
+          storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
+        }
+      };
+      
+      triggerFallback();
+    }
+  }, [connectionStatus, lastUpdated, normalizedSymbol, fetchLastPriceHTTP, storePrice]);
+
   // Symbol-specific price updates with stale-guard and persistence
   useEffect(() => {
     const currentPrice = getPrice(normalizedSymbol);
@@ -214,32 +263,12 @@ export function useOptimizedLivePrice(
     }
     
     if (!currentPrice || currentPrice.price === 0) {
-      // Start stale-guard if no updates for 1.2+ seconds (reduced for faster recovery)
-      if (staleGuardTimeoutRef.current) {
-        clearTimeout(staleGuardTimeoutRef.current);
-      }
-      staleGuardTimeoutRef.current = setTimeout(async () => {
-        console.log(`🚨 [${normalizedSymbol}] Stale data detected, triggering HTTP fallback...`);
-        const fallbackPrice = await fetchLastPriceHTTP(normalizedSymbol);
-        if (fallbackPrice) {
-          setDebouncedPrice({
-            price: fallbackPrice.price,
-            change: 0,
-            changePercent: 0
-          });
-          setLastUpdated(fallbackPrice.timestamp);
-          setLastNonZeroPrice(fallbackPrice.price);
-          lastProcessedPriceRef.current = fallbackPrice.price;
-          storePrice(normalizedSymbol, fallbackPrice.price, fallbackPrice.timestamp);
-        }
-      }, 1200); // Reduced from 2000ms to 1200ms
       return;
     }
 
-    // Clear stale guard on fresh data
-    if (staleGuardTimeoutRef.current) {
-      clearTimeout(staleGuardTimeoutRef.current);
-      staleGuardTimeoutRef.current = null;
+    // Reset fallback trigger on fresh data
+    if (currentPrice.price > 0) {
+      fallbackTriggeredRef.current = null;
     }
 
     // Set WebSocket source when receiving real data
@@ -353,7 +382,7 @@ export function useOptimizedLivePrice(
     price: debouncedPrice.price || lastNonZeroPrice, // Fallback to last good price
     change: debouncedPrice.change,
     changePercent: debouncedPrice.changePercent,
-    isLoading: enhancedConnectionStatus === 'connecting',
+    isLoading: enhancedConnectionStatus === 'connecting' && debouncedPrice.price === 0,
     error: symbolError,
     lastUpdated: lastUpdated || contextLastUpdated,
     connectionStatus: enhancedConnectionStatus,

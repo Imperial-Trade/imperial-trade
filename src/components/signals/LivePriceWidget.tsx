@@ -48,7 +48,8 @@ const LivePriceWidgetComponent = ({
   alert,
   onTakeProfitHit,
   onStopLossHit,
-  onOrderActivation
+  onOrderActivation,
+  allowAutomation = true
 }) => {
   // Use the optimized live price hook directly
   const {
@@ -82,7 +83,7 @@ const LivePriceWidgetComponent = ({
   const lastUpdateRef = useRef(0);
   const staleGuardRef = useRef(null);
 
-  // Update data age every second with stale-guard
+  // Update data age every 5 seconds to reduce UI flickering
   useEffect(() => {
     const updateAge = () => {
       if (!lastUpdated) {
@@ -105,27 +106,27 @@ const LivePriceWidgetComponent = ({
         setDataAge('Stale');
       }
 
-      // Stale-guard: Force refresh if no updates for 10+ seconds (reduced sensitivity)
-      if (diffSeconds >= 10) {
+      // Reduced stale-guard sensitivity
+      if (diffSeconds >= 15) {
         if (staleGuardRef.current) clearTimeout(staleGuardRef.current);
         staleGuardRef.current = setTimeout(() => {
           console.log(`🔄 Stale-guard triggered for ${alert.tradermade_symbol}`);
           refreshPrice();
-        }, 2000); // Increased delay to reduce aggressive refreshing
+        }, 5000); // Increased delay to reduce aggressive refreshing
       }
     };
 
     updateAge();
-    const interval = setInterval(updateAge, 1000);
+    const interval = setInterval(updateAge, 5000); // Reduced frequency from 1s to 5s
     return () => {
       clearInterval(interval);
       if (staleGuardRef.current) clearTimeout(staleGuardRef.current);
     };
   }, [lastUpdated, refreshPrice, alert.tradermade_symbol]);
 
-  // Smart price animation effect with reduced noise
+  // Smart price animation effect - only for WebSocket ticks
   useEffect(() => {
-    if (currentPrice > 0 && prevPrice > 0 && currentPrice !== prevPrice) {
+    if (currentPrice > 0 && prevPrice > 0 && currentPrice !== prevPrice && priceUpdateSource.startsWith('websocket')) {
       // Use smart animation that respects thresholds and cooldowns
       triggerPriceAnimation({
         symbol: alert.tradermade_symbol,
@@ -137,10 +138,13 @@ const LivePriceWidgetComponent = ({
     if (currentPrice > 0) {
       setPrevPrice(currentPrice);
     }
-  }, [currentPrice, prevPrice, alert.tradermade_symbol, triggerPriceAnimation]);
+  }, [currentPrice, prevPrice, alert.tradermade_symbol, triggerPriceAnimation, priceUpdateSource]);
   const processLevelHit = useCallback(async (hitType, data) => {
-    // Authorization check removed - let the backend handle it
-    // Frontend should trigger level hits for proper price tracking
+    // Skip automation if not allowed (for non-owners)
+    if (!allowAutomation) {
+      console.log(`[AUTOMATION SKIP] Level hit automation disabled for non-owner`);
+      return;
+    }
     
     if (isProcessingRef.current) {
       console.log(`[PROCESSING SKIP] Already processing ${hitType} for alert ${alert.id}, skipping...`);
@@ -177,7 +181,7 @@ const LivePriceWidgetComponent = ({
     } finally {
       isProcessingRef.current = false;
     }
-  }, [alert, currentPrice, onTakeProfitHit, onStopLossHit, onOrderActivation]);
+  }, [alert, currentPrice, onTakeProfitHit, onStopLossHit, onOrderActivation, allowAutomation]);
   const checkLevels = useCallback(price => {
     // Optimized level checking with smart thresholds
     if (!price || price === lastProcessedPrice || isProcessingRef.current) {

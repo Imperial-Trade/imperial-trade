@@ -33,8 +33,8 @@ const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
 
 // Redis client setup
-const redisUrl = Deno.env.get('UPSTASH_REDIS_REST_URL');
-const redisToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
+const redisUrl = Deno.env.get('UPSTASH_REDIS_URL');
+const redisPassword = Deno.env.get('UPSTASH_REDIS_PASSWORD');
 
 // Tradermade symbol configuration
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
@@ -143,27 +143,32 @@ class TradermadeConnectionManager {
   // Initialize Redis connections for pub/sub
   private async initializeRedis(): Promise<void> {
     try {
-      if (!redisUrl || !redisToken) {
+      if (!redisUrl || !redisPassword) {
         console.error('❌ Redis credentials not configured');
         return;
       }
 
       console.log('🔌 Initializing Redis connections...');
       
+      // Parse Redis URL (format: rediss://default:[password]@host:6379)
+      const parsedUrl = new URL(redisUrl!);
+      
       // Publisher connection for sending price updates to Redis
       this.redisPublisher = await connect({
-        hostname: redisUrl.replace('https://', '').replace('http://', ''),
-        port: 6379,
-        username: 'default',
-        password: redisToken,
+        hostname: parsedUrl.hostname,
+        port: parseInt(parsedUrl.port) || 6379,
+        username: parsedUrl.username || 'default',
+        password: redisPassword || parsedUrl.password,
+        tls: parsedUrl.protocol === 'rediss:',
       });
 
       // Subscriber connection for receiving price updates from Redis
       this.redisSubscriber = await connect({
-        hostname: redisUrl.replace('https://', '').replace('http://', ''),
-        port: 6379,
-        username: 'default',
-        password: redisToken,
+        hostname: parsedUrl.hostname,
+        port: parseInt(parsedUrl.port) || 6379,
+        username: parsedUrl.username || 'default',
+        password: redisPassword || parsedUrl.password,
+        tls: parsedUrl.protocol === 'rediss:',
       });
 
       console.log('✅ Redis connections established');

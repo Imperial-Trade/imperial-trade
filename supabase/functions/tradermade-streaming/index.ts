@@ -98,6 +98,9 @@ class TradermadeConnectionManager {
   private wsUpdatesTotal = 0;
   private httpUpdatesTotal = 0;
 
+  // First-tick latency tracking: clientId -> subscription start time
+  private clientSubscriptionTimes: Map<string, Map<string, number>> = new Map();
+
   private constructor() {}
 
   static getInstance(): TradermadeConnectionManager {
@@ -150,6 +153,9 @@ class TradermadeConnectionManager {
       if (client.authTimer) {
         clearTimeout(client.authTimer);
       }
+      
+      // Clean up first-tick latency tracking
+      this.clientSubscriptionTimes.delete(clientId);
       
       this.clients.delete(clientId);
       this.logEvent('disconnect', { 
@@ -217,6 +223,12 @@ class TradermadeConnectionManager {
       const normalized = this.normalizeClientSymbol(symbol);
       if (normalized && TRADERMADE_SYMBOLS.includes(normalized)) {
         client.subscriptions.add(normalized);
+        
+        // Track subscription start time for first-tick latency measurement
+        if (!this.clientSubscriptionTimes.has(clientId)) {
+          this.clientSubscriptionTimes.set(clientId, new Map());
+        }
+        this.clientSubscriptionTimes.get(clientId)!.set(normalized, Date.now());
         
         // Send cached price if available and not expired
         const cached = this.getCachedPrice(normalized);
@@ -432,6 +444,7 @@ class TradermadeConnectionManager {
   // Broadcast price update to subscribed clients
   private broadcastPriceUpdate(priceUpdate: TradermadePriceData): void {
     let broadcastCount = 0;
+    const now = Date.now();
 
     this.clients.forEach((client, clientId) => {
       if (client.subscriptions.has(priceUpdate.symbol)) {
@@ -440,6 +453,25 @@ class TradermadeConnectionManager {
           ...priceUpdate
         });
         broadcastCount++;
+
+        // Track first-tick latency for this client/symbol combination
+        const clientTimes = this.clientSubscriptionTimes.get(clientId);
+        if (clientTimes?.has(priceUpdate.symbol)) {
+          const subscriptionStartTime = clientTimes.get(priceUpdate.symbol)!;
+          const firstTickLatency = now - subscriptionStartTime;
+          
+          // Store latency (keep last 100 samples)
+          this.wsFirstTickLatenciesMs.push(firstTickLatency);
+          if (this.wsFirstTickLatenciesMs.length > 100) {
+            this.wsFirstTickLatenciesMs.shift();
+          }
+          
+          // Remove tracking since we got the first tick
+          clientTimes.delete(priceUpdate.symbol);
+          if (clientTimes.size === 0) {
+            this.clientSubscriptionTimes.delete(clientId);
+          }
+        }
       }
     });
 

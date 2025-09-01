@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface PriceData {
   symbol: string;
@@ -66,8 +67,7 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
   
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const refCountsRef = useRef<Map<string, number>>(new Map());
-  const httpPollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const isPollingRef = useRef(false);
+  const realtimeChannelRef = useRef<RealtimeChannel | null>(null);
   
   // Enhanced price consistency state - single source of truth
   const masterPricesRef = useRef<Record<string, PriceData>>({});
@@ -219,49 +219,123 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     }
   }, [normalizeSymbol]);
 
-  // Start HTTP polling with consistent intervals
-  const startHttpPolling = useCallback((symbols: string[]) => {
-    if (isPollingRef.current) return;
-    
-    isPollingRef.current = true;
-    console.log('🔄 Starting HTTP polling for symbols:', symbols);
-    
-    // Initial poll
-    pollPricesHTTP(symbols);
-    
-    // Set up regular polling (1 second intervals for critical trading)
-    httpPollingIntervalRef.current = setInterval(() => {
-      const currentSymbols = Array.from(subscribedSymbolsRef.current);
-      if (currentSymbols.length > 0) {
-        pollPricesHTTP(currentSymbols);
-      }
-    }, 1000); // Critical: 1-second polling for active signals
-  }, [pollPricesHTTP]);
-
-  const stopHttpPolling = useCallback(() => {
-    if (httpPollingIntervalRef.current) {
-      clearInterval(httpPollingIntervalRef.current);
-      httpPollingIntervalRef.current = null;
+  // Process real-time price updates from WebSocket relay
+  const processRealtimePriceUpdate = useCallback((payload: any) => {
+    if (!payload || !payload.symbol || !payload.bid || !payload.ask) {
+      console.warn('❌ Invalid price update payload:', payload);
+      return;
     }
-    isPollingRef.current = false;
-    console.log('⏹️ HTTP polling stopped');
+
+    const normalizedSymbol = normalizeSymbol(payload.symbol);
+    
+    // Only process if we're subscribed to this symbol
+    if (!subscribedSymbolsRef.current.has(normalizedSymbol)) {
+      return;
+    }
+
+    const currentTime = Date.now();
+    const price = payload.mid || (payload.bid + payload.ask) / 2;
+    
+    // Calculate change if we have previous data
+    const prevPrice = masterPricesRef.current[normalizedSymbol]?.price || price;
+    const change = price - prevPrice;
+    const changePercent = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
+    
+    const newPriceData: PriceData = {
+      symbol: payload.symbol,
+      price,
+      change,
+      changePercent,
+      timestamp: payload.timestamp || new Date().toISOString(),
+      bid: payload.bid,
+      ask: payload.ask,
+      tick_timestamp: currentTime,
+      is_institutional_tick: true,
+      is_ultra_fast_tick: true,
+      update_frequency: 'realtime'
+    };
+
+    // Price consistency check - only update if price actually changed
+    const lastBroadcast = lastPriceBroadcastRef.current[normalizedSymbol];
+    if (!lastBroadcast || Math.abs(newPriceData.price - lastBroadcast) > 0.00001) {
+      setPrices(prev => ({ ...prev, [normalizedSymbol]: newPriceData }));
+      setPriceUpdateSources(prev => ({ ...prev, [normalizedSymbol]: 'websocket' }));
+      setLastUpdated(new Date());
+      setConnectionStatus('connected');
+      setDataSource('tradermade');
+      
+      lastPriceBroadcastRef.current[normalizedSymbol] = newPriceData.price;
+      masterPricesRef.current[normalizedSymbol] = newPriceData;
+      
+      // Broadcast to subscribers
+      priceUpdateCallbacksRef.current.forEach(callback => {
+        try {
+          callback(normalizedSymbol, newPriceData);
+        } catch (error) {
+          console.warn('Error in price update callback:', error);
+        }
+      });
+      
+      // Clear any errors for this symbol
+      setErrors(prev => {
+        const cleaned = { ...prev };
+        delete cleaned[normalizedSymbol];
+        return cleaned;
+      });
+      
+      console.log(`💰 Realtime price update: ${normalizedSymbol} = $${newPriceData.price}`);
+    }
+  }, [normalizeSymbol]);
+
+  // Setup Realtime channel subscription
+  const setupRealtimeChannel = useCallback(() => {
+    if (realtimeChannelRef.current) {
+      return; // Already connected
+    }
+
+    console.log('📡 Setting up Realtime price channel...');
+    setConnectionStatus('connecting');
+    
+    const channel = supabase.channel('prices:live');
+    
+    channel
+      .on('broadcast', { event: 'price_update' }, ({ payload }) => {
+        processRealtimePriceUpdate(payload);
+      })
+      .subscribe((status) => {
+        console.log('📡 Realtime channel status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('connected');
+          setDataSource('tradermade');
+          console.log('✅ Connected to real-time price stream');
+          
+          // Trigger the relay to start if needed
+          supabase.functions.invoke('price-relay-websocket', {
+            body: { action: 'connect' }
+          }).catch(err => console.warn('Relay trigger failed:', err));
+          
+        } else if (status === 'CHANNEL_ERROR') {
+          setConnectionStatus('error');
+          setErrors(prev => ({ ...prev, global: 'Realtime connection failed' }));
+        }
+      });
+    
+    realtimeChannelRef.current = channel;
+  }, [processRealtimePriceUpdate]);
+
+  const cleanupRealtimeChannel = useCallback(() => {
+    if (realtimeChannelRef.current) {
+      console.log('🔌 Cleaning up Realtime price channel');
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
   }, []);
 
   const connect = useCallback(() => {
-    console.log('📡 Initializing HTTP-based price connection');
-    setConnectionStatus('connecting');
-    setDataSource('tradermade');
-    
-    // Process any pending subscriptions immediately
-    if (subscribedSymbolsRef.current.size > 0) {
-      const symbols = Array.from(subscribedSymbolsRef.current);
-      console.log('📡 Starting HTTP polling for existing subscriptions:', symbols);
-      startHttpPolling(symbols);
-    }
-    
-    setConnectionStatus('connected');
-    console.log('✅ HTTP polling mode established');
-  }, [startHttpPolling]);
+    console.log('📡 Initializing Realtime-based price connection');
+    setupRealtimeChannel();
+  }, [setupRealtimeChannel]);
 
   const subscribe = useCallback((symbols: string[]) => {
     console.log('📡 Subscribe request received for symbols:', symbols);
@@ -287,15 +361,17 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
     if (toSubscribe.length > 0) {
       console.log('📡 New symbols to subscribe:', toSubscribe);
       
-      // Start polling if not already started
-      if (!isPollingRef.current) {
-        startHttpPolling(toSubscribe);
-      } else {
-        // Poll immediately for new symbols
-        pollPricesHTTP(toSubscribe);
+      // For Realtime, we don't need to start anything specific per symbol
+      // The relay will be handling all symbols and broadcasting to our channel
+      // We just need to ensure our Realtime channel is connected
+      if (!realtimeChannelRef.current) {
+        setupRealtimeChannel();
       }
+      
+      // Optionally get initial price via HTTP for immediate feedback
+      pollPricesHTTP(toSubscribe);
     }
-  }, [normalizeSymbol, startHttpPolling, pollPricesHTTP]);
+  }, [normalizeSymbol, setupRealtimeChannel, pollPricesHTTP]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     const normalized = symbols.map(normalizeSymbol).filter(Boolean);
@@ -310,11 +386,20 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       }
     });
 
-    // Stop polling if no subscriptions
+    // If no symbols are subscribed, we can optionally clean up the Realtime channel
     if (subscribedSymbolsRef.current.size === 0) {
-      stopHttpPolling();
+      cleanupRealtimeChannel();
     }
-  }, [normalizeSymbol, stopHttpPolling]);
+  }, [normalizeSymbol, cleanupRealtimeChannel]);
+
+  // Initialize connection on mount
+  useEffect(() => {
+    connect();
+    
+    return () => {
+      cleanupRealtimeChannel();
+    };
+  }, [connect, cleanupRealtimeChannel]);
 
   const getPrice = useCallback((symbol: string): PriceData | null => {
     const normalized = normalizeSymbol(symbol);
@@ -413,15 +498,6 @@ export const WebSocketPriceProvider: React.FC<Props> = ({ children }) => {
       stalePrices
     };
   }, [connectionStatus, lastUpdated, prices]);
-
-  // Initialize connection on mount
-  useEffect(() => {
-    connect();
-    
-    return () => {
-      stopHttpPolling();
-    };
-  }, [connect, stopHttpPolling]);
 
   // Sync master prices with state
   useEffect(() => {

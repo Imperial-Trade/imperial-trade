@@ -1,7 +1,7 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3';
+import { connect } from "https://deno.land/x/redis@v0.32.3/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +14,12 @@ const MAX_WS_SUBS_PER_CLIENT = parseInt(Deno.env.get('MAX_WS_SUBS_PER_CLIENT') |
 const IDLE_DISCONNECT_DELAY_MS = parseInt(Deno.env.get('IDLE_DISCONNECT_DELAY_MS') || '600000'); // 10 minutes
 const PRICE_CACHE_TTL_MS = parseInt(Deno.env.get('PRICE_CACHE_TTL_MS') || '45000'); // 45 seconds
 
+// Redis pub/sub constants
+const REDIS_PRICE_CHANNEL = 'tradermade:price_updates';
+const LEADER_LOCK_KEY = 'tradermade:leader:lock';
+const LEADER_LOCK_TTL = 30; // 30 seconds
+const LEADER_HEARTBEAT_INTERVAL = 15000; // 15 seconds
+
 // New guardrail constants
 const FORCEFETCH_INTERNAL_KEY = Deno.env.get('FORCEFETCH_INTERNAL_KEY') || 'imperial-internal-2024';
 const REST_COOLDOWN_MS = parseInt(Deno.env.get('REST_COOLDOWN_MS') || '10000'); // 10 seconds per symbol
@@ -25,6 +31,10 @@ const CIRCUIT_BREAKER_WINDOW_MS = parseInt(Deno.env.get('CIRCUIT_BREAKER_WINDOW_
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 const supabase = createClient(supabaseUrl!, supabaseAnonKey!);
+
+// Redis client setup
+const redisUrl = Deno.env.get('UPSTASH_REDIS_REST_URL');
+const redisToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
 
 // Tradermade symbol configuration
 const TRADERMADE_SYMBOLS = ['XAUUSD', 'BTCUSD', 'USA30USD', 'NAS100USD', 'EURUSD'];
@@ -83,7 +93,7 @@ interface ClientConnection {
   ipHash?: string;
 }
 
-// ========== SINGLETON CONNECTION MANAGER ==========
+// ========== UNIFIED CONNECTION MANAGER WITH REDIS PUB/SUB ==========
 class TradermadeConnectionManager {
   private static instance: TradermadeConnectionManager;
   private tradermadeSocket: WebSocket | null = null;
@@ -99,32 +109,176 @@ class TradermadeConnectionManager {
   private lastTickTime = 0;
   private isWarmingUp = false;
 
-  // ===== NEW GUARDRAILS & METRICS =====
-  // Rate limiting: symbol -> timestamp of last REST fetch
-  private lastRestFetchAt: Map<string, number> = new Map();
+  // Redis pub/sub integration
+  private redisPublisher: any = null;
+  private redisSubscriber: any = null;
+  private isLeader = false;
+  private leaderHeartbeatInterval: number | null = null;
+  private instanceId: string;
 
-  // Circuit breaker: track REST errors in time window
+  // ===== GUARDRAILS & METRICS =====
+  private lastRestFetchAt: Map<string, number> = new Map();
   private restErrorTimestamps: number[] = [];
   private isRestDisabled = false;
-
-  // Metrics counters (in-memory)
   private fallbackHttpTotal = 0;
   private fallbackForceFetchTotal = 0;
-  private wsFirstTickLatenciesMs: number[] = []; // Keep last 100 for percentiles
+  private wsFirstTickLatenciesMs: number[] = [];
   private wsUpdatesTotal = 0;
   private httpUpdatesTotal = 0;
   private upstreamIdleReconnects = 0;
-
-  // First-tick latency tracking: clientId -> subscription start time
   private clientSubscriptionTimes: Map<string, Map<string, number>> = new Map();
 
-  private constructor() {}
+  private constructor() {
+    this.instanceId = crypto.randomUUID();
+    this.initializeRedis();
+  }
 
   static getInstance(): TradermadeConnectionManager {
     if (!TradermadeConnectionManager.instance) {
       TradermadeConnectionManager.instance = new TradermadeConnectionManager();
     }
     return TradermadeConnectionManager.instance;
+  }
+
+  // Initialize Redis connections for pub/sub
+  private async initializeRedis(): Promise<void> {
+    try {
+      if (!redisUrl || !redisToken) {
+        console.error('❌ Redis credentials not configured');
+        return;
+      }
+
+      console.log('🔌 Initializing Redis connections...');
+      
+      // Publisher connection for sending price updates to Redis
+      this.redisPublisher = await connect({
+        hostname: redisUrl.replace('https://', '').replace('http://', ''),
+        port: 6379,
+        username: 'default',
+        password: redisToken,
+      });
+
+      // Subscriber connection for receiving price updates from Redis
+      this.redisSubscriber = await connect({
+        hostname: redisUrl.replace('https://', '').replace('http://', ''),
+        port: 6379,
+        username: 'default',
+        password: redisToken,
+      });
+
+      console.log('✅ Redis connections established');
+      
+      // Start leader election process
+      await this.startLeaderElection();
+      
+      // Subscribe to price updates channel
+      await this.subscribeToRedisChannel();
+      
+    } catch (error) {
+      console.error('❌ Failed to initialize Redis:', error);
+    }
+  }
+
+  // Leader election mechanism using Redis SETNX
+  private async startLeaderElection(): Promise<void> {
+    try {
+      const result = await this.redisPublisher.set(
+        LEADER_LOCK_KEY, 
+        this.instanceId,
+        'EX', LEADER_LOCK_TTL,
+        'NX'
+      );
+
+      if (result === 'OK') {
+        console.log('👑 Became TraderMade connection leader');
+        this.isLeader = true;
+        await this.connectToTradermade();
+        this.startLeaderHeartbeat();
+      } else {
+        console.log('📡 Following leader for TraderMade connection');
+        this.isLeader = false;
+        // Check leader status periodically
+        setTimeout(() => this.checkLeaderStatus(), 5000);
+      }
+    } catch (error) {
+      console.error('❌ Leader election failed:', error);
+      // Retry after delay
+      setTimeout(() => this.startLeaderElection(), 5000);
+    }
+  }
+
+  // Maintain leadership with heartbeat
+  private startLeaderHeartbeat(): void {
+    if (this.leaderHeartbeatInterval) {
+      clearInterval(this.leaderHeartbeatInterval);
+    }
+
+    this.leaderHeartbeatInterval = setInterval(async () => {
+      if (!this.isLeader) return;
+
+      try {
+        // Renew leadership lock
+        const currentLeader = await this.redisPublisher.get(LEADER_LOCK_KEY);
+        if (currentLeader === this.instanceId) {
+          await this.redisPublisher.expire(LEADER_LOCK_KEY, LEADER_LOCK_TTL);
+        } else {
+          console.warn('⚠️ Lost leadership, stepping down');
+          this.isLeader = false;
+          this.disconnectTradermade();
+          clearInterval(this.leaderHeartbeatInterval);
+          this.leaderHeartbeatInterval = null;
+        }
+      } catch (error) {
+        console.error('❌ Leader heartbeat failed:', error);
+      }
+    }, LEADER_HEARTBEAT_INTERVAL);
+  }
+
+  // Check if current leader is still alive
+  private async checkLeaderStatus(): Promise<void> {
+    try {
+      const currentLeader = await this.redisPublisher.get(LEADER_LOCK_KEY);
+      if (!currentLeader) {
+        // No leader, attempt to become leader
+        await this.startLeaderElection();
+      } else {
+        // Leader exists, check again later
+        setTimeout(() => this.checkLeaderStatus(), 10000);
+      }
+    } catch (error) {
+      console.error('❌ Failed to check leader status:', error);
+    }
+  }
+
+  // Subscribe to Redis pub/sub channel for price updates
+  private async subscribeToRedisChannel(): Promise<void> {
+    try {
+      await this.redisSubscriber.subscribe(REDIS_PRICE_CHANNEL, (channel: string, message: string) => {
+        try {
+          const priceUpdate: TradermadePriceData = JSON.parse(message);
+          // Update local cache
+          this.priceCache.set(priceUpdate.symbol, priceUpdate);
+          // Broadcast to connected clients (all instances do this)
+          this.broadcastPriceUpdate(priceUpdate);
+        } catch (error) {
+          console.error('❌ Failed to process Redis price update:', error);
+        }
+      });
+      console.log('📡 Subscribed to Redis price updates channel');
+    } catch (error) {
+      console.error('❌ Failed to subscribe to Redis channel:', error);
+    }
+  }
+
+  // Publish price update to Redis (leader only)
+  private async publishPriceToRedis(priceUpdate: TradermadePriceData): Promise<void> {
+    if (!this.isLeader || !this.redisPublisher) return;
+
+    try {
+      await this.redisPublisher.publish(REDIS_PRICE_CHANNEL, JSON.stringify(priceUpdate));
+    } catch (error) {
+      console.error('❌ Failed to publish price to Redis:', error);
+    }
   }
 
   // Add client connection
@@ -152,7 +306,8 @@ class TradermadeConnectionManager {
       client_id: clientId, 
       ip_hash: ipHash,
       timeout_ms: WS_AUTH_TIMEOUT_MS,
-      total_clients: this.clients.size
+      total_clients: this.clients.size,
+      is_leader: this.isLeader
     });
 
     // Send auth required message
@@ -182,8 +337,8 @@ class TradermadeConnectionManager {
         remaining_clients: this.clients.size
       });
 
-      // If no clients remain, close TraderMade connection after extended delay
-      if (this.clients.size === 0) {
+      // Leader manages TraderMade connection based on client count
+      if (this.isLeader && this.clients.size === 0) {
         console.info(`⏱️ No clients remaining, scheduling TraderMade disconnect in ${IDLE_DISCONNECT_DELAY_MS/1000}s...`);
         this.idleDisconnectTimeout = setTimeout(() => {
           if (this.clients.size === 0) {
@@ -288,8 +443,13 @@ class TradermadeConnectionManager {
     });
   }
 
-  // Connect to TraderMade (SINGLETON - only one connection)
+  // Connect to TraderMade (LEADER ONLY - single connection across all instances)
   private async connectToTradermade(): Promise<void> {
+    if (!this.isLeader) {
+      console.log('📡 Not leader, skipping TraderMade connection');
+      return;
+    }
+
     if (this.connectionStatus === 'connecting' || this.connectionStatus === 'connected') {
       console.log('⚠️ TraderMade connection already exists, skipping...');
       return;
@@ -309,7 +469,7 @@ class TradermadeConnectionManager {
     }
 
     try {
-      console.log('🔌 Connecting to TraderMade WebSocket...');
+      console.log('🔌 Connecting to TraderMade WebSocket... (LEADER)');
       this.connectionStatus = 'connecting';
       this.broadcastToAllClients({
         type: 'connection_status',
@@ -320,7 +480,7 @@ class TradermadeConnectionManager {
       this.tradermadeSocket = new WebSocket('wss://marketdata.tradermade.com/feedadv');
 
       this.tradermadeSocket.onopen = () => {
-        console.log('✅ Connected to TraderMade');
+        console.log('✅ Connected to TraderMade (LEADER)');
         this.connectionStatus = 'connected';
         this.reconnectAttempts = 0;
 
@@ -364,8 +524,8 @@ class TradermadeConnectionManager {
           closeReason
         });
 
-        // Attempt reconnection if we have clients
-        if (this.clients.size > 0 && this.reconnectAttempts < this.maxReconnectAttempts) {
+        // Attempt reconnection if we have clients and are still leader
+        if (this.isLeader && this.clients.size > 0 && this.reconnectAttempts < this.maxReconnectAttempts) {
           this.scheduleReconnect();
         }
       };
@@ -393,13 +553,15 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Handle incoming TraderMade messages
+  // Handle incoming TraderMade messages (LEADER ONLY)
   private handleTradermadeMessage(data: string): void {
+    if (!this.isLeader) return;
+
     try {
       // Handle text messages (like "Connected") without parsing as JSON
       if (!data.startsWith('{')) {
         if (data.toLowerCase().includes('connected')) {
-          console.log('✅ TraderMade authentication successful');
+          console.log('✅ TraderMade authentication successful (LEADER)');
         }
         return;
       }
@@ -448,8 +610,8 @@ class TradermadeConnectionManager {
       this.priceCache.set(clientSymbol, priceUpdate);
       this.lastTickTime = now;
 
-      // Broadcast to subscribed clients
-      this.broadcastPriceUpdate(priceUpdate);
+      // LEADER: Publish to Redis for all instances
+      this.publishPriceToRedis(priceUpdate);
 
     } catch (error) {
       if (data.startsWith('{')) {
@@ -458,7 +620,7 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Broadcast price update to subscribed clients
+  // Broadcast price update to subscribed clients (ALL INSTANCES)
   private broadcastPriceUpdate(priceUpdate: TradermadePriceData): void {
     let broadcastCount = 0;
     const now = Date.now();
@@ -498,7 +660,9 @@ class TradermadeConnectionManager {
         symbol: priceUpdate.symbol,
         price: priceUpdate.price,
         client_count: broadcastCount,
-        total_clients: this.clients.size
+        total_clients: this.clients.size,
+        is_leader: this.isLeader,
+        instance_id: this.instanceId
       });
     }
   }
@@ -597,7 +761,7 @@ class TradermadeConnectionManager {
     
     this.reconnectTimeout = setTimeout(() => {
       this.reconnectTimeout = null;
-      if (this.clients.size > 0) {
+      if (this.isLeader && this.clients.size > 0) {
         this.connectToTradermade();
       }
     }, delay);
@@ -713,10 +877,10 @@ class TradermadeConnectionManager {
         this.idleDisconnectTimeout = null;
       }
 
-      // Now start TraderMade connection if this is the first authenticated client
+      // Leader starts TraderMade connection if this is the first authenticated client
       const authenticatedClients = Array.from(this.clients.values()).filter(c => c.isAuthenticated);
-      if (authenticatedClients.length === 1 && this.connectionStatus === 'disconnected') {
-        console.log('🚀 First authenticated client, starting TraderMade connection...');
+      if (this.isLeader && authenticatedClients.length === 1 && this.connectionStatus === 'disconnected') {
+        console.log('🚀 First authenticated client, starting TraderMade connection... (LEADER)');
         this.connectToTradermade();
       }
 
@@ -831,10 +995,10 @@ class TradermadeConnectionManager {
 
   // Non-blocking warm-up of TraderMade connection
   private warmUpConnection(): void {
-    if (this.isWarmingUp || this.connectionStatus !== 'disconnected') return;
+    if (this.isWarmingUp || this.connectionStatus !== 'disconnected' || !this.isLeader) return;
     
     this.isWarmingUp = true;
-    console.log('🔥 Pre-warming TraderMade connection...');
+    console.log('🔥 Pre-warming TraderMade connection... (LEADER)');
     
     // Don't await - non-blocking
     this.connectToTradermade().finally(() => {
@@ -842,7 +1006,7 @@ class TradermadeConnectionManager {
     });
   }
 
-  // ===== NEW GUARDRAILS METHODS =====
+  // ===== GUARDRAILS METHODS =====
 
   // Check if symbol is within REST cooldown period
   private isSymbolInCooldown(symbol: string): number {
@@ -878,21 +1042,6 @@ class TradermadeConnectionManager {
     }
   }
 
-  // Cache-only price retrieval helper  
-  private getCachedPricesForSymbols(symbols: string[]): Record<string, { price: TradermadePriceData | null; served_from: string; stale: boolean }> {
-    const results: Record<string, { price: TradermadePriceData | null; served_from: string; stale: boolean }> = {};
-    
-    symbols.forEach(symbol => {
-      const cached = this.getCachedPrice(symbol);
-      results[symbol] = { 
-        price: cached, 
-        served_from: 'cache', 
-        stale: cached ? !this.isPriceFresh(cached) : false 
-      };
-    });
-    
-    return results;
-  }
   // Enhanced POST handler for price fetching with guardrails
   async handlePostRequest(req: Request): Promise<Response> {
     try {
@@ -945,106 +1094,22 @@ class TradermadeConnectionManager {
         });
       }
 
-      // Pre-warm connection if cold and no clients
-      const health = this.getHealthStatus();
-      if (health.tradermadeStatus === 'disconnected' && health.connectedClients === 0) {
-        this.warmUpConnection();
+      // Pre-warm connection if cold and no clients (leader only)
+      if (this.isLeader) {
+        const health = this.getHealthStatus();
+        if (health.tradermadeStatus === 'disconnected' && health.connectedClients === 0) {
+          this.warmUpConnection();
+        }
       }
 
-      // Handle forceFetch with auth and rate limiting
-      if (forceFetch) {
-        // Auth gate: require internal key or service role
-        const internalKey = req.headers.get('x-internal-key');
-        const authHeader = req.headers.get('authorization');
-        const isServiceRole = authHeader?.includes('service_role');
-        
-        if (!internalKey && !isServiceRole) {
-          return new Response(JSON.stringify({ 
-            success: false, 
-            error: 'forceFetch requires internal authentication' 
-          }), {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        }
-
-        if (internalKey && internalKey !== FORCEFETCH_INTERNAL_KEY) {
-          return new Response(JSON.stringify({ 
-            success: false, 
-            error: 'Invalid internal key' 
-          }), {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        }
-
-        // Check rate limiting per symbol
-        const throttledSymbols: Array<{ symbol: string; cooldown_ms_remaining: number }> = [];
-        const fetchableSymbols: string[] = [];
-        
-        validSymbols.forEach(symbol => {
-          const cooldownMs = this.isSymbolInCooldown(symbol);
-          if (cooldownMs > 0) {
-            throttledSymbols.push({ symbol, cooldown_ms_remaining: cooldownMs });
-          } else {
-            fetchableSymbols.push(symbol);
-          }
-        });
-
-        // If all symbols are throttled, return 429
-        if (fetchableSymbols.length === 0) {
-          return new Response(JSON.stringify({ 
-            success: false, 
-            error: 'All symbols are within REST cooldown period',
-            throttled_symbols: throttledSymbols
-          }), {
-            status: 429,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        }
-
-        // Cache-only mode for non-throttled symbols (no external REST calls)
-        const allResults: Record<string, any> = {};
-        fetchableSymbols.forEach((symbol) => {
-          const cached = this.getCachedPrice(symbol);
-          allResults[symbol] = {
-            ...cached,
-            served_from: 'cache',
-            stale: cached ? !this.isPriceFresh(cached) : false
-          };
-        });
-        
-        // Add cached results for throttled symbols
-        throttledSymbols.forEach(({ symbol, cooldown_ms_remaining }) => {
-          const cached = this.getCachedPrice(symbol);
-          allResults[symbol] = {
-            ...cached,
-            served_from: 'cache',
-            stale: cached ? !this.isPriceFresh(cached) : false,
-            cooldown_ms_remaining
-          };
-        });
-
-        return new Response(JSON.stringify({
-          success: true,
-          prices: allResults,
-          dataSource: 'enhanced_rest',
-          timestamp: new Date().toISOString(),
-          rest_disabled: this.isRestDisabled,
-          throttled_count: throttledSymbols.length
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Standard cache-only request
+      // Return cache-only results (no external REST calls)
       const prices: Record<string, any> = {};
       
       validSymbols.forEach(symbol => {
         const cached = this.getCachedPrice(symbol);
         prices[symbol] = {
           ...cached,
-          served_from: 'cache',
+          served_from: 'redis_cache',
           stale: cached ? !this.isPriceFresh(cached) : false
         };
       });
@@ -1052,9 +1117,11 @@ class TradermadeConnectionManager {
       return new Response(JSON.stringify({
         success: true,
         prices,
-        dataSource: 'singleton_cache',
+        dataSource: 'redis_distributed_cache',
         timestamp: new Date().toISOString(),
-        invalid_symbols: invalidSymbols.length > 0 ? invalidSymbols : undefined
+        invalid_symbols: invalidSymbols.length > 0 ? invalidSymbols : undefined,
+        is_leader: this.isLeader,
+        instance_id: this.instanceId
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -1099,7 +1166,15 @@ class TradermadeConnectionManager {
       reconnectAttempts: this.reconnectAttempts,
       isWarmingUp: this.isWarmingUp,
       
-      // New metrics and guardrails
+      // Redis and leader election status
+      redis: {
+        is_leader: this.isLeader,
+        instance_id: this.instanceId,
+        publisher_connected: !!this.redisPublisher,
+        subscriber_connected: !!this.redisSubscriber,
+      },
+      
+      // Metrics
       metrics: {
         fallback_http_total: this.fallbackHttpTotal,
         fallback_force_fetch_total: this.fallbackForceFetchTotal,
@@ -1143,7 +1218,7 @@ serve(async (req) => {
       success: true,
       health,
       service: 'tradermade-streaming',
-      version: '2.0.0'
+      version: '3.0.0-redis-pubsub'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
